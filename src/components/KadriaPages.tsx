@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -270,83 +273,447 @@ function InfoTile({
 }
 
 export function LandingRoutePage() {
+  const metiers = [
+    { key: 'paysagiste', label: '🌿 Paysagiste' },
+    { key: 'pisciniste', label: '🏊 Pisciniste' },
+    { key: 'menuisier', label: '🪟 Menuisier' },
+    { key: 'electricien', label: '⚡ Électricien' },
+    { key: 'plombier', label: '🔧 Plombier' },
+    { key: 'couvreur', label: '🏠 Couvreur' },
+    { key: 'renovation', label: '🏗️ Rénovation' },
+  ];
+  const [activeMetier, setActiveMetier] = useState(metiers[0].key);
+
+  const problemes = [
+    {
+      icon: '🔧',
+      title: 'Appels manqués',
+      text: 'Chaque appel manqué est une opportunité qui part directement chez un concurrent plus réactif.',
+    },
+    {
+      icon: '👤',
+      title: 'Demandes incomplètes',
+      text: 'Sans qualification, vous perdez du temps à recontacter vos prospects pour obtenir des informations de base.',
+    },
+    {
+      icon: '💬',
+      title: 'Messages oubliés',
+      text: 'Les messages laissés sur le répondeur ou via un formulaire restent parfois sans réponse pendant plusieurs jours.',
+    },
+    {
+      icon: '🔁',
+      title: 'Prospects non rappelés',
+      text: 'Un prospect non rappelé rapidement a beaucoup moins de chances de se transformer en client.',
+    },
+    {
+      icon: 'ℹ️',
+      title: "Manque d'informations",
+      text: "Sans budget, délai ni adresse, impossible d'évaluer rapidement si un projet mérite d'être traité en priorité.",
+    },
+  ];
+
+  const solutions = [
+    {
+      icon: '🌐',
+      title: 'Assistant Web',
+      items: [
+        'Répond instantanément aux visiteurs de votre site',
+        'Qualifie le besoin, le budget et le délai',
+        'Crée automatiquement un dossier projet structuré',
+      ],
+    },
+    {
+      icon: '📞',
+      title: 'Assistant Vocal',
+      items: [
+        'Décroche les appels manqués, même en dehors des horaires',
+        'Pose les bonnes questions pour qualifier le projet',
+        'Transcrit et résume chaque appel automatiquement',
+      ],
+    },
+    {
+      icon: '📊',
+      title: 'Dashboard commercial',
+      items: [
+        'Centralise tous vos prospects et dossiers au même endroit',
+        'Priorise les opportunités selon leur potentiel',
+        'Suit le statut et les relances de chaque projet',
+      ],
+    },
+  ];
+
+  const etapes = [
+    {
+      number: '01',
+      title: 'Le prospect vous contacte',
+      text: 'Depuis votre site web ou par téléphone, à n importe quelle heure du jour ou de la nuit.',
+    },
+    {
+      number: '02',
+      title: 'Kadria qualifie le besoin',
+      text: 'Questions utiles, budget, délai, adresse et contexte sont collectés automatiquement.',
+    },
+    {
+      number: '03',
+      title: 'Un dossier complet est généré',
+      text: 'Résumé IA, coordonnées, score de priorité et informations clés, prêts à être exploités.',
+    },
+    {
+      number: '04',
+      title: 'Vous traitez les meilleures opportunités',
+      text: 'Votre équipe se concentre sur les chantiers les plus prometteurs, au bon moment.',
+    },
+  ];
+
+  const dossiers = [
+    { initials: 'ML', client: 'Mario Leroy', metier: 'Plomberie', ville: 'Lyon', budget: '8 000 - 12 000 €', score: 92, statut: 'Nouveau' },
+    { initials: 'JP', client: 'Jean-Pierre M.', metier: 'Couverture', ville: 'Nantes', budget: '15 000 - 20 000 €', score: 95, statut: 'A rappeler' },
+    { initials: 'AD', client: 'Antonin D.', metier: 'Carrelage', ville: 'Rouen', budget: '3 000 - 5 000 €', score: 85, statut: 'Qualifie' },
+    { initials: 'CJ', client: 'Claire & Julien P.', metier: 'Rénovation', ville: 'Lyon', budget: '80 000 - 100 000 €', score: 97, statut: 'Devis envoye' },
+    { initials: 'AB', client: 'Ahmad B.', metier: 'Électricité', ville: 'Paris', budget: '~ 10 000 €', score: 90, statut: 'Gagne' },
+    { initials: 'SF', client: 'Sophie F.', metier: 'Paysagiste', ville: 'Bordeaux', budget: '5 000 - 8 000 €', score: 45, statut: 'Perdu' },
+  ];
+
+  const statusClass: Record<string, string> = {
+    Nouveau: 'bg-blue-500/10 text-blue-400',
+    'A rappeler': 'bg-amber-500/10 text-amber-400',
+    Qualifie: 'bg-purple-500/10 text-purple-400',
+    'Devis envoye': 'bg-cyan-500/10 text-cyan-400',
+    Gagne: 'bg-green-500/10 text-green-400',
+    Perdu: 'bg-red-500/10 text-red-400',
+  };
+
   return (
-    <PageShell>
-      <main className="pt-16">
-        <section className="mx-auto grid min-h-[650px] max-w-[1488px] items-center gap-12 px-6 py-20 md:grid-cols-[1fr_0.9fr]">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* NAV */}
+      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
+          <Link href="/" className="text-xl font-bold">
+            <span className="text-green-500">K</span>adria
+          </Link>
+          <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
+            <Link href="/#comment-ca-marche" className="transition-colors hover:text-white">Comment ça marche</Link>
+            <Link href="/demo" className="transition-colors hover:text-white">Exemple de dossier</Link>
+            <Link href="/#metiers" className="transition-colors hover:text-white">Métiers</Link>
+            <Link href="/tarifs" className="transition-colors hover:text-white">Tarifs</Link>
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
+              Connexion
+            </Link>
+            <Link href="/demo" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              Réserver une démo
+            </Link>
+            <Link href="/assistant" className="rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              Tester Kadria
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        {/* HERO */}
+        <section className="mx-auto grid max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
           <div>
-            <h1 className="max-w-4xl text-5xl font-bold tracking-tight md:text-7xl">
-              Transformez chaque appel et chaque demande en <span className="text-primary">chantier potentiel.</span>
+            <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
+              Transformez chaque appel et chaque demande en
+              <br />
+              <span className="text-green-500">chantier potentiel.</span>
             </h1>
-            <p className="mt-8 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Kadria repond a vos prospects 24h/24, comprend leur besoin, qualifie automatiquement
-              leur projet et prepare un dossier pret a etre chiffre.
+            <p className="mt-6 max-w-xl text-lg leading-7 text-zinc-400">
+              Kadria répond à vos prospects 24h/24, comprend leur besoin, qualifie automatiquement
+              leur projet et prépare un dossier prêt à être chiffré.
             </p>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <PrimaryLink href="/assistant">Tester Kadria</PrimaryLink>
-              <SecondaryLink href="/demo">Voir un exemple de dossier</SecondaryLink>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                Tester Kadria <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                Réserver une démonstration
+              </Link>
             </div>
-            <div className="mt-16 grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
-              {['Mise en place rapide', 'Sans changement de numero', 'Support inclus'].map((item) => (
-                <p key={item} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-primary" />
+            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              👁 Voir un exemple de dossier
+            </Link>
+            <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
+              {[
+                'Mise en place rapide',
+                'Sans changement de numéro',
+                'Compatibilité web et téléphone',
+                'Support inclus',
+              ].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
                   {item}
-                </p>
+                </span>
               ))}
             </div>
           </div>
-          <LeadCard />
-        </section>
 
-        <section className="border-y border-white/5 py-16">
-          <div className="mx-auto grid max-w-[1200px] gap-8 px-6 text-center md:grid-cols-3">
-            <Metric value="100 %" text="des demandes centralisees dans votre dashboard" />
-            <Metric value="24/7" text="Kadria repond meme quand vous etes indisponible" />
-            <Metric value="< 2 min" text="pour qualifier et structurer un projet complet" />
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+              Parcours de qualification
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              {['Prospect', 'Site web ou téléphone', 'Kadria', 'Dossier projet', 'Artisan'].map((step) => (
+                <div
+                  key={step}
+                  className={`rounded-md px-4 py-3 text-sm font-medium ${
+                    step === 'Kadria'
+                      ? 'bg-green-500 text-black'
+                      : 'border border-zinc-800 bg-zinc-950 text-zinc-300'
+                  }`}
+                >
+                  {step}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        <HowItWorksSection />
-      </main>
-    </PageShell>
-  );
-}
+        {/* STATS */}
+        <section className="border-y border-zinc-800 bg-zinc-900 py-16">
+          <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
+            {[
+              ['100%', 'des demandes centralisées dans votre dashboard'],
+              ['24/7', 'Kadria répond même quand vous êtes indisponible'],
+              ['< 2 min', 'pour qualifier et structurer un projet complet'],
+            ].map(([value, text]) => (
+              <div key={value}>
+                <p className="text-4xl font-bold text-green-500">{value}</p>
+                <p className="mt-3 text-zinc-400">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-function Metric({ value, text }: { value: string; text: string }) {
-  return (
-    <div>
-      <p className="text-4xl font-bold text-primary">{value}</p>
-      <p className="mt-3 text-muted-foreground">{text}</p>
-    </div>
-  );
-}
+        {/* PROBLEME */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
+              Chaque prospect non traité est un chantier <span className="text-red-500">perdu.</span>
+            </h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+            {problemes.map((p) => (
+              <div key={p.title} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <span className="text-2xl text-red-500">{p.icon}</span>
+                <h3 className="mt-4 text-base font-semibold">{p.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{p.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-function HowItWorksSection() {
-  const steps = [
-    ['1', 'Le prospect vous contacte', 'Depuis votre site, votre telephone ou une campagne.'],
-    ['2', 'Kadria qualifie le besoin', 'Questions utiles, budget, delai, adresse et contexte.'],
-    ['3', 'Vous recevez un dossier', 'Un dossier clair, score, resume IA et prochaines actions.'],
-  ];
+        {/* SOLUTION */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">La solution</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Votre assistant commercial, <span className="text-green-500">disponible 24h/24.</span>
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {solutions.map((s) => (
+              <div key={s.title} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <span className="text-2xl">{s.icon}</span>
+                <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
+                <ul className="mt-4 space-y-3">
+                  {s.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
 
-  return (
-    <section id="comment-ca-marche" className="mx-auto max-w-[1200px] px-6 py-24">
-      <SectionTitle
-        eyebrow="Comment ca marche"
-        title="Un parcours simple pour ne plus laisser de prospects sans suite."
-        text="Kadria transforme les demandes brutes en dossiers exploitables par votre equipe."
-      />
-      <div className="mt-12 grid gap-4 md:grid-cols-3">
-        {steps.map(([number, title, text]) => (
-          <div key={number} className="card-premium p-6">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              {number}
+        {/* COMMENT CA MARCHE */}
+        <section id="comment-ca-marche" className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Comment ça fonctionne</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Kadria transforme les demandes brutes en dossiers exploitables par votre équipe, du premier
+              contact au dossier prêt à chiffrer.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {etapes.map((e) => (
+              <div key={e.number} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-green-500">
+                  {e.number}
+                </span>
+                <h3 className="mt-4 text-base font-semibold">{e.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{e.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* DASHBOARD PREVIEW */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Pilotez toutes vos opportunités depuis <span className="text-green-500">un seul tableau de bord</span>
+            </h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Suivez chaque dossier, son score de priorité et son statut, sans rien saisir manuellement.
+            </p>
+          </div>
+
+          <div className="mt-12 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                Tableau de bord — 17 dossiers
+              </p>
+              <div className="flex items-center gap-4 text-xs text-zinc-400">
+                <span>Nouveau: 5</span>
+                <span>A rappeler: 3</span>
+                <span>Qualifie: 4</span>
+                <span>Devis envoyé: 2</span>
+                <span>Gagné: 2</span>
+                <span>Perdu: 1</span>
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-zinc-500">
+                    <th className="py-2 pr-4">Client</th>
+                    <th className="py-2 pr-4">Métier</th>
+                    <th className="py-2 pr-4">Ville</th>
+                    <th className="py-2 pr-4">Budget</th>
+                    <th className="py-2 pr-4">Score</th>
+                    <th className="py-2 pr-4">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dossiers.map((d) => (
+                    <tr key={d.client} className="border-t border-zinc-800">
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-zinc-300">
+                            {d.initials}
+                          </span>
+                          {d.client}
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4 text-zinc-400">{d.metier}</td>
+                      <td className="py-3 pr-4 text-zinc-400">{d.ville}</td>
+                      <td className="py-3 pr-4 text-zinc-400">{d.budget}</td>
+                      <td className="py-3 pr-4 font-semibold text-white">{d.score}%</td>
+                      <td className="py-3 pr-4">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass[d.statut] ?? 'bg-zinc-800 text-zinc-300'}`}>
+                          {d.statut}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* SIMULATEUR */}
+        <SimulateurSection />
+
+        {/* METIERS */}
+        <section id="metiers" className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Conçu pour chaque métier du bâtiment</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Kadria s adapte au vocabulaire et aux besoins de chaque corps de métier.
+            </p>
+          </div>
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            {metiers.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setActiveMetier(m.key)}
+                className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
+                  activeMetier === m.key
+                    ? 'bg-green-500 text-black'
+                    : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* PROGRAMME LANCEMENT */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 md:p-12">
+            <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
+              Programme de lancement
             </span>
-            <h3 className="mt-6 text-lg font-semibold">{title}</h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+              Programme de lancement <span className="text-green-500">Kadria</span>
+            </h2>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400">
+              Kadria est en cours de déploiement auprès d un nombre limité d artisans et d entreprises du bâtiment.
+              Les premiers partenaires bénéficient d un accompagnement personnalisé pour configurer leur assistant,
+              connecter leur site et leur ligne téléphonique, et adapter Kadria à leur métier.
+            </p>
+            <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-white">
+              Vous souhaitez faire partie des premiers professionnels à tester Kadria ?
+            </p>
+            <Link href="/onboarding" className="mt-6 inline-flex items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              Devenir partenaire pilote <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-        ))}
-      </div>
-    </section>
+        </section>
+
+        {/* CTA FINAL */}
+        <section className="border-t border-zinc-800 bg-zinc-900 py-24">
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                Tester Kadria <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                Réserver une démonstration
+              </Link>
+            </div>
+            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              👁 Voir un exemple de dossier
+            </Link>
+          </div>
+        </section>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="border-t border-zinc-800 bg-zinc-900 py-12">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
+          <Link href="/" className="text-lg font-bold text-white">
+            <span className="text-green-500">K</span>adria
+          </Link>
+          <p>© 2025 Kadria. Tous droits réservés.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/mentions-legales" className="transition-colors hover:text-white">Mentions légales</Link>
+            <Link href="/cgu" className="transition-colors hover:text-white">CGU</Link>
+            <Link href="/contact" className="transition-colors hover:text-white">Contact</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
 
@@ -628,5 +995,119 @@ export function AdminRoutePage() {
         </div>
       </main>
     </PageShell>
+  );
+}
+
+export function SimulateurSection() {
+  const [demandes, setDemandes] = useState(10);
+  const [part, setPart] = useState(40);
+  const [valeur, setValeur] = useState(3000);
+  const [marge, setMarge] = useState(25);
+
+  const opportunitesPerdues = Math.round(demandes * 4 * (part / 100));
+  const caPerdu = opportunitesPerdues * valeur;
+  const margePerdue = caPerdu * (marge / 100);
+  const chantiersPourRentabiliser = Math.round(199 / valeur);
+
+  return (
+    <section className="mx-auto max-w-[1280px] px-6 py-24">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Simulateur</p>
+        <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+          Combien de chantiers <span className="text-green-500">perdez-vous</span> chaque mois ?
+        </h2>
+        <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+          Estimez l impact financier des demandes non traitées ou mal qualifiées sur votre activité.
+        </p>
+      </div>
+
+      <div className="mt-12 grid gap-8 md:grid-cols-2">
+        <div className="space-y-8">
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Demandes reçues par semaine</label>
+              <span className="font-semibold text-green-500">{demandes}</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={50}
+              value={demandes}
+              onChange={(e) => setDemandes(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Part non traitée ou mal qualifiée</label>
+              <span className="font-semibold text-green-500">{part}%</span>
+            </div>
+            <input
+              type="range"
+              min={10}
+              max={90}
+              value={part}
+              onChange={(e) => setPart(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Valeur moyenne d un chantier</label>
+              <span className="font-semibold text-green-500">{valeur} €</span>
+            </div>
+            <input
+              type="range"
+              min={500}
+              max={20000}
+              step={100}
+              value={valeur}
+              onChange={(e) => setValeur(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Marge nette moyenne</label>
+              <span className="font-semibold text-green-500">{marge}%</span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={50}
+              value={marge}
+              onChange={(e) => setMarge(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-2xl font-bold text-white">{opportunitesPerdues}</p>
+            <p className="mt-1 text-sm text-zinc-400">Opportunités perdues / mois</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-2xl font-bold text-white">{caPerdu.toLocaleString('fr-FR')} €</p>
+            <p className="mt-1 text-sm text-zinc-400">CA potentiel perdu / mois</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-2xl font-bold text-white">{margePerdue.toLocaleString('fr-FR')} €</p>
+            <p className="mt-1 text-sm text-zinc-400">Marge perdue / mois</p>
+          </div>
+
+          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+            <p className="text-sm font-semibold text-green-400">✓ Abonnement Kadria</p>
+            <p className="mt-2 text-3xl font-bold text-white">199 €/mois</p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Un seul chantier récupéré sur {chantiersPourRentabiliser} suffit à rentabiliser Kadria.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
