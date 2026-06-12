@@ -386,30 +386,7 @@ export function LandingRoutePage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* NAV */}
-      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-          <Link href="/" className="text-xl font-bold">
-            <span className="text-green-500">K</span>adria
-          </Link>
-          <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
-            <Link href="/#comment-ca-marche" className="transition-colors hover:text-white">Comment ça marche</Link>
-            <Link href="/demo" className="transition-colors hover:text-white">Exemple de dossier</Link>
-            <Link href="/#metiers" className="transition-colors hover:text-white">Métiers</Link>
-            <Link href="/tarifs" className="transition-colors hover:text-white">Tarifs</Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
-              Connexion
-            </Link>
-            <Link href="/demo" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
-              Réserver une démo
-            </Link>
-            <Link href="/assistant" className="rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
-              Tester Kadria
-            </Link>
-          </div>
-        </div>
-      </header>
+      <DarkNav />
 
       <main>
         {/* HERO */}
@@ -700,20 +677,55 @@ export function LandingRoutePage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-zinc-800 bg-zinc-900 py-12">
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
-          <Link href="/" className="text-lg font-bold text-white">
-            <span className="text-green-500">K</span>adria
-          </Link>
-          <p>© 2025 Kadria. Tous droits réservés.</p>
-          <div className="flex items-center gap-4">
-            <Link href="/mentions-legales" className="transition-colors hover:text-white">Mentions légales</Link>
-            <Link href="/cgu" className="transition-colors hover:text-white">CGU</Link>
-            <Link href="/contact" className="transition-colors hover:text-white">Contact</Link>
-          </div>
-        </div>
-      </footer>
+      <DarkFooter />
     </div>
+  );
+}
+
+function DarkNav() {
+  return (
+    <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
+        <Link href="/" className="text-xl font-bold">
+          <span className="text-green-500">K</span>adria
+        </Link>
+        <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
+          <Link href="/#comment-ca-marche" className="transition-colors hover:text-white">Comment ça marche</Link>
+          <Link href="/demo" className="transition-colors hover:text-white">Exemple de dossier</Link>
+          <Link href="/#metiers" className="transition-colors hover:text-white">Métiers</Link>
+          <Link href="/tarifs" className="transition-colors hover:text-white">Tarifs</Link>
+        </nav>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
+            Connexion
+          </Link>
+          <Link href="/demo" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+            Réserver une démo
+          </Link>
+          <Link href="/assistant" className="rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+            Tester Kadria
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function DarkFooter() {
+  return (
+    <footer className="border-t border-zinc-800 bg-zinc-900 py-12">
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
+        <Link href="/" className="text-lg font-bold text-white">
+          <span className="text-green-500">K</span>adria
+        </Link>
+        <p>© 2025 Kadria. Tous droits réservés.</p>
+        <div className="flex items-center gap-4">
+          <Link href="/mentions-legales" className="transition-colors hover:text-white">Mentions légales</Link>
+          <Link href="/cgu" className="transition-colors hover:text-white">CGU</Link>
+          <Link href="/contact" className="transition-colors hover:text-white">Contact</Link>
+        </div>
+      </div>
+    </footer>
   );
 }
 
@@ -747,40 +759,117 @@ export function FeaturesRoutePage() {
 }
 
 export function PricingRoutePage() {
+  const pricingPlans = [
+    {
+      slug: 'essentiel',
+      name: 'Essentiel',
+      monthly: 99,
+      yearly: 79,
+      description: 'Pour démarrer et ne plus manquer aucun appel.',
+      features: [
+        'Assistant chat web 24h/24',
+        '50 dossiers qualifiés / mois',
+        'Dashboard de suivi',
+        'Scoring automatique',
+        'Support email',
+      ],
+      cta: "Commencer l'essai gratuit",
+      highlighted: false,
+    },
+    {
+      slug: 'pro',
+      name: 'Pro',
+      monthly: 199,
+      yearly: 159,
+      description: "L'outil complet pour ne plus perdre aucune opportunité.",
+      features: [
+        'Tout Essentiel inclus',
+        'Assistant vocal (appels entrants)',
+        'Dossiers illimités',
+        'CRM intégré + relances',
+        'Export CSV',
+        'Rappels automatiques',
+        'Support prioritaire',
+      ],
+      cta: "Commencer l'essai gratuit",
+      highlighted: true,
+    },
+    {
+      slug: 'agence',
+      name: 'Agence',
+      monthly: null,
+      yearly: null,
+      description: "Pour les groupements et réseaux d'artisans.",
+      features: [
+        "Jusqu'à 10 artisans",
+        'Marque blanche complète',
+        'API access',
+        'Dashboard multi-comptes',
+        'Account manager dédié',
+        'Onboarding personnalisé',
+      ],
+      cta: 'Nous contacter',
+      highlighted: false,
+    },
+  ];
+
+  const comparatif = [
+    ['Assistant chat web', '✓', '✓', '✓'],
+    ['Assistant vocal', '✗', '✓', '✓'],
+    ['Dossiers / mois', '50', 'Illimités', 'Illimités'],
+    ['Dashboard', 'Basique', 'Complet', 'Multi-comptes'],
+    ['CRM + relances', '✗', '✓', '✓'],
+    ['Export CSV', '✗', '✓', '✓'],
+    ['API access', '✗', '✗', '✓'],
+    ['Marque blanche', '✗', '✗', '✓'],
+    ['Support', 'Email', 'Prioritaire', 'Account manager'],
+  ];
+
   return (
-    <PageShell>
-      <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-32">
-        <SectionTitle
-          eyebrow="Tarifs"
-          title="Choisissez l offre adaptee a votre volume de demandes."
-          text="Des offres simples pour demarrer vite, puis monter en puissance avec le vocal et le reporting."
-        />
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <div key={plan.slug} className={`card-premium p-6 ${plan.highlighted ? 'border-primary/40' : ''}`}>
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">{plan.name}</h2>
-                {plan.highlighted && <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Recommande</span>}
-              </div>
-              <p className="mt-5 text-4xl font-bold">{plan.price}</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{plan.description}</p>
-              <ul className="mt-6 space-y-3 text-sm">
-                {plan.features.map((item) => (
-                  <li key={item} className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Link href={`/checkout/${plan.slug}`} className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">
-                Choisir cette offre
-                <ArrowRight className="h-4 w-4" />
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <DarkNav />
+
+      <main>
+        {/* HERO PRICING */}
+        <section className="mx-auto max-w-[1280px] px-6 py-20 text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">
+            Un seul outil. <span className="text-green-500">Zéro prospect perdu.</span>
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-zinc-400 md:text-lg">
+            Choisissez la formule adaptée à votre activité. Sans engagement, sans frais cachés.
+          </p>
+
+          <BillingToggle pricingPlans={pricingPlans} comparatif={comparatif} />
+        </section>
+
+        {/* FAQ */}
+        <PricingFaq />
+
+        {/* CTA FINAL */}
+        <section className="border-t border-zinc-800 bg-zinc-900 py-24">
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                Tester Kadria <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                Réserver une démonstration
               </Link>
             </div>
-          ))}
-        </div>
+            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              👁 Voir un exemple de dossier
+            </Link>
+          </div>
+        </section>
       </main>
-    </PageShell>
+
+      <DarkFooter />
+    </div>
   );
 }
 
@@ -1107,6 +1196,200 @@ export function SimulateurSection() {
             </p>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+interface PricingPlan {
+  slug: string;
+  name: string;
+  monthly: number | null;
+  yearly: number | null;
+  description: string;
+  features: string[];
+  cta: string;
+  highlighted: boolean;
+}
+
+function BillingToggle({
+  pricingPlans,
+  comparatif,
+}: {
+  pricingPlans: PricingPlan[];
+  comparatif: string[][];
+}) {
+  const [annual, setAnnual] = useState(false);
+
+  return (
+    <>
+      <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => setAnnual(false)}
+          className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
+            !annual ? 'bg-green-500 text-black' : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+          }`}
+        >
+          Mensuel
+        </button>
+        <button
+          type="button"
+          onClick={() => setAnnual(true)}
+          className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
+            annual ? 'bg-green-500 text-black' : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+          }`}
+        >
+          Annuel
+        </button>
+        {annual && (
+          <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-400">
+            2 mois offerts
+          </span>
+        )}
+      </div>
+
+      {/* PLANS */}
+      <div className="mt-12 grid gap-6 text-left lg:grid-cols-3">
+        {pricingPlans.map((plan) => (
+          <div
+            key={plan.slug}
+            className={`relative rounded-xl bg-zinc-900 p-6 ${
+              plan.highlighted ? 'border-2 border-green-500' : 'border border-zinc-800'
+            }`}
+          >
+            {plan.highlighted && (
+              <span className="absolute -top-3 left-6 rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-black">
+                Le plus populaire
+              </span>
+            )}
+            <h3 className="text-xl font-semibold">{plan.name}</h3>
+            <p className="mt-5">
+              {plan.monthly === null ? (
+                <span className="text-4xl font-bold">Sur devis</span>
+              ) : (
+                <>
+                  <span className="text-4xl font-bold">{annual ? plan.yearly : plan.monthly} €</span>
+                  <span className="text-sm text-zinc-400"> / mois</span>
+                </>
+              )}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">{plan.description}</p>
+            <ul className="mt-6 space-y-3 text-sm">
+              {plan.features.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-zinc-300">
+                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/onboarding"
+              className={`mt-8 inline-flex w-full items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors ${
+                plan.highlighted
+                  ? 'bg-green-500 text-black hover:bg-green-400'
+                  : 'border border-zinc-700 text-white hover:bg-zinc-800'
+              }`}
+            >
+              {plan.cta}
+            </Link>
+          </div>
+        ))}
+      </div>
+
+      {/* COMPARATIF */}
+      <div className="mt-24">
+        <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Comparez les formules</h2>
+        <div className="mt-10 overflow-hidden overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr className="bg-zinc-800 text-xs uppercase tracking-wide text-zinc-400">
+                <th className="px-4 py-3">Fonctionnalité</th>
+                <th className="px-4 py-3">Essentiel</th>
+                <th className="px-4 py-3">Pro</th>
+                <th className="px-4 py-3">Agence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparatif.map(([feature, essentiel, pro, agence]) => (
+                <tr key={feature} className="border-b border-zinc-800/50 last:border-b-0">
+                  <td className="px-4 py-3 font-medium text-white">{feature}</td>
+                  {[essentiel, pro, agence].map((value, index) => (
+                    <td key={index} className="px-4 py-3 text-zinc-400">
+                      {value === '✓' ? (
+                        <span className="text-green-500">✓</span>
+                      ) : value === '✗' ? (
+                        <span className="text-zinc-600">✗</span>
+                      ) : (
+                        value
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PricingFaq() {
+  const faqs = [
+    {
+      question: "Est-ce que je peux tester avant de m'engager ?",
+      answer:
+        'Oui. Chaque formule inclut un essai gratuit de 14 jours, sans carte bancaire requise. Vous pouvez annuler à tout moment.',
+    },
+    {
+      question: "Comment Kadria s'intègre sur mon site ?",
+      answer:
+        "En copiant-collant une seule ligne de code. Notre équipe peut aussi s'en charger gratuitement lors de l'onboarding.",
+    },
+    {
+      question: 'Que se passe-t-il si je dépasse mon quota de dossiers ?',
+      answer:
+        'Vous recevez une notification avant d atteindre la limite. Vous pouvez upgrader à tout moment ou passer au plan supérieur.',
+    },
+    {
+      question: 'Mes données clients sont-elles sécurisées ?',
+      answer:
+        "Oui. Toutes les données sont hébergées en Europe, chiffrées, et vous en restez l'unique propriétaire. RGPD conforme.",
+    },
+    {
+      question: "L'assistant vocal fonctionne-t-il avec mon numéro actuel ?",
+      answer:
+        'Oui. Nous redirigeons vos appels vers Kadria sans changer votre numéro. Vos clients appellent le même numéro qu avant.',
+    },
+  ];
+
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <section className="mx-auto max-w-[1280px] px-6 py-24">
+      <div className="mx-auto max-w-3xl text-center">
+        <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Questions fréquentes</h2>
+      </div>
+      <div className="mx-auto mt-12 max-w-3xl space-y-4">
+        {faqs.map((faq, index) => {
+          const isOpen = openIndex === index;
+          return (
+            <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900">
+              <button
+                type="button"
+                onClick={() => setOpenIndex(isOpen ? null : index)}
+                className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-sm font-semibold text-white"
+              >
+                {faq.question}
+                <span className="text-green-500">{isOpen ? '−' : '+'}</span>
+              </button>
+              {isOpen && (
+                <div className="px-6 pb-4 text-sm leading-6 text-zinc-400">{faq.answer}</div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
