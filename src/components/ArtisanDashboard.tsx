@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { getProjects, getStats } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { Card } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
 import { Badge } from '@/src/components/ui/badge';
 import {
@@ -58,13 +57,13 @@ type GetStatsOutputType = any;
 type Project = GetProjectsOutputType['projects'][0];
 
 const STATUS_OPTIONS = [
-  { value: 'Nouveau', label: 'Nouveau', cls: 'status-new' },
-  { value: 'À rappeler', label: 'À rappeler', cls: 'status-callback' },
-  { value: 'Qualifié', label: 'Qualifié', cls: 'status-qualified' },
-  { value: 'En cours', label: 'En cours', cls: 'bg-accent text-accent-foreground' },
-  { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'status-quote' },
-  { value: 'Gagné', label: 'Gagné', cls: 'status-won' },
-  { value: 'Perdu', label: 'Perdu', cls: 'status-lost' },
+  { value: 'Nouveau', label: 'Nouveau', cls: 'bg-zinc-800 text-zinc-200' },
+  { value: 'À rappeler', label: 'À rappeler', cls: 'bg-amber-500/20 text-amber-400' },
+  { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
+  { value: 'En cours', label: 'En cours', cls: 'bg-blue-500/20 text-blue-400' },
+  { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'bg-blue-500/20 text-blue-400' },
+  { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
+  { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
 ];
 
 export default function ArtisanDashboardPage() {
@@ -213,19 +212,19 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background dashboard-shell">
-      <header className="sticky top-0 z-10 border-b border-white/5 bg-[#0a0b0f]/85 backdrop-blur-xl">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1488px] items-center justify-between px-6">
           <div className="flex items-center gap-5">
             <KadriaLogoImg pro />
-            <span className="hidden md:block h-6 w-px bg-border" />
-            <span className="hidden md:block text-sm text-muted-foreground">
+            <span className="hidden md:block h-6 w-px bg-zinc-800" />
+            <span className="hidden md:block text-sm text-zinc-400">
               Dossiers
             </span>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden sm:block">
+            <span className="text-sm text-zinc-400 hidden sm:block">
               {user.email}
             </span>
 
@@ -245,13 +244,13 @@ function Dashboard() {
 
       <main className="mx-auto max-w-[1488px] px-6 py-10 space-y-8">
         <section className="space-y-4">
-          <p className="text-xs text-primary font-semibold uppercase tracking-[0.18em]">Kadria Pro</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Kadria Pro</p>
 
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-5xl">
             Tableau de bord
           </h1>
 
-          <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+          <p className="max-w-2xl text-base leading-7 text-zinc-400">
             Vos opportunités commerciales, vos relances et votre pipeline en un coup d'œil.
           </p>
         </section>
@@ -259,7 +258,7 @@ function Dashboard() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
+              <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
             ))}
           </div>
         ) : stats && (
@@ -268,14 +267,14 @@ function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {!loading && overdueCallbacks.length > 0 && (
-            <Card className="p-5 overdue-card">
+            <div className="rounded-xl border border-red-500/30 bg-zinc-900 p-5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">
+                  <h2 className="text-lg font-semibold text-white">
                     Relances en retard
                   </h2>
 
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-zinc-400">
                     {overdueCallbacks.length} prospect(s) n'ont pas été rappelés.
                   </p>
                 </div>
@@ -292,18 +291,18 @@ function Dashboard() {
                   Voir les retards
                 </Button>
               </div>
-            </Card>
+            </div>
           )}
 
           {!loading && todayCallbacks.length > 0 && (
-            <Card className="p-5 reminder-card">
+            <div className="rounded-xl border border-amber-500/30 bg-zinc-900 p-5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">
+                  <h2 className="text-lg font-semibold text-white">
                     Relances du jour
                   </h2>
 
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-zinc-400">
                     {todayCallbacks.length} relance(s) programmée(s) aujourd’hui.
                   </p>
                 </div>
@@ -320,19 +319,19 @@ function Dashboard() {
                   Voir les relances
                 </Button>
               </div>
-            </Card>
+            </div>
           )}
         </div>
 
         {!loading && topOpportunities.length > 0 && (
-          <Card className="p-5 card-premium">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold">
+                <h2 className="text-lg font-semibold text-white">
                   Top opportunités
                 </h2>
 
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-zinc-400">
                   Les dossiers avec le meilleur potentiel commercial.
                 </p>
               </div>
@@ -343,23 +342,23 @@ function Dashboard() {
                 <button
                   key={project.id}
                   onClick={() => router.push(`/pro/projet/${project.id}`)}
-                  className="top-opportunity text-left rounded-xl border border-border p-4 hover:bg-accent transition-colors"
+                  className="text-left rounded-xl border border-zinc-800 bg-zinc-900 p-4 hover:bg-zinc-800 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-zinc-400">
                       Opportunité #{index + 1}
                     </span>
 
-                    <span className="text-xs font-semibold text-primary">
+                    <span className="text-xs font-semibold text-green-400">
                       Score {commercialScore(project)}
                     </span>
                   </div>
 
-                  <p className="font-semibold truncate">
+                  <p className="font-semibold text-white truncate">
                     {project.clientFirstName} {project.clientName}
                   </p>
 
-                  <p className="text-sm text-muted-foreground truncate">
+                  <p className="text-sm text-zinc-400 truncate">
                     {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
                   </p>
 
@@ -373,7 +372,7 @@ function Dashboard() {
                 </button>
               ))}
             </div>
-          </Card>
+          </div>
         )}
 
         {!loading && stats && (
@@ -387,7 +386,7 @@ function Dashboard() {
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1 max-w-xl">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
 
               <Input
                 className="pl-9"
@@ -451,10 +450,10 @@ function Dashboard() {
           </div>
 
           {quickFilter && (
-            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+              <p className="text-sm text-zinc-400">
                 Filtre actif :{' '}
-                <span className="text-foreground font-medium">
+                <span className="text-white font-medium">
                   {quickFilter === 'today' ? 'Relances du jour' : 'Relances en retard'}
                 </span>
               </p>
@@ -468,14 +467,14 @@ function Dashboard() {
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 rounded-xl" />
+                <Skeleton key={i} className="h-20 rounded-xl bg-zinc-800" />
               ))}
             </div>
           ) : displayedProjects.length === 0 ? (
-            <Card className="p-16 text-center">
-              <FolderOpen className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Aucun dossier trouvé</p>
-            </Card>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
+              <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
+              <p className="text-zinc-400">Aucun dossier trouvé</p>
+            </div>
           ) : (
             <ProjectList projects={displayedProjects} router={router} />
           )}
@@ -498,21 +497,21 @@ function FinancialKPIs({ stats }: { stats: GetStatsOutputType }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {kpis.map((k) => (
-        <Card key={k.label} className="p-5 flex flex-col gap-3 kpi-card">
+        <div key={k.label} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${k.accent ? 'bg-primary/10' : 'bg-muted'}`}>
-              <k.icon className={`w-4 h-4 ${k.accent ? 'text-primary' : 'text-muted-foreground'}`} />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-zinc-800 p-2">
+              <k.icon className="w-4 h-4 text-green-500" />
             </div>
 
-            <span className="text-sm text-muted-foreground font-medium">
+            <span className="text-sm text-zinc-400 font-medium">
               {k.label}
             </span>
           </div>
 
-          <span className="text-2xl font-bold tracking-tight">
+          <span className="text-2xl font-bold text-white tracking-tight">
             {k.value}
           </span>
-        </Card>
+        </div>
       ))}
     </div>
   );
@@ -530,14 +529,14 @@ function CommercialFunnel({ stats }: { stats: GetStatsOutputType }) {
   const max = Math.max(...steps.map((s) => Number(s.value || 0)), 1);
 
   return (
-    <Card className="p-6 card-premium">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-xl font-semibold text-white">
             Pipeline commercial
           </h2>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-zinc-400">
             Vue synthétique de l’avancement des dossiers.
           </p>
         </div>
@@ -550,25 +549,25 @@ function CommercialFunnel({ stats }: { stats: GetStatsOutputType }) {
           return (
             <div
               key={step.label}
-              className="funnel-card relative rounded-xl p-5 min-h-[118px]"
+              className="relative rounded-xl border border-zinc-800 bg-zinc-900 p-5 min-h-[118px]"
             >
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              <p className="text-xs text-zinc-400 uppercase tracking-wide">
                 {step.label}
               </p>
 
-              <p className="text-3xl font-bold mt-2">
+              <p className="text-3xl font-bold text-white mt-2">
                 {step.value ?? 0}
               </p>
 
-              <div className="mt-4 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="mt-4 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-primary"
+                  className="h-full rounded-full bg-green-500"
                   style={{ width: `${width}%` }}
                 />
               </div>
 
               {index < steps.length - 1 && (
-                <span className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <span className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 text-zinc-600">
                   →
                 </span>
               )}
@@ -576,7 +575,7 @@ function CommercialFunnel({ stats }: { stats: GetStatsOutputType }) {
           );
         })}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -590,18 +589,18 @@ function ProspectsMap({
   const mappedProjects = projects.slice(0, 8);
 
   return (
-    <Card className="p-6 card-premium">
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="h-2 w-2 rounded-full bg-green-500" />
 
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-white">
               Chantiers autour de vous
             </h2>
           </div>
 
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-zinc-400">
             Vue géographique simplifiée des prospects qualifiés.
           </p>
         </div>
@@ -612,7 +611,7 @@ function ProspectsMap({
       </div>
 
       <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
-        <div className="h-full min-h-[420px] overflow-hidden rounded-xl border border-white/10 bg-muted/40">
+        <div className="h-full min-h-[420px] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
           <ProspectsLeafletMap
             projects={mappedProjects}
             onSelectProject={(projectId) => router.push(`/pro/projet/${projectId}`)}
@@ -624,17 +623,17 @@ function ProspectsMap({
             <button
               key={project.id}
               onClick={() => router.push(`/pro/projet/${project.id}`)}
-              className="w-full text-left rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-colors hover:border-primary/40 hover:bg-primary/[0.05]"
+              className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-colors hover:bg-zinc-800"
             >
               <div className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-primary mt-0.5" />
+                <MapPin className="w-4 h-4 text-green-500 mt-0.5" />
 
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">
+                  <p className="text-sm font-medium text-white truncate">
                     {project.clientFirstName} {project.clientName}
                   </p>
 
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-xs text-zinc-400 truncate">
                     {project.trade || 'Projet'} · {project.city || 'Ville inconnue'}
                   </p>
                 </div>
@@ -643,7 +642,7 @@ function ProspectsMap({
           ))}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -656,7 +655,7 @@ function ProjectList({
 }) {
   return (
     <div className="space-y-2">
-      <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+      <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs text-zinc-400 uppercase tracking-wide font-medium border-b border-zinc-800">
         <span className="col-span-1">Réf</span>
         <span className="col-span-1">Date</span>
         <span className="col-span-2">Client</span>
@@ -669,35 +668,38 @@ function ProjectList({
       </div>
 
       {projects.map((p) => (
-        <Card
+        <div
           key={p.id}
-          className="px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+          className="rounded-xl border-b border-zinc-800/50 bg-zinc-900 px-4 py-3 cursor-pointer hover:bg-zinc-800/50 transition-colors"
           onClick={() => router.push(`/pro/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center text-sm">
-            <span className="col-span-1 text-muted-foreground font-mono text-xs">
+            <span className="col-span-1 text-zinc-400 font-mono text-xs">
               #{p.projectNumber}
             </span>
 
-            <span className="col-span-1 text-muted-foreground text-xs">
+            <span className="col-span-1 text-zinc-400 text-xs">
               {p.createdAt
                 ? format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr })
                 : '—'}
             </span>
 
-            <span className="col-span-2 font-medium truncate">
+            <span className="col-span-2 flex items-center gap-2 font-medium text-white truncate">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-300">
+                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              </span>
               {p.clientFirstName} {p.clientName}
             </span>
 
-            <span className="col-span-2 text-muted-foreground truncate">
+            <span className="col-span-2 text-zinc-400 truncate">
               {p.trade || '—'}
             </span>
 
-            <span className="col-span-2 text-muted-foreground truncate">
+            <span className="col-span-2 text-zinc-400 truncate">
               {p.city || '—'}
             </span>
 
-            <span className="col-span-1 text-xs">
+            <span className="col-span-1 text-xs text-zinc-400">
               {p.budget || '—'}
             </span>
 
@@ -710,21 +712,25 @@ function ProjectList({
             </span>
 
             <span className="col-span-1 text-right">
-              <ChevronRight className="w-4 h-4 text-muted-foreground inline" />
+              <ChevronRight className="w-4 h-4 text-zinc-400 inline" />
             </span>
           </div>
 
           <div className="md:hidden flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-300">
+              {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+            </span>
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm">
+                <span className="font-medium text-sm text-white">
                   {p.clientFirstName} {p.clientName}
                 </span>
 
                 <StatusBadge status={p.status} />
               </div>
 
-              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
                 <span>#{p.projectNumber}</span>
 
                 {p.createdAt && (
@@ -737,9 +743,9 @@ function ProjectList({
               </div>
             </div>
 
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
           </div>
-        </Card>
+        </div>
       ))}
     </div>
   );
@@ -751,7 +757,7 @@ function StatusBadge({ status }: { status?: string }) {
   return (
     <Badge
       variant="secondary"
-      className={`text-[10px] ${opt?.cls || 'bg-accent text-accent-foreground'}`}
+      className={`text-[10px] ${opt?.cls || 'bg-zinc-800 text-zinc-200'}`}
     >
       {status || 'Inconnu'}
     </Badge>
@@ -761,10 +767,10 @@ function StatusBadge({ status }: { status?: string }) {
 function ScorePill({ score }: { score: number }) {
   const color =
     score >= 75
-      ? 'text-primary'
+      ? 'text-green-400'
       : score >= 50
-        ? 'text-foreground'
-        : 'text-muted-foreground';
+        ? 'text-white'
+        : 'text-zinc-400';
 
   return (
     <span className={`text-xs font-semibold ${color}`}>
