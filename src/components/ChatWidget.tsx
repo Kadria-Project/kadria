@@ -67,6 +67,7 @@ export default function ChatWidget({
   const [dossier, setDossier] = useState<Dossier>({})
   const [score, setScore] = useState(0)
   const [expectedField, setExpectedField] = useState<string | null>(null)
+  const [readyToSave, setReadyToSave] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -88,6 +89,11 @@ export default function ChatWidget({
     }, 60)
     return () => clearTimeout(t)
   }, [messages, quickReplies, loading])
+
+  // ── Open modal when dossier is ready to save ──────────────────────────────
+  useEffect(() => {
+    if (readyToSave) setShowModal(true)
+  }, [readyToSave])
 
   // ── Address mode detection ───────────────────────────────────────────────
   const isAddressMode = expectedField === 'siteAddress'
@@ -158,7 +164,7 @@ export default function ChatWidget({
       }])
       setQuickReplies([])
       setExpectedField(null)
-      setTimeout(() => setShowModal(true), 800)
+      setTimeout(() => setReadyToSave(true), 800)
       return
     }
 
