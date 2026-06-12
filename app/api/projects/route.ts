@@ -167,6 +167,7 @@ export async function POST(request: Request) {
       Attachments: input.attachments
         ? JSON.stringify(input.attachments)
         : '[]',
+      Photos: input.photos?.map((url: string) => ({ url })) || [],
     });
 
     return NextResponse.json({

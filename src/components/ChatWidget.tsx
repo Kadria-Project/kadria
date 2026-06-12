@@ -10,6 +10,7 @@ interface Dossier {
   siteAddress?: string; city?: string; postalCode?: string
   trade?: string; projectType?: string; budget?: string
   desiredTimeline?: string; maturity?: string; aiSummary?: string
+  photos?: { url: string; publicId: string }[]
 }
 interface Props {
   artisanId?: string
@@ -76,6 +77,10 @@ export default function ChatWidget({
   const [adresseSuggestions, setAdresseSuggestions] = useState<AdresseSuggestion[]>([])
   const [adresseLoading, setAdresseLoading] = useState(false)
   const adresseTimer = useRef<NodeJS.Timeout | null>(null)
+  // Photos
+  const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -209,6 +214,33 @@ export default function ChatWidget({
     }
   }, [input, messages, loading, dossier, artisanId, applyApiResponse])
 
+  // ── Upload photos ────────────────────────────────────────────────────────
+  const uploadPhotos = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setUploadingPhotos(true)
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach(file => formData.append('files', file))
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPhotos(prev => [
+          ...prev,
+          ...data.files.map((f: { url: string; publicId: string }) => ({ url: f.url, publicId: f.publicId })),
+        ])
+      } else {
+        alert('Erreur lors de l\'envoi des photos. Veuillez réessayer.')
+      }
+    } catch {
+      alert('Erreur de connexion. Veuillez réessayer.')
+    } finally {
+      setUploadingPhotos(false)
+    }
+  }, [])
+
   // ── Save dossier ─────────────────────────────────────────────────────────
   const saveDossier = async () => {
     setSaving(true)
@@ -222,6 +254,8 @@ export default function ChatWidget({
           chatHistory: JSON.stringify(messages),
           source: 'chat-widget',
           artisanId,
+          photos: photos.map(p => p.url),
+          photoCount: photos.length,
         }),
       })
       const data = await res.json()
@@ -476,6 +510,33 @@ export default function ChatWidget({
               </div>
             )}
 
+            {/* Photo thumbnails */}
+            {photos.length > 0 && !saved && (
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', gap: '8px',
+                padding: '0 12px 10px', flexShrink: 0, background: '#09090b',
+              }}>
+                {photos.map((photo, i) => (
+                  <div key={photo.publicId} style={{
+                    position: 'relative', width: '60px', height: '60px',
+                    borderRadius: '8px', overflow: 'hidden', border: '1px solid #27272a',
+                  }}>
+                    <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <button onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{
+                        position: 'absolute', top: '2px', right: '2px',
+                        width: '18px', height: '18px', borderRadius: '50%',
+                        border: 'none', background: 'rgba(0,0,0,0.7)', color: 'white',
+                        fontSize: '11px', cursor: 'pointer', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1,
+                      }}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Input */}
             {!saved && (
               <div style={{
@@ -497,6 +558,27 @@ export default function ChatWidget({
                     color: 'white', fontSize: '13.5px', outline: 'none',
                   }}
                 />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    uploadPhotos(e.target.files)
+                    e.target.value = ''
+                  }}
+                />
+                <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhotos}
+                  style={{
+                    width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #3f3f46',
+                    background: '#18181b', color: 'white',
+                    cursor: uploadingPhotos ? 'default' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, fontSize: '16px',
+                  }}>
+                  {uploadingPhotos ? '⏳' : '📸'}
+                </button>
                 <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
                   style={{
                     width: '38px', height: '38px', borderRadius: '8px', border: 'none',
