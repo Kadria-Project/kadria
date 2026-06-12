@@ -84,6 +84,15 @@ function renderMarkdown(text: string) {
   });
 }
 
+const WELCOME_OPTIONS = [
+  'Nouveau projet',
+  "Travaux d'amélioration",
+  'Réparation / Dépannage',
+  'Entretien',
+  'Intervention urgente',
+  'Je ne sais pas encore',
+];
+
 export default function ChatWidget({
   artisanId = 'Artisan_demo',
   primaryColor = '#22c55e',
@@ -105,6 +114,7 @@ export default function ChatWidget({
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     function checkIsMobile() {
@@ -117,51 +127,75 @@ export default function ChatWidget({
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  useEffect(() => {
-    async function fetchOpener() {
-      setLoading(true);
+  async function startConversation(choice: string) {
+    setShowWelcome(false);
+    setLoading(true);
 
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [],
-            currentDossier: {},
-            artisanId,
-          }),
-        });
+    try {
+      const openerRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [],
+          currentDossier: {},
+          artisanId,
+        }),
+      });
 
-        const data = await res.json();
+      const openerData = await openerRes.json();
 
-        if (!data.success) {
-          throw new Error(data.error || 'Erreur assistant IA');
-        }
-
-        const { cleanText, options } = parseQuickReplies(data.reply ?? '');
-
-        setMessages([{ role: 'assistant', content: cleanText }]);
-        setQuickReplies(options);
-        setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
-        setCompletenessScore(data.completenessScore ?? 0);
-        setReadyToSave(Boolean(data.readyToSave));
-        setAiSummary(data.aiSummary ?? '');
-      } catch (error) {
-        setMessages([
-          {
-            role: 'assistant',
-            content:
-              'Désolé, une erreur est survenue. Pouvez-vous rafraîchir la page et réessayer ?',
-          },
-        ]);
-        console.error('CHAT_WIDGET_OPENER_ERROR', error);
-      } finally {
-        setLoading(false);
+      if (!openerData.success) {
+        throw new Error(openerData.error || 'Erreur assistant IA');
       }
-    }
 
-    fetchOpener();
-  }, []);
+      const { cleanText: openerText } = parseQuickReplies(openerData.reply ?? '');
+      const openerDossier = { ...dossier, ...openerData.dossierUpdate };
+
+      const nextMessages: ChatMessage[] = [
+        { role: 'assistant', content: openerText },
+        { role: 'user', content: choice },
+      ];
+
+      setMessages(nextMessages);
+      setDossier(openerDossier);
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: nextMessages,
+          currentDossier: openerDossier,
+          artisanId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur assistant IA');
+      }
+
+      const { cleanText, options } = parseQuickReplies(data.reply ?? '');
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: cleanText }]);
+      setQuickReplies(options);
+      setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
+      setCompletenessScore(data.completenessScore ?? 0);
+      setReadyToSave(Boolean(data.readyToSave));
+      setAiSummary(data.aiSummary ?? '');
+    } catch (error) {
+      setMessages([
+        {
+          role: 'assistant',
+          content:
+            'Désolé, une erreur est survenue. Pouvez-vous rafraîchir la page et réessayer ?',
+        },
+      ]);
+      console.error('CHAT_WIDGET_START_ERROR', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
@@ -334,6 +368,14 @@ export default function ChatWidget({
   const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
   const recapDetected = Boolean(lastAssistantMessage && hasRecap(lastAssistantMessage.content));
 
+  const currentStep = readyToSave || completenessScore > 90
+    ? 4
+    : completenessScore >= 70
+      ? 3
+      : completenessScore >= 40
+        ? 2
+        : 1;
+
   return (
     <div
       className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl"
@@ -366,13 +408,42 @@ export default function ChatWidget({
         </button>
       </div>
 
-      <div className="h-1.5 w-full bg-zinc-900">
-        <div
-          className="h-full transition-all"
-          style={{ width: `${completenessScore}%`, backgroundColor: primaryColor }}
-        />
+      <div className="border-b border-zinc-800 bg-zinc-900 px-4 py-2">
+        <div className="mb-1 flex items-center justify-between text-xs text-zinc-400">
+          <span>Votre projet</span>
+          <span>Étape {currentStep} sur 4</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div
+            className="h-full transition-all"
+            style={{ width: `${currentStep * 25}%`, backgroundColor: primaryColor }}
+          />
+        </div>
       </div>
 
+      {showWelcome ? (
+        <div className="flex-1 overflow-y-auto bg-zinc-950 p-5">
+          <div className="rounded-xl bg-zinc-800 p-4">
+            <p className="text-white">👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?</p>
+            <p className="mt-1 text-sm text-zinc-400">
+              Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
+            </p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {WELCOME_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => startConversation(option)}
+                className="cursor-pointer rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition-all hover:border-green-500 hover:bg-green-500 hover:text-black"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 space-y-3 overflow-y-auto bg-zinc-950 px-4 py-4">
         {messages.map((message, index) => (
           <div
@@ -429,8 +500,9 @@ export default function ChatWidget({
           </div>
         )}
       </div>
+      )}
 
-      {readyToSave && recapDetected && !submitted && (
+      {!showWelcome && readyToSave && recapDetected && !submitted && (
         <div className="border-t border-zinc-800 bg-zinc-900 px-4 py-3">
           <Button
             type="button"
@@ -444,7 +516,7 @@ export default function ChatWidget({
         </div>
       )}
 
-      {!submitted && (
+      {!showWelcome && !submitted && (
         <div className="relative border-t border-zinc-800 bg-zinc-950 px-4 py-3">
           {isAddressMode && showAddressSuggestions && addressSuggestions.length > 0 && (
             <div className="absolute bottom-full left-4 right-4 mb-2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900">
