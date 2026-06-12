@@ -28,3 +28,31 @@ export async function getStats() {
 
   return res.json();
 }
+
+export async function getProject(id: string) {
+  const res = await fetch(`/api/projects/${id}`);
+
+  if (!res.ok) throw new Error('Erreur récupération dossier');
+
+  return res.json();
+}
+
+export async function updateProject(id: string, data: Record<string, unknown>) {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) throw new Error('Erreur mise à jour dossier');
+
+  return res.json();
+}
+
+export async function getProjectActivity(id: string) {
+  const res = await fetch(`/api/projects/${id}/activity`);
+
+  if (!res.ok) throw new Error('Erreur récupération historique');
+
+  return res.json();
+}

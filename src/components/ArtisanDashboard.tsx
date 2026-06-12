@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { getProjects, getStats } from '@/src/lib/api';
+import { getProjects } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -19,7 +19,6 @@ import { Skeleton } from '@/src/components/ui/skeleton';
 import {
   Search,
   FolderOpen,
-  Clock,
   Send,
   Trophy,
   ChevronRight,
@@ -28,8 +27,6 @@ import {
   Target,
   AlertCircle,
   ShoppingCart,
-  Shield,
-  MapPin,
 } from 'lucide-react';
 import { KadriaLogoImg } from '@/src/components/KadriaLogo';
 import { useDebouncedCallback } from 'use-debounce';
@@ -52,15 +49,13 @@ type GetProjectsOutputType = {
   projects: any[];
 };
 
-type GetStatsOutputType = any;
-
 type Project = GetProjectsOutputType['projects'][0];
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-zinc-800 text-zinc-200' },
   { value: 'À rappeler', label: 'À rappeler', cls: 'bg-amber-500/20 text-amber-400' },
   { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
-  { value: 'En cours', label: 'En cours', cls: 'bg-blue-500/20 text-blue-400' },
+  { value: 'En cours', label: 'En cours', cls: 'bg-purple-500/20 text-purple-400' },
   { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'bg-blue-500/20 text-blue-400' },
   { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
   { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
@@ -75,24 +70,37 @@ export default function ArtisanDashboardPage() {
 }
 
 function fmt(n?: number): string {
-  return (n ?? 0).toLocaleString('fr-FR') + ' €';
+  return Math.round(n ?? 0).toLocaleString('fr-FR') + ' €';
 }
 
-function budgetPriority(budget?: string): number {
-  const value = String(budget || '').toLowerCase();
+function parseBudgetValue(budget?: string): number {
+  if (!budget) return 0;
 
-  if (value.includes('plus de 20')) return 6;
-  if (value.includes('10 000') && value.includes('20 000')) return 5;
-  if (value.includes('5 000') && value.includes('10 000')) return 4;
-  if (value.includes('3 000') && value.includes('5 000')) return 3;
-  if (value.includes('1 000') && value.includes('3 000')) return 2;
-  if (value.includes('moins de 1')) return 1;
+  const matches = String(budget).match(/[\d\s]+/g);
 
-  return 0;
+  if (!matches) return 0;
+
+  const numbers = matches
+    .map((m) => parseInt(m.replace(/\s/g, ''), 10))
+    .filter((n) => !Number.isNaN(n));
+
+  return numbers.length ? Math.max(...numbers) : 0;
 }
 
-function commercialScore(project: Project): number {
-  return budgetPriority(project.budget) * 50 + (project.completenessScore || 0);
+function budgetScore(budget?: string): number {
+  const value = parseBudgetValue(budget);
+
+  if (value > 20000) return 160;
+  if (value > 10000) return 120;
+  if (value > 5000) return 80;
+  if (value > 3000) return 50;
+  if (value > 1000) return 30;
+
+  return 10;
+}
+
+function opportunityScore(project: Project): number {
+  return (project.completenessScore || 0) * 2 + budgetScore(project.budget);
 }
 
 function Dashboard() {
@@ -104,78 +112,68 @@ function Dashboard() {
     role: 'User',
   };
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [stats, setStats] = useState<GetStatsOutputType | null>(null);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [tradeFilter, setTradeFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | null>(null);
 
   const logout = () => {
     router.push('/');
   };
 
-  const loadData = useCallback(async (s?: string) => {
+  const loadData = useCallback(async () => {
     try {
-      const [projRes, statsRes] = await Promise.all([
-        getProjects({
-          status: statusFilter || undefined,
-          trade: tradeFilter || undefined,
-          search: s || search || undefined,
-        }),
-        getStats(),
-      ]);
+      const projRes = await getProjects({});
 
-      const sorted = [...projRes.projects].sort((a, b) => {
-        const statusPriority = (p: Project) =>
-          p.status === 'À rappeler' ? 3 :
-          p.status === 'Nouveau' ? 2 :
-          p.status === 'Qualifié' ? 1 :
-          0;
-
-        const priorityA =
-          statusPriority(a) * 1000 +
-          budgetPriority(a.budget) * 100 +
-          (a.completenessScore || 0);
-
-        const priorityB =
-          statusPriority(b) * 1000 +
-          budgetPriority(b.budget) * 100 +
-          (b.completenessScore || 0);
-
-        if (priorityB !== priorityA) {
-          return priorityB - priorityA;
-        }
-
-        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-
-        return db - da;
-      });
-
-      setProjects(sorted);
-      setStats(statsRes);
+      setAllProjects(projRes.projects || []);
     } catch (error) {
       console.error('LOAD_DASHBOARD_ERROR', error);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, tradeFilter, search]);
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter, tradeFilter, loadData]);
+  }, [loadData]);
 
   const debouncedSearch = useDebouncedCallback((val: string) => {
     setQuickFilter(null);
-    loadData(val);
+    setSearch(val);
   }, 400);
 
   const today = new Date();
   const todayKey = today.toISOString().slice(0, 10);
+  const now = today.getTime();
 
-  const todayCallbacks = projects.filter((project) => {
+  const totalBudget = allProjects.reduce(
+    (sum, p) => sum + parseBudgetValue(p.budget),
+    0,
+  );
+
+  const devisEnvoyeAmount = allProjects
+    .filter((p) => p.status === 'Devis envoyé')
+    .reduce((sum, p) => sum + parseBudgetValue(p.budget), 0);
+
+  const gagneProjects = allProjects.filter((p) => p.status === 'Gagné');
+
+  const gagneAmount = gagneProjects.reduce(
+    (sum, p) => sum + parseBudgetValue(p.budget),
+    0,
+  );
+
+  const tauxTransformation = allProjects.length
+    ? Math.round((gagneProjects.length / allProjects.length) * 100)
+    : 0;
+
+  const panierMoyen = allProjects.length
+    ? totalBudget / allProjects.length
+    : 0;
+
+  const todayCallbacks = allProjects.filter((project) => {
     if (!project.callbackDate) return false;
 
     const callbackKey = String(project.callbackDate).slice(0, 10);
@@ -183,31 +181,88 @@ function Dashboard() {
     return callbackKey === todayKey;
   });
 
-  const overdueCallbacks = projects.filter((project) => {
+  const overdueCallbacks = allProjects.filter((project) => {
     if (!project.callbackDate) return false;
     if (project.status === 'Gagné' || project.status === 'Perdu') return false;
 
-    const callbackKey = String(project.callbackDate).slice(0, 10);
+    const callbackTime = new Date(project.callbackDate).getTime();
 
-    return callbackKey < todayKey;
+    return !Number.isNaN(callbackTime) && callbackTime < now;
   });
 
-  const topOpportunities = [...projects]
-    .filter((project) => project.status !== 'Perdu' && project.status !== 'Gagné')
-    .sort((a, b) => commercialScore(b) - commercialScore(a))
+  const dossiersARelancer = overdueCallbacks.length;
+
+  const kpis = [
+    { label: 'CA potentiel', value: fmt(totalBudget), icon: Euro },
+    { label: 'Devis envoyés', value: fmt(devisEnvoyeAmount), icon: Send },
+    { label: 'Chantiers gagnés', value: fmt(gagneAmount), icon: Trophy },
+    { label: 'Taux de transformation', value: `${tauxTransformation} %`, icon: Target },
+    { label: 'Panier moyen', value: fmt(panierMoyen), icon: ShoppingCart },
+    { label: 'Dossiers à relancer', value: String(dossiersARelancer), icon: AlertCircle },
+  ];
+
+  const pipelineSteps = [
+    { label: 'Nouveau', value: allProjects.filter((p) => p.status === 'Nouveau').length },
+    { label: 'À rappeler', value: allProjects.filter((p) => p.status === 'À rappeler').length },
+    { label: 'Qualifié', value: allProjects.filter((p) => p.status === 'Qualifié').length },
+    { label: 'Devis envoyé', value: allProjects.filter((p) => p.status === 'Devis envoyé').length },
+    { label: 'Gagné', value: allProjects.filter((p) => p.status === 'Gagné').length },
+  ];
+
+  const topOpportunities = [...allProjects]
+    .filter((project) => project.status !== 'Perdu')
+    .sort((a, b) => opportunityScore(b) - opportunityScore(a))
     .slice(0, 3);
+
+  const trades = Array.from(
+    new Set(allProjects.map((p) => p.trade).filter(Boolean)),
+  ) as string[];
+
+  const filteredProjects = allProjects.filter((p) => {
+    if (statusFilter && p.status !== statusFilter) return false;
+    if (tradeFilter && p.trade !== tradeFilter) return false;
+
+    if (search) {
+      const searchable = [
+        p.projectNumber,
+        p.clientName,
+        p.clientFirstName,
+        p.clientEmail,
+        p.clientPhone,
+        p.city,
+        p.trade,
+        p.projectType,
+        p.budget,
+        p.aiSummary,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      if (!searchable.includes(search.toLowerCase())) return false;
+    }
+
+    return true;
+  });
+
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+    return db - da;
+  });
 
   const displayedProjects =
     quickFilter === 'today'
       ? todayCallbacks
       : quickFilter === 'overdue'
         ? overdueCallbacks
-        : projects;
+        : sortedProjects;
 
   const resetFilters = () => {
     setStatusFilter('');
     setTradeFilter('');
     setSearch('');
+    setSearchInput('');
     setQuickFilter(null);
   };
 
@@ -227,13 +282,6 @@ function Dashboard() {
             <span className="text-sm text-zinc-400 hidden sm:block">
               {user.email}
             </span>
-
-            {user.role === 'Admin' && (
-              <Button variant="outline" size="sm" onClick={() => router.push('/admin')}>
-                <Shield className="w-3.5 h-3.5 mr-1.5" />
-                Admin
-              </Button>
-            )}
 
             <Button variant="ghost" size="icon" onClick={logout} title="Déconnexion">
               <LogOut className="w-4 h-4" />
@@ -261,8 +309,26 @@ function Dashboard() {
               <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
             ))}
           </div>
-        ) : stats && (
-          <FinancialKPIs stats={stats} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {kpis.map((k) => (
+              <div key={k.label} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-zinc-800 p-2">
+                    <k.icon className="w-4 h-4 text-green-500" />
+                  </div>
+
+                  <span className="text-sm text-zinc-400 font-medium">
+                    {k.label}
+                  </span>
+                </div>
+
+                <span className="text-2xl font-bold text-white tracking-tight">
+                  {k.value}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -286,6 +352,7 @@ function Dashboard() {
                     setStatusFilter('');
                     setTradeFilter('');
                     setSearch('');
+                    setSearchInput('');
                   }}
                 >
                   Voir les retards
@@ -314,6 +381,7 @@ function Dashboard() {
                     setStatusFilter('');
                     setTradeFilter('');
                     setSearch('');
+                    setSearchInput('');
                   }}
                 >
                   Voir les relances
@@ -341,7 +409,7 @@ function Dashboard() {
               {topOpportunities.map((project, index) => (
                 <button
                   key={project.id}
-                  onClick={() => router.push(`/pro/projet/${project.id}`)}
+                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
                   className="text-left rounded-xl border border-zinc-800 bg-zinc-900 p-4 hover:bg-zinc-800 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -349,8 +417,8 @@ function Dashboard() {
                       Opportunité #{index + 1}
                     </span>
 
-                    <span className="text-xs font-semibold text-green-400">
-                      Score {commercialScore(project)}
+                    <span className="text-xs font-semibold text-green-500">
+                      Score {opportunityScore(project)}
                     </span>
                   </div>
 
@@ -375,12 +443,46 @@ function Dashboard() {
           </div>
         )}
 
-        {!loading && stats && (
-          <CommercialFunnel stats={stats} />
+        {!loading && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-white">
+                  Pipeline commercial
+                </h2>
+
+                <p className="text-sm text-zinc-400">
+                  Vue synthétique de l’avancement des dossiers.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+              {pipelineSteps.map((step, index) => (
+                <div key={step.label} className="relative flex items-center justify-between md:justify-start gap-4">
+                  <div>
+                    <p className="text-xs text-zinc-400 uppercase tracking-wide">
+                      {step.label}
+                    </p>
+
+                    <p className="text-2xl font-bold text-white mt-1">
+                      {step.value}
+                    </p>
+                  </div>
+
+                  {index < pipelineSteps.length - 1 && (
+                    <span className="hidden md:block text-zinc-600">
+                      →
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
-        {!loading && displayedProjects.length > 0 && (
-          <ProspectsMap projects={displayedProjects} router={router} />
+        {!loading && (
+          <ProspectsMap projects={sortedProjects} router={router} />
         )}
 
         <section className="space-y-4">
@@ -391,9 +493,9 @@ function Dashboard() {
               <Input
                 className="pl-9"
                 placeholder="Rechercher un client, un projet…"
-                value={search}
+                value={searchInput}
                 onChange={(e) => {
-                  setSearch(e.target.value);
+                  setSearchInput(e.target.value);
                   setQuickFilter(null);
                   debouncedSearch(e.target.value);
                 }}
@@ -436,9 +538,9 @@ function Dashboard() {
               <SelectContent>
                 <SelectItem value="all">Tous les métiers</SelectItem>
 
-                {(stats?.byTrade || []).map((t: any) => (
-                  <SelectItem key={t.trade} value={t.trade}>
-                    {t.trade} ({t.count})
+                {trades.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -484,101 +586,6 @@ function Dashboard() {
   );
 }
 
-function FinancialKPIs({ stats }: { stats: GetStatsOutputType }) {
-  const kpis = [
-    { label: 'CA potentiel', value: fmt(stats.montantRecuCeMois), icon: Euro, accent: true },
-    { label: 'Devis envoyés', value: fmt(stats.montantDevisEnvoyes), icon: Send, accent: false },
-    { label: 'Chantiers gagnés', value: fmt(stats.montantGagnes), icon: Trophy, accent: true },
-    { label: 'Taux de transformation', value: `${stats.tauxTransformation} %`, icon: Target, accent: false },
-    { label: 'Panier moyen', value: fmt(stats.panierMoyen), icon: ShoppingCart, accent: false },
-    { label: 'Dossiers à relancer', value: String(stats.dossiersARelancer), icon: AlertCircle, accent: stats.dossiersARelancer > 0 },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {kpis.map((k) => (
-        <div key={k.label} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-zinc-800 p-2">
-              <k.icon className="w-4 h-4 text-green-500" />
-            </div>
-
-            <span className="text-sm text-zinc-400 font-medium">
-              {k.label}
-            </span>
-          </div>
-
-          <span className="text-2xl font-bold text-white tracking-tight">
-            {k.value}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CommercialFunnel({ stats }: { stats: GetStatsOutputType }) {
-  const steps = [
-    { label: 'Nouveau', value: stats.nouveau },
-    { label: 'À rappeler', value: stats.aRappeler },
-    { label: 'Qualifié', value: stats.qualifie },
-    { label: 'Devis envoyé', value: stats.devisEnvoye },
-    { label: 'Gagné', value: stats.gagne },
-  ];
-
-  const max = Math.max(...steps.map((s) => Number(s.value || 0)), 1);
-
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-white">
-            Pipeline commercial
-          </h2>
-
-          <p className="text-sm text-zinc-400">
-            Vue synthétique de l’avancement des dossiers.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {steps.map((step, index) => {
-          const width = Math.max((Number(step.value || 0) / max) * 100, 8);
-
-          return (
-            <div
-              key={step.label}
-              className="relative rounded-xl border border-zinc-800 bg-zinc-900 p-5 min-h-[118px]"
-            >
-              <p className="text-xs text-zinc-400 uppercase tracking-wide">
-                {step.label}
-              </p>
-
-              <p className="text-3xl font-bold text-white mt-2">
-                {step.value ?? 0}
-              </p>
-
-              <div className="mt-4 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-green-500"
-                  style={{ width: `${width}%` }}
-                />
-              </div>
-
-              {index < steps.length - 1 && (
-                <span className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 text-zinc-600">
-                  →
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function ProspectsMap({
   projects,
   router,
@@ -614,7 +621,7 @@ function ProspectsMap({
         <div className="h-full min-h-[420px] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
           <ProspectsLeafletMap
             projects={mappedProjects}
-            onSelectProject={(projectId) => router.push(`/pro/projet/${projectId}`)}
+            onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
           />
         </div>
 
@@ -622,11 +629,11 @@ function ProspectsMap({
           {mappedProjects.map((project) => (
             <button
               key={project.id}
-              onClick={() => router.push(`/pro/projet/${project.id}`)}
+              onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
               className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-colors hover:bg-zinc-800"
             >
               <div className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-green-500 mt-0.5" />
+                <span className="text-green-500 mt-0.5">📍</span>
 
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white truncate">
@@ -671,11 +678,11 @@ function ProjectList({
         <div
           key={p.id}
           className="rounded-xl border-b border-zinc-800/50 bg-zinc-900 px-4 py-3 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-          onClick={() => router.push(`/pro/projet/${p.id}`)}
+          onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center text-sm">
-            <span className="col-span-1 text-zinc-400 font-mono text-xs">
-              #{p.projectNumber}
+            <span className="col-span-1 text-zinc-500 font-mono text-xs">
+              {String(p.id).slice(0, 6)}
             </span>
 
             <span className="col-span-1 text-zinc-400 text-xs">
@@ -731,7 +738,7 @@ function ProjectList({
               </div>
 
               <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
-                <span>#{p.projectNumber}</span>
+                <span>{String(p.id).slice(0, 6)}</span>
 
                 {p.createdAt && (
                   <span>· {format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr })}</span>
@@ -765,16 +772,11 @@ function StatusBadge({ status }: { status?: string }) {
 }
 
 function ScorePill({ score }: { score: number }) {
-  const color =
-    score >= 75
-      ? 'text-green-400'
-      : score >= 50
-        ? 'text-white'
-        : 'text-zinc-400';
-
   return (
-    <span className={`text-xs font-semibold ${color}`}>
+    <span className={`text-xs ${score >= 80 ? 'font-semibold text-green-400' : 'text-zinc-400'}`}>
       {score}%
     </span>
   );
 }
+
+export { STATUS_OPTIONS, StatusBadge, ScorePill };
