@@ -165,15 +165,17 @@ export async function POST(request: Request) {
       recordId: record.id,
     });
   } catch (error) {
-    console.error('CREATE_PROJECT_ERROR', error);
+    console.error('CREATE_PROJECT_ERROR', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+
+    const airtableError = error as { message?: string; error?: string; statusCode?: number };
 
     return NextResponse.json(
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : JSON.stringify(error, null, 2),
+          airtableError.message ??
+          airtableError.error ??
+          (error instanceof Error ? error.message : JSON.stringify(error, null, 2)),
       },
       { status: 500 },
     );

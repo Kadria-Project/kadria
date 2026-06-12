@@ -40,6 +40,19 @@ function isAddressPrompt(text: string): boolean {
   return lower.includes('adresse') || lower.includes('chantier') || text.includes('📍');
 }
 
+const RECAP_KEYWORDS = [
+  'récapitulatif',
+  'résumé',
+  'dossier est prêt',
+  'voici votre dossier',
+  'voir le résumé',
+];
+
+function hasRecap(text: string): boolean {
+  const lower = text.toLowerCase();
+  return RECAP_KEYWORDS.some((keyword) => lower.includes(keyword.toLowerCase()));
+}
+
 export default function ChatWidget({
   artisanId = 'Artisan_demo',
   primaryColor = '#22c55e',
@@ -219,6 +232,8 @@ export default function ChatWidget({
     setSubmitting(true);
 
     try {
+      console.log('Dossier à soumettre:', JSON.stringify(dossier));
+
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -232,7 +247,11 @@ export default function ChatWidget({
         }),
       });
 
+      console.log('Response status:', res.status);
+
       const data = await res.json();
+
+      console.log('Response data:', JSON.stringify(data));
 
       if (!data.success) {
         throw new Error(data.error || 'Erreur lors de la création du dossier');
@@ -268,6 +287,9 @@ export default function ChatWidget({
       </button>
     );
   }
+
+  const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
+  const recapDetected = Boolean(lastAssistantMessage && hasRecap(lastAssistantMessage.content));
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex h-[600px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
@@ -358,7 +380,7 @@ export default function ChatWidget({
         )}
       </div>
 
-      {readyToSave && !submitted && (
+      {readyToSave && recapDetected && !submitted && (
         <div className="border-t border-zinc-800 bg-zinc-900 px-4 py-3">
           <Button
             type="button"
