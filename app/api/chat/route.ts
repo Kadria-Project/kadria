@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 const SYSTEM_PROMPT = `Tu es l'assistant de qualification de Kadria.
 Ta mission est de transformer une demande de travaux parfois imprécise
@@ -119,13 +119,6 @@ RÈGLES JSON :
   "Votre dossier est prêt 📋 Cliquez sur Envoyer pour le transmettre."
   RIEN D'AUTRE.`
 
-function extractJSON(text: string): string {
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
-  if (start === -1 || end === -1) throw new Error('No JSON')
-  return text.slice(start, end + 1)
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -135,40 +128,45 @@ export async function POST(request: Request) {
       ? `\n[Dossier en cours : ${JSON.stringify(currentDossier)}]`
       : ''
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    const response = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT + contextNote,
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
       messages: [
+        {
+          role: 'system',
+          content: SYSTEM_PROMPT + contextNote
+        },
         ...messages.map((m: { role: string; content: string }) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
-        // Prefill officiel Anthropic pour forcer JSON
-        {
-          role: 'assistant' as const,
-          content: '{',
-        },
       ],
     })
 
-    const rawText = '{' + (response.content?.[0]?.type === 'text'
-      ? response.content[0].text
-      : '')
+    const rawText = response.choices?.[0]?.message?.content ?? ''
 
     let parsed: Record<string, unknown>
     try {
-      parsed = JSON.parse(extractJSON(rawText))
+      parsed = JSON.parse(rawText)
     } catch {
       console.error('[KADRIA] JSON parse failed, raw:', rawText)
       parsed = {
-        reply: rawText.replace(/<<SUGGESTIONS>>[\s\S]*?<<\/SUGGESTIONS>>/g, '').trim(),
+        reply: rawText,
         dossierUpdate: {},
         completenessScore: 0,
         readyToSave: false,
         aiSummary: '',
         expectedField: '',
       }
+    }
+
+    if (typeof parsed.readyToSave === 'string') {
+      parsed.readyToSave = parsed.readyToSave === 'true'
+    }
+    if (typeof parsed.completenessScore === 'string') {
+      parsed.completenessScore = parseInt(parsed.completenessScore as string, 10) || 0
     }
 
     return NextResponse.json({
