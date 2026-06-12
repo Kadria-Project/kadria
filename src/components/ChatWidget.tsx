@@ -65,7 +65,7 @@ export default function ChatWidget({
   const [quickReplies, setQuickReplies] = useState<string[]>([])
   const [dossier, setDossier] = useState<Dossier>({})
   const [score, setScore] = useState(0)
-  const [readyToSave, setReadyToSave] = useState(false)
+  const [expectedField, setExpectedField] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -88,14 +88,8 @@ export default function ChatWidget({
     return () => clearTimeout(t)
   }, [messages, quickReplies, loading])
 
-  // ── Open modal when readyToSave ──────────────────────────────────────────
-  useEffect(() => {
-    if (readyToSave) setShowModal(true)
-  }, [readyToSave])
-
   // ── Address mode detection ───────────────────────────────────────────────
-  const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant')
-  const isAddressMode = lastAssistantMsg?.content?.includes('📍') ?? false
+  const isAddressMode = expectedField === 'siteAddress'
 
   // ── Input change with address debounce ───────────────────────────────────
   const handleInputChange = useCallback(async (val: string) => {
@@ -133,6 +127,44 @@ export default function ChatWidget({
     }
   }, [artisanId])
 
+  // ── Apply API response ───────────────────────────────────────────────────
+  const applyApiResponse = useCallback((data: any) => {
+    const { text: replyText, options } = parseReply(data.reply ?? '')
+
+    console.log('[KADRIA DEBUG] raw reply:', data.reply)
+    console.log('[KADRIA DEBUG] parsed text:', replyText)
+    console.log('[KADRIA DEBUG] parsed options:', options)
+    console.log('[KADRIA DEBUG] expectedField:', data.expectedField)
+
+    if (data.dossierUpdate) {
+      setDossier(prev => {
+        const updated = { ...prev }
+        for (const [k, v] of Object.entries(data.dossierUpdate)) {
+          if (v !== '' && v != null) (updated as any)[k] = v
+        }
+        if (data.aiSummary) updated.aiSummary = data.aiSummary
+        return updated
+      })
+    }
+
+    if (data.completenessScore > 0) setScore(data.completenessScore)
+    setExpectedField(data.expectedField || null)
+
+    if (data.readyToSave) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Parfait ! Vérifiez votre dossier et validez l\'envoi. 📋'
+      }])
+      setQuickReplies([])
+      setExpectedField(null)
+      setTimeout(() => setShowModal(true), 800)
+      return
+    }
+
+    setMessages(prev => [...prev, { role: 'assistant', content: replyText }])
+    setQuickReplies(options)
+  }, [])
+
   // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim()
@@ -152,21 +184,7 @@ export default function ChatWidget({
       })
       const data = await res.json()
       if (data.success) {
-        const { text: replyText, options } = parseReply(data.reply)
-        setMessages(prev => [...prev, { role: 'assistant', content: replyText }])
-        setQuickReplies(options)
-        if (data.dossierUpdate) {
-          setDossier(prev => {
-            const updated = { ...prev }
-            for (const [k, v] of Object.entries(data.dossierUpdate)) {
-              if (v !== '' && v != null) (updated as any)[k] = v
-            }
-            if (data.aiSummary) updated.aiSummary = data.aiSummary
-            return updated
-          })
-        }
-        if (data.completenessScore > 0) setScore(data.completenessScore)
-        if (data.readyToSave) setReadyToSave(true)
+        applyApiResponse(data)
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: "Désolé, une erreur est survenue. Pouvez-vous reformuler ?" }])
       }
@@ -176,7 +194,7 @@ export default function ChatWidget({
       setLoading(false)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [input, messages, loading, dossier, artisanId])
+  }, [input, messages, loading, dossier, artisanId, applyApiResponse])
 
   // ── Save dossier ─────────────────────────────────────────────────────────
   const saveDossier = async () => {

@@ -165,6 +165,32 @@ Photos : <>Oui, j'ajoute des photos|Non, pas maintenant<>
 ---
 INSTRUCTION TECHNIQUE (ne jamais mentionner au client) :
 
+FORMAT STRICT — ta réponse doit être UNIQUEMENT ce JSON, rien avant,
+rien après, pas de markdown, pas de backticks :
+{
+  "reply": "ton message au client. Si tu proposes des choix,
+            ajoute-les ICI dans reply : <>Option1|Option2|Option3<>",
+  "dossierUpdate": {...},
+  "completenessScore": 0,
+  "readyToSave": false,
+  "aiSummary": "",
+  "expectedField": ""
+}
+
+Le champ "expectedField" indique quel champ tu attends :
+- Si tu demandes l'adresse → "expectedField": "siteAddress"
+- Si tu demandes le prénom → "expectedField": "clientFirstName"
+- Si tu demandes le nom → "expectedField": "clientName"
+- Si tu demandes le téléphone → "expectedField": "clientPhone"
+- Si tu demandes l'email → "expectedField": "clientEmail"
+- Sinon → "expectedField": ""
+
+RÈGLE RÉSUMÉ : quand readyToSave = true,
+- NE METS PAS le résumé dans "reply"
+- reply doit être UNIQUEMENT :
+  "Parfait, votre dossier est complet. Vérifiez les informations et validez."
+- Mets le résumé complet dans "aiSummary" uniquement
+
 Réponds TOUJOURS avec ce format : texte conversationnel suivi du JSON.
 
 IMPORTANT : Les suggestions <>...<> doivent être incluses À L'INTÉRIEUR du champ "reply" dans le JSON, à la fin du texte.
@@ -193,7 +219,8 @@ Ne jamais mettre les suggestions en dehors du JSON.
   },
   "completenessScore": 0,
   "readyToSave": false,
-  "aiSummary": ""
+  "aiSummary": "",
+  "expectedField": ""
 }
 
 RÈGLES JSON :
@@ -219,6 +246,16 @@ interface ChatResponseData {
   completenessScore: number;
   readyToSave: boolean;
   aiSummary: string;
+  expectedField: string;
+}
+
+function extractJSON(text: string): string {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+
+  if (start === -1 || end === -1) throw new Error('No JSON found');
+
+  return text.slice(start, end + 1);
 }
 
 const anthropic = new Anthropic({
@@ -251,46 +288,33 @@ export async function POST(request: Request) {
       throw new Error('Réponse IA invalide : aucun contenu texte');
     }
 
-    const cleaned = textBlock.text
-      .trim()
-      .replace(/^```(?:json)?/i, '')
-      .replace(/```$/, '')
-      .trim();
+    const rawText = textBlock.text.trim();
 
-    let parsed: ChatResponseData | null = null;
+    let parsed: ChatResponseData;
 
-    const replyKeyIndex = cleaned.indexOf('"reply"');
-    const jsonStart = cleaned.lastIndexOf('{', replyKeyIndex === -1 ? cleaned.length : replyKeyIndex);
-    const jsonEnd = cleaned.lastIndexOf('}');
+    try {
+      parsed = JSON.parse(extractJSON(rawText));
+    } catch (parseError) {
+      console.error('CHAT_JSON_PARSE_ERROR', parseError, 'RAW_RESPONSE:', rawText);
 
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      try {
-        parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
-      } catch (parseError) {
-        console.error('CHAT_JSON_PARSE_ERROR', parseError, 'RAW_RESPONSE:', textBlock.text);
-      }
-    } else {
-      console.error('CHAT_JSON_PARSE_ERROR', 'No JSON block found', 'RAW_RESPONSE:', textBlock.text);
-    }
-
-    if (!parsed) {
-      return NextResponse.json({
-        success: true,
-        reply: textBlock.text.trim(),
+      parsed = {
+        reply: rawText.replace(/<>[\s\S]*?<>/g, '').trim(),
         dossierUpdate: {},
         completenessScore: 0,
         readyToSave: false,
         aiSummary: '',
-      });
+        expectedField: '',
+      };
     }
 
     return NextResponse.json({
       success: true,
-      reply: parsed.reply,
+      reply: parsed.reply ?? '',
       dossierUpdate: parsed.dossierUpdate ?? {},
       completenessScore: parsed.completenessScore ?? 0,
       readyToSave: parsed.readyToSave ?? false,
       aiSummary: parsed.aiSummary ?? '',
+      expectedField: parsed.expectedField ?? '',
     });
   } catch (error) {
     console.error('CHAT_ERROR', error);
