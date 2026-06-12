@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -272,17 +272,107 @@ function InfoTile({
   );
 }
 
+const TRADES_DATA = [
+  {
+    id: 'paysagiste',
+    emoji: '🌿',
+    label: 'Paysagiste',
+    types: 'Création jardin, terrasse, allée, clôture, bassin',
+    questions: 'Surface, terrain, accès, matériaux, évacuation',
+    resultat: 'Demande qualifiée avec contraintes terrain',
+  },
+  {
+    id: 'pisciniste',
+    emoji: '🏊',
+    label: 'Pisciniste',
+    types: 'Construction piscine, rénovation, filtration, sécurité',
+    questions: 'Dimensions, terrain, accès, photos, budget',
+    resultat: 'Demande qualifiée avec contraintes techniques',
+  },
+  {
+    id: 'menuisier',
+    emoji: '🪟',
+    label: 'Menuisier',
+    types: 'Pose fenêtres, portes, parquet, escalier, sur-mesure',
+    questions: 'Type ouvrage, dimensions, fourniture, délai',
+    resultat: 'Dossier avec métrés et spécifications',
+  },
+  {
+    id: 'electricien',
+    emoji: '⚡',
+    label: 'Électricien',
+    types: 'Installation neuve, mise aux normes, tableau, VMC',
+    questions: 'Type install, tableau, normes, nombre de points',
+    resultat: 'Dossier technique prêt pour devis',
+  },
+  {
+    id: 'plombier',
+    emoji: '🔧',
+    label: 'Plombier',
+    types: 'Rénovation SDB, fuite, installation, chauffage',
+    questions: 'Type travaux, surface, déplacement plomberie, accès',
+    resultat: 'Dossier complet avec contraintes techniques',
+  },
+  {
+    id: 'couvreur',
+    emoji: '🏠',
+    label: 'Couvreur',
+    types: 'Réfection toiture, isolation, zinguerie, velux',
+    questions: 'Surface, matériau actuel, accès, état, urgence',
+    resultat: 'Diagnostic et dossier technique',
+  },
+  {
+    id: 'renovation',
+    emoji: '🏗️',
+    label: 'Rénovation',
+    types: "Rénovation globale, multi-corps d'état, permis",
+    questions: 'Surface, état actuel, priorités, budget global',
+    resultat: 'Dossier multi-lots coordonné',
+  },
+  {
+    id: 'salle-de-bain',
+    emoji: '🚿',
+    label: 'Salle de bain',
+    types: 'Rénovation complète, douche, carrelage, plomberie',
+    questions: 'Surface, création/réno, équipements, déplacement',
+    resultat: 'Dossier avec plans et spécifications',
+  },
+  {
+    id: 'peintre',
+    emoji: '🎨',
+    label: 'Peintre',
+    types: 'Peinture intérieure, ravalement, décoration',
+    questions: 'Nombre pièces, surface, état murs, plafonds',
+    resultat: 'Métré complet et cahier des charges',
+  },
+  {
+    id: 'macon',
+    emoji: '🧱',
+    label: 'Maçon',
+    types: 'Extension, mur, terrasse, fondations, réparation',
+    questions: 'Type ouvrage, surface, accès engins, sol',
+    resultat: 'Dossier faisabilité et contraintes',
+  },
+  {
+    id: 'chauffagiste',
+    emoji: '❄️',
+    label: 'Chauffagiste',
+    types: 'Pompe à chaleur, chaudière, plancher chauffant, clim',
+    questions: 'Surface chauffée, énergie actuelle, DPE, budget',
+    resultat: 'Dossier avec audit énergétique',
+  },
+];
+
 export function LandingRoutePage() {
-  const metiers = [
-    { key: 'paysagiste', label: '🌿 Paysagiste' },
-    { key: 'pisciniste', label: '🏊 Pisciniste' },
-    { key: 'menuisier', label: '🪟 Menuisier' },
-    { key: 'electricien', label: '⚡ Électricien' },
-    { key: 'plombier', label: '🔧 Plombier' },
-    { key: 'couvreur', label: '🏠 Couvreur' },
-    { key: 'renovation', label: '🏗️ Rénovation' },
-  ];
-  const [activeMetier, setActiveMetier] = useState(metiers[0].key);
+  const [activeMetier, setActiveMetier] = useState(TRADES_DATA[0].id);
+  const [tradeCardVisible, setTradeCardVisible] = useState(true);
+  const activeTrade = TRADES_DATA.find((m) => m.id === activeMetier);
+
+  useEffect(() => {
+    setTradeCardVisible(false);
+    const timeout = setTimeout(() => setTradeCardVisible(true), 20);
+    return () => clearTimeout(timeout);
+  }, [activeMetier]);
 
   const problemes = [
     {
@@ -614,21 +704,66 @@ export function LandingRoutePage() {
             </p>
           </div>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            {metiers.map((m) => (
+            {TRADES_DATA.map((m) => (
               <button
-                key={m.key}
+                key={m.id}
                 type="button"
-                onClick={() => setActiveMetier(m.key)}
-                className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
-                  activeMetier === m.key
-                    ? 'bg-green-500 text-black'
-                    : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+                onClick={() => setActiveMetier(m.id)}
+                className={`w-28 cursor-pointer rounded-xl border p-4 text-center transition-colors ${
+                  activeMetier === m.id
+                    ? 'border-green-500 bg-green-500/10 text-green-500'
+                    : 'border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
                 }`}
               >
-                {m.label}
+                <div className="mb-2 text-2xl">{m.emoji}</div>
+                <div className="text-sm">{m.label}</div>
               </button>
             ))}
           </div>
+
+          {activeTrade && (
+            <div
+              className={`mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-300 ${
+                tradeCardVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+              }`}
+            >
+              <h3 className="text-xl font-semibold text-white">
+                {activeTrade.emoji} {activeTrade.label}
+              </h3>
+
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-lg bg-zinc-800/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">
+                    Types de projets qualifiés
+                  </p>
+                  <p className="mt-2 text-sm text-white">{activeTrade.types}</p>
+                </div>
+
+                <div className="rounded-lg bg-zinc-800/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">
+                    Questions posées par Kadria
+                  </p>
+                  <p className="mt-2 text-sm text-white">{activeTrade.questions}</p>
+                </div>
+
+                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-green-500">
+                    Résultat
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    ✅ {activeTrade.resultat}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/demo"
+                className="mt-6 inline-flex items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-800"
+              >
+                Voir un exemple de conversation →
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* PROGRAMME LANCEMENT */}
