@@ -344,13 +344,32 @@ export async function POST(request: Request) {
       .replace(/```$/, '')
       .trim();
 
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    let parsed: ChatResponseData | null = null;
 
-    if (!jsonMatch) {
-      throw new Error('Réponse IA invalide : bloc JSON manquant');
+    const replyKeyIndex = cleaned.indexOf('"reply"');
+    const jsonStart = cleaned.lastIndexOf('{', replyKeyIndex === -1 ? cleaned.length : replyKeyIndex);
+    const jsonEnd = cleaned.lastIndexOf('}');
+
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      try {
+        parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+      } catch (parseError) {
+        console.error('CHAT_JSON_PARSE_ERROR', parseError, 'RAW_RESPONSE:', textBlock.text);
+      }
+    } else {
+      console.error('CHAT_JSON_PARSE_ERROR', 'No JSON block found', 'RAW_RESPONSE:', textBlock.text);
     }
 
-    const parsed: ChatResponseData = JSON.parse(jsonMatch[0]);
+    if (!parsed) {
+      return NextResponse.json({
+        success: true,
+        reply: textBlock.text.trim(),
+        dossierUpdate: {},
+        completenessScore: 0,
+        readyToSave: false,
+        aiSummary: '',
+      });
+    }
 
     return NextResponse.json({
       success: true,
