@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -272,6 +272,142 @@ function InfoTile({
   );
 }
 
+const QUALIFICATION_STEPS = [
+  { icon: '👤', title: 'Prospect', subtitle: 'Un client vous contacte' },
+  { icon: '🌐', title: 'Site web ou téléphone', subtitle: 'Via votre site ou par appel' },
+  { icon: '⚡', title: 'Kadria', subtitle: 'Qualifie automatiquement' },
+  { icon: '🎯', title: 'Dossier projet', subtitle: 'Complet et scoré' },
+  { icon: '✅', title: 'Artisan', subtitle: 'Prêt à chiffrer' },
+];
+
+const DOSSIER_FIELDS: [string, string, string][] = [
+  ['🏢', 'Projet', 'Rénovation SDB'],
+  ['📍', 'Ville', 'Lyon 3e'],
+  ['💶', 'Budget', '8 000 – 12 000 €'],
+  ['⏱', 'Délai', 'Sept. 2026'],
+];
+
+function QualificationShowcase() {
+  const [activeStep, setActiveStep] = useState(0);
+  const [showDossier, setShowDossier] = useState(false);
+
+  useEffect(() => {
+    if (showDossier) {
+      const timeout = setTimeout(() => {
+        setShowDossier(false);
+        setActiveStep(0);
+      }, 4000);
+
+      return () => clearTimeout(timeout);
+    }
+
+    if (activeStep === 4) {
+      const timeout = setTimeout(() => setShowDossier(true), 500);
+
+      return () => clearTimeout(timeout);
+    }
+
+    const timeout = setTimeout(() => setActiveStep((step) => step + 1), 2000);
+
+    return () => clearTimeout(timeout);
+  }, [activeStep, showDossier]);
+
+  if (showDossier) {
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-2 text-sm font-semibold text-white">
+            <span className="text-green-500">●</span> DOSSIER PROJET REÇU
+          </p>
+          <span className="rounded-full border border-green-500/30 bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
+            92%
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-900 text-sm font-semibold text-green-300">
+            ML
+          </span>
+          <div className="flex-1">
+            <p className="font-semibold text-white">Marie Leroy</p>
+            <p className="text-sm text-zinc-400">06 12 34 56 78 · marie.leroy@email.fr</p>
+          </div>
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">Nouveau</span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {DOSSIER_FIELDS.map(([icon, label, value]) => (
+            <div key={label} className="rounded-lg bg-zinc-800 p-3">
+              <p className="text-xs text-zinc-400">
+                {icon} {label}
+              </p>
+              <p className="mt-1 text-sm font-medium text-white">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
+          <p className="text-xs uppercase tracking-wide text-green-500">Résumé IA</p>
+          <p className="mt-1 text-sm text-zinc-300">
+            Rénovation complète d'une salle de bain de 7m². Douche italienne + double vasque. Budget
+            confortable, délai réaliste.
+          </p>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          <span className="text-green-400">Score 92%</span>
+          <span className="text-zinc-500">·</span>
+          <span className="text-green-300">Conversion Élevée</span>
+          <span className="text-zinc-500">·</span>
+          <span className="text-zinc-500">Reçu il y a 2 min</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
+        <span className="h-2 w-2 rounded-full bg-green-500" />
+        Parcours de qualification
+      </p>
+      <div className="mt-6 flex flex-col gap-3">
+        {QUALIFICATION_STEPS.map((step, index) => {
+          const isActive = index === activeStep;
+          const isKadria = index === 2;
+
+          const cardClass = isActive
+            ? isKadria
+              ? 'border-green-500 bg-green-500/20'
+              : 'border-zinc-700 bg-zinc-800'
+            : 'border-zinc-800/50 bg-transparent';
+
+          const iconClass = isActive && isKadria
+            ? 'bg-green-500 text-black rounded-lg'
+            : '';
+
+          const textClass = isActive ? 'text-white font-medium' : 'text-zinc-400';
+
+          return (
+            <div
+              key={step.title}
+              className={`flex items-center gap-3 rounded-md border px-4 py-3 transition-all duration-500 ${cardClass}`}
+            >
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center text-lg ${iconClass}`}>
+                {step.icon}
+              </span>
+              <div>
+                <p className={`text-sm transition-colors duration-500 ${textClass}`}>{step.title}</p>
+                <p className="text-xs text-zinc-500">{step.subtitle}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function LandingRoutePage() {
   const metiers = [
     { key: 'paysagiste', label: '🌿 Paysagiste' },
@@ -427,26 +563,7 @@ export function LandingRoutePage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-              Parcours de qualification
-            </p>
-            <div className="mt-6 flex flex-col gap-3">
-              {['Prospect', 'Site web ou téléphone', 'Kadria', 'Dossier projet', 'Artisan'].map((step) => (
-                <div
-                  key={step}
-                  className={`rounded-md px-4 py-3 text-sm font-medium ${
-                    step === 'Kadria'
-                      ? 'bg-green-500 text-black'
-                      : 'border border-zinc-800 bg-zinc-950 text-zinc-300'
-                  }`}
-                >
-                  {step}
-                </div>
-              ))}
-            </div>
-          </div>
+          <QualificationShowcase />
         </section>
 
         {/* STATS */}
