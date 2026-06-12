@@ -62,22 +62,22 @@ Si le client répond "je ne sais pas" / "à voir" / "autre" :
 - Si vraiment pas possible → "À déterminer" puis continue.
 
 RÉPONSES RAPIDES :
-Utilise des suggestions UNIQUEMENT si >80% des utilisateurs peuvent
-répondre en cliquant un bouton.
-Format STRICT : <<SUGGESTIONS>>Option 1|Option 2|Option 3<</SUGGESTIONS>>
-Les suggestions sont TOUJOURS en dernier. Rien après.
-3 à 6 options max.
+Pour les questions à choix fermé, tu DOIS remplir le champ
+'quickReplies' avec un tableau de strings.
+OBLIGATOIRE pour : type de projet, budget, délai, maturité,
+oui/non, matériaux, accès chantier.
+JAMAIS pour : nom, prénom, téléphone, email, adresse,
+descriptions, dimensions.
 
-JAMAIS de suggestions pour : nom, prénom, téléphone, email,
-adresse, descriptions, dimensions, quantités.
-
-EXEMPLES :
-Type : <<SUGGESTIONS>>Rénovation|Création|Réparation|Entretien|Dépannage|Autre<</SUGGESTIONS>>
-Budget : <<SUGGESTIONS>>Moins de 2 000 €|2 000 à 5 000 €|5 000 à 10 000 €|10 000 à 20 000 €|Plus de 20 000 €|Je ne sais pas<</SUGGESTIONS>>
-Délai : <<SUGGESTIONS>>Dès que possible|Sous 1 mois|Sous 3 mois|Sous 6 mois|Sans urgence<</SUGGESTIONS>>
-Maturité : <<SUGGESTIONS>>Je me renseigne|Je compare|Prêt à démarrer|Projet urgent<</SUGGESTIONS>>
-Photos : <<SUGGESTIONS>>Oui, j'ajoute des photos|Non, pas maintenant<</SUGGESTIONS>>
-Oui/Non : <<SUGGESTIONS>>Oui|Non<</SUGGESTIONS>>
+Exemples :
+- Type projet → 'quickReplies': ['Rénovation','Création','Réparation','Entretien','Dépannage','Autre']
+- Budget → 'quickReplies': ['Moins de 2 000 €','2 000 à 5 000 €','5 000 à 10 000 €','10 000 à 20 000 €','Plus de 20 000 €','Je ne sais pas']
+- Délai → 'quickReplies': ['Dès que possible','Sous 1 mois','Sous 3 mois','Sous 6 mois','Sans urgence']
+- Maturité → 'quickReplies': ['Je me renseigne','Je compare','Prêt à démarrer','Projet urgent']
+- Photos → 'quickReplies': ['Oui, j\'ajoute des photos','Non, pas maintenant']
+- Oui/Non → 'quickReplies': ['Oui','Non']
+- Création ou rénovation → 'quickReplies': ['Création','Rénovation']
+- Accès chantier → 'quickReplies': ['Facile','Difficile','À évaluer']
 
 ---
 INSTRUCTION TECHNIQUE (ne jamais mentionner au client) :
@@ -102,6 +102,7 @@ Réponds TOUJOURS avec UNIQUEMENT ce JSON valide, rien avant, rien après :
   "completenessScore": 0,
   "readyToSave": false,
   "aiSummary": "",
+  "quickReplies": [],
   "expectedField": ""
 }
 
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
       readyToSave: parsed.readyToSave ?? false,
       aiSummary: parsed.aiSummary ?? '',
       expectedField: parsed.expectedField ?? '',
+      quickReplies: Array.isArray(parsed.quickReplies) ? parsed.quickReplies : [],
     })
   } catch (error) {
     console.error('[KADRIA] API error:', error)

@@ -123,7 +123,10 @@ export default function ChatWidget({
       })
       const data = await res.json()
       if (data.success) {
-        const { text, options } = parseReply(data.reply)
+        const { text } = parseReply(data.reply)
+        const options = Array.isArray(data.quickReplies) && data.quickReplies.length > 0
+          ? data.quickReplies
+          : parseReply(data.reply ?? '').options
         setMessages([{ role: 'assistant', content: text }])
         setQuickReplies(options)
       }
@@ -136,7 +139,10 @@ export default function ChatWidget({
 
   // ── Apply API response ───────────────────────────────────────────────────
   const applyApiResponse = useCallback((data: any) => {
-    const { text: replyText, options } = parseReply(data.reply ?? '')
+    const { text: replyText } = parseReply(data.reply ?? '')
+    const options = Array.isArray(data.quickReplies) && data.quickReplies.length > 0
+      ? data.quickReplies
+      : parseReply(data.reply ?? '').options
 
     console.log('[KADRIA DEBUG] raw reply:', data.reply)
     console.log('[KADRIA DEBUG] parsed text:', replyText)
