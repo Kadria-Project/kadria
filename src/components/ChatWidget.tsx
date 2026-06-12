@@ -53,6 +53,37 @@ function hasRecap(text: string): boolean {
   return RECAP_KEYWORDS.some((keyword) => lower.includes(keyword.toLowerCase()));
 }
 
+function renderBoldSegments(line: string, keyPrefix: string) {
+  const parts = line.split(/(\*\*[^*]+\*\*)/g).filter((part) => part !== '');
+
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+
+    return <span key={`${keyPrefix}-${index}`}>{part}</span>;
+  });
+}
+
+function renderMarkdown(text: string) {
+  const paragraphs = text.split('\n\n');
+
+  return paragraphs.map((paragraph, paragraphIndex) => {
+    const lines = paragraph.split('\n');
+
+    return (
+      <div key={paragraphIndex} className="mb-2 last:mb-0">
+        {lines.map((line, lineIndex) => (
+          <span key={lineIndex}>
+            {renderBoldSegments(line, `${paragraphIndex}-${lineIndex}`)}
+            {lineIndex < lines.length - 1 && <br />}
+          </span>
+        ))}
+      </div>
+    );
+  });
+}
+
 export default function ChatWidget({
   artisanId = 'Artisan_demo',
   primaryColor = '#22c55e',
@@ -73,6 +104,18 @@ export default function ChatWidget({
   const [isAddressMode, setIsAddressMode] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    function checkIsMobile() {
+      setIsMobile(window.innerWidth < 768);
+    }
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   useEffect(() => {
     async function fetchOpener() {
@@ -292,7 +335,14 @@ export default function ChatWidget({
   const recapDetected = Boolean(lastAssistantMessage && hasRecap(lastAssistantMessage.content));
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex h-[600px] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+    <div
+      className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+      style={
+        isMobile
+          ? { width: '95vw', height: '85vh', right: '2.5vw', bottom: '16px' }
+          : { width: '680px', height: '620px', right: '24px', bottom: '24px' }
+      }
+    >
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-3">
         <div className="flex items-center gap-3">
           <div
@@ -341,7 +391,7 @@ export default function ChatWidget({
                   : undefined
               }
             >
-              {message.content}
+              {renderMarkdown(message.content)}
             </div>
           </div>
         ))}
