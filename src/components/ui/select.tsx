@@ -22,11 +22,16 @@ export function Select({
   );
 }
 
-export function SelectTrigger({ children }: { children: React.ReactNode }) {
+export function SelectTrigger({
+  children,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return <>{children}</>;
 }
 
-export function SelectValue() {
+export function SelectValue({ placeholder }: { placeholder?: string }) {
   return null;
 }
 

@@ -96,7 +96,7 @@ export async function PATCH(
     const { id } = await params;
     const input = await request.json();
 
-    const fieldsToUpdate: Record<string, string | number | boolean | null> = {};
+    const fieldsToUpdate: Record<string, string | number | boolean | undefined> = {};
 
     if (input.status) {
       fieldsToUpdate.Status = input.status;
@@ -111,7 +111,7 @@ export async function PATCH(
     }
 
     if (input.callbackDate !== undefined) {
-  fieldsToUpdate['Callback Date'] = input.callbackDate || null;
+  fieldsToUpdate['Callback Date'] = input.callbackDate || undefined;
 }
 
 if (input.callbackDate !== undefined) {
