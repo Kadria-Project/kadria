@@ -29,6 +29,17 @@ function parseQuickReplies(text: string): { cleanText: string; options: string[]
   return { cleanText, options };
 }
 
+interface AddressSuggestion {
+  label: string;
+  city: string;
+  postcode: string;
+}
+
+function isAddressPrompt(text: string): boolean {
+  const lower = text.toLowerCase();
+  return lower.includes('adresse') || lower.includes('chantier') || text.includes('📍');
+}
+
 export default function ChatWidget({
   artisanId = 'Artisan_demo',
   primaryColor = '#22c55e',
@@ -46,6 +57,9 @@ export default function ChatWidget({
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState('');
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [isAddressMode, setIsAddressMode] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
 
   useEffect(() => {
     async function fetchOpener() {
@@ -93,16 +107,70 @@ export default function ChatWidget({
     fetchOpener();
   }, []);
 
-  async function sendMessage(overrideText?: string) {
+  useEffect(() => {
+    const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
+    setIsAddressMode(Boolean(lastAssistant && isAddressPrompt(lastAssistant.content)));
+  }, [messages]);
+
+  useEffect(() => {
+    if (!isAddressMode || input.trim().length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(input.trim())}&limit=5`,
+        );
+        const data = await res.json();
+
+        const suggestions: AddressSuggestion[] = (data.features ?? []).map(
+          (feature: { properties: { label: string; city: string; postcode: string } }) => ({
+            label: feature.properties.label,
+            city: feature.properties.city,
+            postcode: feature.properties.postcode,
+          }),
+        );
+
+        setAddressSuggestions(suggestions);
+        setShowAddressSuggestions(true);
+      } catch (error) {
+        console.error('ADDRESS_AUTOCOMPLETE_ERROR', error);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [input, isAddressMode]);
+
+  function handleSelectAddress(suggestion: AddressSuggestion) {
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    setIsAddressMode(false);
+
+    const dossierOverride: Partial<DossierComplet> = {
+      siteAddress: suggestion.label,
+      city: suggestion.city,
+      postalCode: suggestion.postcode,
+    };
+
+    setDossier((prev) => ({ ...prev, ...dossierOverride }));
+    sendMessage(suggestion.label, dossierOverride);
+  }
+
+  async function sendMessage(overrideText?: string, dossierOverride?: Partial<DossierComplet>) {
     const content = (overrideText ?? input).trim();
 
     if (!content || loading) return;
 
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content }];
+    const effectiveDossier = { ...dossier, ...dossierOverride };
 
     setMessages(nextMessages);
     setQuickReplies([]);
     setInput('');
+    setAddressSuggestions([]);
+    setShowAddressSuggestions(false);
     setLoading(true);
 
     try {
@@ -111,7 +179,7 @@ export default function ChatWidget({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextMessages,
-          currentDossier: dossier,
+          currentDossier: effectiveDossier,
           artisanId,
         }),
       });
@@ -126,7 +194,7 @@ export default function ChatWidget({
 
       setMessages((prev) => [...prev, { role: 'assistant', content: cleanText }]);
       setQuickReplies(options);
-      setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
+      setDossier((prev) => ({ ...prev, ...dossierOverride, ...data.dossierUpdate }));
       setCompletenessScore(data.completenessScore ?? 0);
       setReadyToSave(Boolean(data.readyToSave));
       setAiSummary(data.aiSummary ?? '');
@@ -305,30 +373,52 @@ export default function ChatWidget({
       )}
 
       {!submitted && (
-        <div className="flex items-center gap-2 border-t border-zinc-800 bg-zinc-950 px-4 py-3">
-          <Input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-              }
-            }}
-            placeholder="Écrivez votre message..."
-            disabled={loading}
-            className="border-zinc-700 bg-zinc-900 text-white placeholder:text-zinc-500"
-          />
-          <Button
-            type="button"
-            onClick={() => sendMessage()}
-            disabled={loading || !input.trim()}
-            className="border-0 text-black"
-            style={{ backgroundColor: primaryColor }}
-            aria-label="Envoyer"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+        <div className="relative border-t border-zinc-800 bg-zinc-950 px-4 py-3">
+          {isAddressMode && showAddressSuggestions && addressSuggestions.length > 0 && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900">
+              {addressSuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.label}
+                  onClick={() => handleSelectAddress(suggestion)}
+                  className="cursor-pointer p-3 text-sm text-white hover:bg-zinc-800"
+                >
+                  {suggestion.label}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onFocus={() => {
+                if (addressSuggestions.length > 0) setShowAddressSuggestions(true);
+              }}
+              onBlur={() => {
+                setTimeout(() => setShowAddressSuggestions(false), 150);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  sendMessage();
+                }
+              }}
+              placeholder="Écrivez votre message..."
+              disabled={loading}
+              className="border-zinc-700 bg-zinc-900 text-white placeholder:text-zinc-500"
+            />
+            <Button
+              type="button"
+              onClick={() => sendMessage()}
+              disabled={loading || !input.trim()}
+              className="border-0 text-black"
+              style={{ backgroundColor: primaryColor }}
+              aria-label="Envoyer"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>
