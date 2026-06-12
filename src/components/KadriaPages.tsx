@@ -282,20 +282,12 @@ const TRADES_DATA = [
     resultat: 'Demande qualifiée avec contraintes terrain',
   },
   {
-    id: 'pisciniste',
-    emoji: '🏊',
-    label: 'Pisciniste',
-    types: 'Construction piscine, rénovation, filtration, sécurité',
-    questions: 'Dimensions, terrain, accès, photos, budget',
-    resultat: 'Demande qualifiée avec contraintes techniques',
-  },
-  {
-    id: 'menuisier',
-    emoji: '🪟',
-    label: 'Menuisier',
-    types: 'Pose fenêtres, portes, parquet, escalier, sur-mesure',
-    questions: 'Type ouvrage, dimensions, fourniture, délai',
-    resultat: 'Dossier avec métrés et spécifications',
+    id: 'salle-de-bain',
+    emoji: '🚿',
+    label: 'Salle de bain',
+    types: 'Rénovation complète, douche, carrelage, plomberie',
+    questions: 'Surface, création/réno, équipements, déplacement',
+    resultat: 'Dossier avec plans et spécifications',
   },
   {
     id: 'electricien',
@@ -322,20 +314,12 @@ const TRADES_DATA = [
     resultat: 'Diagnostic et dossier technique',
   },
   {
-    id: 'renovation',
-    emoji: '🏗️',
-    label: 'Rénovation',
-    types: "Rénovation globale, multi-corps d'état, permis",
-    questions: 'Surface, état actuel, priorités, budget global',
-    resultat: 'Dossier multi-lots coordonné',
-  },
-  {
-    id: 'salle-de-bain',
-    emoji: '🚿',
-    label: 'Salle de bain',
-    types: 'Rénovation complète, douche, carrelage, plomberie',
-    questions: 'Surface, création/réno, équipements, déplacement',
-    resultat: 'Dossier avec plans et spécifications',
+    id: 'menuisier',
+    emoji: '🪟',
+    label: 'Menuisier',
+    types: 'Pose fenêtres, portes, parquet, escalier, sur-mesure',
+    questions: 'Type ouvrage, dimensions, fourniture, délai',
+    resultat: 'Dossier avec métrés et spécifications',
   },
   {
     id: 'peintre',
@@ -346,33 +330,31 @@ const TRADES_DATA = [
     resultat: 'Métré complet et cahier des charges',
   },
   {
-    id: 'macon',
-    emoji: '🧱',
-    label: 'Maçon',
-    types: 'Extension, mur, terrasse, fondations, réparation',
-    questions: 'Type ouvrage, surface, accès engins, sol',
-    resultat: 'Dossier faisabilité et contraintes',
-  },
-  {
-    id: 'chauffagiste',
-    emoji: '❄️',
-    label: 'Chauffagiste',
-    types: 'Pompe à chaleur, chaudière, plancher chauffant, clim',
-    questions: 'Surface chauffée, énergie actuelle, DPE, budget',
-    resultat: 'Dossier avec audit énergétique',
+    id: 'renovation',
+    emoji: '🏗️',
+    label: 'Rénovation',
+    types: "Rénovation globale, multi-corps d'état, permis",
+    questions: 'Surface, état actuel, priorités, budget global',
+    resultat: 'Dossier multi-lots coordonné',
   },
 ];
 
 export function LandingRoutePage() {
-  const [activeMetier, setActiveMetier] = useState(TRADES_DATA[0].id);
+  const [selectedTrade, setSelectedTrade] = useState<string | null>(TRADES_DATA[0].id);
+  const [lastTradeId, setLastTradeId] = useState(TRADES_DATA[0].id);
   const [tradeCardVisible, setTradeCardVisible] = useState(true);
-  const activeTrade = TRADES_DATA.find((m) => m.id === activeMetier);
+  const displayTrade = TRADES_DATA.find((m) => m.id === lastTradeId);
 
   useEffect(() => {
+    if (selectedTrade) {
+      setLastTradeId(selectedTrade);
+      setTradeCardVisible(false);
+      const timeout = setTimeout(() => setTradeCardVisible(true), 20);
+      return () => clearTimeout(timeout);
+    }
+
     setTradeCardVisible(false);
-    const timeout = setTimeout(() => setTradeCardVisible(true), 20);
-    return () => clearTimeout(timeout);
-  }, [activeMetier]);
+  }, [selectedTrade]);
 
   const problemes = [
     {
@@ -696,7 +678,13 @@ export function LandingRoutePage() {
         <SimulateurSection />
 
         {/* METIERS */}
-        <section id="metiers" className="mx-auto max-w-[1280px] px-6 py-24">
+        <section
+          id="metiers"
+          className="mx-auto max-w-[1280px] px-6 py-24"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedTrade(null);
+          }}
+        >
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Conçu pour chaque métier du bâtiment</h2>
             <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
@@ -708,9 +696,9 @@ export function LandingRoutePage() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => setActiveMetier(m.id)}
+                onClick={() => setSelectedTrade((prev) => (prev === m.id ? null : m.id))}
                 className={`w-28 cursor-pointer rounded-xl border p-4 text-center transition-colors ${
-                  activeMetier === m.id
+                  selectedTrade === m.id
                     ? 'border-green-500 bg-green-500/10 text-green-500'
                     : 'border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
                 }`}
@@ -721,14 +709,14 @@ export function LandingRoutePage() {
             ))}
           </div>
 
-          {activeTrade && (
+          {displayTrade && (
             <div
-              className={`mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-300 ${
-                tradeCardVisible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+              className={`mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-300 overflow-hidden ${
+                selectedTrade !== null && tradeCardVisible ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
               }`}
             >
               <h3 className="text-xl font-semibold text-white">
-                {activeTrade.emoji} {activeTrade.label}
+                {displayTrade.emoji} {displayTrade.label}
               </h3>
 
               <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -736,14 +724,14 @@ export function LandingRoutePage() {
                   <p className="text-xs uppercase tracking-wide text-zinc-400">
                     Types de projets qualifiés
                   </p>
-                  <p className="mt-2 text-sm text-white">{activeTrade.types}</p>
+                  <p className="mt-2 text-sm text-white">{displayTrade.types}</p>
                 </div>
 
                 <div className="rounded-lg bg-zinc-800/50 p-4">
                   <p className="text-xs uppercase tracking-wide text-zinc-400">
                     Questions posées par Kadria
                   </p>
-                  <p className="mt-2 text-sm text-white">{activeTrade.questions}</p>
+                  <p className="mt-2 text-sm text-white">{displayTrade.questions}</p>
                 </div>
 
                 <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
@@ -751,7 +739,7 @@ export function LandingRoutePage() {
                     Résultat
                   </p>
                   <p className="mt-2 text-sm font-medium text-white">
-                    ✅ {activeTrade.resultat}
+                    ✅ {displayTrade.resultat}
                   </p>
                 </div>
               </div>
@@ -1231,7 +1219,7 @@ export function SimulateurSection() {
   const opportunitesPerdues = Math.round(demandes * 4 * (part / 100));
   const caPerdu = opportunitesPerdues * valeur;
   const margePerdue = caPerdu * (marge / 100);
-  const chantiersPourRentabiliser = Math.round(199 / valeur);
+  const breakeven = valeur > 0 ? Math.ceil(199 / valeur) : 1;
 
   return (
     <section className="mx-auto max-w-[1280px] px-6 py-24">
@@ -1327,7 +1315,7 @@ export function SimulateurSection() {
             <p className="text-sm font-semibold text-green-400">✓ Abonnement Kadria</p>
             <p className="mt-2 text-3xl font-bold text-white">199 €/mois</p>
             <p className="mt-2 text-sm text-zinc-400">
-              Un seul chantier récupéré sur {chantiersPourRentabiliser} suffit à rentabiliser Kadria.
+              Un seul chantier récupéré sur {breakeven} suffit à rentabiliser Kadria.
             </p>
           </div>
         </div>

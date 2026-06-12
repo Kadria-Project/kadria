@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -17,12 +17,7 @@ export default function ChatWidgetInline({
   primaryColor = '#22c55e',
   artisanName = 'Kadria',
 }: ChatWidgetInlineProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: `Bonjour, je suis ${artisanName} ! Je vais vous aider à décrire votre projet en quelques questions. Pour commencer, quel est votre prénom et votre nom ?`,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [dossier, setDossier] = useState<Partial<DossierComplet>>({});
   const [completenessScore, setCompletenessScore] = useState(0);
@@ -32,6 +27,49 @@ export default function ChatWidgetInline({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState('');
+
+  useEffect(() => {
+    fetchOpener();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function fetchOpener() {
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [],
+          currentDossier: {},
+          artisanId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur assistant IA');
+      }
+
+      setMessages([{ role: 'assistant', content: data.reply }]);
+      setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
+      setCompletenessScore(data.completenessScore ?? 0);
+      setReadyToSave(Boolean(data.readyToSave));
+      setAiSummary(data.aiSummary ?? '');
+    } catch (error) {
+      setMessages([
+        {
+          role: 'assistant',
+          content: `Bonjour, je suis ${artisanName} ! Pour commencer, quel type de travaux ou de projet souhaitez-vous réaliser ?`,
+        },
+      ]);
+      console.error('CHAT_WIDGET_OPENER_ERROR', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function sendMessage() {
     const content = input.trim();
