@@ -265,6 +265,11 @@ export default function ChatWidgetInline({
     overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
   }
 
+  // ── Centered wrapper for full-page mode ──────────────────────────────────
+  const centerStyle: React.CSSProperties = fullPage ? {
+    maxWidth: '760px', width: '100%', margin: '0 auto', padding: '0 24px',
+  } : {}
+
   return (
     <>
       {/* ── Main widget ── */}
@@ -295,47 +300,51 @@ export default function ChatWidgetInline({
           padding: '8px 16px', background: '#09090b',
           borderBottom: '1px solid #27272a', flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-            <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Votre projet</span>
-            <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Étape {step} sur 4 — {stepLabel}</span>
-          </div>
-          <div style={{ height: '3px', background: '#27272a', borderRadius: '2px' }}>
-            <div style={{
-              height: '100%', width: `${step * 25}%`,
-              background: primaryColor, borderRadius: '2px',
-              transition: 'width 0.5s ease',
-            }} />
+          <div style={centerStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Votre projet</span>
+              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Étape {step} sur 4 — {stepLabel}</span>
+            </div>
+            <div style={{ height: '3px', background: '#27272a', borderRadius: '2px' }}>
+              <div style={{
+                height: '100%', width: `${step * 25}%`,
+                background: primaryColor, borderRadius: '2px',
+                transition: 'width 0.5s ease',
+              }} />
+            </div>
           </div>
         </div>
 
         {/* Welcome screen */}
         {showWelcome ? (
           <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            <div style={{
-              background: '#18181b', border: '1px solid #27272a',
-              borderRadius: '12px', padding: '16px', marginBottom: '16px',
-            }}>
-              <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
-                👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
-              </p>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
-                Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {WELCOME_OPTIONS.map(opt => (
-                <button key={opt} onClick={() => {
-                  setShowWelcome(false)
-                  fetchOpener().then(() => sendMessage(opt))
-                }}
-                  style={{
-                    background: '#18181b', border: '1px solid #27272a',
-                    color: 'white', borderRadius: '8px',
-                    padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
-                  }}>
-                  {opt}
-                </button>
-              ))}
+            <div style={centerStyle}>
+              <div style={{
+                background: '#18181b', border: '1px solid #27272a',
+                borderRadius: '12px', padding: '16px', marginBottom: '16px',
+              }}>
+                <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
+                  👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
+                </p>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
+                  Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {WELCOME_OPTIONS.map(opt => (
+                  <button key={opt} onClick={() => {
+                    setShowWelcome(false)
+                    fetchOpener().then(() => sendMessage(opt))
+                  }}
+                    style={{
+                      background: '#18181b', border: '1px solid #27272a',
+                      color: 'white', borderRadius: '8px',
+                      padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
+                    }}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -343,8 +352,12 @@ export default function ChatWidgetInline({
             {/* Messages */}
             <div ref={scrollRef} style={{
               flex: 1, overflowY: 'auto', padding: '16px',
-              display: 'flex', flexDirection: 'column', gap: '10px',
+              display: 'flex', flexDirection: 'column',
             }}>
+              <div style={{
+                ...centerStyle,
+                display: 'flex', flexDirection: 'column', gap: '10px',
+              }}>
               {messages.map((msg, i) => (
                 <div key={i} style={{
                   display: 'flex',
@@ -409,79 +422,88 @@ export default function ChatWidgetInline({
                   ))}
                 </div>
               )}
+              </div>
             </div>
 
             {/* Address suggestions */}
             {isAddressMode && adresseSuggestions.length > 0 && (
-              <div style={{
-                background: '#18181b', border: '1px solid #27272a',
-                borderRadius: '8px', margin: '0 12px',
-                overflow: 'hidden', flexShrink: 0,
-              }}>
-                {adresseSuggestions.map((s, i) => (
-                  <div key={i}
-                    onClick={() => {
-                      setInput(s.label)
-                      setAdresseSuggestions([])
-                      setDossier(prev => ({
-                        ...prev,
-                        siteAddress: s.label,
-                        city: s.city,
-                        postalCode: s.postcode,
-                      }))
-                      sendMessage(s.label)
-                    }}
-                    style={{
-                      padding: '10px 14px', cursor: 'pointer',
-                      borderBottom: i < adresseSuggestions.length - 1 ? '1px solid #27272a' : 'none',
-                      color: 'white', fontSize: '13px',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#27272a')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    📍 {s.label}
-                  </div>
-                ))}
+              <div style={centerStyle}>
+                <div style={{
+                  background: '#18181b', border: '1px solid #27272a',
+                  borderRadius: '8px', margin: fullPage ? 0 : '0 12px',
+                  overflow: 'hidden', flexShrink: 0,
+                }}>
+                  {adresseSuggestions.map((s, i) => (
+                    <div key={i}
+                      onClick={() => {
+                        setInput(s.label)
+                        setAdresseSuggestions([])
+                        setDossier(prev => ({
+                          ...prev,
+                          siteAddress: s.label,
+                          city: s.city,
+                          postalCode: s.postcode,
+                        }))
+                        sendMessage(s.label)
+                      }}
+                      style={{
+                        padding: '10px 14px', cursor: 'pointer',
+                        borderBottom: i < adresseSuggestions.length - 1 ? '1px solid #27272a' : 'none',
+                        color: 'white', fontSize: '13px',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#27272a')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      📍 {s.label}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Input */}
             {!saved && (
               <div style={{
-                padding: '10px 12px', borderTop: '1px solid #27272a',
-                display: 'flex', gap: '8px', flexShrink: 0, background: '#09090b',
+                padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
+                flexShrink: 0, background: '#09090b',
                 position: 'relative',
               }}>
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={e => handleInputChange(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                  onBlur={() => setTimeout(() => setAdresseSuggestions([]), 200)}
-                  placeholder={isAddressMode ? "Tapez votre adresse..." : "Écrivez votre message..."}
-                  disabled={loading}
-                  style={{
-                    flex: 1, background: '#18181b', border: '1px solid #3f3f46',
-                    borderRadius: '8px', padding: '8px 12px',
-                    color: 'white', fontSize: '13.5px', outline: 'none',
-                  }}
-                />
-                <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
-                  style={{
-                    width: '38px', height: '38px', borderRadius: '8px', border: 'none',
-                    background: loading || !input.trim() ? '#27272a' : primaryColor,
-                    color: loading || !input.trim() ? '#71717a' : 'black',
-                    cursor: loading || !input.trim() ? 'default' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"/>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                  </svg>
-                </button>
+                <div style={{
+                  ...centerStyle,
+                  ...(fullPage ? { padding: '0 24px 24px' } : {}),
+                  display: 'flex', gap: '8px',
+                }}>
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => handleInputChange(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                    onBlur={() => setTimeout(() => setAdresseSuggestions([]), 200)}
+                    placeholder={isAddressMode ? "Tapez votre adresse..." : "Écrivez votre message..."}
+                    disabled={loading}
+                    style={{
+                      flex: 1, background: '#18181b', border: '1px solid #3f3f46',
+                      borderRadius: '8px', padding: '8px 12px',
+                      color: 'white', fontSize: '13.5px', outline: 'none',
+                    }}
+                  />
+                  <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
+                    style={{
+                      width: '38px', height: '38px', borderRadius: '8px', border: 'none',
+                      background: loading || !input.trim() ? '#27272a' : primaryColor,
+                      color: loading || !input.trim() ? '#71717a' : 'black',
+                      cursor: loading || !input.trim() ? 'default' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </>
