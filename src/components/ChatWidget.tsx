@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -35,53 +35,21 @@ interface AddressSuggestion {
   postcode: string;
 }
 
-function isAddressPrompt(text: string): boolean {
-  const lower = text.toLowerCase();
-  return lower.includes('adresse') || lower.includes('chantier') || text.includes('📍');
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
-const RECAP_KEYWORDS = [
-  'récapitulatif',
-  'résumé',
-  'dossier est prêt',
-  'voici votre dossier',
-  'voir le résumé',
-];
+function renderMarkdown(text: string): string {
+  const html = escapeHtml(text)
+    .replace(/\n\n/g, '</p><p style="margin-top:8px">')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br/>');
 
-function hasRecap(text: string): boolean {
-  const lower = text.toLowerCase();
-  return RECAP_KEYWORDS.some((keyword) => lower.includes(keyword.toLowerCase()));
-}
-
-function renderBoldSegments(line: string, keyPrefix: string) {
-  const parts = line.split(/(\*\*[^*]+\*\*)/g).filter((part) => part !== '');
-
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>;
-    }
-
-    return <span key={`${keyPrefix}-${index}`}>{part}</span>;
-  });
-}
-
-function renderMarkdown(text: string) {
-  const paragraphs = text.split('\n\n');
-
-  return paragraphs.map((paragraph, paragraphIndex) => {
-    const lines = paragraph.split('\n');
-
-    return (
-      <div key={paragraphIndex} className="mb-2 last:mb-0">
-        {lines.map((line, lineIndex) => (
-          <span key={lineIndex}>
-            {renderBoldSegments(line, `${paragraphIndex}-${lineIndex}`)}
-            {lineIndex < lines.length - 1 && <br />}
-          </span>
-        ))}
-      </div>
-    );
-  });
+  return `<p>${html}</p>`;
 }
 
 const WELCOME_OPTIONS = [
@@ -110,11 +78,12 @@ export default function ChatWidget({
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState('');
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
-  const [isAddressMode, setIsAddressMode] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function checkIsMobile() {
@@ -197,10 +166,18 @@ export default function ChatWidget({
     }
   }
 
+  const lastAssistantMsg = messages.filter((m) => m.role === 'assistant').pop();
+  const isAddressMode = lastAssistantMsg?.content?.includes('📍') ?? false;
+
   useEffect(() => {
-    const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant');
-    setIsAddressMode(Boolean(lastAssistant && isAddressPrompt(lastAssistant.content)));
-  }, [messages]);
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages, quickReplies, loading]);
+
+  useEffect(() => {
+    if (readyToSave) setShowModal(true);
+  }, [readyToSave]);
 
   useEffect(() => {
     if (!isAddressMode || input.trim().length < 3) {
@@ -236,7 +213,6 @@ export default function ChatWidget({
   function handleSelectAddress(suggestion: AddressSuggestion) {
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
-    setIsAddressMode(false);
 
     const dossierOverride: Partial<DossierComplet> = {
       siteAddress: suggestion.label,
@@ -303,7 +279,7 @@ export default function ChatWidget({
     }
   }
 
-  async function submitDossier() {
+  async function saveDossier() {
     if (submitting) return;
 
     setSubmitting(true);
@@ -336,6 +312,7 @@ export default function ChatWidget({
 
       setReference(String(data.recordId ?? '').slice(-6).toUpperCase());
       setSubmitted(true);
+      setShowModal(false);
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -364,9 +341,6 @@ export default function ChatWidget({
       </button>
     );
   }
-
-  const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
-  const recapDetected = Boolean(lastAssistantMessage && hasRecap(lastAssistantMessage.content));
 
   const currentStep = readyToSave || completenessScore > 90
     ? 4
@@ -462,7 +436,13 @@ export default function ChatWidget({
                   : undefined
               }
             >
-              {renderMarkdown(message.content)}
+              {message.role === 'assistant' ? (
+                <div style={{ lineHeight: '1.6' }}>
+                  <span dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} />
+                </div>
+              ) : (
+                message.content
+              )}
             </div>
           </div>
         ))}
@@ -499,21 +479,9 @@ export default function ChatWidget({
             recontactera très prochainement.
           </div>
         )}
-      </div>
-      )}
 
-      {!showWelcome && readyToSave && recapDetected && !submitted && (
-        <div className="border-t border-zinc-800 bg-zinc-900 px-4 py-3">
-          <Button
-            type="button"
-            onClick={submitDossier}
-            disabled={submitting}
-            className="w-full border-0 text-black"
-            style={{ backgroundColor: primaryColor }}
-          >
-            {submitting ? 'Envoi en cours...' : 'Soumettre mon dossier'}
-          </Button>
-        </div>
+        <div ref={bottomRef} />
+      </div>
       )}
 
       {!showWelcome && !submitted && (
@@ -565,6 +533,113 @@ export default function ChatWidget({
           </div>
         </div>
       )}
+
+      {showModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xl font-bold text-white">📋 Votre dossier est prêt</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Vérifiez les informations avant transmission à l'artisan.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="text-zinc-400 transition hover:text-white"
+                aria-label="Fermer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5">
+              <p className="mb-3 text-xs uppercase tracking-widest text-green-500">Projet</p>
+              <div className="grid grid-cols-2 gap-3">
+                <InfoField label="Type de travaux" value={dossier.trade} />
+                <InfoField label="Description" value={dossier.projectType} />
+                <InfoField label="Budget" value={dossier.budget} />
+                <InfoField label="Délai" value={dossier.desiredTimeline} />
+                <InfoField label="Maturité" value={dossier.maturity} />
+                <InfoField
+                  label="Adresse"
+                  value={[dossier.siteAddress, dossier.postalCode, dossier.city]
+                    .filter(Boolean)
+                    .join(', ')}
+                />
+              </div>
+            </div>
+
+            <div className="my-4 border-t border-zinc-800" />
+
+            <div>
+              <p className="mb-3 text-xs uppercase tracking-widest text-green-500">Contact</p>
+              <div className="grid grid-cols-2 gap-3">
+                <InfoField label="Prénom" value={dossier.clientFirstName} />
+                <InfoField label="Nom" value={dossier.clientName} />
+                <InfoField label="Téléphone" value={dossier.clientPhone} />
+                <InfoField label="Email" value={dossier.clientEmail} />
+              </div>
+            </div>
+
+            {aiSummary && (
+              <>
+                <div className="my-4 border-t border-zinc-800" />
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-widest text-green-500">
+                    Résumé IA
+                  </p>
+                  <p className="rounded-lg bg-zinc-800/50 p-3 text-sm italic text-zinc-300">
+                    {aiSummary}
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className="mt-4">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full transition-all"
+                  style={{ width: `${completenessScore}%`, backgroundColor: primaryColor }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-zinc-400">
+                Dossier complété à {completenessScore}%
+              </p>
+            </div>
+
+            <div className="mt-4 flex gap-3 border-t border-zinc-800 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex-1 rounded-lg border border-zinc-700 py-2.5 text-sm text-white hover:bg-zinc-800"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={saveDossier}
+                disabled={submitting}
+                className="flex-1 rounded-lg bg-green-500 py-2.5 text-sm font-semibold text-black hover:bg-green-400 disabled:opacity-60"
+              >
+                {submitting ? 'Envoi en cours...' : 'Envoyer le dossier →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoField({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+
+  return (
+    <div>
+      <p className="text-xs uppercase text-zinc-400">{label}</p>
+      <p className="text-sm font-medium text-white">{value}</p>
     </div>
   );
 }
