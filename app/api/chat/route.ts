@@ -139,15 +139,22 @@ export async function POST(request: Request) {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: SYSTEM_PROMPT + contextNote,
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+      messages: [
+        ...messages.map((m: { role: string; content: string }) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+        // Prefill officiel Anthropic pour forcer JSON
+        {
+          role: 'assistant' as const,
+          content: '{',
+        },
+      ],
     })
 
-    const rawText = response.content?.[0]?.type === 'text'
+    const rawText = '{' + (response.content?.[0]?.type === 'text'
       ? response.content[0].text
-      : ''
+      : '')
 
     let parsed: Record<string, unknown>
     try {
