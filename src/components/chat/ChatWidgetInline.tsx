@@ -16,6 +16,7 @@ interface Props {
   artisanName?: string
   primaryColor?: string
   inline?: boolean
+  fullPage?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ export default function ChatWidgetInline({
   artisanName = "l'artisan",
   primaryColor = '#22c55e',
   inline = true,
+  fullPage = false,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -253,7 +255,11 @@ export default function ChatWidgetInline({
   ]
 
   // ── Container styles ──────────────────────────────────────────────────────
-  const containerStyle: React.CSSProperties = {
+  const containerStyle: React.CSSProperties = fullPage ? {
+    width: '100%', height: '100%', borderRadius: '0',
+    border: 'none', display: 'flex', flexDirection: 'column',
+    overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
+  } : {
     width: '100%', height: '600px', borderRadius: '16px',
     border: '1px solid #27272a', display: 'flex', flexDirection: 'column',
     overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
