@@ -17,4 +17,6 @@ export const TABLES = {
   projects: process.env.AIRTABLE_PROJECTS_TABLE || 'Projects',
   users: process.env.AIRTABLE_USERS_TABLE || 'Users',
   artisanConfig: process.env.AIRTABLE_ARTISAN_CONFIG_TABLE || 'Artisan_config',
+  activity: 'Activity',
+
 } as const;

@@ -1,8 +1,57 @@
 import { NextResponse } from 'next/server';
 import { airtableBase, TABLES } from '@/src/lib/airtable';
 
-export async function GET() {
+function mapProject(record: any) {
+  const fields = record.fields;
+
+  return {
+    id: record.id,
+    projectNumber: record.id.slice(-6),
+
+    status: fields.Status ?? 'Inconnu',
+    leadStatus: fields['Lead Status'] ?? '',
+
+    clientName: fields['Client Name'] ?? '',
+    clientFirstName: fields['Client First Name'] ?? '',
+    clientEmail: fields['Client Email'] ?? '',
+    clientPhone: fields['Client Phone'] ?? '',
+
+    siteAddress: fields['Site Address'] ?? '',
+    city: fields.City ?? '',
+    postalCode: fields['Postal Code'] ?? '',
+
+    trade: fields.Trade ?? '',
+    projectType: fields['Project Type'] ?? '',
+    budget: fields.Budget ?? '',
+    desiredTimeline: fields['Desired Timeline'] ?? '',
+
+    aiSummary: fields['AI Summary'] ?? '',
+    chatHistory: fields['Chat History'] ?? '',
+    tradeAnswers: fields['Trade Answers'] ?? '',
+
+    createdAt: fields['Created At'] ?? '',
+    completenessScore: fields['Completeness Score'] ?? 0,
+
+    contacted: fields.Contacted ?? false,
+    assignedTo: fields['Assigned To'] ?? '',
+    artisanId: fields['Artisan ID'] ?? '',
+    source: fields.Source ?? '',
+
+    latitude: fields.Latitude ?? null,
+    longitude: fields.Longitude ?? null,
+
+    callbackDate: fields['Callback Date'] ?? '',
+  };
+}
+
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    const status = searchParams.get('status');
+    const trade = searchParams.get('trade');
+    const search = searchParams.get('search')?.toLowerCase();
+
     const records = await airtableBase(TABLES.projects)
       .select({
         maxRecords: 100,
@@ -10,13 +59,41 @@ export async function GET() {
       })
       .firstPage();
 
+    let projects = records.map(mapProject);
+
+    if (status) {
+      projects = projects.filter((project) => project.status === status);
+    }
+
+    if (trade) {
+      projects = projects.filter((project) => project.trade === trade);
+    }
+
+    if (search) {
+      projects = projects.filter((project) => {
+        const searchable = [
+          project.projectNumber,
+          project.clientName,
+          project.clientFirstName,
+          project.clientEmail,
+          project.clientPhone,
+          project.city,
+          project.trade,
+          project.projectType,
+          project.budget,
+          project.aiSummary,
+        ]
+          .join(' ')
+          .toLowerCase();
+
+        return searchable.includes(search);
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      count: records.length,
-      projects: records.map((record) => ({
-        id: record.id,
-        ...record.fields,
-      })),
+      count: projects.length,
+      projects,
     });
   } catch (error) {
     console.error('GET_PROJECTS_ERROR', error);

@@ -1,26 +1,228 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --card: 220 8% 10%;
+  --border: 220 6% 18%;
+  --muted: 220 6% 13%;
+  --muted-foreground: #8f9bb3;
+  --primary: 152 56% 48%;
+  --primary-foreground: #05130d;
+  --accent: 152 56% 48%;
+  --accent-foreground: #f8fafc;
+  --ring: 152 56% 48%;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-card: hsl(var(--card));
+  --color-card-foreground: var(--foreground);
+  --color-border: hsl(var(--border));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ring: hsl(var(--ring));
+  --font-sans: Inter, Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background:
+    radial-gradient(circle at 56% 24%, rgba(46, 204, 132, .08), transparent 32%),
+    radial-gradient(circle at 8% 10%, rgba(25, 214, 194, .06), transparent 24%),
+    var(--background);
+  color: var(--foreground);
+  font-family: Inter, Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* =========================
+   KADRIA CRM PREMIUM
+========================= */
+
+.card-premium {
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,.035) 0%,
+    rgba(255,255,255,.018) 100%
+  );
+
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px;
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.02) inset,
+    0 24px 70px rgba(0,0,0,.32);
+
+  transition: all .25s ease;
+}
+
+.card-premium:hover {
+  border-color: rgba(46,204,132,.22);
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.025) inset,
+    0 28px 80px rgba(0,0,0,.38);
+}
+
+.kpi-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.035),
+      rgba(255,255,255,.018)
+    );
+
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+
+  transition: all .2s ease;
+}
+
+.kpi-card:hover {
+  border-color: rgba(46,204,132,.28);
+
+  transform: translateY(-1px);
+}
+
+.status-new {
+  background: rgba(34,197,94,.15);
+  color: rgb(74 222 128);
+}
+
+.status-callback {
+  background: rgba(249,115,22,.15);
+  color: rgb(251 146 60);
+}
+
+.status-qualified {
+  background: rgba(16,185,129,.15);
+  color: rgb(52 211 153);
+}
+
+.status-quote {
+  background: rgba(168,85,247,.15);
+  color: rgb(192 132 252);
+}
+
+.status-won {
+  background: rgba(34,197,94,.15);
+  color: rgb(74 222 128);
+}
+
+.status-lost {
+  background: rgba(239,68,68,.15);
+  color: rgb(248 113 113);
+}
+
+.funnel-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.03),
+      rgba(255,255,255,.01)
+    );
+
+  border: 1px solid rgba(255,255,255,.05);
+
+  transition: all .2s ease;
+}
+
+.funnel-card:hover {
+  border-color: rgba(34,197,94,.3);
+
+  transform: translateY(-2px);
+}
+
+.priority-card {
+  border: 1px solid rgba(34,197,94,.25);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(34,197,94,.10),
+      rgba(34,197,94,.03)
+    );
+}
+
+.reminder-card {
+  border: 1px solid rgba(249,115,22,.25);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(249,115,22,.10),
+      rgba(249,115,22,.03)
+    );
+}
+
+.overdue-card {
+  border: 1px solid rgba(239,68,68,.25);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(239,68,68,.10),
+      rgba(239,68,68,.03)
+    );
+}
+
+.top-opportunity {
+  position: relative;
+  overflow: hidden;
+}
+
+.top-opportunity::before {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(34,197,94,.08),
+      transparent 50%
+    );
+
+  pointer-events: none;
+}
+
+.leaflet-container {
+  background: hsl(var(--muted));
+  color: #0f172a;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  height: 100%;
+  min-height: 420px;
+  border-radius: inherit;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+
+.dashboard-shell {
+  color-scheme: dark;
+}
+
+.dashboard-shell .rounded-xl {
+  border-radius: 14px;
+}
+
+.dashboard-shell input,
+.dashboard-shell button,
+.dashboard-shell [role="combobox"] {
+  border-color: rgba(255,255,255,.1);
+}
+
+.dashboard-shell button:hover {
+  border-color: rgba(46,204,132,.32);
 }

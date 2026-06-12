@@ -10,14 +10,22 @@
   },
   "dependencies": {
     "airtable": "^0.12.2",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.17.0",
     "next": "16.2.9",
     "openai": "^6.42.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-leaflet": "^5.0.0",
+    "tailwind-merge": "^3.6.0",
+    "use-debounce": "^10.1.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

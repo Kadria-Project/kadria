@@ -1,0 +1,45 @@
+'use client';
+
+import React from 'react';
+
+export function Select({
+  value,
+  onValueChange,
+  children,
+}: {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onValueChange?.(e.target.value)}
+      className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+    >
+      {children}
+    </select>
+  );
+}
+
+export function SelectTrigger({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
+export function SelectValue() {
+  return null;
+}
+
+export function SelectContent({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
+export function SelectItem({
+  value,
+  children,
+}: {
+  value: string;
+  children: React.ReactNode;
+}) {
+  return <option value={value}>{children}</option>;
+}
