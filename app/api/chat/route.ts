@@ -339,7 +339,13 @@ export async function POST(request: Request) {
       .replace(/```$/, '')
       .trim();
 
-    const parsed: ChatResponseData = JSON.parse(cleaned);
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      throw new Error('Réponse IA invalide : bloc JSON manquant');
+    }
+
+    const parsed: ChatResponseData = JSON.parse(jsonMatch[0]);
 
     return NextResponse.json({
       success: true,
