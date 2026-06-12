@@ -23,6 +23,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { KadriaLogoImg } from '@/src/components/KadriaLogo';
+import ChatWidget from '@/src/components/ChatWidget';
 
 const features = [
   {
@@ -438,6 +439,7 @@ export function DemoRoutePage() {
           <PrimaryLink href="/demo-dashboard">Ouvrir le dashboard demo</PrimaryLink>
         </div>
       </main>
+      <ChatWidget artisanId="Artisan_demo" />
     </PageShell>
   );
 }
