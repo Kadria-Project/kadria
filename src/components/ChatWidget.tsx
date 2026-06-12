@@ -19,11 +19,12 @@ interface Props {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function parseReply(raw: string): { text: string; options: string[] } {
-  const match = raw.match(/<>([\s\S]*?)<>/)
+function parseReply(raw?: string): { text: string; options: string[] } {
+  if (!raw) return { text: '', options: [] }
+  const match = raw.match(/<<SUGGESTIONS>>([\s\S]*?)<<\/SUGGESTIONS>>/)
   if (!match) return { text: raw.trim(), options: [] }
   const options = match[1].split('|').map(o => o.trim()).filter(Boolean)
-  const text = raw.replace(/<>[\s\S]*?<>/, '').trim()
+  const text = raw.replace(/<<SUGGESTIONS>>[\s\S]*?<<\/SUGGESTIONS>>/, '').trim()
   return { text, options }
 }
 
