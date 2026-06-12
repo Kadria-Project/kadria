@@ -113,6 +113,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const apiKey = process.env.AIRTABLE_API_KEY;
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const tableName = process.env.AIRTABLE_PROJECTS_TABLE;
+
+    console.log('[AIRTABLE DEBUG] apiKey present:', !!apiKey);
+    console.log('[AIRTABLE DEBUG] apiKey prefix:', apiKey?.slice(0, 10));
+    console.log('[AIRTABLE DEBUG] baseId:', baseId);
+    console.log('[AIRTABLE DEBUG] tableName:', tableName);
+
     const input = await request.json();
 
     const postalNum = input.postalCode
