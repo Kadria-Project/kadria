@@ -12,6 +12,23 @@ interface ChatWidgetProps {
   artisanName?: string;
 }
 
+function parseQuickReplies(text: string): { cleanText: string; options: string[] } {
+  const match = text.match(/<>([\s\S]*?)<>/);
+
+  if (!match) {
+    return { cleanText: text.trim(), options: [] };
+  }
+
+  const options = match[1]
+    .split('|')
+    .map((option) => option.trim())
+    .filter(Boolean);
+
+  const cleanText = text.replace(match[0], '').trim();
+
+  return { cleanText, options };
+}
+
 export default function ChatWidget({
   artisanId = 'Artisan_demo',
   primaryColor = '#22c55e',
@@ -28,6 +45,7 @@ export default function ChatWidget({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState('');
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchOpener() {
@@ -50,7 +68,10 @@ export default function ChatWidget({
           throw new Error(data.error || 'Erreur assistant IA');
         }
 
-        setMessages([{ role: 'assistant', content: data.reply }]);
+        const { cleanText, options } = parseQuickReplies(data.reply ?? '');
+
+        setMessages([{ role: 'assistant', content: cleanText }]);
+        setQuickReplies(options);
         setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
         setCompletenessScore(data.completenessScore ?? 0);
         setReadyToSave(Boolean(data.readyToSave));
@@ -72,14 +93,15 @@ export default function ChatWidget({
     fetchOpener();
   }, []);
 
-  async function sendMessage() {
-    const content = input.trim();
+  async function sendMessage(overrideText?: string) {
+    const content = (overrideText ?? input).trim();
 
     if (!content || loading) return;
 
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content }];
 
     setMessages(nextMessages);
+    setQuickReplies([]);
     setInput('');
     setLoading(true);
 
@@ -100,7 +122,10 @@ export default function ChatWidget({
         throw new Error(data.error || 'Erreur assistant IA');
       }
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
+      const { cleanText, options } = parseQuickReplies(data.reply ?? '');
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: cleanText }]);
+      setQuickReplies(options);
       setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
       setCompletenessScore(data.completenessScore ?? 0);
       setReadyToSave(Boolean(data.readyToSave));
@@ -231,6 +256,21 @@ export default function ChatWidget({
           </div>
         ))}
 
+        {quickReplies.length > 0 && !loading && !submitted && (
+          <div className="flex flex-wrap gap-2">
+            {quickReplies.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => sendMessage(option)}
+                className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-white transition-all hover:border-green-500 hover:bg-green-500 hover:text-black"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading && (
           <div className="flex justify-start">
             <div className="flex items-center gap-1 rounded-2xl bg-zinc-800 px-4 py-3">
@@ -281,7 +321,7 @@ export default function ChatWidget({
           />
           <Button
             type="button"
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={loading || !input.trim()}
             className="border-0 text-black"
             style={{ backgroundColor: primaryColor }}
