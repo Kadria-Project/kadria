@@ -124,6 +124,10 @@ if (input.callbackDate !== undefined) {
   );
 }
 
+    if (input.fields && typeof input.fields === 'object') {
+      Object.assign(fieldsToUpdate, input.fields);
+    }
+
     const record = await airtableBase(TABLES.projects).update(id, fieldsToUpdate);
 
     if (input.status) {
