@@ -317,14 +317,19 @@ export async function POST(request: Request) {
     const body: ChatRequestBody = await request.json();
     const { messages, currentDossier, artisanId } = body;
 
+    const conversationMessages =
+      messages.length > 0
+        ? messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          }))
+        : [{ role: 'user' as const, content: 'Bonjour' }];
+
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: `${SYSTEM_PROMPT}\n\nDossier actuel : ${JSON.stringify(currentDossier ?? {})}\nArtisan ID : ${artisanId ?? ''}`,
-      messages: messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
+      messages: conversationMessages,
     });
 
     const textBlock = response.content.find((block) => block.type === 'text');

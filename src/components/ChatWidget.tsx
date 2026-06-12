@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -18,12 +18,7 @@ export default function ChatWidget({
   artisanName = 'Kadria',
 }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: `Bonjour, je suis ${artisanName} ! Je vais vous aider à décrire votre projet en quelques questions. Pour commencer, quel est votre prénom et votre nom ?`,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [dossier, setDossier] = useState<Partial<DossierComplet>>({});
   const [completenessScore, setCompletenessScore] = useState(0);
@@ -33,6 +28,49 @@ export default function ChatWidget({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState('');
+
+  useEffect(() => {
+    async function fetchOpener() {
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [],
+            currentDossier: {},
+            artisanId,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Erreur assistant IA');
+        }
+
+        setMessages([{ role: 'assistant', content: data.reply }]);
+        setDossier((prev) => ({ ...prev, ...data.dossierUpdate }));
+        setCompletenessScore(data.completenessScore ?? 0);
+        setReadyToSave(Boolean(data.readyToSave));
+        setAiSummary(data.aiSummary ?? '');
+      } catch (error) {
+        setMessages([
+          {
+            role: 'assistant',
+            content:
+              'Désolé, une erreur est survenue. Pouvez-vous rafraîchir la page et réessayer ?',
+          },
+        ]);
+        console.error('CHAT_WIDGET_OPENER_ERROR', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchOpener();
+  }, []);
 
   async function sendMessage() {
     const content = input.trim();
@@ -195,8 +233,10 @@ export default function ChatWidget({
 
         {loading && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-2xl bg-zinc-800 px-4 py-2 text-sm text-zinc-400">
-              {artisanName} écrit...
+            <div className="flex items-center gap-1 rounded-2xl bg-zinc-800 px-4 py-3">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
             </div>
           </div>
         )}
