@@ -20,8 +20,11 @@ export default function DemoRequestPage() {
     phone: '',
     societe: '',
     trade: '',
+    teamSize: '',
+    demand: '',
     website: '',
     preferredSlot: '',
+    message: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -139,26 +142,58 @@ export default function DemoRequestPage() {
             <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 800, margin: '0 0 20px' }}>
               Vos informations
             </h2>
+            <p style={{
+              color: '#71717a', fontSize: '12px', margin: '0 0 16px',
+              textAlign: 'right',
+            }}>
+              <span style={{ color: '#f87171' }}>*</span> Champs obligatoires
+            </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <div>
-                <label style={labelStyle}>Prénom</label>
+                <label style={labelStyle}>
+                  Prénom <span style={{ color: '#f87171' }}>*</span>
+                </label>
                 <input style={inputStyle} value={form.prenom} onChange={e => update('prenom', e.target.value)} />
               </div>
               <div>
-                <label style={labelStyle}>Nom</label>
+                <label style={labelStyle}>
+                  Nom <span style={{ color: '#f87171' }}>*</span>
+                </label>
                 <input style={inputStyle} value={form.nom} onChange={e => update('nom', e.target.value)} />
               </div>
             </div>
             <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>Email</label>
+              <label style={labelStyle}>
+                Email <span style={{ color: '#f87171' }}>*</span>
+              </label>
               <input type="email" style={inputStyle} value={form.email} onChange={e => update('email', e.target.value)} />
             </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={labelStyle}>Téléphone</label>
+              <label style={labelStyle}>
+                Téléphone <span style={{ color: '#f87171' }}>*</span>
+              </label>
               <input type="tel" style={inputStyle} value={form.phone} onChange={e => update('phone', e.target.value)} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep(2)} style={{
+              <button onClick={() => {
+                if (!form.prenom.trim()) {
+                  alert('Merci de renseigner votre prénom.')
+                  return
+                }
+                if (!form.nom.trim()) {
+                  alert('Merci de renseigner votre nom.')
+                  return
+                }
+                if (!form.email.trim() || !form.email.includes('@')) {
+                  alert('Merci de renseigner un email valide.')
+                  return
+                }
+                if (!form.phone.trim()) {
+                  alert('Merci de renseigner votre téléphone.')
+                  return
+                }
+                setStep(s => s + 1)
+              }} style={{
                 background: '#22c55e', color: 'black', fontWeight: 700,
                 borderRadius: '10px', padding: '12px 24px',
                 fontSize: '14px', cursor: 'pointer', border: 'none',
@@ -177,13 +212,35 @@ export default function DemoRequestPage() {
             <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 800, margin: '0 0 20px' }}>
               Votre entreprise
             </h2>
+            <p style={{
+              color: '#71717a', fontSize: '12px', margin: '0 0 16px',
+              textAlign: 'right',
+            }}>
+              <span style={{ color: '#f87171' }}>*</span> Champs obligatoires
+            </p>
             <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>Société</label>
+              <label style={labelStyle}>
+                Société <span style={{ color: '#f87171' }}>*</span>
+              </label>
               <input style={inputStyle} value={form.societe} onChange={e => update('societe', e.target.value)} />
             </div>
             <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>Métier / activité</label>
+              <label style={labelStyle}>
+                Métier / activité <span style={{ color: '#f87171' }}>*</span>
+              </label>
               <input style={inputStyle} value={form.trade} onChange={e => update('trade', e.target.value)} />
+            </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>
+                Taille de l&apos;équipe <span style={{ color: '#f87171' }}>*</span>
+              </label>
+              <input style={inputStyle} value={form.teamSize} onChange={e => update('teamSize', e.target.value)} />
+            </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={labelStyle}>
+                Demandes par mois <span style={{ color: '#f87171' }}>*</span>
+              </label>
+              <input style={inputStyle} value={form.demand} onChange={e => update('demand', e.target.value)} />
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Site web (si existant)</label>
@@ -197,7 +254,25 @@ export default function DemoRequestPage() {
               }}>
                 ← Retour
               </button>
-              <button onClick={() => setStep(3)} style={{
+              <button onClick={() => {
+                if (!form.societe.trim()) {
+                  alert('Merci de renseigner le nom de votre entreprise.')
+                  return
+                }
+                if (!form.trade) {
+                  alert('Merci de sélectionner votre métier.')
+                  return
+                }
+                if (!form.teamSize) {
+                  alert("Merci d'indiquer la taille de votre équipe.")
+                  return
+                }
+                if (!form.demand) {
+                  alert('Merci d\'indiquer votre volume de demandes.')
+                  return
+                }
+                setStep(s => s + 1)
+              }} style={{
                 background: '#22c55e', color: 'black', fontWeight: 700,
                 borderRadius: '10px', padding: '12px 24px',
                 fontSize: '14px', cursor: 'pointer', border: 'none',
@@ -216,13 +291,27 @@ export default function DemoRequestPage() {
             <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 800, margin: '0 0 20px' }}>
               Planification
             </h2>
-            <div style={{ marginBottom: '20px' }}>
+            <p style={{
+              color: '#71717a', fontSize: '12px', margin: '0 0 16px',
+              textAlign: 'right',
+            }}>
+              <span style={{ color: '#f87171' }}>*</span> Champs obligatoires
+            </p>
+            <div style={{ marginBottom: '14px' }}>
               <label style={labelStyle}>Créneau préféré pour la démo</label>
               <input
                 style={inputStyle}
                 placeholder="Ex : Mardi après-midi, semaine du 16 juin..."
                 value={form.preferredSlot}
                 onChange={e => update('preferredSlot', e.target.value)}
+              />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Message (optionnel)</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: '90px', resize: 'vertical' as const }}
+                value={form.message}
+                onChange={e => update('message', e.target.value)}
               />
             </div>
             {error && (
@@ -240,13 +329,15 @@ export default function DemoRequestPage() {
                 onClick={handleSubmit}
                 disabled={submitting}
                 style={{
-                  background: '#22c55e', color: 'black', fontWeight: 700,
+                  background: submitting ? '#27272a' : '#22c55e',
+                  color: submitting ? '#71717a' : 'black',
+                  fontWeight: 700,
                   borderRadius: '10px', padding: '12px 24px',
                   fontSize: '14px', cursor: submitting ? 'default' : 'pointer',
-                  border: 'none', opacity: submitting ? 0.6 : 1,
+                  border: 'none',
                 }}
               >
-                {submitting ? 'Envoi...' : 'Envoyer ma demande'}
+                {submitting ? 'Envoi...' : 'Réserver ma présentation'}
               </button>
             </div>
           </div>
