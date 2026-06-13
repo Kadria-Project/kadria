@@ -139,8 +139,11 @@ function ProjectDetail() {
   }
 
   function focusNote() {
-    noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => noteRef.current?.focus(), 400);
+    setShowNotes(true);
+    setTimeout(() => {
+      noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => noteRef.current?.focus(), 400);
+    }, 100);
   }
 
   if (loading) {
