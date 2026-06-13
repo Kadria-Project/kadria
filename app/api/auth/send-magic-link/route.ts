@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     // Envoie l'email
     const { error } = await resend.emails.send({
-      from: 'Kadria <onboarding@resend.dev>',
+      from: 'Kadria <contact@kadria.fr>',
       to: email,
       subject: 'Votre lien de connexion Kadria',
       html: `
