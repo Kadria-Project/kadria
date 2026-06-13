@@ -164,9 +164,6 @@ export async function POST(request: Request) {
       Source: input.source ?? 'web',
       'Call ID': input.callId ?? '',
       'Assigned To': input.assignedTo ?? '',
-      Attachments: input.attachments
-        ? JSON.stringify(input.attachments)
-        : '[]',
       Photos: (input.photos || []).map((p: { url: string } | string) => ({
         url: typeof p === 'string' ? p : p.url
       })),
