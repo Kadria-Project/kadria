@@ -35,6 +35,9 @@ export default function OnboardingPage() {
     websiteUrl: '',
   })
 
+  const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
+  const [copied, setCopied] = useState(false)
+
   useEffect(() => {
     fetch('/api/artisan/config')
       .then(r => r.json())
@@ -53,10 +56,14 @@ export default function OnboardingPage() {
             secondaryColor: data.config.secondaryColor || '#18181b',
             websiteUrl: data.config.websiteUrl || '',
           })
+          if (data.config.artisanId) {
+            setArtisanIdDisplay(data.config.artisanId)
+          }
         }
       })
       .finally(() => setLoading(false))
   }, [])
+
 
   const save = async () => {
     setSaving(true)
@@ -512,23 +519,55 @@ export default function OnboardingPage() {
                   Intégration sur votre site
                 </h3>
                 <p style={{ color: '#71717a', fontSize: '13px', margin: '0 0 14px' }}>
-                  Copiez ce lien et partagez-le avec vos prospects,
-                  ou intégrez-le sur votre site.
+                  Copiez ce code et collez-le sur votre site
+                  pour afficher le widget Kadria.
                 </p>
                 <div style={{
                   background: '#09090b',
                   border: '1px solid #27272a',
                   borderRadius: '10px',
-                  padding: '14px',
-                  fontFamily: 'monospace',
-                  fontSize: '13px',
-                  color: '#4ade80',
-                  wordBreak: 'break-all',
+                  padding: '16px',
+                  position: 'relative',
                 }}>
-                  {`${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/projet?artisan_id=${'{VOTRE_ARTISAN_ID}'}`}
+                  <pre style={{
+                    margin: 0,
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    color: '#4ade80',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    lineHeight: 1.6,
+                  }}>
+                    {`<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`
+                      )
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      background: copied ? 'rgba(34,197,94,0.2)' : '#27272a',
+                      border: '1px solid',
+                      borderColor: copied ? '#22c55e' : '#3f3f46',
+                      color: copied ? '#4ade80' : '#a1a1aa',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {copied ? '✓ Copié !' : 'Copier'}
+                  </button>
                 </div>
                 <p style={{ color: '#52525b', fontSize: '12px', margin: '8px 0 0' }}>
-                  Votre Artisan ID se trouve dans votre profil Kadria.
+                  Collez ce code avant la balise &lt;/body&gt; de votre site.
+                  Le widget apparaît automatiquement aux couleurs de votre entreprise.
                 </p>
               </div>
             </div>
