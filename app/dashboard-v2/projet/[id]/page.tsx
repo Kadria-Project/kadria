@@ -5,8 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { Badge } from '@/src/components/ui/badge';
-import { ScorePill } from '@/src/components/ArtisanDashboard';
 import {
   ArrowLeft,
   Phone,
@@ -159,7 +157,6 @@ function ProjectDetail() {
     );
   }
 
-  const score = Number(project.completenessScore ?? 0);
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
   const verdict = getVerdict(project);
   const recommendation = getRecommendation(project);
@@ -174,70 +171,83 @@ function ProjectDetail() {
           Retour
         </Button>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-3">
-              <div>
-                <h1 className="text-3xl font-bold text-white">
-                  {project.clientFirstName} {project.clientName}
-                </h1>
-
-                <p className="text-zinc-400">
-                  {project.trade || project.projectType || 'Projet'} · {project.city || 'Ville non renseignée'}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <ScorePill score={score} />
-                <Badge variant="secondary" className="text-[10px]">
-                  {project.budget || 'Budget non renseigné'}
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  {project.desiredTimeline || 'Délai non renseigné'}
-                </Badge>
-                <Badge variant="secondary" className="text-[10px]">
-                  {project.maturity || 'Maturité non renseignée'}
-                </Badge>
-              </div>
-
+        <div style={{
+          background: '#18181b',
+          border: '1px solid #27272a',
+          borderRadius: '16px',
+          padding: '24px',
+          marginBottom: '16px',
+        }}>
+          {/* Ligne 1 : Nom + Statut */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '6px',
+          }}>
+            <div>
+              <h1 style={{
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: 700,
+                margin: '0 0 4px',
+              }}>
+                {project.clientFirstName} {project.clientName}
+              </h1>
+              <p style={{
+                color: '#a1a1aa',
+                fontSize: '14px',
+                margin: 0,
+              }}>
+                {project.trade} · {project.city}
+              </p>
             </div>
-
+            {/* Statut */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-end',
-              gap: '6px',
+              gap: '8px',
+              flexShrink: 0,
             }}>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 min-w-44 text-center">
-                <p className="text-xs uppercase tracking-wide text-zinc-400">Statut dossier</p>
-                <p className="mt-1">
-                  <span style={{
-                    background: currentStyle.bg,
-                    color: currentStyle.text,
-                    border: `1px solid ${currentStyle.border}`,
-                    borderRadius: '20px',
-                    padding: '4px 12px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                  }}>
-                    {project.status}
-                  </span>
+              <div>
+                <p style={{
+                  color: '#71717a',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  margin: '0 0 4px',
+                  textAlign: 'right',
+                }}>
+                  Statut dossier
                 </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: '6px' }}>
                 <span style={{
-                  fontSize: '11px', color: '#71717a',
+                  background: currentStyle.bg,
+                  color: currentStyle.text,
+                  border: `1px solid ${currentStyle.border}`,
+                  borderRadius: '20px',
+                  padding: '5px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                }}>
+                  {project.status || 'Nouveau'}
+                </span>
+              </div>
+              {/* ID + source sous le statut */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <span style={{
+                  fontSize: '11px', color: '#52525b',
                   background: '#27272a', borderRadius: '6px',
-                  padding: '3px 8px',
+                  padding: '3px 8px', whiteSpace: 'nowrap',
                 }}>
                   #{project.id?.slice(-8).toUpperCase()}
                 </span>
                 {project.source && (
                   <span style={{
-                    fontSize: '11px', color: '#71717a',
+                    fontSize: '11px', color: '#52525b',
                     background: '#27272a', borderRadius: '6px',
-                    padding: '3px 8px',
+                    padding: '3px 8px', whiteSpace: 'nowrap',
                   }}>
                     via {project.source}
                   </span>
@@ -245,42 +255,59 @@ function ProjectDetail() {
               </div>
             </div>
           </div>
-        </section>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-wrap gap-6">
-          {project.clientPhone && (
-            <a
-              href={`tel:${project.clientPhone}`}
-              style={{ color: 'white', textDecoration: 'none', fontSize: '13px' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#22c55e')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'white')}
-            >
-              📞 {project.clientPhone}
-            </a>
-          )}
+          {/* Séparateur */}
+          <hr style={{
+            border: 'none',
+            borderTop: '1px solid #27272a',
+            margin: '16px 0',
+          }} />
 
-          {project.clientEmail && (
-            <a
-              href={`mailto:${project.clientEmail}`}
-              style={{ color: 'white', textDecoration: 'none', fontSize: '13px' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#22c55e')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'white')}
-            >
-              ✉️ {project.clientEmail}
-            </a>
-          )}
-
-          {project.siteAddress && (
-            <span style={{ color: 'white', fontSize: '13px' }}>
-              📍 {project.siteAddress}{project.city ? `, ${project.city}` : ''}
-            </span>
-          )}
-
-          {project.createdAt && (
-            <span style={{ color: 'white', fontSize: '13px' }}>
-              📅 Créé le {formatDate(project.createdAt)}
-            </span>
-          )}
+          {/* Ligne 2 : Infos de contact */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '20px',
+            alignItems: 'center',
+          }}>
+            {project.clientPhone && (
+              <a href={`tel:${project.clientPhone}`} style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                color: 'white', textDecoration: 'none', fontSize: '13px',
+              }}>
+                <span style={{ color: '#22c55e', fontSize: '14px' }}>📞</span>
+                {project.clientPhone}
+              </a>
+            )}
+            {project.clientEmail && (
+              <a href={`mailto:${project.clientEmail}`} style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                color: 'white', textDecoration: 'none', fontSize: '13px',
+              }}>
+                <span style={{ color: '#22c55e', fontSize: '14px' }}>✉️</span>
+                {project.clientEmail}
+              </a>
+            )}
+            {project.siteAddress && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                color: 'white', fontSize: '13px',
+              }}>
+                <span style={{ color: '#22c55e', fontSize: '14px' }}>📍</span>
+                {project.siteAddress}
+                {project.city && project.city !== project.siteAddress
+                  ? `, ${project.city}` : ''}
+              </div>
+            )}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              color: '#71717a', fontSize: '12px',
+              marginLeft: 'auto',
+            }}>
+              <span>📅</span>
+              Créé le {new Date(project.createdAt).toLocaleDateString('fr-FR')}
+            </div>
+          </div>
         </div>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
@@ -811,17 +838,5 @@ function getStructuredSummary(project: any) {
     enjeu: [project.budget, project.desiredTimeline].filter(Boolean).join(' — ') || 'Non renseigné',
     priorite: project.maturity || 'Non renseignée',
   };
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-
-  return `${day}/${month}/${year}`;
 }
 
