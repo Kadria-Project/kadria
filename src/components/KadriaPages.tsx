@@ -2032,140 +2032,291 @@ export function AdminRoutePage() {
 }
 
 export function SimulateurSection() {
-  const [demandes, setDemandes] = useState(10);
-  const [perte, setPerte] = useState(40);
-  const [valeur, setValeur] = useState(3000);
-  const [marge, setMarge] = useState(25);
+  const [callsPerWeek, setCallsPerWeek] = useState(10)
+  const [lostPercent, setLostPercent] = useState(40)
+  const [avgValue, setAvgValue] = useState(3000)
+  const [margin, setMargin] = useState(25)
 
-  // Assure-toi que toutes les variables sont des NOMBRES
-  const demandesNum = Number(demandes);
-  const perteNum = Number(perte);
-  const valeurNum = Number(valeur);
-  const margeNum = Number(marge);
+  // Calculs — même logique que le code de référence
+  const lostPerMonth = Math.round((callsPerWeek * (lostPercent / 100)) * 4.3)
+  const lostRevenue = lostPerMonth * avgValue
+  const lostMargin = Math.round(lostRevenue * (margin / 100))
+  const kadriaMonthly = 249
 
-  // Calculs
-  const opportunitesPerdues = Math.round(demandesNum * 4 * (perteNum / 100));
-  const caPotentielPerdu = opportunitesPerdues * valeurNum;
-  const margePerdue = Math.round(caPotentielPerdu * (margeNum / 100));
+  const fmt = (n: number) => n.toLocaleString('fr-FR')
 
-  // Breakeven : combien de chantiers récupérés pour payer 249€/mois
-  const breakeven = valeurNum > 0
-    ? Math.max(1, Math.ceil(249 / valeurNum))
-    : 1;
+  const sliders = [
+    {
+      label: 'Demandes reçues par semaine',
+      value: callsPerWeek,
+      min: 1, max: 40, step: 1,
+      display: `${callsPerWeek}`,
+      onChange: (v: number) => setCallsPerWeek(v),
+    },
+    {
+      label: 'Part non traitée ou mal qualifiée',
+      value: lostPercent,
+      min: 10, max: 80, step: 5,
+      display: `${lostPercent} %`,
+      onChange: (v: number) => setLostPercent(v),
+    },
+    {
+      label: "Valeur moyenne d'un chantier",
+      value: avgValue,
+      min: 500, max: 20000, step: 500,
+      display: `${fmt(avgValue)} €`,
+      onChange: (v: number) => setAvgValue(v),
+    },
+    {
+      label: 'Marge nette moyenne',
+      value: margin,
+      min: 10, max: 50, step: 5,
+      display: `${margin} %`,
+      onChange: (v: number) => setMargin(v),
+    },
+  ]
+
+  const results = [
+    {
+      icon: '⚠️',
+      label: 'Opportunités perdues / mois',
+      value: `≈ ${lostPerMonth}`,
+    },
+    {
+      icon: '📉',
+      label: 'CA potentiel perdu / mois',
+      value: `${fmt(lostRevenue)} €`,
+    },
+    {
+      icon: '€',
+      label: 'Marge perdue / mois',
+      value: `${fmt(lostMargin)} €`,
+    },
+  ]
 
   return (
-    <section className="mx-auto max-w-[1280px] px-6 py-24">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Simulateur</p>
-        <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-          Combien de chantiers <span className="kr-gradient-text">perdez-vous</span> chaque mois ?
-        </h2>
-        <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-          Estimez l impact financier des demandes non traitées ou mal qualifiées sur votre activité.
-        </p>
-      </div>
-
-      <div className="mt-12 grid gap-8 md:grid-cols-2">
-        <div className="kr-reveal-left kr-reveal kr-reveal-delay-3 space-y-8">
-          <div>
-            <div className="flex items-center justify-between text-sm">
-              <label className="text-white">Demandes reçues par semaine</label>
-              <span className="font-semibold text-green-500">{demandes}</span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={50}
-              value={demandes}
-              onChange={(e) => setDemandes(Number(e.target.value))}
-              className="mt-3 w-full accent-green-500"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between text-sm">
-              <label className="text-white">Part non traitée ou mal qualifiée</label>
-              <span className="font-semibold text-green-500">{perte}%</span>
-            </div>
-            <input
-              type="range"
-              min={10}
-              max={90}
-              value={perte}
-              onChange={(e) => setPerte(Number(e.target.value))}
-              className="mt-3 w-full accent-green-500"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between text-sm">
-              <label className="text-white">Valeur moyenne d un chantier</label>
-              <span className="font-semibold text-green-500">{valeur} €</span>
-            </div>
-            <input
-              type="range"
-              min={500}
-              max={20000}
-              step={100}
-              value={valeur}
-              onChange={(e) => setValeur(Number(e.target.value))}
-              className="mt-3 w-full accent-green-500"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between text-sm">
-              <label className="text-white">Marge nette moyenne</label>
-              <span className="font-semibold text-green-500">{marge}%</span>
-            </div>
-            <input
-              type="range"
-              min={5}
-              max={50}
-              value={marge}
-              onChange={(e) => setMarge(Number(e.target.value))}
-              className="mt-3 w-full accent-green-500"
-            />
-          </div>
-        </div>
-
-        <div className="kr-reveal-right kr-reveal kr-reveal-delay-3 space-y-4">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-2xl font-bold text-white">{opportunitesPerdues}</p>
-            <p className="mt-1 text-sm text-zinc-400">Opportunités perdues / mois</p>
-          </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-2xl font-bold text-white">{caPotentielPerdu.toLocaleString('fr-FR')} €</p>
-            <p className="mt-1 text-sm text-zinc-400">CA potentiel perdu / mois</p>
-          </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-2xl font-bold text-white">{margePerdue.toLocaleString('fr-FR')} €</p>
-            <p className="mt-1 text-sm text-zinc-400">Marge perdue / mois</p>
-          </div>
-
-          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
-            <p className="text-sm font-semibold text-green-400">✓ Abonnement Kadria</p>
-            <p className="mt-2 text-3xl font-bold text-white">249 €/mois</p>
-            <p style={{ fontSize: '13px', color: '#a1a1aa', margin: 0 }}>
-              Un seul chantier récupéré sur{' '}
-              <strong style={{ color: 'white' }}>{breakeven}</strong>{' '}
-              suffit à rentabiliser Kadria.
-            </p>
-          </div>
-
+    <section style={{
+      padding: '96px 0',
+      borderTop: '1px solid #27272a',
+      background: '#09090b',
+    }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px' }}>
+        {/* Header */}
+        <div className="kr-reveal" style={{ textAlign: 'center', marginBottom: '56px' }}>
           <p style={{
-            color: '#52525b',
-            fontSize: '12px',
-            margin: '12px 0 0',
-            fontStyle: 'italic',
-            textAlign: 'center',
+            color: '#22c55e', fontSize: '11px', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            margin: '0 0 12px',
           }}>
-            Estimation indicative basée sur vos hypothèses.
+            SIMULATEUR
+          </p>
+          <h2 style={{
+            color: 'white', fontSize: '38px', fontWeight: 800,
+            margin: '0 0 12px', lineHeight: 1.2,
+          }}>
+            Combien de chantiers{' '}
+            <span style={{
+              background: 'linear-gradient(135deg, #22c55e 0%, #86efac 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              perdez-vous
+            </span>{' '}
+            chaque mois ?
+          </h2>
+          <p style={{ color: '#71717a', fontSize: '16px', margin: 0, lineHeight: 1.6 }}>
+            Ajustez les curseurs selon votre activité pour estimer
+            l&apos;impact des opportunités manquées.
           </p>
         </div>
+
+        {/* Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '3fr 2fr',
+          gap: '24px',
+          alignItems: 'start',
+        }}>
+          {/* Sliders */}
+          <div className="kr-reveal-left kr-reveal" style={{
+            background: '#18181b',
+            border: '1px solid #27272a',
+            borderRadius: '20px',
+            padding: '32px',
+          }}>
+            {sliders.map((slider, i) => (
+              <div key={i} style={{ marginBottom: i < sliders.length - 1 ? '28px' : 0 }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '10px',
+                }}>
+                  <span style={{ color: '#a1a1aa', fontSize: '14px' }}>
+                    {slider.label}
+                  </span>
+                  <span style={{
+                    color: '#22c55e', fontSize: '14px',
+                    fontWeight: 700, minWidth: '80px', textAlign: 'right',
+                  }}>
+                    {slider.display}
+                  </span>
+                </div>
+                <div style={{ position: 'relative', height: '20px', display: 'flex', alignItems: 'center' }}>
+                  {/* Track background */}
+                  <div style={{
+                    position: 'absolute',
+                    width: '100%', height: '4px',
+                    background: '#3f3f46', borderRadius: '2px',
+                  }} />
+                  {/* Track fill */}
+                  <div style={{
+                    position: 'absolute',
+                    height: '4px',
+                    background: '#22c55e',
+                    borderRadius: '2px',
+                    width: `${((slider.value - slider.min) / (slider.max - slider.min)) * 100}%`,
+                  }} />
+                  {/* Input range */}
+                  <input
+                    type="range"
+                    min={slider.min}
+                    max={slider.max}
+                    step={slider.step}
+                    value={slider.value}
+                    onChange={e => slider.onChange(Number(e.target.value))}
+                    style={{
+                      position: 'absolute',
+                      width: '100%',
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      margin: 0,
+                      padding: 0,
+                      height: '20px',
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Results */}
+          <div className="kr-reveal-right kr-reveal" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            {results.map((result, i) => (
+              <div key={i} style={{
+                background: '#18181b',
+                border: '1px solid #27272a',
+                borderRadius: '14px',
+                padding: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+              }}>
+                <div style={{
+                  width: '36px', height: '36px',
+                  borderRadius: '10px',
+                  background: 'rgba(239,68,68,0.1)',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: '16px',
+                  flexShrink: 0,
+                }}>
+                  {result.icon}
+                </div>
+                <div>
+                  <p style={{ color: '#71717a', fontSize: '11px', margin: '0 0 2px' }}>
+                    {result.label}
+                  </p>
+                  <p style={{ color: 'white', fontSize: '20px', fontWeight: 700, margin: 0 }}>
+                    {result.value}
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            {/* Card Abonnement Kadria */}
+            <div style={{
+              background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              borderRadius: '14px',
+              padding: '20px',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                gap: '8px', marginBottom: '8px',
+              }}>
+                <span style={{ color: '#22c55e', fontSize: '16px' }}>✓</span>
+                <span style={{
+                  color: 'white', fontSize: '13px', fontWeight: 600,
+                }}>
+                  Abonnement Kadria
+                </span>
+              </div>
+              <p style={{
+                color: '#22c55e', fontSize: '28px',
+                fontWeight: 800, margin: '0 0 8px',
+              }}>
+                {kadriaMonthly} €
+                <span style={{
+                  color: '#71717a', fontSize: '14px', fontWeight: 400,
+                }}>
+                  /mois
+                </span>
+              </p>
+              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+                {lostPerMonth >= 1
+                  ? <>Un seul chantier récupéré sur{' '}
+                      <strong style={{ color: 'white' }}>{lostPerMonth}</strong>{' '}
+                      suffit à rentabiliser Kadria.</>
+                  : 'Kadria sécurise chaque opportunité entrante.'
+                }
+              </p>
+            </div>
+
+            {/* Disclaimer en dehors de la card */}
+            <p style={{
+              color: '#52525b',
+              fontSize: '11px',
+              margin: '4px 0 0',
+              fontStyle: 'italic',
+              textAlign: 'center',
+            }}>
+              Estimation indicative basée sur vos hypothèses.
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* Style pour le thumb du slider */}
+      <style>{`
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #22c55e;
+          cursor: pointer;
+          border: 2px solid #09090b;
+          box-shadow: 0 0 0 2px #22c55e;
+        }
+        input[type=range]::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #22c55e;
+          cursor: pointer;
+          border: 2px solid #09090b;
+          box-shadow: 0 0 0 2px #22c55e;
+        }
+      `}</style>
     </section>
-  );
+  )
 }
 
 interface PricingPlan {
