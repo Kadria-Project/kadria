@@ -44,7 +44,8 @@ function ProjectDetail() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
-  const [notes, setNotes] = useState('');
+  const [note, setNote] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
   const [callbackDate, setCallbackDate] = useState('');
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
@@ -71,7 +72,7 @@ function ProjectDetail() {
         const data = await getProject(id);
 
         setProject(data.project);
-        setNotes(data.project?.internalNotes || '');
+        setNote(data.project?.internalNotes || '');
         setCallbackDate(data.project?.callbackDate || '');
         setShowCallback(!!data.project?.callbackDate);
 
@@ -103,11 +104,11 @@ function ProjectDetail() {
     }
   }
 
-  async function saveNotes() {
+  async function saveNote() {
     try {
       setUpdating(true);
 
-      const data = await updateProject(id, { internalNotes: notes });
+      const data = await updateProject(id, { internalNotes: note });
 
       if (data.success) {
         setProject(data.project);
@@ -235,25 +236,6 @@ function ProjectDetail() {
                   {project.status || 'Nouveau'}
                 </span>
               </div>
-              {/* ID + source sous le statut */}
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <span style={{
-                  fontSize: '11px', color: '#52525b',
-                  background: '#27272a', borderRadius: '6px',
-                  padding: '3px 8px', whiteSpace: 'nowrap',
-                }}>
-                  #{project.id?.slice(-8).toUpperCase()}
-                </span>
-                {project.source && (
-                  <span style={{
-                    fontSize: '11px', color: '#52525b',
-                    background: '#27272a', borderRadius: '6px',
-                    padding: '3px 8px', whiteSpace: 'nowrap',
-                  }}>
-                    via {project.source}
-                  </span>
-                )}
-              </div>
             </div>
           </div>
 
@@ -339,18 +321,26 @@ function ProjectDetail() {
             }}>
               Suivi commercial
             </h2>
-            {/* Statut actuel en badge compact */}
-            <span style={{
-              background: currentStyle.bg,
-              color: currentStyle.text,
-              border: `1px solid ${currentStyle.border}`,
-              borderRadius: '20px',
-              padding: '3px 10px',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}>
-              {project.status || 'Nouveau'}
-            </span>
+            {/* ID + source */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <span style={{
+                fontSize: '11px', color: '#52525b',
+                background: '#27272a', borderRadius: '6px',
+                padding: '3px 8px', whiteSpace: 'nowrap',
+                fontFamily: 'monospace',
+              }}>
+                #{project.id?.slice(-8).toUpperCase()}
+              </span>
+              {project.source && (
+                <span style={{
+                  fontSize: '11px', color: '#52525b',
+                  background: '#27272a', borderRadius: '6px',
+                  padding: '3px 8px', whiteSpace: 'nowrap',
+                }}>
+                  via {project.source}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Pipeline — changer de statut */}
@@ -792,48 +782,136 @@ function ProjectDetail() {
           </div>
         </div>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Notes internes</h2>
-
-          <textarea
-            ref={noteRef}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full min-h-[180px] rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
-            placeholder="Ajouter une note interne pour le suivi commercial..."
-          />
-
-          <Button disabled={updating} onClick={saveNotes}>
-            Enregistrer la note
-          </Button>
-        </section>
+        {!showNotes ? (
+          <div style={{
+            background: '#18181b',
+            border: '1px solid #27272a',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            marginBottom: '16px',
+          }}>
+            <button
+              onClick={() => setShowNotes(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#a1a1aa',
+                cursor: 'pointer',
+                fontSize: '14px',
+                padding: 0,
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                textAlign: 'left',
+              }}
+            >
+              <span>📝</span>
+              <span style={{ color: 'white', fontWeight: 500 }}>Notes internes</span>
+              {note && (
+                <span style={{
+                  background: '#22c55e', color: 'black',
+                  borderRadius: '10px', padding: '1px 7px',
+                  fontSize: '11px', fontWeight: 700,
+                }}>
+                  1
+                </span>
+              )}
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: '12px',
+                color: '#22c55e',
+              }}>
+                {note ? 'Voir / modifier →' : '+ Ajouter une note →'}
+              </span>
+            </button>
+            {note && (
+              <p style={{
+                color: '#d4d4d8', fontSize: '13px',
+                margin: '10px 0 0', fontStyle: 'italic', lineHeight: 1.6,
+              }}>
+                {note.slice(0, 120)}{note.length > 120 ? '...' : ''}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            background: '#18181b', border: '1px solid #27272a',
+            borderRadius: '16px', padding: '20px', marginBottom: '16px',
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: '12px',
+            }}>
+              <h3 style={{ color: 'white', fontSize: '15px', fontWeight: 600, margin: 0 }}>
+                📝 Notes internes
+              </h3>
+              <button
+                onClick={() => setShowNotes(false)}
+                style={{
+                  background: 'transparent', border: 'none',
+                  color: '#71717a', cursor: 'pointer', fontSize: '18px',
+                }}
+              >✕</button>
+            </div>
+            <textarea
+              ref={noteRef}
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Ajouter une note interne pour le suivi commercial..."
+              style={{
+                width: '100%', minHeight: '120px',
+                background: '#27272a', border: '1px solid #3f3f46',
+                borderRadius: '10px', padding: '12px',
+                color: 'white', fontSize: '13px',
+                resize: 'vertical', outline: 'none',
+                fontFamily: 'system-ui, sans-serif',
+                lineHeight: 1.6, boxSizing: 'border-box',
+              }}
+            />
+            <button
+              onClick={() => { saveNote(); setShowNotes(false); }}
+              style={{
+                marginTop: '10px', background: '#22c55e',
+                border: 'none', color: 'black', fontWeight: 600,
+                borderRadius: '8px', padding: '8px 20px',
+                fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              Enregistrer la note
+            </button>
+          </div>
+        )}
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white">Historique du dossier</h2>
 
-          {activities.length === 0 ? (
-            <p className="text-sm text-zinc-400">
-              Aucun historique disponible.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <div key={activity.id} className="flex gap-3">
+          <div className="space-y-4">
+            {[...activities, {
+              id: 'creation',
+              description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
+              createdAt: project.createdAt,
+              type: 'creation',
+            }].map((activity) => (
+              <div key={activity.id} className="flex gap-3">
+                {activity.type === 'creation' ? (
+                  <span className="w-4 h-4 mt-1 text-green-500 flex-shrink-0 leading-none">✦</span>
+                ) : (
                   <CircleDot className="w-4 h-4 mt-1 text-green-500" />
+                )}
 
-                  <div>
-                    <p className="font-medium text-white">{activity.description}</p>
+                <div>
+                  <p className="font-medium text-white">{activity.description}</p>
 
-                    <p className="text-xs text-zinc-400">
-                      {activity.createdAt
-                        ? new Date(activity.createdAt).toLocaleString('fr-FR')
-                        : 'Date inconnue'}
-                    </p>
-                  </div>
+                  <p className="text-xs text-zinc-400">
+                    {activity.createdAt
+                      ? new Date(activity.createdAt).toLocaleString('fr-FR')
+                      : 'Date inconnue'}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </section>
 
       </main>
