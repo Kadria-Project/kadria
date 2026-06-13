@@ -316,11 +316,11 @@ function Dashboard() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', padding: '0 0 40px' }}>
+    <div style={{ minHeight: '100vh', background: '#09090b', padding: '24px 32px 40px' }}>
       {/* Header */}
       <div
         style={{
-          padding: '24px 32px 0',
+          padding: 0,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
@@ -334,11 +334,11 @@ function Dashboard() {
             Kadria Pro
           </p>
 
-          <h1 style={{ color: 'white', fontSize: '28px', fontWeight: 700, margin: '0 0 6px' }}>
+          <h1 style={{ color: 'white', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
             Tableau de bord
           </h1>
 
-          <p style={{ color: '#71717a', fontSize: '13px', margin: 0, textTransform: 'capitalize' }}>
+          <p style={{ color: '#71717a', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
             {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
@@ -364,15 +364,15 @@ function Dashboard() {
       </div>
 
       {/* KPIs */}
-      <div style={{ padding: '0 32px', marginBottom: '24px' }}>
+      <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '16px' }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '16px' }}>
             {kpis.map((k) => {
               const isAlert = k.label === 'Dossiers à relancer' && dossiersARelancer > 0;
 
@@ -392,11 +392,13 @@ function Dashboard() {
                     ...cardStyle,
                     borderRadius: '14px',
                     borderTop: `2px solid ${borderTopColor}`,
+                    padding: '20px 22px',
+                    minHeight: '100px',
                     ...(isAlert ? { borderColor: 'rgba(239,68,68,0.3)', borderTopColor } : {}),
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#a1a1aa', fontSize: '13px' }}>{k.label}</span>
+                    <span style={{ color: '#71717a', fontSize: '13px' }}>{k.label}</span>
 
                     <div
                       style={{
@@ -416,7 +418,7 @@ function Dashboard() {
 
                   <span
                     style={{
-                      fontSize: '26px',
+                      fontSize: '28px',
                       fontWeight: 700,
                       letterSpacing: '-0.5px',
                       color: isAlert ? '#f87171' : 'white',
@@ -433,7 +435,7 @@ function Dashboard() {
 
       {/* Alertes */}
       {!loading && (overdueCallbacks.length > 0 || todayCallbacks.length > 0) && (
-        <div style={{ padding: '0 32px', marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {overdueCallbacks.length > 0 && (
             <div
               style={{
@@ -534,7 +536,7 @@ function Dashboard() {
 
       {/* Vue active */}
       {activeView === 'calendar' ? (
-        <div style={{ padding: '0 32px', marginBottom: '24px' }}>
+        <div style={{ padding: 0, marginBottom: '24px' }}>
           <div
             style={{
               background: '#18181b',
@@ -557,7 +559,7 @@ function Dashboard() {
           </div>
         </div>
       ) : (
-        <div style={{ padding: '0 32px', marginBottom: '24px' }}>
+        <div style={{ padding: 0, marginBottom: '24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px' }} className="!grid-cols-1 lg:!grid-cols-[1fr_380px]">
             {/* Colonne principale */}
             <div className="space-y-4">
@@ -675,17 +677,17 @@ function Dashboard() {
                             #{index + 1}
                           </span>
 
-                          <span className="text-green-400 font-bold text-sm">
+                          <span style={{ fontSize: '14px', fontWeight: 700 }} className="text-green-400">
                             {opportunityScore(project)}
                           </span>
                         </div>
 
                         <div>
-                          <p className="font-semibold text-white text-sm truncate">
+                          <p style={{ fontSize: '14px', fontWeight: 600 }} className="text-white truncate">
                             {project.clientFirstName} {project.clientName}
                           </p>
 
-                          <p className="text-zinc-400 text-xs truncate">
+                          <p style={{ fontSize: '12px' }} className="text-zinc-400 truncate">
                             {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
                           </p>
                         </div>
@@ -717,10 +719,11 @@ function Dashboard() {
                         <div
                           key={step.label}
                           style={{
-                            padding: '8px 12px',
+                            padding: '10px 14px',
                             background: '#18181b',
                             borderRadius: '8px',
                             marginBottom: '4px',
+                            fontSize: '13px',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -795,7 +798,10 @@ function ProjectList({
 }) {
   return (
     <div>
-      <div className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-xs text-zinc-500 uppercase tracking-widest px-4 py-3">
+      <div
+        className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-zinc-500 uppercase tracking-widest"
+        style={{ fontSize: '11px', padding: '10px 16px' }}
+      >
         <span className="col-span-1">Réf</span>
         <span className="col-span-1">Reçu</span>
         <span className="col-span-2">Client</span>
@@ -810,15 +816,15 @@ function ProjectList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 cursor-pointer"
+          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
-          <div className="hidden md:grid grid-cols-12 gap-4 items-center text-sm">
-            <span className="col-span-1 text-zinc-500 font-mono text-xs">
+          <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
+            <span className="col-span-1 text-zinc-500 font-mono">
               {String(p.id).slice(0, 6)}
             </span>
 
-            <span className="col-span-1 text-zinc-400 text-xs">
+            <span className="col-span-1 text-zinc-400">
               {p.createdAt ? timeAgo(p.createdAt) : '—'}
             </span>
 
@@ -840,7 +846,7 @@ function ProjectList({
               {p.city || '—'}
             </span>
 
-            <span className="col-span-1 text-xs text-zinc-400">
+            <span className="col-span-1 text-zinc-400">
               {p.budget || '—'}
             </span>
 
