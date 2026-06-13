@@ -81,6 +81,7 @@ export default function ChatWidget({
   // Photos
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const [photosAnswered, setPhotosAnswered] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // Contact form
   const [showContactForm, setShowContactForm] = useState(false)
@@ -197,6 +198,8 @@ export default function ChatWidget({
     if (data.completenessScore > 0) setScore(data.completenessScore)
     setExpectedField(data.expectedField || null)
 
+    if (data.expectedField !== 'photos') setPhotosAnswered(true)
+
     if (data.expectedField === 'contactForm') {
       setShowContactForm(true)
     }
@@ -220,6 +223,7 @@ export default function ChatWidget({
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim()
     if (!text || loading) return
+    if (text.toLowerCase().includes('pas de photos')) setPhotosAnswered(true)
     setInput('')
     setQuickReplies([])
     setAdresseSuggestions([])
@@ -265,6 +269,7 @@ export default function ChatWidget({
           ...data.files.map((f: { url: string; publicId: string }) => ({ url: f.url, publicId: f.publicId })),
         ])
         await sendMessage(`J'ai ajouté ${data.files.length} photo(s) à mon dossier.`)
+        setPhotosAnswered(true)
       } else {
         alert('Erreur lors de l\'envoi des photos. Veuillez réessayer.')
       }
@@ -483,7 +488,7 @@ export default function ChatWidget({
               )}
 
               {/* Photo buttons */}
-              {!loading && isPhotoMode && !showContactForm && (
+              {!loading && isPhotoMode && !showContactForm && !photosAnswered && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => fileInputRef.current?.click()}
