@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { KadriaLogoImg } from '@/src/components/KadriaLogo';
 import ChatWidget from '@/src/components/ChatWidget';
+import PricingQuiz from '@/src/components/PricingQuiz';
 
 const features = [
   {
@@ -613,7 +614,7 @@ export function LandingRoutePage() {
               <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
                 Réserver une démonstration
               </Link>
             </div>
@@ -905,7 +906,7 @@ export function LandingRoutePage() {
               <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
                 Réserver une démonstration
               </Link>
             </div>
@@ -939,7 +940,7 @@ function DarkNav() {
           <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
             Connexion
           </Link>
-          <Link href="/demo" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+          <Link href="/demo-request" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
             Réserver une démo
           </Link>
           <Link href="/assistant" className="rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
@@ -1083,6 +1084,19 @@ export function PricingRoutePage() {
           <BillingToggle pricingPlans={pricingPlans} comparatif={comparatif} />
         </section>
 
+        {/* QUIZ TARIFAIRE */}
+        <section className="border-t border-zinc-800 bg-zinc-900 px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Pas sûr de votre choix ?</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+              Trouvez l&apos;offre adaptée à votre activité
+            </h2>
+          </div>
+          <div className="mt-10">
+            <PricingQuiz showCTA={true} />
+          </div>
+        </section>
+
         {/* FAQ */}
         <PricingFaq />
 
@@ -1097,7 +1111,7 @@ export function PricingRoutePage() {
               <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
                 Réserver une démonstration
               </Link>
             </div>

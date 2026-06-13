@@ -245,3 +245,48 @@ export async function updateArtisanConfig(
   console.log('[ARTISAN_CONFIG] Update result:', result.id ? 'success' : result)
   return result
 }
+
+export async function createCommercialLead(data: {
+  nom: string
+  prenom: string
+  societe: string
+  trade: string
+  offer: string
+  answers: string
+  email?: string
+  phone?: string
+  preferredSlot?: string
+  demand?: string
+  teamSize?: string
+  website?: string
+}) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const res = await fetch(
+    `https://api.airtable.com/v0/${baseId}/Commercial`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fields: {
+          'Nom': data.nom,
+          'Prénom': data.prenom,
+          'Societe': data.societe,
+          'Trade': data.trade,
+          'Offer': data.offer,
+          'Answers': data.answers,
+          'Email': data.email || '',
+          'Phone': data.phone || '',
+          'Preferred Slot': data.preferredSlot || '',
+        },
+      }),
+    }
+  )
+  const result = await res.json()
+  console.log('[COMMERCIAL] Lead created:', result.id || result)
+  return result
+}
