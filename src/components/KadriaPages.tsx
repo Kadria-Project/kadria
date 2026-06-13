@@ -1004,8 +1004,8 @@ export function PricingRoutePage() {
     {
       slug: 'essentiel',
       name: 'Essentiel',
-      monthly: 99,
-      yearly: 79,
+      monthly: 149,
+      yearly: 119,
       description: 'Pour démarrer et ne plus manquer aucun appel.',
       features: [
         'Assistant chat web 24h/24',
@@ -1020,12 +1020,13 @@ export function PricingRoutePage() {
     {
       slug: 'pro',
       name: 'Pro',
-      monthly: 199,
-      yearly: 159,
+      monthly: 249,
+      yearly: 199,
       description: "L'outil complet pour ne plus perdre aucune opportunité.",
       features: [
         'Tout Essentiel inclus',
         'Assistant vocal (appels entrants)',
+        'Création de site web professionnel incluse',
         'Dossiers illimités',
         'CRM intégré + relances',
         'Export CSV',
@@ -1057,6 +1058,7 @@ export function PricingRoutePage() {
   const comparatif = [
     ['Assistant chat web', '✓', '✓', '✓'],
     ['Assistant vocal', '✗', '✓', '✓'],
+    ['Création site web', '✗', '✓', '✓'],
     ['Dossiers / mois', '50', 'Illimités', 'Illimités'],
     ['Dashboard', 'Basique', 'Complet', 'Multi-comptes'],
     ['CRM + relances', '✗', '✓', '✓'],
@@ -1350,7 +1352,7 @@ export function SimulateurSection() {
   const opportunitesPerdues = Math.round(demandes * 4 * (part / 100));
   const caPerdu = opportunitesPerdues * valeur;
   const margePerdue = caPerdu * (marge / 100);
-  const breakeven = valeur > 0 ? Math.ceil(199 / valeur) : 1;
+  const breakeven = valeur > 0 ? Math.ceil(249 / valeur) : 1;
 
   return (
     <section className="mx-auto max-w-[1280px] px-6 py-24">
@@ -1444,7 +1446,7 @@ export function SimulateurSection() {
 
           <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
             <p className="text-sm font-semibold text-green-400">✓ Abonnement Kadria</p>
-            <p className="mt-2 text-3xl font-bold text-white">199 €/mois</p>
+            <p className="mt-2 text-3xl font-bold text-white">249 €/mois</p>
             <p className="mt-2 text-sm text-zinc-400">
               Un seul chantier récupéré sur {breakeven} suffit à rentabiliser Kadria.
             </p>

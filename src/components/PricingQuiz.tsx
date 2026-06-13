@@ -46,7 +46,7 @@ const RESULTS = {
     border: '#3f3f46',
     title: 'L\'Essentiel est fait pour vous',
     desc: 'Parfait pour démarrer et centraliser vos demandes web sans vous compliquer la vie.',
-    price: '99€/mois',
+    price: '149€/mois',
   },
   pro: {
     plan: 'pro' as const,
@@ -56,7 +56,7 @@ const RESULTS = {
     border: '#22c55e',
     title: 'Le plan Pro correspond à votre activité',
     desc: 'Vous perdez des appels et des demandes — Kadria Pro qualifie vos prospects 24h/24, web et téléphone.',
-    price: '199€/mois',
+    price: '249€/mois',
   },
   agency: {
     plan: 'agency' as const,

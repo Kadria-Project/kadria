@@ -7,6 +7,8 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    console.log('[DEMO REQUEST] body:', JSON.stringify(body))
+    console.log('[DEMO REQUEST] quizResult:', JSON.stringify(body.quizResult))
     const { nom, prenom, email, phone, societe, trade, website, preferredSlot, quizResult } = body
 
     const fullName = `${prenom || ''} ${nom || ''}`.trim()

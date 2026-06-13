@@ -263,6 +263,10 @@ export async function createCommercialLead(data: {
   const apiKey = process.env.AIRTABLE_API_KEY
   const baseId = process.env.AIRTABLE_BASE_ID
 
+  console.log('[COMMERCIAL] Creating lead:', JSON.stringify(data))
+  console.log('[COMMERCIAL] Base ID:', process.env.AIRTABLE_BASE_ID)
+  console.log('[COMMERCIAL] API Key present:', !!process.env.AIRTABLE_API_KEY)
+
   const res = await fetch(
     `https://api.airtable.com/v0/${baseId}/Commercial`,
     {
@@ -274,7 +278,7 @@ export async function createCommercialLead(data: {
       body: JSON.stringify({
         fields: {
           'Nom': data.nom,
-          'Prénom': data.prenom,
+          'Prenom': data.prenom,
           'Societe': data.societe,
           'Trade': data.trade,
           'Offer': data.offer,
@@ -287,6 +291,8 @@ export async function createCommercialLead(data: {
     }
   )
   const result = await res.json()
+  console.log('[COMMERCIAL] Response status:', res.status)
+  console.log('[COMMERCIAL] Response:', JSON.stringify(result))
   console.log('[COMMERCIAL] Lead created:', result.id || result)
   return result
 }
