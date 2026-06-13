@@ -52,6 +52,7 @@ function ProjectDetail() {
   const [activities, setActivities] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
   const [callbackDate, setCallbackDate] = useState('');
+  const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const [showRdvModal, setShowRdvModal] = useState(false);
   const [rdvData, setRdvData] = useState({
@@ -78,6 +79,7 @@ function ProjectDetail() {
         setProject(data.project);
         setNotes(data.project?.internalNotes || '');
         setCallbackDate(data.project?.callbackDate || '');
+        setShowCallback(!!data.project?.callbackDate);
 
         await loadActivities();
       } catch (error) {
@@ -124,7 +126,7 @@ function ProjectDetail() {
     }
   }
 
-  async function saveCallbackDate() {
+  async function saveCallback() {
     try {
       setUpdating(true);
 
@@ -259,7 +261,7 @@ function ProjectDetail() {
           {/* Séparateur */}
           <hr style={{
             border: 'none',
-            borderTop: '1px solid #27272a',
+            borderTop: '1px solid #3f3f46',
             margin: '16px 0',
           }} />
 
@@ -294,9 +296,14 @@ function ProjectDetail() {
                 color: 'white', fontSize: '13px',
               }}>
                 <span style={{ color: '#22c55e', fontSize: '14px' }}>📍</span>
-                {project.siteAddress}
-                {project.city && project.city !== project.siteAddress
-                  ? `, ${project.city}` : ''}
+                {(() => {
+                  const addr = project.siteAddress || '';
+                  const city = project.city || '';
+                  if (city && addr.toLowerCase().includes(city.toLowerCase())) {
+                    return addr;
+                  }
+                  return city ? `${addr}, ${city}` : addr;
+                })()}
               </div>
             )}
             <div style={{
@@ -347,34 +354,91 @@ function ProjectDetail() {
             </Button>
           </div>
 
-          <div
-            style={{
-              borderTop: '1px solid #27272a',
-              marginTop: 12,
-              paddingTop: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <label className="text-zinc-400 text-xs" style={{ whiteSpace: 'nowrap' }}>
-              📅 Relance :
-            </label>
-
-            <input
-              type="datetime-local"
-              value={callbackDate ? callbackDate.slice(0, 16) : ''}
-              onChange={(e) => setCallbackDate(e.target.value)}
-              className="bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white text-sm flex-1"
-            />
-
-            <button
-              disabled={updating}
-              onClick={saveCallbackDate}
-              className="bg-green-500 text-black text-sm font-semibold rounded-lg px-3 py-2"
-            >
-              Enregistrer
-            </button>
+          <div style={{
+            borderTop: '1px solid #27272a',
+            marginTop: '12px',
+            paddingTop: '12px',
+          }}>
+            {!showCallback && !callbackDate ? (
+              <button
+                onClick={() => setShowCallback(true)}
+                style={{
+                  background: 'transparent',
+                  border: '1px dashed #3f3f46',
+                  color: '#71717a',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >
+                + Programmer une relance
+              </button>
+            ) : (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#a1a1aa',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}>
+                  📅 Relance :
+                </span>
+                <input
+                  type="datetime-local"
+                  value={callbackDate ? callbackDate.slice(0, 16) : ''}
+                  onChange={(e) => setCallbackDate(e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: '#27272a',
+                    border: '1px solid #3f3f46',
+                    borderRadius: '8px',
+                    padding: '6px 10px',
+                    color: 'white',
+                    fontSize: '13px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  disabled={updating}
+                  onClick={saveCallback}
+                  style={{
+                    background: '#22c55e',
+                    border: 'none',
+                    color: 'black',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    padding: '6px 14px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  Enregistrer
+                </button>
+                <button
+                  onClick={() => { setShowCallback(false); setCallbackDate(''); }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#71717a',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    flexShrink: 0,
+                    padding: '0 4px',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -477,38 +541,106 @@ function ProjectDetail() {
             background: '#27272a',
             borderBottom: '1px solid #27272a',
           }}>
-            {indicators.map((ind, i) => (
-              <div key={i} style={{
-                background: '#09090b',
-                padding: '12px 16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{
-                    color: ind.ok ? '#22c55e' : '#f87171',
-                    fontSize: '14px'
+            {indicators.map((ind, i) => {
+              if (i === 3 && project.photos && project.photos.length > 0) {
+                const photos = project.photos;
+
+                return (
+                  <div key={i} style={{
+                    background: '#09090b',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
                   }}>
-                    {ind.ok ? '✓' : '✗'}
-                  </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: '#22c55e', fontSize: '14px' }}>✓</span>
+                      <span style={{ color: '#e4e4e7', fontSize: '12px', fontWeight: 500 }}>
+                        Photos jointes
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', paddingLeft: '20px', flexWrap: 'wrap' }}>
+                      {photos.slice(0, 4).map((photo: any, idx: number) => {
+                        const url = typeof photo === 'string' ? photo : photo.url;
+
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid #27272a',
+                              display: 'block',
+                            }}
+                          >
+                            <img
+                              src={url}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </a>
+                        );
+                      })}
+                      {photos.length > 4 && (
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '6px',
+                          border: '1px solid #27272a',
+                          background: '#18181b',
+                          color: '#a1a1aa',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          +{photos.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={i} style={{
+                  background: '#09090b',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      color: ind.ok ? '#22c55e' : '#f87171',
+                      fontSize: '14px'
+                    }}>
+                      {ind.ok ? '✓' : '✗'}
+                    </span>
+                    <span style={{
+                      color: ind.ok ? '#e4e4e7' : '#a1a1aa',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                    }}>
+                      {ind.label}
+                    </span>
+                  </div>
                   <span style={{
-                    color: ind.ok ? '#e4e4e7' : '#a1a1aa',
-                    fontSize: '12px',
-                    fontWeight: 500,
+                    color: '#71717a',
+                    fontSize: '11px',
+                    paddingLeft: '20px',
                   }}>
-                    {ind.label}
+                    {ind.detail}
                   </span>
                 </div>
-                <span style={{
-                  color: '#71717a',
-                  fontSize: '11px',
-                  paddingLeft: '20px',
-                }}>
-                  {ind.detail}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Résumé structuré */}
@@ -834,7 +966,10 @@ function getIndicators(project: any) {
 
 function getStructuredSummary(project: any) {
   return {
-    projet: project.projectType || project.trade || 'Non renseigné',
+    projet: [project.projectType, project.trade]
+      .filter(Boolean)
+      .filter((v, i, arr) => arr.indexOf(v) === i)
+      .join(' · ') || 'Non renseigné',
     enjeu: [project.budget, project.desiredTimeline].filter(Boolean).join(' — ') || 'Non renseigné',
     priorite: project.maturity || 'Non renseignée',
   };
