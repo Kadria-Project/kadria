@@ -6,7 +6,7 @@ import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import { Badge } from '@/src/components/ui/badge';
-import { StatusBadge, ScorePill } from '@/src/components/ArtisanDashboard';
+import { ScorePill } from '@/src/components/ArtisanDashboard';
 import {
   ArrowLeft,
   Phone,
@@ -29,6 +29,15 @@ const statusColors: Record<string, { bg: string; text: string; border: string }>
   'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
   'Gagné':      { bg: '#14532d', text: '#86efac', border: '#22c55e' },
   'Perdu':      { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
+};
+
+const statusStyles: Record<string, { bg: string; text: string; border: string }> = {
+  'Nouveau':      { bg: '#27272a', text: '#e4e4e7', border: '#3f3f46' },
+  'À rappeler':   { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
+  'Qualifié':     { bg: '#14532d', text: '#4ade80', border: '#16a34a' },
+  'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
+  'Gagné':        { bg: '#14532d', text: '#86efac', border: '#22c55e' },
+  'Perdu':        { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
 };
 
 export default function ProjectDetailPage() {
@@ -156,6 +165,7 @@ function ProjectDetail() {
   }
 
   const score = Number(project.completenessScore ?? 0);
+  const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -191,7 +201,32 @@ function ProjectDetail() {
                 </Badge>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '6px',
+            }}>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 min-w-44 text-center">
+                <p className="text-xs uppercase tracking-wide text-zinc-400">Statut dossier</p>
+                <p className="mt-1">
+                  <span style={{
+                    background: currentStyle.bg,
+                    color: currentStyle.text,
+                    border: `1px solid ${currentStyle.border}`,
+                    borderRadius: '20px',
+                    padding: '4px 12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                  }}>
+                    {project.status}
+                  </span>
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <span style={{
                   fontSize: '11px', color: '#71717a',
                   background: '#27272a', borderRadius: '6px',
@@ -209,13 +244,6 @@ function ProjectDetail() {
                   </span>
                 )}
               </div>
-            </div>
-
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 min-w-44 text-center">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Statut dossier</p>
-              <p className="mt-1">
-                <StatusBadge status={project.status} />
-              </p>
             </div>
           </div>
         </section>
@@ -338,16 +366,21 @@ function ProjectDetail() {
                   disabled={updating}
                   onClick={() => updateStatus(status)}
                   variant="outline"
-                  className={isActive ? '' : 'bg-zinc-800 border-zinc-700 text-zinc-400'}
                   style={
                     isActive
                       ? {
                           background: colors.bg,
                           color: colors.text,
                           border: `1px solid ${colors.border}`,
+                          opacity: 1,
                           fontWeight: 700,
                         }
-                      : undefined
+                      : {
+                          background: '#18181b',
+                          color: '#a1a1aa',
+                          border: `1px solid ${colors.border}`,
+                          opacity: 0.7,
+                        }
                   }
                 >
                   {status}
