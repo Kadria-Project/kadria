@@ -230,18 +230,6 @@ export default function DemoRequestPage() {
               </label>
               <input style={inputStyle} value={form.trade} onChange={e => update('trade', e.target.value)} />
             </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>
-                Taille de l&apos;équipe <span style={{ color: '#f87171' }}>*</span>
-              </label>
-              <input style={inputStyle} value={form.teamSize} onChange={e => update('teamSize', e.target.value)} />
-            </div>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={labelStyle}>
-                Demandes par mois <span style={{ color: '#f87171' }}>*</span>
-              </label>
-              <input style={inputStyle} value={form.demand} onChange={e => update('demand', e.target.value)} />
-            </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={labelStyle}>Site web (si existant)</label>
               <input style={inputStyle} value={form.website} onChange={e => update('website', e.target.value)} />
@@ -261,14 +249,6 @@ export default function DemoRequestPage() {
                 }
                 if (!form.trade) {
                   alert('Merci de sélectionner votre métier.')
-                  return
-                }
-                if (!form.teamSize) {
-                  alert("Merci d'indiquer la taille de votre équipe.")
-                  return
-                }
-                if (!form.demand) {
-                  alert('Merci d\'indiquer votre volume de demandes.')
                   return
                 }
                 setStep(s => s + 1)
