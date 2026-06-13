@@ -170,6 +170,8 @@ function Dashboard() {
   const [searchInput, setSearchInput] = useState('');
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | null>(null);
   const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
+  const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
+  const [todayEvents, setTodayEvents] = useState<any[]>([]);
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -181,6 +183,28 @@ function Dashboard() {
       const projRes = await getProjects({});
 
       setAllProjects(projRes.projects || []);
+
+      const eventsRes = await fetch('/api/events');
+      const eventsData = await eventsRes.json();
+
+      if (eventsData.success) {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
+        const overdue = eventsData.events.filter((e: any) => {
+          if (e.status === 'Fait') return false; // Exclut les événements validés
+          const eventDate = new Date(e.date);
+          return eventDate < now && !e.date?.startsWith(todayStr);
+        });
+
+        const today = eventsData.events.filter((e: any) => {
+          if (e.status === 'Fait') return false;
+          return e.date?.startsWith(todayStr);
+        });
+
+        setOverdueEvents(overdue);
+        setTodayEvents(today);
+      }
     } catch (error) {
       console.error('LOAD_DASHBOARD_ERROR', error);
     } finally {
@@ -242,7 +266,10 @@ function Dashboard() {
     return !Number.isNaN(callbackTime) && callbackTime < now;
   });
 
-  const dossiersARelancer = overdueCallbacks.length;
+  const overdueCount = overdueEvents.length;
+  const todayCount = todayEvents.length;
+
+  const dossiersARelancer = overdueCount;
 
   const kpis = [
     { label: 'CA potentiel', value: fmt(totalBudget), icon: Euro },
@@ -262,7 +289,7 @@ function Dashboard() {
   ];
 
   const topOpportunities = [...allProjects]
-    .filter((project) => project.status !== 'Perdu')
+    .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
     .sort((a, b) => opportunityScore(b) - opportunityScore(a))
     .slice(0, 3);
 
@@ -437,9 +464,9 @@ function Dashboard() {
       </div>
 
       {/* Alertes */}
-      {!loading && (overdueCallbacks.length > 0 || todayCallbacks.length > 0) && (
+      {!loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {overdueCallbacks.length > 0 && (
+          {overdueCount > 0 && (
             <div
               style={{
                 flex: 1,
@@ -458,7 +485,7 @@ function Dashboard() {
                   ⚠️ Relances en retard
                 </p>
                 <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
-                  {overdueCallbacks.length} prospect(s) n'ont pas été rappelés
+                  {overdueCount} relance(s) en retard
                 </p>
               </div>
 
@@ -487,7 +514,7 @@ function Dashboard() {
             </div>
           )}
 
-          {todayCallbacks.length > 0 && (
+          {todayCount > 0 && (
             <div
               style={{
                 flex: 1,
@@ -506,7 +533,7 @@ function Dashboard() {
                   📅 Relances du jour
                 </p>
                 <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
-                  {todayCallbacks.length} relance(s) programmée(s) aujourd'hui
+                  {todayCount} relance(s) programmée(s) aujourd'hui
                 </p>
               </div>
 

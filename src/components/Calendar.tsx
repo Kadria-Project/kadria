@@ -350,9 +350,11 @@ export default function Calendar({ artisanId }: Props) {
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                               cursor: 'pointer',
+                              opacity: event.status === 'Fait' ? 0.45 : 1,
+                              textDecoration: event.status === 'Fait' ? 'line-through' : 'none',
                             }}
                           >
-                            {event.title}
+                            {event.status === 'Fait' ? `✓ ${event.title}` : event.title}
                           </div>
                         )
                       })}
@@ -465,9 +467,11 @@ export default function Calendar({ artisanId }: Props) {
                               fontSize: '12px',
                               color: color.text,
                               cursor: 'pointer',
+                              opacity: event.status === 'Fait' ? 0.45 : 1,
+                              textDecoration: event.status === 'Fait' ? 'line-through' : 'none',
                             }}
                           >
-                            <p style={{ margin: '0 0 2px', fontWeight: 600 }}>{event.title}</p>
+                            <p style={{ margin: '0 0 2px', fontWeight: 600 }}>{event.status === 'Fait' ? `✓ ${event.title}` : event.title}</p>
                             <p style={{ margin: 0, opacity: 0.8, fontSize: '11px' }}>{event.type}</p>
                           </div>
                         )
@@ -506,6 +510,54 @@ export default function Calendar({ artisanId }: Props) {
                 cursor: 'pointer', fontSize: '20px',
               }}>✕</button>
             </div>
+
+            {selectedEvent && selectedEvent.status !== 'Fait' && (
+              <button
+                onClick={async () => {
+                  await fetch(`/api/events/${selectedEvent.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Status: 'Fait' }),
+                  })
+                  await fetchEvents()
+                  setShowModal(false)
+                }}
+                style={{
+                  width: '100%',
+                  background: 'rgba(34,197,94,0.1)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  color: '#4ade80',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                ✓ Marquer comme fait
+              </button>
+            )}
+
+            {selectedEvent && selectedEvent.status === 'Fait' && (
+              <div style={{
+                background: 'rgba(34,197,94,0.1)',
+                border: '1px solid rgba(34,197,94,0.2)',
+                borderRadius: '10px',
+                padding: '10px',
+                marginBottom: '16px',
+                textAlign: 'center',
+                color: '#4ade80',
+                fontSize: '13px',
+                fontWeight: 600,
+              }}>
+                ✓ Événement réalisé
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Type */}
