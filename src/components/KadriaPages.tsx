@@ -547,6 +547,522 @@ const TRADES_DATA = [
   },
 ];
 
+
+function DashboardCarousel() {
+  const [activeSlide, setActiveSlide] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  const SLIDES = [
+    { id: 'kpis', label: 'KPIs & Métriques', icon: '📊' },
+    { id: 'projects', label: 'Liste des projets', icon: '📋' },
+    { id: 'pipeline', label: 'Pipeline & Top opportunités', icon: '🏆' },
+    { id: 'map', label: 'Chantiers géolocalisés', icon: '📍' },
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true)
+      setTimeout(() => {
+        setActiveSlide(s => (s + 1) % SLIDES.length)
+        setIsAnimating(false)
+      }, 300)
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const goTo = (i: number) => {
+    setIsAnimating(true)
+    setTimeout(() => {
+      setActiveSlide(i)
+      setIsAnimating(false)
+    }, 300)
+  }
+
+  return (
+    <div style={{ width: '100%' }}>
+      {/* Tab navigation */}
+      <div style={{
+        display: 'flex', gap: '4px', marginBottom: '16px',
+        background: '#18181b', borderRadius: '12px', padding: '4px',
+        border: '1px solid #27272a',
+      }}>
+        {SLIDES.map((slide, i) => (
+          <button
+            key={slide.id}
+            onClick={() => goTo(i)}
+            style={{
+              flex: 1,
+              background: activeSlide === i ? '#09090b' : 'transparent',
+              border: activeSlide === i ? '1px solid #27272a' : '1px solid transparent',
+              borderRadius: '8px',
+              padding: '8px 4px',
+              color: activeSlide === i ? 'white' : '#71717a',
+              fontSize: '11px',
+              fontWeight: activeSlide === i ? 600 : 400,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>{slide.icon}</span>
+            <span style={{ display: 'none' }}>{slide.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Label slide actif */}
+      <div style={{
+        textAlign: 'center', marginBottom: '12px',
+        height: '20px',
+      }}>
+        <span style={{
+          color: '#22c55e', fontSize: '12px', fontWeight: 600,
+          letterSpacing: '0.06em',
+        }}>
+          {SLIDES[activeSlide].icon} {SLIDES[activeSlide].label}
+        </span>
+      </div>
+
+      {/* Slide container */}
+      <div style={{
+        background: '#18181b',
+        border: '1px solid #27272a',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        opacity: isAnimating ? 0 : 1,
+        transform: isAnimating ? 'translateY(8px)' : 'translateY(0)',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
+      }}>
+        {/* Header dashboard commun */}
+        <div style={{
+          background: '#09090b',
+          padding: '10px 16px',
+          borderBottom: '1px solid #27272a',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <div>
+            <p style={{ color: '#22c55e', fontSize: '9px', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
+              KADRIA PRO
+            </p>
+            <p style={{ color: 'white', fontSize: '13px', fontWeight: 700, margin: 0 }}>
+              Tableau de bord
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['📊 Suivi commercial', '📅 Calendrier', '⚙️ Mon profil'].map(btn => (
+              <div key={btn} style={{
+                background: btn.startsWith('📊') ? '#22c55e' : '#27272a',
+                border: '1px solid #3f3f46',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '10px',
+                color: btn.startsWith('📊') ? 'black' : '#a1a1aa',
+                fontWeight: btn.startsWith('📊') ? 700 : 400,
+              }}>
+                {btn}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* SLIDE 1 — KPIs */}
+        {activeSlide === 0 && (
+          <div style={{ padding: '16px' }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '10px', marginBottom: '10px',
+            }}>
+              {[
+                { label: 'CA potentiel', value: '29.5k €', icon: '€', color: '#22c55e', border: '#22c55e' },
+                { label: 'Devis envoyés', value: '5.2k €', icon: '✈', color: '#60a5fa', border: '#3b82f6' },
+                { label: 'Chantiers gagnés', value: '15.3k €', icon: '🏆', color: '#86efac', border: '#22c55e' },
+              ].map(kpi => (
+                <div key={kpi.label} style={{
+                  background: '#27272a',
+                  border: `1px solid #27272a`,
+                  borderTop: `2px solid ${kpi.border}`,
+                  borderRadius: '10px',
+                  padding: '12px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: '#71717a', fontSize: '11px' }}>{kpi.label}</span>
+                    <span style={{ color: kpi.color, fontSize: '12px' }}>{kpi.icon}</span>
+                  </div>
+                  <p style={{ color: 'white', fontSize: '20px', fontWeight: 700, margin: 0 }}>
+                    {kpi.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '10px',
+            }}>
+              {[
+                { label: 'Taux de transformation', value: '25 %', border: '#a78bfa' },
+                { label: 'Panier moyen', value: '4.9k €', border: '#fbbf24' },
+                { label: 'Dossiers à relancer', value: '0', border: '#27272a' },
+              ].map(kpi => (
+                <div key={kpi.label} style={{
+                  background: '#27272a',
+                  border: '1px solid #27272a',
+                  borderTop: `2px solid ${kpi.border}`,
+                  borderRadius: '10px',
+                  padding: '12px',
+                }}>
+                  <span style={{ color: '#71717a', fontSize: '11px', display: 'block', marginBottom: '8px' }}>
+                    {kpi.label}
+                  </span>
+                  <p style={{ color: 'white', fontSize: '20px', fontWeight: 700, margin: 0 }}>
+                    {kpi.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SLIDE 2 — Liste projets */}
+        {activeSlide === 1 && (
+          <div style={{ padding: '16px' }}>
+            {/* Filtres */}
+            <div style={{
+              display: 'flex', gap: '8px', marginBottom: '12px',
+            }}>
+              <div style={{
+                flex: 1, background: '#27272a', border: '1px solid #3f3f46',
+                borderRadius: '8px', padding: '6px 12px',
+                color: '#71717a', fontSize: '11px',
+              }}>
+                🔍 Rechercher un client, un projet...
+              </div>
+              {['Tous les statuts', 'Tous les métiers'].map(f => (
+                <div key={f} style={{
+                  background: '#27272a', border: '1px solid #3f3f46',
+                  borderRadius: '8px', padding: '6px 12px',
+                  color: '#71717a', fontSize: '11px', whiteSpace: 'nowrap',
+                }}>
+                  {f} ▾
+                </div>
+              ))}
+            </div>
+            {/* Header tableau */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '55px 65px 130px 1fr 80px 85px 70px 90px',
+              padding: '6px 8px',
+              borderBottom: '1px solid #27272a',
+            }}>
+              {['RÉF', 'REÇU', 'CLIENT', 'PROJET', 'VILLE', 'BUDGET', 'SCORE', 'STATUT'].map(h => (
+                <span key={h} style={{ color: '#52525b', fontSize: '9px',
+                  fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {h}
+                </span>
+              ))}
+            </div>
+            {/* Lignes */}
+            {[
+              { ref: 'recX0J', time: 'il y a 9h', initials: 'AD', color: '#22c55e',
+                name: 'Antonin Dugautier', project: 'jardin / paysagisme',
+                city: 'Lille', budget: '500–1 000 €', score: '100%',
+                status: 'Gagné', statusBg: 'rgba(20,83,45,0.7)', statusColor: '#86efac' },
+              { ref: 'recCSS', time: 'il y a 10h', initials: 'AD', color: '#22c55e',
+                name: 'Antonin Dugautier', project: 'jardin / paysagisme',
+                city: 'Annecy', budget: 'Moins de 2 000 €', score: '100%',
+                status: 'À rappeler', statusBg: 'rgba(120,53,15,0.5)', statusColor: '#fbbf24' },
+              { ref: 'recmR1', time: 'il y a 2j', initials: 'AT', color: '#3b82f6',
+                name: 'Antonin Test', project: 'Test migration',
+                city: 'Rouen', budget: '1 000–3 000 €', score: '100%',
+                status: 'Nouveau', statusBg: '#27272a', statusColor: '#e4e4e7' },
+              { ref: 'recGdq', time: 'il y a 3j', initials: 'LM', color: '#a855f7',
+                name: 'Laurent Martin', project: 'Plomberie',
+                city: 'Rouen', budget: '3 000–5 000 €', score: '95%',
+                status: 'Devis envoyé', statusBg: 'rgba(30,58,95,0.5)', statusColor: '#60a5fa' },
+              { ref: 'rec4IO', time: 'il y a 3j', initials: 'DD', color: '#f59e0b',
+                name: 'Dugautier Dugautier', project: 'Paysagiste',
+                city: 'Wisches', budget: '1 000–3 000 €', score: '90%',
+                status: 'Qualifié', statusBg: 'rgba(20,83,45,0.5)', statusColor: '#4ade80' },
+            ].map((row, i) => (
+              <div key={row.ref} style={{
+                display: 'grid',
+                gridTemplateColumns: '55px 65px 130px 1fr 80px 85px 70px 90px',
+                padding: '8px',
+                borderBottom: '1px solid rgba(39,39,42,0.5)',
+                alignItems: 'center',
+                background: i % 2 === 0 ? 'transparent' : 'rgba(39,39,42,0.2)',
+              }}>
+                <span style={{ color: '#52525b', fontSize: '10px', fontFamily: 'monospace' }}>
+                  {row.ref}
+                </span>
+                <span style={{ color: '#71717a', fontSize: '10px' }}>{row.time}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: row.color, color: 'black',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '9px', fontWeight: 700, flexShrink: 0,
+                  }}>
+                    {row.initials}
+                  </div>
+                  <span style={{ color: 'white', fontSize: '11px', fontWeight: 600 }}>
+                    {row.name}
+                  </span>
+                </div>
+                <span style={{ color: '#a1a1aa', fontSize: '11px' }}>{row.project}</span>
+                <span style={{ color: '#a1a1aa', fontSize: '11px' }}>{row.city}</span>
+                <span style={{ color: '#a1a1aa', fontSize: '10px' }}>{row.budget}</span>
+                <span style={{ color: '#22c55e', fontSize: '11px', fontWeight: 700 }}>
+                  {row.score}
+                </span>
+                <span style={{
+                  background: row.statusBg,
+                  color: row.statusColor,
+                  borderRadius: '12px',
+                  padding: '2px 8px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  display: 'inline-block',
+                }}>
+                  {row.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* SLIDE 3 — Pipeline + Top opportunités */}
+        {activeSlide === 2 && (
+          <div style={{ padding: '16px', display: 'grid',
+            gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* Pipeline */}
+            <div>
+              <p style={{ color: 'white', fontSize: '13px', fontWeight: 600,
+                margin: '0 0 10px' }}>Pipeline</p>
+              {[
+                { status: 'Nouveau', count: 1, color: '#e4e4e7', pct: 14 },
+                { status: 'À rappeler', count: 1, color: '#fbbf24', pct: 14 },
+                { status: 'Qualifié', count: 1, color: '#4ade80', pct: 14 },
+                { status: 'Devis envoyé', count: 2, color: '#60a5fa', pct: 28 },
+                { status: 'Gagné', count: 2, color: '#86efac', pct: 28 },
+              ].map(item => (
+                <div key={item.status} style={{
+                  background: '#27272a', borderRadius: '8px',
+                  padding: '8px 12px', marginBottom: '6px',
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between',
+                      marginBottom: '4px' }}>
+                      <span style={{ color: item.color, fontSize: '12px' }}>
+                        {item.status}
+                      </span>
+                      <span style={{
+                        background: `${item.color}22`,
+                        color: item.color,
+                        borderRadius: '10px', padding: '1px 8px',
+                        fontSize: '11px', fontWeight: 700,
+                      }}>
+                        {item.count}
+                      </span>
+                    </div>
+                    <div style={{ height: '3px', background: '#3f3f46',
+                      borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', width: `${item.pct}%`,
+                        background: item.color, borderRadius: '2px',
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Top opportunités */}
+            <div>
+              <p style={{ color: 'white', fontSize: '13px', fontWeight: 600,
+                margin: '0 0 10px' }}>🏆 Top opportunités</p>
+              {[
+                { rank: '#1', score: 240, name: 'Laurent Martin',
+                  sub: 'Plomberie · Rouen',
+                  status: 'Devis envoyé', statusColor: '#60a5fa',
+                  statusBg: 'rgba(30,58,95,0.5)', budget: '3 000–5 000 €' },
+                { rank: '#2', score: 230, name: 'Antonin Dugautier',
+                  sub: 'jardin / paysagisme · Annecy',
+                  status: 'À rappeler', statusColor: '#fbbf24',
+                  statusBg: 'rgba(120,53,15,0.5)', budget: 'Moins de 2 000 €' },
+                { rank: '#3', score: 230, name: 'Antonin Test',
+                  sub: 'Test migration · Rouen',
+                  status: 'Nouveau', statusColor: '#e4e4e7',
+                  statusBg: '#27272a', budget: '1 000–3 000 €' },
+              ].map(opp => (
+                <div key={opp.name} style={{
+                  background: '#27272a', border: '1px solid #3f3f46',
+                  borderRadius: '10px', padding: '10px', marginBottom: '8px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between',
+                    marginBottom: '4px' }}>
+                    <span style={{ color: '#22c55e', fontSize: '10px',
+                      fontWeight: 700 }}>
+                      {opp.rank}
+                    </span>
+                    <span style={{ color: '#22c55e', fontSize: '11px',
+                      fontWeight: 700 }}>
+                      {opp.score}
+                    </span>
+                  </div>
+                  <p style={{ color: 'white', fontSize: '12px',
+                    fontWeight: 600, margin: '0 0 2px' }}>
+                    {opp.name}
+                  </p>
+                  <p style={{ color: '#71717a', fontSize: '10px', margin: '0 0 6px' }}>
+                    {opp.sub}
+                  </p>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{
+                      background: opp.statusBg, color: opp.statusColor,
+                      borderRadius: '10px', padding: '2px 8px',
+                      fontSize: '10px', fontWeight: 600,
+                    }}>
+                      {opp.status}
+                    </span>
+                    <span style={{ color: '#71717a', fontSize: '10px' }}>
+                      {opp.budget}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SLIDE 4 — Carte */}
+        {activeSlide === 3 && (
+          <div style={{ padding: '16px' }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: '12px',
+            }}>
+              <div>
+                <p style={{ color: 'white', fontSize: '13px',
+                  fontWeight: 600, margin: '0 0 2px' }}>
+                  📍 Chantiers autour de vous
+                </p>
+                <p style={{ color: '#71717a', fontSize: '11px', margin: 0 }}>
+                  Vue géographique simplifiée des prospects qualifiés
+                </p>
+              </div>
+              <span style={{
+                background: '#27272a', color: '#a1a1aa',
+                borderRadius: '8px', padding: '4px 10px', fontSize: '11px',
+              }}>
+                7 point(s)
+              </span>
+            </div>
+            {/* Carte SVG France stylisée */}
+            <div style={{
+              background: '#27272a', borderRadius: '12px',
+              overflow: 'hidden', position: 'relative',
+              height: '220px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg viewBox="0 0 400 320" style={{ width: '100%', height: '100%' }}>
+                {/* Fond carte */}
+                <rect width="400" height="320" fill="#1f1f23" />
+                {/* Silhouette France simplifiée */}
+                <path
+                  d="M 120 40 L 180 30 L 240 45 L 280 70 L 310 100 L 320 140
+                     L 300 180 L 280 220 L 240 260 L 200 280 L 160 270
+                     L 120 240 L 90 200 L 70 160 L 80 120 L 100 80 Z"
+                  fill="#27272a"
+                  stroke="#3f3f46"
+                  strokeWidth="1.5"
+                />
+                {/* Points chantiers */}
+                {[
+                  { x: 185, y: 110, city: 'Lille' },
+                  { x: 210, y: 135, city: 'Paris' },
+                  { x: 230, y: 155, city: 'Rouen' },
+                  { x: 175, y: 175, city: 'Annecy' },
+                  { x: 145, y: 200, city: 'Bordeaux' },
+                  { x: 190, y: 215, city: 'Lyon' },
+                  { x: 160, y: 140, city: 'Mesnil-Raoul' },
+                ].map((point, i) => (
+                  <g key={i}>
+                    <circle
+                      cx={point.x} cy={point.y} r="8"
+                      fill="#22c55e" opacity="0.2"
+                    />
+                    <circle
+                      cx={point.x} cy={point.y} r="5"
+                      fill="#22c55e"
+                    />
+                    <text
+                      x={point.x + 8} y={point.y + 4}
+                      fill="#a1a1aa" fontSize="9"
+                      fontFamily="system-ui"
+                    >
+                      {point.city}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+            {/* Liste prospects */}
+            <div style={{ marginTop: '12px', display: 'flex',
+              flexDirection: 'column', gap: '6px' }}>
+              {[
+                { name: 'Antonin Dugautier', sub: 'jardin / paysagisme · Lille' },
+                { name: 'Laurent Martin', sub: 'Plomberie · Rouen' },
+                { name: 'Antonin Test', sub: 'Test migration · Rouen' },
+              ].map(item => (
+                <div key={item.name} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '6px 10px', background: '#27272a', borderRadius: '8px',
+                }}>
+                  <span style={{ color: '#22c55e', fontSize: '12px' }}>📍</span>
+                  <div>
+                    <p style={{ color: 'white', fontSize: '11px',
+                      fontWeight: 600, margin: 0 }}>
+                      {item.name}
+                    </p>
+                    <p style={{ color: '#71717a', fontSize: '10px', margin: 0 }}>
+                      {item.sub}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Progress bar */}
+        <div style={{
+          display: 'flex', gap: '4px', padding: '10px 16px',
+          borderTop: '1px solid #27272a', background: '#09090b',
+        }}>
+          {SLIDES.map((_, i) => (
+            <div
+              key={i}
+              onClick={() => goTo(i)}
+              style={{
+                flex: 1, height: '3px', borderRadius: '2px',
+                background: i === activeSlide ? '#22c55e' : '#27272a',
+                cursor: 'pointer', transition: 'background 0.3s',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 export function LandingRoutePage() {
   const [selectedTrade, setSelectedTrade] = useState<string | null>(TRADES_DATA[0].id);
   const [lastTradeId, setLastTradeId] = useState(TRADES_DATA[0].id);
@@ -648,26 +1164,6 @@ export function LandingRoutePage() {
       text: 'Dossier complet dans votre dashboard + notification email immédiate. Décidez en 30 secondes.',
     },
   ];
-
-  const dossiers = [
-    { initials: 'ML', client: 'Marie Leroy', metier: 'Rénovation SDB', ville: 'Lyon', budget: '8 000 – 12 000 €', score: 94, statut: 'Nouveau' },
-    { initials: 'JP', client: 'Jean-Pierre M.', metier: 'Couverture', ville: 'Nantes', budget: '15 000 – 20 000 €', score: 95, statut: 'À rappeler' },
-    { initials: 'AD', client: 'Antonin D.', metier: 'Carrelage', ville: 'Rouen', budget: '3 000 – 5 000 €', score: 87, statut: 'Qualifié' },
-    { initials: 'CJ', client: 'Claire & Julien P.', metier: 'Rénovation globale', ville: 'Lyon', budget: '80 000 – 100 000 €', score: 97, statut: 'Devis envoyé' },
-    { initials: 'AB', client: 'Ahmad B.', metier: 'Électricité', ville: 'Paris', budget: '10 000 – 15 000 €', score: 91, statut: 'Gagné' },
-    { initials: 'SF', client: 'Sophie F.', metier: 'Paysagiste', ville: 'Bordeaux', budget: '500 – 1 000 €', score: 62, statut: 'Perdu' },
-  ];
-
-  const statusClass: Record<string, string> = {
-    Nouveau: 'bg-zinc-800 text-zinc-200',
-    'À rappeler': 'bg-amber-500/20 text-amber-400',
-    Qualifié: 'bg-green-500/20 text-green-400',
-    'Devis envoyé': 'bg-blue-500/20 text-blue-400',
-    Gagné: 'bg-green-600/20 text-green-300',
-    Perdu: 'bg-red-500/20 text-red-400',
-  };
-
-  const scoreClass = (score: number) => (score >= 70 ? 'text-green-400' : 'text-amber-400');
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -815,69 +1311,29 @@ export function LandingRoutePage() {
         </section>
 
         {/* DASHBOARD PREVIEW */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-              Pilotez toutes vos opportunités depuis <span className="text-green-500">un seul tableau de bord</span>
-            </h2>
-            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Suivez chaque dossier, son score de priorité et son statut, sans rien saisir manuellement.
-            </p>
-          </div>
-
-          <div className="mt-12 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-white">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                Tableau de bord — 17 dossiers
+        <section style={{ padding: '80px 0' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <p style={{
+                color: '#22c55e', fontSize: '11px', fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                margin: '0 0 12px',
+              }}>
+                DASHBOARD
               </p>
-              <div className="flex items-center gap-4 text-xs text-zinc-400">
-                <span>3 Nouveaux</span>
-                <span className="text-amber-400">2 À rappeler</span>
-                <span className="text-green-400">4 Qualifiés</span>
-                <span className="text-blue-400">2 Devis envoyés</span>
-                <span className="text-green-400">5 Gagnés</span>
-                <span className="text-red-400">1 Perdu</span>
-              </div>
+              <h2 style={{
+                color: 'white', fontSize: '36px', fontWeight: 800,
+                margin: '0 0 12px', lineHeight: 1.2,
+              }}>
+                Pilotez toutes vos opportunités depuis{' '}
+                <span style={{ color: '#22c55e' }}>un seul tableau de bord</span>
+              </h2>
+              <p style={{ color: '#71717a', fontSize: '16px', margin: 0 }}>
+                Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
+              </p>
             </div>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead>
-                  <tr className="text-xs uppercase tracking-wide text-zinc-500">
-                    <th className="py-2 pr-4">Client</th>
-                    <th className="py-2 pr-4">Métier</th>
-                    <th className="py-2 pr-4">Ville</th>
-                    <th className="py-2 pr-4">Budget</th>
-                    <th className="py-2 pr-4">Score</th>
-                    <th className="py-2 pr-4">Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dossiers.map((d) => (
-                    <tr key={d.client} className="border-t border-zinc-800">
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-zinc-300">
-                            {d.initials}
-                          </span>
-                          {d.client}
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4 text-zinc-400">{d.metier}</td>
-                      <td className="py-3 pr-4 text-zinc-400">{d.ville}</td>
-                      <td className="py-3 pr-4 text-zinc-400">{d.budget}</td>
-                      <td className={`py-3 pr-4 font-semibold ${scoreClass(d.score)}`}>{d.score}%</td>
-                      <td className="py-3 pr-4">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass[d.statut] ?? 'bg-zinc-800 text-zinc-300'}`}>
-                          {d.statut}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+              <DashboardCarousel />
             </div>
           </div>
         </section>
