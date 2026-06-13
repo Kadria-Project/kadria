@@ -247,6 +247,7 @@ export default function ChatWidget({
           ...prev,
           ...data.files.map((f: { url: string; publicId: string }) => ({ url: f.url, publicId: f.publicId })),
         ])
+        await sendMessage(`J'ai ajouté ${data.files.length} photo(s) à mon dossier.`)
       } else {
         alert('Erreur lors de l\'envoi des photos. Veuillez réessayer.')
       }
