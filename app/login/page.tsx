@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -17,15 +16,16 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const result = await signIn('resend', {
-        email,
-        redirect: false,
-        callbackUrl: '/dashboard-v2',
+      const result = await fetch('/api/auth/send-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       })
-      if (result?.error) {
-        setError('Email non autorisé. Contactez Kadria pour accéder à votre espace.')
-      } else {
+      const data = await result.json()
+      if (data.success) {
         setSent(true)
+      } else {
+        setError('Une erreur est survenue. Veuillez réessayer.')
       }
     } catch {
       setError('Une erreur est survenue. Veuillez réessayer.')

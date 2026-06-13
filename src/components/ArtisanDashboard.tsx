@@ -169,8 +169,9 @@ function Dashboard() {
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | null>(null);
   const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
 
-  const logout = () => {
-    router.push('/');
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
   };
 
   const loadData = useCallback(async () => {

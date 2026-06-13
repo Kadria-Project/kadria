@@ -1,22 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { jwtVerify } from 'jose'
+
+const SECRET = new TextEncoder().encode(
+  process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-secret'
+)
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Protège uniquement les routes dashboard
   if (pathname.startsWith('/dashboard-v2')) {
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
-    })
-
-    console.log('[MIDDLEWARE] path:', pathname, 'token:', !!token)
+    const token = request.cookies.get('kadria-auth')?.value
 
     if (!token) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
       return NextResponse.redirect(loginUrl)
+    }
+
+    try {
+      await jwtVerify(token, SECRET)
+      return NextResponse.next()
+    } catch {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete('kadria-auth')
+      return response
+    }
+  }
+
+  if (pathname === '/login') {
+    const token = request.cookies.get('kadria-auth')?.value
+    if (token) {
+      try {
+        await jwtVerify(token, SECRET)
+        return NextResponse.redirect(new URL('/dashboard-v2', request.url))
+      } catch {
+        // Token invalide, laisse passer
+      }
     }
   }
 
@@ -24,8 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/dashboard-v2',
-    '/dashboard-v2/:path*',
-  ],
+  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/login'],
 }
