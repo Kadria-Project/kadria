@@ -13,7 +13,6 @@
     "@auth/core": "^0.41.2",
     "@react-spring/three": "^10.1.1",
     "@react-three/fiber": "^9.6.1",
-    "@shadergradient/react": "^2.4.20",
     "airtable": "^0.12.2",
     "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
