@@ -213,7 +213,9 @@ export async function getArtisanConfig(artisanId: string) {
     secondaryColor: record.fields['Secondary Color'] as string || '#18181b',
     qualificationFlow: record.fields['Qualification Flow'] as string || '',
     websiteUrl: record.fields['Website URL'] as string || '',
-    active: record.fields['Active'] as boolean || false,
+    active: record.fields['Active'] === true ||
+            record.fields['Active'] === 'True' ||
+            record.fields['Active'] === 'true',
     aiInstructions: record.fields['AI Instructions'] as string || '',
     trades: record.fields['Trades'] as string || '',
   }
