@@ -111,6 +111,23 @@ function opportunityScore(project: Project): number {
   return (project.completenessScore || 0) * 2 + budgetScore(project.budget);
 }
 
+function timeAgo(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+
+  if (diffMins < 60) return `il y a ${diffMins}min`;
+  if (diffHours < 24) return `il y a ${diffHours}h`;
+  if (diffDays === 1) return 'hier';
+  if (diffDays < 7) return `il y a ${diffDays}j`;
+  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)}sem`;
+
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
 const cardStyle: React.CSSProperties = {
   background: '#18181b',
   border: '1px solid #27272a',
@@ -354,12 +371,22 @@ function Dashboard() {
             {kpis.map((k) => {
               const isAlert = k.label === 'Dossiers à relancer' && dossiersARelancer > 0;
 
+              const borderTopColor =
+                k.label === 'CA potentiel' ? '#22c55e'
+                : k.label === 'Devis envoyés' ? '#60a5fa'
+                : k.label === 'Chantiers gagnés' ? '#86efac'
+                : k.label === 'Taux de transformation' ? '#a78bfa'
+                : k.label === 'Panier moyen' ? '#fbbf24'
+                : k.label === 'Dossiers à relancer' ? (dossiersARelancer > 0 ? '#f87171' : '#27272a')
+                : '#27272a';
+
               return (
                 <div
                   key={k.label}
                   style={{
                     ...cardStyle,
-                    ...(isAlert ? { borderColor: 'rgba(239,68,68,0.3)' } : {}),
+                    borderTop: `3px solid ${borderTopColor}`,
+                    ...(isAlert ? { borderColor: 'rgba(239,68,68,0.3)', borderTopColor } : {}),
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -400,16 +427,31 @@ function Dashboard() {
 
       {/* Alertes */}
       {!loading && (overdueCallbacks.length > 0 || todayCallbacks.length > 0) && (
-        <div style={{ padding: '0 32px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ padding: '0 32px', marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {overdueCallbacks.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex justify-between items-center">
-              <p className="text-sm text-zinc-200">
-                ⚠️ {overdueCallbacks.length} prospect(s) n'ont pas été rappelés
-              </p>
+            <div
+              style={{
+                flex: 1,
+                minWidth: '280px',
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                borderRadius: '12px',
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <p style={{ color: '#f87171', fontWeight: 600, fontSize: '14px', margin: '0 0 2px' }}>
+                  ⚠️ Relances en retard
+                </p>
+                <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+                  {overdueCallbacks.length} prospect(s) n'ont pas été rappelés
+                </p>
+              </div>
 
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => {
                   setQuickFilter('overdue');
                   setStatusFilter('');
@@ -417,21 +459,47 @@ function Dashboard() {
                   setSearch('');
                   setSearchInput('');
                 }}
+                style={{
+                  background: '#27272a',
+                  border: '1px solid #3f3f46',
+                  color: 'white',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
               >
-                Voir les retards
-              </Button>
+                Voir les retards →
+              </button>
             </div>
           )}
 
           {todayCallbacks.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex justify-between items-center">
-              <p className="text-sm text-zinc-200">
-                📅 {todayCallbacks.length} relance(s) programmée(s) aujourd'hui
-              </p>
+            <div
+              style={{
+                flex: 1,
+                minWidth: '280px',
+                background: 'rgba(251,191,36,0.08)',
+                border: '1px solid rgba(251,191,36,0.25)',
+                borderRadius: '12px',
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <p style={{ color: '#fbbf24', fontWeight: 600, fontSize: '14px', margin: '0 0 2px' }}>
+                  📅 Relances du jour
+                </p>
+                <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+                  {todayCallbacks.length} relance(s) programmée(s) aujourd'hui
+                </p>
+              </div>
 
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => {
                   setQuickFilter('today');
                   setStatusFilter('');
@@ -439,9 +507,20 @@ function Dashboard() {
                   setSearch('');
                   setSearchInput('');
                 }}
+                style={{
+                  background: '#27272a',
+                  border: '1px solid #3f3f46',
+                  color: 'white',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
               >
-                Voir les relances
-              </Button>
+                Voir les relances →
+              </button>
             </div>
           )}
         </div>
@@ -625,34 +704,55 @@ function Dashboard() {
                   <div>
                     {pipelineSteps.map((step) => {
                       const style = BADGE_STYLES[step.label] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
+                      const total = allProjects.length || 1;
+                      const pct = Math.round((step.value / total) * 100);
 
                       return (
                         <div
                           key={step.label}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
                             padding: '8px 12px',
                             background: '#18181b',
                             borderRadius: '8px',
                             marginBottom: '4px',
                           }}
                         >
-                          <span style={{ color: style.color, fontSize: '13px' }}>{step.label}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ color: style.color, fontSize: '13px' }}>{step.label}</span>
 
-                          <span
+                            <span
+                              style={{
+                                background: style.bg,
+                                color: style.color,
+                                borderRadius: '20px',
+                                padding: '2px 10px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {step.value}
+                            </span>
+                          </div>
+
+                          <div
                             style={{
-                              background: style.bg,
-                              color: style.color,
-                              borderRadius: '20px',
-                              padding: '2px 10px',
-                              fontSize: '12px',
-                              fontWeight: 700,
+                              height: '3px',
+                              background: '#27272a',
+                              borderRadius: '2px',
+                              marginTop: '6px',
+                              overflow: 'hidden',
                             }}
                           >
-                            {step.value}
-                          </span>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${pct}%`,
+                                background: style.color,
+                                borderRadius: '2px',
+                                transition: 'width 0.5s ease',
+                              }}
+                            />
+                          </div>
                         </div>
                       );
                     })}
@@ -691,7 +791,7 @@ function ProjectList({
     <div>
       <div className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-xs text-zinc-500 uppercase tracking-widest px-4 py-3">
         <span className="col-span-1">Réf</span>
-        <span className="col-span-1">Date</span>
+        <span className="col-span-1">Reçu</span>
         <span className="col-span-2">Client</span>
         <span className="col-span-2">Projet</span>
         <span className="col-span-2">Ville</span>
@@ -713,9 +813,7 @@ function ProjectList({
             </span>
 
             <span className="col-span-1 text-zinc-400 text-xs">
-              {p.createdAt
-                ? format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr })
-                : '—'}
+              {p.createdAt ? timeAgo(p.createdAt) : '—'}
             </span>
 
             <span className="col-span-2 flex items-center gap-2 font-medium text-white truncate">
