@@ -23,6 +23,14 @@ import {
 
 const PIPELINE_STATUSES = ['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'];
 
+const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+  'À rappeler': { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
+  'Qualifié':   { bg: '#14532d', text: '#4ade80', border: '#16a34a' },
+  'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
+  'Gagné':      { bg: '#14532d', text: '#86efac', border: '#22c55e' },
+  'Perdu':      { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
+};
+
 export default function ProjectDetailPage() {
   return (
     <AuthGuard>
@@ -147,7 +155,6 @@ function ProjectDetail() {
     );
   }
 
-  const tradeAnswers = parseTradeAnswers(project.tradeAnswers);
   const score = Number(project.completenessScore ?? 0);
 
   return (
@@ -182,6 +189,25 @@ function ProjectDetail() {
                 <Badge variant="secondary" className="text-[10px]">
                   {project.maturity || 'Maturité non renseignée'}
                 </Badge>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <span style={{
+                  fontSize: '11px', color: '#71717a',
+                  background: '#27272a', borderRadius: '6px',
+                  padding: '3px 8px',
+                }}>
+                  #{project.id?.slice(-8).toUpperCase()}
+                </span>
+                {project.source && (
+                  <span style={{
+                    fontSize: '11px', color: '#71717a',
+                    background: '#27272a', borderRadius: '6px',
+                    padding: '3px 8px',
+                  }}>
+                    via {project.source}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -225,7 +251,7 @@ function ProjectDetail() {
 
           {project.createdAt && (
             <span style={{ color: 'white', fontSize: '13px' }}>
-              📅 {formatDate(project.createdAt)}
+              📅 Créé le {formatDate(project.createdAt)}
             </span>
           )}
         </div>
@@ -302,21 +328,32 @@ function ProjectDetail() {
           <h2 className="text-lg font-semibold text-white mb-4">Pipeline commercial</h2>
 
           <div className="flex flex-wrap gap-2">
-            {PIPELINE_STATUSES.map((status) => (
-              <Button
-                key={status}
-                disabled={updating}
-                onClick={() => updateStatus(status)}
-                variant="outline"
-                className={
-                  project.status === status
-                    ? 'bg-green-500 text-black border-green-500 hover:bg-green-500 hover:text-black'
-                    : ''
-                }
-              >
-                {status}
-              </Button>
-            ))}
+            {PIPELINE_STATUSES.map((status) => {
+              const isActive = project.status === status;
+              const colors = statusColors[status];
+
+              return (
+                <Button
+                  key={status}
+                  disabled={updating}
+                  onClick={() => updateStatus(status)}
+                  variant="outline"
+                  className={isActive ? '' : 'bg-zinc-800 border-zinc-700 text-zinc-400'}
+                  style={
+                    isActive
+                      ? {
+                          background: colors.bg,
+                          color: colors.text,
+                          border: `1px solid ${colors.border}`,
+                          fontWeight: 700,
+                        }
+                      : undefined
+                  }
+                >
+                  {status}
+                </Button>
+              );
+            })}
           </div>
         </section>
 
@@ -338,9 +375,16 @@ function ProjectDetail() {
               Synthèse
             </p>
 
-            <p className="text-sm leading-6 whitespace-pre-wrap text-zinc-200">
-              {project.aiSummary || 'Aucun résumé disponible.'}
-            </p>
+            {project.aiSummary ? (
+              <p style={{ color: '#d4d4d8', fontSize: '14px',
+                           lineHeight: '1.6', margin: 0 }}>
+                {project.aiSummary}
+              </p>
+            ) : (
+              <p style={{ color: '#71717a', fontSize: '13px', margin: 0 }}>
+                Résumé non disponible — généré automatiquement à la prochaine soumission.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -349,47 +393,6 @@ function ProjectDetail() {
             <InfoIcon icon={Clock} label="Délai" value={project.desiredTimeline} />
             <InfoIcon icon={Target} label="Maturité" value={project.maturity} />
           </div>
-        </section>
-
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Questions métier</h2>
-
-          {tradeAnswers && tradeAnswers.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {tradeAnswers.map((item: { question: string; answer: string }, i: number) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  padding: '10px 14px',
-                  background: '#27272a',
-                  borderRadius: '10px',
-                  gap: '16px',
-                }}>
-                  <span style={{
-                    fontSize: '13px',
-                    color: '#a1a1aa',
-                    flex: 1,
-                  }}>
-                    {item.question}
-                  </span>
-                  <span style={{
-                    fontSize: '13px',
-                    color: 'white',
-                    fontWeight: 500,
-                    textAlign: 'right',
-                    flex: 1,
-                  }}>
-                    {item.answer}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ color: '#71717a', fontSize: '13px', margin: 0 }}>
-              Aucune question métier disponible pour ce dossier.
-            </p>
-          )}
         </section>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
@@ -436,16 +439,6 @@ function ProjectDetail() {
           )}
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Info label="Téléphone" value={project.clientPhone} />
-          <Info label="Email" value={project.clientEmail} />
-          <Info label="Adresse" value={project.siteAddress} />
-          <Info label="Ville" value={project.city} />
-          <Info label="Code postal" value={String(project.postalCode || '')} />
-          <Info label="Source" value={project.source} />
-          <Info label="Assigné à" value={project.assignedTo} />
-          <Info label="ID dossier" value={project.id} />
-        </section>
       </main>
 
       {showRdvModal && (
@@ -549,15 +542,6 @@ function AnalysisItem({ label, checked }: { label: string; checked: boolean }) {
   );
 }
 
-function Info({ label, value }: { label: string; value?: string }) {
-  return (
-    <div>
-      <p className="text-xs text-zinc-400 uppercase tracking-wide">{label}</p>
-      <p className="font-medium text-white">{value || '—'}</p>
-    </div>
-  );
-}
-
 function InfoIcon({
   icon: Icon,
   label,
@@ -590,20 +574,3 @@ function formatDate(value: string) {
   return `${day}/${month}/${year}`;
 }
 
-function parseTradeAnswers(value?: string) {
-  if (!value) return [];
-
-  try {
-    const parsed = JSON.parse(value);
-
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter(
-      (item) =>
-        typeof item?.question === 'string' &&
-        typeof item?.answer === 'string',
-    );
-  } catch {
-    return [];
-  }
-}
