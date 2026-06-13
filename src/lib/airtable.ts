@@ -182,9 +182,8 @@ export async function getArtisanByArtisanId(artisanId: string) {
 export async function getArtisanConfig(artisanId: string) {
   const apiKey = process.env.AIRTABLE_API_KEY
   const baseId = process.env.AIRTABLE_BASE_ID
-  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
 
-  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
+  const url = `https://api.airtable.com/v0/${baseId}/Artisan_config?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -192,11 +191,15 @@ export async function getArtisanConfig(artisanId: string) {
   })
   const data = await res.json()
   const record = data.records?.[0]
+
+  console.log('[ARTISAN_CONFIG] artisanId:', artisanId)
+  console.log('[ARTISAN_CONFIG] records found:', data.records?.length)
+
   if (!record) return null
 
   return {
     id: record.id,
-    artisanId: record.fields['Artisan ID'] as string,
+    artisanId: record.fields['Artisan ID'] as string || '',
     companyName: record.fields['Company Name'] as string || '',
     primaryTrade: record.fields['Primary Trade'] as string || '',
     phone: record.fields['Phone'] as string || '',
@@ -208,8 +211,11 @@ export async function getArtisanConfig(artisanId: string) {
     welcomeMessage: record.fields['Welcome Message'] as string || '',
     primaryColor: record.fields['Primary Color'] as string || '#22c55e',
     secondaryColor: record.fields['Secondary Color'] as string || '#18181b',
+    qualificationFlow: record.fields['Qualification Flow'] as string || '',
     websiteUrl: record.fields['Website URL'] as string || '',
     active: record.fields['Active'] as boolean || false,
+    aiInstructions: record.fields['AI Instructions'] as string || '',
+    trades: record.fields['Trades'] as string || '',
   }
 }
 
@@ -219,10 +225,11 @@ export async function updateArtisanConfig(
 ) {
   const apiKey = process.env.AIRTABLE_API_KEY
   const baseId = process.env.AIRTABLE_BASE_ID
-  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+
+  console.log('[ARTISAN_CONFIG] Updating record:', recordId, 'fields:', Object.keys(fields))
 
   const res = await fetch(
-    `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}/${recordId}`,
+    `https://api.airtable.com/v0/${baseId}/Artisan_config/${recordId}`,
     {
       method: 'PATCH',
       headers: {
@@ -232,5 +239,7 @@ export async function updateArtisanConfig(
       body: JSON.stringify({ fields }),
     }
   )
-  return res.json()
+  const result = await res.json()
+  console.log('[ARTISAN_CONFIG] Update result:', result.id ? 'success' : result)
+  return result
 }
