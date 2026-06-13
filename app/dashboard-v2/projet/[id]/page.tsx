@@ -77,6 +77,14 @@ function ProjectDetail() {
   );
   const [savingDevis, setSavingDevis] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const EVENT_TYPES = [
     { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
     { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
@@ -250,7 +258,7 @@ function ProjectDetail() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6" style={isMobile ? { padding: '12px' } : undefined}>
         <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour
@@ -262,12 +270,15 @@ function ProjectDetail() {
           borderRadius: '16px',
           padding: '24px',
           marginBottom: '16px',
+          maxWidth: '100%',
         }}>
           {/* Ligne 1 : Nom + Statut */}
           <div style={{
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
+            alignItems: isMobile ? 'flex-start' : 'flex-start',
+            gap: isMobile ? '12px' : 0,
             marginBottom: '6px',
           }}>
             <div>
@@ -291,7 +302,8 @@ function ProjectDetail() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'flex-end',
+              alignItems: isMobile ? 'flex-start' : 'flex-end',
+              alignSelf: isMobile ? 'flex-start' : undefined,
               gap: '8px',
               flexShrink: 0,
             }}>
@@ -303,7 +315,7 @@ function ProjectDetail() {
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   margin: '0 0 4px',
-                  textAlign: 'right',
+                  textAlign: isMobile ? 'left' : 'right',
                 }}>
                   Statut dossier
                 </p>
@@ -315,6 +327,7 @@ function ProjectDetail() {
                   padding: '5px 14px',
                   fontSize: '13px',
                   fontWeight: 600,
+                  alignSelf: 'flex-start',
                 }}>
                   {project.status || 'Nouveau'}
                 </span>
@@ -468,16 +481,16 @@ function ProjectDetail() {
             }}>
               Faire avancer le dossier
             </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: isMobile ? '6px' : '8px', flexWrap: 'wrap' }}>
               {['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'].map(s => (
                 <button
                   key={s}
                   disabled={updating}
                   onClick={() => updateStatus(s)}
                   style={{
-                    padding: '7px 14px',
+                    padding: isMobile ? '6px 10px' : '7px 14px',
                     borderRadius: '8px',
-                    fontSize: '13px',
+                    fontSize: isMobile ? '12px' : '13px',
                     fontWeight: (project.status === s) ? 700 : 500,
                     cursor: 'pointer',
                     transition: 'all 0.15s',
@@ -785,7 +798,7 @@ function ProjectDetail() {
           {/* Indicateurs qualité */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
             gap: '1px',
             background: '#27272a',
             borderBottom: '1px solid #27272a',

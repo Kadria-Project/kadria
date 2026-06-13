@@ -189,6 +189,14 @@ function Dashboard() {
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/login';
@@ -373,8 +381,9 @@ function Dashboard() {
         style={{
           padding: 0,
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          alignItems: isMobile ? 'stretch' : 'flex-start',
           marginBottom: '24px',
           gap: '16px',
           flexWrap: 'wrap',
@@ -394,12 +403,12 @@ function Dashboard() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button onClick={() => setActiveView('commercial')} style={navButtonStyle(activeView === 'commercial')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <button onClick={() => setActiveView('commercial')} style={{ ...navButtonStyle(activeView === 'commercial'), ...(isMobile ? { flex: 1 } : {}) }}>
             📊 Suivi commercial
           </button>
 
-          <button onClick={() => setActiveView('calendar')} style={navButtonStyle(activeView === 'calendar')}>
+          <button onClick={() => setActiveView('calendar')} style={{ ...navButtonStyle(activeView === 'calendar'), ...(isMobile ? { flex: 1 } : {}) }}>
             📅 Calendrier
           </button>
 
@@ -415,7 +424,9 @@ function Dashboard() {
               fontSize: '13px',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px',
+              ...(isMobile ? { flex: 1 } : {}),
             }}
           >
             ⚙️ Mon profil
@@ -435,13 +446,13 @@ function Dashboard() {
       {/* KPIs */}
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '16px' }}>
+          <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: '16px' }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: '16px' }}>
+          <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: '16px' }}>
             {kpis.map((k) => {
               const isAlert = k.label === 'Dossiers à relancer' && dossiersARelancer > 0;
 

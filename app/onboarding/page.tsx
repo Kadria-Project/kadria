@@ -38,6 +38,14 @@ export default function OnboardingPage() {
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
   const [copied, setCopied] = useState(false)
 
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   useEffect(() => {
     fetch('/api/artisan/config')
       .then(r => r.json())
@@ -183,28 +191,40 @@ export default function OnboardingPage() {
       <div style={{
         maxWidth: '900px',
         margin: '0 auto',
-        padding: '32px 24px',
+        padding: isMobile ? '16px 12px' : '32px 24px',
         display: 'grid',
-        gridTemplateColumns: '220px 1fr',
+        gridTemplateColumns: isMobile ? '1fr' : '220px 1fr',
         gap: '24px',
         alignItems: 'start',
       }}>
         {/* Sidebar navigation */}
-        <div style={{ position: 'sticky', top: '80px' }}>
-          <div style={sectionCard}>
+        <div style={isMobile ? {} : { position: 'sticky', top: '80px' }}>
+          <div style={{
+            ...sectionCard,
+            ...(isMobile ? {
+              display: 'flex',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              gap: '8px',
+              padding: '12px',
+            } : {}),
+          }}>
             {SECTIONS.map(section => (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 style={{
-                  width: '100%',
+                  width: isMobile ? 'auto' : '100%',
+                  flexShrink: isMobile ? 0 : undefined,
                   background: activeSection === section.id
                     ? 'rgba(34,197,94,0.1)' : 'transparent',
                   border: 'none',
-                  borderLeft: activeSection === section.id
-                    ? '2px solid #22c55e' : '2px solid transparent',
+                  borderLeft: !isMobile && activeSection === section.id
+                    ? '2px solid #22c55e' : isMobile ? 'none' : '2px solid transparent',
+                  borderBottom: isMobile && activeSection === section.id
+                    ? '2px solid #22c55e' : isMobile ? '2px solid transparent' : undefined,
                   color: activeSection === section.id ? '#22c55e' : '#a1a1aa',
-                  borderRadius: '0 8px 8px 0',
+                  borderRadius: isMobile ? '8px' : '0 8px 8px 0',
                   padding: '10px 14px',
                   fontSize: '14px',
                   fontWeight: activeSection === section.id ? 600 : 400,
@@ -213,7 +233,8 @@ export default function OnboardingPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  marginBottom: '4px',
+                  marginBottom: isMobile ? 0 : '4px',
+                  whiteSpace: 'nowrap',
                   transition: 'all 0.15s',
                 }}
               >
@@ -227,6 +248,7 @@ export default function OnboardingPage() {
           <div style={{
             ...sectionCard,
             marginTop: '0',
+            ...(isMobile ? { display: 'none' } : {}),
           }}>
             <p style={{
               color: '#71717a', fontSize: '11px', fontWeight: 600,

@@ -10,7 +10,7 @@ function ProjetContent() {
 
   return (
     <main style={{
-      height: '100vh',
+      height: '100dvh',
       width: '100vw',
       background: '#09090b',
       display: 'flex',
@@ -19,7 +19,7 @@ function ProjetContent() {
     }}>
       {/* Header minimal */}
       <div style={{
-        padding: '16px 24px',
+        padding: '12px 16px',
         borderBottom: '1px solid #27272a',
         background: '#09090b',
         display: 'flex',
@@ -31,13 +31,13 @@ function ProjetContent() {
           <span style={{
             color: '#22c55e',
             fontWeight: 800,
-            fontSize: '20px',
+            fontSize: '18px',
             fontFamily: 'system-ui, sans-serif'
           }}>K</span>
           <span style={{
             color: 'white',
             fontWeight: 600,
-            fontSize: '16px',
+            fontSize: '18px',
             fontFamily: 'system-ui, sans-serif'
           }}>adria</span>
         </div>
@@ -67,7 +67,7 @@ export default function ProjetPage() {
     <Suspense fallback={
       <div style={{
         background: '#09090b',
-        height: '100vh',
+        height: '100dvh',
         width: '100vw',
         display: 'flex',
         alignItems: 'center',

@@ -360,7 +360,7 @@ export default function ChatWidgetInline({
 
   // ── Container styles ──────────────────────────────────────────────────────
   const containerStyle: React.CSSProperties = fullPage ? {
-    width: '100%', height: '100%', borderRadius: '0',
+    width: '100%', height: '100dvh', borderRadius: '0',
     border: 'none', display: 'flex', flexDirection: 'column',
     overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
   } : {
@@ -463,10 +463,10 @@ export default function ChatWidgetInline({
           <>
             {/* Messages */}
             <div ref={scrollRef} style={{
-              flex: 1, overflowY: 'auto', padding: '16px',
+              flex: 1, overflowY: 'auto', padding: fullPage ? '12px 16px' : '16px',
               display: 'flex', flexDirection: 'column',
             }}>
-              <div style={{
+              <div className="chat-messages-container" style={{
                 ...centerStyle,
                 display: 'flex', flexDirection: 'column', gap: '10px',
               }}>
@@ -547,14 +547,18 @@ export default function ChatWidgetInline({
 
               {/* Quick replies */}
               {!loading && !isPhotoMode && !showContactForm && quickReplies.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                <div style={{
+                  display: 'flex', flexWrap: 'nowrap', overflowX: 'auto',
+                  gap: '6px', marginTop: '4px', paddingBottom: '8px',
+                  WebkitOverflowScrolling: 'touch',
+                }}>
                   {quickReplies.map(opt => (
                     <button key={opt} onClick={() => sendMessage(opt)}
                       style={{
                         background: '#18181b', border: '1px solid #3f3f46',
                         color: 'white', borderRadius: '20px',
                         padding: '6px 14px', fontSize: '12.5px', cursor: 'pointer',
-                        transition: 'all 0.15s',
+                        transition: 'all 0.15s', flexShrink: 0,
                       }}
                       onMouseEnter={e => {
                         (e.target as HTMLButtonElement).style.background = primaryColorLocal;
@@ -672,7 +676,7 @@ export default function ChatWidgetInline({
                               borderRadius: '8px',
                               padding: '8px 10px',
                               color: 'white',
-                              fontSize: '13px',
+                              fontSize: '16px',
                               outline: 'none',
                               boxSizing: 'border-box',
                             }}
@@ -784,7 +788,7 @@ export default function ChatWidgetInline({
 
             {/* Input */}
             {!saved && !showContactForm && (
-              <div style={{
+              <div className="chat-input-container" style={{
                 padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
                 flexShrink: 0, background: '#09090b',
                 position: 'relative',
@@ -804,8 +808,9 @@ export default function ChatWidgetInline({
                     disabled={loading}
                     style={{
                       flex: 1, background: '#18181b', border: '1px solid #3f3f46',
-                      borderRadius: '8px', padding: '8px 12px',
-                      color: 'white', fontSize: '13.5px', outline: 'none',
+                      borderRadius: '8px',
+                      padding: fullPage ? '14px 16px' : '8px 12px',
+                      color: 'white', fontSize: fullPage ? '16px' : '13.5px', outline: 'none',
                     }}
                   />
                   <input
@@ -982,6 +987,16 @@ export default function ChatWidgetInline({
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-5px); }
+        }
+        @media (max-width: 640px) {
+          .chat-messages-container {
+            max-width: 100% !important;
+            padding: 0 12px !important;
+          }
+          .chat-input-container {
+            max-width: 100% !important;
+            padding: 12px !important;
+          }
         }
       `}</style>
     </>
