@@ -7,14 +7,8 @@ import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import {
   ArrowLeft,
-  Phone,
-  Mail,
-  Calendar,
-  FileText,
   CircleDot,
 } from 'lucide-react';
-
-const PIPELINE_STATUSES = ['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'];
 
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
   'À rappeler': { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
@@ -141,6 +135,11 @@ function ProjectDetail() {
     } finally {
       setUpdating(false);
     }
+  }
+
+  function focusNote() {
+    noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => noteRef.current?.focus(), 400);
   }
 
   if (loading) {
@@ -317,48 +316,149 @@ function ProjectDetail() {
           </div>
         </div>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Actions commerciales</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <a
-              href={`tel:${project.clientPhone}`}
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-            >
-              <Phone className="w-4 h-4 mr-2" />
-              Appeler
-            </a>
-
-            <a
-              href={`mailto:${project.clientEmail}`}
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              Email
-            </a>
-
-            <Button variant="outline" onClick={() => setShowRdvModal(true)}>
-              <Calendar className="w-4 h-4 mr-2" />
-              Rendez-vous
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => noteRef.current?.focus(), 400);
-              }}
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Note interne
-            </Button>
+        <div style={{
+          background: '#18181b',
+          border: '1px solid #27272a',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          marginBottom: '16px',
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #27272a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <h2 style={{
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: 600,
+              margin: 0
+            }}>
+              Suivi commercial
+            </h2>
+            {/* Statut actuel en badge compact */}
+            <span style={{
+              background: currentStyle.bg,
+              color: currentStyle.text,
+              border: `1px solid ${currentStyle.border}`,
+              borderRadius: '20px',
+              padding: '3px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}>
+              {project.status || 'Nouveau'}
+            </span>
           </div>
 
+          {/* Pipeline — changer de statut */}
           <div style={{
-            borderTop: '1px solid #27272a',
-            marginTop: '12px',
-            paddingTop: '12px',
+            padding: '14px 20px',
+            borderBottom: '1px solid #27272a',
           }}>
+            <p style={{
+              color: '#71717a',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Faire avancer le dossier
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'].map(s => (
+                <button
+                  key={s}
+                  disabled={updating}
+                  onClick={() => updateStatus(s)}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: (project.status === s) ? 700 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    background: (project.status === s)
+                      ? statusColors[s].bg
+                      : '#09090b',
+                    color: (project.status === s)
+                      ? statusColors[s].text
+                      : '#a1a1aa',
+                    border: `1px solid ${statusColors[s].border}`,
+                    opacity: (project.status === s) ? 1 : 0.75,
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions rapides */}
+          <div style={{
+            padding: '14px 20px',
+            borderBottom: '1px solid #27272a',
+          }}>
+            <p style={{
+              color: '#71717a',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Actions rapides
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { label: '📞 Appeler', action: () => window.open(`tel:${project.clientPhone}`) },
+                { label: '✉️ Email', action: () => window.open(`mailto:${project.clientEmail}`) },
+                { label: '📅 Rendez-vous', action: () => setShowRdvModal(true) },
+                { label: '📝 Note interne', action: focusNote },
+              ].map(btn => (
+                <button
+                  key={btn.label}
+                  onClick={btn.action}
+                  style={{
+                    background: '#27272a',
+                    border: '1px solid #3f3f46',
+                    color: 'white',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = '#3f3f46'
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = '#27272a'
+                  }}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Relance programmée */}
+          <div style={{ padding: '14px 20px' }}>
+            <p style={{
+              color: '#71717a',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Relance programmée
+            </p>
             {!showCallback && !callbackDate ? (
               <button
                 onClick={() => setShowCallback(true)}
@@ -377,29 +477,17 @@ function ProjectDetail() {
                 + Programmer une relance
               </button>
             ) : (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-              }}>
-                <span style={{
-                  fontSize: '12px',
-                  color: '#a1a1aa',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}>
-                  📅 Relance :
-                </span>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input
                   type="datetime-local"
                   value={callbackDate ? callbackDate.slice(0, 16) : ''}
-                  onChange={(e) => setCallbackDate(e.target.value)}
+                  onChange={e => setCallbackDate(e.target.value)}
                   style={{
                     flex: 1,
                     background: '#27272a',
                     border: '1px solid #3f3f46',
                     borderRadius: '8px',
-                    padding: '6px 10px',
+                    padding: '7px 10px',
                     color: 'white',
                     fontSize: '13px',
                     outline: 'none',
@@ -414,7 +502,7 @@ function ProjectDetail() {
                     color: 'black',
                     fontWeight: 600,
                     borderRadius: '8px',
-                    padding: '6px 14px',
+                    padding: '7px 14px',
                     fontSize: '13px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -430,9 +518,10 @@ function ProjectDetail() {
                     border: 'none',
                     color: '#71717a',
                     cursor: 'pointer',
-                    fontSize: '16px',
+                    fontSize: '18px',
                     flexShrink: 0,
                     padding: '0 4px',
+                    lineHeight: 1,
                   }}
                 >
                   ✕
@@ -440,45 +529,7 @@ function ProjectDetail() {
               </div>
             )}
           </div>
-        </section>
-
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Pipeline commercial</h2>
-
-          <div className="flex flex-wrap gap-2">
-            {PIPELINE_STATUSES.map((status) => {
-              const isActive = project.status === status;
-              const colors = statusColors[status];
-
-              return (
-                <Button
-                  key={status}
-                  disabled={updating}
-                  onClick={() => updateStatus(status)}
-                  variant="outline"
-                  style={
-                    isActive
-                      ? {
-                          background: colors.bg,
-                          color: colors.text,
-                          border: `1px solid ${colors.border}`,
-                          opacity: 1,
-                          fontWeight: 700,
-                        }
-                      : {
-                          background: '#18181b',
-                          color: '#a1a1aa',
-                          border: `1px solid ${colors.border}`,
-                          opacity: 0.7,
-                        }
-                  }
-                >
-                  {status}
-                </Button>
-              );
-            })}
-          </div>
-        </section>
+        </div>
 
         <div style={{
           background: '#09090b',
