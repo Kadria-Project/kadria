@@ -62,6 +62,16 @@ function ProjectDetail() {
   const [eventDate, setEventDate] = useState(callbackDate || '');
   const [savingEvent, setSavingEvent] = useState(false);
 
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    clientFirstName: project?.clientFirstName || '',
+    clientName: project?.clientName || '',
+    clientPhone: project?.clientPhone || '',
+    clientEmail: project?.clientEmail || '',
+    siteAddress: project?.siteAddress || '',
+  });
+  const [savingContact, setSavingContact] = useState(false);
+
   const EVENT_TYPES = [
     { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
     { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
@@ -362,6 +372,33 @@ function ProjectDetail() {
               <span>📅</span>
               Créé le {new Date(project.createdAt).toLocaleDateString('fr-FR')}
             </div>
+            <button
+              onClick={() => {
+                setContactForm({
+                  clientFirstName: project.clientFirstName || '',
+                  clientName: project.clientName || '',
+                  clientPhone: project.clientPhone || '',
+                  clientEmail: project.clientEmail || '',
+                  siteAddress: project.siteAddress || '',
+                });
+                setEditingContact(true);
+              }}
+              title="Modifier les informations"
+              style={{
+                background: 'transparent',
+                border: '1px solid #3f3f46',
+                color: '#71717a',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              ✏️ Modifier
+            </button>
           </div>
         </div>
 
@@ -511,56 +548,6 @@ function ProjectDetail() {
                   🗄️ Archiver (perdu)
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* Actions rapides */}
-          <div style={{
-            padding: '14px 20px',
-            borderBottom: '1px solid #27272a',
-          }}>
-            <p style={{
-              color: '#71717a',
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Actions rapides
-            </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[
-                { label: '📞 Appeler', action: () => window.open(`tel:${project.clientPhone}`) },
-                { label: '✉️ Email', action: () => window.open(`mailto:${project.clientEmail}`) },
-                { label: '📅 Rendez-vous', action: () => setShowRdvModal(true) },
-                { label: '📝 Note interne', action: focusNote },
-              ].map(btn => (
-                <button
-                  key={btn.label}
-                  onClick={btn.action}
-                  style={{
-                    background: '#27272a',
-                    border: '1px solid #3f3f46',
-                    color: 'white',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = '#3f3f46'
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = '#27272a'
-                  }}
-                >
-                  {btn.label}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1117,6 +1104,127 @@ function ProjectDetail() {
             >
               {savingRdv ? 'Enregistrement...' : 'Enregistrer le RDV'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {editingContact && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-white font-bold text-lg">✏️ Modifier les informations</h2>
+
+              <button
+                onClick={() => setEditingContact(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Prénom</label>
+                  <input
+                    type="text"
+                    value={contactForm.clientFirstName}
+                    onChange={(e) => setContactForm({ ...contactForm, clientFirstName: e.target.value })}
+                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Nom</label>
+                  <input
+                    type="text"
+                    value={contactForm.clientName}
+                    onChange={(e) => setContactForm({ ...contactForm, clientName: e.target.value })}
+                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 uppercase tracking-wide">Téléphone</label>
+                <input
+                  type="text"
+                  value={contactForm.clientPhone}
+                  onChange={(e) => setContactForm({ ...contactForm, clientPhone: e.target.value })}
+                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 uppercase tracking-wide">Email</label>
+                <input
+                  type="email"
+                  value={contactForm.clientEmail}
+                  onChange={(e) => setContactForm({ ...contactForm, clientEmail: e.target.value })}
+                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 uppercase tracking-wide">Adresse du chantier</label>
+                <input
+                  type="text"
+                  value={contactForm.siteAddress}
+                  onChange={(e) => setContactForm({ ...contactForm, siteAddress: e.target.value })}
+                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditingContact(false)}
+                className="flex-1 bg-zinc-800 text-white font-bold rounded-lg px-4 py-2 border border-zinc-700"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={async () => {
+                  setSavingContact(true);
+                  try {
+                    const res = await fetch(`/api/projects/${project.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        fields: {
+                          'Client First Name': contactForm.clientFirstName,
+                          'Client Name': contactForm.clientName,
+                          'Client Phone': contactForm.clientPhone,
+                          'Client Email': contactForm.clientEmail,
+                          'Site Address': contactForm.siteAddress,
+                        },
+                      }),
+                    });
+                    const data = await res.json();
+                    if (!data.success) {
+                      throw new Error(data.error || 'Erreur lors de la sauvegarde');
+                    }
+                    Object.assign(project, {
+                      clientFirstName: contactForm.clientFirstName,
+                      clientName: contactForm.clientName,
+                      clientPhone: contactForm.clientPhone,
+                      clientEmail: contactForm.clientEmail,
+                      siteAddress: contactForm.siteAddress,
+                    });
+                    setEditingContact(false);
+                    window.location.reload();
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
+                  } finally {
+                    setSavingContact(false);
+                  }
+                }}
+                disabled={savingContact}
+                className="flex-1 bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
+              >
+                {savingContact ? 'Enregistrement...' : 'Sauvegarder les modifications'}
+              </button>
+            </div>
           </div>
         </div>
       )}
