@@ -259,10 +259,38 @@ function ProjectDetail() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <main className="mx-auto max-w-5xl px-6 py-8 space-y-6" style={isMobile ? { padding: '12px' } : undefined}>
-        <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+          <button
+            onClick={async () => {
+              const res = await fetch(`/api/projects/${project.id}/pdf`);
+              const html = await res.text();
+              const win = window.open('', '_blank');
+              if (win) {
+                win.document.write(html);
+                win.document.close();
+                setTimeout(() => win.print(), 500);
+              }
+            }}
+            style={{
+              background: '#18181b',
+              border: '1px solid #27272a',
+              color: '#a1a1aa',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            📄 Exporter PDF
+          </button>
+        </div>
 
         <div style={{
           background: '#18181b',

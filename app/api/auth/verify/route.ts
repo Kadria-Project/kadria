@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getArtisanByEmail } from '@/src/lib/airtable'
+import { getArtisanByEmail, getArtisanConfig } from '@/src/lib/airtable'
 import { verifyMagicToken, createToken } from '@/src/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
@@ -27,7 +27,13 @@ export async function GET(request: NextRequest) {
     primaryColor: artisan.primaryColor || '#22c55e',
   })
 
-  const response = NextResponse.redirect(new URL('/dashboard-v2', request.url))
+  // Détermine si c'est un nouveau compte (pas encore configuré)
+  const config = await getArtisanConfig(artisan.artisanId)
+  const isNewAccount = !config?.welcomeName && !config?.primaryColor
+
+  const response = NextResponse.redirect(
+    new URL(isNewAccount ? '/onboarding' : '/dashboard-v2', request.url)
+  )
   response.cookies.set('kadria-auth', sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

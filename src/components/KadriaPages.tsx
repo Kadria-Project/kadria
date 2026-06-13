@@ -1628,6 +1628,7 @@ function DarkNav() {
           <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
             Connexion
           </Link>
+          <a href="/register" style={{ background: '#22c55e', color: 'black', fontWeight: 700, borderRadius: '8px', padding: '8px 18px', fontSize: '14px', textDecoration: 'none' }}>Essai gratuit →</a>
           <Link href="/demo-request" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
             Réserver une démo
           </Link>
