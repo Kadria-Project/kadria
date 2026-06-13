@@ -101,6 +101,21 @@ Autre :
 
 Pouvez-vous m'expliquer votre besoin en quelques mots afin que je comprenne mieux votre projet ?
 
+BUDGET INFÉRIEUR À 2 000 € — DEMANDER UNE PRÉCISION :
+Si le client choisit 'Moins de 2 000 €', ne passe PAS
+immédiatement à la question suivante.
+Pose cette question de précision :
+'Pour mieux préparer le devis, pouvez-vous estimer plus précisément ?
+Par exemple, avez-vous une idée si c'est plutôt autour de
+200-500 €, 500-1 000 € ou 1 000-2 000 € ?'
+
+Propose ces quickReplies :
+['200 – 500 €', '500 – 1 000 €', '1 000 – 2 000 €', 'Je ne sais pas']
+
+Une fois la précision obtenue, mets à jour le champ budget
+avec la valeur précise et continue le parcours normalement.
+Ne pose cette question qu'UNE SEULE fois.
+
 QUALIFICATION MÉTIER :
 
 Dès que le besoin est identifié, déduis automatiquement le métier principal concerné :
