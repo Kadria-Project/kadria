@@ -70,3 +70,85 @@ export async function getArtisanByEmail(email: string) {
   console.log('[AIRTABLE] Email not found in any field variant:', email)
   return null
 }
+
+export async function getEvents(artisanId: string) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const url = `https://api.airtable.com/v0/${baseId}/Events?filterByFormula=${encodeURIComponent(`{ArtisanId}="${artisanId}"`)}&sort[0][field]=Date&sort[0][direction]=asc`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  return (data.records || []).map((r: any) => ({
+    id: r.id,
+    title: r.fields.Title as string,
+    date: r.fields.Date as string,
+    type: r.fields.Type as string,
+    projectId: r.fields.ProjectId as string,
+    artisanId: r.fields.ArtisanId as string,
+    status: r.fields.Status as string,
+    notes: r.fields.Notes as string,
+  }))
+}
+
+export async function createEvent(data: {
+  title: string
+  date: string
+  type: string
+  projectId?: string
+  artisanId: string
+  notes?: string
+}) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Events`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fields: {
+        Title: data.title,
+        Date: data.date,
+        Type: data.type,
+        ProjectId: data.projectId || '',
+        ArtisanId: data.artisanId,
+        Status: 'Prévu',
+        Notes: data.notes || '',
+      },
+    }),
+  })
+  const result = await res.json()
+  return result
+}
+
+export async function updateEvent(id: string, fields: Record<string, unknown>) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Events/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fields }),
+  })
+  return res.json()
+}
+
+export async function deleteEvent(id: string) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Events/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  return res.json()
+}

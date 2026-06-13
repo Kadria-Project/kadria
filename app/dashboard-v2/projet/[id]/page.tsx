@@ -50,6 +50,7 @@ function ProjectDetail() {
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const [showRdvModal, setShowRdvModal] = useState(false);
+  const [savingRdv, setSavingRdv] = useState(false);
   const [rdvData, setRdvData] = useState({
     title: '',
     date: '',
@@ -135,6 +136,28 @@ function ProjectDetail() {
       console.error('SAVE_CALLBACK_DATE_ERROR', error);
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function handleRdvSave() {
+    if (!rdvData.title || !rdvData.date) return;
+    setSavingRdv(true);
+    try {
+      await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: rdvData.title || `RDV ${project.clientFirstName} ${project.clientName}`,
+          date: `${rdvData.date}T${rdvData.time || '09:00'}:00.000Z`,
+          type: rdvData.type || 'RDV',
+          projectId: project.id,
+          notes: rdvData.notes || '',
+        }),
+      });
+      setShowRdvModal(false);
+      alert('RDV enregistré dans le calendrier !');
+    } finally {
+      setSavingRdv(false);
     }
   }
 
@@ -993,14 +1016,11 @@ function ProjectDetail() {
             </div>
 
             <button
-              onClick={() => {
-                console.log('[RDV]', rdvData);
-                setShowRdvModal(false);
-                alert('RDV enregistré — le calendrier arrive bientôt !');
-              }}
-              className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2"
+              onClick={handleRdvSave}
+              disabled={savingRdv || !rdvData.title || !rdvData.date}
+              className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
             >
-              Enregistrer le RDV
+              {savingRdv ? 'Enregistrement...' : 'Enregistrer le RDV'}
             </button>
           </div>
         </div>

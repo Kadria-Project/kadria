@@ -31,6 +31,8 @@ import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
+
 const ProspectsLeafletMap = dynamic(
   () => import('@/src/components/ProspectsLeafletMap'),
   {
@@ -537,27 +539,8 @@ function Dashboard() {
 
       {/* Vue active */}
       {activeView === 'calendar' ? (
-        <div style={{ padding: 0, marginBottom: '24px' }}>
-          <div
-            style={{
-              background: '#18181b',
-              border: '1px solid #27272a',
-              borderRadius: '16px',
-              padding: '48px',
-              textAlign: 'center',
-              margin: '20px 0',
-            }}
-          >
-            <p style={{ fontSize: '40px', marginBottom: '16px' }}>📅</p>
-
-            <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 600, margin: '0 0 8px' }}>
-              Calendrier — Bientôt disponible
-            </h2>
-
-            <p style={{ color: '#71717a', fontSize: '14px', margin: 0 }}>
-              Gérez vos rendez-vous, relances et interventions depuis un calendrier unifié.
-            </p>
-          </div>
+        <div style={{ padding: '0 32px' }}>
+          <Calendar artisanId="" />
         </div>
       ) : (
         <div style={{ padding: 0, marginBottom: '24px' }}>
