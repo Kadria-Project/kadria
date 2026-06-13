@@ -82,6 +82,11 @@ export default function ChatWidgetInline({
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Contact form
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [contactData, setContactData] = useState({
+    firstName: '', lastName: '', phone: '', email: ''
+  })
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -103,6 +108,13 @@ export default function ChatWidgetInline({
 
   // ── Address mode detection ───────────────────────────────────────────────
   const isAddressMode = expectedField === 'siteAddress'
+
+  // ── Photo mode detection ─────────────────────────────────────────────────
+  const lastAssistantMsg = messages.filter(m => m.role === 'assistant').pop()
+  const isPhotoMode = lastAssistantMsg?.content?.toLowerCase().includes('photo') ||
+    lastAssistantMsg?.content?.toLowerCase().includes('document') ||
+    lastAssistantMsg?.content?.toLowerCase().includes('plan') ||
+    lastAssistantMsg?.content?.includes('📸')
 
   // ── Input change with address debounce ───────────────────────────────────
   const handleInputChange = useCallback(async (val: string) => {
@@ -168,6 +180,10 @@ export default function ChatWidgetInline({
 
     if (data.completenessScore > 0) setScore(data.completenessScore)
     setExpectedField(data.expectedField || null)
+
+    if (data.expectedField === 'contactForm') {
+      setShowContactForm(true)
+    }
 
     if (data.readyToSave) {
       setMessages(prev => [...prev, {
@@ -429,8 +445,46 @@ export default function ChatWidgetInline({
                 </div>
               )}
 
+              {/* Photo buttons */}
+              {!loading && isPhotoMode && !showContactForm && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhotos}
+                    style={{
+                      background: '#18181b',
+                      border: '1px solid #22c55e',
+                      color: '#22c55e',
+                      borderRadius: '20px',
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    📸 J'ajoute mes photos
+                  </button>
+                  <button
+                    onClick={() => sendMessage("Je n'ai pas de photos pour le moment")}
+                    style={{
+                      background: '#18181b',
+                      border: '1px solid #3f3f46',
+                      color: '#a1a1aa',
+                      borderRadius: '20px',
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Passer →
+                  </button>
+                </div>
+              )}
+
               {/* Quick replies */}
-              {!loading && quickReplies.length > 0 && (
+              {!loading && !isPhotoMode && !showContactForm && quickReplies.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
                   {quickReplies.map(opt => (
                     <button key={opt} onClick={() => sendMessage(opt)}
@@ -495,6 +549,114 @@ export default function ChatWidgetInline({
               </div>
             )}
 
+            {/* Contact form */}
+            {showContactForm && !saved && (
+              <div style={centerStyle}>
+                <div style={{
+                  ...(fullPage ? { padding: '0 24px' } : { padding: '0 12px' }),
+                }}>
+                  <div style={{
+                    background: '#18181b',
+                    border: '1px solid #27272a',
+                    borderRadius: '16px',
+                    padding: '20px',
+                    margin: '8px 0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}>
+                    <p style={{
+                      margin: '0 0 4px',
+                      color: '#22c55e',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                    }}>
+                      Vos coordonnées
+                    </p>
+
+                    {/* Grid 2 colonnes */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      {[
+                        { key: 'firstName', label: 'Prénom', placeholder: 'Jean', type: 'text' },
+                        { key: 'lastName', label: 'Nom', placeholder: 'Dupont', type: 'text' },
+                        { key: 'phone', label: 'Téléphone', placeholder: '06 12 34 56 78', type: 'tel' },
+                        { key: 'email', label: 'Email', placeholder: 'jean@email.com', type: 'email' },
+                      ].map(field => (
+                        <div key={field.key}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '11px',
+                            color: '#a1a1aa',
+                            marginBottom: '4px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                          }}>
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type}
+                            placeholder={field.placeholder}
+                            value={contactData[field.key as keyof typeof contactData]}
+                            onChange={e => setContactData(prev => ({
+                              ...prev,
+                              [field.key]: e.target.value
+                            }))}
+                            style={{
+                              width: '100%',
+                              background: '#27272a',
+                              border: '1px solid #3f3f46',
+                              borderRadius: '8px',
+                              padding: '8px 10px',
+                              color: 'white',
+                              fontSize: '13px',
+                              outline: 'none',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        const { firstName, lastName, phone, email } = contactData
+                        if (!firstName || !lastName || !phone || !email) {
+                          alert('Veuillez remplir tous les champs.')
+                          return
+                        }
+                        setDossier(prev => ({
+                          ...prev,
+                          clientFirstName: firstName,
+                          clientName: lastName,
+                          clientPhone: phone,
+                          clientEmail: email,
+                        }))
+                        setShowContactForm(false)
+                        const summary = `Prénom: ${firstName}, Nom: ${lastName}, Téléphone: ${phone}, Email: ${email}`
+                        await sendMessage(summary)
+                      }}
+                      style={{
+                        background: '#22c55e',
+                        border: 'none',
+                        color: 'black',
+                        fontWeight: 700,
+                        borderRadius: '10px',
+                        padding: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        width: '100%',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Valider mes coordonnées →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Photo thumbnails */}
             {photos.length > 0 && !saved && (
               <div style={{
@@ -528,8 +690,38 @@ export default function ChatWidgetInline({
               </div>
             )}
 
+            {/* Bouton retour vers la modale */}
+            {readyToSave && !showModal && !saved && (
+              <div style={{
+                padding: '8px 12px',
+                borderTop: '1px solid #27272a',
+                background: '#09090b',
+                display: 'flex',
+                justifyContent: 'center',
+              }}>
+                <button
+                  onClick={() => setShowModal(true)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #22c55e',
+                    color: '#22c55e',
+                    borderRadius: '10px',
+                    padding: '8px 20px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  📋 Voir mon dossier et valider →
+                </button>
+              </div>
+            )}
+
             {/* Input */}
-            {!saved && (
+            {!saved && !showContactForm && (
               <div style={{
                 padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
                 flexShrink: 0, background: '#09090b',
