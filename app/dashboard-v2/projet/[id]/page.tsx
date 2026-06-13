@@ -13,11 +13,6 @@ import {
   Mail,
   Calendar,
   FileText,
-  ClipboardList,
-  Euro,
-  Clock,
-  Target,
-  CheckCircle2,
   CircleDot,
 } from 'lucide-react';
 
@@ -166,6 +161,10 @@ function ProjectDetail() {
 
   const score = Number(project.completenessScore ?? 0);
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
+  const verdict = getVerdict(project);
+  const recommendation = getRecommendation(project);
+  const indicators = getIndicators(project);
+  const summary = getStructuredSummary(project);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -390,43 +389,197 @@ function ProjectDetail() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-white">Analyse Kadria</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <AnalysisItem label="Projet identifié" checked={Boolean(project.projectType)} />
-            <AnalysisItem label="Budget collecté" checked={Boolean(project.budget)} />
-            <AnalysisItem label="Délai connu" checked={Boolean(project.desiredTimeline)} />
-            <AnalysisItem
-              label="Contact exploitable"
-              checked={Boolean(project.clientPhone || project.clientEmail)}
-            />
+        <div style={{
+          background: '#09090b',
+          border: '1px solid #27272a',
+          borderRadius: '16px',
+          overflow: 'hidden',
+        }}>
+          {/* Header avec badge verdict */}
+          <div style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #27272a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>✦</span>
+              <span style={{
+                color: '#22c55e',
+                fontWeight: 700,
+                fontSize: '14px',
+                letterSpacing: '0.02em'
+              }}>
+                Analyse Kadria
+              </span>
+            </div>
+            {/* Badge verdict */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: verdict.bg,
+              border: `1px solid ${verdict.border}`,
+              borderRadius: '20px',
+              padding: '4px 12px',
+            }}>
+              <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+              <span style={{
+                color: verdict.color,
+                fontSize: '12px',
+                fontWeight: 700
+              }}>
+                {verdict.label}
+              </span>
+              <span style={{
+                color: verdict.color,
+                fontSize: '11px',
+                opacity: 0.8,
+              }}>
+                — {verdict.description}
+              </span>
+            </div>
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-            <p className="text-xs text-zinc-400 uppercase tracking-wide mb-2">
-              Synthèse
-            </p>
+          {/* Indicateurs qualité */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '1px',
+            background: '#27272a',
+            borderBottom: '1px solid #27272a',
+          }}>
+            {indicators.map((ind, i) => (
+              <div key={i} style={{
+                background: '#09090b',
+                padding: '12px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{
+                    color: ind.ok ? '#22c55e' : '#f87171',
+                    fontSize: '14px'
+                  }}>
+                    {ind.ok ? '✓' : '✗'}
+                  </span>
+                  <span style={{
+                    color: ind.ok ? '#e4e4e7' : '#a1a1aa',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                  }}>
+                    {ind.label}
+                  </span>
+                </div>
+                <span style={{
+                  color: '#71717a',
+                  fontSize: '11px',
+                  paddingLeft: '20px',
+                }}>
+                  {ind.detail}
+                </span>
+              </div>
+            ))}
+          </div>
 
-            {project.aiSummary ? (
-              <p style={{ color: '#d4d4d8', fontSize: '14px',
-                           lineHeight: '1.6', margin: 0 }}>
+          {/* Résumé structuré */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #27272a' }}>
+            <p style={{
+              color: '#22c55e',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Résumé du projet
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { icon: '🏗️', label: 'Le projet', value: summary.projet },
+                { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
+                { icon: '🎯', label: 'Priorité', value: summary.priorite },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                }}>
+                  <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
+                  <span style={{
+                    color: '#71717a',
+                    fontSize: '12px',
+                    minWidth: '80px',
+                    flexShrink: 0,
+                  }}>
+                    {item.label} :
+                  </span>
+                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 500 }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Synthèse IA longue */}
+          {project.aiSummary && (
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #27272a' }}>
+              <p style={{
+                color: '#22c55e',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                margin: '0 0 8px',
+              }}>
+                Synthèse IA
+              </p>
+              <p style={{
+                color: '#d4d4d8',
+                fontSize: '13px',
+                lineHeight: '1.7',
+                margin: 0,
+                fontStyle: 'italic',
+              }}>
                 {project.aiSummary}
               </p>
-            ) : (
-              <p style={{ color: '#71717a', fontSize: '13px', margin: 0 }}>
-                Résumé non disponible — généré automatiquement à la prochaine soumission.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <InfoIcon icon={ClipboardList} label="Type" value={project.projectType} />
-            <InfoIcon icon={Euro} label="Budget" value={project.budget} />
-            <InfoIcon icon={Clock} label="Délai" value={project.desiredTimeline} />
-            <InfoIcon icon={Target} label="Maturité" value={project.maturity} />
+          {/* Recommandation IA */}
+          <div style={{
+            padding: '14px 20px',
+            background: 'rgba(34, 197, 94, 0.05)',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
+            <div>
+              <p style={{
+                color: '#22c55e',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                margin: '0 0 4px',
+              }}>
+                Recommandation Kadria
+              </p>
+              <p style={{
+                color: '#d4d4d8',
+                fontSize: '13px',
+                lineHeight: '1.6',
+                margin: 0,
+              }}>
+                {recommendation}
+              </p>
+            </div>
           </div>
-        </section>
+        </div>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white">Notes internes</h2>
@@ -564,35 +717,100 @@ function ProjectDetail() {
   );
 }
 
-function AnalysisItem({ label, checked }: { label: string; checked: boolean }) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 flex items-center gap-3">
-      <CheckCircle2
-        className={`w-5 h-5 ${checked ? 'text-green-500' : 'text-zinc-500'}`}
-      />
-      <p className="text-sm font-medium text-white">{label}</p>
-    </div>
-  );
+function getVerdict(project: any) {
+  const score = project.completenessScore || 0;
+  const maturity = project.maturity || '';
+  const budget = project.budget || '';
+  const timeline = project.desiredTimeline || '';
+
+  const isHot = score >= 80 &&
+    (maturity.includes('Prêt') || maturity.includes('urgent')) &&
+    !budget.includes('sais pas') &&
+    (timeline.includes('possible') || timeline.includes('1 mois'));
+
+  const isCold = score < 60 ||
+    budget.includes('sais pas') ||
+    maturity.includes('renseigne');
+
+  if (isHot) return {
+    label: 'Prospect chaud',
+    color: '#22c55e',
+    bg: '#14532d',
+    border: '#16a34a',
+    icon: '🔥',
+    description: 'Budget défini, délai court, prêt à démarrer'
+  };
+  if (isCold) return {
+    label: 'Prospect froid',
+    color: '#f87171',
+    bg: '#450a0a',
+    border: '#dc2626',
+    icon: '❄️',
+    description: 'Budget flou ou projet peu défini'
+  };
+  return {
+    label: 'À qualifier',
+    color: '#fbbf24',
+    bg: '#78350f',
+    border: '#d97706',
+    icon: '⚡',
+    description: 'Quelques informations manquantes'
+  };
 }
 
-function InfoIcon({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: any;
-  label: string;
-  value?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-      <Icon className="w-4 h-4 text-zinc-400 mb-2" />
-      <p className="text-xs text-zinc-400 uppercase tracking-wide">
-        {label}
-      </p>
-      <p className="font-semibold mt-1 text-white">{value || '—'}</p>
-    </div>
-  );
+function getRecommendation(project: any) {
+  const maturity = project.maturity || '';
+  const timeline = project.desiredTimeline || '';
+  const budget = project.budget || '';
+
+  if (maturity.includes('Prêt') || maturity.includes('urgent')) {
+    return "Ce prospect est prêt à démarrer. Rappel recommandé dans les 24h pour maximiser vos chances de conversion.";
+  }
+  if (timeline.includes('possible') || timeline.includes('1 mois')) {
+    return "Le délai est court. Prenez contact rapidement pour proposer une visite technique avant qu'il ne contacte un concurrent.";
+  }
+  if (budget.includes('sais pas')) {
+    return "Le budget n'est pas défini. Proposez une fourchette lors du premier contact pour qualifier davantage.";
+  }
+  if (maturity.includes('renseigne') || maturity.includes('compare')) {
+    return "Ce prospect est en phase de comparaison. Envoyez un devis rapide et différenciez-vous par la réactivité.";
+  }
+  return "Prenez contact pour affiner les besoins et proposer une visite technique.";
+}
+
+function getIndicators(project: any) {
+  return [
+    {
+      label: 'Budget cohérent',
+      ok: !!(project.budget && !project.budget.includes('sais pas')),
+      detail: project.budget || 'Non renseigné'
+    },
+    {
+      label: 'Délai réaliste',
+      ok: !!(project.desiredTimeline && !project.desiredTimeline.includes('urgence')),
+      detail: project.desiredTimeline || 'Non renseigné'
+    },
+    {
+      label: 'Contact vérifié',
+      ok: !!(project.clientPhone && project.clientEmail),
+      detail: project.clientPhone ? 'Téléphone + email' : 'Incomplet'
+    },
+    {
+      label: 'Photos jointes',
+      ok: !!(project.photos && project.photos.length > 0),
+      detail: project.photos?.length > 0
+        ? `${project.photos.length} photo(s)`
+        : 'Aucune photo'
+    },
+  ];
+}
+
+function getStructuredSummary(project: any) {
+  return {
+    projet: project.projectType || project.trade || 'Non renseigné',
+    enjeu: [project.budget, project.desiredTimeline].filter(Boolean).join(' — ') || 'Non renseigné',
+    priorite: project.maturity || 'Non renseignée',
+  };
 }
 
 function formatDate(value: string) {
