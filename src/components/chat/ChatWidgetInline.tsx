@@ -101,13 +101,17 @@ export default function ChatWidgetInline({
 
   // ── Charge la config artisan ─────────────────────────────────────────────
   useEffect(() => {
+    // Si la couleur primaire est fournie via la prop (ex: query param), on l'utilise directement
+    if (primaryColor) {
+      setPrimaryColorLocal(primaryColor)
+    }
     const loadConfig = async () => {
       if (!artisanId || artisanId === 'Artisan_demo') return
       try {
         const res = await fetch(`/api/artisan/public-config?artisan_id=${artisanId}`)
         const data = await res.json()
         if (data.success && data.config) {
-          if (data.config.primaryColor) setPrimaryColorLocal(data.config.primaryColor)
+          if (data.config.primaryColor && !primaryColor) setPrimaryColorLocal(data.config.primaryColor)
           if (data.config.secondaryColor) setSecondaryColorLocal(data.config.secondaryColor)
           if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
           if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
@@ -117,7 +121,7 @@ export default function ChatWidgetInline({
       }
     }
     loadConfig()
-  }, [artisanId])
+  }, [artisanId, primaryColor])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
