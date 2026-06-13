@@ -39,7 +39,7 @@ const ShaderGradient = dynamic(
   { ssr: false }
 );
 
-const heroGradientProps = {
+const kadriaGradientProps = {
   animate: 'on',
   axesHelper: 'off',
   brightness: 1.2,
@@ -47,16 +47,16 @@ const heroGradientProps = {
   cDistance: 3.6,
   cPolarAngle: 90,
   cameraZoom: 1,
-  color1: '#111516',
-  color2: '#32ae74',
-  color3: '#111516',
+  color1: '#32ae74',
+  color2: '#111516',
+  color3: '#32ae74',
   destination: 'onCanvas',
   embedMode: 'off',
   envPreset: 'city',
   fov: 45,
   frameRate: 10,
   grain: 'on',
-  lightType: '3d',
+  lightType: 'env',
   pixelDensity: 1,
   positionX: -1.4,
   positionY: 0,
@@ -66,27 +66,33 @@ const heroGradientProps = {
   rotationY: 10,
   rotationZ: 50,
   shader: 'defaults',
-  type: 'plane',
+  type: 'waterPlane',
   uAmplitude: 1,
   uDensity: 1.3,
   uFrequency: 5.5,
-  uSpeed: 0.3,
+  uSpeed: 0.2,
   uStrength: 4,
   uTime: 0,
   wireframe: false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any;
 
-function HeroGradientBackground() {
+function KadriaGradient() {
+  return (
+    <ShaderGradientCanvas style={{ width: '100%', height: '100%' }}>
+      <ShaderGradient {...kadriaGradientProps} />
+    </ShaderGradientCanvas>
+  );
+}
+
+function KadriaGradientBackground({ opacity }: { opacity: number }) {
   return (
     <div style={{
       position: 'absolute', inset: 0,
-      zIndex: 0, opacity: 0.6,
+      zIndex: 0, opacity,
       pointerEvents: 'none',
     }}>
-      <ShaderGradientCanvas style={{ width: '100%', height: '100%' }}>
-        <ShaderGradient {...heroGradientProps} />
-      </ShaderGradientCanvas>
+      <KadriaGradient />
     </div>
   );
 }
@@ -671,7 +677,7 @@ export function LandingRoutePage() {
       <main>
         {/* HERO */}
         <div style={{ position: 'relative', overflow: 'hidden', background: '#09090b' }}>
-          <HeroGradientBackground />
+          <KadriaGradientBackground opacity={0.15} />
           <section className="relative z-10 mx-auto grid max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
             <div>
               <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
@@ -714,20 +720,23 @@ export function LandingRoutePage() {
         </div>
 
         {/* STATS */}
-        <section className="border-y border-zinc-800 bg-zinc-900 py-16">
-          <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
-            {[
-              ['100%', 'des demandes centralisées dans votre dashboard'],
-              ['24h/24', 'Kadria répond même quand vous êtes indisponible'],
-              ['< 3 min', 'pour qualifier et structurer un projet complet'],
-            ].map(([value, text]) => (
-              <div key={value}>
-                <p className="text-4xl font-bold text-green-500">{value}</p>
-                <p className="mt-3 text-zinc-400">{text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          <KadriaGradientBackground opacity={0.1} />
+          <section className="relative z-10 border-y border-zinc-800 bg-zinc-900 py-16">
+            <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
+              {[
+                ['100%', 'des demandes centralisées dans votre dashboard'],
+                ['24h/24', 'Kadria répond même quand vous êtes indisponible'],
+                ['< 3 min', 'pour qualifier et structurer un projet complet'],
+              ].map(([value, text]) => (
+                <div key={value}>
+                  <p className="text-4xl font-bold text-green-500">{value}</p>
+                  <p className="mt-3 text-zinc-400">{text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
 
         {/* PROBLEME */}
         <section className="mx-auto max-w-[1280px] px-6 py-24">
@@ -978,7 +987,7 @@ export function LandingRoutePage() {
 
         {/* CTA FINAL */}
         <div style={{ position: 'relative', overflow: 'hidden', background: '#09090b' }}>
-          <HeroGradientBackground />
+          <KadriaGradientBackground opacity={0.15} />
           <section className="relative z-10 border-t border-zinc-800 py-24">
             <div className="mx-auto max-w-3xl px-6 text-center">
               <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
