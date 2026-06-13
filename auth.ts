@@ -3,6 +3,7 @@ import Resend from 'next-auth/providers/resend'
 import { getArtisanByEmail } from '@/src/lib/airtable'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY,

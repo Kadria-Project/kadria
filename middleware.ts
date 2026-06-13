@@ -1,22 +1,31 @@
-import { auth } from '@/auth'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth
-  const isOnDashboard = req.nextUrl.pathname.startsWith('/dashboard-v2')
-  const isOnLogin = req.nextUrl.pathname.startsWith('/login')
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-  if (isOnDashboard && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/login', req.nextUrl))
-  }
+  // Protège uniquement les routes dashboard
+  if (pathname.startsWith('/dashboard-v2')) {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+    })
 
-  if (isOnLogin && isLoggedIn) {
-    return NextResponse.redirect(new URL('/dashboard-v2', req.nextUrl))
+    console.log('[MIDDLEWARE] path:', pathname, 'token:', !!token)
+
+    if (!token) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
   }
 
   return NextResponse.next()
-})
+}
 
 export const config = {
-  matcher: ['/dashboard-v2/:path*', '/login'],
+  matcher: [
+    '/dashboard-v2',
+    '/dashboard-v2/:path*',
+  ],
 }
