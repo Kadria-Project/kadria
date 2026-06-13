@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       .select({
         maxRecords: 100,
         sort: [{ field: 'Created At', direction: 'desc' }],
-        filterByFormula: `{Artisan_id}="${artisanId}"`,
+        filterByFormula: `{Artisan ID}="${artisanId}"`,
       })
       .firstPage();
 
