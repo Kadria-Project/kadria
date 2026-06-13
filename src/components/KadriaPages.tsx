@@ -2033,15 +2033,25 @@ export function AdminRoutePage() {
 
 export function SimulateurSection() {
   const [demandes, setDemandes] = useState(10);
-  const [part, setPart] = useState(40);
+  const [perte, setPerte] = useState(40);
   const [valeur, setValeur] = useState(3000);
   const [marge, setMarge] = useState(25);
 
-  const opportunitesPerdues = Math.round(demandes * 4 * (part / 100));
-  const caPerdu = opportunitesPerdues * valeur;
-  const margePerdue = caPerdu * (marge / 100);
-  const valeurNum = Number(valeur);
-  const breakeven = valeurNum > 0 ? Math.max(1, Math.ceil(249 / valeurNum)) : 1;
+  // Assure-toi que toutes les variables sont des NOMBRES
+  const demandesNum = Number(demandes) || 10;
+  const perteNum = Number(perte) || 40;
+  const valeurNum = Number(valeur) || 3000;
+  const margeNum = Number(marge) || 25;
+
+  // Calculs
+  const opportunitesPerdues = Math.round(demandesNum * 4 * (perteNum / 100));
+  const caPotentielPerdu = opportunitesPerdues * valeurNum;
+  const margePerdue = Math.round(caPotentielPerdu * (margeNum / 100));
+
+  // Breakeven : combien de chantiers récupérés pour payer 249€/mois
+  const breakeven = valeurNum > 0
+    ? Math.max(1, Math.ceil(249 / valeurNum))
+    : 1;
 
   return (
     <section className="mx-auto max-w-[1280px] px-6 py-24">
@@ -2075,14 +2085,14 @@ export function SimulateurSection() {
           <div>
             <div className="flex items-center justify-between text-sm">
               <label className="text-white">Part non traitée ou mal qualifiée</label>
-              <span className="font-semibold text-green-500">{part}%</span>
+              <span className="font-semibold text-green-500">{perte}%</span>
             </div>
             <input
               type="range"
               min={10}
               max={90}
-              value={part}
-              onChange={(e) => setPart(Number(e.target.value))}
+              value={perte}
+              onChange={(e) => setPerte(Number(e.target.value))}
               className="mt-3 w-full accent-green-500"
             />
           </div>
@@ -2125,7 +2135,7 @@ export function SimulateurSection() {
             <p className="mt-1 text-sm text-zinc-400">Opportunités perdues / mois</p>
           </div>
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-2xl font-bold text-white">{caPerdu.toLocaleString('fr-FR')} €</p>
+            <p className="text-2xl font-bold text-white">{caPotentielPerdu.toLocaleString('fr-FR')} €</p>
             <p className="mt-1 text-sm text-zinc-400">CA potentiel perdu / mois</p>
           </div>
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
@@ -2136,8 +2146,13 @@ export function SimulateurSection() {
           <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
             <p className="text-sm font-semibold text-green-400">✓ Abonnement Kadria</p>
             <p className="mt-2 text-3xl font-bold text-white">249 €/mois</p>
-            <p className="mt-2 text-sm text-zinc-400">
-              Un seul chantier récupéré sur {breakeven} suffit à rentabiliser Kadria.
+            <p style={{ color: '#a1a1aa', fontSize: '14px', margin: '0 0 8px' }}>
+              Un seul chantier récupéré sur{' '}
+              <strong style={{ color: 'white' }}>{breakeven}</strong>{' '}
+              suffit à rentabiliser Kadria.
+            </p>
+            <p style={{ color: '#52525b', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
+              Estimation indicative basée sur vos hypothèses.
             </p>
           </div>
         </div>
