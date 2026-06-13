@@ -352,9 +352,14 @@ function Dashboard() {
             📅 Calendrier
           </button>
 
-          <Button variant="ghost" size="icon" onClick={logout} title="Déconnexion">
+          <button
+            onClick={logout}
+            title="Déconnexion"
+            className="bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg"
+            style={{ padding: '9px 12px', cursor: 'pointer' }}
+          >
             <LogOut className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -385,7 +390,8 @@ function Dashboard() {
                   key={k.label}
                   style={{
                     ...cardStyle,
-                    borderTop: `3px solid ${borderTopColor}`,
+                    borderRadius: '14px',
+                    borderTop: `2px solid ${borderTopColor}`,
                     ...(isAlert ? { borderColor: 'rgba(239,68,68,0.3)', borderTopColor } : {}),
                   }}
                 >
@@ -705,7 +711,7 @@ function Dashboard() {
                     {pipelineSteps.map((step) => {
                       const style = BADGE_STYLES[step.label] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
                       const total = allProjects.length || 1;
-                      const pct = Math.round((step.value / total) * 100);
+                      const pct = step.value > 0 ? Math.max(Math.round((step.value / total) * 100), 4) : 0;
 
                       return (
                         <div
@@ -764,7 +770,7 @@ function Dashboard() {
                 <div>
                   <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
 
-                  <div style={{ height: '240px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
+                  <div style={{ height: '300px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
                     <ProspectsLeafletMap
                       projects={sortedProjects.slice(0, 8)}
                       onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
@@ -804,7 +810,7 @@ function ProjectList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-zinc-800 transition-colors px-4 py-3 cursor-pointer"
+          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center text-sm">
@@ -823,7 +829,10 @@ function ProjectList({
               {p.clientFirstName} {p.clientName}
             </span>
 
-            <span className="col-span-2 text-zinc-400 truncate">
+            <span
+              className="col-span-2 text-zinc-400"
+              style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
               {p.trade || '—'}
             </span>
 
