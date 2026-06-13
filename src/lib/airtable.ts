@@ -26,24 +26,47 @@ export async function getArtisanByEmail(email: string) {
   const baseId = process.env.AIRTABLE_BASE_ID
   const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
 
-  const url = `https://api.airtable.com/v0/${baseId}/${table}?filterByFormula=${encodeURIComponent(`{Email}="${email}"`)}&maxRecords=1`
+  // Essaie plusieurs variantes du nom du champ email
+  const filters = [
+    `{Email}="${email}"`,
+    `{email}="${email}"`,
+    `{E-mail}="${email}"`,
+    `{Mail}="${email}"`,
+  ]
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
+  for (const filter of filters) {
+    const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(filter)}&maxRecords=1`
 
-  const data = await res.json()
-  const record = data.records?.[0]
-  if (!record) return null
+    console.log('[AIRTABLE] Trying filter:', filter)
 
-  return {
-    id: record.id,
-    artisanId: record.fields['Artisan ID'] as string,
-    companyName: record.fields['Company Name'] as string,
-    email: record.fields['Email'] as string,
-    primaryColor: record.fields['Primary Color'] as string,
-    plan: record.fields['Plan'] as string,
-    active: record.fields['Active'] as boolean,
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      cache: 'no-store',
+    })
+
+    const data = await res.json()
+    console.log('[AIRTABLE] Records found:', data.records?.length, 'for filter:', filter)
+
+    if (data.records?.length > 0) {
+      const record = data.records[0]
+      console.log('[AIRTABLE] Fields available:', JSON.stringify(Object.keys(record.fields)))
+
+      return {
+        id: record.id,
+        artisanId: (record.fields['Artisan ID'] ||
+                    record.fields['artisanId'] ||
+                    record.fields['ArtisanId'] || '') as string,
+        companyName: (record.fields['Company Name'] ||
+                      record.fields['companyName'] || '') as string,
+        email: email,
+        primaryColor: (record.fields['Primary Color'] ||
+                       record.fields['primaryColor'] || '#22c55e') as string,
+        plan: (record.fields['Plan'] || '') as string,
+        active: record.fields['Active'] !== false,
+      }
+    }
   }
+
+  console.log('[AIRTABLE] Email not found in any field variant:', email)
+  return null
 }
