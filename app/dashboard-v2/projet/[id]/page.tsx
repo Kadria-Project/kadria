@@ -58,6 +58,16 @@ function ProjectDetail() {
     type: 'RDV',
     notes: '',
   });
+  const [eventType, setEventType] = useState('Relance');
+  const [eventDate, setEventDate] = useState(callbackDate || '');
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  const EVENT_TYPES = [
+    { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
+    { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
+    { value: 'RDV', color: '#4ade80', bg: 'rgba(34,197,94,0.15)', border: '#22c55e' },
+    { value: 'Intervention', color: '#c084fc', bg: 'rgba(192,132,252,0.15)', border: '#a855f7' },
+  ];
 
   async function loadActivities() {
     const activityData = await getProjectActivity(id);
@@ -158,6 +168,37 @@ function ProjectDetail() {
       alert('RDV enregistré dans le calendrier !');
     } finally {
       setSavingRdv(false);
+    }
+  }
+
+  async function saveCalendarEvent() {
+    if (!eventDate) return;
+    setSavingEvent(true);
+    try {
+      await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `${eventType} — ${project.clientFirstName} ${project.clientName}`,
+          date: eventDate.includes('T') ? eventDate : `${eventDate}T09:00:00.000Z`,
+          type: eventType,
+          projectId: project.id,
+          notes: 'Planifié depuis le dossier projet',
+        }),
+      });
+      if (eventType === 'Relance') {
+        await fetch(`/api/projects/${project.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callbackDate: eventDate }),
+        });
+      }
+      setEventDate('');
+      alert(`${eventType} ajouté au calendrier ✓`);
+    } catch {
+      alert('Erreur lors de l\'enregistrement');
+    } finally {
+      setSavingEvent(false);
     }
   }
 
@@ -411,6 +452,66 @@ function ProjectDetail() {
                 </button>
               ))}
             </div>
+
+            <div style={{
+              borderTop: '1px solid #27272a',
+              marginTop: '12px',
+              paddingTop: '12px',
+            }}>
+              <p style={{
+                color: '#71717a', fontSize: '11px', fontWeight: 600,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                margin: '0 0 8px',
+              }}>
+                Clôture du dossier
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => updateStatus('Gagné')}
+                  style={{
+                    flex: 1,
+                    background: project.status === 'Gagné'
+                      ? 'rgba(20,83,45,0.7)' : 'rgba(20,83,45,0.2)',
+                    border: '1px solid #16a34a',
+                    color: '#86efac',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  🏆 Chantier gagné
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Archiver ce dossier comme perdu ?')) updateStatus('Perdu');
+                  }}
+                  style={{
+                    flex: 1,
+                    background: project.status === 'Perdu'
+                      ? 'rgba(69,10,10,0.7)' : 'rgba(69,10,10,0.2)',
+                    border: '1px solid #dc2626',
+                    color: '#f87171',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  🗄️ Archiver (perdu)
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Actions rapides */}
@@ -463,41 +564,50 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Relance programmée */}
+          {/* Planificateur calendrier */}
           <div style={{ padding: '14px 20px' }}>
-            <p style={{
-              color: '#71717a',
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
+            <div style={{
+              borderTop: '1px solid #27272a',
+              marginTop: '12px',
+              paddingTop: '14px',
             }}>
-              Relance programmée
-            </p>
-            {!showCallback && !callbackDate ? (
-              <button
-                onClick={() => setShowCallback(true)}
-                style={{
-                  background: 'transparent',
-                  border: '1px dashed #3f3f46',
-                  color: '#71717a',
-                  borderRadius: '8px',
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  width: '100%',
-                  textAlign: 'left',
-                }}
-              >
-                + Programmer une relance
-              </button>
-            ) : (
+              <p style={{
+                color: '#71717a', fontSize: '11px', fontWeight: 600,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                margin: '0 0 10px',
+              }}>
+                Planifier dans le calendrier
+              </p>
+
+              {/* Type selector */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                {EVENT_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    onClick={() => setEventType(t.value)}
+                    style={{
+                      background: eventType === t.value ? t.bg : '#27272a',
+                      border: `1px solid ${eventType === t.value ? t.border : '#3f3f46'}`,
+                      color: eventType === t.value ? t.color : '#a1a1aa',
+                      borderRadius: '8px',
+                      padding: '5px 12px',
+                      fontSize: '12px',
+                      fontWeight: eventType === t.value ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {t.value}
+                  </button>
+                ))}
+              </div>
+
+              {/* Date + bouton */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <input
                   type="datetime-local"
-                  value={callbackDate ? callbackDate.slice(0, 16) : ''}
-                  onChange={e => setCallbackDate(e.target.value)}
+                  value={eventDate}
+                  onChange={e => setEventDate(e.target.value)}
                   style={{
                     flex: 1,
                     background: '#27272a',
@@ -510,40 +620,25 @@ function ProjectDetail() {
                   }}
                 />
                 <button
-                  disabled={updating}
-                  onClick={saveCallback}
+                  onClick={saveCalendarEvent}
+                  disabled={savingEvent || !eventDate}
                   style={{
-                    background: '#22c55e',
+                    background: savingEvent || !eventDate ? '#27272a' : '#22c55e',
                     border: 'none',
-                    color: 'black',
+                    color: savingEvent || !eventDate ? '#71717a' : 'black',
                     fontWeight: 600,
                     borderRadius: '8px',
-                    padding: '7px 14px',
+                    padding: '7px 16px',
                     fontSize: '13px',
-                    cursor: 'pointer',
+                    cursor: savingEvent || !eventDate ? 'default' : 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
                   }}
                 >
-                  Enregistrer
-                </button>
-                <button
-                  onClick={() => { setShowCallback(false); setCallbackDate(''); }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#71717a',
-                    cursor: 'pointer',
-                    fontSize: '18px',
-                    flexShrink: 0,
-                    padding: '0 4px',
-                    lineHeight: 1,
-                  }}
-                >
-                  ✕
+                  {savingEvent ? '...' : '+ Calendrier'}
                 </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
