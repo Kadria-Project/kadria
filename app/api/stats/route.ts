@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { airtableBase, TABLES } from '@/src/lib/airtable';
+import { getSession } from '@/src/lib/auth-utils';
 
 function estimateBudgetValue(budget?: unknown): number {
   const value = String(budget || '').toLowerCase();
@@ -18,9 +19,16 @@ function estimateBudgetValue(budget?: unknown): number {
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
+    }
+    const artisanId = session.artisanId;
+
     const records = await airtableBase(TABLES.projects)
       .select({
         maxRecords: 100,
+        filterByFormula: `{Artisan_id}="${artisanId}"`,
       })
       .firstPage();
 

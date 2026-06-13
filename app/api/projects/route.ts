@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { airtableBase, TABLES } from '@/src/lib/airtable';
+import { getSession } from '@/src/lib/auth-utils';
 
 function mapProject(record: any) {
   const fields = record.fields;
@@ -46,6 +47,16 @@ function mapProject(record: any) {
 
 export async function GET(request: Request) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Non authentifié' },
+        { status: 401 },
+      );
+    }
+
+    const artisanId = session.artisanId;
+
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get('status');
@@ -56,6 +67,7 @@ export async function GET(request: Request) {
       .select({
         maxRecords: 100,
         sort: [{ field: 'Created At', direction: 'desc' }],
+        filterByFormula: `{Artisan_id}="${artisanId}"`,
       })
       .firstPage();
 

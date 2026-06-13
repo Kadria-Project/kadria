@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { airtableBase, TABLES } from '@/src/lib/airtable';
+import { getSession } from '@/src/lib/auth-utils';
 
 function mapProject(record: any) {
   const fields = record.fields;
@@ -80,9 +81,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
+    }
+
     const { id } = await params;
 
     const record = await airtableBase(TABLES.projects).find(id);
+
+    const projectArtisanId = record.fields['Artisan_id'] as string;
+    if (projectArtisanId && projectArtisanId !== session.artisanId) {
+      return NextResponse.json(
+        { success: false, error: 'Accès non autorisé' },
+        { status: 403 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
