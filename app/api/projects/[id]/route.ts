@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { airtableBase, TABLES } from '@/src/lib/airtable';
+import { airtableBase, TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
 
 function mapProject(record: any) {
@@ -159,6 +159,41 @@ if (input.callbackDate !== undefined) {
     }
 
     const record = await airtableBase(TABLES.projects).update(id, fieldsToUpdate);
+
+    if (input.callbackDate) {
+      const session = await getSession();
+
+      if (session?.artisanId) {
+        try {
+          const existingEvents = await getEvents(session.artisanId);
+          const existingRelance = existingEvents.find(
+            (e: { projectId: string; type: string }) => e.projectId === id && e.type === 'Relance',
+          );
+
+          const clientName = record.fields['Client Name'] || 'Prospect';
+
+          if (existingRelance) {
+            await updateEvent(existingRelance.id, {
+              Date: input.callbackDate,
+              Title: `Relance — ${clientName}`,
+            });
+          } else {
+            await createEvent({
+              title: `Relance — ${clientName}`,
+              date: input.callbackDate,
+              type: 'Relance',
+              projectId: id,
+              artisanId: session.artisanId,
+              notes: 'Relance programmée depuis le dossier projet',
+            });
+          }
+
+          console.log('[EVENTS] Relance event created/updated for project:', id);
+        } catch (eventError) {
+          console.error('[EVENTS] Failed to sync relance to calendar:', eventError);
+        }
+      }
+    }
 
     if (input.status) {
       await createActivityLog(
