@@ -42,6 +42,7 @@ function mapProject(record: any) {
     longitude: fields.Longitude ?? null,
 
     callbackDate: fields['Callback Date'] ?? '',
+    devisAmount: (fields['Devis_amount'] as number) || 0,
   };
 }
 

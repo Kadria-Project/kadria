@@ -72,6 +72,11 @@ function ProjectDetail() {
   });
   const [savingContact, setSavingContact] = useState(false);
 
+  const [devisAmount, setDevisAmount] = useState<string>(
+    project?.devisAmount ? String(project.devisAmount) : ''
+  );
+  const [savingDevis, setSavingDevis] = useState(false);
+
   const EVENT_TYPES = [
     { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
     { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
@@ -96,6 +101,7 @@ function ProjectDetail() {
         setNote(data.project?.internalNotes || '');
         setCallbackDate(data.project?.callbackDate || '');
         setShowCallback(!!data.project?.callbackDate);
+        setDevisAmount(data.project?.devisAmount ? String(data.project.devisAmount) : '');
 
         await loadActivities();
       } catch (error) {
@@ -488,6 +494,100 @@ function ProjectDetail() {
                   {s}
                 </button>
               ))}
+            </div>
+
+            <div style={{
+              borderTop: '1px solid #27272a',
+              marginTop: '12px',
+              paddingTop: '14px',
+            }}>
+              <p style={{
+                color: '#71717a', fontSize: '11px', fontWeight: 600,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                margin: '0 0 10px',
+              }}>
+                Montant du devis
+              </p>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    type="number"
+                    value={devisAmount}
+                    onChange={e => setDevisAmount(e.target.value)}
+                    placeholder={`Budget estimé : ${project.budget || 'non renseigné'}`}
+                    style={{
+                      width: '100%',
+                      background: '#27272a',
+                      border: devisAmount ? '1px solid #22c55e' : '1px solid #3f3f46',
+                      borderRadius: '8px',
+                      padding: '8px 40px 8px 12px',
+                      color: 'white',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#71717a',
+                    fontSize: '14px',
+                  }}>€</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    setSavingDevis(true);
+                    try {
+                      await fetch(`/api/projects/${project.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          fields: {
+                            Devis_amount: devisAmount ? Number(devisAmount) : null,
+                          },
+                        }),
+                      });
+                      project.devisAmount = Number(devisAmount);
+                    } catch {
+                      alert('Erreur lors de la sauvegarde');
+                    } finally {
+                      setSavingDevis(false);
+                    }
+                  }}
+                  disabled={savingDevis}
+                  style={{
+                    background: savingDevis ? '#27272a' : '#22c55e',
+                    border: 'none',
+                    color: savingDevis ? '#71717a' : 'black',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    cursor: savingDevis ? 'default' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {savingDevis ? '...' : 'Enregistrer'}
+                </button>
+              </div>
+              {devisAmount && (
+                <p style={{
+                  color: '#22c55e', fontSize: '12px', margin: '6px 0 0',
+                }}>
+                  ✓ Montant réel : {Number(devisAmount).toLocaleString('fr-FR')} €
+                  {' '}— utilisé pour les KPIs
+                </p>
+              )}
+              {!devisAmount && project.budget && (
+                <p style={{
+                  color: '#71717a', fontSize: '12px', margin: '6px 0 0',
+                }}>
+                  Budget estimé utilisé par défaut : {project.budget}
+                </p>
+              )}
             </div>
 
             <div style={{

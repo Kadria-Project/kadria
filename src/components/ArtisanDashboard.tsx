@@ -113,6 +113,22 @@ function opportunityScore(project: Project): number {
   return (project.completenessScore || 0) * 2 + budgetScore(project.budget);
 }
 
+function parseBudget(budgetStr: string): number {
+  if (!budgetStr) return 0
+  // Extrait les nombres du string budget
+  const numbers = budgetStr.match(/\d+[\s\d]*/g)
+  if (!numbers) return 0
+  // Prend la valeur max de la fourchette
+  const values = numbers.map(n => parseInt(n.replace(/\s/g, ''), 10))
+    .filter(n => !isNaN(n) && n > 0)
+  return values.length > 0 ? Math.max(...values) : 0
+}
+
+const formatAmount = (n: number) =>
+  n >= 1000
+    ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k €`
+    : `${n} €`
+
 function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -225,28 +241,33 @@ function Dashboard() {
   const todayKey = today.toISOString().slice(0, 10);
   const now = today.getTime();
 
-  const totalBudget = allProjects.reduce(
-    (sum, p) => sum + parseBudgetValue(p.budget),
-    0,
-  );
+  // CA potentiel = somme des devisAmount si rempli, sinon budget parsé
+  const caTotal = allProjects
+    .filter((p) => p.status !== 'Perdu')
+    .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
 
-  const devisEnvoyeAmount = allProjects
+  // Devis envoyés = somme des devisAmount des projets "Devis envoyé"
+  const devisTotal = allProjects
     .filter((p) => p.status === 'Devis envoyé')
-    .reduce((sum, p) => sum + parseBudgetValue(p.budget), 0);
+    .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
 
   const gagneProjects = allProjects.filter((p) => p.status === 'Gagné');
 
-  const gagneAmount = gagneProjects.reduce(
-    (sum, p) => sum + parseBudgetValue(p.budget),
-    0,
-  );
+  // Chantiers gagnés = somme des devisAmount des projets "Gagné"
+  const gagneTotal = gagneProjects
+    .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
 
   const tauxTransformation = allProjects.length
     ? Math.round((gagneProjects.length / allProjects.length) * 100)
     : 0;
 
-  const panierMoyen = allProjects.length
-    ? totalBudget / allProjects.length
+  // Panier moyen = CA total / nombre projets actifs
+  const activeProjects = allProjects.filter(
+    (p) => p.status !== 'Perdu' && p.status !== 'Gagné',
+  );
+
+  const panierMoyen = activeProjects.length > 0
+    ? Math.round(caTotal / activeProjects.length)
     : 0;
 
   const todayCallbacks = allProjects.filter((project) => {
@@ -272,11 +293,11 @@ function Dashboard() {
   const dossiersARelancer = overdueCount;
 
   const kpis = [
-    { label: 'CA potentiel', value: fmt(totalBudget), icon: Euro },
-    { label: 'Devis envoyés', value: fmt(devisEnvoyeAmount), icon: Send },
-    { label: 'Chantiers gagnés', value: fmt(gagneAmount), icon: Trophy },
+    { label: 'CA potentiel', value: formatAmount(caTotal), icon: Euro },
+    { label: 'Devis envoyés', value: formatAmount(devisTotal), icon: Send },
+    { label: 'Chantiers gagnés', value: formatAmount(gagneTotal), icon: Trophy },
     { label: 'Taux de transformation', value: `${tauxTransformation} %`, icon: Target },
-    { label: 'Panier moyen', value: fmt(panierMoyen), icon: ShoppingCart },
+    { label: 'Panier moyen', value: formatAmount(panierMoyen), icon: ShoppingCart },
     { label: 'Dossiers à relancer', value: String(dossiersARelancer), icon: AlertCircle },
   ];
 
