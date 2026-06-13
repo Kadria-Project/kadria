@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   ArrowRight,
   BarChart3,
@@ -28,6 +29,67 @@ import {
 import { KadriaLogoImg } from '@/src/components/KadriaLogo';
 import ChatWidget from '@/src/components/ChatWidget';
 import PricingQuiz from '@/src/components/PricingQuiz';
+
+const ShaderGradientCanvas = dynamic(
+  () => import('@shadergradient/react').then((m) => m.ShaderGradientCanvas),
+  { ssr: false }
+);
+const ShaderGradient = dynamic(
+  () => import('@shadergradient/react').then((m) => m.ShaderGradient),
+  { ssr: false }
+);
+
+const heroGradientProps = {
+  animate: 'on',
+  axesHelper: 'off',
+  brightness: 1.2,
+  cAzimuthAngle: 180,
+  cDistance: 3.6,
+  cPolarAngle: 90,
+  cameraZoom: 1,
+  color1: '#111516',
+  color2: '#32ae74',
+  color3: '#111516',
+  destination: 'onCanvas',
+  embedMode: 'off',
+  envPreset: 'city',
+  fov: 45,
+  frameRate: 10,
+  grain: 'on',
+  lightType: '3d',
+  pixelDensity: 1,
+  positionX: -1.4,
+  positionY: 0,
+  positionZ: 0,
+  reflection: 0.1,
+  rotationX: 0,
+  rotationY: 10,
+  rotationZ: 50,
+  shader: 'defaults',
+  type: 'plane',
+  uAmplitude: 1,
+  uDensity: 1.3,
+  uFrequency: 5.5,
+  uSpeed: 0.3,
+  uStrength: 4,
+  uTime: 0,
+  wireframe: false,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any;
+
+function HeroGradientBackground() {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      zIndex: 0, opacity: 0.6,
+      pointerEvents: 'none',
+    }}>
+      <ShaderGradientCanvas style={{ width: '100%', height: '100%' }}>
+        <ShaderGradient {...heroGradientProps} />
+      </ShaderGradientCanvas>
+    </div>
+  );
+}
 
 const features = [
   {
@@ -274,18 +336,18 @@ function InfoTile({
 }
 
 const QUALIFICATION_STEPS = [
-  { icon: '👤', title: 'Prospect', subtitle: 'Un client vous contacte' },
-  { icon: '🌐', title: 'Site web ou téléphone', subtitle: 'Via votre site ou par appel' },
-  { icon: '⚡', title: 'Kadria', subtitle: 'Qualifie automatiquement' },
-  { icon: '🎯', title: 'Dossier projet', subtitle: 'Complet et scoré' },
-  { icon: '✅', title: 'Artisan', subtitle: 'Prêt à chiffrer' },
+  { icon: '👤', title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone' },
+  { icon: '🌐', title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria' },
+  { icon: '⚡', title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...' },
+  { icon: '📋', title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer' },
+  { icon: '✅', title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate' },
 ];
 
 const DOSSIER_FIELDS: [string, string, string][] = [
-  ['🏢', 'Projet', 'Rénovation SDB'],
-  ['📍', 'Ville', 'Lyon 3e'],
-  ['💶', 'Budget', '8 000 – 12 000 €'],
-  ['⏱', 'Délai', 'Sept. 2026'],
+  ['🏗️', 'PROJET', 'Rénovation salle de bain'],
+  ['📍', 'VILLE', 'Lyon 3e'],
+  ['💶', 'BUDGET', '8 000 – 12 000 €'],
+  ['⏱', 'DÉLAI', 'Sous 1 mois'],
 ];
 
 function QualificationShowcase() {
@@ -317,28 +379,28 @@ function QualificationShowcase() {
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="flex items-center justify-between">
-          <p className="flex items-center gap-2 text-sm font-semibold text-white">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white">
             <span className="text-green-500">●</span> DOSSIER PROJET REÇU
           </p>
           <span className="rounded-full border border-green-500/30 bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
-            92%
+            Score 94%
           </span>
         </div>
 
         <div className="mt-4 flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-900 text-sm font-semibold text-green-300">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-700 text-sm font-bold text-white">
             ML
           </span>
           <div className="flex-1">
-            <p className="font-semibold text-white">Marie Leroy</p>
-            <p className="text-sm text-zinc-400">06 12 34 56 78 · marie.leroy@email.fr</p>
+            <p className="text-sm font-semibold text-white">Marie Leroy</p>
+            <p className="text-xs text-zinc-400">06 12 34 56 78 · marie@email.fr</p>
           </div>
           <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">Nouveau</span>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-zinc-800 p-3">
           {DOSSIER_FIELDS.map(([icon, label, value]) => (
-            <div key={label} className="rounded-lg bg-zinc-800 p-3">
+            <div key={label}>
               <p className="text-xs text-zinc-400">
                 {icon} {label}
               </p>
@@ -348,15 +410,18 @@ function QualificationShowcase() {
         </div>
 
         <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-          <p className="text-xs uppercase tracking-wide text-green-500">Résumé IA</p>
-          <p className="mt-1 text-sm text-zinc-300">
-            Rénovation complète d'une salle de bain de 7m². Douche italienne + double vasque. Budget
-            confortable, délai réaliste.
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-widest text-green-500">✦ Analyse Kadria</p>
+            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">🔥 Prospect chaud</span>
+          </div>
+          <p className="mt-2 text-xs italic text-zinc-300">
+            Rénovation complète SDB 7m². Budget cohérent, délai court.
+            Prêt à démarrer — rappel recommandé sous 24h.
           </p>
         </div>
 
         <div className="mt-3 flex items-center gap-2 text-xs">
-          <span className="text-green-400">Score 92%</span>
+          <span className="font-semibold text-green-400">Score 94%</span>
           <span className="text-zinc-500">·</span>
           <span className="text-green-300">Conversion Élevée</span>
           <span className="text-zinc-500">·</span>
@@ -496,28 +561,28 @@ export function LandingRoutePage() {
   const problemes = [
     {
       icon: '🔧',
-      title: 'Appels manqués',
-      text: 'Chaque appel manqué est une opportunité qui part directement chez un concurrent plus réactif.',
+      title: 'Appels manqués sur chantier',
+      text: 'Vos prospects tombent sur messagerie et rappellent un concurrent.',
     },
     {
-      icon: '👤',
-      title: 'Demandes incomplètes',
-      text: 'Sans qualification, vous perdez du temps à recontacter vos prospects pour obtenir des informations de base.',
+      icon: '📋',
+      title: 'Demandes sans informations',
+      text: '« Je voudrais un devis » — sans surface, budget ni photo.',
     },
     {
-      icon: '💬',
-      title: 'Messages oubliés',
-      text: 'Les messages laissés sur le répondeur ou via un formulaire restent parfois sans réponse pendant plusieurs jours.',
+      icon: '⏰',
+      title: 'Relances oubliées',
+      text: 'Un prospect non rappelé sous 24h signe ailleurs dans 70% des cas.',
     },
     {
       icon: '🔁',
-      title: 'Prospects non rappelés',
-      text: 'Un prospect non rappelé rapidement a beaucoup moins de chances de se transformer en client.',
+      title: 'Qualification chronophage',
+      text: '5 allers-retours pour obtenir ce qu il faut pour faire un devis.',
     },
     {
-      icon: 'ℹ️',
-      title: "Manque d'informations",
-      text: "Sans budget, délai ni adresse, impossible d'évaluer rapidement si un projet mérite d'être traité en priorité.",
+      icon: '💸',
+      title: 'CA potentiel perdu',
+      text: 'Chaque demande non traitée représente un chantier qui part chez un concurrent.',
     },
   ];
 
@@ -526,27 +591,31 @@ export function LandingRoutePage() {
       icon: '🌐',
       title: 'Assistant Web',
       items: [
-        'Répond instantanément aux visiteurs de votre site',
-        'Qualifie le besoin, le budget et le délai',
-        'Crée automatiquement un dossier projet structuré',
+        'Disponible 24h/24, 7j/7',
+        'Questions adaptées à votre métier',
+        'Photos et adresse collectées automatiquement',
+        'Dossier créé et scoré instantanément',
       ],
     },
     {
       icon: '📞',
       title: 'Assistant Vocal',
+      badge: 'NOUVEAU',
       items: [
-        'Décroche les appels manqués, même en dehors des horaires',
-        'Pose les bonnes questions pour qualifier le projet',
-        'Transcrit et résume chaque appel automatiquement',
+        'Répond à vos appels entrants manqués',
+        'Qualification complète par téléphone',
+        'Même dossier que le chat web',
+        'Aucun changement de numéro requis',
       ],
     },
     {
       icon: '📊',
-      title: 'Dashboard commercial',
+      title: 'Dashboard Commercial',
       items: [
-        'Centralise tous vos prospects et dossiers au même endroit',
-        'Priorise les opportunités selon leur potentiel',
-        'Suit le statut et les relances de chaque projet',
+        'Tous vos prospects en un seul endroit',
+        'Scoring automatique par IA Kadria',
+        'Relances et calendrier intégrés',
+        'Accès depuis mobile et desktop',
       ],
     },
   ];
@@ -555,42 +624,44 @@ export function LandingRoutePage() {
     {
       number: '01',
       title: 'Le prospect vous contacte',
-      text: 'Depuis votre site web ou par téléphone, à n importe quelle heure du jour ou de la nuit.',
+      text: 'Il appelle ou visite votre site — Kadria répond immédiatement, à toute heure.',
     },
     {
       number: '02',
-      title: 'Kadria qualifie le besoin',
-      text: 'Questions utiles, budget, délai, adresse et contexte sont collectés automatiquement.',
+      title: 'Kadria pose les bonnes questions',
+      text: 'Métier, surface, budget, délai, adresse, photos — tout est collecté naturellement.',
     },
     {
       number: '03',
-      title: 'Un dossier complet est généré',
-      text: 'Résumé IA, coordonnées, score de priorité et informations clés, prêts à être exploités.',
+      title: 'Le dossier est créé automatiquement',
+      text: 'Les informations sont structurées, scorées et analysées par l IA Kadria en moins de 3 minutes.',
     },
     {
       number: '04',
-      title: 'Vous traitez les meilleures opportunités',
-      text: 'Votre équipe se concentre sur les chantiers les plus prometteurs, au bon moment.',
+      title: 'Vous recevez une demande prête à chiffrer',
+      text: 'Dossier complet dans votre dashboard + notification email immédiate. Décidez en 30 secondes.',
     },
   ];
 
   const dossiers = [
-    { initials: 'ML', client: 'Mario Leroy', metier: 'Plomberie', ville: 'Lyon', budget: '8 000 - 12 000 €', score: 92, statut: 'Nouveau' },
-    { initials: 'JP', client: 'Jean-Pierre M.', metier: 'Couverture', ville: 'Nantes', budget: '15 000 - 20 000 €', score: 95, statut: 'A rappeler' },
-    { initials: 'AD', client: 'Antonin D.', metier: 'Carrelage', ville: 'Rouen', budget: '3 000 - 5 000 €', score: 85, statut: 'Qualifie' },
-    { initials: 'CJ', client: 'Claire & Julien P.', metier: 'Rénovation', ville: 'Lyon', budget: '80 000 - 100 000 €', score: 97, statut: 'Devis envoye' },
-    { initials: 'AB', client: 'Ahmad B.', metier: 'Électricité', ville: 'Paris', budget: '~ 10 000 €', score: 90, statut: 'Gagne' },
-    { initials: 'SF', client: 'Sophie F.', metier: 'Paysagiste', ville: 'Bordeaux', budget: '5 000 - 8 000 €', score: 45, statut: 'Perdu' },
+    { initials: 'ML', client: 'Marie Leroy', metier: 'Rénovation SDB', ville: 'Lyon', budget: '8 000 – 12 000 €', score: 94, statut: 'Nouveau' },
+    { initials: 'JP', client: 'Jean-Pierre M.', metier: 'Couverture', ville: 'Nantes', budget: '15 000 – 20 000 €', score: 95, statut: 'À rappeler' },
+    { initials: 'AD', client: 'Antonin D.', metier: 'Carrelage', ville: 'Rouen', budget: '3 000 – 5 000 €', score: 87, statut: 'Qualifié' },
+    { initials: 'CJ', client: 'Claire & Julien P.', metier: 'Rénovation globale', ville: 'Lyon', budget: '80 000 – 100 000 €', score: 97, statut: 'Devis envoyé' },
+    { initials: 'AB', client: 'Ahmad B.', metier: 'Électricité', ville: 'Paris', budget: '10 000 – 15 000 €', score: 91, statut: 'Gagné' },
+    { initials: 'SF', client: 'Sophie F.', metier: 'Paysagiste', ville: 'Bordeaux', budget: '500 – 1 000 €', score: 62, statut: 'Perdu' },
   ];
 
   const statusClass: Record<string, string> = {
-    Nouveau: 'bg-blue-500/10 text-blue-400',
-    'A rappeler': 'bg-amber-500/10 text-amber-400',
-    Qualifie: 'bg-purple-500/10 text-purple-400',
-    'Devis envoye': 'bg-cyan-500/10 text-cyan-400',
-    Gagne: 'bg-green-500/10 text-green-400',
-    Perdu: 'bg-red-500/10 text-red-400',
+    Nouveau: 'bg-zinc-800 text-zinc-200',
+    'À rappeler': 'bg-amber-500/20 text-amber-400',
+    Qualifié: 'bg-green-500/20 text-green-400',
+    'Devis envoyé': 'bg-blue-500/20 text-blue-400',
+    Gagné: 'bg-green-600/20 text-green-300',
+    Perdu: 'bg-red-500/20 text-red-400',
   };
+
+  const scoreClass = (score: number) => (score >= 70 ? 'text-green-400' : 'text-amber-400');
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -599,53 +670,56 @@ export function LandingRoutePage() {
 
       <main>
         {/* HERO */}
-        <section className="mx-auto grid max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
-          <div>
-            <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
-              Transformez chaque appel et chaque demande en
-              <br />
-              <span className="text-green-500">chantier potentiel.</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-7 text-zinc-400">
-              Kadria répond à vos prospects 24h/24, comprend leur besoin, qualifie automatiquement
-              leur projet et prépare un dossier prêt à être chiffré.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
-                Tester Kadria <ArrowRight className="h-4 w-4" />
+        <div style={{ position: 'relative', overflow: 'hidden', background: '#09090b' }}>
+          <HeroGradientBackground />
+          <section className="relative z-10 mx-auto grid max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
+            <div>
+              <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
+                Transformez chaque demande en
+                <br />
+                <span className="text-green-500">chantier qualifié.</span>
+              </h1>
+              <p className="mt-6 max-w-xl text-lg leading-7 text-zinc-400">
+                Kadria qualifie vos prospects 24h/24 — par téléphone et sur votre site.
+                Chaque conversation devient un dossier complet, scoré et prêt à être chiffré.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                  Tester Kadria <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                  Réserver une démonstration
+                </Link>
+              </div>
+              <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+                👁 Voir un exemple de dossier
               </Link>
-              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
-                Réserver une démonstration
-              </Link>
+              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
+                {[
+                  'Mise en place rapide',
+                  'Sans changement de numéro',
+                  'Compatibilité web et téléphone',
+                  'Support inclus',
+                ].map((item) => (
+                  <span key={item} className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
-            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
-              👁 Voir un exemple de dossier
-            </Link>
-            <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
-              {[
-                'Mise en place rapide',
-                'Sans changement de numéro',
-                'Compatibilité web et téléphone',
-                'Support inclus',
-              ].map((item) => (
-                <span key={item} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-green-500" />
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
 
-          <QualificationShowcase />
-        </section>
+            <QualificationShowcase />
+          </section>
+        </div>
 
         {/* STATS */}
         <section className="border-y border-zinc-800 bg-zinc-900 py-16">
           <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
             {[
               ['100%', 'des demandes centralisées dans votre dashboard'],
-              ['24/7', 'Kadria répond même quand vous êtes indisponible'],
-              ['< 2 min', 'pour qualifier et structurer un projet complet'],
+              ['24h/24', 'Kadria répond même quand vous êtes indisponible'],
+              ['< 3 min', 'pour qualifier et structurer un projet complet'],
             ].map(([value, text]) => (
               <div key={value}>
                 <p className="text-4xl font-bold text-green-500">{value}</p>
@@ -687,7 +761,14 @@ export function LandingRoutePage() {
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             {solutions.map((s) => (
               <div key={s.title} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                <span className="text-2xl">{s.icon}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl">{s.icon}</span>
+                  {s.badge && (
+                    <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-green-400">
+                      {s.badge}
+                    </span>
+                  )}
+                </div>
                 <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
                 <ul className="mt-4 space-y-3">
                   {s.items.map((item) => (
@@ -743,12 +824,12 @@ export function LandingRoutePage() {
                 Tableau de bord — 17 dossiers
               </p>
               <div className="flex items-center gap-4 text-xs text-zinc-400">
-                <span>Nouveau: 5</span>
-                <span>A rappeler: 3</span>
-                <span>Qualifie: 4</span>
-                <span>Devis envoyé: 2</span>
-                <span>Gagné: 2</span>
-                <span>Perdu: 1</span>
+                <span>3 Nouveaux</span>
+                <span className="text-amber-400">2 À rappeler</span>
+                <span className="text-green-400">4 Qualifiés</span>
+                <span className="text-blue-400">2 Devis envoyés</span>
+                <span className="text-green-400">5 Gagnés</span>
+                <span className="text-red-400">1 Perdu</span>
               </div>
             </div>
 
@@ -778,7 +859,7 @@ export function LandingRoutePage() {
                       <td className="py-3 pr-4 text-zinc-400">{d.metier}</td>
                       <td className="py-3 pr-4 text-zinc-400">{d.ville}</td>
                       <td className="py-3 pr-4 text-zinc-400">{d.budget}</td>
-                      <td className="py-3 pr-4 font-semibold text-white">{d.score}%</td>
+                      <td className={`py-3 pr-4 font-semibold ${scoreClass(d.score)}`}>{d.score}%</td>
                       <td className="py-3 pr-4">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass[d.statut] ?? 'bg-zinc-800 text-zinc-300'}`}>
                           {d.statut}
@@ -896,25 +977,28 @@ export function LandingRoutePage() {
         </section>
 
         {/* CTA FINAL */}
-        <section className="border-t border-zinc-800 bg-zinc-900 py-24">
-          <div className="mx-auto max-w-3xl px-6 text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
-            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
-            </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
-                Tester Kadria <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
-                Réserver une démonstration
+        <div style={{ position: 'relative', overflow: 'hidden', background: '#09090b' }}>
+          <HeroGradientBackground />
+          <section className="relative z-10 border-t border-zinc-800 py-24">
+            <div className="mx-auto max-w-3xl px-6 text-center">
+              <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
+              <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+                Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
+              </p>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                  Tester Kadria <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                  Réserver une démonstration
+                </Link>
+              </div>
+              <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+                👁 Voir un exemple de dossier
               </Link>
             </div>
-            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
-              👁 Voir un exemple de dossier
-            </Link>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
 
       {/* FOOTER */}
@@ -1352,7 +1436,8 @@ export function SimulateurSection() {
   const opportunitesPerdues = Math.round(demandes * 4 * (part / 100));
   const caPerdu = opportunitesPerdues * valeur;
   const margePerdue = caPerdu * (marge / 100);
-  const breakeven = valeur > 0 ? Math.ceil(249 / valeur) : 1;
+  const valeurNum = Number(valeur);
+  const breakeven = valeurNum > 0 ? Math.max(1, Math.ceil(249 / valeurNum)) : 1;
 
   return (
     <section className="mx-auto max-w-[1280px] px-6 py-24">
