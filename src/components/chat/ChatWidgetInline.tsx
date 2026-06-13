@@ -92,6 +92,7 @@ export default function ChatWidgetInline({
 
   // Config artisan
   const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor)
+  const [secondaryColorLocal, setSecondaryColorLocal] = useState('#09090b')
   const [widgetName, setWidgetName] = useState('Kadria')
   const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
 
@@ -107,6 +108,7 @@ export default function ChatWidgetInline({
         const data = await res.json()
         if (data.success && data.config) {
           if (data.config.primaryColor) setPrimaryColorLocal(data.config.primaryColor)
+          if (data.config.secondaryColor) setSecondaryColorLocal(data.config.secondaryColor)
           if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
           if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
         }
@@ -356,11 +358,11 @@ export default function ChatWidgetInline({
   const containerStyle: React.CSSProperties = fullPage ? {
     width: '100%', height: '100%', borderRadius: '0',
     border: 'none', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
+    overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
   } : {
     width: '100%', height: '600px', borderRadius: '16px',
     border: '1px solid #27272a', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
+    overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
   }
 
   // ── Centered wrapper for full-page mode ──────────────────────────────────
@@ -375,7 +377,7 @@ export default function ChatWidgetInline({
 
         {/* Header */}
         <div style={{
-          background: '#18181b', borderBottom: '1px solid #27272a',
+          background: secondaryColorLocal, borderBottom: '1px solid #27272a',
           padding: '12px 16px', display: 'flex',
           alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
         }}>
