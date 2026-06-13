@@ -4,6 +4,9 @@ import { airtableBase, TABLES } from '@/src/lib/airtable';
 function mapProject(record: any) {
   const fields = record.fields;
 
+  console.log('[PROJECT] Photos raw:', JSON.stringify(fields.Photos));
+  console.log('[PROJECT] Photos type:', typeof fields.Photos);
+
   return {
     id: record.id,
     projectNumber: record.id.slice(-6),
@@ -44,6 +47,19 @@ function mapProject(record: any) {
     longitude: fields.Longitude ?? null,
 
     callbackDate: fields['Callback Date'] ?? '',
+
+    photos: (() => {
+      const raw = fields.Photos;
+      if (!raw || !Array.isArray(raw)) return [];
+      return (raw as any[]).map(attachment => ({
+        url: attachment.url || '',
+        thumbnailUrl: attachment.thumbnails?.large?.url ||
+                      attachment.thumbnails?.small?.url ||
+                      attachment.url || '',
+        filename: attachment.filename || '',
+        size: attachment.size || 0,
+      }));
+    })(),
   };
 }
 

@@ -561,7 +561,8 @@ function ProjectDetail() {
                     </div>
                     <div style={{ display: 'flex', gap: '6px', paddingLeft: '20px', flexWrap: 'wrap' }}>
                       {photos.slice(0, 4).map((photo: any, idx: number) => {
-                        const url = typeof photo === 'string' ? photo : photo.url;
+                        const url = photo.url || (typeof photo === 'string' ? photo : '#');
+                        const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
 
                         return (
                           <a
@@ -579,7 +580,7 @@ function ProjectDetail() {
                             }}
                           >
                             <img
-                              src={url}
+                              src={thumbUrl}
                               alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
