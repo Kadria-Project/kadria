@@ -300,7 +300,8 @@ Pas de texte avant, pas de texte après, pas de markdown.
     "projectType": "",
     "budget": "",
     "desiredTimeline": "",
-    "maturity": ""
+    "maturity": "",
+    "tradeAnswers": []
   },
   "completenessScore": 0,
   "readyToSave": false,
@@ -326,6 +327,20 @@ Exemples :
 - Oui/Non → ["Oui","Non"]
 
 "dossierUpdate" : uniquement les champs extraits dans CE message.
+
+"tradeAnswers" : tableau d'objets {question, answer} contenant
+les questions métier complémentaires et les réponses du client.
+Remplis ce tableau AU FUR ET À MESURE que tu poses les questions
+métier (étape 3 du parcours).
+Exemple :
+[
+  {"question": "Création ou rénovation ?", "answer": "Rénovation"},
+  {"question": "Surface approximative ?", "answer": "7m²"},
+  {"question": "Douche ou baignoire ?", "answer": "Douche italienne"}
+]
+Cumule les réponses — n'écrase pas les précédentes.
+Inclus UNIQUEMENT les vraies questions métier techniques,
+pas les questions budget/délai/maturité/contact.
 
 "expectedField" : champ attendu dans la prochaine réponse :
 "clientFirstName" | "clientName" | "clientPhone" | "clientEmail" |

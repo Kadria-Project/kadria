@@ -354,31 +354,41 @@ function ProjectDetail() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white">Questions métier</h2>
 
-          {tradeAnswers.length === 0 ? (
-            <p className="text-sm text-zinc-400">
-              Aucune question/réponse disponible.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {tradeAnswers.map((item, index) => (
-                <div
-                  key={`${item.question}-${index}`}
-                  className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
-                >
-                  <p className="text-xs text-zinc-400 uppercase tracking-wide">
-                    Question
-                  </p>
-
-                  <p className="font-medium mt-1 text-white">{item.question}</p>
-
-                  <p className="text-xs text-zinc-400 uppercase tracking-wide mt-4">
-                    Réponse prospect
-                  </p>
-
-                  <p className="mt-1 text-zinc-200">{item.answer}</p>
+          {tradeAnswers && tradeAnswers.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {tradeAnswers.map((item: { question: string; answer: string }, i: number) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  padding: '10px 14px',
+                  background: '#27272a',
+                  borderRadius: '10px',
+                  gap: '16px',
+                }}>
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#a1a1aa',
+                    flex: 1,
+                  }}>
+                    {item.question}
+                  </span>
+                  <span style={{
+                    fontSize: '13px',
+                    color: 'white',
+                    fontWeight: 500,
+                    textAlign: 'right',
+                    flex: 1,
+                  }}>
+                    {item.answer}
+                  </span>
                 </div>
               ))}
             </div>
+          ) : (
+            <p style={{ color: '#71717a', fontSize: '13px', margin: 0 }}>
+              Aucune question métier disponible pour ce dossier.
+            </p>
           )}
         </section>
 

@@ -11,6 +11,7 @@ interface Dossier {
   trade?: string; projectType?: string; budget?: string
   desiredTimeline?: string; maturity?: string; aiSummary?: string
   photos?: { url: string; publicId: string }[]
+  tradeAnswers?: { question: string; answer: string }[]
 }
 interface Props {
   artisanId?: string
@@ -171,11 +172,27 @@ export default function ChatWidgetInline({
       setDossier(prev => {
         const updated = { ...prev }
         for (const [k, v] of Object.entries(data.dossierUpdate)) {
+          if (k === 'tradeAnswers') continue
           if (v !== '' && v != null) (updated as any)[k] = v
         }
         if (data.aiSummary) updated.aiSummary = data.aiSummary
         return updated
       })
+    }
+
+    if (data.dossierUpdate?.tradeAnswers?.length > 0) {
+      setDossier(prev => ({
+        ...prev,
+        tradeAnswers: [
+          ...(prev.tradeAnswers || []),
+          ...data.dossierUpdate.tradeAnswers.filter(
+            (newItem: { question: string; answer: string }) =>
+              !(prev.tradeAnswers || []).some(
+                existing => existing.question === newItem.question
+              )
+          )
+        ]
+      }))
     }
 
     if (data.completenessScore > 0) setScore(data.completenessScore)
@@ -274,6 +291,7 @@ export default function ChatWidgetInline({
           artisanId,
           photos: photos.map(p => p.url),
           photoCount: photos.length,
+          tradeAnswers: dossier.tradeAnswers || [],
         }),
       })
       const data = await res.json()
