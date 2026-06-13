@@ -7,7 +7,6 @@ import { getProjects } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
-import { Badge } from '@/src/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -28,7 +27,6 @@ import {
   AlertCircle,
   ShoppingCart,
 } from 'lucide-react';
-import { KadriaLogoImg } from '@/src/components/KadriaLogo';
 import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -38,7 +36,7 @@ const ProspectsLeafletMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-[420px] w-full items-center justify-center bg-muted/40 text-sm text-muted-foreground">
+      <div className="flex h-full min-h-[240px] w-full items-center justify-center bg-muted/40 text-sm text-muted-foreground">
         Chargement de la carte...
       </div>
     ),
@@ -60,6 +58,16 @@ const STATUS_OPTIONS = [
   { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
   { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
 ];
+
+const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
+  'Nouveau':      { bg: 'rgba(39,39,42,0.8)',    color: '#e4e4e7' },
+  'À rappeler':   { bg: 'rgba(120,53,15,0.5)',   color: '#fbbf24' },
+  'Qualifié':     { bg: 'rgba(20,83,45,0.5)',    color: '#4ade80' },
+  'Devis envoyé': { bg: 'rgba(30,58,95,0.5)',    color: '#60a5fa' },
+  'En cours':     { bg: 'rgba(88,28,135,0.5)',   color: '#c084fc' },
+  'Gagné':        { bg: 'rgba(20,83,45,0.7)',    color: '#86efac' },
+  'Perdu':        { bg: 'rgba(69,10,10,0.5)',    color: '#f87171' },
+};
 
 export default function ArtisanDashboardPage() {
   return (
@@ -103,6 +111,29 @@ function opportunityScore(project: Project): number {
   return (project.completenessScore || 0) * 2 + budgetScore(project.budget);
 }
 
+const cardStyle: React.CSSProperties = {
+  background: '#18181b',
+  border: '1px solid #27272a',
+  borderRadius: '14px',
+  padding: '18px 20px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+};
+
+function navButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '10px 16px',
+    borderRadius: '10px',
+    border: `1px solid ${active ? '#22c55e' : '#3f3f46'}`,
+    background: active ? '#22c55e' : '#18181b',
+    color: active ? '#09090b' : 'white',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  };
+}
+
 function Dashboard() {
   const router = useRouter();
 
@@ -119,6 +150,7 @@ function Dashboard() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | null>(null);
+  const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
 
   const logout = () => {
     router.push('/');
@@ -267,42 +299,50 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1488px] items-center justify-between px-6">
-          <div className="flex items-center gap-5">
-            <KadriaLogoImg pro />
-            <span className="hidden md:block h-6 w-px bg-zinc-800" />
-            <span className="hidden md:block text-sm text-zinc-400">
-              Dossiers
-            </span>
-          </div>
+    <div style={{ minHeight: '100vh', background: '#09090b', padding: '0 0 40px' }}>
+      {/* Header */}
+      <div
+        style={{
+          padding: '24px 32px 0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '24px',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <p style={{ color: '#22c55e', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 6px' }}>
+            Kadria Pro
+          </p>
 
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-400 hidden sm:block">
-              {user.email}
-            </span>
-
-            <Button variant="ghost" size="icon" onClick={logout} title="Déconnexion">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1488px] px-6 py-10 space-y-8">
-        <section className="space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Kadria Pro</p>
-
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-5xl">
+          <h1 style={{ color: 'white', fontSize: '28px', fontWeight: 700, margin: '0 0 6px' }}>
             Tableau de bord
           </h1>
 
-          <p className="max-w-2xl text-base leading-7 text-zinc-400">
-            Vos opportunités commerciales, vos relances et votre pipeline en un coup d'œil.
+          <p style={{ color: '#71717a', fontSize: '13px', margin: 0, textTransform: 'capitalize' }}>
+            {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
-        </section>
+        </div>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={() => setActiveView('commercial')} style={navButtonStyle(activeView === 'commercial')}>
+            📊 Suivi commercial
+          </button>
+
+          <button onClick={() => setActiveView('calendar')} style={navButtonStyle(activeView === 'calendar')}>
+            📅 Calendrier
+          </button>
+
+          <Button variant="ghost" size="icon" onClick={logout} title="Déconnexion">
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div style={{ padding: '0 32px', marginBottom: '24px' }}>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -311,344 +351,331 @@ function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {kpis.map((k) => (
-              <div key={k.label} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-zinc-800 p-2">
-                    <k.icon className="w-4 h-4 text-green-500" />
+            {kpis.map((k) => {
+              const isAlert = k.label === 'Dossiers à relancer' && dossiersARelancer > 0;
+
+              return (
+                <div
+                  key={k.label}
+                  style={{
+                    ...cardStyle,
+                    ...(isAlert ? { borderColor: 'rgba(239,68,68,0.3)' } : {}),
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#a1a1aa', fontSize: '13px' }}>{k.label}</span>
+
+                    <div
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        background: '#27272a',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#22c55e',
+                      }}
+                    >
+                      <k.icon className="w-4 h-4" />
+                    </div>
                   </div>
 
-                  <span className="text-sm text-zinc-400 font-medium">
-                    {k.label}
+                  <span
+                    style={{
+                      fontSize: '26px',
+                      fontWeight: 700,
+                      letterSpacing: '-0.5px',
+                      color: isAlert ? '#f87171' : 'white',
+                    }}
+                  >
+                    {k.value}
                   </span>
                 </div>
-
-                <span className="text-2xl font-bold text-white tracking-tight">
-                  {k.value}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {!loading && overdueCallbacks.length > 0 && (
-            <div className="rounded-xl border border-red-500/30 bg-zinc-900 p-5">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Relances en retard
-                  </h2>
-
-                  <p className="text-sm text-zinc-400">
-                    {overdueCallbacks.length} prospect(s) n'ont pas été rappelés.
-                  </p>
-                </div>
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setQuickFilter('overdue');
-                    setStatusFilter('');
-                    setTradeFilter('');
-                    setSearch('');
-                    setSearchInput('');
-                  }}
-                >
-                  Voir les retards
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {!loading && todayCallbacks.length > 0 && (
-            <div className="rounded-xl border border-amber-500/30 bg-zinc-900 p-5">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Relances du jour
-                  </h2>
-
-                  <p className="text-sm text-zinc-400">
-                    {todayCallbacks.length} relance(s) programmée(s) aujourd’hui.
-                  </p>
-                </div>
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setQuickFilter('today');
-                    setStatusFilter('');
-                    setTradeFilter('');
-                    setSearch('');
-                    setSearchInput('');
-                  }}
-                >
-                  Voir les relances
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {!loading && topOpportunities.length > 0 && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-white">
-                  Top opportunités
-                </h2>
-
-                <p className="text-sm text-zinc-400">
-                  Les dossiers avec le meilleur potentiel commercial.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {topOpportunities.map((project, index) => (
-                <button
-                  key={project.id}
-                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-                  className="text-left rounded-xl border border-zinc-800 bg-zinc-900 p-4 hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-zinc-400">
-                      Opportunité #{index + 1}
-                    </span>
-
-                    <span className="text-xs font-semibold text-green-500">
-                      Score {opportunityScore(project)}
-                    </span>
-                  </div>
-
-                  <p className="font-semibold text-white truncate">
-                    {project.clientFirstName} {project.clientName}
-                  </p>
-
-                  <p className="text-sm text-zinc-400 truncate">
-                    {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <StatusBadge status={project.status} />
-
-                    <Badge variant="secondary" className="text-[10px]">
-                      {project.budget || 'Budget non renseigné'}
-                    </Badge>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!loading && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  Pipeline commercial
-                </h2>
-
-                <p className="text-sm text-zinc-400">
-                  Vue synthétique de l’avancement des dossiers.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-              {pipelineSteps.map((step, index) => (
-                <div key={step.label} className="relative flex items-center justify-between md:justify-start gap-4">
-                  <div>
-                    <p className="text-xs text-zinc-400 uppercase tracking-wide">
-                      {step.label}
-                    </p>
-
-                    <p className="text-2xl font-bold text-white mt-1">
-                      {step.value}
-                    </p>
-                  </div>
-
-                  {index < pipelineSteps.length - 1 && (
-                    <span className="hidden md:block text-zinc-600">
-                      →
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!loading && (
-          <ProspectsMap projects={sortedProjects} router={router} />
-        )}
-
-        <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1 max-w-xl">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-
-              <Input
-                className="pl-9"
-                placeholder="Rechercher un client, un projet…"
-                value={searchInput}
-                onChange={(e) => {
-                  setSearchInput(e.target.value);
-                  setQuickFilter(null);
-                  debouncedSearch(e.target.value);
-                }}
-              />
-            </div>
-
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setQuickFilter(null);
-                setStatusFilter(v === 'all' ? '' : v);
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-
-                {STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={tradeFilter}
-              onValueChange={(v) => {
-                setQuickFilter(null);
-                setTradeFilter(v === 'all' ? '' : v);
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="Tous les métiers" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">Tous les métiers</SelectItem>
-
-                {trades.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button variant="ghost" onClick={resetFilters}>
-              Réinitialiser
-            </Button>
-          </div>
-
-          {quickFilter && (
-            <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
-              <p className="text-sm text-zinc-400">
-                Filtre actif :{' '}
-                <span className="text-white font-medium">
-                  {quickFilter === 'today' ? 'Relances du jour' : 'Relances en retard'}
-                </span>
+      {/* Alertes */}
+      {!loading && (overdueCallbacks.length > 0 || todayCallbacks.length > 0) && (
+        <div style={{ padding: '0 32px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {overdueCallbacks.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex justify-between items-center">
+              <p className="text-sm text-zinc-200">
+                ⚠️ {overdueCallbacks.length} prospect(s) n'ont pas été rappelés
               </p>
 
-              <Button variant="ghost" size="sm" onClick={() => setQuickFilter(null)}>
-                Afficher tous les dossiers
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setQuickFilter('overdue');
+                  setStatusFilter('');
+                  setTradeFilter('');
+                  setSearch('');
+                  setSearchInput('');
+                }}
+              >
+                Voir les retards
               </Button>
             </div>
           )}
 
-          {loading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 rounded-xl bg-zinc-800" />
-              ))}
+          {todayCallbacks.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex justify-between items-center">
+              <p className="text-sm text-zinc-200">
+                📅 {todayCallbacks.length} relance(s) programmée(s) aujourd'hui
+              </p>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setQuickFilter('today');
+                  setStatusFilter('');
+                  setTradeFilter('');
+                  setSearch('');
+                  setSearchInput('');
+                }}
+              >
+                Voir les relances
+              </Button>
             </div>
-          ) : displayedProjects.length === 0 ? (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
-              <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
-              <p className="text-zinc-400">Aucun dossier trouvé</p>
-            </div>
-          ) : (
-            <ProjectList projects={displayedProjects} router={router} />
           )}
-        </section>
-      </main>
-    </div>
-  );
-}
+        </div>
+      )}
 
-function ProspectsMap({
-  projects,
-  router,
-}: {
-  projects: Project[];
-  router: ReturnType<typeof useRouter>;
-}) {
-  const mappedProjects = projects.slice(0, 8);
+      {/* Vue active */}
+      {activeView === 'calendar' ? (
+        <div style={{ padding: '0 32px', marginBottom: '24px' }}>
+          <div
+            style={{
+              background: '#18181b',
+              border: '1px solid #27272a',
+              borderRadius: '16px',
+              padding: '48px',
+              textAlign: 'center',
+              margin: '20px 0',
+            }}
+          >
+            <p style={{ fontSize: '40px', marginBottom: '16px' }}>📅</p>
 
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-
-            <h2 className="text-lg font-semibold text-white">
-              Chantiers autour de vous
+            <h2 style={{ color: 'white', fontSize: '20px', fontWeight: 600, margin: '0 0 8px' }}>
+              Calendrier — Bientôt disponible
             </h2>
+
+            <p style={{ color: '#71717a', fontSize: '14px', margin: 0 }}>
+              Gérez vos rendez-vous, relances et interventions depuis un calendrier unifié.
+            </p>
           </div>
-
-          <p className="mt-2 text-sm text-zinc-400">
-            Vue géographique simplifiée des prospects qualifiés.
-          </p>
         </div>
+      ) : (
+        <div style={{ padding: '0 32px', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px' }} className="!grid-cols-1 lg:!grid-cols-[1fr_380px]">
+            {/* Colonne principale */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1 max-w-xl">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
 
-        <Badge variant="secondary">
-          {mappedProjects.length} point(s)
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
-        <div className="h-full min-h-[420px] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-          <ProspectsLeafletMap
-            projects={mappedProjects}
-            onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          {mappedProjects.map((project) => (
-            <button
-              key={project.id}
-              onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-              className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-colors hover:bg-zinc-800"
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-green-500 mt-0.5">📍</span>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
-                    {project.clientFirstName} {project.clientName}
-                  </p>
-
-                  <p className="text-xs text-zinc-400 truncate">
-                    {project.trade || 'Projet'} · {project.city || 'Ville inconnue'}
-                  </p>
+                  <Input
+                    className="pl-9"
+                    placeholder="Rechercher un client, un projet…"
+                    value={searchInput}
+                    onChange={(e) => {
+                      setSearchInput(e.target.value);
+                      setQuickFilter(null);
+                      debouncedSearch(e.target.value);
+                    }}
+                  />
                 </div>
+
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => {
+                    setQuickFilter(null);
+                    setStatusFilter(v === 'all' ? '' : v);
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue placeholder="Tous les statuts" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+
+                    {STATUS_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={tradeFilter}
+                  onValueChange={(v) => {
+                    setQuickFilter(null);
+                    setTradeFilter(v === 'all' ? '' : v);
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue placeholder="Tous les métiers" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="all">Tous les métiers</SelectItem>
+
+                    {trades.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button variant="ghost" onClick={resetFilters}>
+                  Réinitialiser
+                </Button>
               </div>
-            </button>
-          ))}
+
+              {quickFilter && (
+                <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+                  <p className="text-sm text-zinc-400">
+                    Filtre actif :{' '}
+                    <span className="text-white font-medium">
+                      {quickFilter === 'today' ? 'Relances du jour' : 'Relances en retard'}
+                    </span>
+                  </p>
+
+                  <Button variant="ghost" size="sm" onClick={() => setQuickFilter(null)}>
+                    Afficher tous les dossiers
+                  </Button>
+                </div>
+              )}
+
+              {loading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 rounded-xl bg-zinc-800" />
+                  ))}
+                </div>
+              ) : displayedProjects.length === 0 ? (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
+                  <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
+                  <p className="text-zinc-400">Aucun dossier trouvé</p>
+                </div>
+              ) : (
+                <ProjectList projects={displayedProjects} router={router} />
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="flex flex-col gap-4">
+              {!loading && topOpportunities.length > 0 && (
+                <div>
+                  <h3 className="text-white font-semibold mb-3">🏆 Top opportunités</h3>
+
+                  <div className="flex flex-col gap-3">
+                    {topOpportunities.map((project, index) => (
+                      <button
+                        key={project.id}
+                        onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-3 text-left hover:bg-zinc-800 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
+                            #{index + 1}
+                          </span>
+
+                          <span className="text-green-400 font-bold text-sm">
+                            {opportunityScore(project)}
+                          </span>
+                        </div>
+
+                        <div>
+                          <p className="font-semibold text-white text-sm truncate">
+                            {project.clientFirstName} {project.clientName}
+                          </p>
+
+                          <p className="text-zinc-400 text-xs truncate">
+                            {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={project.status} />
+
+                          <span className="text-zinc-400 text-xs">
+                            {project.budget || 'Budget non renseigné'}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!loading && (
+                <div>
+                  <h3 className="text-white font-semibold mb-3">Pipeline</h3>
+
+                  <div>
+                    {pipelineSteps.map((step) => {
+                      const style = BADGE_STYLES[step.label] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
+
+                      return (
+                        <div
+                          key={step.label}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            background: '#18181b',
+                            borderRadius: '8px',
+                            marginBottom: '4px',
+                          }}
+                        >
+                          <span style={{ color: style.color, fontSize: '13px' }}>{step.label}</span>
+
+                          <span
+                            style={{
+                              background: style.bg,
+                              color: style.color,
+                              borderRadius: '20px',
+                              padding: '2px 10px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {step.value}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!loading && (
+                <div>
+                  <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
+
+                  <div style={{ height: '240px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
+                    <ProspectsLeafletMap
+                      projects={sortedProjects.slice(0, 8)}
+                      onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -661,8 +688,8 @@ function ProjectList({
   router: ReturnType<typeof useRouter>;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs text-zinc-400 uppercase tracking-wide font-medium border-b border-zinc-800">
+    <div>
+      <div className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-xs text-zinc-500 uppercase tracking-widest px-4 py-3">
         <span className="col-span-1">Réf</span>
         <span className="col-span-1">Date</span>
         <span className="col-span-2">Client</span>
@@ -677,7 +704,7 @@ function ProjectList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="rounded-xl border-b border-zinc-800/50 bg-zinc-900 px-4 py-3 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-zinc-800 transition-colors px-4 py-3 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center text-sm">
@@ -692,7 +719,7 @@ function ProjectList({
             </span>
 
             <span className="col-span-2 flex items-center gap-2 font-medium text-white truncate">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-300">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
                 {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
               </span>
               {p.clientFirstName} {p.clientName}
@@ -724,7 +751,7 @@ function ProjectList({
           </div>
 
           <div className="md:hidden flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-300">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
               {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
             </span>
 
@@ -759,21 +786,30 @@ function ProjectList({
 }
 
 function StatusBadge({ status }: { status?: string }) {
-  const opt = STATUS_OPTIONS.find((o) => o.value === status);
+  const style = BADGE_STYLES[status || ''] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
 
   return (
-    <Badge
-      variant="secondary"
-      className={`text-[10px] ${opt?.cls || 'bg-zinc-800 text-zinc-200'}`}
+    <span
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderRadius: '20px',
+        padding: '2px 10px',
+        fontSize: '11px',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}
     >
       {status || 'Inconnu'}
-    </Badge>
+    </span>
   );
 }
 
 function ScorePill({ score }: { score: number }) {
+  const color = score >= 80 ? '#4ade80' : score >= 60 ? '#fbbf24' : '#f87171';
+
   return (
-    <span className={`text-xs ${score >= 80 ? 'font-semibold text-green-400' : 'text-zinc-400'}`}>
+    <span className="text-xs font-bold" style={{ color }}>
       {score}%
     </span>
   );
