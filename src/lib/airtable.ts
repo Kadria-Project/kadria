@@ -152,3 +152,85 @@ export async function deleteEvent(id: string) {
   })
   return res.json()
 }
+
+export async function getArtisanByArtisanId(artisanId: string) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: 'no-store',
+  })
+
+  const data = await res.json()
+  const record = data.records?.[0]
+  if (!record) return null
+
+  return {
+    id: record.id,
+    artisanId: (record.fields['Artisan ID'] || '') as string,
+    companyName: (record.fields['Company Name'] || '') as string,
+    primaryColor: (record.fields['Primary Color'] || '#22c55e') as string,
+    plan: (record.fields['Plan'] || '') as string,
+    active: record.fields['Active'] !== false,
+  }
+}
+
+export async function getArtisanConfig(artisanId: string) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  const record = data.records?.[0]
+  if (!record) return null
+
+  return {
+    id: record.id,
+    artisanId: record.fields['Artisan ID'] as string,
+    companyName: record.fields['Company Name'] as string || '',
+    primaryTrade: record.fields['Primary Trade'] as string || '',
+    phone: record.fields['Phone'] as string || '',
+    email: record.fields['Email'] as string || '',
+    address: record.fields['Address'] as string || '',
+    hours: record.fields['Hours'] as string || '',
+    logoUrl: record.fields['Logo URL'] as string || '',
+    welcomeName: record.fields['Welcome Name'] as string || '',
+    welcomeMessage: record.fields['Welcome Message'] as string || '',
+    primaryColor: record.fields['Primary Color'] as string || '#22c55e',
+    secondaryColor: record.fields['Secondary Color'] as string || '#18181b',
+    websiteUrl: record.fields['Website URL'] as string || '',
+    active: record.fields['Active'] as boolean || false,
+  }
+}
+
+export async function updateArtisanConfig(
+  recordId: string,
+  fields: Record<string, unknown>
+) {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+
+  const res = await fetch(
+    `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}/${recordId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields }),
+    }
+  )
+  return res.json()
+}

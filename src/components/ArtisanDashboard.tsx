@@ -404,6 +404,24 @@ function Dashboard() {
           </button>
 
           <button
+            onClick={() => router.push('/onboarding')}
+            style={{
+              background: '#18181b',
+              border: '1px solid #3f3f46',
+              color: '#a1a1aa',
+              borderRadius: '8px',
+              padding: '9px 14px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            ⚙️ Mon profil
+          </button>
+
+          <button
             onClick={logout}
             title="Déconnexion"
             className="bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg"

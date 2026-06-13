@@ -89,8 +89,32 @@ export default function ChatWidget({
     firstName: '', lastName: '', phone: '', email: ''
   })
 
+  // Config artisan
+  const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor)
+  const [widgetName, setWidgetName] = useState('Kadria')
+  const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // ── Charge la config artisan ─────────────────────────────────────────────
+  useEffect(() => {
+    const loadConfig = async () => {
+      if (!artisanId || artisanId === 'Artisan_demo') return
+      try {
+        const res = await fetch(`/api/artisan/public-config?artisan_id=${artisanId}`)
+        const data = await res.json()
+        if (data.success && data.config) {
+          if (data.config.primaryColor) setPrimaryColorLocal(data.config.primaryColor)
+          if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
+          if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
+        }
+      } catch (e) {
+        console.error('Config load error:', e)
+      }
+    }
+    loadConfig()
+  }, [artisanId])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -335,7 +359,7 @@ export default function ChatWidget({
         style={{
           position: 'fixed', bottom: '24px', right: '24px',
           width: '60px', height: '60px', borderRadius: '50%',
-          background: primaryColor, border: 'none', cursor: 'pointer',
+          background: primaryColorLocal, border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
         }}
@@ -378,12 +402,12 @@ export default function ChatWidget({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
               width: '36px', height: '36px', borderRadius: '50%',
-              background: primaryColor, display: 'flex',
+              background: primaryColorLocal, display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, fontSize: '16px', color: 'black',
             }}>K</div>
             <div>
-              <p style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '14px' }}>Kadria</p>
+              <p style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '14px' }}>{widgetName}</p>
               <p style={{ margin: 0, color: '#a1a1aa', fontSize: '12px' }}>Assistant en ligne</p>
             </div>
           </div>
@@ -407,7 +431,7 @@ export default function ChatWidget({
           <div style={{ height: '3px', background: '#27272a', borderRadius: '2px' }}>
             <div style={{
               height: '100%', width: `${step * 25}%`,
-              background: primaryColor, borderRadius: '2px',
+              background: primaryColorLocal, borderRadius: '2px',
               transition: 'width 0.5s ease',
             }} />
           </div>
@@ -420,12 +444,20 @@ export default function ChatWidget({
               background: '#18181b', border: '1px solid #27272a',
               borderRadius: '12px', padding: '16px', marginBottom: '16px',
             }}>
-              <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
-                👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
-              </p>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
-                Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
-              </p>
+              {customWelcomeMessage ? (
+                <p style={{ margin: 0, color: 'white', fontSize: '15px', fontWeight: 500 }}>
+                  {customWelcomeMessage}
+                </p>
+              ) : (
+                <>
+                  <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
+                    👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
+                  </p>
+                  <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
+                    Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
+                  </p>
+                </>
+              )}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {WELCOME_OPTIONS.map(opt => (
@@ -458,7 +490,7 @@ export default function ChatWidget({
                   <div style={{
                     maxWidth: '78%', padding: '10px 14px',
                     borderRadius: msg.role === 'user' ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                    background: msg.role === 'user' ? primaryColor : '#27272a',
+                    background: msg.role === 'user' ? primaryColorLocal : '#27272a',
                     color: msg.role === 'user' ? 'black' : 'white',
                     fontSize: '13.5px', lineHeight: '1.6',
                   }}>
@@ -537,9 +569,9 @@ export default function ChatWidget({
                         transition: 'all 0.15s',
                       }}
                       onMouseEnter={e => {
-                        (e.target as HTMLButtonElement).style.background = primaryColor;
+                        (e.target as HTMLButtonElement).style.background = primaryColorLocal;
                         (e.target as HTMLButtonElement).style.color = 'black';
-                        (e.target as HTMLButtonElement).style.borderColor = primaryColor
+                        (e.target as HTMLButtonElement).style.borderColor = primaryColorLocal
                       }}
                       onMouseLeave={e => {
                         (e.target as HTMLButtonElement).style.background = '#18181b';
@@ -792,7 +824,7 @@ export default function ChatWidget({
                 <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
                   style={{
                     width: '38px', height: '38px', borderRadius: '8px', border: 'none',
-                    background: loading || !input.trim() ? '#27272a' : primaryColor,
+                    background: loading || !input.trim() ? '#27272a' : primaryColorLocal,
                     color: loading || !input.trim() ? '#71717a' : 'black',
                     cursor: loading || !input.trim() ? 'default' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -841,7 +873,7 @@ export default function ChatWidget({
             </div>
 
             {/* Projet */}
-            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColor, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColorLocal, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Projet
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
@@ -863,7 +895,7 @@ export default function ChatWidget({
             <hr style={{ border: 'none', borderTop: '1px solid #27272a', margin: '16px 0' }} />
 
             {/* Contact */}
-            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColor, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColorLocal, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Contact
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
@@ -884,7 +916,7 @@ export default function ChatWidget({
             {dossier.aiSummary && (
               <>
                 <hr style={{ border: 'none', borderTop: '1px solid #27272a', margin: '16px 0' }} />
-                <p style={{ margin: '0 0 8px', fontSize: '11px', color: primaryColor, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '11px', color: primaryColorLocal, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   Résumé IA
                 </p>
                 <p style={{
@@ -900,12 +932,12 @@ export default function ChatWidget({
             <div style={{ marginTop: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                 <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Dossier complété à {score}%</span>
-                <span style={{ fontSize: '12px', color: primaryColor, fontWeight: 600 }}>{score}%</span>
+                <span style={{ fontSize: '12px', color: primaryColorLocal, fontWeight: 600 }}>{score}%</span>
               </div>
               <div style={{ height: '4px', background: '#27272a', borderRadius: '2px' }}>
                 <div style={{
                   height: '100%', width: `${score}%`,
-                  background: primaryColor, borderRadius: '2px', transition: 'width 0.5s',
+                  background: primaryColorLocal, borderRadius: '2px', transition: 'width 0.5s',
                 }} />
               </div>
             </div>
@@ -925,7 +957,7 @@ export default function ChatWidget({
               </button>
               <button onClick={saveDossier} disabled={saving}
                 style={{
-                  flex: 1, background: saving ? '#52525b' : primaryColor,
+                  flex: 1, background: saving ? '#52525b' : primaryColorLocal,
                   border: 'none', color: saving ? 'white' : 'black',
                   fontWeight: 700, borderRadius: '10px', padding: '11px',
                   fontSize: '14px', cursor: saving ? 'default' : 'pointer',

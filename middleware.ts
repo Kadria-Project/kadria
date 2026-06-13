@@ -8,7 +8,7 @@ const SECRET = new TextEncoder().encode(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/dashboard-v2')) {
+  if (pathname.startsWith('/dashboard-v2') || pathname === '/onboarding') {
     const token = request.cookies.get('kadria-auth')?.value
 
     if (!token) {
@@ -45,5 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/login'],
+  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/onboarding', '/login'],
 }
