@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
@@ -42,6 +42,15 @@ function ProjectDetail() {
   const [activities, setActivities] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
   const [callbackDate, setCallbackDate] = useState('');
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const [showRdvModal, setShowRdvModal] = useState(false);
+  const [rdvData, setRdvData] = useState({
+    title: '',
+    date: '',
+    time: '',
+    type: 'RDV',
+    notes: '',
+  });
 
   async function loadActivities() {
     const activityData = await getProjectActivity(id);
@@ -185,6 +194,42 @@ function ProjectDetail() {
           </div>
         </section>
 
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-wrap gap-6">
+          {project.clientPhone && (
+            <a
+              href={`tel:${project.clientPhone}`}
+              style={{ color: 'white', textDecoration: 'none', fontSize: '13px' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#22c55e')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'white')}
+            >
+              📞 {project.clientPhone}
+            </a>
+          )}
+
+          {project.clientEmail && (
+            <a
+              href={`mailto:${project.clientEmail}`}
+              style={{ color: 'white', textDecoration: 'none', fontSize: '13px' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#22c55e')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'white')}
+            >
+              ✉️ {project.clientEmail}
+            </a>
+          )}
+
+          {project.siteAddress && (
+            <span style={{ color: 'white', fontSize: '13px' }}>
+              📍 {project.siteAddress}{project.city ? `, ${project.city}` : ''}
+            </span>
+          )}
+
+          {project.createdAt && (
+            <span style={{ color: 'white', fontSize: '13px' }}>
+              📅 {formatDate(project.createdAt)}
+            </span>
+          )}
+        </div>
+
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Actions commerciales</h2>
 
@@ -205,15 +250,51 @@ function ProjectDetail() {
               Email
             </a>
 
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setShowRdvModal(true)}>
               <Calendar className="w-4 h-4 mr-2" />
               Rendez-vous
             </Button>
 
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              onClick={() => {
+                noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => noteRef.current?.focus(), 400);
+              }}
+            >
               <FileText className="w-4 h-4 mr-2" />
               Note interne
             </Button>
+          </div>
+
+          <div
+            style={{
+              borderTop: '1px solid #27272a',
+              marginTop: 12,
+              paddingTop: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <label className="text-zinc-400 text-xs" style={{ whiteSpace: 'nowrap' }}>
+              📅 Relance :
+            </label>
+
+            <input
+              type="datetime-local"
+              value={callbackDate ? callbackDate.slice(0, 16) : ''}
+              onChange={(e) => setCallbackDate(e.target.value)}
+              className="bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-white text-sm flex-1"
+            />
+
+            <button
+              disabled={updating}
+              onClick={saveCallbackDate}
+              className="bg-green-500 text-black text-sm font-semibold rounded-lg px-3 py-2"
+            >
+              Enregistrer
+            </button>
           </div>
         </section>
 
@@ -302,28 +383,10 @@ function ProjectDetail() {
         </section>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Relance programmée</h2>
-
-          <p className="text-sm text-zinc-400">
-            Planifier une date de rappel pour ne pas laisser refroidir le prospect.
-          </p>
-
-          <input
-            type="datetime-local"
-            value={callbackDate ? callbackDate.slice(0, 16) : ''}
-            onChange={(e) => setCallbackDate(e.target.value)}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
-          />
-
-          <Button disabled={updating} onClick={saveCallbackDate}>
-            Enregistrer le rappel
-          </Button>
-        </section>
-
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-white">Notes internes</h2>
 
           <textarea
+            ref={noteRef}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="w-full min-h-[180px] rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
@@ -374,6 +437,93 @@ function ProjectDetail() {
           <Info label="ID dossier" value={project.id} />
         </section>
       </main>
+
+      {showRdvModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-white font-bold text-lg">📅 Nouveau rendez-vous</h2>
+
+              <button
+                onClick={() => setShowRdvModal(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-zinc-400 uppercase tracking-wide">Titre</label>
+                <input
+                  type="text"
+                  value={rdvData.title}
+                  onChange={(e) => setRdvData({ ...rdvData, title: e.target.value })}
+                  placeholder="Visite technique, Devis..."
+                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 uppercase tracking-wide">Type</label>
+                <select
+                  value={rdvData.type}
+                  onChange={(e) => setRdvData({ ...rdvData, type: e.target.value })}
+                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="RDV">RDV</option>
+                  <option value="Relance">Relance</option>
+                  <option value="Rappel">Rappel</option>
+                  <option value="Intervention">Intervention</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Date</label>
+                  <input
+                    type="date"
+                    value={rdvData.date}
+                    onChange={(e) => setRdvData({ ...rdvData, date: e.target.value })}
+                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Heure</label>
+                  <input
+                    type="time"
+                    value={rdvData.time}
+                    onChange={(e) => setRdvData({ ...rdvData, time: e.target.value })}
+                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-zinc-400 uppercase tracking-wide">Notes</label>
+                <textarea
+                  value={rdvData.notes}
+                  onChange={(e) => setRdvData({ ...rdvData, notes: e.target.value })}
+                  rows={3}
+                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                console.log('[RDV]', rdvData);
+                setShowRdvModal(false);
+                alert('RDV enregistré — le calendrier arrive bientôt !');
+              }}
+              className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2"
+            >
+              Enregistrer le RDV
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -416,6 +566,18 @@ function InfoIcon({
       <p className="font-semibold mt-1 text-white">{value || '—'}</p>
     </div>
   );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
 }
 
 function parseTradeAnswers(value?: string) {
