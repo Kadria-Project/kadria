@@ -1063,42 +1063,13 @@ function Dashboard() {
             Kadria Pro
           </p>
 
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 style={{ color: 'white', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
-                Tableau de bord
-              </h1>
+          <h1 style={{ color: 'white', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
+            Tableau de bord
+          </h1>
 
-              <p style={{ color: '#71717a', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
-                {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-1.5">
-              <div className="flex flex-row items-center gap-2">
-                {KPI_PERIOD_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setPeriod(opt.value)}
-                    className={
-                      opt.value === kpiPeriod
-                        ? 'rounded-full border px-4 py-1.5 text-sm font-semibold cursor-pointer'
-                        : 'rounded-full border px-4 py-1.5 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-white'
-                    }
-                    style={
-                      opt.value === kpiPeriod
-                        ? { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#22c55e' }
-                        : { background: '#18181b', borderColor: '#27272a', color: '#a1a1aa' }
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-xs text-zinc-500 text-right">{periodLabel}</p>
-            </div>
-          </div>
+          <p style={{ color: '#71717a', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
+            {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
@@ -1141,6 +1112,32 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Barre période */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <p className="text-sm text-zinc-400">Période analysée · {periodLabel}</p>
+
+        <div className="flex flex-row items-center gap-2">
+          {KPI_PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={
+                opt.value === kpiPeriod
+                  ? 'rounded-full border px-4 py-1.5 text-sm font-semibold cursor-pointer'
+                  : 'rounded-full border px-4 py-1.5 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-white'
+              }
+              style={
+                opt.value === kpiPeriod
+                  ? { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#22c55e' }
+                  : { background: '#18181b', borderColor: '#27272a', color: '#a1a1aa' }
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* KPIs */}
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
@@ -1177,6 +1174,34 @@ function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Sparkline CA potentiel */}
+      {!loading && (
+        <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-5 mb-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="font-bold text-white">Évolution du CA potentiel</p>
+              <p className="text-sm text-zinc-400">
+                {kpiPeriod === '7d'
+                  ? 'Sur les 7 derniers jours'
+                  : kpiPeriod === '30d'
+                    ? 'Sur les 30 derniers jours'
+                    : kpiPeriod === '90d'
+                      ? 'Sur les 3 derniers mois'
+                      : 'Sur les 12 derniers mois'}
+              </p>
+            </div>
+
+            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-sm text-green-500">
+              {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
+            </span>
+          </div>
+
+          <div className="mt-3">
+            <Sparkline data={kpiPeriodData.sparkline} height={80} />
+          </div>
+        </div>
+      )}
 
       {/* Alertes */}
       {!loading && (overdueCount > 0 || todayCount > 0) && (
@@ -1342,34 +1367,6 @@ function Dashboard() {
                 ))}
               </div>
             </>
-          )}
-
-          {/* Sparkline CA potentiel */}
-          {!loading && (
-            <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="font-bold text-white">Évolution du CA potentiel</p>
-                  <p className="text-sm text-zinc-400">
-                    {kpiPeriod === '7d'
-                      ? 'Sur les 7 derniers jours'
-                      : kpiPeriod === '30d'
-                        ? 'Sur les 30 derniers jours'
-                        : kpiPeriod === '90d'
-                          ? 'Sur les 3 derniers mois'
-                          : 'Sur les 12 derniers mois'}
-                  </p>
-                </div>
-
-                <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-sm text-green-500">
-                  {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
-                </span>
-              </div>
-
-              <div className="mt-3">
-                <Sparkline data={kpiPeriodData.sparkline} height={80} />
-              </div>
-            </div>
           )}
 
           {/* ZONE 2 — Toggles */}
