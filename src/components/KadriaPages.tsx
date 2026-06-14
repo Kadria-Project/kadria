@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -23,6 +23,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  X,
   Zap,
 } from 'lucide-react';
 import { KadriaLogoImg } from '@/src/components/KadriaLogo';
@@ -1146,14 +1147,131 @@ const ANIMATION_STYLES = `
     display: inline-block;
     animation: kr-ticker 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
+
+  /* Glassmorphism */
+  .kr-glass {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Nav glass on scroll */
+  .kr-nav {
+    transition: background-color 0.3s ease, border-color 0.3s ease,
+                backdrop-filter 0.3s ease;
+  }
+  .kr-nav-scrolled {
+    background: rgba(9,9,11,0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: rgba(255,255,255,0.08);
+  }
+
+  /* Bento grid */
+  .kr-bento {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 180px;
+    gap: 16px;
+  }
+  @media (max-width: 768px) {
+    .kr-bento {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 400px) {
+    .kr-bento {
+      grid-template-columns: repeat(1, 1fr);
+      grid-auto-rows: auto;
+    }
+    .kr-bento-item {
+      grid-column: span 1 !important;
+      grid-row: span 1 !important;
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .kr-reveal,
+    .kr-reveal-left,
+    .kr-reveal-right,
+    .kr-reveal-scale,
+    .kr-card-hover,
+    .kr-badge-pulse,
+    .kr-line-grow,
+    .kr-ticker span,
+    .kr-nav {
+      transition: none !important;
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
 `
+
+function StatCounter({
+  target,
+  prefix = '',
+  suffix = '',
+  duration = 1200,
+}: {
+  target: number;
+  prefix?: string;
+  suffix?: string;
+  duration?: number;
+}) {
+  const reduceMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [value, setValue] = useState(reduceMotion ? target : 0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || reduceMotion) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const progress = Math.min((now - start) / duration, 1);
+            setValue(Math.round(progress * target));
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }
+      },
+      { threshold: 0.4 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration, reduceMotion]);
+
+  return (
+    <span ref={ref}>
+      {prefix}{value}{suffix}
+    </span>
+  );
+}
 
 export function LandingRoutePage() {
   useScrollReveal();
+  const [scrolled, setScrolled] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<string | null>(TRADES_DATA[0].id);
   const [lastTradeId, setLastTradeId] = useState(TRADES_DATA[0].id);
   const [tradeCardVisible, setTradeCardVisible] = useState(true);
   const displayTrade = TRADES_DATA.find((m) => m.id === lastTradeId);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (selectedTrade) {
@@ -1166,66 +1284,20 @@ export function LandingRoutePage() {
     setTradeCardVisible(false);
   }, [selectedTrade]);
 
-  const problemes = [
-    {
-      icon: '🔧',
-      title: 'Appels manqués sur chantier',
-      text: 'Vos prospects tombent sur messagerie et rappellent un concurrent.',
-    },
-    {
-      icon: '📋',
-      title: 'Demandes sans informations',
-      text: '« Je voudrais un devis » — sans surface, budget ni photo.',
-    },
-    {
-      icon: '⏰',
-      title: 'Relances oubliées',
-      text: 'Un prospect non rappelé sous 24h signe ailleurs dans 70% des cas.',
-    },
-    {
-      icon: '🔁',
-      title: 'Qualification chronophage',
-      text: '5 allers-retours pour obtenir ce qu il faut pour faire un devis.',
-    },
-    {
-      icon: '💸',
-      title: 'CA potentiel perdu',
-      text: 'Chaque demande non traitée représente un chantier qui part chez un concurrent.',
-    },
+  const avant = [
+    'Appels manqués sur chantier — vos prospects rappellent un concurrent.',
+    'Demandes sans informations : « Je voudrais un devis », sans surface ni budget.',
+    'Relances oubliées — 70% des prospects non rappelés sous 24h signent ailleurs.',
+    'Qualification chronophage : 5 allers-retours pour obtenir l essentiel.',
+    'Chaque demande non traitée est un chantier qui part chez un concurrent.',
   ];
 
-  const solutions = [
-    {
-      icon: '🌐',
-      title: 'Assistant Web',
-      items: [
-        'Disponible 24h/24, 7j/7',
-        'Questions adaptées à votre métier',
-        'Photos et adresse collectées automatiquement',
-        'Dossier créé et scoré instantanément',
-      ],
-    },
-    {
-      icon: '📞',
-      title: 'Assistant Vocal',
-      badge: 'NOUVEAU',
-      items: [
-        'Répond à vos appels entrants manqués',
-        'Qualification complète par téléphone',
-        'Même dossier que le chat web',
-        'Aucun changement de numéro requis',
-      ],
-    },
-    {
-      icon: '📊',
-      title: 'Dashboard Commercial',
-      items: [
-        'Tous vos prospects en un seul endroit',
-        'Scoring automatique par IA Kadria',
-        'Relances et calendrier intégrés',
-        'Accès depuis mobile et desktop',
-      ],
-    },
+  const apres = [
+    'Disponible 24h/24, 7j/7, par chat et par téléphone.',
+    'Questions adaptées à votre métier, posées automatiquement.',
+    'Photos, adresse et budget collectés sans effort.',
+    'Dossier créé, scoré et priorisé instantanément.',
+    'Relances et calendrier intégrés au dashboard.',
   ];
 
   const etapes = [
@@ -1251,50 +1323,49 @@ export function LandingRoutePage() {
     },
   ];
 
+  const stats = [
+    { value: 100, prefix: '', suffix: '%', text: 'des demandes centralisées dans votre dashboard' },
+    { value: 24, prefix: '', suffix: 'h/24', text: 'Kadria répond même quand vous êtes indisponible' },
+    { value: 3, prefix: '< ', suffix: ' min', text: 'pour qualifier et structurer un projet complet' },
+  ];
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <style>{ANIMATION_STYLES}</style>
-      {/* NAV */}
-      <DarkNav />
+
+      {/* 1. NAV */}
+      <DarkNav scrolled={scrolled} />
 
       <main>
-        {/* HERO */}
-        <div style={{ background: '#09090b' }}>
-          <section className="mx-auto grid max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
+        {/* 2. HERO */}
+        <section className="relative flex min-h-[100dvh] items-center bg-[#09090b]">
+          <div className="mx-auto grid w-full max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
             <div>
-              <h1 className="kr-reveal kr-reveal-delay-1 text-5xl font-bold tracking-tight md:text-6xl">
-                Transformez chaque demande en
-                <br />
+              <h1 className="kr-reveal kr-reveal-delay-1 text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.05] tracking-tight">
+                Transformez chaque demande en{' '}
                 <span className="kr-gradient-text">chantier qualifié.</span>
               </h1>
               <p className="kr-reveal kr-reveal-delay-2 mt-6 max-w-xl text-lg leading-7 text-zinc-400">
                 Kadria qualifie vos prospects 24h/24 — par téléphone et sur votre site.
                 Chaque conversation devient un dossier complet, scoré et prêt à être chiffré.
               </p>
-              <div className="kr-reveal kr-reveal-delay-3 mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="kr-reveal kr-reveal-delay-3 mt-8">
                 <Link
                   href="/assistant"
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400"
-                  style={{ transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.03)'
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(34,197,94,0.35)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
                 >
                   Tester Kadria <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              </div>
+              <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-400">
+                <Link href="/demo-request" className="transition-colors hover:text-white">
                   Réserver une démonstration
                 </Link>
+                <Link href="/demo" className="transition-colors hover:text-white">
+                  Voir un exemple de dossier →
+                </Link>
               </div>
-              <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
-                👁 Voir un exemple de dossier
-              </Link>
-              <div className="kr-reveal kr-reveal-delay-4 mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
+              <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
                 {[
                   'Mise en place rapide',
                   'Sans changement de numéro',
@@ -1309,96 +1380,60 @@ export function LandingRoutePage() {
               </div>
             </div>
 
-            <div className="kr-reveal-right kr-reveal">
+            <div className="kr-reveal kr-reveal-right">
               <QualificationShowcase />
             </div>
-          </section>
-        </div>
-
-        {/* STATS */}
-        <div>
-          <section className="border-y border-zinc-800 bg-zinc-900 py-16">
-            <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
-              {[
-                ['100%', 'des demandes centralisées dans votre dashboard'],
-                ['24h/24', 'Kadria répond même quand vous êtes indisponible'],
-                ['< 3 min', 'pour qualifier et structurer un projet complet'],
-              ].map(([value, text], i) => (
-                <div key={value} className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1}`}>
-                  <p className="text-4xl font-bold text-green-500">
-                    <span className="kr-ticker"><span>{value}</span></span>
-                  </p>
-                  <div className="kr-line-grow mx-auto mt-3 h-px w-12 bg-green-500/40" />
-                  <p className="mt-3 text-zinc-400">{text}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* PROBLEME */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
-              Chaque prospect non traité est un chantier <span className="text-red-500">perdu.</span>
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
-            </p>
           </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-3 lg:grid-cols-5">
-            {problemes.map((p, i) => (
-              <div
-                key={p.title}
-                className={`kr-reveal kr-card-hover kr-reveal-delay-${i + 1} rounded-xl border border-zinc-800 bg-zinc-900 p-6`}
-                style={{ transitionDelay: `${0.1 * (i + 1)}s` }}
-              >
-                <span className="text-2xl text-red-500">{p.icon}</span>
-                <h3 className="mt-4 text-base font-semibold">{p.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">{p.text}</p>
+        </section>
+
+        {/* 3. SOCIAL PROOF */}
+        <section className="border-y border-zinc-800 bg-zinc-900 py-16">
+          <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
+            {stats.map((stat, i) => (
+              <div key={stat.text} className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1}`}>
+                <p className="text-4xl font-bold text-green-500">
+                  <StatCounter target={stat.value} prefix={stat.prefix} suffix={stat.suffix} />
+                </p>
+                <div className="kr-line-grow mx-auto mt-3 h-px w-12 bg-green-500/40" />
+                <p className="mt-3 text-zinc-400">{stat.text}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* SOLUTION */}
+        {/* 4. PROBLEME -> SOLUTION */}
         <section className="mx-auto max-w-[1280px] px-6 py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">La solution</p>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-              Votre assistant commercial, <span className="kr-gradient-text">disponible 24h/24.</span>
+            <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
+              De la demande perdue au <span className="kr-gradient-text">chantier qualifié.</span>
             </h2>
+            <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
+            </p>
           </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {solutions.map((s, i) => {
-              const positionClass =
-                i === 0
-                  ? 'kr-reveal-left kr-reveal kr-card-hover'
-                  : i === 1
-                  ? 'kr-reveal kr-reveal-scale kr-reveal-delay-1 kr-card-hover'
-                  : 'kr-reveal-right kr-reveal kr-card-hover'
-              return (
-                <div key={s.title} className={`${positionClass} rounded-xl border border-zinc-800 bg-zinc-900 p-6`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl">{s.icon}</span>
-                    {s.badge && (
-                      <span className="kr-badge-pulse rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-green-400">
-                        {s.badge}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
-                  <ul className="mt-4 space-y-3">
-                    {s.items.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
-                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
-            })}
+          <div className="mt-12 grid gap-6 md:grid-cols-2">
+            <div className="kr-reveal kr-reveal-left rounded-xl border border-zinc-800 bg-zinc-900 p-8">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-red-400">Avant Kadria</h3>
+              <ul className="mt-5 space-y-4">
+                {avant.map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-400">
+                    <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="kr-reveal kr-reveal-right kr-glass rounded-xl p-8">
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-green-400">Avec Kadria</h3>
+              <ul className="mt-5 space-y-4">
+                {apres.map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-200">
+                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
 
@@ -1413,7 +1448,7 @@ export function LandingRoutePage() {
           </div>
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {etapes.map((e, i) => (
-              <div key={e.number} className={`kr-reveal kr-reveal-delay-${i + 1} rounded-xl border border-zinc-800 bg-zinc-900 p-6`}>
+              <div key={e.number} className={`kr-reveal kr-card-hover kr-reveal-delay-${i + 1} rounded-xl border border-zinc-800 bg-zinc-900 p-6`}>
                 <span className="flex h-10 w-10 items-center justify-center rounded-full border border-green-500 bg-zinc-800 text-sm font-bold text-green-500">
                   {e.number}
                 </span>
@@ -1424,31 +1459,55 @@ export function LandingRoutePage() {
           </div>
         </section>
 
+        {/* 5. FEATURES — BENTO GRID */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Fonctionnalités</p>
+            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Tout ce qu il faut pour <span className="kr-gradient-text">ne plus rien perdre.</span>
+            </h2>
+          </div>
+          <div className="kr-bento mt-12">
+            {features.map((f, i) => {
+              const Icon = f.icon;
+              const sizeClass =
+                i === 0
+                  ? 'col-span-4 row-span-2 md:col-span-2'
+                  : i === 1
+                  ? 'col-span-4 row-span-1 md:col-span-2'
+                  : i === 2 || i === 3
+                  ? 'col-span-2 row-span-1 md:col-span-1'
+                  : 'col-span-4 row-span-1 md:col-span-2';
+              return (
+                <div
+                  key={f.title}
+                  className={`kr-reveal kr-reveal-scale kr-reveal-delay-${Math.min(i + 1, 6)} kr-card-hover kr-bento-item ${sizeClass} flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6`}
+                >
+                  <Icon className={i === 0 ? 'h-8 w-8 text-green-500' : 'h-6 w-6 text-green-500'} />
+                  <div>
+                    <h3 className={i === 0 ? 'mt-4 text-xl font-semibold' : 'mt-4 text-base font-semibold'}>{f.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* DASHBOARD PREVIEW */}
-        <section style={{ padding: '80px 0' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <p className="kr-reveal" style={{
-                color: '#22c55e', fontSize: '11px', fontWeight: 700,
-                letterSpacing: '0.1em', textTransform: 'uppercase',
-                margin: '0 0 12px',
-              }}>
-                DASHBOARD
-              </p>
-              <h2 className="kr-reveal" style={{
-                color: 'white', fontSize: '36px', fontWeight: 800,
-                margin: '0 0 12px', lineHeight: 1.2,
-              }}>
-                Pilotez toutes vos opportunités depuis{' '}
-                <span className="kr-gradient-text">un seul tableau de bord</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-1" style={{ color: '#71717a', fontSize: '16px', margin: 0 }}>
-                Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
-              </p>
-            </div>
-            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2" style={{ maxWidth: '780px', margin: '0 auto' }}>
-              <DashboardCarousel />
-            </div>
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
+            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Pilotez toutes vos opportunités depuis{' '}
+              <span className="kr-gradient-text">un seul tableau de bord</span>
+            </h2>
+            <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
+            </p>
+          </div>
+          <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-[780px]">
+            <DashboardCarousel />
           </div>
         </section>
 
@@ -1524,7 +1583,7 @@ export function LandingRoutePage() {
 
               <Link
                 href="/demo"
-                className="mt-6 inline-flex items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-800"
+                className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-800"
               >
                 Voir un exemple de conversation →
               </Link>
@@ -1534,8 +1593,8 @@ export function LandingRoutePage() {
 
         {/* PROGRAMME LANCEMENT */}
         <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 md:p-12">
-            <span className="kr-reveal kr-badge-pulse inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
+          <div className="kr-reveal kr-glass rounded-xl p-8 md:p-12">
+            <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
               Programme de lancement
             </span>
             <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-4xl">
@@ -1551,88 +1610,106 @@ export function LandingRoutePage() {
             </p>
             <Link
               href="/onboarding"
-              className="kr-reveal kr-reveal-delay-3 mt-6 inline-flex items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400"
-              style={{ transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.03)'
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(34,197,94,0.35)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
+              className="kr-reveal kr-reveal-delay-3 mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
             >
               Devenir partenaire pilote <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </section>
 
-        {/* CTA FINAL */}
-        <div style={{ background: '#09090b' }}>
-          <section className="border-t border-zinc-800 py-24">
-            <div className="mx-auto max-w-3xl px-6 text-center">
-              <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">
+        {/* 6. TARIFS */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
+            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Un tarif simple, <span className="kr-gradient-text">adapté à votre activité.</span>
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {plans.map((plan, i) => (
+              <div
+                key={plan.slug}
+                className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} kr-card-hover rounded-xl border p-6 ${
+                  plan.highlighted ? 'border-green-500/40 bg-green-500/5' : 'border-zinc-800 bg-zinc-900'
+                }`}
+              >
+                {plan.highlighted && (
+                  <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-green-400">
+                    Populaire
+                  </span>
+                )}
+                <h3 className="mt-3 text-lg font-semibold">{plan.name}</h3>
+                <p className="mt-1 text-2xl font-bold">
+                  {plan.price}
+                  {plan.price !== 'Sur mesure' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{plan.description}</p>
+                <ul className="mt-4 space-y-2">
+                  {plan.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="kr-reveal kr-reveal-delay-2 mt-10 text-center">
+            <Link href="/tarifs" className="text-sm font-semibold text-green-500 transition-colors hover:text-green-400">
+              Voir le détail des tarifs et options →
+            </Link>
+          </div>
+        </section>
+
+        {/* 7. CTA FINAL */}
+        <section className="border-t border-zinc-800 bg-[#09090b] py-24">
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <div className="kr-reveal kr-glass rounded-xl p-10 md:p-16">
+              <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
                 Arrêtez de perdre des <span className="kr-gradient-text">opportunités.</span>
               </h2>
               <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
                 Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
               </p>
-              <div className="kr-reveal kr-reveal-delay-2 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <div className="kr-reveal kr-reveal-delay-2 mt-8">
                 <Link
                   href="/assistant"
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400"
-                  style={{ transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.03)'
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(34,197,94,0.35)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
                 >
                   Tester Kadria <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
-                  Réserver une démonstration
-                </Link>
               </div>
-              <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
-                👁 Voir un exemple de dossier
-              </Link>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </main>
 
-      {/* FOOTER */}
+      {/* 8. FOOTER */}
       <DarkFooter />
     </div>
   );
 }
 
-function DarkNav() {
+function DarkNav({ scrolled = false }: { scrolled?: boolean }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl">
+    <header className={`kr-nav sticky top-0 z-50 border-b border-transparent ${scrolled ? 'kr-nav-scrolled' : ''}`}>
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
         <Link href="/" className="text-xl font-bold">
           <span className="text-green-500">K</span>adria
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
-          <Link href="/#comment-ca-marche" className="transition-colors hover:text-white">Comment ça marche</Link>
           <Link href="/demo" className="transition-colors hover:text-white">Exemple de dossier</Link>
-          <Link href="/#metiers" className="transition-colors hover:text-white">Métiers</Link>
           <Link href="/tarifs" className="transition-colors hover:text-white">Tarifs</Link>
         </nav>
         <div className="flex items-center gap-3">
           <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
             Connexion
           </Link>
-          <a href="/register" style={{ background: '#22c55e', color: 'black', fontWeight: 700, borderRadius: '8px', padding: '8px 18px', fontSize: '14px', textDecoration: 'none' }}>Essai gratuit →</a>
-          <Link href="/demo-request" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
-            Réserver une démo
-          </Link>
-          <Link href="/assistant" className="rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+          <Link
+            href="/assistant"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+          >
             Tester Kadria
           </Link>
         </div>
@@ -1643,7 +1720,7 @@ function DarkNav() {
 
 function DarkFooter() {
   return (
-    <footer className="border-t border-zinc-800 bg-zinc-900 py-12">
+    <footer className="border-t border-zinc-800 py-10">
       <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
         <Link href="/" className="text-lg font-bold text-white">
           <span className="text-green-500">K</span>adria
