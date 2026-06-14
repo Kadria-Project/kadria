@@ -308,6 +308,14 @@ function NewDevis() {
     (artisanConfig?.assuranceNonRequise || (artisanConfig?.assureur && artisanConfig?.numAssurance))
   );
 
+  const missingLegalFields: string[] = [];
+  if (!artisanConfig?.siret) missingLegalFields.push('SIRET manquant');
+  if (!artisanConfig?.raisonSociale) missingLegalFields.push('Raison sociale manquante');
+  if (!artisanConfig?.adressePro) missingLegalFields.push('Adresse professionnelle manquante');
+  if (!artisanConfig?.assuranceNonRequise && !(artisanConfig?.assureur && artisanConfig?.numAssurance)) {
+    missingLegalFields.push('Informations d\'assurance manquantes');
+  }
+
   const save = async () => {
     setError('');
 
@@ -433,6 +441,15 @@ function NewDevis() {
                 ? configError
                 : 'Vos informations légales sont incomplètes. Elles sont nécessaires pour générer un devis conforme.'}
             </p>
+            {!configError && missingLegalFields.length > 0 && (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px' }}>
+                {missingLegalFields.map((field) => (
+                  <li key={field} style={{ color: '#f59e0b', fontSize: '12px', marginTop: '4px' }}>
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            )}
             <a href="/onboarding" style={{ color: '#22c55e', fontWeight: 600, fontSize: '14px' }}>
               Compléter mon profil →
             </a>
