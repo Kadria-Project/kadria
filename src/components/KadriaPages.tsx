@@ -1261,21 +1261,17 @@ function StatCounter({
 
 export function LandingRoutePage() {
   useScrollReveal();
-  const [selectedTrade, setSelectedTrade] = useState<string | null>(TRADES_DATA[0].id);
-  const [lastTradeId, setLastTradeId] = useState(TRADES_DATA[0].id);
-  const [tradeCardVisible, setTradeCardVisible] = useState(true);
-  const displayTrade = TRADES_DATA.find((m) => m.id === lastTradeId);
+  const [activeMetier, setActiveMetier] = useState<string | null>(TRADES_DATA[0].id);
+  const [metierCardVisible, setMetierCardVisible] = useState(true);
+  const displayTrade = TRADES_DATA.find((m) => m.id === activeMetier);
 
   useEffect(() => {
-    if (selectedTrade) {
-      setLastTradeId(selectedTrade);
-      setTradeCardVisible(false);
-      const timeout = setTimeout(() => setTradeCardVisible(true), 20);
+    if (activeMetier) {
+      setMetierCardVisible(false);
+      const timeout = setTimeout(() => setMetierCardVisible(true), 20);
       return () => clearTimeout(timeout);
     }
-
-    setTradeCardVisible(false);
-  }, [selectedTrade]);
+  }, [activeMetier]);
 
   const avant = [
     'Appels manqués sur chantier — vos prospects rappellent un concurrent.',
@@ -1589,13 +1585,7 @@ export function LandingRoutePage() {
         <SimulateurSection />
 
         {/* METIERS */}
-        <section
-          id="metiers"
-          className="w-full bg-zinc-900 py-24"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedTrade(null);
-          }}
-        >
+        <section id="metiers" className="w-full bg-zinc-900 py-24">
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Kadria parle le même langage que vous</h2>
@@ -1608,9 +1598,9 @@ export function LandingRoutePage() {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setSelectedTrade((prev) => (prev === m.id ? null : m.id))}
+                  onClick={() => setActiveMetier((prev) => (prev === m.id ? null : m.id))}
                   className={`w-28 cursor-pointer rounded-xl border px-4 py-3 text-center transition-colors ${
-                    selectedTrade === m.id
+                    activeMetier === m.id
                       ? 'border-green-500/25 bg-green-500/[0.08] text-green-500'
                       : 'border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700'
                   }`}
@@ -1621,10 +1611,10 @@ export function LandingRoutePage() {
               ))}
             </div>
 
-            {displayTrade && (
+            {activeMetier && displayTrade && (
               <div
-                className={`kr-reveal kr-reveal-scale kr-reveal-delay-1 mt-4 rounded-xl border border-zinc-700 bg-zinc-800 p-6 transition-all duration-300 overflow-hidden ${
-                  selectedTrade !== null && tradeCardVisible ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                className={`mt-6 rounded-2xl border border-zinc-700 bg-zinc-800 p-8 transition-all duration-[250ms] ease-out ${
+                  metierCardVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                 }`}
               >
                 <h3 className="text-xl font-semibold text-white">
@@ -1641,12 +1631,12 @@ export function LandingRoutePage() {
 
                   <div className="rounded-lg bg-zinc-900/60 p-4">
                     <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-                      Questions posées
+                      Questions posées par Kadria
                     </p>
                     <p className="mt-2 text-sm text-white">{displayTrade.questions}</p>
                   </div>
 
-                  <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                  <div className="rounded-xl border border-green-500/25 bg-green-500/[0.08] p-4">
                     <p className="text-xs font-semibold uppercase tracking-widest text-green-500">
                       Résultat
                     </p>
@@ -1658,7 +1648,7 @@ export function LandingRoutePage() {
 
                 <Link
                   href="/demo"
-                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-700"
+                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-green-500 transition-colors hover:bg-green-500/10"
                 >
                   Voir un exemple de conversation →
                 </Link>
