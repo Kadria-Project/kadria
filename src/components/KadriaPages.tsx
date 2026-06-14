@@ -2008,7 +2008,7 @@ export function LandingRoutePage() {
                       }
                     }}
                     aria-expanded={isActive}
-                    className={`kr-reveal kr-reveal-scale kr-reveal-delay-${Math.min(i + 1, 6)} kr-card-hover kr-bento-item ${sizeClass} relative flex cursor-pointer flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left`}
+                    className={`kr-card-hover kr-bento-item ${sizeClass} relative flex cursor-pointer flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left`}
                   >
                     {isActive ? (
                       <FadeIn>
@@ -2085,7 +2085,7 @@ export function LandingRoutePage() {
                 Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
               </p>
             </div>
-            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-[780px]">
+            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-5xl">
               <DashboardCarousel />
             </div>
           </div>
@@ -2874,7 +2874,7 @@ export function SimulateurSection() {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-stretch gap-12 lg:grid-cols-2">
           {/* Sliders */}
           <div className="kr-reveal-left kr-reveal" style={{
             background: '#18181b',
@@ -2883,7 +2883,9 @@ export function SimulateurSection() {
             padding: '40px',
             display: 'flex',
             flexDirection: 'column',
+            justifyContent: 'space-between',
             gap: '32px',
+            height: '100%',
           }}>
             {sliders.map((slider, i) => (
               <div key={i}>
