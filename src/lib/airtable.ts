@@ -18,6 +18,7 @@ export const TABLES = {
   users: process.env.AIRTABLE_USERS_TABLE || 'Users',
   artisanConfig: process.env.AIRTABLE_ARTISAN_CONFIG_TABLE || 'Artisan_config',
   activity: 'Activity',
+  devis: process.env.AIRTABLE_DEVIS_TABLE || 'Devis',
 
 } as const;
 
@@ -319,4 +320,106 @@ export async function createCommercialLead(data: {
   console.log('[COMMERCIAL] Response:', JSON.stringify(result))
   console.log('[COMMERCIAL] Lead created:', result.id || result)
   return result
+}
+
+export interface DevisRecord {
+  id: string
+  devisNumber: string
+  projetId: string
+  artisanId: string
+  dateEmission: string
+  dateValidite: string
+  objet: string
+  lignesJson: string
+  totalHT: number
+  totalTVA: number
+  tvaBreakdownJson: string
+  totalTTC: number
+  conditionsPaiement: string
+  delaiExecution: string
+  mentionsLegales: string
+  noteInterne: string
+  statut: string
+  clientName: string
+  clientAddress: string
+  clientEmail: string
+  clientPhone: string
+  createdAt: string
+}
+
+function mapDevisRecord(record: { id: string; fields: Record<string, unknown> }): DevisRecord {
+  const fields = record.fields
+  return {
+    id: record.id,
+    devisNumber: fields['Devis Number'] as string || '',
+    projetId: fields['Projet ID'] as string || '',
+    artisanId: fields['Artisan ID'] as string || '',
+    dateEmission: fields['Date Emission'] as string || '',
+    dateValidite: fields['Date Validite'] as string || '',
+    objet: fields['Objet'] as string || '',
+    lignesJson: fields['Lignes JSON'] as string || '',
+    totalHT: Number(fields['Total HT']) || 0,
+    totalTVA: Number(fields['Total TVA']) || 0,
+    tvaBreakdownJson: fields['TVA Breakdown JSON'] as string || '',
+    totalTTC: Number(fields['Total TTC']) || 0,
+    conditionsPaiement: fields['Conditions Paiement'] as string || '',
+    delaiExecution: fields['Delai Execution'] as string || '',
+    mentionsLegales: fields['Mentions Legales'] as string || '',
+    noteInterne: fields['Note Interne'] as string || '',
+    statut: fields['Statut'] as string || 'Brouillon',
+    clientName: fields['Client Name'] as string || '',
+    clientAddress: fields['Client Address'] as string || '',
+    clientEmail: fields['Client Email'] as string || '',
+    clientPhone: fields['Client Phone'] as string || '',
+    createdAt: fields['Created At'] as string || '',
+  }
+}
+
+export async function createDevis(fields: Record<string, unknown>): Promise<DevisRecord> {
+  const record = await airtableBase(TABLES.devis).create(fields as Partial<Airtable.FieldSet>)
+  return mapDevisRecord({ id: record.id, fields: record.fields })
+}
+
+export async function getDevisById(id: string): Promise<DevisRecord | null> {
+  try {
+    const record = await airtableBase(TABLES.devis).find(id)
+    return mapDevisRecord({ id: record.id, fields: record.fields })
+  } catch {
+    return null
+  }
+}
+
+export async function getDevisByProjet(projetId: string): Promise<DevisRecord[]> {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(TABLES.devis)}?filterByFormula=${encodeURIComponent(`{Projet ID}="${projetId}"`)}&sort[0][field]=Created At&sort[0][direction]=desc`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
+}
+
+export async function updateDevis(id: string, fields: Record<string, unknown>): Promise<DevisRecord> {
+  const record = await airtableBase(TABLES.devis).update(id, fields as Partial<Airtable.FieldSet>)
+  return mapDevisRecord({ id: record.id, fields: record.fields })
+}
+
+export async function deleteDevis(id: string): Promise<void> {
+  await airtableBase(TABLES.devis).destroy(id)
+}
+
+export async function createActivityLog(
+  projectId: string,
+  action: string,
+  description: string,
+): Promise<void> {
+  await airtableBase(TABLES.activity).create({
+    'Project ID': projectId,
+    Action: action,
+    Description: description,
+  })
 }
