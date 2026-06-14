@@ -69,28 +69,52 @@ const features = [
   },
 ];
 
-const plans = [
+interface PlanFeature {
+  text: string;
+  badge?: string;
+}
+
+const plans: { slug: string; name: string; price: string; description: string; features: PlanFeature[]; highlighted?: boolean }[] = [
   {
     slug: 'essentiel',
     name: 'Essentiel',
     price: '149 €',
-    description: 'Pour centraliser et qualifier vos demandes web.',
-    features: ['Assistant web', 'Dashboard prospects', 'Resume IA', 'Relances manuelles'],
+    description: 'Pour démarrer et ne plus manquer de demandes web.',
+    features: [
+      { text: 'Assistant chat web 24h/24' },
+      { text: 'Qualification IA + score dossier' },
+      { text: 'CRM vue liste' },
+      { text: '50 dossiers / mois' },
+      { text: 'Export CSV' },
+    ],
   },
   {
     slug: 'performance',
     name: 'Performance',
     price: '249 €',
-    description: 'Pour ne plus perdre les demandes et appels importants.',
-    features: ['Tout Essentiel', 'Assistant vocal', 'Priorisation IA', 'Reporting avance'],
+    description: 'Pour ne plus perdre aucune opportunité.',
+    features: [
+      { text: 'Tout Essentiel inclus' },
+      { text: 'Dossiers illimités + vue Kanban' },
+      { text: 'Pipeline commercial' },
+      { text: 'Génération de devis professionnels' },
+      { text: 'Assistant vocal', badge: 'Bientôt' },
+      { text: 'Relances automatiques', badge: 'Bientôt' },
+    ],
     highlighted: true,
   },
   {
-    slug: 'kadria360',
-    name: 'Kadria 360',
-    price: 'Sur mesure',
-    description: 'Pour une mise en place complete, site, vocal et suivi.',
-    features: ['Site connecte', 'Parcours sur mesure', 'Accompagnement', 'Support prioritaire'],
+    slug: 'agence',
+    name: 'Agence',
+    price: 'Sur devis',
+    description: "Pour les groupements d'artisans et réseaux.",
+    features: [
+      { text: 'Tout Performance inclus' },
+      { text: "Jusqu'à 10 artisans" },
+      { text: 'Marque blanche complète' },
+      { text: 'API access' },
+      { text: 'Account manager dédié' },
+    ],
   },
 ];
 
@@ -2321,26 +2345,33 @@ export function LandingRoutePage() {
                   <h3 className="mt-3 text-lg font-semibold">{plan.name}</h3>
                   <p className="mt-1 text-2xl font-bold">
                     {plan.price}
-                    {plan.price !== 'Sur mesure' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
+                    {plan.price !== 'Sur devis' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-zinc-400">{plan.description}</p>
-                  {plan.slug === 'kadria360' && (
-                    <p className="mt-1 text-sm leading-6 text-zinc-400">
-                      Pour les groupements d&apos;artisans et réseaux. Devis personnalisé sous 24h.
-                    </p>
-                  )}
                   <ul className="mt-4 space-y-2">
                     {plan.features.map((feat) => (
-                      <li key={feat} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
+                      <li key={feat.text} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
                         <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                        {feat}
+                        <span>
+                          {feat.text}
+                          {feat.badge && (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
+                              {feat.badge}
+                            </span>
+                          )}
+                        </span>
                       </li>
                     ))}
                   </ul>
                 </div>
               ))}
             </div>
-            <p className="kr-reveal kr-reveal-delay-2 mt-10 text-center text-sm text-zinc-400">
+            <p className="kr-reveal kr-reveal-delay-2 mt-8 text-center text-sm text-green-500">
+              <Link href="/tarifs#addon" className="hover:underline">
+                ➕ Site vitrine clé en main — +50€/mois avec Performance
+              </Link>
+            </p>
+            <p className="kr-reveal kr-reveal-delay-2 mt-4 text-center text-sm text-zinc-400">
               ✓ Sans engagement&nbsp;&nbsp;·&nbsp;&nbsp;✓ Résiliation à tout moment&nbsp;&nbsp;·&nbsp;&nbsp;✓ Support inclus dès le premier jour
             </p>
             <Link href="/tarifs" className="mt-6 block text-center text-sm text-green-500 hover:underline">
