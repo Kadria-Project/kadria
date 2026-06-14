@@ -403,6 +403,20 @@ export async function getDevisByProjet(projetId: string): Promise<DevisRecord[]>
   return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
 }
 
+export async function getDevisByArtisan(artisanId: string): Promise<DevisRecord[]> {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(TABLES.devis)}?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
+}
+
 export async function updateDevis(id: string, fields: Record<string, unknown>): Promise<DevisRecord> {
   const record = await airtableBase(TABLES.devis).update(id, fields as Partial<Airtable.FieldSet>)
   return mapDevisRecord({ id: record.id, fields: record.fields })
