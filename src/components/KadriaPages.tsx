@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import Link from 'next/link';
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   BarChart3,
   Bot,
   Check,
@@ -1232,6 +1234,21 @@ const ANIMATION_STYLES = `
     transform-origin: bottom;
   }
 
+  /* Kanban card entry */
+  @keyframes kr-card-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Typing indicator */
+  @keyframes kr-typing-dot {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+  .kr-typing-dot {
+    animation: kr-typing-dot 1s ease-in-out infinite;
+  }
+
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     .kr-reveal,
@@ -1242,6 +1259,7 @@ const ANIMATION_STYLES = `
     .kr-badge-pulse,
     .kr-line-grow,
     .kr-wave,
+    .kr-typing-dot,
     .kr-ticker span {
       transition: none !important;
       animation: none !important;
@@ -1299,8 +1317,429 @@ function StatCounter({
   );
 }
 
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  return reduced;
+}
+
+const fmtNum = (n: number) => n.toLocaleString('fr-FR');
+
+function FadeIn({ children }: { children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 10);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className={`flex h-full flex-col transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+      {children}
+    </div>
+  );
+}
+
+const WEB_CHAT_MESSAGES = [
+  { from: 'user', text: 'Bonjour, je voudrais un devis pour une rénovation salle de bain 🛁' },
+  { from: 'kadria', text: 'Bien sûr ! Quelle est la surface approximative ?' },
+  { from: 'user', text: 'Environ 8m², budget entre 8 000 et 12 000€' },
+  { from: 'kadria', text: 'Parfait. Avez-vous des photos du chantier à partager ?' },
+];
+
+function WebChatDemo({ reduceMotion }: { reduceMotion: boolean }) {
+  const messages = WEB_CHAT_MESSAGES;
+  const [visibleCount, setVisibleCount] = useState(reduceMotion ? messages.length : 0);
+  const [typing, setTyping] = useState(false);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    let cancelled = false;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    const delays = [500, 1500, 2500, 3500];
+
+    const run = () => {
+      setVisibleCount(0);
+      setTyping(false);
+      messages.forEach((msg, i) => {
+        if (msg.from === 'kadria') {
+          timeouts.push(setTimeout(() => { if (!cancelled) setTyping(true); }, delays[i] - 400));
+        }
+        timeouts.push(setTimeout(() => {
+          if (cancelled) return;
+          setTyping(false);
+          setVisibleCount(i + 1);
+        }, delays[i]));
+      });
+      timeouts.push(setTimeout(() => { if (!cancelled) run(); }, delays[delays.length - 1] + 4000));
+    };
+
+    run();
+    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
+  }, [reduceMotion]);
+
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      {messages.slice(0, visibleCount).map((msg, i) =>
+        msg.from === 'user' ? (
+          <div key={i} className="max-w-[85%] rounded-lg rounded-tl-sm bg-zinc-800 px-3 py-2 text-xs leading-5 text-zinc-300">
+            {msg.text}
+          </div>
+        ) : (
+          <div key={i} className="ml-auto max-w-[85%] rounded-lg rounded-tr-sm bg-green-500/15 px-3 py-2 text-xs leading-5 text-green-300">
+            {msg.text}
+          </div>
+        )
+      )}
+      {typing && (
+        <div className="ml-auto flex w-fit items-center gap-1 rounded-lg rounded-tr-sm bg-green-500/15 px-3 py-2">
+          <span className="kr-typing-dot h-1.5 w-1.5 rounded-full bg-green-300 [animation-delay:0ms]" />
+          <span className="kr-typing-dot h-1.5 w-1.5 rounded-full bg-green-300 [animation-delay:150ms]" />
+          <span className="kr-typing-dot h-1.5 w-1.5 rounded-full bg-green-300 [animation-delay:300ms]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const VOICE_TRANSCRIPT_LINES = [
+  { who: 'client', text: 'Client : Bonjour, je cherche un plombier pour...' },
+  { who: 'kadria', text: "Kadria : Bonjour ! Je suis l'assistant de l'artisan. Quel est le problème ?" },
+  { who: 'client', text: "Client : Une fuite sous l'évier, urgent" },
+  { who: 'kadria', text: 'Kadria : Je comprends. Êtes-vous disponible demain matin ?' },
+];
+
+function VoiceAssistantDemo({ reduceMotion }: { reduceMotion: boolean }) {
+  const lines = VOICE_TRANSCRIPT_LINES;
+  const [visibleCount, setVisibleCount] = useState(reduceMotion ? lines.length : 0);
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    let cancelled = false;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const run = () => {
+      setVisibleCount(0);
+      lines.forEach((_, i) => {
+        timeouts.push(setTimeout(() => { if (!cancelled) setVisibleCount(i + 1); }, 600 * (i + 1)));
+      });
+      timeouts.push(setTimeout(() => { if (!cancelled) run(); }, 600 * lines.length + 4000));
+    };
+
+    run();
+    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
+  }, [reduceMotion]);
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+
+  const waveBars = [
+    'h-2 [animation-delay:0ms]',
+    'h-4 [animation-delay:100ms]',
+    'h-6 [animation-delay:200ms]',
+    'h-3 [animation-delay:300ms]',
+    'h-5 [animation-delay:400ms]',
+    'h-2 [animation-delay:500ms]',
+    'h-4 [animation-delay:600ms]',
+    'h-3 [animation-delay:700ms]',
+  ];
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between">
+        <span className="kr-badge-pulse inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+          🔴 EN DIRECT
+        </span>
+        <span className="font-mono text-xs text-zinc-400">{mm}:{ss}</span>
+      </div>
+      <div className="mt-3 flex h-8 items-end gap-1.5">
+        {waveBars.map((bar, idx) => (
+          <div key={idx} className={`kr-wave w-1.5 rounded-full bg-green-500/60 ${bar}`} />
+        ))}
+      </div>
+      <div className="mt-3 space-y-1.5">
+        {lines.slice(0, visibleCount).map((l, i) => (
+          <p key={i} className={`text-[11px] leading-4 ${l.who === 'kadria' ? 'text-green-400' : 'text-zinc-300'}`}>
+            {l.who === 'kadria' ? '🟢 ' : '🔴 '}{l.text}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function KanbanDemo({ reduceMotion }: { reduceMotion: boolean }) {
+  const columns = ['Nouveau', 'À rappeler', 'Qualifié', 'Gagné'];
+  const [cards, setCards] = useState([
+    { name: 'M. Dupont', amount: '4 200€', col: 0 },
+    { name: 'Mme Leroy', amount: '8 900€', col: 1 },
+    { name: 'M. Martin', amount: '2 500€', col: 2 },
+  ]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const interval = setInterval(() => {
+      setCards((prev) => prev.map((c) => ({ ...c, col: (c.col + 1) % columns.length })));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [reduceMotion, columns.length]);
+
+  return (
+    <div className="mt-4 grid grid-cols-4 gap-1.5">
+      {columns.map((col, ci) => (
+        <div key={col} className="rounded-lg bg-zinc-800 p-1.5">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">{col}</p>
+          <div className="flex min-h-[70px] flex-col gap-1.5">
+            {cards.filter((c) => c.col === ci).map((c) => (
+              <div
+                key={c.name}
+                className={`rounded-md border border-zinc-700 bg-zinc-900 p-1.5 text-[9px] transition-all duration-400 ${
+                  reduceMotion ? '' : 'animate-[kr-card-in_400ms_ease-out]'
+                }`}
+              >
+                <p className="font-semibold text-white">{c.name}</p>
+                <p className="text-green-400">{c.amount}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function usePulseValues(targets: number[], duration: number, reduceMotion: boolean) {
+  const [values, setValues] = useState(targets);
+  const prevTargets = useRef(targets);
+
+  useEffect(() => {
+    if (reduceMotion) { prevTargets.current = targets; return; }
+    const starts = prevTargets.current;
+    const startTime = performance.now();
+    let raf: number;
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      setValues(targets.map((target, i) => Math.round(starts[i] + (target - starts[i]) * progress)));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+      else prevTargets.current = targets;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(targets), duration, reduceMotion]);
+
+  return reduceMotion ? targets : values;
+}
+
+function PrioritisationDemo({ reduceMotion }: { reduceMotion: boolean }) {
+  const [prospects, setProspects] = useState([
+    { name: 'Dupont - SDB', score: 94, trend: 'up' as 'up' | 'down' },
+    { name: 'Martin - Toiture', score: 87, trend: 'up' as 'up' | 'down' },
+    { name: 'Leroy - Électricité', score: 71, trend: 'down' as 'up' | 'down' },
+  ]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const interval = setInterval(() => {
+      setProspects((prev) => prev.map((p) => {
+        const delta = Math.round((Math.random() - 0.5) * 10);
+        const next = Math.max(40, Math.min(99, p.score + delta));
+        return { ...p, score: next, trend: next >= p.score ? 'up' : 'down' };
+      }));
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [reduceMotion]);
+
+  const colorFor = (score: number) =>
+    score > 80
+      ? 'text-green-400 bg-green-500/10 border-green-500/30'
+      : score > 60
+      ? 'text-amber-400 bg-amber-400/10 border-amber-400/30'
+      : 'text-red-400 bg-red-400/10 border-red-400/30';
+
+  const displayedScores = usePulseValues(prospects.map((p) => p.score), 400, reduceMotion);
+
+  return (
+    <div className="mt-4 space-y-2">
+      {prospects.map((p, i) => {
+        const displayed = displayedScores[i];
+        return (
+          <div key={p.name} className="flex items-center justify-between rounded-md bg-zinc-800 px-3 py-2">
+            <span className="text-xs text-zinc-300">{p.name}</span>
+            <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold transition-colors duration-300 ${colorFor(displayed)}`}>
+              {p.trend === 'up' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+              {displayed}%
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const DOSSIER_DEMO_FIELDS = [
+  { label: 'Nom', value: 'M. Bernard' },
+  { label: 'Projet', value: 'Rénovation salle de bain' },
+  { label: 'Surface', value: '8 m²' },
+  { label: 'Budget', value: '8 000 - 12 000 €' },
+  { label: 'Délai', value: 'Sous 2 mois' },
+];
+
+function DossierDemo({ reduceMotion }: { reduceMotion: boolean }) {
+  const fields = DOSSIER_DEMO_FIELDS;
+  const [visible, setVisible] = useState(reduceMotion ? fields.length : 0);
+  const [score, setScore] = useState(reduceMotion ? 94 : 0);
+  const [complete, setComplete] = useState(reduceMotion);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    let cancelled = false;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const run = () => {
+      setVisible(0);
+      setScore(0);
+      setComplete(false);
+      fields.forEach((_, i) => {
+        timeouts.push(setTimeout(() => { if (!cancelled) setVisible(i + 1); }, 300 * (i + 1)));
+      });
+      const scoreStart = 300 * (fields.length + 1);
+      timeouts.push(setTimeout(() => {
+        if (cancelled) return;
+        const start = performance.now();
+        const tick = (now: number) => {
+          const progress = Math.min((now - start) / 800, 1);
+          setScore(Math.round(progress * 94));
+          if (progress < 1 && !cancelled) requestAnimationFrame(tick);
+          else if (!cancelled) setComplete(true);
+        };
+        requestAnimationFrame(tick);
+      }, scoreStart));
+      timeouts.push(setTimeout(() => { if (!cancelled) run(); }, scoreStart + 1500 + 4000));
+    };
+
+    run();
+    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
+  }, [reduceMotion]);
+
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - score / 100);
+
+  return (
+    <div className="mt-4 rounded-lg bg-zinc-800 p-3">
+      <div className="space-y-1.5">
+        {fields.slice(0, visible).map((f) => (
+          <div key={f.label} className="flex justify-between text-xs">
+            <span className="text-zinc-500">{f.label}</span>
+            <span className="text-white">{f.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <div className="relative h-12 w-12">
+          <svg viewBox="0 0 44 44" className="h-12 w-12 -rotate-90">
+            <circle cx="22" cy="22" r={radius} fill="none" stroke="#27272a" strokeWidth="4" />
+            <circle
+              cx="22" cy="22" r={radius} fill="none" stroke="#22c55e" strokeWidth="4"
+              strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+            />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">{score}/100</span>
+        </div>
+        {complete && (
+          <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[10px] font-semibold text-green-400">
+            ✓ Dossier complet
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KpiDemo({ reduceMotion }: { reduceMotion: boolean }) {
+  const metrics = [
+    { label: 'CA ce mois', target: 24500, suffix: ' €', trend: '+12%' },
+    { label: 'Taux conversion', target: 67, suffix: ' %' },
+    { label: 'Dossiers traités', target: 43, suffix: '' },
+    { label: 'Panier moyen', target: 3200, suffix: ' €' },
+  ];
+  const [values, setValues] = useState(reduceMotion ? metrics.map((m) => m.target) : metrics.map(() => 0));
+  const [dashOffset, setDashOffset] = useState(reduceMotion ? 0 : 200);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const duration = 1500;
+    const start = performance.now();
+    let raf: number;
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValues(metrics.map((m) => Math.round(m.target * eased)));
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const timeout = setTimeout(() => setDashOffset(0), 50);
+    return () => { cancelAnimationFrame(raf); clearTimeout(timeout); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduceMotion]);
+
+  const points = [10, 25, 18, 30, 22, 38];
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${i * 20} ${40 - p}`).join(' ');
+
+  return (
+    <div className="mt-4">
+      <div className="grid grid-cols-2 gap-2">
+        {metrics.map((m, i) => (
+          <div key={m.label} className="rounded-lg bg-zinc-800 p-2">
+            <p className="text-[10px] text-zinc-500">{m.label}</p>
+            <p className="text-sm font-bold text-white">
+              {fmtNum(values[i])}{m.suffix}
+              {m.trend && <span className="ml-1 text-[10px] font-semibold text-green-500">↑ {m.trend}</span>}
+            </p>
+          </div>
+        ))}
+      </div>
+      <svg viewBox="0 0 100 40" className="mt-3 h-12 w-full">
+        <path
+          d={path} fill="none" stroke="#22c55e" strokeWidth="2"
+          strokeDasharray="200" strokeDashoffset={dashOffset}
+          style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
+        />
+      </svg>
+    </div>
+  );
+}
+
+const featureDemos = [
+  WebChatDemo,
+  VoiceAssistantDemo,
+  KanbanDemo,
+  PrioritisationDemo,
+  DossierDemo,
+  KpiDemo,
+];
+
 export function LandingRoutePage() {
   useScrollReveal();
+  const reduceMotion = usePrefersReducedMotion();
+  const [activeFeature, setActiveFeature] = useState<string | null>(null);
   const [activeMetier, setActiveMetier] = useState<string | null>(TRADES_DATA[0].id);
   const [metierCardVisible, setMetierCardVisible] = useState(true);
   const displayTrade = TRADES_DATA.find((m) => m.id === activeMetier);
@@ -1545,56 +1984,87 @@ export function LandingRoutePage() {
             <div className="kr-bento mt-12">
               {features.map((f, i) => {
                 const Icon = f.icon;
-                const sizeClass =
-                  i === 0
-                    ? 'col-span-4 row-span-2 md:col-span-2'
-                    : i === 1
-                    ? 'col-span-4 row-span-1 md:col-span-2'
-                    : i === 2 || i === 3
-                    ? 'col-span-2 row-span-1 md:col-span-1'
-                    : 'col-span-4 row-span-1 md:col-span-2';
+                const isActive = activeFeature === f.title;
+                const sizeClass = isActive
+                  ? 'col-span-4 row-span-3 md:col-span-4'
+                  : i === 0
+                  ? 'col-span-4 row-span-2 md:col-span-2'
+                  : i === 1
+                  ? 'col-span-4 row-span-1 md:col-span-2'
+                  : i === 2 || i === 3
+                  ? 'col-span-2 row-span-1 md:col-span-1'
+                  : 'col-span-4 row-span-1 md:col-span-2';
+                const DemoComponent = featureDemos[i];
                 return (
                   <div
                     key={f.title}
-                    className={`kr-reveal kr-reveal-scale kr-reveal-delay-${Math.min(i + 1, 6)} kr-card-hover kr-bento-item ${sizeClass} flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setActiveFeature((prev) => (prev === f.title ? null : f.title))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveFeature((prev) => (prev === f.title ? null : f.title));
+                      }
+                    }}
+                    aria-expanded={isActive}
+                    className={`kr-reveal kr-reveal-scale kr-reveal-delay-${Math.min(i + 1, 6)} kr-card-hover kr-bento-item ${sizeClass} relative flex cursor-pointer flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left`}
                   >
-                    <Icon size={28} className="text-green-500" />
-                    <div>
-                      <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
+                    {isActive ? (
+                      <FadeIn>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setActiveFeature(null); }}
+                          aria-label="Fermer la démo"
+                          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-white"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <Icon size={28} className="text-green-500" />
+                        <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
+                        <DemoComponent reduceMotion={reduceMotion} />
+                      </FadeIn>
+                    ) : (
+                      <>
+                        <Icon size={28} className="text-green-500" />
+                        <div>
+                          <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
+                          <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
 
-                      {i === 0 && (
-                        <div className="mt-4 flex flex-col gap-2">
-                          <div className="max-w-[85%] rounded-lg rounded-tl-sm bg-zinc-800 px-3 py-2 text-xs leading-5 text-zinc-300">
-                            Bonjour, je voudrais un devis pour une rénovation salle de bain
-                          </div>
-                          <div className="ml-auto max-w-[85%] rounded-lg rounded-tr-sm bg-green-500/15 px-3 py-2 text-xs leading-5 text-green-300">
-                            Bien sûr ! Quelle est la surface approximative ?
-                          </div>
-                        </div>
-                      )}
-
-                      {i === 1 && (
-                        <div className="mt-4 flex h-10 items-end gap-1.5">
-                          {waveBars.map((bar, idx) => (
-                            <div key={idx} className={`kr-wave w-1.5 rounded-full bg-green-500/60 ${bar}`} />
-                          ))}
-                        </div>
-                      )}
-
-                      {i === 2 && (
-                        <div className="mt-4 space-y-2">
-                          {pipelinePreview.map((row) => (
-                            <div key={row.label}>
-                              <p className="mb-1 text-[10px] text-zinc-500">{row.label}</p>
-                              <div className="h-1.5 w-full rounded-full bg-zinc-800">
-                                <div className={`h-1.5 rounded-full ${row.color} ${row.width}`} />
+                          {i === 0 && (
+                            <div className="mt-4 flex flex-col gap-2">
+                              <div className="max-w-[85%] rounded-lg rounded-tl-sm bg-zinc-800 px-3 py-2 text-xs leading-5 text-zinc-300">
+                                Bonjour, je voudrais un devis pour une rénovation salle de bain
+                              </div>
+                              <div className="ml-auto max-w-[85%] rounded-lg rounded-tr-sm bg-green-500/15 px-3 py-2 text-xs leading-5 text-green-300">
+                                Bien sûr ! Quelle est la surface approximative ?
                               </div>
                             </div>
-                          ))}
+                          )}
+
+                          {i === 1 && (
+                            <div className="mt-4 flex h-10 items-end gap-1.5">
+                              {waveBars.map((bar, idx) => (
+                                <div key={idx} className={`kr-wave w-1.5 rounded-full bg-green-500/60 ${bar}`} />
+                              ))}
+                            </div>
+                          )}
+
+                          {i === 2 && (
+                            <div className="mt-4 space-y-2">
+                              {pipelinePreview.map((row) => (
+                                <div key={row.label}>
+                                  <p className="mb-1 text-[10px] text-zinc-500">{row.label}</p>
+                                  <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                                    <div className={`h-1.5 rounded-full ${row.color} ${row.width}`} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </div>
                 );
               })}
