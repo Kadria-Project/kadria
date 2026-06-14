@@ -643,94 +643,125 @@ function Dashboard() {
         <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {!loading && topOpportunities.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {topOpportunities.map((project, index) => (
-                <button
-                  key={project.id}
-                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-                  className={`rounded-2xl border p-5 flex flex-col gap-3 text-left transition-transform duration-200 hover:-translate-y-0.5 ${
-                    index === 0
-                      ? 'border-green-500/25 bg-green-500/[0.02]'
-                      : 'border-zinc-800 bg-zinc-900'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
-                      #{index + 1}
-                    </span>
+            <>
+              <div className="my-2 border-t border-zinc-800" />
 
-                    <span className="text-green-400 font-bold text-sm">
-                      {opportunityScore(project)}
-                    </span>
-                  </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-base font-bold text-white">Top opportunités Kadria</p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    Classées par score IA — budget, urgence, complétude du dossier et délai de réponse
+                  </p>
+                </div>
 
-                  <div>
-                    <p className="font-bold text-white truncate">
-                      {project.clientFirstName} {project.clientName}
-                    </p>
+                <span className="rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
+                  🤖 Score IA
+                </span>
+              </div>
 
-                    <p className="text-sm text-zinc-400 truncate">
-                      {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
-                    </p>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {topOpportunities.map((project, index) => (
+                  <button
+                    key={project.id}
+                    onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                    className={`rounded-2xl border p-5 flex flex-col gap-3 text-left transition-transform duration-200 hover:-translate-y-0.5 ${
+                      index === 0
+                        ? 'border-green-500/25 bg-green-500/[0.02]'
+                        : 'border-zinc-800 bg-zinc-900'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
+                        #{index + 1}
+                      </span>
 
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={project.status} />
+                      <span className="text-green-400 font-bold text-sm">
+                        {opportunityScore(project)}
+                      </span>
+                    </div>
 
-                    <span className="text-zinc-400 text-xs">
-                      {project.budget || 'Budget non renseigné'}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+                    <div>
+                      <p className="font-bold text-white truncate">
+                        {project.clientFirstName} {project.clientName}
+                      </p>
+
+                      <p className="text-sm text-zinc-400 truncate">
+                        {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={project.status} />
+
+                      <span className="text-zinc-400 text-xs">
+                        {project.budget || 'Budget non renseigné'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
           {/* ZONE 2 — Toggles */}
-          <div className="flex flex-row items-start gap-4">
-            <button
-              onClick={() => togglePanel('pipeline')}
-              className={`flex min-w-[220px] w-fit items-center gap-3 rounded-2xl border px-5 py-3.5 transition-colors ${
-                openPanel === 'pipeline'
-                  ? 'border-green-500/25 bg-green-500/[0.06] text-green-400'
-                  : 'border-zinc-800 bg-zinc-900 text-white'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 shrink-0" />
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-green-500">
+              Voir plus
+            </p>
 
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold">Pipeline commerciale</p>
-                <p className="text-xs text-zinc-400">
-                  {pipelineSteps.length} étapes · {allProjects.length} dossiers
-                </p>
-              </div>
+            <div className="flex flex-row items-start gap-4">
+              <button
+                onClick={() => togglePanel('pipeline')}
+                className={`flex h-[72px] min-w-[260px] items-center justify-between gap-3 rounded-2xl border-2 px-5 py-4 transition-colors duration-200 ${
+                  openPanel === 'pipeline'
+                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                    : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <BarChart3
+                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'pipeline' ? 'text-green-400' : 'text-zinc-400'}`}
+                  />
 
-              <ChevronDown
-                className={`w-4 h-4 shrink-0 transition-transform duration-200 ${openPanel === 'pipeline' ? 'rotate-180' : ''}`}
-              />
-            </button>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[15px] font-bold text-white">Pipeline commerciale</span>
+                    <span className="text-xs text-zinc-400">
+                      {pipelineSteps.length} étapes · {allProjects.length} dossiers
+                    </span>
+                  </div>
+                </div>
 
-            <button
-              onClick={() => togglePanel('chantiers')}
-              className={`flex min-w-[220px] w-fit items-center gap-3 rounded-2xl border px-5 py-3.5 transition-colors ${
-                openPanel === 'chantiers'
-                  ? 'border-green-500/25 bg-green-500/[0.06] text-green-400'
-                  : 'border-zinc-800 bg-zinc-900 text-white'
-              }`}
-            >
-              <MapPin className="w-5 h-5 shrink-0" />
+                <ChevronDown
+                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${openPanel === 'pipeline' ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold">Chantiers géolocalisés</p>
-                <p className="text-xs text-zinc-400">
-                  Vue géographique · {sortedProjects.slice(0, 8).length} points
-                </p>
-              </div>
+              <button
+                onClick={() => togglePanel('chantiers')}
+                className={`flex h-[72px] min-w-[260px] items-center justify-between gap-3 rounded-2xl border-2 px-5 py-4 transition-colors duration-200 ${
+                  openPanel === 'chantiers'
+                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                    : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin
+                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'chantiers' ? 'text-green-400' : 'text-zinc-400'}`}
+                  />
 
-              <ChevronDown
-                className={`w-4 h-4 shrink-0 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`}
-              />
-            </button>
+                  <div className="flex flex-col text-left">
+                    <span className="text-[15px] font-bold text-white">Chantiers géolocalisés</span>
+                    <span className="text-xs text-zinc-400">
+                      Vue géographique · {sortedProjects.slice(0, 8).length} points
+                    </span>
+                  </div>
+                </div>
+
+                <ChevronDown
+                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`}
+                />
+              </button>
+            </div>
           </div>
 
           {/* ZONE 3 — Panneau accordéon */}
