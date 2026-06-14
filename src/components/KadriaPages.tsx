@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -27,6 +28,7 @@ import {
   Target,
   TrendingUp,
   X,
+  XCircle,
   Zap,
 } from 'lucide-react';
 import { KadriaLogoImg } from '@/src/components/KadriaLogo';
@@ -1727,6 +1729,41 @@ function KpiDemo({ reduceMotion }: { reduceMotion: boolean }) {
   );
 }
 
+function DossierReceivedCard({ reduceMotion }: { reduceMotion: boolean }) {
+  const [visible, setVisible] = useState(reduceMotion);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    let cancelled = false;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const run = () => {
+      setVisible(false);
+      timeouts.push(setTimeout(() => { if (!cancelled) setVisible(true); }, 50));
+      timeouts.push(setTimeout(() => { if (!cancelled) run(); }, 3000));
+    };
+
+    run();
+    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
+  }, [reduceMotion]);
+
+  return (
+    <div
+      className={`mb-5 rounded-xl border border-green-500/25 bg-zinc-900 p-3.5 transition-[opacity,transform] duration-[600ms] ${
+        visible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.97]'
+      }`}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Dossier reçu</p>
+      <p className="mt-2 text-sm font-semibold text-white">Marie Leroy</p>
+      <p className="text-sm text-zinc-400">Rénovation SDB · 8 000–12 000€</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="rounded-full bg-green-500 px-2.5 py-1 text-xs font-bold text-zinc-950">Score 94%</span>
+        <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">🟢 Prospect chaud</span>
+      </div>
+    </div>
+  );
+}
+
 const featureDemos = [
   WebChatDemo,
   VoiceAssistantDemo,
@@ -1758,6 +1795,12 @@ export function LandingRoutePage() {
     'Relances oubliées — 70% des prospects non rappelés sous 24h signent ailleurs.',
     'Qualification chronophage : 5 allers-retours pour obtenir l\'essentiel.',
     'Chaque demande non traitée est un chantier qui part chez un concurrent.',
+  ];
+
+  const missedNotifs = [
+    { icon: '📞', text: 'Appel manqué · il y a 2h', rotate: -1.5 },
+    { icon: '📞', text: 'Appel manqué · il y a 5h', rotate: 0.5 },
+    { icon: '💬', text: 'Message sans réponse · 3 jours', rotate: -0.8 },
   ];
 
   const apres = [
@@ -1905,28 +1948,74 @@ export function LandingRoutePage() {
                 Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
               </p>
             </div>
-            <div className="mt-12 grid items-stretch gap-6 md:grid-cols-2">
-              <div className="kr-reveal kr-reveal-left flex flex-col rounded-xl border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.03)] p-8">
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-[#dc2626]">Avant Kadria</h3>
-                <ul className="mt-5 space-y-4">
-                  {avant.map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-400">
-                      <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#dc2626]" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+            <div className="relative mt-12 grid items-stretch gap-8 lg:grid-cols-2">
+              {/* Flèche centrale */}
+              <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 lg:flex">
+                <ArrowRight size={20} className="text-green-500" />
               </div>
-              <div className="kr-reveal kr-reveal-right flex flex-col rounded-xl border border-green-500/25 bg-[rgba(34,197,94,0.03)] p-8">
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-green-500">Avec Kadria</h3>
-                <ul className="mt-5 space-y-4">
-                  {apres.map((item) => (
-                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-200">
-                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+
+              {/* AVANT KADRIA */}
+              <div className="kr-reveal kr-reveal-left flex flex-col overflow-hidden rounded-xl border border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.03)]">
+                <div className="flex items-center gap-3 border-b border-[rgba(220,38,38,0.15)] bg-[rgba(220,38,38,0.06)] px-6 py-4">
+                  <AlertTriangle size={18} className="text-[#dc2626]" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[#dc2626]">Avant Kadria</p>
+                    <p className="text-sm text-zinc-400">Sans qualification automatique</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col p-8">
+                  <div className="mb-5 space-y-2">
+                    {missedNotifs.map((n) => (
+                      <div
+                        key={n.text}
+                        style={{ transform: `rotate(${n.rotate}deg)` }}
+                        className="rounded-[10px] border border-[rgba(220,38,38,0.15)] bg-[rgba(220,38,38,0.06)] px-3.5 py-2.5 text-sm text-zinc-300"
+                      >
+                        {n.icon} {n.text}
+                      </div>
+                    ))}
+                  </div>
+                  <ul className="space-y-4">
+                    {avant.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-400">
+                        <XCircle size={15} className="mt-0.5 flex-shrink-0 text-[#dc2626]" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 rounded-[10px] bg-[rgba(220,38,38,0.06)] px-4 py-3">
+                    <p className="text-sm font-medium text-[#dc2626]">
+                      70% des prospects non rappelés sous 24h signent chez un concurrent
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* AVEC KADRIA */}
+              <div className="kr-reveal kr-reveal-right flex flex-col overflow-hidden rounded-xl border border-green-500/25 bg-[rgba(34,197,94,0.02)]">
+                <div className="flex items-center gap-3 border-b border-green-500/25 bg-[rgba(34,197,94,0.06)] px-6 py-4">
+                  <CheckCircle size={18} className="text-green-500" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Avec Kadria</p>
+                    <p className="text-sm text-zinc-400">Qualification automatique 24h/24</p>
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col p-8">
+                  <DossierReceivedCard reduceMotion={reduceMotion} />
+                  <ul className="space-y-4">
+                    {apres.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-sm font-medium leading-6 text-zinc-200">
+                        <CheckCircle size={15} className="mt-0.5 flex-shrink-0 text-green-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 rounded-[10px] bg-[rgba(34,197,94,0.06)] px-4 py-3">
+                    <p className="text-sm font-medium text-green-500">
+                      &lt; 3 minutes pour recevoir un dossier complet et qualifié
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
