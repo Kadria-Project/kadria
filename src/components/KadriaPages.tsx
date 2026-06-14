@@ -33,7 +33,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
-import { KadriaLogoImg } from '@/src/components/KadriaLogo';
+import { KadriaLogo } from '@/src/components/KadriaLogo';
 import ChatWidget from '@/src/components/ChatWidget';
 import PricingQuiz from '@/src/components/PricingQuiz';
 
@@ -142,7 +142,7 @@ function SiteHeader() {
   return (
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/5 bg-[#0a0b0f]/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1488px] items-center justify-between px-6">
-        <KadriaLogoImg />
+        <KadriaLogo size="sm" />
 
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           {links.map((link) => (
@@ -172,7 +172,7 @@ function Footer() {
   return (
     <footer className="border-t border-white/5 py-12">
       <div className="mx-auto flex max-w-[1488px] flex-col gap-4 px-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-        <KadriaLogoImg />
+        <KadriaLogo size="md" />
         <p>© {new Date().getFullYear()} Kadria. Tous droits reserves.</p>
       </div>
     </footer>
@@ -2423,8 +2423,8 @@ function DarkNav() {
       }`}
     >
       <div className="flex items-center">
-        <Link href="/" className="whitespace-nowrap text-base font-bold">
-          <span className="text-green-500">K</span>adria
+        <Link href="/" className="whitespace-nowrap">
+          <KadriaLogo size="sm" noLink />
         </Link>
         <nav className="ml-auto hidden items-center gap-8 text-sm text-zinc-400 md:flex">
           {navLinks.map((link) => (
@@ -2519,7 +2519,7 @@ function DarkFooter() {
           {/* Colonne 1 — Brand */}
           <div>
             <Link href="/" className="text-lg font-bold text-white">
-              <span className="text-green-500">K</span>adria
+              <KadriaLogo size="md" noLink />
             </Link>
             <p className="mt-3 max-w-[200px] text-sm text-zinc-400">
               L&apos;assistant qui transforme vos appels en chantiers qualifiés.

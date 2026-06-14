@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, CSSProperties } from 'react'
+import { KadriaLogo } from '@/src/components/KadriaLogo'
 
 const TRADES = [
   'Plombier',
@@ -176,9 +177,8 @@ export default function RegisterPage() {
         justifyContent: 'space-between',
         borderBottom: '1px solid #27272a',
       }}>
-        <a href="/" style={{ fontSize: '20px', fontWeight: 800, textDecoration: 'none' }}>
-          <span style={{ color: '#22c55e' }}>K</span>
-          <span style={{ color: 'white' }}>adria</span>
+        <a href="/" style={{ textDecoration: 'none' }}>
+          <KadriaLogo size="sm" theme="dark" noLink />
         </a>
         <a href="/login" style={{ color: '#a1a1aa', fontSize: '14px', textDecoration: 'none' }}>
           Déjà un compte ? <span style={{ color: '#22c55e' }}>Se connecter</span>

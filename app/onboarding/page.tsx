@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { KadriaLogo } from '@/src/components/KadriaLogo'
 
 const TRADES = [
   'Plombier', 'Électricien', 'Maçon', 'Peintre', 'Menuisier',
@@ -162,13 +163,11 @@ export default function OnboardingPage() {
           >
             ← Retour
           </button>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
-              <span style={{ color: '#22c55e' }}>K</span>adria
-              <span style={{ color: '#71717a', fontWeight: 400, fontSize: '14px', marginLeft: '8px' }}>
-                · Configuration
-              </span>
-            </h1>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <KadriaLogo size="sm" theme="dark" noLink />
+            <span style={{ color: '#71717a', fontWeight: 400, fontSize: '14px' }}>
+              · Configuration
+            </span>
           </div>
         </div>
         <button
