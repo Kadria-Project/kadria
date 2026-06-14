@@ -108,6 +108,7 @@ export default function OnboardingPage() {
   })
 
   const [legalErrors, setLegalErrors] = useState<Record<string, string>>({})
+  const [saveError, setSaveError] = useState('')
 
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
   const [copied, setCopied] = useState(false)
@@ -174,16 +175,22 @@ export default function OnboardingPage() {
 
     setSaving(true)
     setSaved(false)
+    setSaveError('')
     try {
-      await fetch('/api/artisan/config', {
+      const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       })
+      const data = await res.json()
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-    } catch {
-      alert('Erreur lors de la sauvegarde')
+    } catch (error) {
+      console.error('[ONBOARDING SAVE]', error)
+      setSaveError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde')
     } finally {
       setSaving(false)
     }
@@ -298,6 +305,20 @@ export default function OnboardingPage() {
           {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
         </button>
       </div>
+
+      {saveError && (
+        <div style={{
+          background: 'rgba(220,38,38,0.08)',
+          border: '1px solid rgba(220,38,38,0.3)',
+          borderRadius: '10px',
+          padding: '12px 16px',
+          margin: '16px 32px 0',
+          color: '#f87171',
+          fontSize: '13px',
+        }}>
+          {saveError}
+        </div>
+      )}
 
       <div style={{
         maxWidth: '900px',
