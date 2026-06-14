@@ -7,25 +7,23 @@ import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import {
   ArrowLeft,
-  CircleDot,
+  ArrowRight,
+  Clock,
+  FileText as FileTextIcon,
+  Plus,
 } from 'lucide-react';
 
-const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  'À rappeler': { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
-  'Qualifié':   { bg: '#14532d', text: '#4ade80', border: '#16a34a' },
-  'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
-  'Gagné':      { bg: '#14532d', text: '#86efac', border: '#22c55e' },
-  'Perdu':      { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: '#a1a1aa', border: '#3f3f46' },
+  'À rappeler':   { bg: 'rgba(217,119,6,0.15)', text: '#d97706', border: 'rgba(217,119,6,0.3)' },
+  'Qualifié':     { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' },
+  'Devis envoyé': { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' },
+  'Gagné':        { bg: 'rgba(21,128,61,0.15)', text: '#15803d', border: 'rgba(21,128,61,0.3)' },
+  'Perdu':        { bg: 'rgba(220,38,38,0.15)', text: '#dc2626', border: 'rgba(220,38,38,0.3)' },
 };
 
-const statusStyles: Record<string, { bg: string; text: string; border: string }> = {
-  'Nouveau':      { bg: '#27272a', text: '#e4e4e7', border: '#3f3f46' },
-  'À rappeler':   { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
-  'Qualifié':     { bg: '#14532d', text: '#4ade80', border: '#16a34a' },
-  'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
-  'Gagné':        { bg: '#14532d', text: '#86efac', border: '#22c55e' },
-  'Perdu':        { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
-};
+const statusColors = STATUS_COLORS;
+const statusStyles = STATUS_COLORS;
 
 export default function ProjectDetailPage() {
   return (
@@ -76,6 +74,8 @@ function ProjectDetail() {
     project?.devisAmount ? String(project.devisAmount) : ''
   );
   const [savingDevis, setSavingDevis] = useState(false);
+
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1132,35 +1132,49 @@ function ProjectDetail() {
           </div>
         )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-white">Historique du dossier</h2>
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+          <h2 className="text-lg font-semibold text-white mb-5">Historique du dossier</h2>
 
-          <div className="space-y-4">
-            {[...activities, {
+          {(() => {
+            const allEvents = [...activities, {
               id: 'creation',
               description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
               createdAt: project.createdAt,
-              type: 'creation',
-            }].map((activity) => (
-              <div key={activity.id} className="flex gap-3">
-                {activity.type === 'creation' ? (
-                  <span className="w-4 h-4 mt-1 text-green-500 flex-shrink-0 leading-none">✦</span>
-                ) : (
-                  <CircleDot className="w-4 h-4 mt-1 text-green-500" />
-                )}
+              action: 'CREATED',
+            }];
+            const events = showAllHistory ? allEvents : allEvents.slice(0, 3);
 
-                <div>
-                  <p className="font-medium text-white">{activity.description}</p>
+            return (
+              <>
+                <div className="relative">
+                  <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-zinc-800" />
 
-                  <p className="text-xs text-zinc-400">
-                    {activity.createdAt
-                      ? new Date(activity.createdAt).toLocaleString('fr-FR')
-                      : 'Date inconnue'}
-                  </p>
+                  {events.map((activity) => (
+                    <div key={activity.id} className="relative pl-10 pb-5 last:pb-0">
+                      <TimelineIcon action={activity.action} />
+
+                      <p className="font-medium text-white text-sm">{activity.description}</p>
+
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {activity.createdAt
+                          ? new Date(activity.createdAt).toLocaleString('fr-FR')
+                          : 'Date inconnue'}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+
+                {allEvents.length > 3 && (
+                  <button
+                    onClick={() => setShowAllHistory((v) => !v)}
+                    className="text-sm text-green-500 hover:underline"
+                  >
+                    {showAllHistory ? 'Réduire' : "Voir tout l'historique"}
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </section>
 
       </main>
@@ -1373,6 +1387,46 @@ function ProjectDetail() {
   );
 }
 
+function TimelineIcon({ action }: { action?: string }) {
+  if (action === 'CREATED') {
+    return (
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+        <Plus className="w-3 h-3 text-zinc-950" />
+      </span>
+    );
+  }
+
+  if (action?.includes('STATUS')) {
+    return (
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center">
+        <ArrowRight className="w-3 h-3 text-white" />
+      </span>
+    );
+  }
+
+  if (action?.includes('CALLBACK')) {
+    return (
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
+        <Clock className="w-3 h-3 text-amber-500" />
+      </span>
+    );
+  }
+
+  if (action?.includes('NOTE')) {
+    return (
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+        <FileTextIcon className="w-3 h-3 text-blue-400" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center">
+      <ArrowRight className="w-3 h-3 text-white" />
+    </span>
+  );
+}
+
 function getVerdict(project: any) {
   const score = project.completenessScore || 0;
   const maturity = project.maturity || '';
@@ -1391,24 +1445,24 @@ function getVerdict(project: any) {
   if (isHot) return {
     label: 'Prospect chaud',
     color: '#22c55e',
-    bg: '#14532d',
-    border: '#16a34a',
+    bg: 'rgba(34,197,94,0.15)',
+    border: 'rgba(34,197,94,0.25)',
     icon: '🔥',
     description: 'Budget défini, délai court, prêt à démarrer'
   };
   if (isCold) return {
     label: 'Prospect froid',
     color: '#f87171',
-    bg: '#450a0a',
-    border: '#dc2626',
+    bg: 'rgba(220,38,38,0.10)',
+    border: 'rgba(220,38,38,0.2)',
     icon: '❄️',
     description: 'Budget flou ou projet peu défini'
   };
   return {
-    label: 'À qualifier',
-    color: '#fbbf24',
-    bg: '#78350f',
-    border: '#d97706',
+    label: 'Prospect tiède',
+    color: '#f59e0b',
+    bg: 'rgba(245,158,11,0.15)',
+    border: 'rgba(245,158,11,0.3)',
     icon: '⚡',
     description: 'Quelques informations manquantes'
   };
