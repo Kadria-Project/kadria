@@ -221,28 +221,30 @@ export async function getArtisanConfig(artisanId: string) {
     trades: record.fields['Trades'] as string || '',
 
     // Informations légales
-    raisonSociale: record.fields['Raison Sociale'] as string || '',
-    formeJuridique: record.fields['Forme Juridique'] as string || '',
-    siret: record.fields['SIRET'] as string || '',
-    tvaNumber: record.fields['TVA Number'] as string || '',
-    tvaAssujetti: record.fields['TVA Assujetti'] !== false,
-    adressePro: record.fields['Adresse Pro'] as string || '',
-    cpPro: record.fields['CP Pro'] as string || '',
-    villePro: record.fields['Ville Pro'] as string || '',
+    raisonSociale: record.fields['raison_sociale'] as string || record.fields['Raison Sociale'] as string || '',
+    formeJuridique: record.fields['forme_juridique'] as string || record.fields['Forme Juridique'] as string || '',
+    siret: record.fields['siret'] as string || record.fields['SIRET'] as string || '',
+    tvaNumber: record.fields['tva_number'] as string || record.fields['TVA Number'] as string || '',
+    tvaAssujetti: record.fields['tva_assujetti'] !== undefined
+      ? record.fields['tva_assujetti'] !== false
+      : record.fields['TVA Assujetti'] !== false,
+    adressePro: record.fields['adresse_pro'] as string || record.fields['Adresse Pro'] as string || '',
+    cpPro: record.fields['cp_pro'] as string || record.fields['CP Pro'] as string || '',
+    villePro: record.fields['ville_pro'] as string || record.fields['Ville Pro'] as string || '',
 
     // Assurance
-    assureur: record.fields['Assureur'] as string || '',
-    numAssurance: record.fields['Num Assurance'] as string || '',
-    assuranceNonRequise: record.fields['Assurance Non Requise'] === true,
+    assureur: record.fields['assureur'] as string || record.fields['Assureur'] as string || '',
+    numAssurance: record.fields['num_assurance'] as string || record.fields['Num Assurance'] as string || '',
+    assuranceNonRequise: record.fields['assurance_non_requise'] === true || record.fields['Assurance Non Requise'] === true,
 
     // Préférences devis
-    devisPrefixe: record.fields['Devis Prefixe'] as string || 'DEV',
-    devisValidite: Number(record.fields['Devis Validite']) || 90,
-    devisTvaDefaut: Number(record.fields['Devis TVA Defaut']) || 10,
-    devisConditionsPaiement: record.fields['Devis Conditions Paiement'] as string || '',
-    devisMentionLegale: record.fields['Devis Mention Legale'] as string || '',
-    devisCompteur: Number(record.fields['Devis Compteur']) || 0,
-    prestationsJson: record.fields['Prestations JSON'] as string || '',
+    devisPrefixe: record.fields['devis_prefixe'] as string || record.fields['Devis Prefixe'] as string || 'DEV',
+    devisValidite: Number(record.fields['devis_validite'] ?? record.fields['Devis Validite']) || 90,
+    devisTvaDefaut: Number(record.fields['devis_tva_defaut'] ?? record.fields['Devis TVA Defaut']) || 10,
+    devisConditionsPaiement: record.fields['devis_conditions_paiement'] as string || record.fields['Devis Conditions Paiement'] as string || '',
+    devisMentionLegale: record.fields['devis_mention_legale'] as string || record.fields['Devis Mention Legale'] as string || '',
+    devisCompteur: Number(record.fields['devis_compteur'] ?? record.fields['Devis Compteur']) || 0,
+    prestationsJson: record.fields['prestations_json'] as string || record.fields['Prestations JSON'] as string || '',
   }
 }
 
