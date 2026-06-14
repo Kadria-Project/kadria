@@ -573,11 +573,10 @@ function TrendIndicator({ delta, unit = '%' }: { delta: number; unit?: string })
   );
 }
 
-function Sparkline({ data }: { data: { label: string; value: number }[] }) {
+function Sparkline({ data, height = 60 }: { data: { label: string; value: number }[]; height?: number }) {
   const [hover, setHover] = useState<{ index: number; x: number; y: number } | null>(null);
 
   const width = 600;
-  const height = 60;
   const padding = 4;
 
   const max = Math.max(...data.map((d) => d.value), 1);
@@ -1179,24 +1178,6 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Sparkline CA potentiel */}
-      {!loading && (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 mb-6">
-          <p className="text-sm font-semibold text-white">Évolution du CA potentiel</p>
-          <p className="text-xs text-zinc-500 mb-3">
-            {kpiPeriod === '7d'
-              ? 'Sur les 7 derniers jours'
-              : kpiPeriod === '30d'
-                ? 'Sur les 30 derniers jours'
-                : kpiPeriod === '90d'
-                  ? 'Sur les 3 derniers mois'
-                  : 'Sur les 12 derniers mois'}
-          </p>
-
-          <Sparkline data={kpiPeriodData.sparkline} />
-        </div>
-      )}
-
       {/* Alertes */}
       {!loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -1361,6 +1342,34 @@ function Dashboard() {
                 ))}
               </div>
             </>
+          )}
+
+          {/* Sparkline CA potentiel */}
+          {!loading && (
+            <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="font-bold text-white">Évolution du CA potentiel</p>
+                  <p className="text-sm text-zinc-400">
+                    {kpiPeriod === '7d'
+                      ? 'Sur les 7 derniers jours'
+                      : kpiPeriod === '30d'
+                        ? 'Sur les 30 derniers jours'
+                        : kpiPeriod === '90d'
+                          ? 'Sur les 3 derniers mois'
+                          : 'Sur les 12 derniers mois'}
+                  </p>
+                </div>
+
+                <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-sm text-green-500">
+                  {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
+                </span>
+              </div>
+
+              <div className="mt-3">
+                <Sparkline data={kpiPeriodData.sparkline} height={80} />
+              </div>
+            </div>
           )}
 
           {/* ZONE 2 — Toggles */}
