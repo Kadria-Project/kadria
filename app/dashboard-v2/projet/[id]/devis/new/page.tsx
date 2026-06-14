@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { ArrowLeft, ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Plus, Trash2, X, XCircle } from 'lucide-react';
 
 interface ArtisanConfig {
   companyName: string;
@@ -83,10 +83,20 @@ function NewDevis() {
   const projetId = params.id as string;
 
   const [artisanConfig, setArtisanConfig] = useState<ArtisanConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState('');
+  const [nextDevisNumber, setNextDevisNumber] = useState('');
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -123,12 +133,14 @@ function NewDevis() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [configRes, projectRes] = await Promise.all([
+        const [configRes, projectRes, nextNumberRes] = await Promise.all([
           fetch('/api/artisan/config'),
           fetch(`/api/projects/${projetId}`),
+          fetch('/api/devis/next-number'),
         ]);
         const configData = await configRes.json();
         const projectData = await projectRes.json();
+        const nextNumberData = await nextNumberRes.json();
 
         if (configData.success) {
           const config = configData.config as ArtisanConfig;
@@ -139,6 +151,9 @@ function NewDevis() {
           setLines((prev) =>
             prev.map((l) => ({ ...l, tvaRate: config.devisTvaDefaut || 10 }))
           );
+        } else {
+          setConfigError(configData.error || 'Erreur lors du chargement de la configuration.');
+          console.error('[DEVIS NEW] Config error:', configData.error);
         }
 
         if (projectData.success) {
@@ -149,10 +164,17 @@ function NewDevis() {
           setClientPhone(p.clientPhone || '');
           setObjet(p.projectType ? `Travaux de ${p.projectType}` : '');
         }
-      } catch {
+
+        if (nextNumberData.success) {
+          setNextDevisNumber(nextNumberData.nextNumber);
+        }
+      } catch (err) {
         setError('Erreur lors du chargement des données.');
+        setConfigError('Erreur lors du chargement de la configuration.');
+        console.error('[DEVIS NEW] Erreur de chargement:', err);
       } finally {
         setLoading(false);
+        setConfigLoading(false);
       }
     };
     loadData();
@@ -275,9 +297,9 @@ function NewDevis() {
   const totalTVA = Object.values(tvaBreakdown).reduce((a, b) => a + b, 0);
   const totalTTC = totalHT + totalTVA;
 
-  const devisNumberPreview = artisanConfig
+  const devisNumberPreview = nextDevisNumber || (artisanConfig
     ? `${artisanConfig.devisPrefixe || 'DEV'}-${new Date().getFullYear()}-${String((artisanConfig.devisCompteur || 0) + 1).padStart(3, '0')}`
-    : '...';
+    : '...');
 
   const legalComplete = !!(
     artisanConfig?.siret &&
@@ -328,13 +350,21 @@ function NewDevis() {
       const data = await res.json();
       if (!data.success) {
         setError(data.error || 'Erreur lors de l\'enregistrement du devis.');
+        setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
+        console.error('[DEVIS NEW] Erreur enregistrement:', data.error);
         setSaving(false);
         return;
       }
+      const numero = data.numero || data.devis?.devisNumber || devisNumberPreview;
       setSavedId(data.devis?.id || '');
-      router.push(`/dashboard-v2/projet/${projetId}`);
-    } catch {
+      setToast({ type: 'success', message: `✓ Devis ${numero} enregistré — Dossier passé en "Devis envoyé"` });
+      setTimeout(() => {
+        router.push(`/dashboard-v2/projet/${projetId}`);
+      }, 1500);
+    } catch (err) {
       setError('Erreur lors de l\'enregistrement du devis.');
+      setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
+      console.error('[DEVIS NEW] Erreur enregistrement:', err);
       setSaving(false);
     }
   };
@@ -381,7 +411,7 @@ function NewDevis() {
     marginBottom: '16px',
   };
 
-  if (loading) {
+  if (loading || configLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <p className="text-zinc-400">Chargement...</p>
@@ -399,7 +429,9 @@ function NewDevis() {
           </Button>
           <div style={{ ...sectionCard, marginTop: '16px', textAlign: 'center' }}>
             <p className="text-zinc-300 mb-4">
-              Vos informations légales sont incomplètes. Elles sont nécessaires pour générer un devis conforme.
+              {configError
+                ? configError
+                : 'Vos informations légales sont incomplètes. Elles sont nécessaires pour générer un devis conforme.'}
             </p>
             <a href="/onboarding" style={{ color: '#22c55e', fontWeight: 600, fontSize: '14px' }}>
               Compléter mon profil →
@@ -947,6 +979,35 @@ function NewDevis() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '16px',
+            right: '16px',
+            zIndex: 50,
+            background: '#18181b',
+            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : '#dc2626'}`,
+            borderRadius: '12px',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: toast.type === 'success' ? 'white' : '#dc2626',
+            fontSize: '13px',
+            maxWidth: '360px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          }}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
+          ) : (
+            <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#dc2626' }} />
+          )}
+          <span>{toast.message}</span>
         </div>
       )}
     </div>
