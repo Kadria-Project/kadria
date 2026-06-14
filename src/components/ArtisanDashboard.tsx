@@ -22,6 +22,8 @@ import {
   Trophy,
   ChevronRight,
   ChevronDown,
+  BarChart3,
+  MapPin,
   LogOut,
   Euro,
   Target,
@@ -685,32 +687,48 @@ function Dashboard() {
           )}
 
           {/* ZONE 2 — Toggles */}
-          <div className="flex flex-row gap-3">
+          <div className="flex flex-row items-start gap-4">
             <button
               onClick={() => togglePanel('pipeline')}
-              className={`flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex min-w-[220px] w-fit items-center gap-3 rounded-2xl border px-5 py-3.5 transition-colors ${
                 openPanel === 'pipeline'
                   ? 'border-green-500/25 bg-green-500/[0.06] text-green-400'
                   : 'border-zinc-800 bg-zinc-900 text-white'
               }`}
             >
-              📊 Pipeline
+              <BarChart3 className="w-5 h-5 shrink-0" />
+
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold">Pipeline commerciale</p>
+                <p className="text-xs text-zinc-400">
+                  {pipelineSteps.length} étapes · {allProjects.length} dossiers
+                </p>
+              </div>
+
               <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${openPanel === 'pipeline' ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 shrink-0 transition-transform duration-200 ${openPanel === 'pipeline' ? 'rotate-180' : ''}`}
               />
             </button>
 
             <button
               onClick={() => togglePanel('chantiers')}
-              className={`flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex min-w-[220px] w-fit items-center gap-3 rounded-2xl border px-5 py-3.5 transition-colors ${
                 openPanel === 'chantiers'
                   ? 'border-green-500/25 bg-green-500/[0.06] text-green-400'
                   : 'border-zinc-800 bg-zinc-900 text-white'
               }`}
             >
-              🗺️ Chantiers
+              <MapPin className="w-5 h-5 shrink-0" />
+
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold">Chantiers géolocalisés</p>
+                <p className="text-xs text-zinc-400">
+                  Vue géographique · {sortedProjects.slice(0, 8).length} points
+                </p>
+              </div>
+
               <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 shrink-0 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`}
               />
             </button>
           </div>
