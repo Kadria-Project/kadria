@@ -135,7 +135,6 @@ function PageShell({ children }: { children: React.ReactNode }) {
 function SiteHeader() {
   const links = [
     { label: 'Comment ca marche', href: '/#comment-ca-marche' },
-    { label: 'Fonctionnalites', href: '/fonctionnalites' },
     { label: 'Demo', href: '/demo' },
     { label: 'Tarifs', href: '/tarifs' },
   ];
@@ -160,7 +159,7 @@ function SiteHeader() {
           <Link href="/demo" className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
             Reserver une demo
           </Link>
-          <Link href="/assistant" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+          <Link href="/demo" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
             Tester Kadria
           </Link>
         </div>
@@ -2413,10 +2412,8 @@ function DarkNav() {
   }, []);
 
   const navLinks = [
-    { href: '/fonctionnalites', label: 'Fonctionnalités' },
+    { href: '/demo', label: 'Essayer' },
     { href: '/tarifs', label: 'Tarifs' },
-    { href: '/demo', label: 'Démo' },
-    { href: '/assistant', label: 'Assistant' },
   ];
 
   return (
@@ -2431,7 +2428,7 @@ function DarkNav() {
         </Link>
         <nav className="ml-auto hidden items-center gap-8 text-sm text-zinc-400 md:flex">
           {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="transition-colors duration-200 hover:text-white">
+            <Link key={link.href} href={link.href} className="cursor-pointer transition-colors duration-150 hover:text-white">
               {link.label}
             </Link>
           ))}
@@ -2439,19 +2436,19 @@ function DarkNav() {
         <div className="ml-8 hidden items-center gap-3 md:flex">
           <Link
             href="/demo-request"
-            className="rounded-[10px] border border-border px-4 py-2 text-sm text-zinc-300 transition-colors duration-200 hover:text-white"
+            className="rounded-[10px] border border-zinc-800 px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-zinc-900"
           >
             Demander une démo
           </Link>
           <Link
-            href="/dashboard-v2"
-            className="rounded-full border border-border px-5 py-2 text-sm text-zinc-300 transition-colors duration-200 hover:text-white"
+            href="/login"
+            className="rounded-[10px] border border-zinc-800 px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-zinc-900"
           >
             Se connecter
           </Link>
           <Link
             href="/register"
-            className="inline-flex min-h-11 items-center justify-center rounded-[10px] bg-accent px-5 py-2 text-sm font-semibold text-background transition-transform duration-200 hover:scale-[1.02] hover:opacity-90"
+            className="inline-flex min-h-11 items-center justify-center rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-background transition-all duration-150 hover:scale-[1.02] hover:opacity-90"
           >
             Essai gratuit
           </Link>
@@ -2478,20 +2475,27 @@ function DarkNav() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="border-b border-zinc-800 px-6 py-4 text-lg text-zinc-300 transition-colors duration-200 hover:text-white"
+                className="border-b border-zinc-800 px-6 py-4 text-lg text-zinc-300 transition-colors duration-150 hover:text-white"
               >
                 {link.label}
               </Link>
             ))}
-          </nav>
-          <div className="flex flex-col gap-3 p-6">
             <Link
-              href="/dashboard-v2"
+              href="/demo-request"
               onClick={() => setMobileOpen(false)}
-              className="flex min-h-11 w-full items-center justify-center rounded-[10px] border border-border px-5 py-2 text-sm text-zinc-300 transition-colors duration-200 hover:text-white"
+              className="border-b border-zinc-800 px-6 py-4 text-lg text-zinc-300 transition-colors duration-150 hover:text-white"
+            >
+              Demander une démo
+            </Link>
+            <Link
+              href="/login"
+              onClick={() => setMobileOpen(false)}
+              className="border-b border-zinc-800 px-6 py-4 text-lg text-zinc-300 transition-colors duration-150 hover:text-white"
             >
               Se connecter
             </Link>
+          </nav>
+          <div className="flex flex-col gap-3 p-6">
             <Link
               href="/register"
               onClick={() => setMobileOpen(false)}
@@ -2726,7 +2730,7 @@ export function PricingRoutePage() {
               Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              <Link href="/demo" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
               <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
