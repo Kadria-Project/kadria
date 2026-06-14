@@ -2374,32 +2374,30 @@ export function SimulateurSection() {
         </div>
 
         {/* Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '3fr 2fr',
-          gap: '24px',
-          alignItems: 'start',
-        }}>
+        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2">
           {/* Sliders */}
           <div className="kr-reveal-left kr-reveal" style={{
             background: '#18181b',
             border: '1px solid #27272a',
             borderRadius: '20px',
-            padding: '32px',
+            padding: '40px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '32px',
           }}>
             {sliders.map((slider, i) => (
-              <div key={i} style={{ marginBottom: i < sliders.length - 1 ? '28px' : 0 }}>
+              <div key={i}>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   marginBottom: '10px',
                 }}>
-                  <span style={{ color: '#a1a1aa', fontSize: '14px' }}>
+                  <span style={{ color: 'white', fontSize: '16px', fontWeight: 500 }}>
                     {slider.label}
                   </span>
                   <span style={{
-                    color: '#22c55e', fontSize: '14px',
+                    color: '#22c55e', fontSize: '16px',
                     fontWeight: 700, minWidth: '80px', textAlign: 'right',
                   }}>
                     {slider.display}
@@ -2409,15 +2407,15 @@ export function SimulateurSection() {
                   {/* Track background */}
                   <div style={{
                     position: 'absolute',
-                    width: '100%', height: '4px',
-                    background: '#3f3f46', borderRadius: '2px',
+                    width: '100%', height: '6px',
+                    background: '#3f3f46', borderRadius: '3px',
                   }} />
                   {/* Track fill */}
                   <div style={{
                     position: 'absolute',
-                    height: '4px',
+                    height: '6px',
                     background: '#22c55e',
-                    borderRadius: '2px',
+                    borderRadius: '3px',
                     width: `${((slider.value - slider.min) / (slider.max - slider.min)) * 100}%`,
                   }} />
                   {/* Input range */}
@@ -2548,8 +2546,8 @@ export function SimulateurSection() {
         input[type=range]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: #22c55e;
           cursor: pointer;
@@ -2557,8 +2555,8 @@ export function SimulateurSection() {
           box-shadow: 0 0 0 2px #22c55e;
         }
         input[type=range]::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: #22c55e;
           cursor: pointer;
