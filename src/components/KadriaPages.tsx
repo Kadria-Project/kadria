@@ -486,10 +486,10 @@ function DashboardCarousel() {
   const [isAnimating, setIsAnimating] = useState(false)
 
   const SLIDES = [
-    { id: 'kpis', label: 'KPIs & Métriques', icon: '📊' },
-    { id: 'projects', label: 'Liste des projets', icon: '📋' },
-    { id: 'pipeline', label: 'Pipeline & Top opportunités', icon: '🏆' },
-    { id: 'map', label: 'Chantiers géolocalisés', icon: '📍' },
+    { id: 'kpis', label: 'KPIs & Métriques', tabLabel: 'Suivi', icon: '📊' },
+    { id: 'projects', label: 'Liste des projets', tabLabel: 'Pipeline', icon: '📋' },
+    { id: 'pipeline', label: 'Pipeline & Top opportunités', tabLabel: 'Opportunités', icon: '🏆' },
+    { id: 'map', label: 'Chantiers géolocalisés', tabLabel: 'Calendrier', icon: '📍' },
   ]
 
   useEffect(() => {
@@ -525,24 +525,26 @@ function DashboardCarousel() {
             onClick={() => goTo(i)}
             style={{
               flex: 1,
-              background: activeSlide === i ? '#09090b' : 'transparent',
-              border: activeSlide === i ? '1px solid #27272a' : '1px solid transparent',
+              background: activeSlide === i ? '#22c55e' : '#27272a',
+              border: '1px solid transparent',
               borderRadius: '8px',
               padding: '8px 4px',
-              color: activeSlide === i ? 'white' : '#71717a',
+              color: activeSlide === i ? '#09090b' : '#a1a1aa',
               fontSize: '11px',
               fontWeight: activeSlide === i ? 600 : 400,
               cursor: 'pointer',
               transition: 'all 0.2s',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
               whiteSpace: 'nowrap',
+              minHeight: '44px',
             }}
           >
             <span>{slide.icon}</span>
-            <span style={{ display: 'none' }}>{slide.label}</span>
+            <span>{slide.tabLabel}</span>
           </button>
         ))}
       </div>
@@ -1179,6 +1181,16 @@ const ANIMATION_STYLES = `
     }
   }
 
+  /* Sound wave */
+  @keyframes kr-wave {
+    0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+  .kr-wave {
+    animation: kr-wave 1.2s ease-in-out infinite;
+    transform-origin: bottom;
+  }
+
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     .kr-reveal,
@@ -1188,6 +1200,7 @@ const ANIMATION_STYLES = `
     .kr-card-hover,
     .kr-badge-pulse,
     .kr-line-grow,
+    .kr-wave,
     .kr-ticker span {
       transition: none !important;
       animation: none !important;
@@ -1267,7 +1280,7 @@ export function LandingRoutePage() {
     'Appels manqués sur chantier — vos prospects rappellent un concurrent.',
     'Demandes sans informations : « Je voudrais un devis », sans surface ni budget.',
     'Relances oubliées — 70% des prospects non rappelés sous 24h signent ailleurs.',
-    'Qualification chronophage : 5 allers-retours pour obtenir l essentiel.',
+    'Qualification chronophage : 5 allers-retours pour obtenir l\'essentiel.',
     'Chaque demande non traitée est un chantier qui part chez un concurrent.',
   ];
 
@@ -1293,7 +1306,7 @@ export function LandingRoutePage() {
     {
       number: '03',
       title: 'Le dossier est créé automatiquement',
-      text: 'Les informations sont structurées, scorées et analysées par l IA Kadria en moins de 3 minutes.',
+      text: 'Les informations sont structurées, scorées et analysées par l\'IA Kadria en moins de 3 minutes.',
     },
     {
       number: '04',
@@ -1308,6 +1321,22 @@ export function LandingRoutePage() {
     { value: 3, prefix: '< ', suffix: ' min', text: 'pour qualifier et structurer un projet complet' },
   ];
 
+  const waveBars = [
+    'h-[40%] [animation-delay:0ms]',
+    'h-[70%] [animation-delay:100ms]',
+    'h-[100%] [animation-delay:200ms]',
+    'h-[55%] [animation-delay:300ms]',
+    'h-[85%] [animation-delay:400ms]',
+    'h-[35%] [animation-delay:500ms]',
+    'h-[60%] [animation-delay:600ms]',
+  ];
+
+  const pipelinePreview = [
+    { label: 'Nouveau', color: 'bg-blue-500', width: 'w-[70%]' },
+    { label: 'Qualifié', color: 'bg-green-500', width: 'w-[50%]' },
+    { label: 'Gagné', color: 'bg-emerald-400', width: 'w-[30%]' },
+  ];
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <style>{ANIMATION_STYLES}</style>
@@ -1317,8 +1346,9 @@ export function LandingRoutePage() {
 
       <main>
         {/* 2. HERO */}
-        <section className="relative flex min-h-[100dvh] items-center bg-[#09090b]">
-          <div className="mx-auto grid w-full max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
+        <section className="relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-zinc-950">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
+          <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
             <div>
               <h1 className="kr-reveal kr-reveal-delay-1 text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.05] tracking-tight">
                 Transformez chaque demande en{' '}
@@ -1359,134 +1389,198 @@ export function LandingRoutePage() {
               </div>
             </div>
 
-            <div className="kr-reveal kr-reveal-right">
+            <div className="kr-reveal kr-reveal-right rounded-xl shadow-[0_0_60px_rgba(34,197,94,0.08)]">
               <QualificationShowcase />
             </div>
           </div>
         </section>
 
         {/* 3. SOCIAL PROOF */}
-        <section className="border-y border-zinc-800 bg-zinc-900 py-16">
-          <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
-            {stats.map((stat, i) => (
-              <div key={stat.text} className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1}`}>
-                <p className="text-4xl font-bold text-green-500">
-                  <StatCounter target={stat.value} prefix={stat.prefix} suffix={stat.suffix} />
-                </p>
-                <div className="kr-line-grow mx-auto mt-3 h-px w-12 bg-green-500/40" />
-                <p className="mt-3 text-zinc-400">{stat.text}</p>
-              </div>
-            ))}
+        <section className="w-full bg-zinc-900 py-16">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Résultats</p>
+              <h2 className="kr-reveal kr-reveal-delay-1 mt-3 text-2xl font-bold tracking-tight md:text-3xl">
+                Ce que nos artisans gagnent dès le premier mois
+              </h2>
+            </div>
+            <div className="mt-12 grid gap-8 text-center md:grid-cols-3 md:divide-x md:divide-zinc-800">
+              {stats.map((stat, i) => (
+                <div key={stat.text} className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} px-4`}>
+                  <p className="text-4xl font-bold text-green-500">
+                    <StatCounter target={stat.value} prefix={stat.prefix} suffix={stat.suffix} duration={1500} />
+                  </p>
+                  <div className="kr-line-grow mx-auto mt-3 h-0.5 w-8 bg-green-500" />
+                  <p className="mt-3 text-zinc-400">{stat.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* 4. PROBLEME -> SOLUTION */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
-              De la demande perdue au <span className="kr-gradient-text">chantier qualifié.</span>
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
-            </p>
-          </div>
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
-            <div className="kr-reveal kr-reveal-left rounded-xl border border-zinc-800 bg-zinc-900 p-8">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-red-400">Avant Kadria</h3>
-              <ul className="mt-5 space-y-4">
-                {avant.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-400">
-                    <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+        <section className="w-full bg-zinc-950 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
+                De la demande perdue au <span className="kr-gradient-text">chantier qualifié.</span>
+              </h2>
+              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+                Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
+              </p>
             </div>
-            <div className="kr-reveal kr-reveal-right kr-glass rounded-xl p-8">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-green-400">Avec Kadria</h3>
-              <ul className="mt-5 space-y-4">
-                {apres.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-200">
-                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+            <div className="mt-12 grid items-stretch gap-6 md:grid-cols-2">
+              <div className="kr-reveal kr-reveal-left flex flex-col rounded-xl border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.03)] p-8">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-[#dc2626]">Avant Kadria</h3>
+                <ul className="mt-5 space-y-4">
+                  {avant.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-400">
+                      <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#dc2626]" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="kr-reveal kr-reveal-right flex flex-col rounded-xl border border-green-500/25 bg-[rgba(34,197,94,0.03)] p-8">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-green-500">Avec Kadria</h3>
+                <ul className="mt-5 space-y-4">
+                  {apres.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-200">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </section>
 
         {/* COMMENT CA MARCHE */}
-        <section id="comment-ca-marche" className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Comment ça fonctionne</h2>
-            <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Kadria transforme les demandes brutes en dossiers exploitables par votre équipe, du premier
-              contact au dossier prêt à chiffrer.
-            </p>
-          </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {etapes.map((e, i) => (
-              <div key={e.number} className={`kr-reveal kr-card-hover kr-reveal-delay-${i + 1} rounded-xl border border-zinc-800 bg-zinc-900 p-6`}>
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-green-500 bg-zinc-800 text-sm font-bold text-green-500">
-                  {e.number}
-                </span>
-                <h3 className="mt-4 text-base font-semibold">{e.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">{e.text}</p>
+        <section id="comment-ca-marche" className="w-full bg-zinc-900 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Comment ça fonctionne</h2>
+              <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+                Kadria transforme les demandes brutes en dossiers exploitables par votre équipe, du premier
+                contact au dossier prêt à chiffrer.
+              </p>
+            </div>
+            <div className="relative mt-12">
+              <div className="pointer-events-none absolute left-0 right-0 top-1/2 hidden border-t border-dashed border-zinc-700 lg:block" />
+              <div className="relative grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {etapes.map((e, i) => {
+                  const isFinal = i === etapes.length - 1;
+                  return (
+                    <div
+                      key={e.number}
+                      className={`kr-reveal kr-card-hover kr-reveal-delay-${i + 1} relative rounded-xl border p-6 ${
+                        isFinal ? 'border-green-500/25 bg-[rgba(34,197,94,0.04)]' : 'border-zinc-700 bg-zinc-800'
+                      }`}
+                    >
+                      {isFinal && (
+                        <span className="absolute -top-3 left-6 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-black">
+                          Résultat final
+                        </span>
+                      )}
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full border border-green-500 bg-zinc-900 text-sm font-bold text-green-500">
+                        {e.number}
+                      </span>
+                      <h3 className="mt-4 text-base font-semibold">{e.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">{e.text}</p>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
           </div>
         </section>
 
         {/* 5. FEATURES — BENTO GRID */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Fonctionnalités</p>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-              Tout ce qu il faut pour <span className="kr-gradient-text">ne plus rien perdre.</span>
-            </h2>
-          </div>
-          <div className="kr-bento mt-12">
-            {features.map((f, i) => {
-              const Icon = f.icon;
-              const sizeClass =
-                i === 0
-                  ? 'col-span-4 row-span-2 md:col-span-2'
-                  : i === 1
-                  ? 'col-span-4 row-span-1 md:col-span-2'
-                  : i === 2 || i === 3
-                  ? 'col-span-2 row-span-1 md:col-span-1'
-                  : 'col-span-4 row-span-1 md:col-span-2';
-              return (
-                <div
-                  key={f.title}
-                  className={`kr-reveal kr-reveal-scale kr-reveal-delay-${Math.min(i + 1, 6)} kr-card-hover kr-bento-item ${sizeClass} flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6`}
-                >
-                  <Icon className={i === 0 ? 'h-8 w-8 text-green-500' : 'h-6 w-6 text-green-500'} />
-                  <div>
-                    <h3 className={i === 0 ? 'mt-4 text-xl font-semibold' : 'mt-4 text-base font-semibold'}>{f.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
+        <section className="w-full bg-zinc-950 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Fonctionnalités</p>
+              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+                Tout ce qu&apos;il faut pour <span className="kr-gradient-text">ne plus rien perdre.</span>
+              </h2>
+            </div>
+            <div className="kr-bento mt-12">
+              {features.map((f, i) => {
+                const Icon = f.icon;
+                const sizeClass =
+                  i === 0
+                    ? 'col-span-4 row-span-2 md:col-span-2'
+                    : i === 1
+                    ? 'col-span-4 row-span-1 md:col-span-2'
+                    : i === 2 || i === 3
+                    ? 'col-span-2 row-span-1 md:col-span-1'
+                    : 'col-span-4 row-span-1 md:col-span-2';
+                return (
+                  <div
+                    key={f.title}
+                    className={`kr-reveal kr-reveal-scale kr-reveal-delay-${Math.min(i + 1, 6)} kr-card-hover kr-bento-item ${sizeClass} flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6`}
+                  >
+                    <Icon size={28} className="text-green-500" />
+                    <div>
+                      <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
+
+                      {i === 0 && (
+                        <div className="mt-4 flex flex-col gap-2">
+                          <div className="max-w-[85%] rounded-lg rounded-tl-sm bg-zinc-800 px-3 py-2 text-xs leading-5 text-zinc-300">
+                            Bonjour, je voudrais un devis pour une rénovation salle de bain
+                          </div>
+                          <div className="ml-auto max-w-[85%] rounded-lg rounded-tr-sm bg-green-500/15 px-3 py-2 text-xs leading-5 text-green-300">
+                            Bien sûr ! Quelle est la surface approximative ?
+                          </div>
+                        </div>
+                      )}
+
+                      {i === 1 && (
+                        <div className="mt-4 flex h-10 items-end gap-1.5">
+                          {waveBars.map((bar, idx) => (
+                            <div key={idx} className={`kr-wave w-1.5 rounded-full bg-green-500/60 ${bar}`} />
+                          ))}
+                        </div>
+                      )}
+
+                      {i === 2 && (
+                        <div className="mt-4 space-y-2">
+                          {pipelinePreview.map((row) => (
+                            <div key={row.label}>
+                              <p className="mb-1 text-[10px] text-zinc-500">{row.label}</p>
+                              <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                                <div className={`h-1.5 rounded-full ${row.color} ${row.width}`} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
 
         {/* DASHBOARD PREVIEW */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-              Pilotez toutes vos opportunités depuis{' '}
-              <span className="kr-gradient-text">un seul tableau de bord</span>
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
-            </p>
-          </div>
-          <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-[780px]">
-            <DashboardCarousel />
+        <section className="w-full bg-zinc-900 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
+              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+                Pilotez toutes vos opportunités depuis{' '}
+                <span className="kr-gradient-text">un seul tableau de bord</span>
+              </h2>
+              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+                Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
+              </p>
+            </div>
+            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-[780px]">
+              <DashboardCarousel />
+            </div>
           </div>
         </section>
 
@@ -1496,154 +1590,172 @@ export function LandingRoutePage() {
         {/* METIERS */}
         <section
           id="metiers"
-          className="mx-auto max-w-[1280px] px-6 py-24"
+          className="w-full bg-zinc-900 py-24"
           onClick={(e) => {
             if (e.target === e.currentTarget) setSelectedTrade(null);
           }}
         >
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Conçu pour chaque métier du bâtiment</h2>
-            <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-              Kadria s adapte au vocabulaire et aux besoins de chaque corps de métier.
-            </p>
-          </div>
-          <div className="kr-reveal kr-reveal-delay-2 mt-10 flex flex-wrap justify-center gap-3">
-            {TRADES_DATA.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setSelectedTrade((prev) => (prev === m.id ? null : m.id))}
-                className={`w-28 cursor-pointer rounded-xl border p-4 text-center transition-colors ${
-                  selectedTrade === m.id
-                    ? 'border-green-500 bg-green-500/10 text-green-500'
-                    : 'border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Kadria parle le même langage que vous</h2>
+              <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+                Chaque métier a ses questions, son vocabulaire, ses chantiers. Kadria s&apos;adapte.
+              </p>
+            </div>
+            <div className="kr-reveal kr-reveal-delay-2 mt-10 flex flex-wrap justify-center gap-3">
+              {TRADES_DATA.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedTrade((prev) => (prev === m.id ? null : m.id))}
+                  className={`w-28 cursor-pointer rounded-xl border px-4 py-3 text-center transition-colors ${
+                    selectedTrade === m.id
+                      ? 'border-green-500/25 bg-green-500/[0.08] text-green-500'
+                      : 'border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700'
+                  }`}
+                >
+                  <div className="mb-2 text-2xl">{m.emoji}</div>
+                  <div className="text-sm">{m.label}</div>
+                </button>
+              ))}
+            </div>
+
+            {displayTrade && (
+              <div
+                className={`kr-reveal kr-reveal-scale kr-reveal-delay-1 mt-4 rounded-xl border border-zinc-700 bg-zinc-800 p-6 transition-all duration-300 overflow-hidden ${
+                  selectedTrade !== null && tradeCardVisible ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 }`}
               >
-                <div className="mb-2 text-2xl">{m.emoji}</div>
-                <div className="text-sm">{m.label}</div>
-              </button>
-            ))}
-          </div>
+                <h3 className="text-xl font-semibold text-white">
+                  {displayTrade.emoji} {displayTrade.label}
+                </h3>
 
-          {displayTrade && (
-            <div
-              className={`kr-reveal kr-reveal-scale kr-reveal-delay-1 mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-300 overflow-hidden ${
-                selectedTrade !== null && tradeCardVisible ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-              }`}
-            >
-              <h3 className="text-xl font-semibold text-white">
-                {displayTrade.emoji} {displayTrade.label}
-              </h3>
+                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-lg bg-zinc-900/60 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                      Types de projets
+                    </p>
+                    <p className="mt-2 text-sm text-white">{displayTrade.types}</p>
+                  </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="rounded-lg bg-zinc-800/50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-zinc-400">
-                    Types de projets qualifiés
-                  </p>
-                  <p className="mt-2 text-sm text-white">{displayTrade.types}</p>
+                  <div className="rounded-lg bg-zinc-900/60 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                      Questions posées
+                    </p>
+                    <p className="mt-2 text-sm text-white">{displayTrade.questions}</p>
+                  </div>
+
+                  <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-green-500">
+                      Résultat
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-white">
+                      ✅ {displayTrade.resultat}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="rounded-lg bg-zinc-800/50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-zinc-400">
-                    Questions posées par Kadria
-                  </p>
-                  <p className="mt-2 text-sm text-white">{displayTrade.questions}</p>
-                </div>
-
-                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-                  <p className="text-xs uppercase tracking-wide text-green-500">
-                    Résultat
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-white">
-                    ✅ {displayTrade.resultat}
-                  </p>
-                </div>
+                <Link
+                  href="/demo"
+                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-700"
+                >
+                  Voir un exemple de conversation →
+                </Link>
               </div>
-
-              <Link
-                href="/demo"
-                className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-800"
-              >
-                Voir un exemple de conversation →
-              </Link>
-            </div>
-          )}
+            )}
+          </div>
         </section>
 
         {/* PROGRAMME LANCEMENT */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="kr-reveal kr-glass rounded-xl p-8 md:p-12">
-            <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
-              Programme de lancement
-            </span>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-4xl">
-              Programme de lancement <span className="text-green-500">Kadria</span>
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base leading-7 text-zinc-400">
-              Kadria est en cours de déploiement auprès d un nombre limité d artisans et d entreprises du bâtiment.
-              Les premiers partenaires bénéficient d un accompagnement personnalisé pour configurer leur assistant,
-              connecter leur site et leur ligne téléphonique, et adapter Kadria à leur métier.
-            </p>
-            <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base font-semibold leading-7 text-white">
-              Vous souhaitez faire partie des premiers professionnels à tester Kadria ?
-            </p>
-            <Link
-              href="/onboarding"
-              className="kr-reveal kr-reveal-delay-3 mt-6 inline-flex min-h-11 items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-            >
-              Devenir partenaire pilote <ArrowRight className="h-4 w-4" />
-            </Link>
+        <section className="w-full bg-zinc-950 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="kr-reveal kr-glass rounded-xl p-8 md:p-12">
+              <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
+                Programme de lancement
+              </span>
+              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+                Programme de lancement <span className="text-green-500">Kadria</span>
+              </h2>
+              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base leading-7 text-zinc-400">
+                Kadria est en cours de déploiement auprès d un nombre limité d artisans et d entreprises du bâtiment.
+                Les premiers partenaires bénéficient d un accompagnement personnalisé pour configurer leur assistant,
+                connecter leur site et leur ligne téléphonique, et adapter Kadria à leur métier.
+              </p>
+              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base font-semibold leading-7 text-white">
+                Vous souhaitez faire partie des premiers professionnels à tester Kadria ?
+              </p>
+              <p className="kr-reveal kr-reveal-delay-3 mt-6 flex items-center gap-2 text-sm text-zinc-400">
+                <span className="kr-badge-pulse inline-block h-2 w-2 rounded-full bg-green-500" />
+                12 artisans déjà partenaires · 8 places restantes
+              </p>
+              <Link
+                href="/onboarding"
+                className="kr-reveal kr-reveal-delay-3 mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+              >
+                Rejoindre les premiers artisans Kadria <ArrowRight className="h-4 w-4" />
+              </Link>
+              <p className="kr-reveal kr-reveal-delay-3 mt-3 text-sm text-zinc-400">
+                Places limitées · Accompagnement personnalisé inclus
+              </p>
+            </div>
           </div>
         </section>
 
         {/* 6. TARIFS */}
-        <section className="mx-auto max-w-[1280px] px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-              Un tarif simple, <span className="kr-gradient-text">adapté à votre activité.</span>
-            </h2>
-          </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {plans.map((plan, i) => (
-              <div
-                key={plan.slug}
-                className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} kr-card-hover rounded-xl border p-6 ${
-                  plan.highlighted ? 'border-green-500/40 bg-green-500/5' : 'border-zinc-800 bg-zinc-900'
-                }`}
-              >
-                {plan.highlighted && (
-                  <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-green-400">
-                    Populaire
-                  </span>
-                )}
-                <h3 className="mt-3 text-lg font-semibold">{plan.name}</h3>
-                <p className="mt-1 text-2xl font-bold">
-                  {plan.price}
-                  {plan.price !== 'Sur mesure' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">{plan.description}</p>
-                <ul className="mt-4 space-y-2">
-                  {plan.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
-                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <div className="kr-reveal kr-reveal-delay-2 mt-10 text-center">
-            <Link href="/tarifs" className="text-sm font-semibold text-green-500 transition-colors hover:text-green-400">
-              Voir le détail des tarifs et options →
-            </Link>
+        <section className="w-full bg-zinc-900 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
+              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+                Un tarif simple, <span className="kr-gradient-text">adapté à votre activité.</span>
+              </h2>
+            </div>
+            <div className="mt-12 grid items-center gap-4 md:grid-cols-3">
+              {plans.map((plan, i) => (
+                <div
+                  key={plan.slug}
+                  className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} kr-card-hover rounded-xl border p-6 ${
+                    plan.highlighted
+                      ? 'border-green-500/40 bg-green-500/5 shadow-[0_0_40px_rgba(34,197,94,0.08)] lg:scale-[1.02]'
+                      : 'border-zinc-700 bg-zinc-800'
+                  }`}
+                >
+                  {plan.highlighted && (
+                    <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-green-400">
+                      Populaire
+                    </span>
+                  )}
+                  <h3 className="mt-3 text-lg font-semibold">{plan.name}</h3>
+                  <p className="mt-1 text-2xl font-bold">
+                    {plan.price}
+                    {plan.price !== 'Sur mesure' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">{plan.description}</p>
+                  {plan.slug === 'kadria360' && (
+                    <p className="mt-1 text-sm leading-6 text-zinc-400">
+                      Pour les groupements d&apos;artisans et réseaux. Devis personnalisé sous 24h.
+                    </p>
+                  )}
+                  <ul className="mt-4 space-y-2">
+                    {plan.features.map((feat) => (
+                      <li key={feat} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
+                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                        {feat}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <p className="kr-reveal kr-reveal-delay-2 mt-10 text-center text-sm text-zinc-400">
+              ✓ Sans engagement&nbsp;&nbsp;·&nbsp;&nbsp;✓ Résiliation à tout moment&nbsp;&nbsp;·&nbsp;&nbsp;✓ Support inclus dès le premier jour
+            </p>
           </div>
         </section>
 
         {/* 7. CTA FINAL */}
-        <section className="border-t border-zinc-800 bg-[#09090b] py-24">
-          <div className="mx-auto max-w-3xl px-6 text-center">
+        <section className="w-full bg-zinc-950 py-24">
+          <div className="mx-auto max-w-2xl px-6 text-center lg:px-12">
             <div className="kr-reveal kr-glass rounded-xl p-10 md:p-16">
               <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
                 Arrêtez de perdre des <span className="kr-gradient-text">opportunités.</span>
@@ -2104,6 +2216,8 @@ export function SimulateurSection() {
   const lostRevenue = lostPerMonth * avgValue
   const lostMargin = Math.round(lostRevenue * (margin / 100))
   const kadriaMonthly = 249
+  const marginPerJob = avgValue * (margin / 100)
+  const breakevenJobs = marginPerJob > 0 ? Math.max(1, Math.ceil(kadriaMonthly / marginPerJob)) : 1
 
   const fmt = (n: number) => n.toLocaleString('fr-FR')
 
@@ -2159,7 +2273,6 @@ export function SimulateurSection() {
   return (
     <section style={{
       padding: '96px 0',
-      borderTop: '1px solid #27272a',
       background: '#09090b',
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px' }}>
@@ -2294,7 +2407,13 @@ export function SimulateurSection() {
                   <p style={{ color: '#71717a', fontSize: '11px', margin: '0 0 2px' }}>
                     {result.label}
                   </p>
-                  <p style={{ color: 'white', fontSize: '20px', fontWeight: 700, margin: 0 }}>
+                  <p style={{
+                    color: i === 0 ? '#f59e0b' : i === 1 ? '#dc2626' : 'white',
+                    fontSize: 'clamp(2rem, 4vw, 3rem)',
+                    fontWeight: 800,
+                    margin: 0,
+                    transition: 'color 0.3s ease',
+                  }}>
                     {result.value}
                   </p>
                 </div>
@@ -2320,7 +2439,7 @@ export function SimulateurSection() {
                 </span>
               </div>
               <p style={{
-                color: '#22c55e', fontSize: '28px',
+                color: '#22c55e', fontSize: '2.5rem',
                 fontWeight: 800, margin: '0 0 8px',
               }}>
                 {kadriaMonthly} €
@@ -2332,9 +2451,11 @@ export function SimulateurSection() {
               </p>
               <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
                 {lostPerMonth >= 1
-                  ? <>Un seul chantier récupéré sur{' '}
-                      <strong style={{ color: 'white' }}>{lostPerMonth}</strong>{' '}
-                      suffit à rentabiliser Kadria.</>
+                  ? <>Avec{' '}
+                      <strong style={{ color: 'white' }}>{Math.min(breakevenJobs, lostPerMonth)}</strong>{' '}
+                      chantier{Math.min(breakevenJobs, lostPerMonth) > 1 ? 's' : ''} récupéré{Math.min(breakevenJobs, lostPerMonth) > 1 ? 's' : ''} sur{' '}
+                      <strong style={{ color: 'white' }}>{lostPerMonth}</strong>,
+                      Kadria s&apos;autofinance.</>
                   : 'Kadria sécurise chaque opportunité entrante.'
                 }
               </p>
