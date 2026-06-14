@@ -41,12 +41,12 @@ const features = [
   {
     icon: Globe,
     title: 'Assistant web',
-    text: 'Qualifie chaque demande entrante, collecte le besoin, le budget, les delais et cree un dossier complet.',
+    text: 'Qualifie chaque demande entrante, collecte le besoin, le budget, les délais et cree un dossier complet.',
   },
   {
     icon: Phone,
     title: 'Assistant vocal',
-    text: 'Repond aux appels quand vous etes indisponible et transforme les appels manques en opportunites.',
+    text: 'Répond aux appels quand vous etes indisponible et transforme les appels manqués en opportunités.',
   },
   {
     icon: LayoutDashboard,
@@ -61,12 +61,12 @@ const features = [
   {
     icon: ClipboardCheck,
     title: 'Dossiers structures',
-    text: 'Resume IA, coordonnees, adresse, metier, budget, delai et score de completude au meme endroit.',
+    text: 'Resume IA, coordonnées, adresse, métier, budget, delai et score de complétude au meme endroit.',
   },
   {
     icon: BarChart3,
     title: 'Pilotage',
-    text: 'Suit vos conversions, paniers moyens, dossiers a relancer et opportunites gagnees.',
+    text: 'Suit vos conversions, paniers moyens, dossiers a relancer et opportunités gagnées.',
   },
 ];
 
@@ -1881,7 +1881,7 @@ export function LandingRoutePage() {
               </p>
               <div className="kr-reveal kr-reveal-delay-3 mt-8">
                 <Link
-                  href="/assistant"
+                  href="/demo"
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
                 >
                   Tester Kadria <ArrowRight className="h-4 w-4" />
@@ -1893,6 +1893,9 @@ export function LandingRoutePage() {
                 </Link>
                 <Link href="/demo" className="transition-colors hover:text-white">
                   Voir un exemple de dossier →
+                </Link>
+                <Link href="/demo-request" className="underline transition-colors hover:text-white">
+                  Demander une démo
                 </Link>
               </div>
               <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
@@ -2099,7 +2102,7 @@ export function LandingRoutePage() {
                       }
                     }}
                     aria-expanded={isActive}
-                    className={`kr-card-hover kr-bento-item ${sizeClass} relative flex cursor-pointer flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left`}
+                    className={`kr-card-hover kr-bento-item ${sizeClass} relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left`}
                   >
                     {isActive ? (
                       <FadeIn>
@@ -2342,6 +2345,9 @@ export function LandingRoutePage() {
             <p className="kr-reveal kr-reveal-delay-2 mt-10 text-center text-sm text-zinc-400">
               ✓ Sans engagement&nbsp;&nbsp;·&nbsp;&nbsp;✓ Résiliation à tout moment&nbsp;&nbsp;·&nbsp;&nbsp;✓ Support inclus dès le premier jour
             </p>
+            <Link href="/tarifs" className="mt-6 block text-center text-sm text-green-500 hover:underline">
+              Voir le détail complet des tarifs →
+            </Link>
           </div>
         </section>
 
@@ -2360,7 +2366,7 @@ export function LandingRoutePage() {
               êtes sur le chantier.
             </p>
             <Link
-              href="/assistant"
+              href="/register"
               className="kr-reveal kr-reveal-delay-3 kr-badge-pulse inline-flex items-center gap-2 rounded-xl bg-green-500 px-10 py-4 text-lg font-bold text-zinc-950 transition-all duration-200 hover:scale-[1.02] hover:opacity-90"
             >
               Tester Kadria gratuitement <ArrowRight className="h-5 w-5" />
@@ -2431,6 +2437,12 @@ function DarkNav() {
           ))}
         </nav>
         <div className="ml-8 hidden items-center gap-3 md:flex">
+          <Link
+            href="/demo-request"
+            className="rounded-[10px] border border-border px-4 py-2 text-sm text-zinc-300 transition-colors duration-200 hover:text-white"
+          >
+            Demander une démo
+          </Link>
           <Link
             href="/dashboard-v2"
             className="rounded-full border border-border px-5 py-2 text-sm text-zinc-300 transition-colors duration-200 hover:text-white"
