@@ -60,7 +60,7 @@ type GetProjectsOutputType = {
   projects: any[];
 };
 
-type Project = GetProjectsOutputType['projects'][0];
+export type Project = GetProjectsOutputType['projects'][0];
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-zinc-800 text-zinc-200' },
@@ -72,7 +72,7 @@ const STATUS_OPTIONS = [
   { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
 ];
 
-const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
+export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   'Nouveau':      { bg: 'rgba(39,39,42,0.8)',    color: '#e4e4e7' },
   'À rappeler':   { bg: 'rgba(120,53,15,0.5)',   color: '#fbbf24' },
   'Qualifié':     { bg: 'rgba(20,83,45,0.5)',    color: '#4ade80' },
@@ -120,7 +120,7 @@ function budgetScore(budget?: string): number {
   return 10;
 }
 
-function opportunityScore(project: Project): number {
+export function opportunityScore(project: Project): number {
   return (project.completenessScore || 0) * 2 + budgetScore(project.budget);
 }
 
@@ -135,12 +135,12 @@ function parseBudget(budgetStr: string): number {
   return values.length > 0 ? Math.max(...values) : 0
 }
 
-const formatAmount = (n: number) =>
+export const formatAmount = (n: number) =>
   n >= 1000
     ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k €`
     : `${n} €`
 
-function timeAgo(dateStr: string): string {
+export function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -215,7 +215,7 @@ function exportToCSV(projects: Project[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
+export const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
   { status: 'Nouveau', label: 'Nouveau', color: '#3f3f46' },
   { status: 'À rappeler', label: 'À rappeler', color: '#d97706' },
   { status: 'Qualifié', label: 'Qualifié', color: '#16a34a' },
@@ -223,7 +223,7 @@ const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
   { status: 'Gagné', label: 'Gagné', color: '#15803d' },
 ];
 
-const METIER_OPTIONS = [
+export const METIER_OPTIONS = [
   'Plomberie',
   'Électricité',
   'Menuiserie',
@@ -243,7 +243,7 @@ const BUDGET_RANGES: Record<string, [number, number]> = {
   '50000+': [50000, Infinity],
 };
 
-const BUDGET_OPTIONS = [
+export const BUDGET_OPTIONS = [
   { value: '0-1000', label: 'Moins de 1 000€' },
   { value: '1000-3000', label: '1 000 – 3 000€' },
   { value: '3000-10000', label: '3 000 – 10 000€' },
@@ -251,13 +251,13 @@ const BUDGET_OPTIONS = [
   { value: '50000+', label: 'Plus de 50 000€' },
 ];
 
-const SCORE_OPTIONS = [
+export const SCORE_OPTIONS = [
   { value: 'excellent', label: 'Excellent (>80%)', color: '#22c55e' },
   { value: 'bon', label: 'Bon (60-80%)', color: '#f59e0b' },
   { value: 'faible', label: 'Faible (<60%)', color: '#dc2626' },
 ];
 
-const PERIODE_OPTIONS = [
+export const PERIODE_OPTIONS = [
   { value: 'today', label: "Aujourd'hui" },
   { value: '7d', label: '7 derniers jours' },
   { value: '30d', label: '30 derniers jours' },
@@ -265,13 +265,13 @@ const PERIODE_OPTIONS = [
   { value: 'year', label: 'Cette année' },
 ];
 
-const SOURCE_OPTIONS = [
+export const SOURCE_OPTIONS = [
   { value: 'chat', label: 'Via chat widget' },
   { value: 'voice', label: 'Via appel vocal' },
   { value: 'manual', label: 'Ajout manuel' },
 ];
 
-type FilterState = {
+export type FilterState = {
   search: string;
   statut: string;
   metier: string;
@@ -281,7 +281,7 @@ type FilterState = {
   source: string;
 };
 
-const DEFAULT_FILTERS: FilterState = {
+export const DEFAULT_FILTERS: FilterState = {
   search: '',
   statut: '',
   metier: '',
@@ -291,7 +291,7 @@ const DEFAULT_FILTERS: FilterState = {
   source: '',
 };
 
-function filterProjects(projects: Project[], filters: FilterState): Project[] {
+export function filterProjects(projects: Project[], filters: FilterState): Project[] {
   return projects.filter((p) => {
     if (filters.search) {
       const term = filters.search.toLowerCase().trim();
@@ -362,7 +362,7 @@ function filterProjects(projects: Project[], filters: FilterState): Project[] {
   });
 }
 
-type KpiPeriod = '7d' | '30d' | '90d' | '1y';
+export type KpiPeriod = '7d' | '30d' | '90d' | '1y';
 
 const KPI_PERIOD_DAYS: Record<KpiPeriod, number> = {
   '7d': 7,
@@ -371,14 +371,14 @@ const KPI_PERIOD_DAYS: Record<KpiPeriod, number> = {
   '1y': 365,
 };
 
-const KPI_PERIOD_OPTIONS: { value: KpiPeriod; label: string }[] = [
+export const KPI_PERIOD_OPTIONS: { value: KpiPeriod; label: string }[] = [
   { value: '7d', label: '7 jours' },
   { value: '30d', label: 'Ce mois' },
   { value: '90d', label: '3 mois' },
   { value: '1y', label: 'Cette année' },
 ];
 
-type KpiData = {
+export type KpiData = {
   totalDossiers: number;
   caPotentiel: number;
   caGagne: number;
@@ -400,7 +400,7 @@ function filterByPeriod(projects: Project[], start: Date, end: Date): Project[] 
   });
 }
 
-function computeKpis(projects: Project[]): KpiData {
+export function computeKpis(projects: Project[]): KpiData {
   const total = projects.length;
 
   const caPotentiel = projects
@@ -426,20 +426,20 @@ function computeKpis(projects: Project[]): KpiData {
   };
 }
 
-function calcDelta(current: number, previous: number): number {
+export function calcDelta(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
 
   return ((current - previous) / previous) * 100;
 }
 
-function formatCurrency(value: number): string {
+export function formatCurrency(value: number): string {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M €`;
   if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k €`;
 
   return `${Math.round(value)} €`;
 }
 
-function buildSparklineData(projects: Project[], period: KpiPeriod): { label: string; value: number }[] {
+export function buildSparklineData(projects: Project[], period: KpiPeriod): { label: string; value: number }[] {
   const now = new Date();
   const buckets: { start: Date; end: Date; label: string }[] = [];
 
@@ -540,13 +540,13 @@ function useCountUp(target: number, durationMs = 800): number {
   return reduceMotion ? target : value;
 }
 
-function AnimatedKpiValue({ value, format }: { value: number; format: (v: number) => string }) {
+export function AnimatedKpiValue({ value, format }: { value: number; format: (v: number) => string }) {
   const animated = useCountUp(value);
 
   return <>{format(animated)}</>;
 }
 
-function TrendIndicator({ delta, unit = '%' }: { delta: number; unit?: string }) {
+export function TrendIndicator({ delta, unit = '%' }: { delta: number; unit?: string }) {
   if (delta > 0) {
     return (
       <div className="flex items-center gap-1 text-xs text-green-500">
@@ -573,7 +573,7 @@ function TrendIndicator({ delta, unit = '%' }: { delta: number; unit?: string })
   );
 }
 
-function Sparkline({ data, height = 60 }: { data: { label: string; value: number }[]; height?: number }) {
+export function Sparkline({ data, height = 60 }: { data: { label: string; value: number }[]; height?: number }) {
   const [hover, setHover] = useState<{ index: number; x: number; y: number } | null>(null);
 
   const width = 600;
@@ -1841,7 +1841,7 @@ function Dashboard() {
   );
 }
 
-function ProjectList({
+export function ProjectList({
   projects,
   router,
 }: {
@@ -1950,7 +1950,7 @@ function ProjectList({
   );
 }
 
-function KanbanBoard({
+export function KanbanBoard({
   projects,
   router,
   onStatusChange,
@@ -2100,7 +2100,7 @@ function KanbanCard({
   );
 }
 
-function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+export function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
       {label}
