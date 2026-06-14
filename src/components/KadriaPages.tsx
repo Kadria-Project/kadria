@@ -2344,23 +2344,44 @@ export function LandingRoutePage() {
         </section>
 
         {/* 7. CTA FINAL */}
-        <section className="w-full bg-zinc-950 py-24">
-          <div className="mx-auto max-w-2xl px-6 text-center lg:px-12">
-            <div className="kr-reveal kr-glass rounded-xl p-10 md:p-16">
-              <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
-                Arrêtez de perdre des <span className="kr-gradient-text">opportunités.</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
-              </p>
-              <div className="kr-reveal kr-reveal-delay-2 mt-8">
-                <Link
-                  href="/assistant"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-                >
-                  Tester Kadria <ArrowRight className="h-4 w-4" />
-                </Link>
+        <section className="relative w-full overflow-hidden border-y border-zinc-800 bg-zinc-900 px-6 py-24">
+          <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(34,197,94,0.06)_0%,transparent_70%)]" />
+          <div className="relative z-10 mx-auto max-w-2xl text-center">
+            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">
+              Programme de lancement
+            </p>
+            <h2 className="kr-reveal kr-reveal-delay-1 mb-4 mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight">
+              Rejoignez les premiers artisans Kadria
+            </h2>
+            <p className="kr-reveal kr-reveal-delay-2 mx-auto mb-8 max-w-xl text-lg leading-7 text-zinc-400">
+              Kadria qualifie vos prospects 24h/24, répond à vos appels et remplit votre dashboard — pendant que vous
+              êtes sur le chantier.
+            </p>
+            <Link
+              href="/assistant"
+              className="kr-reveal kr-reveal-delay-3 kr-badge-pulse inline-flex items-center gap-2 rounded-xl bg-green-500 px-10 py-4 text-lg font-bold text-zinc-950 transition-all duration-200 hover:scale-[1.02] hover:opacity-90"
+            >
+              Tester Kadria gratuitement <ArrowRight className="h-5 w-5" />
+            </Link>
+            <p className="kr-reveal kr-reveal-delay-3 mt-5 text-sm text-zinc-400">
+              ✓ Sans engagement · ✓ Résiliation à tout moment · ✓ Support inclus dès J1
+            </p>
+            <div className="kr-reveal kr-reveal-delay-3 mt-6 flex items-center justify-center">
+              <div className="flex">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-600 text-xs font-semibold text-white">
+                  JM
+                </span>
+                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-700 text-xs font-semibold text-white">
+                  SC
+                </span>
+                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-600 text-xs font-semibold text-white">
+                  PB
+                </span>
+                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-700 text-xs font-semibold text-white">
+                  AL
+                </span>
               </div>
+              <span className="ml-3 text-sm text-zinc-400">12 artisans nous font déjà confiance</span>
             </div>
           </div>
         </section>
