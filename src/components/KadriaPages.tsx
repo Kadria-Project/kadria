@@ -11,6 +11,7 @@ import {
   Bot,
   Check,
   CheckCircle,
+  ChevronDown,
   ClipboardCheck,
   Clock,
   Euro,
@@ -3378,60 +3379,139 @@ function BillingToggle({
 }
 
 function PricingFaq() {
-  const faqs = [
+  const faqGroups = [
     {
-      question: "Est-ce que je peux tester avant de m'engager ?",
-      answer:
-        'Oui. Chaque formule inclut un essai gratuit de 14 jours, sans carte bancaire requise. Vous pouvez annuler à tout moment.',
+      title: 'Installation & prise en main',
+      questions: [
+        {
+          question: 'Combien de temps pour installer Kadria ?',
+          answer:
+            "De 15 minutes à 48 heures selon l'offre sélectionnée. Pas d'intégration complexe.",
+        },
+        {
+          question: 'Est-ce que je dois changer de numéro de téléphone ?',
+          answer:
+            "Non. Kadria fonctionne en parallèle de votre numéro actuel. Vous pouvez choisir de lui transférer les appels quand vous êtes indisponible, ou de lui dédier un numéro secondaire.",
+        },
+        {
+          question: 'Est-ce que ça marche avec mon site web actuel ?',
+          answer:
+            "Oui. On intègre un widget de chat sur votre site en copiant-collant une ligne de code. Ça fonctionne avec tous les CMS : WordPress, Wix, Squarespace, site custom.",
+        },
+      ],
     },
     {
-      question: "Comment Kadria s'intègre sur mon site ?",
-      answer:
-        "En copiant-collant une seule ligne de code. Notre équipe peut aussi s'en charger gratuitement lors de l'onboarding.",
+      title: 'Utilisation au quotidien',
+      questions: [
+        {
+          question: 'Et si je suis sur le chantier et que je ne peux pas répondre ?',
+          answer:
+            "C'est exactement pour ça que Kadria existe. Il répond à votre place, qualifie le prospect, collecte toutes les infos et vous envoie une notification. Quand vous rentrez le soir, tout est dans votre dashboard.",
+        },
+        {
+          question: 'Et si le prospect rappelle directement sur mon portable ?',
+          answer:
+            "Kadria gère les appels entrants sur le numéro que vous lui avez assigné. Si un prospect appelle votre portable direct, vous gérez comme avant. Kadria capture tout le reste.",
+        },
+        {
+          question: 'Kadria comprend-il les termes techniques de mon métier ?',
+          answer:
+            "Oui. Kadria est configuré pour votre corps de métier — il connaît les termes spécifiques à la plomberie, l'électricité, la menuiserie, la rénovation. Il pose les bonnes questions selon le type de chantier.",
+        },
+        {
+          question:
+            'Que se passe-t-il si le prospect pose une question à laquelle Kadria ne sait pas répondre ?',
+          answer:
+            "Kadria indique qu'il va transmettre la question à l'artisan et invite le prospect à laisser ses coordonnées. Vous recevez une notification pour rappeler.",
+        },
+      ],
     },
     {
-      question: 'Que se passe-t-il si je dépasse mon quota de dossiers ?',
-      answer:
-        'Vous recevez une notification avant d atteindre la limite. Vous pouvez upgrader à tout moment ou passer au plan supérieur.',
+      title: 'Tarifs & engagement',
+      questions: [
+        {
+          question: "Est-ce que je peux tester avant de m'engager ?",
+          answer:
+            "Oui. Vous bénéficiez d'un essai gratuit de 14 jours, sans carte bancaire. Vous voyez les résultats avant de payer quoi que ce soit.",
+        },
+        {
+          question: 'Est-ce que je peux résilier à tout moment ?',
+          answer:
+            'Oui, sans frais et sans préavis. Vous gérez votre abonnement depuis votre espace client.',
+        },
+        {
+          question: 'Est-ce que Kadria vaut vraiment 149€ ou 249€ par mois ?',
+          answer:
+            "Un seul chantier récupéré rembourse l'abonnement. Avec un panier moyen de 3 000€ et 25% de marge, un chantier gagné = 750€ nets. Kadria s'autofinance dès le premier mois.",
+        },
+      ],
     },
     {
-      question: 'Mes données clients sont-elles sécurisées ?',
-      answer:
-        "Oui. Toutes les données sont hébergées en Europe, chiffrées, et vous en restez l'unique propriétaire. RGPD conforme.",
-    },
-    {
-      question: "L'assistant vocal fonctionne-t-il avec mon numéro actuel ?",
-      answer:
-        'Oui. Nous redirigeons vos appels vers Kadria sans changer votre numéro. Vos clients appellent le même numéro qu avant.',
+      title: 'Confiance',
+      questions: [
+        {
+          question: 'Est-ce que mes prospects savent qu\'ils parlent à une IA ?',
+          answer:
+            "Kadria se présente comme l'assistant de votre entreprise. Il ne se fait pas passer pour vous, mais pour votre assistant — ce qui est la réalité.",
+        },
+        {
+          question: "Et si j'ai un problème ou une question ?",
+          answer:
+            'Le support est inclus dès le premier jour. Réponse garantie sous 24h ouvrées par chat ou email.',
+        },
+      ],
     },
   ];
 
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndexes, setOpenIndexes] = useState<number[]>(faqGroups.map(() => 0));
 
   return (
     <section className="mx-auto max-w-[1280px] px-6 py-24">
       <div className="mx-auto max-w-3xl text-center">
         <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Questions fréquentes</h2>
       </div>
-      <div className="mx-auto mt-12 max-w-3xl space-y-4">
-        {faqs.map((faq, index) => {
-          const isOpen = openIndex === index;
-          return (
-            <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900">
-              <button
-                type="button"
-                onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-sm font-semibold text-white"
-              >
-                {faq.question}
-                <span className="text-green-500">{isOpen ? '−' : '+'}</span>
-              </button>
-              {isOpen && (
-                <div className="px-6 pb-4 text-sm leading-6 text-zinc-400">{faq.answer}</div>
-              )}
+      <div className="mx-auto mt-12 max-w-3xl space-y-10">
+        {faqGroups.map((group, groupIndex) => (
+          <div key={group.title}>
+            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+              {group.title}
+            </p>
+            <div className="mt-4">
+              {group.questions.map((faq, questionIndex) => {
+                const isOpen = openIndexes[groupIndex] === questionIndex;
+                return (
+                  <div key={faq.question} className="border-b border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenIndexes((prev) =>
+                          prev.map((value, idx) =>
+                            idx === groupIndex ? (value === questionIndex ? -1 : questionIndex) : value,
+                          ),
+                        )
+                      }
+                      className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-semibold text-white"
+                    >
+                      {faq.question}
+                      <ChevronDown
+                        className={`h-4 w-4 flex-shrink-0 text-green-500 transition-transform duration-[250ms] ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    <div
+                      className={`overflow-hidden transition-all duration-[250ms] ease-out ${
+                        isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <div className="pb-4 text-sm leading-7 text-zinc-400">{faq.answer}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </section>
   );
