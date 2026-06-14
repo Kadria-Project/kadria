@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -484,7 +484,7 @@ const TRADES_DATA = [
 
 function DashboardCarousel() {
   const [activeSlide, setActiveSlide] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [phase, setPhase] = useState<'idle' | 'exit' | 'enter-start' | 'enter'>('idle')
 
   const SLIDES = [
     { id: 'kpis', label: 'KPIs & Métriques', tabLabel: 'Suivi', icon: '📊' },
@@ -493,30 +493,42 @@ function DashboardCarousel() {
     { id: 'map', label: 'Chantiers géolocalisés', tabLabel: 'Calendrier', icon: '📍' },
   ]
 
+  const changeSlide = (next: number) => {
+    setPhase('exit')
+    setTimeout(() => {
+      setActiveSlide(next)
+      setPhase('enter-start')
+      requestAnimationFrame(() => {
+        setPhase('enter')
+        setTimeout(() => setPhase('idle'), 300)
+      })
+    }, 200)
+  }
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsAnimating(true)
-      setTimeout(() => {
-        setActiveSlide(s => (s + 1) % SLIDES.length)
-        setIsAnimating(false)
-      }, 300)
+      changeSlide((activeSlide + 1) % SLIDES.length)
     }, 4000)
     return () => clearInterval(interval)
-  }, [])
+  }, [activeSlide])
 
   const goTo = (i: number) => {
-    setIsAnimating(true)
-    setTimeout(() => {
-      setActiveSlide(i)
-      setIsAnimating(false)
-    }, 300)
+    if (i === activeSlide) return
+    changeSlide(i)
   }
+
+  const slideStyle: CSSProperties = {
+    idle: { opacity: 1, transform: 'translateX(0)' },
+    exit: { opacity: 0, transform: 'translateX(-20px)', transition: 'opacity 200ms ease, transform 200ms ease' },
+    'enter-start': { opacity: 0, transform: 'translateX(20px)', transition: 'none' },
+    enter: { opacity: 1, transform: 'translateX(0)', transition: 'opacity 300ms ease, transform 300ms ease' },
+  }[phase]
 
   return (
     <div style={{ width: '100%' }}>
       {/* Tab navigation */}
       <div style={{
-        display: 'flex', gap: '4px', marginBottom: '16px',
+        display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px',
         background: '#18181b', borderRadius: '12px', padding: '4px',
         border: '1px solid #27272a',
       }}>
@@ -526,10 +538,11 @@ function DashboardCarousel() {
             onClick={() => goTo(i)}
             style={{
               flex: 1,
+              minWidth: '160px',
               background: activeSlide === i ? '#22c55e' : '#27272a',
               border: '1px solid transparent',
               borderRadius: '8px',
-              padding: '8px 4px',
+              padding: '12px 20px',
               color: activeSlide === i ? '#09090b' : '#a1a1aa',
               fontSize: '11px',
               fontWeight: activeSlide === i ? 600 : 400,
@@ -548,6 +561,21 @@ function DashboardCarousel() {
             <span>{slide.tabLabel}</span>
           </button>
         ))}
+      </div>
+
+      {/* Barre de progression (remplissage 4s) */}
+      <div style={{
+        width: '100%', height: '2px', borderRadius: '1px',
+        background: '#27272a', marginBottom: '12px', overflow: 'hidden',
+      }}>
+        <div
+          key={activeSlide}
+          style={{
+            height: '100%', borderRadius: '1px', background: '#22c55e',
+            width: '0%',
+            animation: 'kr-dash-progress 4000ms linear forwards',
+          }}
+        />
       </div>
 
       {/* Label slide actif */}
@@ -569,9 +597,8 @@ function DashboardCarousel() {
         border: '1px solid #27272a',
         borderRadius: '16px',
         overflow: 'hidden',
-        opacity: isAnimating ? 0 : 1,
-        transform: isAnimating ? 'translateY(8px)' : 'translateY(0)',
-        transition: 'opacity 0.3s ease, transform 0.3s ease',
+        minHeight: '480px',
+        ...slideStyle,
       }}>
         {/* Header dashboard commun */}
         <div style={{
@@ -996,6 +1023,19 @@ function DashboardCarousel() {
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes kr-dash-progress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes kr-dash-progress {
+            from { width: 100%; }
+            to { width: 100%; }
+          }
+        }
+      `}</style>
     </div>
   )
 }
