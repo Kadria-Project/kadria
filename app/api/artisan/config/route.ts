@@ -73,28 +73,30 @@ export async function PATCH(request: NextRequest) {
     if (body.trades       !== undefined) fields['Trades']           = body.trades
 
     // Informations légales
-    if (body.raisonSociale !== undefined) fields['Raison Sociale']  = body.raisonSociale
-    if (body.formeJuridique !== undefined) fields['Forme Juridique'] = body.formeJuridique
-    if (body.siret         !== undefined) fields['SIRET']           = body.siret
-    if (body.tvaNumber     !== undefined) fields['TVA Number']      = body.tvaNumber
-    if (body.tvaAssujetti  !== undefined) fields['TVA Assujetti']   = body.tvaAssujetti
-    if (body.adressePro    !== undefined) fields['Adresse Pro']      = body.adressePro
-    if (body.cpPro         !== undefined) fields['CP Pro']           = body.cpPro
-    if (body.villePro      !== undefined) fields['Ville Pro']        = body.villePro
+if (body.raisonSociale !== undefined) fields['raison_sociale'] = body.raisonSociale
+if (body.formeJuridique !== undefined) fields['forme_juridique'] = body.formeJuridique
+if (body.siret !== undefined) fields['siret'] = body.siret
+if (body.adressePro !== undefined) fields['adresse_pro'] = body.adressePro
+if (body.cpPro !== undefined) fields['cp_pro'] = body.cpPro
 
-    // Assurance
-    if (body.assureur      !== undefined) fields['Assureur']         = body.assureur
-    if (body.numAssurance  !== undefined) fields['Num Assurance']    = body.numAssurance
-    if (body.assuranceNonRequise !== undefined) fields['Assurance Non Requise'] = body.assuranceNonRequise
+// À activer seulement si ces champs existent dans Airtable
+if (body.tvaNumber !== undefined) fields['tva_number'] = body.tvaNumber
+if (body.tvaAssujetti !== undefined) fields['tva_assujetti'] = body.tvaAssujetti
+if (body.villePro !== undefined) fields['ville_pro'] = body.villePro
 
-    // Préférences devis
-    if (body.devisPrefixe  !== undefined) fields['Devis Prefixe']    = body.devisPrefixe
-    if (body.devisValidite !== undefined) fields['Devis Validite']   = body.devisValidite
-    if (body.devisTvaDefaut !== undefined) fields['Devis TVA Defaut'] = body.devisTvaDefaut
-    if (body.devisConditionsPaiement !== undefined) fields['Devis Conditions Paiement'] = body.devisConditionsPaiement
-    if (body.devisMentionLegale !== undefined) fields['Devis Mention Legale'] = body.devisMentionLegale
-    if (body.devisCompteur !== undefined) fields['Devis Compteur']   = body.devisCompteur
-    if (body.prestationsJson !== undefined) fields['Prestations JSON'] = body.prestationsJson
+// Assurance
+if (body.assureur !== undefined) fields['assureur'] = body.assureur
+if (body.numAssurance !== undefined) fields['num_assurance'] = body.numAssurance
+if (body.assuranceNonRequise !== undefined) fields['assurance_non_requise'] = body.assuranceNonRequise
+
+// Préférences devis
+if (body.devisPrefixe !== undefined) fields['devis_prefixe'] = body.devisPrefixe
+if (body.devisValidite !== undefined) fields['devis_validite'] = body.devisValidite
+if (body.devisTvaDefaut !== undefined) fields['devis_tva_defaut'] = body.devisTvaDefaut
+if (body.devisConditionsPaiement !== undefined) fields['devis_conditions_paiement'] = body.devisConditionsPaiement
+if (body.devisMentionLegale !== undefined) fields['devis_mention_legale'] = body.devisMentionLegale
+if (body.devisCompteur !== undefined) fields['devis_compteur'] = body.devisCompteur
+if (body.prestationsJson !== undefined) fields['prestations_json'] = body.prestationsJson
 
     await updateArtisanConfig(config.id, fields)
     return NextResponse.json({ success: true })
