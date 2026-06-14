@@ -6,6 +6,7 @@ import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Clock,
@@ -77,6 +78,15 @@ function ProjectDetail() {
 
   const [showAllHistory, setShowAllHistory] = useState(false);
 
+  const [artisanConfig, setArtisanConfig] = useState<{
+    siret?: string;
+    raisonSociale?: string;
+    adressePro?: string;
+    assuranceNonRequise?: boolean;
+    assureur?: string;
+    numAssurance?: string;
+  } | null>(null);
+
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -121,6 +131,22 @@ function ProjectDetail() {
 
     if (id) loadProject();
   }, [id]);
+
+  useEffect(() => {
+    fetch('/api/artisan/config')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setArtisanConfig(data.config);
+      })
+      .catch(() => {});
+  }, []);
+
+  const legalComplete = !!(
+    artisanConfig?.siret &&
+    artisanConfig?.raisonSociale &&
+    artisanConfig?.adressePro &&
+    (artisanConfig?.assuranceNonRequise || (artisanConfig?.assureur && artisanConfig?.numAssurance))
+  );
 
   async function updateStatus(status: string) {
     try {
@@ -291,6 +317,26 @@ function ProjectDetail() {
             📄 Exporter PDF
           </button>
         </div>
+
+        {artisanConfig && !legalComplete && (
+          <div
+            className="flex items-center gap-3 flex-wrap mb-4"
+            style={{
+              background: 'rgba(217,119,6,0.08)',
+              border: '1px solid rgba(217,119,6,0.3)',
+              borderRadius: '12px',
+              padding: '14px 20px',
+            }}
+          >
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#f59e0b' }} />
+            <p className="text-sm text-zinc-300 flex-1 m-0">
+              Complétez vos informations légales pour générer des devis professionnels.
+            </p>
+            <a href="/onboarding" className="text-sm font-semibold whitespace-nowrap" style={{ color: '#22c55e' }}>
+              Compléter mon profil →
+            </a>
+          </div>
+        )}
 
         <div style={{
           background: '#18181b',
@@ -629,6 +675,42 @@ function ProjectDetail() {
                   Budget estimé utilisé par défaut : {project.budget}
                 </p>
               )}
+            </div>
+
+            <div style={{
+              borderTop: '1px solid #27272a',
+              marginTop: '12px',
+              paddingTop: '14px',
+            }}>
+              <button
+                onClick={() => {
+                  if (!legalComplete) return;
+                  router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                }}
+                disabled={!legalComplete}
+                title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
+                style={{
+                  width: '100%',
+                  background: '#18181b',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  borderRadius: '10px',
+                  padding: '10px 20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#22c55e',
+                  cursor: legalComplete ? 'pointer' : 'not-allowed',
+                  opacity: legalComplete ? 1 : 0.4,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  if (legalComplete) e.currentTarget.style.background = 'rgba(34,197,94,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#18181b';
+                }}
+              >
+                📄 Générer un devis
+              </button>
             </div>
 
             <div style={{
