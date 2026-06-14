@@ -1147,7 +1147,7 @@ function KanbanBoard({
 
   return (
     <div>
-      <div className="flex flex-row gap-4 overflow-x-auto pb-2 [scroll-snap-type:x_mandatory] md:[scroll-snap-type:none]">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full pb-2 [scroll-snap-type:x_mandatory] md:[scroll-snap-type:none]">
         {KANBAN_COLUMNS.map((col) => {
           const colProjects = projects.filter((p) => p.status === col.status);
           const total = colProjects.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
@@ -1170,7 +1170,7 @@ function KanbanBoard({
                 setOverColumn(null);
               }}
               style={{ borderTop: `3px solid ${col.color}` }}
-              className={`flex min-w-[260px] max-w-[300px] flex-shrink-0 flex-col rounded-2xl border bg-zinc-900 transition-colors duration-200 [scroll-snap-align:start] ${
+              className={`flex min-w-0 flex-col rounded-2xl border bg-zinc-900 transition-colors duration-200 [scroll-snap-align:start] ${
                 isOver ? 'border-green-500 bg-green-500/[0.04]' : 'border-zinc-800'
               }`}
             >
