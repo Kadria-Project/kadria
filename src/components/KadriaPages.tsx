@@ -11,7 +11,6 @@ import {
   Bot,
   Check,
   CheckCircle,
-  ChevronDown,
   ClipboardCheck,
   Clock,
   Euro,
@@ -21,6 +20,7 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  Minus,
   Phone,
   Rocket,
   Search,
@@ -35,7 +35,6 @@ import {
 import { KadriaLogo } from '@/src/components/KadriaLogo';
 import { DarkNav } from '@/src/components/DarkNav';
 import ChatWidget from '@/src/components/ChatWidget';
-import PricingQuiz from '@/src/components/PricingQuiz';
 
 const features = [
   {
@@ -2509,108 +2508,406 @@ export function FeaturesRoutePage() {
   );
 }
 
+interface PricingFeature {
+  text: string;
+  badge?: string;
+}
+
+interface PricingPlanCard {
+  slug: string;
+  name: string;
+  price: string;
+  priceSize: string;
+  period: string;
+  description: string;
+  features: PricingFeature[];
+  highlighted: boolean;
+  cta: { label: string; href: string; primary: boolean };
+}
+
+const pricingPlanCards: PricingPlanCard[] = [
+  {
+    slug: 'essentiel',
+    name: 'Essentiel',
+    price: '149€',
+    priceSize: 'text-5xl',
+    period: '/mois',
+    description: 'Pour démarrer et ne plus manquer de demandes web',
+    features: [
+      { text: 'Assistant chat web 24h/24' },
+      { text: 'Qualification IA + score dossier' },
+      { text: 'Résumé IA + recommandation par dossier' },
+      { text: 'CRM vue liste' },
+      { text: 'Filtres simples (statut, métier)' },
+      { text: '50 dossiers / mois' },
+      { text: 'KPI essentiels' },
+      { text: 'Export CSV' },
+      { text: 'Support email' },
+      { text: '1 utilisateur' },
+    ],
+    highlighted: false,
+    cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
+  },
+  {
+    slug: 'performance',
+    name: 'Performance',
+    price: '249€',
+    priceSize: 'text-5xl',
+    period: '/mois',
+    description: 'Pour ne plus perdre aucune opportunité',
+    features: [
+      { text: 'Tout Essentiel inclus' },
+      { text: 'Dossiers illimités' },
+      { text: 'Vue Kanban' },
+      { text: 'Filtres avancés (budget, score IA, période, source)' },
+      { text: 'KPI avancés avec tendances et sparkline' },
+      { text: 'Top 3 opportunités scorées par IA' },
+      { text: 'Pipeline commercial' },
+      { text: 'Chantiers géolocalisés' },
+      { text: 'Calendrier + rappels' },
+      { text: 'Export PDF dossiers' },
+      { text: 'Génération de devis professionnels' },
+      { text: 'Relances planifiables' },
+      { text: 'Assistant vocal', badge: 'Bientôt disponible' },
+      { text: 'Relances automatiques', badge: 'Bientôt disponible' },
+      { text: 'Support prioritaire' },
+      { text: '1 utilisateur' },
+    ],
+    highlighted: true,
+    cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
+  },
+  {
+    slug: 'agence',
+    name: 'Agence',
+    price: 'Sur devis',
+    priceSize: 'text-[28px]',
+    period: '',
+    description: "Pour les groupements d'artisans et réseaux",
+    features: [
+      { text: 'Tout Performance inclus' },
+      { text: "Jusqu'à 10 artisans" },
+      { text: 'Dashboard multi-comptes' },
+      { text: 'Marque blanche complète' },
+      { text: 'API access' },
+      { text: 'Account manager dédié' },
+      { text: 'Onboarding personnalisé' },
+      { text: 'Rapports consolidés multi-sites' },
+      { text: 'Support téléphonique dédié' },
+    ],
+    highlighted: false,
+    cta: { label: 'Nous contacter', href: '/contact', primary: false },
+  },
+];
+
+const addonSiteVitrine = {
+  title: '➕ Site vitrine clé en main',
+  description: 'Votre site professionnel créé et intégré avec votre assistant Kadria',
+  price: '+50€/mois',
+  priceSub: 'avec le plan Performance',
+  features: [
+    'Site vitrine professionnel (template métier)',
+    'Intégration automatique du widget Kadria',
+    '1 modification incluse par mois',
+    'Support technique site inclus',
+  ],
+  mention: '⚠️ Hébergement et nom de domaine non inclus (~15€/mois chez votre hébergeur)',
+  cta: { label: 'Ajouter au plan Performance', href: '/contact?sujet=addon-site' },
+};
+
+const pricingGuarantees = [
+  { title: 'Sans engagement', subtitle: 'Résiliez à tout moment' },
+  { title: 'Essai 14 jours', subtitle: 'Sans carte bancaire' },
+  { title: 'Support J+1', subtitle: 'Réponse sous 24h ouvrées' },
+];
+
+const pricingFaqQuick = [
+  {
+    question: 'Puis-je changer de plan ?',
+    answer: 'Oui, à tout moment depuis votre espace client.',
+  },
+  {
+    question: "L'essai gratuit inclut-il toutes les fonctionnalités ?",
+    answer: 'Oui, accès complet au plan Performance pendant 14 jours.',
+  },
+  {
+    question: "Que se passe-t-il après l'essai ?",
+    answer: 'Vous choisissez votre plan ou vous arrêtez — sans frais, sans engagement.',
+  },
+];
+
+type ComparatifValue = '✓' | '✗' | 'bientot' | string;
+
+const comparatifCategories: { category: string; rows: [string, ComparatifValue, ComparatifValue, ComparatifValue][] }[] = [
+  {
+    category: 'Assistant IA',
+    rows: [
+      ['Chat web 24h/24', '✓', '✓', '✓'],
+      ['Qualification automatique', '✓', '✓', '✓'],
+      ['Score IA par dossier', '✓', '✓', '✓'],
+      ['Résumé + recommandation', '✓', '✓', '✓'],
+      ['Adaptation par métier', '✓', '✓', '✓'],
+      ['Assistant vocal', '✗', 'bientot', '✓'],
+    ],
+  },
+  {
+    category: 'CRM',
+    rows: [
+      ['Vue liste', '✓', '✓', '✓'],
+      ['Vue Kanban', '✗', '✓', '✓'],
+      ['Filtres simples', '✓', '✓', '✓'],
+      ['Filtres avancés', '✗', '✓', '✓'],
+      ['Dossiers / mois', '50', 'Illimités', 'Illimités'],
+      ['Fiches dossiers complètes', '✓', '✓', '✓'],
+      ['Historique dossier', '✓', '✓', '✓'],
+      ['Notes internes', '✓', '✓', '✓'],
+    ],
+  },
+  {
+    category: 'Pilotage',
+    rows: [
+      ['KPI essentiels', '✓', '✓', '✓'],
+      ['KPI avancés + tendances', '✗', '✓', '✓'],
+      ['Sparkline CA', '✗', '✓', '✓'],
+      ['Top 3 opportunités IA', '✗', '✓', '✓'],
+      ['Pipeline commercial', '✗', '✓', '✓'],
+      ['Chantiers géolocalisés', '✗', '✓', '✓'],
+    ],
+  },
+  {
+    category: 'Actions',
+    rows: [
+      ['Relances manuelles', '✓', '✓', '✓'],
+      ['Relances automatiques', '✗', 'bientot', '✓'],
+      ['Calendrier + rappels', '✗', '✓', '✓'],
+      ['Génération de devis', '✗', '✓', '✓'],
+    ],
+  },
+  {
+    category: 'Export',
+    rows: [
+      ['Export CSV', '✓', '✓', '✓'],
+      ['Export PDF dossiers', '✗', '✓', '✓'],
+      ['Rapport mensuel PDF', '✗', '✓', '✓'],
+    ],
+  },
+  {
+    category: 'Compte',
+    rows: [
+      ['Utilisateurs', '1', '1', '10'],
+      ['Dashboard multi-comptes', '✗', '✗', '✓'],
+      ['Marque blanche', '✗', '✗', '✓'],
+      ['API access', '✗', '✗', '✓'],
+    ],
+  },
+  {
+    category: 'Support',
+    rows: [
+      ['Support email', '✓', '✓', '✓'],
+      ['Support prioritaire', '✗', '✓', '✓'],
+      ['Account manager', '✗', '✗', '✓'],
+      ['Support téléphonique', '✗', '✗', '✓'],
+    ],
+  },
+  {
+    category: 'Add-on',
+    rows: [
+      ['Site vitrine clé en main', '✗', '+50€/mois', '✓'],
+    ],
+  },
+];
+
+function ComparatifCell({ value }: { value: ComparatifValue }) {
+  if (value === '✓') return <CheckCircle size={16} className="text-green-500" />;
+  if (value === '✗') return <Minus size={16} className="text-zinc-500" />;
+  if (value === 'bientot') {
+    return (
+      <span className="inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
+        Bientôt
+      </span>
+    );
+  }
+  return <span className="text-zinc-300">{value}</span>;
+}
+
 export function PricingRoutePage() {
-  const pricingPlans = [
-    {
-      slug: 'essentiel',
-      name: 'Essentiel',
-      monthly: 149,
-      yearly: 119,
-      description: 'Pour démarrer et ne plus manquer aucun appel.',
-      features: [
-        'Assistant chat web 24h/24',
-        '50 dossiers qualifiés / mois',
-        'Dashboard de suivi',
-        'Scoring automatique',
-        'Support email',
-      ],
-      cta: "Commencer l'essai gratuit",
-      highlighted: false,
-    },
-    {
-      slug: 'pro',
-      name: 'Pro',
-      monthly: 249,
-      yearly: 199,
-      description: "L'outil complet pour ne plus perdre aucune opportunité.",
-      features: [
-        'Tout Essentiel inclus',
-        'Assistant vocal (appels entrants)',
-        'Création de site web professionnel incluse',
-        'Dossiers illimités',
-        'CRM intégré + relances',
-        'Export CSV',
-        'Rappels automatiques',
-        'Support prioritaire',
-      ],
-      cta: "Commencer l'essai gratuit",
-      highlighted: true,
-    },
-    {
-      slug: 'agence',
-      name: 'Agence',
-      monthly: null,
-      yearly: null,
-      description: "Pour les groupements et réseaux d'artisans.",
-      features: [
-        "Jusqu'à 10 artisans",
-        'Marque blanche complète',
-        'API access',
-        'Dashboard multi-comptes',
-        'Account manager dédié',
-        'Onboarding personnalisé',
-      ],
-      cta: 'Nous contacter',
-      highlighted: false,
-    },
-  ];
-
-  const comparatif = [
-    ['Assistant chat web', '✓', '✓', '✓'],
-    ['Assistant vocal', '✗', '✓', '✓'],
-    ['Création site web', '✗', '✓', '✓'],
-    ['Dossiers / mois', '50', 'Illimités', 'Illimités'],
-    ['Dashboard', 'Basique', 'Complet', 'Multi-comptes'],
-    ['CRM + relances', '✗', '✓', '✓'],
-    ['Export CSV', '✗', '✓', '✓'],
-    ['API access', '✗', '✗', '✓'],
-    ['Marque blanche', '✗', '✗', '✓'],
-    ['Support', 'Email', 'Prioritaire', 'Account manager'],
-  ];
-
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <DarkNav />
 
-      <main>
-        {/* HERO PRICING */}
-        <section className="mx-auto max-w-[1280px] px-6 py-20 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
-          <h1 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">
-            Un seul outil. <span className="text-green-500">Zéro prospect perdu.</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-zinc-400 md:text-lg">
-            Choisissez la formule adaptée à votre activité. Sans engagement, sans frais cachés.
-          </p>
+      <main className="px-6 pt-[100px]">
+        <div className="mx-auto max-w-6xl">
+          {/* HEADER */}
+          <section className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
+            <h1 className="mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight">
+              Un tarif simple, <span className="text-green-500">adapté</span> à votre activité.
+            </h1>
+            <p className="mx-auto mt-4 max-w-2xl text-base text-zinc-400">
+              Sans engagement. Résiliation à tout moment. Support inclus dès le premier jour.
+            </p>
+          </section>
 
-          <BillingToggle pricingPlans={pricingPlans} comparatif={comparatif} />
-        </section>
+          {/* GRILLE 3 PLANS */}
+          <section className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {pricingPlanCards.map((plan) => (
+              <div
+                key={plan.slug}
+                className={`relative flex flex-col rounded-[20px] p-8 ${
+                  plan.highlighted
+                    ? 'border-2 border-green-500/30 bg-zinc-900 shadow-[0_0_40px_rgba(34,197,94,0.08)] md:scale-[1.02]'
+                    : 'border border-zinc-800 bg-zinc-900'
+                }`}
+              >
+                {plan.highlighted && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-green-500 px-4 py-1 text-xs font-bold text-black">
+                    LE PLUS POPULAIRE
+                  </span>
+                )}
 
-        {/* QUIZ TARIFAIRE */}
-        <section className="border-t border-zinc-800 bg-zinc-900 px-6 py-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Pas sûr de votre choix ?</p>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
-              Trouvez l&apos;offre adaptée à votre activité
-            </h2>
-          </div>
-          <div className="mt-10">
-            <PricingQuiz showCTA={true} />
-          </div>
-        </section>
+                <h3 className="text-xl font-extrabold">{plan.name}</h3>
 
-        {/* FAQ */}
-        <PricingFaq />
+                <p className="mt-3">
+                  <span className={`${plan.priceSize} font-black`}>{plan.price}</span>
+                  {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
+                </p>
+
+                <p className="mb-6 mt-2 text-sm text-zinc-400">{plan.description}</p>
+
+                <div className="border-t border-zinc-800" />
+
+                <ul className="mt-5 flex flex-col gap-3">
+                  {plan.features.map((feat) => (
+                    <li key={feat.text} className="flex items-start gap-2 text-sm">
+                      <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
+                      <span>
+                        {feat.text}
+                        {feat.badge && (
+                          <span className="ml-2 inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
+                            {feat.badge}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto pt-6">
+                  <Link
+                    href={plan.cta.href}
+                    className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
+                      plan.cta.primary
+                        ? 'bg-green-500 font-bold text-black hover:bg-green-400'
+                        : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
+                    }`}
+                  >
+                    {plan.cta.label}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {/* ADD-ON SITE VITRINE */}
+          <section id="addon" className="mx-auto mt-8 max-w-2xl rounded-[20px] border border-green-500/30 bg-green-500/[0.03] p-8">
+            <div className="flex flex-col items-start gap-8 md:flex-row md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Add-on</p>
+                <h3 className="mt-2 text-xl font-extrabold">{addonSiteVitrine.title.replace('➕ ', '')}</h3>
+                <p className="mt-2 text-sm text-zinc-400">{addonSiteVitrine.description}</p>
+                <p className="mt-4">
+                  <span className="text-3xl font-black text-green-500">{addonSiteVitrine.price}</span>
+                </p>
+                <p className="text-sm text-zinc-400">{addonSiteVitrine.priceSub}</p>
+                <ul className="mt-4 flex flex-col gap-2">
+                  {addonSiteVitrine.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2 text-sm">
+                      <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs text-zinc-500">{addonSiteVitrine.mention}</p>
+              </div>
+
+              <div className="w-full md:min-w-[200px] md:w-auto">
+                <Link
+                  href={addonSiteVitrine.cta.href}
+                  className="block w-full rounded-xl bg-green-500 px-6 py-3 text-center text-sm font-bold text-black transition-colors hover:bg-green-400"
+                >
+                  {addonSiteVitrine.cta.label}
+                </Link>
+                <p className="mt-2 text-center text-xs text-zinc-400">
+                  Disponible uniquement avec Performance
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* GARANTIES */}
+          <section className="mt-12 grid grid-cols-1 gap-6 text-center md:grid-cols-3">
+            {pricingGuarantees.map((g) => (
+              <div key={g.title}>
+                <p className="flex items-center justify-center gap-2 font-bold">
+                  <Check size={16} className="text-green-500" />
+                  {g.title}
+                </p>
+                <p className="mt-1 text-sm text-zinc-400">{g.subtitle}</p>
+              </div>
+            ))}
+          </section>
+
+          {/* TABLEAU COMPARATIF */}
+          <section className="mt-16">
+            <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">Comparez les formules</h2>
+            <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-800">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
+                    <th className="px-4 py-3">Fonctionnalité</th>
+                    <th className="px-4 py-3">Essentiel</th>
+                    <th className="px-4 py-3 text-green-500">Performance</th>
+                    <th className="px-4 py-3">Agence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparatifCategories.map((group) => (
+                    <>
+                      <tr key={group.category} className="border-t border-zinc-800 bg-zinc-950">
+                        <td colSpan={4} className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-green-500">
+                          {group.category}
+                        </td>
+                      </tr>
+                      {group.rows.map(([feature, essentiel, performance, agence], rowIndex) => (
+                        <tr
+                          key={feature}
+                          className={rowIndex % 2 === 1 ? 'bg-zinc-900' : 'bg-zinc-950'}
+                        >
+                          <td className="px-4 py-3 font-medium text-white">{feature}</td>
+                          <td className="px-4 py-3"><ComparatifCell value={essentiel} /></td>
+                          <td className="px-4 py-3"><ComparatifCell value={performance} /></td>
+                          <td className="px-4 py-3"><ComparatifCell value={agence} /></td>
+                        </tr>
+                      ))}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* FAQ RAPIDE */}
+          <section className="mx-auto mt-16 max-w-3xl pb-24">
+            <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">Questions fréquentes</h2>
+            <div className="mt-8 space-y-6">
+              {pricingFaqQuick.map((faq) => (
+                <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+                  <p className="font-semibold">{faq.question}</p>
+                  <p className="mt-2 text-sm text-zinc-400">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
 
         {/* CTA FINAL */}
         <section className="border-t border-zinc-800 bg-zinc-900 py-24">
@@ -3150,275 +3447,3 @@ export function SimulateurSection() {
   )
 }
 
-interface PricingPlan {
-  slug: string;
-  name: string;
-  monthly: number | null;
-  yearly: number | null;
-  description: string;
-  features: string[];
-  cta: string;
-  highlighted: boolean;
-}
-
-function BillingToggle({
-  pricingPlans,
-  comparatif,
-}: {
-  pricingPlans: PricingPlan[];
-  comparatif: string[][];
-}) {
-  const [annual, setAnnual] = useState(false);
-
-  return (
-    <>
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => setAnnual(false)}
-          className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
-            !annual ? 'bg-green-500 text-black' : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
-          }`}
-        >
-          Mensuel
-        </button>
-        <button
-          type="button"
-          onClick={() => setAnnual(true)}
-          className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
-            annual ? 'bg-green-500 text-black' : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
-          }`}
-        >
-          Annuel
-        </button>
-        {annual && (
-          <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-400">
-            2 mois offerts
-          </span>
-        )}
-      </div>
-
-      {/* PLANS */}
-      <div className="mt-12 grid gap-6 text-left lg:grid-cols-3">
-        {pricingPlans.map((plan) => (
-          <div
-            key={plan.slug}
-            className={`relative rounded-xl bg-zinc-900 p-6 ${
-              plan.highlighted ? 'border-2 border-green-500' : 'border border-zinc-800'
-            }`}
-          >
-            {plan.highlighted && (
-              <span className="absolute -top-3 left-6 rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-black">
-                Le plus populaire
-              </span>
-            )}
-            <h3 className="text-xl font-semibold">{plan.name}</h3>
-            <p className="mt-5">
-              {plan.monthly === null ? (
-                <span className="text-4xl font-bold">Sur devis</span>
-              ) : (
-                <>
-                  <span className="text-4xl font-bold">{annual ? plan.yearly : plan.monthly} €</span>
-                  <span className="text-sm text-zinc-400"> / mois</span>
-                </>
-              )}
-            </p>
-            <p className="mt-3 text-sm leading-6 text-zinc-400">{plan.description}</p>
-            <ul className="mt-6 space-y-3 text-sm">
-              {plan.features.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-zinc-300">
-                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/onboarding"
-              className={`mt-8 inline-flex w-full items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors ${
-                plan.highlighted
-                  ? 'bg-green-500 text-black hover:bg-green-400'
-                  : 'border border-zinc-700 text-white hover:bg-zinc-800'
-              }`}
-            >
-              {plan.cta}
-            </Link>
-          </div>
-        ))}
-      </div>
-
-      {/* COMPARATIF */}
-      <div className="mt-24">
-        <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Comparez les formules</h2>
-        <div className="mt-10 overflow-hidden overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr className="bg-zinc-800 text-xs uppercase tracking-wide text-zinc-400">
-                <th className="px-4 py-3">Fonctionnalité</th>
-                <th className="px-4 py-3">Essentiel</th>
-                <th className="px-4 py-3">Pro</th>
-                <th className="px-4 py-3">Agence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparatif.map(([feature, essentiel, pro, agence]) => (
-                <tr key={feature} className="border-b border-zinc-800/50 last:border-b-0">
-                  <td className="px-4 py-3 font-medium text-white">{feature}</td>
-                  {[essentiel, pro, agence].map((value, index) => (
-                    <td key={index} className="px-4 py-3 text-zinc-400">
-                      {value === '✓' ? (
-                        <span className="text-green-500">✓</span>
-                      ) : value === '✗' ? (
-                        <span className="text-zinc-600">✗</span>
-                      ) : (
-                        value
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function PricingFaq() {
-  const faqGroups = [
-    {
-      title: 'Installation & prise en main',
-      questions: [
-        {
-          question: 'Combien de temps pour installer Kadria ?',
-          answer:
-            "De 15 minutes à 48 heures selon l'offre sélectionnée. Pas d'intégration complexe.",
-        },
-        {
-          question: 'Est-ce que je dois changer de numéro de téléphone ?',
-          answer:
-            "Non. Kadria fonctionne en parallèle de votre numéro actuel. Vous pouvez choisir de lui transférer les appels quand vous êtes indisponible, ou de lui dédier un numéro secondaire.",
-        },
-        {
-          question: 'Est-ce que ça marche avec mon site web actuel ?',
-          answer:
-            "Oui. On intègre un widget de chat sur votre site en copiant-collant une ligne de code. Ça fonctionne avec tous les CMS : WordPress, Wix, Squarespace, site custom.",
-        },
-      ],
-    },
-    {
-      title: 'Utilisation au quotidien',
-      questions: [
-        {
-          question: 'Et si je suis sur le chantier et que je ne peux pas répondre ?',
-          answer:
-            "C'est exactement pour ça que Kadria existe. Il répond à votre place, qualifie le prospect, collecte toutes les infos et vous envoie une notification. Quand vous rentrez le soir, tout est dans votre dashboard.",
-        },
-        {
-          question: 'Et si le prospect rappelle directement sur mon portable ?',
-          answer:
-            "Kadria gère les appels entrants sur le numéro que vous lui avez assigné. Si un prospect appelle votre portable direct, vous gérez comme avant. Kadria capture tout le reste.",
-        },
-        {
-          question: 'Kadria comprend-il les termes techniques de mon métier ?',
-          answer:
-            "Oui. Kadria est configuré pour votre corps de métier — il connaît les termes spécifiques à la plomberie, l'électricité, la menuiserie, la rénovation. Il pose les bonnes questions selon le type de chantier.",
-        },
-        {
-          question:
-            'Que se passe-t-il si le prospect pose une question à laquelle Kadria ne sait pas répondre ?',
-          answer:
-            "Kadria indique qu'il va transmettre la question à l'artisan et invite le prospect à laisser ses coordonnées. Vous recevez une notification pour rappeler.",
-        },
-      ],
-    },
-    {
-      title: 'Tarifs & engagement',
-      questions: [
-        {
-          question: "Est-ce que je peux tester avant de m'engager ?",
-          answer:
-            "Oui. Vous bénéficiez d'un essai gratuit de 14 jours, sans carte bancaire. Vous voyez les résultats avant de payer quoi que ce soit.",
-        },
-        {
-          question: 'Est-ce que je peux résilier à tout moment ?',
-          answer:
-            'Oui, sans frais et sans préavis. Vous gérez votre abonnement depuis votre espace client.',
-        },
-        {
-          question: 'Est-ce que Kadria vaut vraiment 149€ ou 249€ par mois ?',
-          answer:
-            "Un seul chantier récupéré rembourse l'abonnement. Avec un panier moyen de 3 000€ et 25% de marge, un chantier gagné = 750€ nets. Kadria s'autofinance dès le premier mois.",
-        },
-      ],
-    },
-    {
-      title: 'Confiance',
-      questions: [
-        {
-          question: 'Est-ce que mes prospects savent qu\'ils parlent à une IA ?',
-          answer:
-            "Kadria se présente comme l'assistant de votre entreprise. Il ne se fait pas passer pour vous, mais pour votre assistant — ce qui est la réalité.",
-        },
-        {
-          question: "Et si j'ai un problème ou une question ?",
-          answer:
-            'Le support est inclus dès le premier jour. Réponse garantie sous 24h ouvrées par chat ou email.',
-        },
-      ],
-    },
-  ];
-
-  const [openIndexes, setOpenIndexes] = useState<number[]>(faqGroups.map(() => 0));
-
-  return (
-    <section className="mx-auto max-w-[1280px] px-6 py-24">
-      <div className="mx-auto max-w-3xl text-center">
-        <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Questions fréquentes</h2>
-      </div>
-      <div className="mx-auto mt-12 max-w-3xl space-y-10">
-        {faqGroups.map((group, groupIndex) => (
-          <div key={group.title}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-              {group.title}
-            </p>
-            <div className="mt-4">
-              {group.questions.map((faq, questionIndex) => {
-                const isOpen = openIndexes[groupIndex] === questionIndex;
-                return (
-                  <div key={faq.question} className="border-b border-zinc-800">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenIndexes((prev) =>
-                          prev.map((value, idx) =>
-                            idx === groupIndex ? (value === questionIndex ? -1 : questionIndex) : value,
-                          ),
-                        )
-                      }
-                      className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-semibold text-white"
-                    >
-                      {faq.question}
-                      <ChevronDown
-                        className={`h-4 w-4 flex-shrink-0 text-green-500 transition-transform duration-[250ms] ${
-                          isOpen ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-                    <div
-                      className={`overflow-hidden transition-all duration-[250ms] ease-out ${
-                        isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                      }`}
-                    >
-                      <div className="pb-4 text-sm leading-7 text-zinc-400">{faq.answer}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
