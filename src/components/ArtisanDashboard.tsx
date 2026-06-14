@@ -705,14 +705,16 @@ function Dashboard() {
 
           {/* ZONE 2 — Toggles */}
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-green-500">
-              Voir plus
-            </p>
+            <div className="relative my-2 border-t border-zinc-800">
+              <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-zinc-950 px-4 text-xs uppercase tracking-[0.08em] text-zinc-400">
+                Analyses détaillées
+              </span>
+            </div>
 
-            <div className="flex flex-row items-start gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => togglePanel('pipeline')}
-                className={`flex h-[72px] min-w-[260px] items-center justify-between gap-3 rounded-2xl border-2 px-5 py-4 transition-colors duration-200 ${
+                className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
                   openPanel === 'pipeline'
                     ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
                     : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
@@ -732,13 +734,15 @@ function Dashboard() {
                 </div>
 
                 <ChevronDown
-                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${openPanel === 'pipeline' ? 'rotate-180' : ''}`}
+                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
+                    openPanel === 'pipeline' ? 'rotate-180' : 'animate-bounce'
+                  }`}
                 />
               </button>
 
               <button
                 onClick={() => togglePanel('chantiers')}
-                className={`flex h-[72px] min-w-[260px] items-center justify-between gap-3 rounded-2xl border-2 px-5 py-4 transition-colors duration-200 ${
+                className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
                   openPanel === 'chantiers'
                     ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
                     : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
@@ -758,7 +762,9 @@ function Dashboard() {
                 </div>
 
                 <ChevronDown
-                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`}
+                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
+                    openPanel === 'chantiers' ? 'rotate-180' : 'animate-bounce'
+                  }`}
                 />
               </button>
             </div>
