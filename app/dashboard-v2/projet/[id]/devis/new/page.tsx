@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { ArrowLeft, ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react';
 
 interface ArtisanConfig {
   companyName: string;
@@ -46,6 +46,14 @@ interface DevisLine {
   type: 'item' | 'section';
   description: string;
   quantity: number;
+  unit: string;
+  unitPrice: number;
+  tvaRate: number;
+}
+
+interface Prestation {
+  id: string;
+  description: string;
   unit: string;
   unitPrice: number;
   tvaRate: number;
@@ -104,6 +112,13 @@ function NewDevis() {
   const [lines, setLines] = useState<DevisLine[]>([
     { id: makeLineId(), type: 'item', description: '', quantity: 1, unit: 'u', unitPrice: 0, tvaRate: 10 },
   ]);
+
+  // ── Bibliothèque de prestations ────────────────────────────────────────
+  const [showPrestationsModal, setShowPrestationsModal] = useState(false);
+  const [prestations, setPrestations] = useState<Prestation[]>([]);
+  const [loadingPrestations, setLoadingPrestations] = useState(false);
+  const [newPrestation, setNewPrestation] = useState({ description: '', unit: 'u', unitPrice: '', tvaRate: 10 });
+  const [savingPrestation, setSavingPrestation] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -175,6 +190,72 @@ function NewDevis() {
       [copy[index], copy[newIndex]] = [copy[newIndex], copy[index]];
       return copy;
     });
+  };
+
+  // ── Bibliothèque de prestations ────────────────────────────────────────
+  const openPrestationsModal = async () => {
+    setShowPrestationsModal(true);
+    setLoadingPrestations(true);
+    try {
+      const res = await fetch('/api/artisan/prestations');
+      const data = await res.json();
+      if (data.success) setPrestations(data.prestations);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingPrestations(false);
+    }
+  };
+
+  const addPrestationAsLine = (prestation: Prestation) => {
+    setLines((prev) => [
+      ...prev,
+      {
+        id: makeLineId(),
+        type: 'item',
+        description: prestation.description,
+        quantity: 1,
+        unit: prestation.unit,
+        unitPrice: prestation.unitPrice,
+        tvaRate: prestation.tvaRate,
+      },
+    ]);
+  };
+
+  const createPrestation = async () => {
+    if (!newPrestation.description.trim()) return;
+    setSavingPrestation(true);
+    try {
+      const res = await fetch('/api/artisan/prestations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: newPrestation.description,
+          unit: newPrestation.unit,
+          unitPrice: Number(newPrestation.unitPrice) || 0,
+          tvaRate: newPrestation.tvaRate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPrestations(data.prestations);
+        setNewPrestation({ description: '', unit: 'u', unitPrice: '', tvaRate: artisanConfig?.devisTvaDefaut || 10 });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSavingPrestation(false);
+    }
+  };
+
+  const deletePrestation = async (id: string) => {
+    try {
+      const res = await fetch(`/api/artisan/prestations?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) setPrestations(data.prestations);
+    } catch {
+      // ignore
+    }
   };
 
   // ── Totaux ──────────────────────────────────────────────────────────────
@@ -473,6 +554,15 @@ function NewDevis() {
             <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Lignes du devis</h2>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
+                onClick={openPrestationsModal}
+                style={{
+                  background: '#27272a', border: '1px solid #3f3f46', color: '#a1a1aa',
+                  borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
+                }}
+              >
+                📚 Mes prestations
+              </button>
+              <button
                 onClick={addSectionLine}
                 style={{
                   background: '#27272a', border: '1px solid #3f3f46', color: '#a1a1aa',
@@ -714,6 +804,151 @@ function NewDevis() {
           </button>
         </div>
       </main>
+
+      {showPrestationsModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+          onClick={() => setShowPrestationsModal(false)}
+        >
+          <div
+            style={{
+              background: '#18181b',
+              border: '1px solid #27272a',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Mes prestations</h2>
+              <button
+                onClick={() => setShowPrestationsModal(false)}
+                style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '4px' }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {loadingPrestations ? (
+              <p style={{ color: '#71717a', fontSize: '13px' }}>Chargement...</p>
+            ) : prestations.length === 0 ? (
+              <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '16px' }}>
+                Aucune prestation enregistrée pour le moment.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                {prestations.map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      background: '#09090b',
+                      border: '1px solid #27272a',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ color: 'white', fontSize: '13px', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.description}
+                      </p>
+                      <p style={{ color: '#71717a', fontSize: '12px', margin: 0 }}>
+                        {p.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € / {p.unit} — TVA {p.tvaRate}%
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => addPrestationAsLine(p)}
+                        style={{
+                          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e',
+                          borderRadius: '6px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer',
+                        }}
+                      >
+                        + Ajouter
+                      </button>
+                      <button onClick={() => deletePrestation(p.id)} style={iconBtnStyle(false, true)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ borderTop: '1px solid #27272a', paddingTop: '16px' }}>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+                Ajouter une prestation
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <input
+                  style={inputStyle}
+                  value={newPrestation.description}
+                  onChange={(e) => setNewPrestation((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Description de la prestation"
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  <input
+                    style={inputStyle}
+                    value={newPrestation.unit}
+                    onChange={(e) => setNewPrestation((prev) => ({ ...prev, unit: e.target.value }))}
+                    placeholder="Unité"
+                  />
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={newPrestation.unitPrice}
+                    onChange={(e) => setNewPrestation((prev) => ({ ...prev, unitPrice: e.target.value }))}
+                    placeholder="Prix HT"
+                  />
+                  <select
+                    style={inputStyle}
+                    value={newPrestation.tvaRate}
+                    onChange={(e) => setNewPrestation((prev) => ({ ...prev, tvaRate: Number(e.target.value) }))}
+                  >
+                    {[0, 5.5, 10, 20].map((rate) => (
+                      <option key={rate} value={rate}>{rate}%</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={createPrestation}
+                  disabled={savingPrestation || !newPrestation.description.trim()}
+                  style={{
+                    background: savingPrestation || !newPrestation.description.trim() ? '#27272a' : '#22c55e',
+                    border: 'none',
+                    color: savingPrestation || !newPrestation.description.trim() ? '#71717a' : 'black',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    cursor: savingPrestation || !newPrestation.description.trim() ? 'default' : 'pointer',
+                  }}
+                >
+                  {savingPrestation ? 'Ajout...' : 'Ajouter à ma bibliothèque'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
