@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { getProjects } from '@/src/lib/api';
+import { getProjects, updateProject } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -159,6 +159,14 @@ const cardStyle: React.CSSProperties = {
   gap: '8px',
 };
 
+const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
+  { status: 'Nouveau', label: 'Nouveau', color: '#3f3f46' },
+  { status: 'À rappeler', label: 'À rappeler', color: '#d97706' },
+  { status: 'Qualifié', label: 'Qualifié', color: '#16a34a' },
+  { status: 'Devis envoyé', label: 'Devis envoyé', color: '#2563eb' },
+  { status: 'Gagné', label: 'Gagné', color: '#15803d' },
+];
+
 function navButtonStyle(active: boolean): React.CSSProperties {
   return {
     padding: '10px 16px',
@@ -199,6 +207,27 @@ function Dashboard() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
+    if (typeof window === 'undefined') return 'list';
+    const saved = localStorage.getItem('kadria_view_mode');
+    return saved === 'list' || saved === 'kanban' ? saved : 'list';
+  });
+
+  const setView = (mode: 'list' | 'kanban') => {
+    setViewMode(mode);
+    localStorage.setItem('kadria_view_mode', mode);
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    setAllProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
+
+    try {
+      await updateProject(id, { status: newStatus });
+    } catch (error) {
+      console.error('UPDATE_PROJECT_STATUS_ERROR', error);
+    }
+  };
 
   const [openPanel, setOpenPanel] = useState<'pipeline' | 'chantiers' | null>(null);
   useEffect(() => {
@@ -866,6 +895,32 @@ function Dashboard() {
 
           {/* ZONE 4 — Liste projets, pleine largeur */}
           <div className="space-y-4 w-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
+                  viewMode === 'list'
+                    ? 'bg-green-500 font-semibold text-zinc-950'
+                    : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
+                }`}
+              >
+                📋 Liste
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setView('kanban')}
+                className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
+                  viewMode === 'kanban'
+                    ? 'bg-green-500 font-semibold text-zinc-950'
+                    : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
+                }`}
+              >
+                🗂️ Kanban
+              </button>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1 max-w-xl">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
@@ -957,6 +1012,8 @@ function Dashboard() {
                 <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
                 <p className="text-zinc-400">Aucun dossier trouvé</p>
               </div>
+            ) : viewMode === 'kanban' ? (
+              <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
             ) : (
               <ProjectList projects={displayedProjects} router={router} />
             )}
@@ -1072,6 +1129,156 @@ function ProjectList({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function KanbanBoard({
+  projects,
+  router,
+  onStatusChange,
+}: {
+  projects: Project[];
+  router: ReturnType<typeof useRouter>;
+  onStatusChange: (id: string, status: string) => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overColumn, setOverColumn] = useState<string | null>(null);
+
+  return (
+    <div>
+      <div className="flex flex-row gap-4 overflow-x-auto pb-2 [scroll-snap-type:x_mandatory] md:[scroll-snap-type:none]">
+        {KANBAN_COLUMNS.map((col) => {
+          const colProjects = projects.filter((p) => p.status === col.status);
+          const total = colProjects.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
+          const isGagne = col.status === 'Gagné';
+          const headerColor = isGagne ? '#f59e0b' : col.color;
+          const isOver = overColumn === col.status;
+
+          return (
+            <div
+              key={col.status}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setOverColumn(col.status);
+              }}
+              onDragLeave={() => setOverColumn((prev) => (prev === col.status ? null : prev))}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId) onStatusChange(dragId, col.status);
+                setDragId(null);
+                setOverColumn(null);
+              }}
+              style={{ borderTop: `3px solid ${col.color}` }}
+              className={`flex min-w-[260px] max-w-[300px] flex-shrink-0 flex-col rounded-2xl border bg-zinc-900 transition-colors duration-200 [scroll-snap-align:start] ${
+                isOver ? 'border-green-500 bg-green-500/[0.04]' : 'border-zinc-800'
+              }`}
+            >
+              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+                <span className="text-sm font-bold text-white">
+                  {isGagne && '🏆 '}
+                  {col.label}
+                </span>
+
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs font-bold"
+                  style={{ background: `${headerColor}26`, color: headerColor }}
+                >
+                  {colProjects.length}
+                </span>
+              </div>
+
+              <div className="flex max-h-[calc(100vh-300px)] flex-col gap-3 overflow-y-auto p-3">
+                {colProjects.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-zinc-500">
+                    <FolderOpen className="mx-auto mb-2 h-6 w-6 text-zinc-600" />
+                    Aucun dossier
+                  </div>
+                ) : (
+                  colProjects.map((p) => (
+                    <KanbanCard
+                      key={p.id}
+                      project={p}
+                      router={router}
+                      isDragging={dragId === p.id}
+                      isGagne={isGagne}
+                      onDragStart={() => setDragId(p.id)}
+                      onDragEnd={() => setDragId(null)}
+                    />
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-zinc-800 px-2 py-2 text-center text-xs text-zinc-400">
+                {colProjects.length} dossier{colProjects.length === 1 ? '' : 's'} · {formatAmount(total)} potentiel
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-2 text-center text-xs text-zinc-500 md:hidden">← Faites défiler →</p>
+    </div>
+  );
+}
+
+function KanbanCard({
+  project,
+  router,
+  isDragging,
+  isGagne,
+  onDragStart,
+  onDragEnd,
+}: {
+  project: Project;
+  router: ReturnType<typeof useRouter>;
+  isDragging: boolean;
+  isGagne: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const score = project.completenessScore || 0;
+  const scoreColor = score > 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#dc2626';
+  const initials = `${project.clientFirstName?.[0] || ''}${project.clientName?.[0] || ''}`.toUpperCase() || '?';
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+      className={`cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
+        isGagne ? 'bg-green-500/[0.03]' : ''
+      } ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+          {initials}
+        </span>
+
+        <span className="truncate text-sm font-semibold text-white">
+          {project.clientFirstName} {project.clientName}
+        </span>
+
+        <StatusBadge status={project.status} />
+      </div>
+
+      <p className="mt-1.5 truncate text-xs text-zinc-400">{project.trade || project.projectType || 'Projet'}</p>
+
+      <p className="truncate text-xs text-zinc-400">
+        {project.city || '—'} · {project.budget || '—'}
+      </p>
+
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs font-bold" style={{ color: scoreColor }}>
+          Score: {score}%
+        </span>
+
+        <span className="ml-auto text-xs text-zinc-500">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
+      </div>
     </div>
   );
 }
