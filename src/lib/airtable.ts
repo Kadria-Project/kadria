@@ -218,6 +218,30 @@ export async function getArtisanConfig(artisanId: string) {
             record.fields['Active'] === 'true',
     aiInstructions: record.fields['AI Instructions'] as string || '',
     trades: record.fields['Trades'] as string || '',
+
+    // Informations légales
+    raisonSociale: record.fields['Raison Sociale'] as string || '',
+    formeJuridique: record.fields['Forme Juridique'] as string || '',
+    siret: record.fields['SIRET'] as string || '',
+    tvaNumber: record.fields['TVA Number'] as string || '',
+    tvaAssujetti: record.fields['TVA Assujetti'] !== false,
+    adressePro: record.fields['Adresse Pro'] as string || '',
+    cpPro: record.fields['CP Pro'] as string || '',
+    villePro: record.fields['Ville Pro'] as string || '',
+
+    // Assurance
+    assureur: record.fields['Assureur'] as string || '',
+    numAssurance: record.fields['Num Assurance'] as string || '',
+    assuranceNonRequise: record.fields['Assurance Non Requise'] === true,
+
+    // Préférences devis
+    devisPrefixe: record.fields['Devis Prefixe'] as string || 'DEV',
+    devisValidite: Number(record.fields['Devis Validite']) || 90,
+    devisTvaDefaut: Number(record.fields['Devis TVA Defaut']) || 10,
+    devisConditionsPaiement: record.fields['Devis Conditions Paiement'] as string || '',
+    devisMentionLegale: record.fields['Devis Mention Legale'] as string || '',
+    devisCompteur: Number(record.fields['Devis Compteur']) || 0,
+    prestationsJson: record.fields['Prestations JSON'] as string || '',
   }
 }
 

@@ -14,7 +14,62 @@ const SECTIONS = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
+  { id: 'legal', label: 'Infos légales', icon: '📋' },
 ]
+
+const FORMES_JURIDIQUES = [
+  'Auto-entrepreneur', 'EI', 'EURL', 'SARL', 'SAS', 'SASU', 'Autre',
+]
+
+const DEVIS_VALIDITES = [30, 60, 90]
+const DEVIS_TVA_TAUX = [5.5, 10, 20]
+
+type LegalConfig = {
+  raisonSociale: string
+  formeJuridique: string
+  siret: string
+  tvaNumber: string
+  tvaAssujetti: boolean
+  adressePro: string
+  cpPro: string
+  villePro: string
+  assureur: string
+  numAssurance: string
+  assuranceNonRequise: boolean
+  devisPrefixe: string
+  devisValidite: number
+  devisTvaDefaut: number
+  devisConditionsPaiement: string
+  devisMentionLegale: string
+}
+
+function validateLegalConfig(config: LegalConfig): Record<string, string> {
+  const errors: Record<string, string> = {}
+
+  if (!config.raisonSociale.trim()) errors.raisonSociale = 'La raison sociale est requise'
+  if (!config.formeJuridique.trim()) errors.formeJuridique = 'La forme juridique est requise'
+
+  if (!config.siret.trim()) {
+    errors.siret = 'Le SIRET est requis'
+  } else if (!/^\d{14}$/.test(config.siret.trim())) {
+    errors.siret = 'Le SIRET doit contenir exactement 14 chiffres'
+  }
+
+  if (!config.adressePro.trim()) errors.adressePro = "L'adresse professionnelle est requise"
+  if (!config.cpPro.trim()) errors.cpPro = 'Le code postal est requis'
+  if (!config.villePro.trim()) errors.villePro = 'La ville est requise'
+
+  if (!config.assuranceNonRequise) {
+    if (!config.assureur.trim()) errors.assureur = "Le nom de l'assureur est requis"
+    if (!config.numAssurance.trim()) errors.numAssurance = "Le numéro de police d'assurance décennale est requis"
+  }
+
+  if (config.devisPrefixe && config.devisPrefixe.length > 6) {
+    errors.devisPrefixe = 'Le préfixe ne peut pas dépasser 6 caractères'
+  }
+
+  return errors
+}
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -34,7 +89,25 @@ export default function OnboardingPage() {
     primaryColor: '#22c55e',
     secondaryColor: '#18181b',
     websiteUrl: '',
+    raisonSociale: '',
+    formeJuridique: '',
+    siret: '',
+    tvaNumber: '',
+    tvaAssujetti: true,
+    adressePro: '',
+    cpPro: '',
+    villePro: '',
+    assureur: '',
+    numAssurance: '',
+    assuranceNonRequise: false,
+    devisPrefixe: 'DEV',
+    devisValidite: 90,
+    devisTvaDefaut: 10,
+    devisConditionsPaiement: '',
+    devisMentionLegale: '',
   })
+
+  const [legalErrors, setLegalErrors] = useState<Record<string, string>>({})
 
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
   const [copied, setCopied] = useState(false)
@@ -64,6 +137,22 @@ export default function OnboardingPage() {
             primaryColor: data.config.primaryColor || '#22c55e',
             secondaryColor: data.config.secondaryColor || '#18181b',
             websiteUrl: data.config.websiteUrl || '',
+            raisonSociale: data.config.raisonSociale || '',
+            formeJuridique: data.config.formeJuridique || '',
+            siret: data.config.siret || '',
+            tvaNumber: data.config.tvaNumber || '',
+            tvaAssujetti: data.config.tvaAssujetti !== false,
+            adressePro: data.config.adressePro || '',
+            cpPro: data.config.cpPro || '',
+            villePro: data.config.villePro || '',
+            assureur: data.config.assureur || '',
+            numAssurance: data.config.numAssurance || '',
+            assuranceNonRequise: data.config.assuranceNonRequise || false,
+            devisPrefixe: data.config.devisPrefixe || 'DEV',
+            devisValidite: data.config.devisValidite || 90,
+            devisTvaDefaut: data.config.devisTvaDefaut || 10,
+            devisConditionsPaiement: data.config.devisConditionsPaiement || '',
+            devisMentionLegale: data.config.devisMentionLegale || '',
           })
           if (data.config.artisanId) {
             setArtisanIdDisplay(data.config.artisanId)
@@ -75,6 +164,14 @@ export default function OnboardingPage() {
 
 
   const save = async () => {
+    const errors = validateLegalConfig(config)
+    setLegalErrors(errors)
+
+    if (Object.keys(errors).length > 0) {
+      setActiveSection('legal')
+      return
+    }
+
     setSaving(true)
     setSaved(false)
     try {
@@ -113,6 +210,21 @@ export default function OnboardingPage() {
     textTransform: 'uppercase',
     display: 'block',
     marginBottom: '6px',
+  }
+
+  const errorStyle: React.CSSProperties = {
+    color: '#f87171',
+    fontSize: '12px',
+    margin: '6px 0 0',
+  }
+
+  const checkboxRowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#a1a1aa',
+    fontSize: '13px',
+    cursor: 'pointer',
   }
 
   const sectionCard: React.CSSProperties = {
@@ -622,6 +734,244 @@ export default function OnboardingPage() {
                       onChange={e => setConfig(c => ({ ...c, address: e.target.value }))}
                       placeholder="12 rue de la Paix, 75001 Paris"
                       style={inputStyle}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section Infos légales */}
+          {activeSection === 'legal' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                📋 Informations légales
+              </h2>
+              <p style={{ color: '#71717a', fontSize: '13px', margin: '-12px 0 16px' }}>
+                Ces informations apparaissent sur vos devis et documents officiels.
+              </p>
+
+              {/* Groupe 1 — Identité professionnelle */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                  Identité professionnelle
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Raison sociale / Nom complet *</label>
+                    <input
+                      value={config.raisonSociale}
+                      onChange={e => setConfig(c => ({ ...c, raisonSociale: e.target.value }))}
+                      placeholder="Martin Rénovation SARL"
+                      style={inputStyle}
+                    />
+                    {legalErrors.raisonSociale && <p style={errorStyle}>{legalErrors.raisonSociale}</p>}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Forme juridique *</label>
+                      <select
+                        value={config.formeJuridique}
+                        onChange={e => setConfig(c => ({ ...c, formeJuridique: e.target.value }))}
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                      >
+                        <option value="">Sélectionner</option>
+                        {FORMES_JURIDIQUES.map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                      {legalErrors.formeJuridique && <p style={errorStyle}>{legalErrors.formeJuridique}</p>}
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>SIRET *</label>
+                      <input
+                        value={config.siret}
+                        onChange={e => setConfig(c => ({ ...c, siret: e.target.value.replace(/[^\d]/g, '') }))}
+                        placeholder="12345678901234"
+                        maxLength={14}
+                        inputMode="numeric"
+                        style={inputStyle}
+                      />
+                      {legalErrors.siret && <p style={errorStyle}>{legalErrors.siret}</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={!config.tvaAssujetti}
+                        onChange={e => setConfig(c => ({ ...c, tvaAssujetti: !e.target.checked }))}
+                      />
+                      Je ne suis pas assujetti à la TVA
+                    </label>
+                  </div>
+
+                  {config.tvaAssujetti && (
+                    <div>
+                      <label style={labelStyle}>Numéro de TVA intracommunautaire</label>
+                      <input
+                        value={config.tvaNumber}
+                        onChange={e => setConfig(c => ({ ...c, tvaNumber: e.target.value }))}
+                        placeholder="FR12345678901"
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Groupe 2 — Adresse professionnelle */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                  Adresse professionnelle
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Adresse *</label>
+                    <input
+                      value={config.adressePro}
+                      onChange={e => setConfig(c => ({ ...c, adressePro: e.target.value }))}
+                      placeholder="12 rue de la Paix"
+                      style={inputStyle}
+                    />
+                    {legalErrors.adressePro && <p style={errorStyle}>{legalErrors.adressePro}</p>}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Code postal *</label>
+                      <input
+                        value={config.cpPro}
+                        onChange={e => setConfig(c => ({ ...c, cpPro: e.target.value }))}
+                        placeholder="75001"
+                        style={inputStyle}
+                      />
+                      {legalErrors.cpPro && <p style={errorStyle}>{legalErrors.cpPro}</p>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Ville *</label>
+                      <input
+                        value={config.villePro}
+                        onChange={e => setConfig(c => ({ ...c, villePro: e.target.value }))}
+                        placeholder="Paris"
+                        style={inputStyle}
+                      />
+                      {legalErrors.villePro && <p style={errorStyle}>{legalErrors.villePro}</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Groupe 3 — Assurance */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                  Assurance
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={config.assuranceNonRequise}
+                        onChange={e => setConfig(c => ({ ...c, assuranceNonRequise: e.target.checked }))}
+                      />
+                      Mon métier ne requiert pas d&apos;assurance décennale
+                    </label>
+                  </div>
+
+                  {!config.assuranceNonRequise && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      <div>
+                        <label style={labelStyle}>Nom de l&apos;assureur *</label>
+                        <input
+                          value={config.assureur}
+                          onChange={e => setConfig(c => ({ ...c, assureur: e.target.value }))}
+                          placeholder="AXA, MAAF, ..."
+                          style={inputStyle}
+                        />
+                        {legalErrors.assureur && <p style={errorStyle}>{legalErrors.assureur}</p>}
+                      </div>
+                      <div>
+                        <label style={labelStyle}>N° police d&apos;assurance décennale *</label>
+                        <input
+                          value={config.numAssurance}
+                          onChange={e => setConfig(c => ({ ...c, numAssurance: e.target.value }))}
+                          placeholder="123456789"
+                          style={inputStyle}
+                        />
+                        {legalErrors.numAssurance && <p style={errorStyle}>{legalErrors.numAssurance}</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Groupe 4 — Préférences devis */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                  Préférences devis
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Préfixe numérotation</label>
+                      <input
+                        value={config.devisPrefixe}
+                        onChange={e => setConfig(c => ({ ...c, devisPrefixe: e.target.value.toUpperCase().slice(0, 6) }))}
+                        placeholder="DEV"
+                        maxLength={6}
+                        style={inputStyle}
+                      />
+                      {legalErrors.devisPrefixe && <p style={errorStyle}>{legalErrors.devisPrefixe}</p>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Délai de validité par défaut</label>
+                      <select
+                        value={config.devisValidite}
+                        onChange={e => setConfig(c => ({ ...c, devisValidite: Number(e.target.value) }))}
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                      >
+                        {DEVIS_VALIDITES.map(v => (
+                          <option key={v} value={v}>{v} jours</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Taux TVA par défaut</label>
+                      <select
+                        value={config.devisTvaDefaut}
+                        onChange={e => setConfig(c => ({ ...c, devisTvaDefaut: Number(e.target.value) }))}
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                      >
+                        {DEVIS_TVA_TAUX.map(t => (
+                          <option key={t} value={t}>{t}%</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Conditions de paiement par défaut</label>
+                    <textarea
+                      value={config.devisConditionsPaiement}
+                      onChange={e => setConfig(c => ({ ...c, devisConditionsPaiement: e.target.value }))}
+                      placeholder="30% à la commande, solde à la livraison"
+                      rows={3}
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Mention légale personnalisée</label>
+                    <textarea
+                      value={config.devisMentionLegale}
+                      onChange={e => setConfig(c => ({ ...c, devisMentionLegale: e.target.value }))}
+                      placeholder="Artisan RGE certifié"
+                      rows={2}
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
                     />
                   </div>
                 </div>

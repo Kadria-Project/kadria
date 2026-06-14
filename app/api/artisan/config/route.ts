@@ -33,6 +33,21 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    if (body.siret !== undefined && body.siret !== '' && !/^\d{14}$/.test(String(body.siret))) {
+      return NextResponse.json(
+        { success: false, error: 'Le SIRET doit contenir exactement 14 chiffres' },
+        { status: 400 }
+      )
+    }
+
+    if (body.devisPrefixe !== undefined && String(body.devisPrefixe).length > 6) {
+      return NextResponse.json(
+        { success: false, error: 'Le préfixe de numérotation ne peut pas dépasser 6 caractères' },
+        { status: 400 }
+      )
+    }
+
     const config = await getArtisanConfig(session.artisanId)
 
     if (!config) {
@@ -56,6 +71,30 @@ export async function PATCH(request: NextRequest) {
     if (body.secondaryColor !== undefined) fields['Secondary Color'] = body.secondaryColor
     if (body.websiteUrl   !== undefined) fields['Website URL']      = body.websiteUrl
     if (body.trades       !== undefined) fields['Trades']           = body.trades
+
+    // Informations légales
+    if (body.raisonSociale !== undefined) fields['Raison Sociale']  = body.raisonSociale
+    if (body.formeJuridique !== undefined) fields['Forme Juridique'] = body.formeJuridique
+    if (body.siret         !== undefined) fields['SIRET']           = body.siret
+    if (body.tvaNumber     !== undefined) fields['TVA Number']      = body.tvaNumber
+    if (body.tvaAssujetti  !== undefined) fields['TVA Assujetti']   = body.tvaAssujetti
+    if (body.adressePro    !== undefined) fields['Adresse Pro']      = body.adressePro
+    if (body.cpPro         !== undefined) fields['CP Pro']           = body.cpPro
+    if (body.villePro      !== undefined) fields['Ville Pro']        = body.villePro
+
+    // Assurance
+    if (body.assureur      !== undefined) fields['Assureur']         = body.assureur
+    if (body.numAssurance  !== undefined) fields['Num Assurance']    = body.numAssurance
+    if (body.assuranceNonRequise !== undefined) fields['Assurance Non Requise'] = body.assuranceNonRequise
+
+    // Préférences devis
+    if (body.devisPrefixe  !== undefined) fields['Devis Prefixe']    = body.devisPrefixe
+    if (body.devisValidite !== undefined) fields['Devis Validite']   = body.devisValidite
+    if (body.devisTvaDefaut !== undefined) fields['Devis TVA Defaut'] = body.devisTvaDefaut
+    if (body.devisConditionsPaiement !== undefined) fields['Devis Conditions Paiement'] = body.devisConditionsPaiement
+    if (body.devisMentionLegale !== undefined) fields['Devis Mention Legale'] = body.devisMentionLegale
+    if (body.devisCompteur !== undefined) fields['Devis Compteur']   = body.devisCompteur
+    if (body.prestationsJson !== undefined) fields['Prestations JSON'] = body.prestationsJson
 
     await updateArtisanConfig(config.id, fields)
     return NextResponse.json({ success: true })
