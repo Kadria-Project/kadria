@@ -17,6 +17,7 @@ import {
   FileText,
   Globe,
   LayoutDashboard,
+  Mail,
   MapPin,
   Menu,
   MessageCircle,
@@ -2494,16 +2495,78 @@ function DarkNav() {
 
 function DarkFooter() {
   return (
-    <footer className="border-t border-zinc-800 py-10">
-      <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
-        <Link href="/" className="text-lg font-bold text-white">
-          <span className="text-green-500">K</span>adria
-        </Link>
-        <p>© 2025 Kadria. Tous droits réservés.</p>
-        <div className="flex items-center gap-4">
-          <Link href="/mentions-legales" className="transition-colors hover:text-white">Mentions légales</Link>
-          <Link href="/cgu" className="transition-colors hover:text-white">CGU</Link>
-          <Link href="/contact" className="transition-colors hover:text-white">Contact</Link>
+    <footer>
+      {/* ZONE 1 — PRINCIPALE */}
+      <div className="border-t border-zinc-800 py-16">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-12">
+          {/* Colonne 1 — Brand */}
+          <div>
+            <Link href="/" className="text-lg font-bold text-white">
+              <span className="text-green-500">K</span>adria
+            </Link>
+            <p className="mt-3 max-w-[200px] text-sm text-zinc-400">
+              L&apos;assistant qui transforme vos appels en chantiers qualifiés.
+            </p>
+            <div className="mt-5 flex items-center gap-4">
+              <Link href="#" aria-label="LinkedIn" className="text-zinc-400 transition-colors hover:text-white">
+                <Globe size={18} />
+              </Link>
+              <Link href="#" aria-label="Twitter / X" className="text-zinc-400 transition-colors hover:text-white">
+                <X size={18} />
+              </Link>
+            </div>
+          </div>
+
+          {/* Colonne 2 — Produit */}
+          <div>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Produit</p>
+            <div className="flex flex-col gap-3">
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Fonctionnalités</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Tarifs</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Démo</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Assistant vocal</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">CRM</Link>
+            </div>
+          </div>
+
+          {/* Colonne 3 — Ressources */}
+          <div>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Ressources</p>
+            <div className="flex flex-col gap-3">
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Comment ça marche</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Par métier</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Blog</Link>
+              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Support</Link>
+            </div>
+          </div>
+
+          {/* Colonne 4 — Contact */}
+          <div>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Contact</p>
+            <Link href="#" className="flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              <Mail size={14} />
+              contact@kadria.fr
+            </Link>
+            <p className="mt-2 text-xs text-zinc-400">Réponse sous 24h</p>
+            <div className="mt-4 flex items-center gap-2">
+              <span className="kr-badge-pulse inline-flex items-center gap-1.5 rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
+                🟢 Disponible
+              </span>
+              <span className="text-sm text-zinc-400">Onboarding ouvert</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ZONE 2 — BARRE LÉGALE */}
+      <div className="border-t border-zinc-800 py-6">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 lg:px-12">
+          <p className="text-sm text-zinc-400">© 2025 Kadria. Tous droits réservés.</p>
+          <div className="flex items-center gap-6">
+            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Mentions légales</Link>
+            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Politique de confidentialité</Link>
+            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">CGU</Link>
+          </div>
         </div>
       </div>
     </footer>
