@@ -100,43 +100,57 @@ export async function POST(request: NextRequest) {
     const numero = (config.devisCompteur || 0) + 1
     const devisNumber = `${prefixe}-${new Date().getFullYear()}-${String(numero).padStart(3, '0')}`
 
-    const devis = await createDevis({
-      'Devis Number': devisNumber,
-      'Projet ID': body.projetId,
-      'Artisan ID': session.artisanId,
-      'Date Emission': body.dateEmission || '',
-      'Date Validite': body.dateValidite || '',
-      'Objet': body.objet,
-      'Lignes JSON': JSON.stringify(body.lines || []),
-      'Total HT': Number(body.totalHT) || 0,
-      'Total TVA': Number(body.totalTVA) || 0,
-      'TVA Breakdown JSON': JSON.stringify(body.tvaBreakdown || {}),
-      'Total TTC': Number(body.totalTTC) || 0,
-      'Conditions Paiement': body.conditionsPaiement || '',
-      'Delai Execution': body.delaiExecution || '',
-      'Mentions Legales': body.mentionsLegales || '',
-      'Note Interne': body.noteInterne || '',
-      'Statut': 'Brouillon',
-      'Client Name': body.clientName || '',
-      'Client Address': body.clientAddress || '',
-      'Client Email': body.clientEmail || '',
-      'Client Phone': body.clientPhone || '',
-      'Created At': new Date().toISOString(),
-    })
+    let devis
+    try {
+      devis = await createDevis({
+        'Devis Number': devisNumber,
+        'Projet ID': body.projetId,
+        'Artisan ID': session.artisanId,
+        'Date Emission': body.dateEmission || '',
+        'Date Validite': body.dateValidite || '',
+        'Objet': body.objet,
+        'Lignes JSON': JSON.stringify(body.lines || []),
+        'Total HT': Number(body.totalHT) || 0,
+        'Total TVA': Number(body.totalTVA) || 0,
+        'TVA Breakdown JSON': JSON.stringify(body.tvaBreakdown || {}),
+        'Total TTC': Number(body.totalTTC) || 0,
+        'Conditions Paiement': body.conditionsPaiement || '',
+        'Delai Execution': body.delaiExecution || '',
+        'Mentions Legales': body.mentionsLegales || '',
+        'Note Interne': body.noteInterne || '',
+        'Statut': 'Brouillon',
+        'Client Name': body.clientName || '',
+        'Client Address': body.clientAddress || '',
+        'Client Email': body.clientEmail || '',
+        'Client Phone': body.clientPhone || '',
+        'Created At': new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error('[DEVIS POST] Création du devis échouée', error)
+      return NextResponse.json(
+        { success: false, error: String(error) },
+        { status: 500 }
+      )
+    }
 
     await updateArtisanConfig(config.id, { 'Devis Compteur': numero })
 
-    await airtableBase(TABLES.projects).update(body.projetId, {
-      Devis_amount: Number(body.totalTTC) || 0,
-    })
+    try {
+      await airtableBase(TABLES.projects).update(body.projetId, {
+        Devis_amount: Number(body.totalTTC) || 0,
+        Status: 'Devis envoyé',
+      })
 
-    await createActivityLog(
-      body.projetId,
-      'DEVIS_CREATED',
-      `Devis ${devisNumber} généré — ${(Number(body.totalTTC) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC`
-    )
+      await createActivityLog(
+        body.projetId,
+        'DEVIS_CREATED',
+        `Devis ${devisNumber} généré — ${(Number(body.totalTTC) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC`
+      )
+    } catch (error) {
+      console.error('[DEVIS POST] Mise à jour du projet échouée', error)
+    }
 
-    return NextResponse.json({ success: true, devis })
+    return NextResponse.json({ success: true, devis, devis_id: devis.id, numero: devisNumber })
   } catch (error) {
     console.error('[DEVIS POST]', error)
     return NextResponse.json(
