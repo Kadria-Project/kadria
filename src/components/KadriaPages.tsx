@@ -1919,6 +1919,9 @@ export function LandingRoutePage() {
                 <Link href="/demo-request" className="underline transition-colors hover:text-white">
                   Demander une démo
                 </Link>
+                <Link href="/demo-dashboard" className="text-sm text-zinc-400 hover:text-zinc-100">
+                  Voir le dashboard en direct →
+                </Link>
               </div>
               <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
                 {[
