@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, ArrowRight, Zap } from 'lucide-react';
+import { DarkNav } from '@/src/components/DarkNav';
+import { useScrollReveal, ANIMATION_STYLES } from '@/src/components/KadriaPages';
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline';
 
 type Exchange = { role: 'assistant' | 'user'; content: string };
@@ -301,6 +304,8 @@ const SCENARIOS: Record<string, ScenarioData> = {
 const STEPPER = ['Demande', 'Qualification', 'Coordonnées', 'Dossier projet'];
 
 export default function DemoPage() {
+  useScrollReveal();
+
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
   const [scenarioStep, setScenarioStep] = useState(1);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -353,159 +358,211 @@ export default function DemoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <header className="border-b border-zinc-800">
-        <div className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6">
-          <Link href="/" className="text-lg font-bold text-green-500">
-            Kadria
-          </Link>
+    <div className="relative min-h-screen bg-zinc-950 text-white">
+      <style>{ANIMATION_STYLES}</style>
 
-          <Link href="/dashboard-v2" className="text-sm text-zinc-400 hover:text-white">
-            Connexion
-          </Link>
-        </div>
-      </header>
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(34,197,94,0.05)_0%,transparent_60%)]" />
 
-      <main className="mx-auto max-w-[1100px] px-6 py-16 space-y-10">
+      <DarkNav />
+
+      <main className="relative z-10 mx-auto max-w-5xl px-6 pb-16 pt-[100px]">
         {!scenario ? (
           <>
-            <div className="text-center space-y-3">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">
-                Découvrez Kadria en moins d'une minute.
+            <section className="kr-reveal kr-visible space-y-4 pb-12 text-center">
+              <span className="text-xs font-semibold uppercase tracking-widest text-green-500">
+                Démo interactive
+              </span>
+              <h1 className="text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight text-white">
+                Voyez Kadria <span className="text-green-500">qualifier</span> un prospect
               </h1>
-
-              <p className="text-zinc-400">
-                Voyez comment une simple demande devient un dossier chantier prêt à être traité.
+              <p className="mx-auto max-w-xl text-base text-zinc-400">
+                Choisissez un scénario et observez comment Kadria transforme une demande en dossier
+                complet en moins de 3 minutes.
               </p>
-            </div>
+            </section>
 
-            <p className="text-center text-sm text-zinc-400">Choisissez un scénario :</p>
+            <section className="border-t border-zinc-800 pb-12 pt-12">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(SCENARIOS).map(([name, data], index) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => selectScenario(name)}
+                    className={`kr-reveal kr-reveal-delay-${Math.min(index + 1, 6)} cursor-pointer rounded-2xl border bg-zinc-900 p-7 text-left transition-all duration-200 hover:-translate-y-[3px] ${
+                      selectedScenario === name
+                        ? 'border-green-500 bg-green-500/[0.06] shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
+                        : 'border-zinc-800 hover:border-green-500/30 hover:bg-green-500/[0.04]'
+                    }`}
+                  >
+                    <div className="mb-3 text-[32px]">{data.emoji}</div>
+                    <div className="text-base font-bold text-white">{name}</div>
+                  </button>
+                ))}
+              </div>
+            </section>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {Object.entries(SCENARIOS).map(([name, data]) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => selectScenario(name)}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center transition-colors hover:border-zinc-600 hover:bg-zinc-800"
+            <section className="kr-reveal border-t border-zinc-800 pb-12 pt-12">
+              <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-green-500/30 bg-zinc-900 p-6 sm:flex-row sm:p-8">
+                <div className="text-center sm:text-left">
+                  <p className="text-base font-bold text-white">Tester avec votre propre projet</p>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Connectez Kadria à votre activité en 15 minutes
+                  </p>
+                </div>
+                <Link
+                  href="/register"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] sm:w-auto"
                 >
-                  <div className="text-3xl mb-2">{data.emoji}</div>
-                  <div className="text-white font-medium">{name}</div>
-                </button>
-              ))}
-            </div>
+                  Commencer gratuitement <ArrowRight size={16} />
+                </Link>
+              </div>
+            </section>
 
-            <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-5 text-center space-y-3">
-              <p className="text-white font-semibold">⚡ Envie de tester en conditions réelles ?</p>
-              <p className="text-sm text-zinc-400">
-                Ces scénarios sont générés par notre moteur de qualification. Testez-le avec votre propre projet.
-              </p>
-              <button
-                type="button"
-                onClick={scrollToChat}
-                className="inline-flex items-center justify-center rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-green-400 transition-colors"
-              >
-                Tester Kadria maintenant →
-              </button>
-            </div>
-
-            <div ref={chatRef} className="pt-4">
-              <ChatWidgetInline artisanId="Artisan_demo" />
-            </div>
+            <section className="kr-reveal border-t border-zinc-800 pt-12">
+              <div ref={chatRef} className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900">
+                <ChatHeader />
+                <div className="p-5">
+                  <ChatWidgetInline artisanId="Artisan_demo" />
+                </div>
+              </div>
+            </section>
           </>
         ) : (
           <>
-            <div className="flex items-center justify-between">
+            <section className="flex items-center justify-between pt-4">
               <button
                 type="button"
                 onClick={() => setSelectedScenario(null)}
-                className="text-sm text-zinc-400 hover:text-white"
+                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors duration-150 hover:text-white"
               >
-                ← Changer de scénario
+                <ArrowLeft size={16} /> Changer de scénario
               </button>
 
               <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-sm text-white">
                 {scenario.emoji} {selectedScenario}
               </span>
-            </div>
+            </section>
 
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              {STEPPER.map((label, index) => {
-                const stepNumber = index + 1;
-                const isActive = stepNumber === scenarioStep;
+            <section className="pt-8">
+              <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+                <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
+                  {STEPPER.map((label, index) => {
+                    const stepNumber = index + 1;
+                    const isActive = stepNumber === scenarioStep;
+                    const isDone = stepNumber < scenarioStep;
 
-                return (
-                  <div key={label} className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                          isActive ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-400'
-                        }`}
-                      >
-                        {stepNumber}
-                      </span>
-                      <span className={`text-sm ${isActive ? 'text-white' : 'text-zinc-400'}`}>
-                        {label}
-                      </span>
-                    </div>
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                              isActive || isDone ? 'bg-green-500 text-zinc-950' : 'bg-zinc-800 text-zinc-400'
+                            }`}
+                          >
+                            {stepNumber}
+                          </span>
+                          <span className={`text-sm ${isActive ? 'text-white' : 'text-zinc-400'}`}>
+                            {label}
+                          </span>
+                        </div>
 
-                    {index < STEPPER.length - 1 && <span className="text-zinc-600 px-1">———</span>}
-                  </div>
-                );
-              })}
-            </div>
+                        {index < STEPPER.length - 1 && (
+                          <span className={`mx-1 block h-[2px] w-8 rounded-full ${isDone ? 'bg-green-500' : 'bg-zinc-800'}`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
-            {scenarioStep < 4 ? (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
-                <p className="text-green-500 text-xs uppercase tracking-widest">{currentLabel}</p>
+                <div className="p-6">
+                  {scenarioStep < 4 ? (
+                    <div className="space-y-4">
+                      <p className="text-xs uppercase tracking-widest text-green-500">{currentLabel}</p>
 
-                <div className="space-y-3 min-h-[180px]">
-                  {currentMessages.slice(0, visibleCount).map((message, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
-                          message.role === 'user' ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-100'
-                        }`}
-                      >
-                        {message.content}
+                      <div className="min-h-[180px] space-y-3">
+                        {currentMessages.slice(0, visibleCount).map((message, index) => (
+                          <div
+                            key={index}
+                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                                message.role === 'user'
+                                  ? 'bg-green-500 text-zinc-950'
+                                  : 'bg-zinc-800 text-zinc-100'
+                              }`}
+                            >
+                              {message.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          type="button"
+                          onClick={scrollToChat}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-400 transition-colors duration-150 hover:border-green-500/30 hover:text-green-500"
+                        >
+                          <Zap size={14} /> Tester avec mon propre projet
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setScenarioStep((s) => Math.min(s + 1, 4))}
+                          className="inline-flex items-center gap-2 rounded-[10px] bg-green-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
+                        >
+                          Étape suivante <ArrowRight size={16} />
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <button type="button" onClick={scrollToChat} className="text-sm text-zinc-400 hover:text-white">
-                    ⚡ Tester avec mon propre projet
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setScenarioStep((s) => Math.min(s + 1, 4))}
-                    className="inline-flex items-center justify-center rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-green-400 transition-colors"
-                  >
-                    Étape suivante →
-                  </button>
+                  ) : (
+                    <DossierCard
+                      label={scenario.etape4.label}
+                      dossier={scenario.etape4.dossier}
+                      onRestart={() => setScenarioStep(1)}
+                      onTestYourProject={scrollToChat}
+                    />
+                  )}
                 </div>
               </div>
-            ) : (
-              <DossierCard
-                label={scenario.etape4.label}
-                dossier={scenario.etape4.dossier}
-                onRestart={() => setScenarioStep(1)}
-                onTestYourProject={scrollToChat}
-              />
-            )}
+            </section>
 
-            <div ref={chatRef} className="pt-4 space-y-3">
-              <p className="text-center text-sm text-zinc-400">Testez Kadria avec votre propre projet :</p>
-              <ChatWidgetInline artisanId="Artisan_demo" />
-            </div>
+            <section className="border-t border-zinc-800 pt-12">
+              <div ref={chatRef} className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900">
+                <ChatHeader />
+                <div className="border-b border-zinc-800 bg-zinc-800/40 px-5 py-3 text-center text-sm text-zinc-400">
+                  Testez Kadria avec votre propre projet
+                </div>
+                <div className="p-5">
+                  <ChatWidgetInline artisanId="Artisan_demo" />
+                </div>
+              </div>
+            </section>
           </>
         )}
+
+        <footer className="border-t border-zinc-800 py-8 text-center text-sm text-zinc-400">
+          © 2025 Kadria · <Link href="/" className="text-zinc-400 transition-colors duration-150 hover:text-white">Retour à l&apos;accueil</Link>
+        </footer>
       </main>
+    </div>
+  );
+}
+
+function ChatHeader() {
+  return (
+    <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm font-extrabold text-zinc-950">
+          K
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white">Kadria</p>
+          <p className="text-xs text-zinc-400">Assistant en ligne</p>
+        </div>
+      </div>
+      <span className="kr-badge-pulse h-2.5 w-2.5 rounded-full bg-green-500" />
     </div>
   );
 }
@@ -522,28 +579,28 @@ function DossierCard({
   onTestYourProject: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-5">
-      <p className="text-green-500 text-xs uppercase tracking-widest">{label}</p>
+    <div className="space-y-5">
+      <p className="text-xs uppercase tracking-widest text-green-500">{label}</p>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span className="text-sm font-semibold text-white uppercase tracking-wide">Dossier projet reçu</span>
+          <span className="text-sm font-semibold uppercase tracking-wide text-white">Dossier projet reçu</span>
         </div>
 
-        <span className="rounded-full bg-green-500/10 border border-green-500/20 px-3 py-1 text-xs font-semibold text-green-500">
+        <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-500">
           Score {dossier.score}
         </span>
       </div>
 
-      <div className="rounded-lg bg-zinc-800/50 p-4 space-y-1">
-        <p className="text-white font-semibold">{dossier.nom}</p>
+      <div className="space-y-1 rounded-lg bg-zinc-800/50 p-4">
+        <p className="font-semibold text-white">{dossier.nom}</p>
         <p className="text-sm text-zinc-400">{dossier.tel}</p>
         <p className="text-sm text-zinc-400">{dossier.email}</p>
-        <span className="inline-block mt-2 rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-200">Nouveau</span>
+        <span className="mt-2 inline-block rounded-full bg-zinc-800 px-3 py-1 text-xs text-zinc-200">Nouveau</span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <DossierField label="Projet" value={dossier.projet} />
         <DossierField label="Ville" value={dossier.ville} />
         <DossierField label="Budget" value={dossier.budget} />
@@ -557,22 +614,26 @@ function DossierCard({
 
       <div className="flex items-center justify-between">
         <span className="text-sm text-zinc-400">Score {dossier.score}</span>
-        <span className="rounded-full bg-green-500/10 border border-green-500/20 px-3 py-1 text-xs font-semibold text-green-500">
+        <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-500">
           ✅ Conversion Élevée
         </span>
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <button type="button" onClick={onRestart} className="text-sm text-zinc-400 hover:text-white">
-          ← Recommencer
+        <button
+          type="button"
+          onClick={onRestart}
+          className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-400 transition-colors duration-150 hover:border-green-500/30 hover:text-green-500"
+        >
+          <ArrowLeft size={14} /> Recommencer
         </button>
 
         <button
           type="button"
           onClick={onTestYourProject}
-          className="inline-flex items-center justify-center rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-green-400 transition-colors"
+          className="inline-flex items-center gap-2 rounded-[10px] bg-green-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
         >
-          Tester avec votre projet →
+          Tester avec votre projet <ArrowRight size={16} />
         </button>
       </div>
     </div>
