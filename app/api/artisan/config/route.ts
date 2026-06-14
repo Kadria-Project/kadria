@@ -98,6 +98,9 @@ if (body.devisMentionLegale !== undefined) fields['devis_mention_legale'] = body
 if (body.devisCompteur !== undefined) fields['devis_compteur'] = body.devisCompteur
 if (body.prestationsJson !== undefined) fields['prestations_json'] = body.prestationsJson
 
+    console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
+    console.log('[CONFIG PATCH] Champs écrits Airtable:', Object.keys(fields))
+
     await updateArtisanConfig(config.id, fields)
     return NextResponse.json({ success: true })
   } catch (error) {
