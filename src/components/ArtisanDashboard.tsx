@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { getProjects, updateProject } from '@/src/lib/api';
@@ -31,6 +31,9 @@ import {
   AlertCircle,
   ShoppingCart,
   X,
+  Download,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
@@ -149,6 +152,64 @@ function timeAgo(dateStr: string): string {
   if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)}sem`;
 
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+function escapeCsvValue(value: unknown): string {
+  const str = String(value ?? '').replace(/"/g, '""');
+
+  return `"${str}"`;
+}
+
+function exportToCSV(projects: Project[], filename: string) {
+  const headers = [
+    'Référence',
+    'Date reçu',
+    'Nom client',
+    'Téléphone',
+    'Email',
+    'Adresse',
+    'Projet',
+    'Métier',
+    'Ville',
+    'Budget',
+    'Score IA',
+    'Statut',
+    'Source',
+    'Montant devis',
+    'Date clôture',
+  ];
+
+  const rows = projects.map((p) => [
+    p.projectNumber,
+    p.createdAt ? format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr }) : '',
+    `${p.clientFirstName || ''} ${p.clientName || ''}`.trim(),
+    p.clientPhone,
+    p.clientEmail,
+    p.siteAddress,
+    p.projectType || p.trade,
+    p.trade,
+    p.city,
+    p.budget,
+    p.completenessScore != null ? `${p.completenessScore}%` : '',
+    p.status,
+    p.source,
+    p.devisAmount || '',
+    '',
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(';'))
+    .join('\r\n');
+
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+
+  URL.revokeObjectURL(url);
 }
 
 const cardStyle: React.CSSProperties = {
@@ -565,6 +626,86 @@ function Dashboard() {
     setFilters(DEFAULT_FILTERS);
     setSearchInput('');
     setQuickFilter(null);
+  };
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; error?: boolean }>({
+    visible: false,
+    message: '',
+  });
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
+
+  const showToast = (message: string, error = false) => {
+    setToast({ visible: true, message, error });
+    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+  };
+
+  const activeFilterLabels = [
+    filters.search && `Recherche: ${filters.search}`,
+    filters.statut && `Statut: ${filters.statut}`,
+    filters.metier && `Métier: ${filters.metier}`,
+    filters.budget && `Budget: ${BUDGET_OPTIONS.find((b) => b.value === filters.budget)?.label ?? filters.budget}`,
+    filters.score && `Score: ${SCORE_OPTIONS.find((s) => s.value === filters.score)?.label ?? filters.score}`,
+    filters.periode && `Période: ${PERIODE_OPTIONS.find((p) => p.value === filters.periode)?.label ?? filters.periode}`,
+    filters.source && `Source: ${SOURCE_OPTIONS.find((s) => s.value === filters.source)?.label ?? filters.source}`,
+  ].filter(Boolean) as string[];
+
+  const handleExportCSV = () => {
+    setExportMenuOpen(false);
+
+    try {
+      const dateStr = format(new Date(), 'yyyy-MM-dd');
+
+      exportToCSV(filteredProjects, `kadria-dossiers-${dateStr}.csv`);
+      showToast(`✓ Export CSV téléchargé — ${filteredProjects.length} dossiers`);
+    } catch (error) {
+      console.error('EXPORT_CSV_ERROR', error);
+      showToast('✗ Erreur lors de l’export', true);
+    }
+  };
+
+  const handleExportPDF = async (type: 'list' | 'monthly') => {
+    setExportMenuOpen(false);
+    showToast('✓ PDF en cours de génération...');
+
+    try {
+      const res = await fetch('/api/export/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projects: type === 'monthly' ? allProjects : filteredProjects,
+          type,
+          filtersLabel: activeFilterLabels.join(', '),
+        }),
+      });
+
+      if (!res.ok) throw new Error('Export PDF failed');
+
+      const html = await res.text();
+      const win = window.open('', '_blank');
+
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      }
+    } catch (error) {
+      console.error('EXPORT_PDF_ERROR', error);
+      showToast('✗ Erreur lors de l’export', true);
+    }
   };
 
   return (
@@ -1226,6 +1367,56 @@ function Dashboard() {
                 >
                   🗂️ Kanban
                 </button>
+
+                <div className="relative" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setExportMenuOpen((v) => !v)}
+                    className="flex items-center gap-2 rounded-[10px] border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors duration-150 hover:border-green-500/30"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Exporter
+                  </button>
+
+                  {exportMenuOpen && (
+                    <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                      >
+                        📄 Exporter en CSV
+                        <p className="text-xs text-zinc-400">Tous les dossiers filtrés</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleExportPDF('list')}
+                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                      >
+                        📑 Exporter en PDF
+                        <p className="text-xs text-zinc-400">Rapport complet mis en forme</p>
+                      </button>
+
+                      <div className="my-1 border-t border-zinc-800" />
+
+                      <button
+                        type="button"
+                        onClick={() => handleExportPDF('monthly')}
+                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                      >
+                        📊 Rapport mensuel PDF
+                        <p className="text-xs text-zinc-400">Synthèse du mois en cours</p>
+                      </button>
+                    </div>
+                  )}
+
+                  {hasActiveFilters && (
+                    <p className="mt-1 text-right text-xs text-zinc-400">
+                      {filteredProjects.length} dossier(s) sélectionné(s)
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1281,6 +1472,15 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <div
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border px-5 py-3.5 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
+          toast.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        } ${toast.error ? 'border-red-600 bg-zinc-900 text-red-400' : 'border-green-500/30 bg-zinc-900 text-zinc-100'}`}
+      >
+        {toast.error ? <XCircle className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
+        {toast.message}
+      </div>
     </div>
   );
 }
