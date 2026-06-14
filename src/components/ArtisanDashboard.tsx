@@ -21,6 +21,7 @@ import {
   Send,
   Trophy,
   ChevronRight,
+  ChevronDown,
   LogOut,
   Euro,
   Target,
@@ -196,6 +197,23 @@ function Dashboard() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  const [openPanel, setOpenPanel] = useState<'pipeline' | 'chantiers' | null>(null);
+  useEffect(() => {
+    const restore = () => {
+      const saved = localStorage.getItem('kadria_dashboard_panels');
+      if (saved === 'pipeline' || saved === 'chantiers') setOpenPanel(saved);
+    };
+    restore();
+  }, []);
+
+  const togglePanel = (panel: 'pipeline' | 'chantiers') => {
+    setOpenPanel((prev) => {
+      const next = prev === panel ? null : panel;
+      localStorage.setItem('kadria_dashboard_panels', next ?? '');
+      return next;
+    });
+  };
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -620,229 +638,273 @@ function Dashboard() {
           <Calendar artisanId="" />
         </div>
       ) : (
-        <div style={{ padding: 0, marginBottom: '24px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px' }} className="!grid-cols-1 lg:!grid-cols-[1fr_380px]">
-            {/* Colonne principale */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1 max-w-xl">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-
-                  <Input
-                    className="pl-9"
-                    placeholder="Rechercher un client, un projet…"
-                    value={searchInput}
-                    onChange={(e) => {
-                      setSearchInput(e.target.value);
-                      setQuickFilter(null);
-                      debouncedSearch(e.target.value);
-                    }}
-                  />
-                </div>
-
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) => {
-                    setQuickFilter(null);
-                    setStatusFilter(v === 'all' ? '' : v);
-                  }}
+        <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
+          {/* ZONE 1 — Top 3 opportunités */}
+          {!loading && topOpportunities.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {topOpportunities.map((project, index) => (
+                <button
+                  key={project.id}
+                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                  className={`rounded-2xl border p-5 flex flex-col gap-3 text-left transition-transform duration-200 hover:-translate-y-0.5 ${
+                    index === 0
+                      ? 'border-green-500/25 bg-green-500/[0.02]'
+                      : 'border-zinc-800 bg-zinc-900'
+                  }`}
                 >
-                  <SelectTrigger className="w-full sm:w-44">
-                    <SelectValue placeholder="Tous les statuts" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-
-                    {STATUS_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={tradeFilter}
-                  onValueChange={(v) => {
-                    setQuickFilter(null);
-                    setTradeFilter(v === 'all' ? '' : v);
-                  }}
-                >
-                  <SelectTrigger className="w-full sm:w-44">
-                    <SelectValue placeholder="Tous les métiers" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="all">Tous les métiers</SelectItem>
-
-                    {trades.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button variant="ghost" onClick={resetFilters}>
-                  Réinitialiser
-                </Button>
-              </div>
-
-              {quickFilter && (
-                <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
-                  <p className="text-sm text-zinc-400">
-                    Filtre actif :{' '}
-                    <span className="text-white font-medium">
-                      {quickFilter === 'today' ? 'Relances du jour' : 'Relances en retard'}
+                  <div className="flex items-center justify-between">
+                    <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
+                      #{index + 1}
                     </span>
-                  </p>
 
-                  <Button variant="ghost" size="sm" onClick={() => setQuickFilter(null)}>
-                    Afficher tous les dossiers
-                  </Button>
-                </div>
-              )}
-
-              {loading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20 rounded-xl bg-zinc-800" />
-                  ))}
-                </div>
-              ) : displayedProjects.length === 0 ? (
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
-                  <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
-                  <p className="text-zinc-400">Aucun dossier trouvé</p>
-                </div>
-              ) : (
-                <ProjectList projects={displayedProjects} router={router} />
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <div className="flex flex-col gap-4">
-              {!loading && topOpportunities.length > 0 && (
-                <div>
-                  <h3 className="text-white font-semibold mb-3">🏆 Top opportunités</h3>
-
-                  <div className="flex flex-col gap-3">
-                    {topOpportunities.map((project, index) => (
-                      <button
-                        key={project.id}
-                        onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-3 text-left hover:bg-zinc-800 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
-                            #{index + 1}
-                          </span>
-
-                          <span style={{ fontSize: '14px', fontWeight: 700 }} className="text-green-400">
-                            {opportunityScore(project)}
-                          </span>
-                        </div>
-
-                        <div>
-                          <p style={{ fontSize: '14px', fontWeight: 600 }} className="text-white truncate">
-                            {project.clientFirstName} {project.clientName}
-                          </p>
-
-                          <p style={{ fontSize: '12px' }} className="text-zinc-400 truncate">
-                            {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={project.status} />
-
-                          <span className="text-zinc-400 text-xs">
-                            {project.budget || 'Budget non renseigné'}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                    <span className="text-green-400 font-bold text-sm">
+                      {opportunityScore(project)}
+                    </span>
                   </div>
-                </div>
-              )}
-
-              {!loading && (
-                <div>
-                  <h3 className="text-white font-semibold mb-3">Pipeline</h3>
 
                   <div>
-                    {pipelineSteps.map((step) => {
-                      const style = BADGE_STYLES[step.label] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
-                      const total = allProjects.length || 1;
-                      const pct = step.value > 0 ? Math.max(Math.round((step.value / total) * 100), 4) : 0;
+                    <p className="font-bold text-white truncate">
+                      {project.clientFirstName} {project.clientName}
+                    </p>
 
-                      return (
-                        <div
-                          key={step.label}
-                          style={{
-                            padding: '10px 14px',
-                            background: '#18181b',
-                            borderRadius: '8px',
-                            marginBottom: '4px',
-                            fontSize: '13px',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ color: style.color, fontSize: '13px' }}>{step.label}</span>
+                    <p className="text-sm text-zinc-400 truncate">
+                      {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
+                    </p>
+                  </div>
 
-                            <span
-                              style={{
-                                background: style.bg,
-                                color: style.color,
-                                borderRadius: '20px',
-                                padding: '2px 10px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              {step.value}
-                            </span>
-                          </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={project.status} />
 
-                          <div
+                    <span className="text-zinc-400 text-xs">
+                      {project.budget || 'Budget non renseigné'}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ZONE 2 — Toggles */}
+          <div className="flex flex-row gap-3">
+            <button
+              onClick={() => togglePanel('pipeline')}
+              className={`flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors ${
+                openPanel === 'pipeline'
+                  ? 'border-green-500/25 bg-green-500/[0.06] text-green-400'
+                  : 'border-zinc-800 bg-zinc-900 text-white'
+              }`}
+            >
+              📊 Pipeline
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${openPanel === 'pipeline' ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            <button
+              onClick={() => togglePanel('chantiers')}
+              className={`flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-medium transition-colors ${
+                openPanel === 'chantiers'
+                  ? 'border-green-500/25 bg-green-500/[0.06] text-green-400'
+                  : 'border-zinc-800 bg-zinc-900 text-white'
+              }`}
+            >
+              🗺️ Chantiers
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </div>
+
+          {/* ZONE 3 — Panneau accordéon */}
+          <div
+            className="rounded-2xl border border-zinc-800 overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              maxHeight: openPanel === 'pipeline' ? '600px' : '0px',
+              opacity: openPanel === 'pipeline' ? 1 : 0,
+            }}
+          >
+            {openPanel === 'pipeline' && !loading && (
+              <div className="p-6">
+                <h3 className="text-white font-semibold mb-3">Pipeline</h3>
+
+                <div>
+                  {pipelineSteps.map((step) => {
+                    const style = BADGE_STYLES[step.label] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
+                    const total = allProjects.length || 1;
+                    const pct = step.value > 0 ? Math.max(Math.round((step.value / total) * 100), 4) : 0;
+
+                    return (
+                      <div
+                        key={step.label}
+                        style={{
+                          padding: '10px 14px',
+                          background: '#18181b',
+                          borderRadius: '8px',
+                          marginBottom: '4px',
+                          fontSize: '13px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: style.color, fontSize: '13px' }}>{step.label}</span>
+
+                          <span
                             style={{
-                              height: '3px',
-                              background: '#27272a',
-                              borderRadius: '2px',
-                              marginTop: '6px',
-                              overflow: 'hidden',
+                              background: style.bg,
+                              color: style.color,
+                              borderRadius: '20px',
+                              padding: '2px 10px',
+                              fontSize: '12px',
+                              fontWeight: 700,
                             }}
                           >
-                            <div
-                              style={{
-                                height: '100%',
-                                width: `${pct}%`,
-                                background: style.color,
-                                borderRadius: '2px',
-                                transition: 'width 0.5s ease',
-                              }}
-                            />
-                          </div>
+                            {step.value}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
-              {!loading && (
-                <div>
-                  <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
-
-                  <div style={{ height: '300px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
-                    <ProspectsLeafletMap
-                      projects={sortedProjects.slice(0, 8)}
-                      onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
-                    />
-                  </div>
+                        <div
+                          style={{
+                            height: '3px',
+                            background: '#27272a',
+                            borderRadius: '2px',
+                            marginTop: '6px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              background: style.color,
+                              borderRadius: '2px',
+                              transition: 'width 0.5s ease',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+
+          <div
+            className="rounded-2xl border border-zinc-800 overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              maxHeight: openPanel === 'chantiers' ? '600px' : '0px',
+              opacity: openPanel === 'chantiers' ? 1 : 0,
+            }}
+          >
+            {openPanel === 'chantiers' && !loading && (
+              <div className="p-6">
+                <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
+
+                <div style={{ height: '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
+                  <ProspectsLeafletMap
+                    projects={sortedProjects.slice(0, 8)}
+                    onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ZONE 4 — Liste projets, pleine largeur */}
+          <div className="space-y-4 w-full">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1 max-w-xl">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+
+                <Input
+                  className="pl-9"
+                  placeholder="Rechercher un client, un projet…"
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setQuickFilter(null);
+                    debouncedSearch(e.target.value);
+                  }}
+                />
+              </div>
+
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setQuickFilter(null);
+                  setStatusFilter(v === 'all' ? '' : v);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-44">
+                  <SelectValue placeholder="Tous les statuts" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+
+                  {STATUS_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={tradeFilter}
+                onValueChange={(v) => {
+                  setQuickFilter(null);
+                  setTradeFilter(v === 'all' ? '' : v);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-44">
+                  <SelectValue placeholder="Tous les métiers" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les métiers</SelectItem>
+
+                  {trades.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button variant="ghost" onClick={resetFilters}>
+                Réinitialiser
+              </Button>
             </div>
+
+            {quickFilter && (
+              <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+                <p className="text-sm text-zinc-400">
+                  Filtre actif :{' '}
+                  <span className="text-white font-medium">
+                    {quickFilter === 'today' ? 'Relances du jour' : 'Relances en retard'}
+                  </span>
+                </p>
+
+                <Button variant="ghost" size="sm" onClick={() => setQuickFilter(null)}>
+                  Afficher tous les dossiers
+                </Button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 rounded-xl bg-zinc-800" />
+                ))}
+              </div>
+            ) : displayedProjects.length === 0 ? (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
+                <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
+                <p className="text-zinc-400">Aucun dossier trouvé</p>
+              </div>
+            ) : (
+              <ProjectList projects={displayedProjects} router={router} />
+            )}
           </div>
         </div>
       )}
