@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { getProjects, updateProject } from '@/src/lib/api';
@@ -17,6 +17,7 @@ import {
 import { Skeleton } from '@/src/components/ui/skeleton';
 import {
   Search,
+  SearchX,
   FolderOpen,
   Send,
   Trophy,
@@ -29,6 +30,7 @@ import {
   Target,
   AlertCircle,
   ShoppingCart,
+  X,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
@@ -167,6 +169,145 @@ const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
   { status: 'Gagné', label: 'Gagné', color: '#15803d' },
 ];
 
+const METIER_OPTIONS = [
+  'Plomberie',
+  'Électricité',
+  'Menuiserie',
+  'Couverture',
+  'Peinture',
+  'Maçonnerie',
+  'Paysagisme',
+  'Rénovation',
+  'Autre',
+];
+
+const BUDGET_RANGES: Record<string, [number, number]> = {
+  '0-1000': [0, 1000],
+  '1000-3000': [1000, 3000],
+  '3000-10000': [3000, 10000],
+  '10000-50000': [10000, 50000],
+  '50000+': [50000, Infinity],
+};
+
+const BUDGET_OPTIONS = [
+  { value: '0-1000', label: 'Moins de 1 000€' },
+  { value: '1000-3000', label: '1 000 – 3 000€' },
+  { value: '3000-10000', label: '3 000 – 10 000€' },
+  { value: '10000-50000', label: '10 000 – 50 000€' },
+  { value: '50000+', label: 'Plus de 50 000€' },
+];
+
+const SCORE_OPTIONS = [
+  { value: 'excellent', label: 'Excellent (>80%)', color: '#22c55e' },
+  { value: 'bon', label: 'Bon (60-80%)', color: '#f59e0b' },
+  { value: 'faible', label: 'Faible (<60%)', color: '#dc2626' },
+];
+
+const PERIODE_OPTIONS = [
+  { value: 'today', label: "Aujourd'hui" },
+  { value: '7d', label: '7 derniers jours' },
+  { value: '30d', label: '30 derniers jours' },
+  { value: '90d', label: '3 derniers mois' },
+  { value: 'year', label: 'Cette année' },
+];
+
+const SOURCE_OPTIONS = [
+  { value: 'chat', label: 'Via chat widget' },
+  { value: 'voice', label: 'Via appel vocal' },
+  { value: 'manual', label: 'Ajout manuel' },
+];
+
+type FilterState = {
+  search: string;
+  statut: string;
+  metier: string;
+  budget: string;
+  score: string;
+  periode: string;
+  source: string;
+};
+
+const DEFAULT_FILTERS: FilterState = {
+  search: '',
+  statut: '',
+  metier: '',
+  budget: '',
+  score: '',
+  periode: '',
+  source: '',
+};
+
+function filterProjects(projects: Project[], filters: FilterState): Project[] {
+  return projects.filter((p) => {
+    if (filters.search) {
+      const term = filters.search.toLowerCase().trim();
+
+      const searchable = [p.clientName, p.clientFirstName, p.projectType, p.trade, p.city, p.projectNumber]
+        .join(' ')
+        .toLowerCase();
+
+      if (!searchable.includes(term)) return false;
+    }
+
+    if (filters.statut && p.status !== filters.statut) return false;
+
+    if (filters.metier) {
+      const trade = (p.trade || '').toLowerCase();
+
+      if (!trade.includes(filters.metier.toLowerCase())) return false;
+    }
+
+    if (filters.budget) {
+      const range = BUDGET_RANGES[filters.budget];
+      const value = parseBudget(p.budget || '');
+
+      if (range && (value < range[0] || value > range[1])) return false;
+    }
+
+    if (filters.score) {
+      const score = p.completenessScore || 0;
+
+      if (filters.score === 'excellent' && !(score > 80)) return false;
+      if (filters.score === 'bon' && !(score >= 60 && score <= 80)) return false;
+      if (filters.score === 'faible' && !(score < 60)) return false;
+    }
+
+    if (filters.periode) {
+      if (!p.createdAt) return false;
+
+      const created = new Date(p.createdAt).getTime();
+
+      if (Number.isNaN(created)) return false;
+
+      const dayMs = 24 * 60 * 60 * 1000;
+      const nowTime = Date.now();
+
+      if (filters.periode === 'today') {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        if (!p.createdAt.startsWith(todayKey)) return false;
+      } else if (filters.periode === '7d') {
+        if (nowTime - created > 7 * dayMs) return false;
+      } else if (filters.periode === '30d') {
+        if (nowTime - created > 30 * dayMs) return false;
+      } else if (filters.periode === '90d') {
+        if (nowTime - created > 90 * dayMs) return false;
+      } else if (filters.periode === 'year') {
+        if (new Date(created).getFullYear() !== new Date().getFullYear()) return false;
+      }
+    }
+
+    if (filters.source) {
+      const src = (p.source || '').toLowerCase();
+
+      if (filters.source === 'chat' && !src.includes('chat')) return false;
+      if (filters.source === 'voice' && !(src.includes('voice') || src.includes('vocal') || src.includes('call'))) return false;
+      if (filters.source === 'manual' && !(src.includes('manual') || src.includes('manuel'))) return false;
+    }
+
+    return true;
+  });
+}
+
 function navButtonStyle(active: boolean): React.CSSProperties {
   return {
     padding: '10px 16px',
@@ -191,10 +332,30 @@ function Dashboard() {
 
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [tradeFilter, setTradeFilter] = useState('');
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+
+  const [filters, setFilters] = useState<FilterState>(() => {
+    if (typeof window === 'undefined') return DEFAULT_FILTERS;
+
+    try {
+      const raw = localStorage.getItem('kadria_filters');
+      if (!raw) return DEFAULT_FILTERS;
+
+      const parsed = JSON.parse(raw);
+      const isExpired = !parsed.timestamp || Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000;
+
+      if (isExpired || !parsed.filters) return DEFAULT_FILTERS;
+
+      return { ...DEFAULT_FILTERS, ...parsed.filters };
+    } catch {
+      return DEFAULT_FILTERS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('kadria_filters', JSON.stringify({ filters, timestamp: Date.now() }));
+  }, [filters]);
+
+  const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | null>(null);
   const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
@@ -289,10 +450,16 @@ function Dashboard() {
     loadData();
   }, [loadData]);
 
-  const debouncedSearch = useDebouncedCallback((val: string) => {
+  const updateFilter = (key: keyof FilterState, value: string) => {
     setQuickFilter(null);
-    setSearch(val);
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const debouncedSearch = useDebouncedCallback((val: string) => {
+    updateFilter('search', val);
   }, 400);
+
+  const hasActiveFilters = Object.values(filters).some((v) => v !== '');
 
   const today = new Date();
   const todayKey = today.toISOString().slice(0, 10);
@@ -371,42 +538,21 @@ function Dashboard() {
     .sort((a, b) => opportunityScore(b) - opportunityScore(a))
     .slice(0, 3);
 
-  const trades = Array.from(
-    new Set(allProjects.map((p) => p.trade).filter(Boolean)),
-  ) as string[];
+  const filteredProjects = useMemo(
+    () => filterProjects(allProjects, filters),
+    [allProjects, filters],
+  );
 
-  const filteredProjects = allProjects.filter((p) => {
-    if (statusFilter && p.status !== statusFilter) return false;
-    if (tradeFilter && p.trade !== tradeFilter) return false;
+  const sortedProjects = useMemo(
+    () =>
+      [...filteredProjects].sort((a, b) => {
+        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
 
-    if (search) {
-      const searchable = [
-        p.projectNumber,
-        p.clientName,
-        p.clientFirstName,
-        p.clientEmail,
-        p.clientPhone,
-        p.city,
-        p.trade,
-        p.projectType,
-        p.budget,
-        p.aiSummary,
-      ]
-        .join(' ')
-        .toLowerCase();
-
-      if (!searchable.includes(search.toLowerCase())) return false;
-    }
-
-    return true;
-  });
-
-  const sortedProjects = [...filteredProjects].sort((a, b) => {
-    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-
-    return db - da;
-  });
+        return db - da;
+      }),
+    [filteredProjects],
+  );
 
   const displayedProjects =
     quickFilter === 'today'
@@ -416,9 +562,7 @@ function Dashboard() {
         : sortedProjects;
 
   const resetFilters = () => {
-    setStatusFilter('');
-    setTradeFilter('');
-    setSearch('');
+    setFilters(DEFAULT_FILTERS);
     setSearchInput('');
     setQuickFilter(null);
   };
@@ -591,9 +735,7 @@ function Dashboard() {
               <button
                 onClick={() => {
                   setQuickFilter('overdue');
-                  setStatusFilter('');
-                  setTradeFilter('');
-                  setSearch('');
+                  setFilters(DEFAULT_FILTERS);
                   setSearchInput('');
                 }}
                 style={{
@@ -639,9 +781,7 @@ function Dashboard() {
               <button
                 onClick={() => {
                   setQuickFilter('today');
-                  setStatusFilter('');
-                  setTradeFilter('');
-                  setSearch('');
+                  setFilters(DEFAULT_FILTERS);
                   setSearchInput('');
                 }}
                 style={{
@@ -895,56 +1035,23 @@ function Dashboard() {
 
           {/* ZONE 4 — Liste projets, pleine largeur */}
           <div className="space-y-4 w-full">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setView('list')}
-                className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
-                  viewMode === 'list'
-                    ? 'bg-green-500 font-semibold text-zinc-950'
-                    : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
-                }`}
-              >
-                📋 Liste
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setView('kanban')}
-                className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
-                  viewMode === 'kanban'
-                    ? 'bg-green-500 font-semibold text-zinc-950'
-                    : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
-                }`}
-              >
-                🗂️ Kanban
-              </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1 max-w-xl">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div className="relative min-w-[260px] flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
 
                 <Input
-                  className="pl-9"
-                  placeholder="Rechercher un client, un projet…"
+                  className="pl-9 rounded-[10px] py-2.5 focus:border-green-500"
+                  placeholder="Nom, projet, ville, référence..."
                   value={searchInput}
                   onChange={(e) => {
                     setSearchInput(e.target.value);
-                    setQuickFilter(null);
                     debouncedSearch(e.target.value);
                   }}
                 />
               </div>
 
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setQuickFilter(null);
-                  setStatusFilter(v === 'all' ? '' : v);
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-44">
+              <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
 
@@ -952,38 +1059,174 @@ function Dashboard() {
                   <SelectItem value="all">Tous les statuts</SelectItem>
 
                   {STATUS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
+                    <SelectItem key={o.value} value={o.value} style={{ color: BADGE_STYLES[o.value]?.color }}>
+                      ● {o.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Select
-                value={tradeFilter}
-                onValueChange={(v) => {
-                  setQuickFilter(null);
-                  setTradeFilter(v === 'all' ? '' : v);
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-44">
+              <Select value={filters.metier} onValueChange={(v) => updateFilter('metier', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Tous les métiers" />
                 </SelectTrigger>
 
                 <SelectContent>
                   <SelectItem value="all">Tous les métiers</SelectItem>
 
-                  {trades.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
+                  {METIER_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Button variant="ghost" onClick={resetFilters}>
-                Réinitialiser
-              </Button>
+              <Select value={filters.budget} onValueChange={(v) => updateFilter('budget', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Tous les budgets" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les budgets</SelectItem>
+
+                  {BUDGET_OPTIONS.map((b) => (
+                    <SelectItem key={b.value} value={b.value}>
+                      {b.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.score} onValueChange={(v) => updateFilter('score', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Tous les scores" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les scores</SelectItem>
+
+                  {SCORE_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value} style={{ color: s.color }}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.periode} onValueChange={(v) => updateFilter('periode', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Toutes les dates" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Toutes les dates</SelectItem>
+
+                  {PERIODE_OPTIONS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.source} onValueChange={(v) => updateFilter('source', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Toutes les sources" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Toutes les sources</SelectItem>
+
+                  {SOURCE_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="rounded-lg border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-400 transition-colors duration-150 hover:border-red-600 hover:text-red-600"
+                >
+                  ✕ Réinitialiser
+                </button>
+              )}
+            </div>
+
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {filters.search && (
+                  <FilterPill label={`Recherche: ${filters.search}`} onRemove={() => { setSearchInput(''); updateFilter('search', ''); }} />
+                )}
+                {filters.statut && (
+                  <FilterPill label={`Statut: ${filters.statut}`} onRemove={() => updateFilter('statut', '')} />
+                )}
+                {filters.metier && (
+                  <FilterPill label={`Métier: ${filters.metier}`} onRemove={() => updateFilter('metier', '')} />
+                )}
+                {filters.budget && (
+                  <FilterPill
+                    label={`Budget: ${BUDGET_OPTIONS.find((b) => b.value === filters.budget)?.label ?? filters.budget}`}
+                    onRemove={() => updateFilter('budget', '')}
+                  />
+                )}
+                {filters.score && (
+                  <FilterPill
+                    label={`Score: ${SCORE_OPTIONS.find((s) => s.value === filters.score)?.label ?? filters.score}`}
+                    onRemove={() => updateFilter('score', '')}
+                  />
+                )}
+                {filters.periode && (
+                  <FilterPill
+                    label={`Période: ${PERIODE_OPTIONS.find((p) => p.value === filters.periode)?.label ?? filters.periode}`}
+                    onRemove={() => updateFilter('periode', '')}
+                  />
+                )}
+                {filters.source && (
+                  <FilterPill
+                    label={`Source: ${SOURCE_OPTIONS.find((s) => s.value === filters.source)?.label ?? filters.source}`}
+                    onRemove={() => updateFilter('source', '')}
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-zinc-400">
+                {hasActiveFilters
+                  ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
+                  : `${displayedProjects.length} dossier(s) trouvé(s)`}
+              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                  className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
+                    viewMode === 'list'
+                      ? 'bg-green-500 font-semibold text-zinc-950'
+                      : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  📋 Liste
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setView('kanban')}
+                  className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
+                    viewMode === 'kanban'
+                      ? 'bg-green-500 font-semibold text-zinc-950'
+                      : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  🗂️ Kanban
+                </button>
+              </div>
             </div>
 
             {quickFilter && (
@@ -1009,8 +1252,26 @@ function Dashboard() {
               </div>
             ) : displayedProjects.length === 0 ? (
               <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
-                <FolderOpen className="w-8 h-8 text-zinc-500 mx-auto mb-3" />
-                <p className="text-zinc-400">Aucun dossier trouvé</p>
+                <SearchX className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
+                <p className="font-bold text-white">Aucun dossier trouvé</p>
+
+                <p className="text-zinc-400 mt-1">
+                  {filters.search
+                    ? `Aucun résultat pour '${filters.search}'`
+                    : filters.statut
+                      ? `Aucun dossier avec le statut '${filters.statut}'`
+                      : 'Essayez d’élargir vos critères de recherche'}
+                </p>
+
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-4 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                )}
               </div>
             ) : viewMode === 'kanban' ? (
               <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
@@ -1280,6 +1541,18 @@ function KanbanCard({
         <span className="ml-auto text-xs text-zinc-500">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
       </div>
     </div>
+  );
+}
+
+function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
+      {label}
+
+      <button type="button" onClick={onRemove} aria-label="Supprimer ce filtre">
+        <X className="w-3 h-3" />
+      </button>
+    </span>
   );
 }
 

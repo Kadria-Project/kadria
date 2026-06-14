@@ -42,9 +42,15 @@ export function SelectContent({ children }: { children: React.ReactNode }) {
 export function SelectItem({
   value,
   children,
+  style,
 }: {
   value: string;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 }) {
-  return <option value={value}>{children}</option>;
+  return (
+    <option value={value} style={style}>
+      {children}
+    </option>
+  );
 }
