@@ -1156,18 +1156,6 @@ const ANIMATION_STYLES = `
     -webkit-backdrop-filter: blur(12px);
   }
 
-  /* Nav glass on scroll */
-  .kr-nav {
-    transition: background-color 0.3s ease, border-color 0.3s ease,
-                backdrop-filter 0.3s ease;
-  }
-  .kr-nav-scrolled {
-    background: rgba(9,9,11,0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom-color: rgba(255,255,255,0.08);
-  }
-
   /* Bento grid */
   .kr-bento {
     display: grid;
@@ -1200,8 +1188,7 @@ const ANIMATION_STYLES = `
     .kr-card-hover,
     .kr-badge-pulse,
     .kr-line-grow,
-    .kr-ticker span,
-    .kr-nav {
+    .kr-ticker span {
       transition: none !important;
       animation: none !important;
       opacity: 1 !important;
@@ -1260,18 +1247,10 @@ function StatCounter({
 
 export function LandingRoutePage() {
   useScrollReveal();
-  const [scrolled, setScrolled] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<string | null>(TRADES_DATA[0].id);
   const [lastTradeId, setLastTradeId] = useState(TRADES_DATA[0].id);
   const [tradeCardVisible, setTradeCardVisible] = useState(true);
   const displayTrade = TRADES_DATA.find((m) => m.id === lastTradeId);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   useEffect(() => {
     if (selectedTrade) {
@@ -1334,7 +1313,7 @@ export function LandingRoutePage() {
       <style>{ANIMATION_STYLES}</style>
 
       {/* 1. NAV */}
-      <DarkNav scrolled={scrolled} />
+      <DarkNav />
 
       <main>
         {/* 2. HERO */}
@@ -1691,26 +1670,31 @@ export function LandingRoutePage() {
   );
 }
 
-function DarkNav({ scrolled = false }: { scrolled?: boolean }) {
+function DarkNav() {
   return (
-    <header className={`kr-nav sticky top-0 z-50 border-b border-transparent ${scrolled ? 'kr-nav-scrolled' : ''}`}>
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
-        <Link href="/" className="text-xl font-bold">
+    <header className="fixed left-1/2 top-4 z-50 w-fit max-w-[860px] -translate-x-1/2 rounded-full border border-white/10 bg-white/[0.06] px-5 py-2.5 shadow-[0_4px_24px_rgba(0,0,0,0.3)] backdrop-blur-[16px]">
+      <div className="flex items-center gap-8">
+        <Link href="/" className="whitespace-nowrap text-base font-bold">
           <span className="text-green-500">K</span>adria
         </Link>
         <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
-          <Link href="/demo" className="transition-colors hover:text-white">Exemple de dossier</Link>
-          <Link href="/tarifs" className="transition-colors hover:text-white">Tarifs</Link>
+          <Link href="/fonctionnalites" className="transition-colors duration-200 hover:text-white">Fonctionnalités</Link>
+          <Link href="/tarifs" className="transition-colors duration-200 hover:text-white">Tarifs</Link>
+          <Link href="/demo" className="transition-colors duration-200 hover:text-white">Démo</Link>
+          <Link href="/assistant" className="transition-colors duration-200 hover:text-white">Assistant</Link>
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
-            Connexion
+          <Link
+            href="/dashboard-v2"
+            className="hidden rounded-full border border-border px-4 py-2 text-sm text-zinc-300 transition-colors duration-200 hover:text-white sm:inline-flex"
+          >
+            Se connecter
           </Link>
           <Link
-            href="/assistant"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+            href="/register"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-4 py-2 text-sm font-semibold text-background transition-transform duration-200 hover:scale-[1.02] hover:opacity-90"
           >
-            Tester Kadria
+            Essai gratuit
           </Link>
         </div>
       </div>
