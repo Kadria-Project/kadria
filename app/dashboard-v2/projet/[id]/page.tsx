@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ChevronRight,
   Clock,
   FileText as FileTextIcon,
   Plus,
@@ -25,6 +26,25 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
 
 const statusColors = STATUS_COLORS;
 const statusStyles = STATUS_COLORS;
+
+interface DevisListItem {
+  id: string;
+  numero: string;
+  amount: number;
+  sent: boolean;
+  statut: string;
+  pdf_url: string | null;
+  date_emission: string;
+  date_validite: string;
+  client_email: string;
+}
+
+function formatDevisDate(value: string) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export default function ProjectDetailPage() {
   return (
@@ -87,6 +107,8 @@ function ProjectDetail() {
     numAssurance?: string;
   } | null>(null);
 
+  const [devisList, setDevisList] = useState<DevisListItem[]>([]);
+
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -140,6 +162,16 @@ function ProjectDetail() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/devis?projet_id=${id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setDevisList(data.devis);
+      })
+      .catch(() => {});
+  }, [id]);
 
   const legalComplete = !!(
     artisanConfig?.siret &&
@@ -711,6 +743,82 @@ function ProjectDetail() {
               >
                 📄 Générer un devis
               </button>
+
+              {devisList.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {devisList.map((devis) => (
+                    <div
+                      key={devis.id}
+                      onClick={() => router.push(`/dashboard-v2/projet/${id}/devis/${devis.id}`)}
+                      style={{
+                        background: '#18181b',
+                        border: '1px solid #27272a',
+                        borderRadius: '12px',
+                        padding: '14px 20px',
+                        cursor: 'pointer',
+                        marginTop: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                        flexWrap: 'wrap',
+                        transition: 'border-color 150ms, transform 150ms',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)';
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#27272a';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <FileTextIcon size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
+                        <span style={{ color: '#71717a' }}>·</span>
+                        <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                          {devis.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span>Généré le {formatDevisDate(devis.date_emission)}</span>
+                        <span>Expire le {formatDevisDate(devis.date_validite)}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {devis.sent || devis.statut === 'Envoyé' ? (
+                          <span style={{
+                            background: 'rgba(34,197,94,0.1)',
+                            color: '#22c55e',
+                            border: '1px solid rgba(34,197,94,0.3)',
+                            borderRadius: '999px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}>
+                            ✓ Envoyé
+                          </span>
+                        ) : (
+                          <span style={{
+                            background: 'rgba(245,158,11,0.1)',
+                            color: '#f59e0b',
+                            border: '1px solid rgba(245,158,11,0.3)',
+                            borderRadius: '999px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                          }}>
+                            📄 Enregistré · Non envoyé
+                          </span>
+                        )}
+                        <ChevronRight size={14} style={{ color: '#71717a', marginLeft: '4px' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{
