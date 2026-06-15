@@ -61,6 +61,8 @@ export async function getArtisanByEmail(email: string) {
         companyName: (record.fields['Company Name'] ||
                       record.fields['companyName'] || '') as string,
         email: email,
+        firstName: (record.fields['First Name'] || '') as string,
+        lastName: (record.fields['Last Name'] || '') as string,
         primaryColor: (record.fields['Primary Color'] ||
                        record.fields['primaryColor'] || '#22c55e') as string,
         plan: (record.fields['Plan'] || '') as string,

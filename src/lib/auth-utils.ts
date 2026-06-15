@@ -11,6 +11,9 @@ export interface AuthPayload {
   companyName: string
   primaryColor: string
   role?: string
+  plan?: string
+  firstName?: string
+  lastName?: string
   exp?: number
 }
 

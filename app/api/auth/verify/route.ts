@@ -5,17 +5,22 @@ import { verifyMagicToken, createToken } from '@/src/lib/auth-utils'
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token')
 
+  console.log('[VERIFY] Token reçu')
+
   if (!token) {
     return NextResponse.redirect(new URL('/auth/error?error=MissingToken', request.url))
   }
 
   const magic = await verifyMagicToken(token)
   if (!magic) {
+    console.error('[VERIFY] Erreur: token magique invalide ou expiré')
     return NextResponse.redirect(new URL('/auth/error?error=Verification', request.url))
   }
 
   const artisan = await getArtisanByEmail(magic.email)
+  console.log('[VERIFY] User trouvé:', artisan?.email)
   if (!artisan) {
+    console.error('[VERIFY] Erreur: aucun user Airtable pour', magic.email)
     return NextResponse.redirect(new URL('/auth/error?error=AccessDenied', request.url))
   }
 
@@ -26,6 +31,9 @@ export async function GET(request: NextRequest) {
     companyName: artisan.companyName,
     primaryColor: artisan.primaryColor || '#22c55e',
     role: artisan.role || '',
+    plan: artisan.plan || '',
+    firstName: artisan.firstName || '',
+    lastName: artisan.lastName || '',
   })
 
   // Détermine si c'est un nouveau compte (pas encore configuré)
