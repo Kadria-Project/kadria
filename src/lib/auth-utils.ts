@@ -1,9 +1,15 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-secret'
-)
+function getAuthSecret(): Uint8Array {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+
+  if (!secret) {
+    throw new Error('Missing AUTH_SECRET or NEXTAUTH_SECRET')
+  }
+
+  return new TextEncoder().encode(secret)
+}
 
 export interface AuthPayload {
   id?: string
@@ -23,12 +29,12 @@ export async function createToken(payload: AuthPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
-    .sign(SECRET)
+    .sign(getAuthSecret())
 }
 
 export async function verifyToken(token: string): Promise<AuthPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET)
+    const { payload } = await jwtVerify(token, getAuthSecret())
     return payload as unknown as AuthPayload
   } catch {
     return null
@@ -52,14 +58,14 @@ export async function createMagicToken(email: string): Promise<string> {
   return new SignJWT({ email, type: 'magic' })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('10m')
-    .sign(SECRET)
+    .sign(getAuthSecret())
 }
 
 export async function verifyMagicToken(
   token: string
 ): Promise<{ email: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET)
+    const { payload } = await jwtVerify(token, getAuthSecret())
     if (payload.type !== 'magic') return null
     return { email: payload.email as string }
   } catch {
