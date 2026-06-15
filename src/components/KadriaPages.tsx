@@ -2078,7 +2078,7 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
   }, [visibleMessages, typingBeforeIndex, reduceMotion]);
 
   return (
-    <div className="kr-assistant-card -m-6 flex h-[460px] w-[calc(100%+3rem)] flex-col overflow-hidden rounded-xl">
+    <div className="kr-assistant-card flex h-full w-full flex-col overflow-hidden">
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-[var(--border)] px-4 py-3.5">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-extrabold text-[var(--bg)]">
           K
