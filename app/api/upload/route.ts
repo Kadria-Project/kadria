@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 
+const MAX_FILES = 5
+const MAX_FILE_SIZE = 8 * 1024 * 1024
+const MAX_TOTAL_SIZE = 25 * 1024 * 1024
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -10,11 +15,34 @@ cloudinary.config({
 export async function POST(request: Request) {
   try {
     const formData = await request.formData()
-    const files = formData.getAll('files') as File[]
+    const files = formData.getAll('files').filter((file): file is File => file instanceof File)
 
-    if (!files || files.length === 0) {
+    if (files.length === 0) {
       return NextResponse.json(
         { success: false, error: 'No files provided' },
+        { status: 400 }
+      )
+    }
+
+    if (files.length > MAX_FILES) {
+      return NextResponse.json(
+        { success: false, error: 'Too many files' },
+        { status: 400 }
+      )
+    }
+
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0)
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return NextResponse.json(
+        { success: false, error: 'Upload too large' },
+        { status: 400 }
+      )
+    }
+
+    const invalidFile = files.find((file) => !ALLOWED_TYPES.has(file.type) || file.size > MAX_FILE_SIZE)
+    if (invalidFile) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid file type or size' },
         { status: 400 }
       )
     }
@@ -48,9 +76,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, files: uploaded })
   } catch (error) {
-    console.error('[UPLOAD] error:', error)
+    console.error('[UPLOAD] error:', error instanceof Error ? error.message : String(error))
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: 'Erreur upload' },
       { status: 500 }
     )
   }
