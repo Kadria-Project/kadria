@@ -721,58 +721,52 @@ function MockupPipeline() {
     nouveau: { label: 'Nouveau', bg: 'rgba(63,63,70,0.6)', color: '#a1a1aa' },
     rappeler: { label: 'À rappeler', bg: 'rgba(217,119,6,0.15)', color: '#d97706' },
     qualifie: { label: 'Qualifié', bg: 'rgba(22,163,74,0.15)', color: '#16a34a' },
+    devis: { label: 'Devis envoyé', bg: 'rgba(37,99,235,0.15)', color: '#60a5fa' },
     gagne: { label: 'Gagné', bg: 'rgba(21,128,61,0.15)', color: '#15803d' },
   }
-  const scoreColor = (score?: number) => {
-    if (score === undefined) return 'var(--text-3)'
+  const scoreColor = (score: number) => {
     if (score >= 80) return 'var(--accent)'
     if (score >= 60) return '#f59e0b'
     return '#dc2626'
   }
   const columns = [
     {
-      title: 'Nouveau', border: '#3f3f46', headerBadgeBg: '#3f3f46', headerBadgeColor: '#a1a1aa',
+      title: 'Nouveau', border: '#3f3f46', headerBadgeBg: '#3f3f46', headerBadgeColor: '#a1a1aa', count: 4,
       footer: '4 dossiers · 6.7k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'MT', name: 'Morel Thomas', meta: 'jardin', score: 85, age: 'il y a 2j', status: 'nouveau' },
-        { initials: 'FL', name: 'Fontaine Laura', meta: 'salle de bain', score: 100, age: 'il y a 3j' },
-        { initials: 'BD', name: 'Blanchard David', meta: 'Maçonnerie', score: 100, age: 'il y a 3j' },
-        { initials: 'DB', name: 'Delattre Benjamin', meta: 'Test migration', score: 100, age: 'il y a 4j' },
+        { initials: 'MT', name: 'Morel Thomas', project: 'jardin', city: 'Sotteville-lès-Rouen', score: 85, age: 'il y a 2j', status: 'nouveau' },
+        { initials: 'FL', name: 'Fontaine Laura', project: 'salle de bain', city: 'Franqueville', score: 100, age: 'il y a 3j', status: 'nouveau' },
       ],
     },
     {
-      title: 'À rappeler', border: '#d97706', headerBadgeBg: '#d97706', headerBadgeColor: '#ffffff',
+      title: 'À rappeler', border: '#d97706', headerBadgeBg: '#d97706', headerBadgeColor: '#ffffff', count: 3,
       footer: '3 dossiers · 7k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'SM', name: 'Sophie Martin', meta: 'jardin · Rouen', score: 100, age: 'il y a 2j', status: 'rappeler' },
-        { initials: 'DN', name: 'Dubois Nicolas', meta: 'jardin · Rouen', score: 100, age: 'il y a 2j' },
-        { initials: 'HA', name: 'Hubert Aurelie', meta: 'Test migration · Belbeuf', age: 'il y a 4j' },
+        { initials: 'SM', name: 'Sophie Martin', project: 'jardin', city: 'Rouen', score: 100, age: 'il y a 2j', status: 'rappeler' },
+        { initials: 'DN', name: 'Dubois Nicolas', project: 'jardin', city: 'Rouen', score: 100, age: 'il y a 2j', status: 'rappeler' },
       ],
     },
     {
-      title: 'Qualifié', border: '#16a34a', headerBadgeBg: '#16a34a', headerBadgeColor: '#ffffff',
+      title: 'Qualifié', border: '#16a34a', headerBadgeBg: '#16a34a', headerBadgeColor: '#ffffff', count: 1,
       footer: '1 dossier · 3k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'DM', name: 'Dumontier Maxime', meta: 'Paysagiste · Amfreville', score: 90, age: 'il y a 5j', status: 'qualifie' },
+        { initials: 'DM', name: 'Dumontier Maxime', project: 'Paysagiste', city: 'Amfreville', score: 90, age: 'il y a 5j', status: 'qualifie' },
       ],
     },
     {
-      title: 'Devis env...', border: '#2563eb', headerBadgeBg: '#2563eb', headerBadgeColor: '#ffffff',
+      title: 'Devis env...', border: '#2563eb', headerBadgeBg: '#2563eb', headerBadgeColor: '#ffffff', count: 5,
       footer: '5 dossiers · 9.9k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'LD', name: 'Léon Duval', meta: 'jardin · Rouen', score: 100, age: 'il y a 2j' },
-        { initials: 'CE', name: 'Carpentier Emilie', meta: 'jardin · Mont-Saint-Aignan', score: 100, age: 'il y a 2j' },
-        { initials: 'RA', name: 'Renault Alexandre', meta: 'jardin · Mesnil-Esnard', score: 100, age: 'il y a 3j' },
-        { initials: 'LM', name: 'Laurent Martin', meta: 'Plomberie · La Neuville', score: 95, age: 'il y a 5j' },
-        { initials: 'AL', name: 'Antoine Lemaire', meta: 'Réparation portail · Saint-Aubin', age: 'il y a 5j' },
+        { initials: 'LD', name: 'Léon Duval', project: 'jardin', city: 'Rouen', score: 100, age: 'il y a 2j', status: 'devis' },
+        { initials: 'LM', name: 'Laurent Martin', project: 'Plomberie', city: 'La Neuville', score: 95, age: 'il y a 5j', status: 'devis' },
       ],
     },
     {
-      title: 'Gagné 🏆', border: '#15803d', headerBadgeBg: '#15803d', headerBadgeColor: '#ffffff',
+      title: 'Gagné 🏆', border: '#15803d', headerBadgeBg: '#15803d', headerBadgeColor: '#ffffff', count: 2,
       footer: '2 dossiers · 15.4k€', footerColor: 'var(--accent)', footerWeight: 700,
       cards: [
-        { initials: 'LC', name: 'Leroy Celine', meta: 'jardin · Le Petit-Quevilly', score: 100, age: 'il y a 2j', status: 'gagne' },
-        { initials: 'RS', name: 'Roussel Sebastien', meta: 'Plomberie · Rénovation SDB · Montmain', score: 90, age: 'il y a 3j' },
+        { initials: 'LC', name: 'Leroy Celine', project: 'jardin', city: 'Le Petit-Quevilly', score: 100, age: 'il y a 2j', status: 'gagne' },
+        { initials: 'RS', name: 'Roussel Sebastien', project: 'Plomberie', city: 'Montmain', score: 90, age: 'il y a 4j', status: 'gagne' },
       ],
     },
   ]
@@ -806,7 +800,7 @@ function MockupPipeline() {
         </span>
       </div>
 
-      <div className="grid flex-1 grid-cols-5" style={{ overflow: 'hidden' }}>
+      <div className="grid flex-1 grid-cols-5 gap-1.5" style={{ overflow: 'hidden', padding: '8px' }}>
         {columns.map((col) => (
           <div
             key={col.title}
@@ -819,49 +813,47 @@ function MockupPipeline() {
                 style={{ background: col.headerBadgeBg, color: col.headerBadgeColor }}
                 className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs"
               >
-                {col.cards.length}
+                {col.count}
               </span>
             </div>
-            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-2" style={{ minHeight: 0 }}>
+            <div className="flex flex-1 flex-col overflow-hidden px-2" style={{ minHeight: 0 }}>
               {col.cards.map((card) => {
-                const badge = card.status ? STATUS_BADGE[card.status] : undefined
+                const badge = STATUS_BADGE[card.status]
                 return (
                   <div
                     key={card.name}
-                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', marginBottom: '4px' }}
-                    className="flex flex-col gap-1"
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }}
+                    className="flex flex-col"
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <span
-                        style={{ background: 'var(--bg-hover)', fontSize: '8px', fontWeight: 700 }}
-                        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white"
+                        style={{ background: 'var(--bg-hover)', fontSize: '9px', fontWeight: 700 }}
+                        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-white"
                       >
                         {card.initials}
                       </span>
-                      <span className="flex-1 truncate text-[10px] font-semibold text-white">{card.name}</span>
-                      {badge && (
-                        <span
-                          style={{ background: badge.bg, color: badge.color, borderRadius: '999px', fontWeight: 600 }}
-                          className="shrink-0 px-1.5 py-0.5 text-[8px]"
-                        >
-                          {badge.label}
-                        </span>
-                      )}
+                      <span className="truncate text-[11px] font-semibold" style={{ color: 'var(--text-1)' }}>{card.name}</span>
                     </div>
-                    <p className="truncate text-[9px]" style={{ color: 'var(--text-2)' }}>{card.meta}</p>
-                    <div className="flex items-center justify-between gap-1">
-                      {card.score !== undefined && (
-                        <span className="text-[9px] font-bold" style={{ color: scoreColor(card.score) }}>Score: {card.score}%</span>
-                      )}
-                      <span className="text-[9px]" style={{ color: 'var(--text-3)' }}>{card.age}</span>
+                    <p className="truncate text-[10px]" style={{ color: 'var(--text-2)', marginTop: '3px' }}>{card.project}</p>
+                    <p className="truncate text-[10px]" style={{ color: 'var(--text-3)' }}>{card.city}</p>
+                    <div className="flex items-center justify-between gap-1" style={{ marginTop: '6px' }}>
+                      <span className="text-[10px] font-bold" style={{ color: scoreColor(card.score) }}>Score: {card.score}%</span>
+                      <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>{card.age}</span>
                     </div>
+                    <span
+                      style={{ background: badge.bg, color: badge.color, borderRadius: '999px', fontWeight: 700, marginTop: '6px', width: 'fit-content' }}
+                      className="px-2 py-0.5 text-[9px]"
+                    >
+                      {badge.label}
+                    </span>
                   </div>
                 )
               })}
+              {col.cards.length < 2 && <div className="flex-1" />}
             </div>
             <p
-              className="py-1 text-center text-[9px]"
-              style={{ borderTop: '1px solid var(--border)', color: col.footerColor, fontWeight: col.footerWeight }}
+              className="py-1 text-center text-xs"
+              style={{ borderTop: '1px solid var(--border)', color: col.footerColor, fontWeight: col.footerWeight, marginTop: 'auto' }}
             >
               {col.footer}
             </p>
