@@ -19,7 +19,6 @@ export async function POST(request: Request) {
     const artisan = await getArtisanByEmail(email)
     if (!artisan) {
       // On renvoie success pour ne pas révéler si l'email existe
-      console.log('[AUTH] Email non trouvé:', email)
       return NextResponse.json({ success: true })
     }
 
@@ -84,12 +83,12 @@ export async function POST(request: Request) {
       }),
     })
 
-    console.log('[AUTH] Magic link sent to:', email)
+    console.info('[AUTH] Magic link sent')
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('[AUTH] Error:', err)
+    console.error('[AUTH] Error:', err instanceof Error ? err.message : String(err))
     return NextResponse.json(
-      { success: false, error: String(err) },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 }
     )
   }
