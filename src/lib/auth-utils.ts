@@ -37,6 +37,12 @@ export async function getSession(): Promise<AuthPayload | null> {
   return verifyToken(token)
 }
 
+export async function requireAdminSession(): Promise<AuthPayload | null> {
+  const session = await getSession()
+  if (!session || session.role !== 'Admin') return null
+  return session
+}
+
 export async function createMagicToken(email: string): Promise<string> {
   return new SignJWT({ email, type: 'magic' })
     .setProtectedHeader({ alg: 'HS256' })

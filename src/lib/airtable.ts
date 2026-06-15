@@ -475,3 +475,81 @@ export async function createActivityLog(
     Description: description,
   })
 }
+
+export interface UserRecord {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  company: string
+  role: string
+  plan: string
+  statut: string
+  artisanId: string
+  phone: string
+  siret: string
+  address: string
+  trialEndDate: string
+  subscriptionStart: string
+  nextBilling: string
+  lastLogin: string
+  createdAt: string
+  notesAdmin: string
+  suspendedAt: string
+  cancelledAt: string
+  cancellationReason: string
+}
+
+function mapUserRecord(record: { id: string; fields: Record<string, unknown> }): UserRecord {
+  const fields = record.fields
+  return {
+    id: record.id,
+    email: fields['Email'] as string || '',
+    firstName: fields['First Name'] as string || '',
+    lastName: fields['Last Name'] as string || '',
+    company: fields['Company Name'] as string || '',
+    role: fields['Role'] as string || '',
+    plan: fields['Plan'] as string || '',
+    statut: fields['Statut'] as string || '',
+    artisanId: fields['Artisan ID'] as string || '',
+    phone: fields['Phone'] as string || '',
+    siret: fields['SIRET'] as string || '',
+    address: fields['Address'] as string || '',
+    trialEndDate: fields['Trial_end_date'] as string || '',
+    subscriptionStart: fields['Subscription_start'] as string || '',
+    nextBilling: fields['Next_billing'] as string || '',
+    lastLogin: fields['Last_login'] as string || '',
+    createdAt: fields['Created At'] as string || fields['Created_at'] as string || '',
+    notesAdmin: fields['Notes_admin'] as string || '',
+    suspendedAt: fields['Suspended_at'] as string || '',
+    cancelledAt: fields['Cancelled_at'] as string || '',
+    cancellationReason: fields['Cancellation_reason'] as string || '',
+  }
+}
+
+export async function getAllUsers(): Promise<UserRecord[]> {
+  const records: UserRecord[] = []
+  await airtableBase(TABLES.users)
+    .select({ pageSize: 100 })
+    .eachPage((pageRecords, fetchNextPage) => {
+      for (const record of pageRecords) {
+        records.push(mapUserRecord({ id: record.id, fields: record.fields }))
+      }
+      fetchNextPage()
+    })
+  return records
+}
+
+export async function getUserById(id: string): Promise<UserRecord | null> {
+  try {
+    const record = await airtableBase(TABLES.users).find(id)
+    return mapUserRecord({ id: record.id, fields: record.fields })
+  } catch {
+    return null
+  }
+}
+
+export async function updateUser(id: string, fields: Record<string, unknown>): Promise<UserRecord> {
+  const record = await airtableBase(TABLES.users).update(id, fields as Partial<Airtable.FieldSet>)
+  return mapUserRecord({ id: record.id, fields: record.fields })
+}
