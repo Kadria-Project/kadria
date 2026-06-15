@@ -1,4 +1,4 @@
-import PDFDocument from 'pdfkit'
+import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, RGB } from 'pdf-lib'
 import type { DevisRecord, getArtisanConfig } from '@/src/lib/airtable'
 
 type ArtisanConfig = Awaited<ReturnType<typeof getArtisanConfig>>
@@ -12,6 +12,17 @@ interface DevisLine {
   tvaRate: number
 }
 
+const PAGE_WIDTH = 595.28
+const PAGE_HEIGHT = 841.89
+const MARGIN = 50
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2
+
+const ACCENT = rgb(0x22 / 255, 0xc5 / 255, 0x5e / 255)
+const TEXT_MUTED = rgb(0x71 / 255, 0x71 / 255, 0x7a / 255)
+const TEXT_DARK = rgb(0x18 / 255, 0x18 / 255, 0x1b / 255)
+const BORDER = rgb(0xe4 / 255, 0xe4 / 255, 0xe7 / 255)
+const BG = rgb(0xf4 / 255, 0xf4 / 255, 0xf5 / 255)
+
 function formatEuro(value: number) {
   return value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
@@ -21,6 +32,119 @@ function formatDate(value: string) {
   const d = new Date(value)
   if (isNaN(d.getTime())) return value
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ['']
+  const lines: string[] = []
+  let current = ''
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word
+    if (current && font.widthOfTextAtSize(test, size) > maxWidth) {
+      lines.push(current)
+      current = word
+    } else {
+      current = test
+    }
+  }
+  if (current) lines.push(current)
+  return lines
+}
+
+class PdfWriter {
+  doc: PDFDocument
+  page!: PDFPage
+  y = MARGIN
+
+  constructor(doc: PDFDocument) {
+    this.doc = doc
+    this.addPage()
+  }
+
+  addPage() {
+    this.page = this.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
+    this.y = MARGIN
+  }
+
+  ensureSpace(height: number, onNewPage?: () => void) {
+    if (this.y + height > PAGE_HEIGHT - MARGIN) {
+      this.addPage()
+      onNewPage?.()
+    }
+  }
+
+  // Height a block of (possibly multi-line) text would take.
+  heightOf(text: string, font: PDFFont, size: number, width: number, lineHeight = size * 1.3) {
+    let lines = 0
+    for (const para of text.split('\n')) {
+      lines += wrapText(para, font, size, width).length
+    }
+    return lines * lineHeight
+  }
+
+  // Draws text wrapped at the given top-relative y, without moving the cursor.
+  // Returns the height consumed.
+  drawAt(
+    text: string,
+    x: number,
+    topY: number,
+    width: number,
+    size: number,
+    font: PDFFont,
+    color: RGB,
+    align: 'left' | 'right' = 'left',
+    lineHeight = size * 1.3
+  ) {
+    let cy = topY
+    for (const para of text.split('\n')) {
+      const lines = wrapText(para, font, size, width)
+      for (const line of lines) {
+        const lineWidth = font.widthOfTextAtSize(line, size)
+        const xPos = align === 'right' ? x + width - lineWidth : x
+        this.page.drawText(line, { x: xPos, y: PAGE_HEIGHT - cy - size, size, font, color })
+        cy += lineHeight
+      }
+    }
+    return cy - topY
+  }
+
+  // Draws wrapped text at the current cursor and advances it.
+  text(
+    text: string,
+    font: PDFFont,
+    size: number,
+    color: RGB,
+    options: { x?: number; width?: number; align?: 'left' | 'right' } = {}
+  ) {
+    const x = options.x ?? MARGIN
+    const width = options.width ?? CONTENT_WIDTH
+    const height = this.drawAt(text, x, this.y, width, size, font, color, options.align)
+    this.y += height
+    return height
+  }
+
+  hLine(color: RGB = BORDER, thickness = 1, width = CONTENT_WIDTH, x = MARGIN) {
+    this.page.drawLine({
+      start: { x, y: PAGE_HEIGHT - this.y },
+      end: { x: x + width, y: PAGE_HEIGHT - this.y },
+      thickness,
+      color,
+    })
+  }
+
+  lineAt(x1: number, y1: number, x2: number, y2: number, color: RGB = BORDER, thickness = 1) {
+    this.page.drawLine({
+      start: { x: x1, y: PAGE_HEIGHT - y1 },
+      end: { x: x2, y: PAGE_HEIGHT - y2 },
+      thickness,
+      color,
+    })
+  }
+
+  rect(x: number, topY: number, width: number, height: number, color: RGB) {
+    this.page.drawRectangle({ x, y: PAGE_HEIGHT - topY - height, width, height, color })
+  }
 }
 
 export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig | null): Promise<Buffer> {
@@ -40,237 +164,200 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
     tvaBreakdown = {}
   }
 
-  const doc = new PDFDocument({ size: 'A4', margin: 50 })
-  const chunks: Buffer[] = []
+  const pdfDoc = await PDFDocument.create()
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-  const done = new Promise<Buffer>((resolve, reject) => {
-    doc.on('data', (chunk) => chunks.push(chunk))
-    doc.on('end', () => resolve(Buffer.concat(chunks)))
-    doc.on('error', reject)
-  })
-
-  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right
-  const accent = '#22c55e'
-  const textMuted = '#71717a'
-  const textDark = '#18181b'
-  const border = '#e4e4e7'
+  const w = new PdfWriter(pdfDoc)
 
   // ── Header ──────────────────────────────────────────────────────────
-  doc.font('Helvetica-Bold').fontSize(20).fillColor(accent).text('K', { continued: true })
-  doc.fillColor(textDark).text('adria')
+  const headerTop = w.y
+  w.page.drawText('K', { x: MARGIN, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: ACCENT })
+  const kWidth = fontBold.widthOfTextAtSize('K', 20)
+  w.page.drawText('adria', { x: MARGIN + kWidth, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: TEXT_DARK })
+  w.y = headerTop + 20 * 1.3 + 6
 
-  doc.moveDown(0.3)
   const emetteurNom = config?.raisonSociale || config?.companyName || ''
   const emetteurAdresse = [config?.adressePro, [config?.cpPro, config?.villePro].filter(Boolean).join(' ')]
     .filter(Boolean)
     .join(', ')
 
-  doc.font('Helvetica-Bold').fontSize(10).fillColor(textDark).text(emetteurNom)
-  doc.font('Helvetica').fontSize(9).fillColor(textMuted)
-  if (emetteurAdresse) doc.text(emetteurAdresse)
-  if (config?.siret) doc.text(`SIRET : ${config.siret}`)
-  if (config?.tvaAssujetti && config?.tvaNumber) doc.text(`TVA : ${config.tvaNumber}`)
-  if (config?.phone) doc.text(`Tél : ${config.phone}`)
+  const leftStartY = w.y
+  w.text(emetteurNom, fontBold, 10, TEXT_DARK)
+  if (emetteurAdresse) w.text(emetteurAdresse, fontRegular, 9, TEXT_MUTED)
+  if (config?.siret) w.text(`SIRET : ${config.siret}`, fontRegular, 9, TEXT_MUTED)
+  if (config?.tvaAssujetti && config?.tvaNumber) w.text(`TVA : ${config.tvaNumber}`, fontRegular, 9, TEXT_MUTED)
+  if (config?.phone) w.text(`Tél : ${config.phone}`, fontRegular, 9, TEXT_MUTED)
+  const leftHeight = w.y - leftStartY
 
   // Devis meta — top right
-  doc.font('Helvetica-Bold').fontSize(16).fillColor(textDark)
-    .text(`Devis ${devis.devisNumber}`, doc.page.margins.left, doc.page.margins.top, {
-      width: pageWidth,
-      align: 'right',
-    })
-  doc.font('Helvetica').fontSize(9).fillColor(textMuted)
-    .text(`Date d'émission : ${formatDate(devis.dateEmission)}`, { width: pageWidth, align: 'right' })
-    .text(`Valide jusqu'au : ${formatDate(devis.dateValidite)}`, { width: pageWidth, align: 'right' })
+  let rightHeight = 0
+  rightHeight += w.drawAt(`Devis ${devis.devisNumber}`, MARGIN, headerTop, CONTENT_WIDTH, 16, fontBold, TEXT_DARK, 'right')
+  rightHeight += w.drawAt(`Date d'émission : ${formatDate(devis.dateEmission)}`, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
+  rightHeight += w.drawAt(`Valide jusqu'au : ${formatDate(devis.dateValidite)}`, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
 
-  doc.moveDown(1)
-  doc.strokeColor(accent).lineWidth(2)
-    .moveTo(doc.page.margins.left, doc.y)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-    .stroke()
-  doc.moveDown(1)
+  w.y = headerTop + Math.max(leftHeight, rightHeight) + 12
+
+  w.hLine(ACCENT, 2)
+  w.y += 12
 
   // ── Client ──────────────────────────────────────────────────────────
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(textMuted).text('CLIENT')
-  doc.moveDown(0.3)
-  doc.font('Helvetica-Bold').fontSize(10).fillColor(textDark).text(devis.clientName || '—')
-  doc.font('Helvetica').fontSize(9).fillColor(textMuted)
-  if (devis.clientAddress) doc.text(devis.clientAddress)
-  if (devis.clientEmail) doc.text(`Email : ${devis.clientEmail}`)
-  if (devis.clientPhone) doc.text(`Téléphone : ${devis.clientPhone}`)
+  w.text('CLIENT', fontBold, 11, TEXT_MUTED)
+  w.y += 4
+  w.text(devis.clientName || '—', fontBold, 10, TEXT_DARK)
+  if (devis.clientAddress) w.text(devis.clientAddress, fontRegular, 9, TEXT_MUTED)
+  if (devis.clientEmail) w.text(`Email : ${devis.clientEmail}`, fontRegular, 9, TEXT_MUTED)
+  if (devis.clientPhone) w.text(`Téléphone : ${devis.clientPhone}`, fontRegular, 9, TEXT_MUTED)
 
   if (devis.objet) {
-    doc.moveDown(0.8)
-    const objetY = doc.y
-    doc.font('Helvetica').fontSize(10).fillColor(textDark)
-    const objetHeight = doc.heightOfString(devis.objet, { width: pageWidth - 24 }) + 16
-    doc.rect(doc.page.margins.left, objetY, pageWidth, objetHeight).fill('#f4f4f5')
-    doc.fillColor(textDark).text(devis.objet, doc.page.margins.left + 12, objetY + 8, { width: pageWidth - 24 })
-    doc.y = objetY + objetHeight
+    w.y += 10
+    const objetHeight = w.heightOf(devis.objet, fontRegular, 10, CONTENT_WIDTH - 24) + 16
+    w.rect(MARGIN, w.y, CONTENT_WIDTH, objetHeight, BG)
+    w.drawAt(devis.objet, MARGIN + 12, w.y + 8, CONTENT_WIDTH - 24, 10, fontRegular, TEXT_DARK)
+    w.y += objetHeight
   }
 
   // ── Table ───────────────────────────────────────────────────────────
-  doc.moveDown(1)
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(textMuted).text('DÉTAIL DES PRESTATIONS')
-  doc.moveDown(0.5)
+  w.y += 12
+  w.text('DÉTAIL DES PRESTATIONS', fontBold, 11, TEXT_MUTED)
+  w.y += 6
 
   const colWidths = {
-    description: pageWidth * 0.40,
-    qty: pageWidth * 0.15,
-    pu: pageWidth * 0.15,
-    tva: pageWidth * 0.10,
-    total: pageWidth * 0.20,
+    description: CONTENT_WIDTH * 0.40,
+    qty: CONTENT_WIDTH * 0.15,
+    pu: CONTENT_WIDTH * 0.15,
+    tva: CONTENT_WIDTH * 0.10,
+    total: CONTENT_WIDTH * 0.20,
   }
   const colX = {
-    description: doc.page.margins.left,
-    qty: doc.page.margins.left + colWidths.description,
-    pu: doc.page.margins.left + colWidths.description + colWidths.qty,
-    tva: doc.page.margins.left + colWidths.description + colWidths.qty + colWidths.pu,
-    total: doc.page.margins.left + colWidths.description + colWidths.qty + colWidths.pu + colWidths.tva,
+    description: MARGIN,
+    qty: MARGIN + colWidths.description,
+    pu: MARGIN + colWidths.description + colWidths.qty,
+    tva: MARGIN + colWidths.description + colWidths.qty + colWidths.pu,
+    total: MARGIN + colWidths.description + colWidths.qty + colWidths.pu + colWidths.tva,
   }
 
   const drawTableHeader = () => {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(textMuted)
-    const y = doc.y
-    doc.text('DESCRIPTION', colX.description, y, { width: colWidths.description })
-    doc.text('QTÉ', colX.qty, y, { width: colWidths.qty, align: 'right' })
-    doc.text('PU HT', colX.pu, y, { width: colWidths.pu, align: 'right' })
-    doc.text('TVA', colX.tva, y, { width: colWidths.tva, align: 'right' })
-    doc.text('TOTAL HT', colX.total, y, { width: colWidths.total, align: 'right' })
-    doc.moveDown(0.4)
-    doc.strokeColor(border).lineWidth(1)
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .stroke()
-    doc.moveDown(0.4)
+    const headerHeight = 8 * 1.3
+    w.drawAt('DESCRIPTION', colX.description, w.y, colWidths.description, 8, fontBold, TEXT_MUTED)
+    w.drawAt('QTÉ', colX.qty, w.y, colWidths.qty, 8, fontBold, TEXT_MUTED, 'right')
+    w.drawAt('PU HT', colX.pu, w.y, colWidths.pu, 8, fontBold, TEXT_MUTED, 'right')
+    w.drawAt('TVA', colX.tva, w.y, colWidths.tva, 8, fontBold, TEXT_MUTED, 'right')
+    w.drawAt('TOTAL HT', colX.total, w.y, colWidths.total, 8, fontBold, TEXT_MUTED, 'right')
+    w.y += headerHeight + 4
+    w.hLine()
+    w.y += 4
   }
 
   drawTableHeader()
 
   for (const line of lines) {
-    if (doc.y > doc.page.height - doc.page.margins.bottom - 100) {
-      doc.addPage()
-      drawTableHeader()
-    }
-
     if (line.type === 'section') {
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(textDark)
-        .text((line.description || '').toUpperCase(), colX.description, doc.y, { width: pageWidth })
-      doc.moveDown(0.4)
+      w.ensureSpace(9 * 1.3 + 4, drawTableHeader)
+      w.drawAt((line.description || '').toUpperCase(), colX.description, w.y, CONTENT_WIDTH, 9, fontBold, TEXT_DARK)
+      w.y += 9 * 1.3 + 4
       continue
     }
 
+    const descLines = wrapText(line.description || '', fontRegular, 9, colWidths.description - 8)
+    const rowHeight = Math.max(descLines.length * 9 * 1.3, 12) + 6
+
+    w.ensureSpace(rowHeight, drawTableHeader)
+
     const total = (line.quantity || 0) * (line.unitPrice || 0)
-    const y = doc.y
-    doc.font('Helvetica').fontSize(9).fillColor(textDark)
-    doc.text(line.description || '', colX.description, y, { width: colWidths.description - 8 })
-    const rowHeight = Math.max(doc.heightOfString(line.description || '', { width: colWidths.description - 8 }), 12)
-    doc.text(`${line.quantity || 0} ${line.unit || ''}`, colX.qty, y, { width: colWidths.qty, align: 'right' })
-    doc.text(formatEuro(line.unitPrice || 0), colX.pu, y, { width: colWidths.pu, align: 'right' })
-    doc.text(`${line.tvaRate || 0}%`, colX.tva, y, { width: colWidths.tva, align: 'right' })
-    doc.text(formatEuro(total), colX.total, y, { width: colWidths.total, align: 'right' })
-    doc.y = y + rowHeight + 6
-    doc.strokeColor(border).lineWidth(0.5)
-      .moveTo(doc.page.margins.left, doc.y - 3)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y - 3)
-      .stroke()
+    w.drawAt(line.description || '', colX.description, w.y, colWidths.description - 8, 9, fontRegular, TEXT_DARK)
+    w.drawAt(`${line.quantity || 0} ${line.unit || ''}`, colX.qty, w.y, colWidths.qty, 9, fontRegular, TEXT_DARK, 'right')
+    w.drawAt(formatEuro(line.unitPrice || 0), colX.pu, w.y, colWidths.pu, 9, fontRegular, TEXT_DARK, 'right')
+    w.drawAt(`${line.tvaRate || 0}%`, colX.tva, w.y, colWidths.tva, 9, fontRegular, TEXT_DARK, 'right')
+    w.drawAt(formatEuro(total), colX.total, w.y, colWidths.total, 9, fontRegular, TEXT_DARK, 'right')
+
+    w.y += rowHeight
+    w.hLine(BORDER, 0.5)
   }
 
   // ── Totaux ──────────────────────────────────────────────────────────
-  doc.moveDown(1)
-  if (doc.y > doc.page.height - doc.page.margins.bottom - 120) {
-    doc.addPage()
-  }
+  w.y += 12
+  w.ensureSpace(120)
 
   const totalsWidth = 220
-  const totalsX = doc.page.width - doc.page.margins.right - totalsWidth
+  const totalsX = PAGE_WIDTH - MARGIN - totalsWidth
 
-  doc.font('Helvetica').fontSize(10).fillColor(textMuted)
-  doc.text('Total HT', totalsX, doc.y, { width: totalsWidth - 80, continued: false })
-  doc.text(formatEuro(devis.totalHT), totalsX + totalsWidth - 80, doc.y - doc.currentLineHeight(), { width: 80, align: 'right' })
+  w.drawAt('Total HT', totalsX, w.y, totalsWidth - 80, 10, fontRegular, TEXT_MUTED)
+  w.drawAt(formatEuro(devis.totalHT), totalsX + totalsWidth - 80, w.y, 80, 10, fontRegular, TEXT_MUTED, 'right')
+  w.y += 10 * 1.3
 
   for (const [rate, amount] of Object.entries(tvaBreakdown)) {
     if (!amount || amount <= 0) continue
-    doc.text(`TVA (${rate}%)`, totalsX, doc.y, { width: totalsWidth - 80 })
-    doc.text(formatEuro(amount), totalsX + totalsWidth - 80, doc.y - doc.currentLineHeight(), { width: 80, align: 'right' })
+    w.drawAt(`TVA (${rate}%)`, totalsX, w.y, totalsWidth - 80, 10, fontRegular, TEXT_MUTED)
+    w.drawAt(formatEuro(amount), totalsX + totalsWidth - 80, w.y, 80, 10, fontRegular, TEXT_MUTED, 'right')
+    w.y += 10 * 1.3
   }
 
-  doc.moveDown(0.3)
-  doc.strokeColor(border).lineWidth(1)
-    .moveTo(totalsX, doc.y)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-    .stroke()
-  doc.moveDown(0.3)
+  w.y += 4
+  w.lineAt(totalsX, w.y, PAGE_WIDTH - MARGIN, w.y)
+  w.y += 4
 
-  doc.font('Helvetica-Bold').fontSize(13).fillColor(textDark)
-  doc.text('Total TTC', totalsX, doc.y, { width: totalsWidth - 90 })
-  doc.fillColor(accent).text(formatEuro(devis.totalTTC), totalsX + totalsWidth - 90, doc.y - doc.currentLineHeight(), { width: 90, align: 'right' })
+  w.drawAt('Total TTC', totalsX, w.y, totalsWidth - 90, 13, fontBold, TEXT_DARK)
+  w.drawAt(formatEuro(devis.totalTTC), totalsX + totalsWidth - 90, w.y, 90, 13, fontBold, ACCENT, 'right')
+  w.y += 13 * 1.3
 
   // ── Conditions ──────────────────────────────────────────────────────
-  doc.moveDown(1.5)
-  if (doc.y > doc.page.height - doc.page.margins.bottom - 150) {
-    doc.addPage()
-  }
+  w.y += 20
+  w.ensureSpace(150)
 
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(textMuted).text('CONDITIONS')
-  doc.moveDown(0.5)
-  doc.font('Helvetica').fontSize(9).fillColor(textDark)
+  w.text('CONDITIONS', fontBold, 11, TEXT_MUTED)
+  w.y += 6
 
   if (devis.conditionsPaiement) {
-    doc.font('Helvetica-Bold').fontSize(9).text('Conditions de paiement : ', { continued: true })
-    doc.font('Helvetica').text(devis.conditionsPaiement)
-    doc.moveDown(0.3)
+    const label = 'Conditions de paiement : '
+    const labelWidth = fontBold.widthOfTextAtSize(label, 9)
+    w.drawAt(label, MARGIN, w.y, labelWidth, 9, fontBold, TEXT_DARK)
+    const h = w.drawAt(devis.conditionsPaiement, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
+    w.y += Math.max(h, 9 * 1.3) + 4
   }
   if (devis.delaiExecution) {
-    doc.font('Helvetica-Bold').fontSize(9).text('Délai d\'exécution : ', { continued: true })
-    doc.font('Helvetica').text(devis.delaiExecution)
-    doc.moveDown(0.3)
+    const label = "Délai d'exécution : "
+    const labelWidth = fontBold.widthOfTextAtSize(label, 9)
+    w.drawAt(label, MARGIN, w.y, labelWidth, 9, fontBold, TEXT_DARK)
+    const h = w.drawAt(devis.delaiExecution, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
+    w.y += Math.max(h, 9 * 1.3) + 4
   }
   if (!config?.assuranceNonRequise && config?.assureur) {
-    doc.font('Helvetica-Bold').fontSize(9).text('Assurance : ', { continued: true })
-    doc.font('Helvetica').text(`${config.assureur}${config.numAssurance ? ` — N° ${config.numAssurance}` : ''}`)
-    doc.moveDown(0.3)
+    const label = 'Assurance : '
+    const labelWidth = fontBold.widthOfTextAtSize(label, 9)
+    const value = `${config.assureur}${config.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
+    w.drawAt(label, MARGIN, w.y, labelWidth, 9, fontBold, TEXT_DARK)
+    const h = w.drawAt(value, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
+    w.y += Math.max(h, 9 * 1.3) + 4
   }
 
   // ── Signature ───────────────────────────────────────────────────────
-  doc.moveDown(1.5)
-  if (doc.y > doc.page.height - doc.page.margins.bottom - 140) {
-    doc.addPage()
-  }
+  w.y += 20
+  w.ensureSpace(140)
 
   const ville = config?.villePro || ''
-  doc.font('Helvetica').fontSize(9).fillColor(textDark)
-    .text(`Fait à ${ville || '—'}, le ${formatDate(new Date().toISOString())}`)
-  doc.moveDown(1)
+  w.text(`Fait à ${ville || '—'}, le ${formatDate(new Date().toISOString())}`, fontRegular, 9, TEXT_DARK)
+  w.y += 14
 
-  const sigWidth = (pageWidth - 40) / 2
-  const sigY = doc.y
-  doc.font('Helvetica-Bold').fontSize(9).fillColor(textDark)
-    .text('Bon pour accord — Signature de l\'artisan', doc.page.margins.left, sigY, { width: sigWidth })
-  doc.text('Bon pour accord — Signature du client', doc.page.margins.left + sigWidth + 40, sigY, { width: sigWidth })
+  const sigWidth = (CONTENT_WIDTH - 40) / 2
+  const sigY = w.y
+  w.drawAt("Bon pour accord — Signature de l'artisan", MARGIN, sigY, sigWidth, 9, fontBold, TEXT_DARK)
+  w.drawAt('Bon pour accord — Signature du client', MARGIN + sigWidth + 40, sigY, sigWidth, 9, fontBold, TEXT_DARK)
 
   const lineY = sigY + 60
-  doc.strokeColor(border).lineWidth(1)
-    .moveTo(doc.page.margins.left, lineY)
-    .lineTo(doc.page.margins.left + sigWidth, lineY)
-    .stroke()
-  doc.moveTo(doc.page.margins.left + sigWidth + 40, lineY)
-    .lineTo(doc.page.margins.left + sigWidth + 40 + sigWidth, lineY)
-    .stroke()
+  w.lineAt(MARGIN, lineY, MARGIN + sigWidth, lineY)
+  w.lineAt(MARGIN + sigWidth + 40, lineY, MARGIN + sigWidth + 40 + sigWidth, lineY)
+  w.y = lineY
 
   // ── Mentions légales ────────────────────────────────────────────────
   if (devis.mentionsLegales) {
-    doc.moveDown(2)
-    if (doc.y > doc.page.height - doc.page.margins.bottom - 60) {
-      doc.addPage()
-    }
-    doc.strokeColor(border).lineWidth(1)
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .stroke()
-    doc.moveDown(0.5)
-    doc.font('Helvetica').fontSize(8).fillColor(textMuted).text(devis.mentionsLegales, { width: pageWidth })
+    w.y += 30
+    w.ensureSpace(60)
+    w.hLine()
+    w.y += 8
+    w.text(devis.mentionsLegales, fontRegular, 8, TEXT_MUTED)
   }
 
-  doc.end()
-  return done
+  const pdfBytes = await pdfDoc.save()
+  return Buffer.from(pdfBytes)
 }
