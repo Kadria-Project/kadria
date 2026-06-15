@@ -2152,29 +2152,6 @@ export function LandingRoutePage() {
     'Relances et calendrier intégrés au dashboard.',
   ];
 
-  const etapes = [
-    {
-      number: '01',
-      title: 'Le prospect vous contacte',
-      text: 'Il appelle ou visite votre site — Kadria répond immédiatement, à toute heure.',
-    },
-    {
-      number: '02',
-      title: 'Kadria pose les bonnes questions',
-      text: 'Métier, surface, budget, délai, adresse, photos — tout est collecté naturellement.',
-    },
-    {
-      number: '03',
-      title: 'Le dossier est créé automatiquement',
-      text: 'Les informations sont structurées, scorées et analysées par l\'IA Kadria en moins de 3 minutes.',
-    },
-    {
-      number: '04',
-      title: 'Vous recevez une demande prête à chiffrer',
-      text: 'Dossier complet dans votre dashboard + notification email immédiate. Décidez en 30 secondes.',
-    },
-  ];
-
   const waveBars = [
     'h-[40%] [animation-delay:0ms]',
     'h-[70%] [animation-delay:100ms]',
@@ -2350,46 +2327,6 @@ export function LandingRoutePage() {
                     </p>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* COMMENT CA MARCHE */}
-        <section id="comment-ca-marche" className="w-full bg-zinc-900 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Comment ça fonctionne</h2>
-              <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Kadria transforme les demandes brutes en dossiers exploitables par votre équipe, du premier
-                contact au dossier prêt à chiffrer.
-              </p>
-            </div>
-            <div className="relative mt-12">
-              <div className="pointer-events-none absolute left-0 right-0 top-1/2 hidden border-t border-dashed border-zinc-700 lg:block" />
-              <div className="relative grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {etapes.map((e, i) => {
-                  const isFinal = i === etapes.length - 1;
-                  return (
-                    <div
-                      key={e.number}
-                      className={`kr-reveal kr-card-hover kr-reveal-delay-${i + 1} relative rounded-xl border p-6 ${
-                        isFinal ? 'border-green-500/25 bg-[rgba(34,197,94,0.04)]' : 'border-zinc-700 bg-zinc-800'
-                      }`}
-                    >
-                      {isFinal && (
-                        <span className="absolute -top-3 left-6 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-black">
-                          Résultat final
-                        </span>
-                      )}
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full border border-green-500 bg-zinc-900 text-sm font-bold text-green-500">
-                        {e.number}
-                      </span>
-                      <h3 className="mt-4 text-base font-semibold">{e.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-zinc-400">{e.text}</p>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
