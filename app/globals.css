@@ -299,3 +299,14 @@ body {
     animation: none;
   }
 }
+
+.kr-mockup {
+  --bg: #09090b;
+  --bg-hover: #27272a;
+  --border: #27272a;
+  --text-1: #ffffff;
+  --text-2: #a1a1aa;
+  --text-3: #71717a;
+  --accent: #22c55e;
+  --accent-border: rgba(34, 197, 94, 0.3);
+}

@@ -627,20 +627,20 @@ function MockupDossier() {
     { ok: false, title: 'Photos jointes', detail: 'Aucune photo' },
   ]
   return (
-    <div>
-      <div style={{ borderBottom: '1px solid #27272a' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
+    <div className="kr-mockup">
+      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
         <div>
-          <p style={{ ...kLabel, color: '#22c55e' }} className="mb-1">Dossier qualifié</p>
+          <p style={{ ...kLabel, color: 'var(--accent)' }} className="mb-1">Dossier qualifié</p>
           <p className="text-lg font-extrabold text-white">Marie Leroy</p>
           <p className="text-xs text-zinc-400">Rénovation salle de bain · Lyon 3e</p>
         </div>
-        <span style={{ background: '#22c55e', color: '#09090b' }} className="whitespace-nowrap rounded-full px-3 py-1 text-[13px] font-bold">
+        <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="whitespace-nowrap rounded-full px-3 py-1 text-[13px] font-bold">
           Score 94%
         </span>
       </div>
 
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5 sm:px-5">
-        <p style={{ color: '#22c55e' }} className="text-sm font-bold">✦ Analyse Kadria</p>
+        <p style={{ color: 'var(--accent)' }} className="text-sm font-bold">✦ Analyse Kadria</p>
         <span
           style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
           className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
@@ -652,22 +652,22 @@ function MockupDossier() {
       <div className="mt-3 grid grid-cols-2 gap-2 px-4 sm:px-5">
         {criteria.map((c) => {
           const Icon = c.ok ? CheckCircle : XCircle
-          const color = c.ok ? '#22c55e' : '#dc2626'
+          const color = c.ok ? 'var(--accent)' : '#dc2626'
           return (
-            <div key={c.title} style={{ background: '#09090b', border: '1px solid #27272a' }} className="rounded-lg p-2.5">
+            <div key={c.title} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }} className="rounded-lg p-2.5">
               <div className="mb-1 flex items-center gap-1.5">
-                <Icon size={12} color={color} />
-                <span className="text-xs font-semibold" style={{ color: c.ok ? '#ffffff' : color, opacity: c.ok ? 1 : 0.6 }}>
+                <Icon size={12} color={c.ok ? 'var(--accent)' : '#dc2626'} />
+                <span className="text-xs font-semibold" style={{ color: c.ok ? 'var(--text-1)' : color, opacity: c.ok ? 1 : 0.6 }}>
                   {c.title}
                 </span>
               </div>
-              <p className="text-xs" style={{ color: c.ok ? '#a1a1aa' : '#71717a' }}>{c.detail}</p>
+              <p className="text-xs" style={{ color: c.ok ? 'var(--text-2)' : 'var(--text-3)' }}>{c.detail}</p>
             </div>
           )
         })}
       </div>
 
-      <div style={{ background: '#09090b' }} className="mx-4 mt-3 rounded-lg p-3 sm:mx-5">
+      <div style={{ background: 'var(--bg)' }} className="mx-4 mt-3 rounded-lg p-3 sm:mx-5">
         <p style={kLabel} className="mb-1.5 text-zinc-500">Synthèse IA</p>
         <p className="text-xs italic leading-relaxed text-zinc-400">
           Rénovation complète SDB 7m². Budget cohérent, délai court. Prospect disponible rapidement.
@@ -675,7 +675,7 @@ function MockupDossier() {
       </div>
 
       <div
-        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.3)' }}
+        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid var(--accent-border)' }}
         className="mx-4 mt-2 flex items-start gap-2 rounded-lg p-3 sm:mx-5"
       >
         <Lightbulb size={12} color="#22c55e" className="mt-0.5 shrink-0" />
@@ -684,10 +684,10 @@ function MockupDossier() {
         </p>
       </div>
 
-      <div style={{ borderTop: '1px solid #27272a' }} className="mt-3 flex items-center gap-3 px-4 py-2.5 sm:px-5">
-        <span style={{ color: '#22c55e' }} className="text-xs font-bold">Score 94%</span>
+      <div style={{ borderTop: '1px solid var(--border)' }} className="mt-3 flex items-center gap-3 px-4 py-2.5 sm:px-5">
+        <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">Score 94%</span>
         <span className="text-xs text-zinc-600">·</span>
-        <span style={{ color: '#22c55e' }} className="text-xs">Conversion Élevée</span>
+        <span style={{ color: 'var(--accent)' }} className="text-xs">Conversion Élevée</span>
         <span className="text-xs text-zinc-600">·</span>
         <span className="text-xs text-zinc-600">Reçu il y a 2 min</span>
       </div>
@@ -698,34 +698,34 @@ function MockupDossier() {
 function MockupPipeline() {
   const columns = [
     {
-      title: 'Nouveau', border: '#3f3f46', badge: '#3f3f46', total: '6.7k€', totalColor: '#a1a1aa',
+      title: 'Nouveau', border: '#3f3f46', badge: '#3f3f46', total: '6.7k€', totalColor: 'var(--text-2)',
       cards: [
         { initials: 'MT', name: 'Morel Thomas', meta: 'jardin · 85%', metaColor: '#22c55e' },
         { initials: 'FL', name: 'Fontaine Laura', meta: 'salle de bain · 100%', metaColor: '#22c55e' },
       ],
     },
     {
-      title: 'À rappeler', border: '#d97706', badge: '#d97706', total: '7k€', totalColor: '#a1a1aa',
+      title: 'À rappeler', border: '#d97706', badge: '#d97706', total: '7k€', totalColor: 'var(--text-2)',
       cards: [
         { initials: 'SM', name: 'Sophie Martin', meta: 'jardin · 100%', metaColor: '#22c55e' },
         { initials: 'DN', name: 'Dubois Nicolas', meta: 'jardin · 100%', metaColor: '#22c55e' },
       ],
     },
     {
-      title: 'Qualifié', border: '#16a34a', badge: '#16a34a', total: '3k€', totalColor: '#a1a1aa',
+      title: 'Qualifié', border: '#16a34a', badge: '#16a34a', total: '3k€', totalColor: 'var(--text-2)',
       cards: [
         { initials: 'DM', name: 'Dumontier', meta: 'paysagiste · 90%', metaColor: '#22c55e' },
       ],
     },
     {
-      title: 'Devis envoyé', border: '#2563eb', badge: '#2563eb', total: '17.2k€', totalColor: '#a1a1aa',
+      title: 'Devis envoyé', border: '#2563eb', badge: '#2563eb', total: '17.2k€', totalColor: 'var(--text-2)',
       cards: [
         { initials: 'JL', name: 'Julien Lef.', meta: 'jardin · 0%', metaColor: '#dc2626' },
         { initials: 'LD', name: 'Léon Duval', meta: 'jardin · 100%', metaColor: '#22c55e' },
       ],
     },
     {
-      title: 'Gagné 🏆', border: '#15803d', badge: '#15803d', total: '15.4k€', totalColor: '#22c55e',
+      title: 'Gagné 🏆', border: '#15803d', badge: '#15803d', total: '15.4k€', totalColor: 'var(--accent)',
       cards: [
         { initials: 'LC', name: 'Leroy Celine', meta: 'jardin · 100%', metaColor: '#22c55e' },
         { initials: 'RS', name: 'Roussel', meta: 'plomberie · 90%', metaColor: '#22c55e' },
@@ -734,12 +734,12 @@ function MockupPipeline() {
   ]
   const totalCount = columns.reduce((sum, col) => sum + col.cards.length, 0)
   return (
-    <div>
-      <div style={{ borderBottom: '1px solid #27272a' }} className="p-3 sm:px-4">
+    <div className="kr-mockup">
+      <div style={{ borderBottom: '1px solid var(--border)' }} className="p-3 sm:px-4">
         <p style={{ ...kLabel, color: '#60a5fa' }} className="mb-1.5">Pipeline Kanban</p>
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-zinc-400">{totalCount} dossiers actifs</span>
-          <span style={{ color: '#22c55e' }} className="text-xs font-semibold">42.8k€ potentiel</span>
+          <span style={{ color: 'var(--accent)' }} className="text-xs font-semibold">42.8k€ potentiel</span>
         </div>
       </div>
       <div className="grid grid-cols-5 gap-1 p-3 sm:gap-2 sm:p-4">
@@ -748,7 +748,7 @@ function MockupPipeline() {
             <div className="flex items-center justify-between gap-1">
               <span className="truncate text-[10px] font-bold text-white sm:text-xs">{col.title}</span>
               <span
-                style={{ background: col.badge, color: '#ffffff' }}
+                style={{ background: col.badge, color: 'var(--text-1)' }}
                 className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
               >
                 {col.cards.length}
@@ -756,9 +756,9 @@ function MockupPipeline() {
             </div>
             <div className="flex flex-col gap-1">
               {col.cards.map((card) => (
-                <div key={card.name} style={{ background: '#09090b', border: '1px solid #27272a' }} className="rounded-md px-1.5 py-1.5">
+                <div key={card.name} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }} className="rounded-md px-1.5 py-1.5">
                   <div className="mb-1 flex items-center gap-1">
-                    <span style={{ background: '#27272a' }} className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white">
+                    <span style={{ background: 'var(--bg-hover)' }} className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white">
                       {card.initials}
                     </span>
                     <span className="truncate text-[10px] font-semibold text-white">{card.name}</span>
@@ -783,8 +783,8 @@ function MockupDevis() {
     { label: 'Pose & finitions', price: '1 800,00 €', bold: false },
   ]
   return (
-    <div>
-      <div style={{ borderBottom: '1px solid #27272a' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
+    <div className="kr-mockup">
+      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
         <div>
           <p style={{ ...kLabel, color: '#f59e0b' }} className="mb-1">Devis en un clic</p>
           <p className="text-lg font-extrabold text-white">DEV-2026-002</p>
@@ -800,7 +800,7 @@ function MockupDevis() {
 
       <div className="px-4 pt-3 sm:px-5">
         {lines.map((line) => (
-          <div key={line.label} style={{ borderBottom: '1px solid #27272a' }} className="flex items-center justify-between gap-3 py-2">
+          <div key={line.label} style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between gap-3 py-2">
             <span className="text-xs text-white">{line.label}</span>
             <span className={`whitespace-nowrap text-xs text-white ${line.bold ? 'font-semibold' : 'font-medium'}`}>
               {line.price}
@@ -811,11 +811,11 @@ function MockupDevis() {
 
       <div className="flex items-center justify-between px-4 py-2.5 sm:px-5">
         <span className="text-sm font-bold text-white">Total TTC</span>
-        <span style={{ color: '#22c55e' }} className="text-xl font-black">9 800,00 €</span>
+        <span style={{ color: 'var(--accent)' }} className="text-xl font-black">9 800,00 €</span>
       </div>
 
       <div
-        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.3)' }}
+        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid var(--accent-border)' }}
         className="mx-4 mt-2 flex items-center gap-2 rounded-lg p-3 sm:mx-5"
       >
         <Eye size={12} color="#22c55e" className="shrink-0" />
@@ -823,7 +823,7 @@ function MockupDevis() {
       </div>
 
       <div className="px-4 py-3 sm:px-5">
-        <button style={{ background: '#22c55e', color: '#09090b' }} className="w-full rounded-xl py-2.5 text-sm font-bold">
+        <button style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="w-full rounded-xl py-2.5 text-sm font-bold">
           Envoyer le devis →
         </button>
       </div>
@@ -860,18 +860,18 @@ function MockupCalendar() {
   ))
 
   return (
-    <div>
-      <div style={{ borderBottom: '1px solid #27272a' }} className="flex items-center justify-between gap-2 p-3 sm:px-4">
+    <div className="kr-mockup">
+      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between gap-2 p-3 sm:px-4">
         <p className="text-base font-extrabold text-white">Juin 2026</p>
         <div className="flex items-center gap-3">
           <span className="text-xs text-zinc-400">‹ ›</span>
-          <span style={{ background: '#22c55e', color: '#09090b' }} className="whitespace-nowrap rounded-md px-2 py-1 text-xs font-bold">
+          <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="whitespace-nowrap rounded-md px-2 py-1 text-xs font-bold">
             + Événement
           </span>
         </div>
       </div>
 
-      <div style={{ borderBottom: '1px solid #27272a' }} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 sm:px-4">
+      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 sm:px-4">
         {(['rdv', 'relance', 'rappel', 'intervention'] as CalendarEventType[]).map((type) => (
           <span key={type} className="flex items-center gap-1.5 text-xs text-zinc-400">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: CALENDAR_TYPE_STYLE[type].color }} />
@@ -893,15 +893,15 @@ function MockupCalendar() {
             return (
               <div
                 key={i}
-                style={{ borderRight: '1px solid #27272a', borderBottom: '1px solid #27272a' }}
+                style={{ borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
                 className="flex min-h-[44px] flex-col gap-0.5 p-[3px]"
               >
                 {isToday ? (
-                  <span style={{ background: '#22c55e', color: '#09090b' }} className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold">
+                  <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold">
                     {cell.day}
                   </span>
                 ) : (
-                  <span className="text-[10px]" style={{ color: cell.current ? '#a1a1aa' : '#3f3f46' }}>{cell.day}</span>
+                  <span className="text-[10px]" style={{ color: cell.current ? 'var(--text-2)' : '#3f3f46' }}>{cell.day}</span>
                 )}
                 {event && (
                   <span
@@ -922,7 +922,7 @@ function MockupCalendar() {
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid #27272a' }} className="flex flex-col gap-1.5 p-3 sm:px-4">
+      <div style={{ borderTop: '1px solid var(--border)' }} className="flex flex-col gap-1.5 p-3 sm:px-4">
         {[
           { day: 3, label: 'RDV Leroy Celine', color: CALENDAR_TYPE_STYLE.rdv.color },
           { day: 10, label: 'Relance Sophie Martin', color: CALENDAR_TYPE_STYLE.relance.color },
