@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 
 interface ClientRecord {
   id: string;
@@ -8,6 +9,16 @@ interface ClientRecord {
   first_name: string;
   last_name: string;
   statut: string;
+}
+
+interface EmailLog {
+  id: string;
+  to: string;
+  subject: string;
+  sent_at: string;
+  status: string;
+  resend_id: string;
+  admin_email: string;
 }
 
 const EMAIL_TEMPLATES: Record<string, { subject: string; body: string }> = {
@@ -47,6 +58,15 @@ const label: React.CSSProperties = {
   display: 'block',
 };
 
+function formatDateTime(value: string) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return `${date} à ${time}`;
+}
+
 const inputStyle: React.CSSProperties = {
   background: '#09090b',
   border: '1px solid #27272a',
@@ -67,6 +87,8 @@ export default function AdminEmailsPage() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/clients')
@@ -75,7 +97,22 @@ export default function AdminEmailsPage() {
         if (!data.error) setClients(data);
       })
       .catch(() => {});
+
+    fetchLogs();
   }, []);
+
+  async function fetchLogs() {
+    setLogsLoading(true);
+    try {
+      const res = await fetch('/api/admin/email-logs');
+      const data = await res.json();
+      if (!data.error) setEmailLogs(data);
+    } catch {
+      // ignore
+    } finally {
+      setLogsLoading(false);
+    }
+  }
 
   function applyTemplate(name: string) {
     setTemplate(name);
@@ -141,6 +178,13 @@ export default function AdminEmailsPage() {
           ? `${success} email${success > 1 ? 's' : ''} envoyé${success > 1 ? 's' : ''} avec succès`
           : `${success} envoyé(s), ${failed} échec(s)`
       );
+
+      if (success > 0) {
+        await fetchLogs();
+        setSubject('');
+        setBody('');
+        setTemplate('Vide');
+      }
     } catch {
       setFeedback("Erreur lors de l'envoi des emails");
     } finally {
@@ -242,11 +286,96 @@ export default function AdminEmailsPage() {
       </div>
 
       <div style={card}>
-        <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Historique</p>
-        <p style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '32px 0', margin: 0 }}>
-          Aucun email envoyé pour l&apos;instant
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <p style={{ fontWeight: 700, fontSize: '15px', margin: 0 }}>Historique</p>
+          <button
+            onClick={fetchLogs}
+            aria-label="Rafraîchir l'historique"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#a1a1aa',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <RefreshCw size={14} className={logsLoading ? 'admin-spin' : ''} />
+          </button>
+        </div>
+
+        {logsLoading && emailLogs.length === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="admin-skeleton" style={{ background: '#27272a', borderRadius: '8px', height: '48px' }} />
+            ))}
+          </div>
+        )}
+
+        {!logsLoading && emailLogs.length === 0 && (
+          <p style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '32px 0', margin: 0 }}>
+            Aucun email envoyé pour l&apos;instant
+          </p>
+        )}
+
+        {emailLogs.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Destinataire</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Objet</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Envoyé le</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {emailLogs.map((log) => (
+                  <tr
+                    key={log.id}
+                    style={{ borderTop: '1px solid #27272a' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#27272a')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>{log.to}</td>
+                    <td
+                      style={{
+                        padding: '10px 12px',
+                        color: '#a1a1aa',
+                        maxWidth: '200px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {log.subject}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#a1a1aa' }}>{formatDateTime(log.sent_at)}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {log.status === 'sent' ? (
+                        <span style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', borderRadius: '999px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>
+                          ✓ Envoyé
+                        </span>
+                      ) : (
+                        <span style={{ background: 'rgba(220,38,38,0.1)', color: '#dc2626', borderRadius: '999px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>
+                          ✗ Erreur
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <style>{`
+        @keyframes admin-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .admin-spin { animation: admin-spin 1s linear infinite; }
+        @keyframes admin-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .admin-skeleton { animation: admin-pulse 1.5s ease-in-out infinite; }
+      `}</style>
     </div>
   );
 }
