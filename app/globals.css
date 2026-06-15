@@ -273,3 +273,29 @@ body {
     width: 32px !important;
   }
 }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(0.5deg); }
+  66% { transform: translateY(-4px) rotate(-0.5deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.mockup-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.kr-glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mockup-float,
+  .kr-glow-pulse {
+    animation: none;
+  }
+}

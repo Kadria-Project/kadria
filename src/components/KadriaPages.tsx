@@ -11,20 +11,25 @@ import {
   Banknote,
   BarChart3,
   Bot,
+  CalendarCheck,
   Check,
   CheckCircle,
+  ChevronRight,
   ClipboardCheck,
   Clock,
   Euro,
+  FileCheck,
   FileText,
   Globe,
   Hammer,
+  KanbanSquare,
   LayoutDashboard,
   Mail,
   MapPin,
   MessageCircle,
   Minus,
   Phone,
+  Receipt,
   Rocket,
   Search,
   Shield,
@@ -562,555 +567,381 @@ const TRADES_DATA = [
 ];
 
 
-function DashboardCarousel() {
-  const [activeSlide, setActiveSlide] = useState(0)
-  const [phase, setPhase] = useState<'idle' | 'exit' | 'enter-start' | 'enter'>('idle')
+const DASHBOARD_TABS = [
+  {
+    number: '01.',
+    title: 'Dossier qualifié en un coup d’œil',
+    description: 'Chaque demande entrante est automatiquement qualifiée et enrichie : coordonnées, type de projet, budget estimé et score de priorité.',
+    icon: FileCheck,
+    color: '#22c55e',
+    iconBg: 'rgba(34,197,94,0.1)',
+    iconBorder: 'rgba(34,197,94,0.3)',
+    glow: 'rgba(34,197,94,0.35)',
+  },
+  {
+    number: '02.',
+    title: 'Pipeline visuel par étape',
+    description: 'Glissez-déposez vos opportunités d’une étape à l’autre : nouveau, à rappeler, qualifié, devis envoyé, gagné.',
+    icon: KanbanSquare,
+    color: '#60a5fa',
+    iconBg: 'rgba(96,165,250,0.1)',
+    iconBorder: 'rgba(96,165,250,0.3)',
+    glow: 'rgba(96,165,250,0.35)',
+  },
+  {
+    number: '03.',
+    title: 'Devis générés en un clic',
+    description: 'Transformez un dossier qualifié en devis professionnel prêt à envoyer, avec vos tarifs et conditions personnalisées.',
+    icon: Receipt,
+    color: '#f59e0b',
+    iconBg: 'rgba(245,158,11,0.1)',
+    iconBorder: 'rgba(245,158,11,0.3)',
+    glow: 'rgba(245,158,11,0.35)',
+  },
+  {
+    number: '04.',
+    title: 'Calendrier centralisé',
+    description: 'Visualisez rendez-vous, relances et chantiers planifiés sur un calendrier unique, partagé avec toute votre équipe.',
+    icon: CalendarCheck,
+    color: '#a78bfa',
+    iconBg: 'rgba(167,139,250,0.1)',
+    iconBorder: 'rgba(167,139,250,0.3)',
+    glow: 'rgba(167,139,250,0.35)',
+  },
+]
 
-  const SLIDES = [
-    { id: 'kpis', label: 'KPIs & Métriques', tabLabel: 'Suivi', icon: '📊' },
-    { id: 'projects', label: 'Liste des projets', tabLabel: 'Pipeline', icon: '📋' },
-    { id: 'pipeline', label: 'Pipeline & Top opportunités', tabLabel: 'Opportunités', icon: '🏆' },
-    { id: 'map', label: 'Chantiers géolocalisés', tabLabel: 'Calendrier', icon: '📍' },
+function MockupDossier() {
+  return (
+    <div className="p-5 sm:p-6">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-green-500">Dossier qualifié</p>
+          <p className="text-base font-bold text-white sm:text-lg">Leroy Celine</p>
+        </div>
+        <span style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
+          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold">
+          Score 92%
+        </span>
+      </div>
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        {[
+          { label: 'Type de projet', value: 'Rénovation toiture' },
+          { label: 'Budget estimé', value: '8 000 – 12 000 €' },
+          { label: 'Localisation', value: 'Strasbourg' },
+          { label: 'Délai souhaité', value: 'Sous 1 mois' },
+        ].map((item) => (
+          <div key={item.label} style={{ background: '#27272a', border: '1px solid #3f3f46' }} className="rounded-xl p-3">
+            <p className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">{item.label}</p>
+            <p className="text-sm font-semibold text-white">{item.value}</p>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: '#27272a', border: '1px solid #3f3f46' }} className="mb-4 rounded-xl p-4">
+        <p className="mb-2 text-xs text-zinc-500">Message du client</p>
+        <p className="text-sm leading-relaxed text-zinc-300">
+          « Bonjour, je souhaiterais refaire entièrement la toiture de ma maison, environ 120 m². Disponible pour un
+          rendez-vous dès la semaine prochaine. »
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <div style={{ background: '#22c55e', color: '#09090b' }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+          LC
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white">06 12 34 56 78</p>
+          <p className="text-xs text-zinc-500">celine.leroy@email.com</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MockupPipeline() {
+  const columns = [
+    { status: 'Nouveau', color: '#e4e4e7', leads: ['Marc Petit', 'Julie Renard'] },
+    { status: 'À rappeler', color: '#fbbf24', leads: ['Antonin Dugautier'] },
+    { status: 'Qualifié', color: '#4ade80', leads: ['Leroy Celine', 'Karim Aziz'] },
+    { status: 'Devis envoyé', color: '#60a5fa', leads: ['Sophie Martin'] },
+    { status: 'Gagné', color: '#86efac', leads: ['Laurent Martin', 'Famille Dubois'] },
   ]
+  return (
+    <div className="p-5 sm:p-6">
+      <p className="mb-4 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#60a5fa' }}>Pipeline Kanban</p>
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {columns.map((col) => (
+          <div key={col.status} style={{ minWidth: '140px' }} className="flex-1">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold" style={{ color: col.color }}>{col.status}</span>
+              <span style={{ background: '#27272a' }} className="rounded-full px-2 py-0.5 text-[10px] text-zinc-400">
+                {col.leads.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {col.leads.map((lead) => (
+                <div
+                  key={lead}
+                  style={{ background: '#27272a', border: '1px solid #3f3f46', borderLeft: `2px solid ${col.color}` }}
+                  className="rounded-lg p-2.5"
+                >
+                  <p className="text-xs font-medium text-white">{lead}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  const changeSlide = (next: number) => {
+function MockupDevis() {
+  const lines = [
+    { label: 'Dépose ancienne cuisine', price: '450,00 €' },
+    { label: 'Fourniture cuisine équipée', price: '6 200,00 €' },
+    { label: 'Installation électrique & plomberie', price: '1 350,00 €' },
+    { label: 'Pose & finitions', price: '1 800,00 €' },
+  ]
+  return (
+    <div className="p-5 sm:p-6">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#f59e0b' }}>Devis en un clic</p>
+          <p className="text-base font-bold text-white sm:text-lg">DEV-2026-002</p>
+        </div>
+        <span style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
+          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold">
+          Brouillon
+        </span>
+      </div>
+      <p className="mb-4 text-sm text-zinc-400">
+        Client : <span className="font-semibold text-white">Sophie Martin</span> — Rénovation cuisine
+      </p>
+      <div style={{ background: '#27272a', border: '1px solid #3f3f46' }} className="mb-4 overflow-hidden rounded-xl">
+        {lines.map((line, i) => (
+          <div
+            key={line.label}
+            style={{ borderTop: i === 0 ? 'none' : '1px solid #3f3f46' }}
+            className="flex items-center justify-between gap-3 px-4 py-2.5"
+          >
+            <span className="text-sm text-zinc-300">{line.label}</span>
+            <span className="whitespace-nowrap text-sm font-semibold text-white">{line.price}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-sm text-zinc-400">Total TTC</span>
+        <span className="text-xl font-bold text-white">9 800,00 €</span>
+      </div>
+      <button style={{ background: '#f59e0b', color: '#09090b' }} className="w-full rounded-xl py-3 text-sm font-bold">
+        Envoyer le devis →
+      </button>
+    </div>
+  )
+}
+
+function MockupCalendar() {
+  const days = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
+  const events: Record<number, { label: string; color: string }> = {
+    3: { label: 'RDV Leroy Celine', color: '#22c55e' },
+    10: { label: 'Relance Sophie Martin', color: '#f59e0b' },
+    18: { label: 'Début chantier Dubois', color: '#60a5fa' },
+    24: { label: 'Visite chantier', color: '#a78bfa' },
+  }
+  const cells = Array.from({ length: 35 }, (_, i) => (i < 30 ? i + 1 : null))
+  return (
+    <div className="p-5 sm:p-6">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#a78bfa' }}>Calendrier</p>
+      <p className="mb-4 text-base font-bold text-white sm:text-lg">Juin 2026</p>
+      <div className="mb-2 grid grid-cols-7 gap-1">
+        {days.map((d) => (
+          <span key={d} className="text-center text-[10px] font-semibold text-zinc-500">{d}</span>
+        ))}
+      </div>
+      <div className="mb-4 grid grid-cols-7 gap-1">
+        {cells.map((day, i) => {
+          const event = day ? events[day] : undefined
+          return (
+            <div
+              key={i}
+              style={{
+                background: day ? '#27272a' : 'transparent',
+                border: event ? `1px solid ${event.color}` : '1px solid transparent',
+              }}
+              className="flex aspect-square flex-col rounded-md p-1"
+            >
+              {day && <span className="text-[10px] text-zinc-400">{day}</span>}
+              {event && <span className="mt-auto h-1.5 w-1.5 rounded-full" style={{ background: event.color }} />}
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex flex-col gap-2">
+        {Object.entries(events).map(([day, e]) => (
+          <div key={day} className="flex items-center gap-2">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: e.color }} />
+            <span className="text-xs text-zinc-400">
+              {day} juin — <span className="text-white">{e.label}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const DASHBOARD_MOCKUPS = [MockupDossier, MockupPipeline, MockupDevis, MockupCalendar]
+
+function DashboardCarousel() {
+  const [activeTab, setActiveTab] = useState(0)
+  const [displayedTab, setDisplayedTab] = useState(0)
+  const [phase, setPhase] = useState<'idle' | 'exit' | 'enter-start' | 'enter'>('idle')
+  const [paused, setPaused] = useState(false)
+
+  const switchMockup = (next: number) => {
     setPhase('exit')
     setTimeout(() => {
-      setActiveSlide(next)
+      setDisplayedTab(next)
       setPhase('enter-start')
       requestAnimationFrame(() => {
         setPhase('enter')
-        setTimeout(() => setPhase('idle'), 300)
+        setTimeout(() => setPhase('idle'), 350)
       })
-    }, 200)
+    }, 250)
+  }
+
+  const handleSelect = (i: number) => {
+    if (i === activeTab) return
+    setActiveTab(i)
+    switchMockup(i)
   }
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      changeSlide((activeSlide + 1) % SLIDES.length)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [activeSlide])
+    if (paused) return
+    const timer = setTimeout(() => {
+      const next = (activeTab + 1) % DASHBOARD_TABS.length
+      setActiveTab(next)
+      switchMockup(next)
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [activeTab, paused])
 
-  const goTo = (i: number) => {
-    if (i === activeSlide) return
-    changeSlide(i)
-  }
-
-  const slideStyle: CSSProperties = {
-    idle: { opacity: 1, transform: 'translateX(0)' },
-    exit: { opacity: 0, transform: 'translateX(-20px)', transition: 'opacity 200ms ease, transform 200ms ease' },
-    'enter-start': { opacity: 0, transform: 'translateX(20px)', transition: 'none' },
-    enter: { opacity: 1, transform: 'translateX(0)', transition: 'opacity 300ms ease, transform 300ms ease' },
+  const mockupStyle: CSSProperties = {
+    idle: { opacity: 1, transform: 'translateY(0) scale(1)', transition: 'opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1)' },
+    exit: { opacity: 0, transform: 'translateY(-12px) scale(0.98)', transition: 'opacity 200ms cubic-bezier(0.16,1,0.3,1), transform 200ms cubic-bezier(0.16,1,0.3,1)' },
+    'enter-start': { opacity: 0, transform: 'translateY(12px) scale(0.98)', transition: 'none' },
+    enter: { opacity: 1, transform: 'translateY(0) scale(1)', transition: 'opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1)' },
   }[phase]
 
+  const activeTabData = DASHBOARD_TABS[displayedTab]
+  const ActiveMockup = DASHBOARD_MOCKUPS[displayedTab]
+
   return (
-    <div style={{ width: '100%' }}>
-      {/* Tab navigation */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px',
-        background: '#18181b', borderRadius: '12px', padding: '4px',
-        border: '1px solid #27272a',
-      }}>
-        {SLIDES.map((slide, i) => (
-          <button
-            key={slide.id}
-            onClick={() => goTo(i)}
-            style={{
-              flex: 1,
-              minWidth: '160px',
-              background: activeSlide === i ? '#22c55e' : '#27272a',
-              border: '1px solid transparent',
-              borderRadius: '8px',
-              padding: '12px 20px',
-              color: activeSlide === i ? '#09090b' : '#a1a1aa',
-              fontSize: '11px',
-              fontWeight: activeSlide === i ? 600 : 400,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              whiteSpace: 'nowrap',
-              minHeight: '44px',
-            }}
-          >
-            <span>{slide.icon}</span>
-            <span>{slide.tabLabel}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Barre de progression (remplissage 4s) */}
-      <div style={{
-        width: '100%', height: '2px', borderRadius: '1px',
-        background: '#27272a', marginBottom: '12px', overflow: 'hidden',
-      }}>
-        <div
-          key={activeSlide}
-          style={{
-            height: '100%', borderRadius: '1px', background: '#22c55e',
-            width: '0%',
-            animation: 'kr-dash-progress 4000ms linear forwards',
-          }}
-        />
-      </div>
-
-      {/* Label slide actif */}
-      <div style={{
-        textAlign: 'center', marginBottom: '12px',
-        height: '20px',
-      }}>
-        <span style={{
-          color: '#22c55e', fontSize: '12px', fontWeight: 600,
-          letterSpacing: '0.06em',
-        }}>
-          {SLIDES[activeSlide].icon} {SLIDES[activeSlide].label}
-        </span>
-      </div>
-
-      {/* Slide container */}
-      <div style={{
-        background: '#18181b',
-        border: '1px solid #27272a',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        minHeight: '480px',
-        ...slideStyle,
-      }}>
-        {/* Header dashboard commun */}
-        <div style={{
-          background: '#09090b',
-          padding: '10px 16px',
-          borderBottom: '1px solid #27272a',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div>
-            <p style={{ color: '#22c55e', fontSize: '9px', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
-              KADRIA PRO
-            </p>
-            <p style={{ color: 'white', fontSize: '13px', fontWeight: 700, margin: 0 }}>
-              Tableau de bord
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {['📊 Suivi commercial', '📅 Calendrier', '⚙️ Mon profil'].map(btn => (
-              <div key={btn} style={{
-                background: btn.startsWith('📊') ? '#22c55e' : '#27272a',
-                border: '1px solid #3f3f46',
-                borderRadius: '6px',
-                padding: '4px 8px',
-                fontSize: '10px',
-                color: btn.startsWith('📊') ? 'black' : '#a1a1aa',
-                fontWeight: btn.startsWith('📊') ? 700 : 400,
-              }}>
-                {btn}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* SLIDE 1 — KPIs */}
-        {activeSlide === 0 && (
-          <div style={{ padding: '16px' }}>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '10px', marginBottom: '10px',
-            }}>
-              {[
-                { label: 'CA potentiel', value: '29.5k €', icon: '€', color: '#22c55e', border: '#22c55e' },
-                { label: 'Devis envoyés', value: '5.2k €', icon: '✈', color: '#60a5fa', border: '#3b82f6' },
-                { label: 'Chantiers gagnés', value: '15.3k €', icon: '🏆', color: '#86efac', border: '#22c55e' },
-              ].map(kpi => (
-                <div key={kpi.label} style={{
-                  background: '#27272a',
-                  border: `1px solid #27272a`,
-                  borderTop: `2px solid ${kpi.border}`,
-                  borderRadius: '10px',
-                  padding: '12px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ color: '#71717a', fontSize: '11px' }}>{kpi.label}</span>
-                    <span style={{ color: kpi.color, fontSize: '12px' }}>{kpi.icon}</span>
-                  </div>
-                  <p style={{ color: 'white', fontSize: '20px', fontWeight: 700, margin: 0 }}>
-                    {kpi.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '10px',
-            }}>
-              {[
-                { label: 'Taux de transformation', value: '25 %', border: '#a78bfa' },
-                { label: 'Panier moyen', value: '4.9k €', border: '#fbbf24' },
-                { label: 'Dossiers à relancer', value: '0', border: '#27272a' },
-              ].map(kpi => (
-                <div key={kpi.label} style={{
-                  background: '#27272a',
-                  border: '1px solid #27272a',
-                  borderTop: `2px solid ${kpi.border}`,
-                  borderRadius: '10px',
-                  padding: '12px',
-                }}>
-                  <span style={{ color: '#71717a', fontSize: '11px', display: 'block', marginBottom: '8px' }}>
-                    {kpi.label}
-                  </span>
-                  <p style={{ color: 'white', fontSize: '20px', fontWeight: 700, margin: 0 }}>
-                    {kpi.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SLIDE 2 — Liste projets */}
-        {activeSlide === 1 && (
-          <div style={{ padding: '16px' }}>
-            {/* Filtres */}
-            <div style={{
-              display: 'flex', gap: '8px', marginBottom: '12px',
-            }}>
-              <div style={{
-                flex: 1, background: '#27272a', border: '1px solid #3f3f46',
-                borderRadius: '8px', padding: '6px 12px',
-                color: '#71717a', fontSize: '11px',
-              }}>
-                🔍 Rechercher un client, un projet...
-              </div>
-              {['Tous les statuts', 'Tous les métiers'].map(f => (
-                <div key={f} style={{
-                  background: '#27272a', border: '1px solid #3f3f46',
-                  borderRadius: '8px', padding: '6px 12px',
-                  color: '#71717a', fontSize: '11px', whiteSpace: 'nowrap',
-                }}>
-                  {f} ▾
-                </div>
-              ))}
-            </div>
-            {/* Header tableau */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '55px 65px 130px 1fr 80px 85px 70px 90px',
-              padding: '6px 8px',
-              borderBottom: '1px solid #27272a',
-            }}>
-              {['RÉF', 'REÇU', 'CLIENT', 'PROJET', 'VILLE', 'BUDGET', 'SCORE', 'STATUT'].map(h => (
-                <span key={h} style={{ color: '#52525b', fontSize: '9px',
-                  fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  {h}
-                </span>
-              ))}
-            </div>
-            {/* Lignes */}
-            {[
-              { ref: 'recX0J', time: 'il y a 9h', initials: 'AD', color: '#22c55e',
-                name: 'Antonin Dugautier', project: 'jardin / paysagisme',
-                city: 'Lille', budget: '500–1 000 €', score: '100%',
-                status: 'Gagné', statusBg: 'rgba(20,83,45,0.7)', statusColor: '#86efac' },
-              { ref: 'recCSS', time: 'il y a 10h', initials: 'AD', color: '#22c55e',
-                name: 'Antonin Dugautier', project: 'jardin / paysagisme',
-                city: 'Annecy', budget: 'Moins de 2 000 €', score: '100%',
-                status: 'À rappeler', statusBg: 'rgba(120,53,15,0.5)', statusColor: '#fbbf24' },
-              { ref: 'recmR1', time: 'il y a 2j', initials: 'AT', color: '#3b82f6',
-                name: 'Antonin Test', project: 'Test migration',
-                city: 'Rouen', budget: '1 000–3 000 €', score: '100%',
-                status: 'Nouveau', statusBg: '#27272a', statusColor: '#e4e4e7' },
-              { ref: 'recGdq', time: 'il y a 3j', initials: 'LM', color: '#a855f7',
-                name: 'Laurent Martin', project: 'Plomberie',
-                city: 'Rouen', budget: '3 000–5 000 €', score: '95%',
-                status: 'Devis envoyé', statusBg: 'rgba(30,58,95,0.5)', statusColor: '#60a5fa' },
-              { ref: 'rec4IO', time: 'il y a 3j', initials: 'DD', color: '#f59e0b',
-                name: 'Dugautier Dugautier', project: 'Paysagiste',
-                city: 'Wisches', budget: '1 000–3 000 €', score: '90%',
-                status: 'Qualifié', statusBg: 'rgba(20,83,45,0.5)', statusColor: '#4ade80' },
-            ].map((row, i) => (
-              <div key={row.ref} style={{
-                display: 'grid',
-                gridTemplateColumns: '55px 65px 130px 1fr 80px 85px 70px 90px',
-                padding: '8px',
-                borderBottom: '1px solid rgba(39,39,42,0.5)',
-                alignItems: 'center',
-                background: i % 2 === 0 ? 'transparent' : 'rgba(39,39,42,0.2)',
-              }}>
-                <span style={{ color: '#52525b', fontSize: '10px', fontFamily: 'monospace' }}>
-                  {row.ref}
-                </span>
-                <span style={{ color: '#71717a', fontSize: '10px' }}>{row.time}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    background: row.color, color: 'black',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '9px', fontWeight: 700, flexShrink: 0,
-                  }}>
-                    {row.initials}
-                  </div>
-                  <span style={{ color: 'white', fontSize: '11px', fontWeight: 600 }}>
-                    {row.name}
-                  </span>
-                </div>
-                <span style={{ color: '#a1a1aa', fontSize: '11px' }}>{row.project}</span>
-                <span style={{ color: '#a1a1aa', fontSize: '11px' }}>{row.city}</span>
-                <span style={{ color: '#a1a1aa', fontSize: '10px' }}>{row.budget}</span>
-                <span style={{ color: '#22c55e', fontSize: '11px', fontWeight: 700 }}>
-                  {row.score}
-                </span>
-                <span style={{
-                  background: row.statusBg,
-                  color: row.statusColor,
-                  borderRadius: '12px',
-                  padding: '2px 8px',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  display: 'inline-block',
-                }}>
-                  {row.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* SLIDE 3 — Pipeline + Top opportunités */}
-        {activeSlide === 2 && (
-          <div style={{ padding: '16px', display: 'grid',
-            gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {/* Pipeline */}
-            <div>
-              <p style={{ color: 'white', fontSize: '13px', fontWeight: 600,
-                margin: '0 0 10px' }}>Pipeline</p>
-              {[
-                { status: 'Nouveau', count: 1, color: '#e4e4e7', pct: 14 },
-                { status: 'À rappeler', count: 1, color: '#fbbf24', pct: 14 },
-                { status: 'Qualifié', count: 1, color: '#4ade80', pct: 14 },
-                { status: 'Devis envoyé', count: 2, color: '#60a5fa', pct: 28 },
-                { status: 'Gagné', count: 2, color: '#86efac', pct: 28 },
-              ].map(item => (
-                <div key={item.status} style={{
-                  background: '#27272a', borderRadius: '8px',
-                  padding: '8px 12px', marginBottom: '6px',
-                  display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between',
-                      marginBottom: '4px' }}>
-                      <span style={{ color: item.color, fontSize: '12px' }}>
-                        {item.status}
-                      </span>
-                      <span style={{
-                        background: `${item.color}22`,
-                        color: item.color,
-                        borderRadius: '10px', padding: '1px 8px',
-                        fontSize: '11px', fontWeight: 700,
-                      }}>
-                        {item.count}
-                      </span>
-                    </div>
-                    <div style={{ height: '3px', background: '#3f3f46',
-                      borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', width: `${item.pct}%`,
-                        background: item.color, borderRadius: '2px',
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {/* Top opportunités */}
-            <div>
-              <p style={{ color: 'white', fontSize: '13px', fontWeight: 600,
-                margin: '0 0 10px' }}>🏆 Top opportunités</p>
-              {[
-                { rank: '#1', score: 240, name: 'Laurent Martin',
-                  sub: 'Plomberie · Rouen',
-                  status: 'Devis envoyé', statusColor: '#60a5fa',
-                  statusBg: 'rgba(30,58,95,0.5)', budget: '3 000–5 000 €' },
-                { rank: '#2', score: 230, name: 'Antonin Dugautier',
-                  sub: 'jardin / paysagisme · Annecy',
-                  status: 'À rappeler', statusColor: '#fbbf24',
-                  statusBg: 'rgba(120,53,15,0.5)', budget: 'Moins de 2 000 €' },
-                { rank: '#3', score: 230, name: 'Antonin Test',
-                  sub: 'Test migration · Rouen',
-                  status: 'Nouveau', statusColor: '#e4e4e7',
-                  statusBg: '#27272a', budget: '1 000–3 000 €' },
-              ].map(opp => (
-                <div key={opp.name} style={{
-                  background: '#27272a', border: '1px solid #3f3f46',
-                  borderRadius: '10px', padding: '10px', marginBottom: '8px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between',
-                    marginBottom: '4px' }}>
-                    <span style={{ color: '#22c55e', fontSize: '10px',
-                      fontWeight: 700 }}>
-                      {opp.rank}
-                    </span>
-                    <span style={{ color: '#22c55e', fontSize: '11px',
-                      fontWeight: 700 }}>
-                      {opp.score}
-                    </span>
-                  </div>
-                  <p style={{ color: 'white', fontSize: '12px',
-                    fontWeight: 600, margin: '0 0 2px' }}>
-                    {opp.name}
-                  </p>
-                  <p style={{ color: '#71717a', fontSize: '10px', margin: '0 0 6px' }}>
-                    {opp.sub}
-                  </p>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span style={{
-                      background: opp.statusBg, color: opp.statusColor,
-                      borderRadius: '10px', padding: '2px 8px',
-                      fontSize: '10px', fontWeight: 600,
-                    }}>
-                      {opp.status}
-                    </span>
-                    <span style={{ color: '#71717a', fontSize: '10px' }}>
-                      {opp.budget}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* SLIDE 4 — Carte */}
-        {activeSlide === 3 && (
-          <div style={{ padding: '16px' }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', marginBottom: '12px',
-            }}>
-              <div>
-                <p style={{ color: 'white', fontSize: '13px',
-                  fontWeight: 600, margin: '0 0 2px' }}>
-                  📍 Chantiers autour de vous
-                </p>
-                <p style={{ color: '#71717a', fontSize: '11px', margin: 0 }}>
-                  Vue géographique simplifiée des prospects qualifiés
-                </p>
-              </div>
-              <span style={{
-                background: '#27272a', color: '#a1a1aa',
-                borderRadius: '8px', padding: '4px 10px', fontSize: '11px',
-              }}>
-                7 point(s)
-              </span>
-            </div>
-            {/* Carte SVG France stylisée */}
-            <div style={{
-              background: '#27272a', borderRadius: '12px',
-              overflow: 'hidden', position: 'relative',
-              height: '220px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg viewBox="0 0 400 320" style={{ width: '100%', height: '100%' }}>
-                {/* Fond carte */}
-                <rect width="400" height="320" fill="#1f1f23" />
-                {/* Silhouette France simplifiée */}
-                <path
-                  d="M 120 40 L 180 30 L 240 45 L 280 70 L 310 100 L 320 140
-                     L 300 180 L 280 220 L 240 260 L 200 280 L 160 270
-                     L 120 240 L 90 200 L 70 160 L 80 120 L 100 80 Z"
-                  fill="#27272a"
-                  stroke="#3f3f46"
-                  strokeWidth="1.5"
-                />
-                {/* Points chantiers */}
-                {[
-                  { x: 185, y: 110, city: 'Lille' },
-                  { x: 210, y: 135, city: 'Paris' },
-                  { x: 230, y: 155, city: 'Rouen' },
-                  { x: 175, y: 175, city: 'Annecy' },
-                  { x: 145, y: 200, city: 'Bordeaux' },
-                  { x: 190, y: 215, city: 'Lyon' },
-                  { x: 160, y: 140, city: 'Mesnil-Raoul' },
-                ].map((point, i) => (
-                  <g key={i}>
-                    <circle
-                      cx={point.x} cy={point.y} r="8"
-                      fill="#22c55e" opacity="0.2"
-                    />
-                    <circle
-                      cx={point.x} cy={point.y} r="5"
-                      fill="#22c55e"
-                    />
-                    <text
-                      x={point.x + 8} y={point.y + 4}
-                      fill="#a1a1aa" fontSize="9"
-                      fontFamily="system-ui"
-                    >
-                      {point.city}
-                    </text>
-                  </g>
-                ))}
-              </svg>
-            </div>
-            {/* Liste prospects */}
-            <div style={{ marginTop: '12px', display: 'flex',
-              flexDirection: 'column', gap: '6px' }}>
-              {[
-                { name: 'Antonin Dugautier', sub: 'jardin / paysagisme · Lille' },
-                { name: 'Laurent Martin', sub: 'Plomberie · Rouen' },
-                { name: 'Antonin Test', sub: 'Test migration · Rouen' },
-              ].map(item => (
-                <div key={item.name} style={{
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '6px 10px', background: '#27272a', borderRadius: '8px',
-                }}>
-                  <span style={{ color: '#22c55e', fontSize: '12px' }}>📍</span>
-                  <div>
-                    <p style={{ color: 'white', fontSize: '11px',
-                      fontWeight: 600, margin: 0 }}>
-                      {item.name}
-                    </p>
-                    <p style={{ color: '#71717a', fontSize: '10px', margin: 0 }}>
-                      {item.sub}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Progress bar */}
-        <div style={{
-          display: 'flex', gap: '4px', padding: '10px 16px',
-          borderTop: '1px solid #27272a', background: '#09090b',
-        }}>
-          {SLIDES.map((_, i) => (
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center lg:gap-10"
+    >
+      {/* Tabs liquid glass */}
+      <div className="order-2 flex flex-col gap-3 lg:order-1">
+        {DASHBOARD_TABS.map((tab, i) => {
+          const active = i === activeTab
+          const Icon = tab.icon
+          return (
             <div
-              key={i}
-              onClick={() => goTo(i)}
-              style={{
-                flex: 1, height: '3px', borderRadius: '2px',
-                background: i === activeSlide ? '#22c55e' : '#27272a',
-                cursor: 'pointer', transition: 'background 0.3s',
+              key={tab.number}
+              onClick={() => handleSelect(i)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleSelect(i)
               }}
-            />
-          ))}
+              style={{
+                background: active ? 'rgba(39,39,42,0.6)' : 'rgba(24,24,27,0.4)',
+                border: `1px solid ${active ? tab.iconBorder : '#27272a'}`,
+                borderRadius: '16px',
+                padding: '16px 20px',
+                cursor: 'pointer',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                transition: 'background 300ms ease, border-color 300ms ease',
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  style={{
+                    width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                    background: tab.iconBg, border: `1px solid ${tab.iconBorder}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Icon size={18} color={tab.color} />
+                </div>
+                <div className="flex-1">
+                  <span style={{ color: tab.color, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em' }}>
+                    {tab.number}
+                  </span>
+                  <p className="text-sm font-bold text-white sm:text-base">{tab.title}</p>
+                </div>
+                <ChevronRight
+                  size={18}
+                  style={{
+                    color: active ? tab.color : '#52525b',
+                    transform: active ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 300ms ease',
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateRows: active ? '1fr' : '0fr', transition: 'grid-template-rows 300ms ease' }}>
+                <div style={{ overflow: 'hidden' }}>
+                  <p className="pt-3 text-sm leading-relaxed text-zinc-400">{tab.description}</p>
+                  <div style={{ width: '100%', height: '2px', borderRadius: '1px', background: '#27272a', marginTop: '14px', overflow: 'hidden' }}>
+                    {active && (
+                      <div
+                        key={activeTab}
+                        style={{
+                          height: '100%', borderRadius: '1px', background: tab.color, width: '0%',
+                          animation: 'kr-dash-progress-v2 5000ms linear forwards',
+                          animationPlayState: paused ? 'paused' : 'running',
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Mockup + glow */}
+      <div className="relative order-1 lg:order-2">
+        <div
+          className="kr-glow-pulse pointer-events-none absolute -inset-6 -z-10 rounded-[32px] sm:-inset-10"
+          style={{ background: activeTabData.glow, filter: 'blur(60px)', transition: 'background 600ms ease' }}
+        />
+        <div
+          className="mockup-float max-h-[320px] overflow-auto rounded-2xl lg:max-h-none lg:overflow-visible"
+          style={{
+            background: 'rgba(24,24,27,0.6)',
+            border: '1px solid #27272a',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            ...mockupStyle,
+          }}
+        >
+          <ActiveMockup />
         </div>
       </div>
 
       <style>{`
-        @keyframes kr-dash-progress {
+        @keyframes kr-dash-progress-v2 {
           from { width: 0%; }
           to { width: 100%; }
         }
         @media (prefers-reduced-motion: reduce) {
-          @keyframes kr-dash-progress {
+          @keyframes kr-dash-progress-v2 {
             from { width: 100%; }
             to { width: 100%; }
           }
@@ -2320,14 +2151,14 @@ export function LandingRoutePage() {
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
               <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-                Pilotez toutes vos opportunités depuis{' '}
-                <span className="kr-gradient-text">un seul tableau de bord</span>
+                4 fonctionnalités clés,{' '}
+                <span className="kr-gradient-text">révélées en toute fluidité</span>
               </h2>
               <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Web, téléphone, rappels et projets qualifiés — centralisés au même endroit.
+                Une expérience moderne et interactive pour piloter votre activité depuis un seul tableau de bord.
               </p>
             </div>
-            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-5xl">
+            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-6xl">
               <DashboardCarousel />
             </div>
           </div>
