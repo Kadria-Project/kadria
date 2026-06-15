@@ -8,6 +8,14 @@ const SECRET = new TextEncoder().encode(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  if (pathname.startsWith('/devis/')) {
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/api/devis/public/')) {
+    return NextResponse.next()
+  }
+
   if (pathname.startsWith('/dashboard-v2') || pathname === '/onboarding') {
     const token = request.cookies.get('kadria-auth')?.value
 
