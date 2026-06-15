@@ -11,6 +11,22 @@ import {
 } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
 
+async function getAuthorizedProject(id: string, artisanId: string) {
+  let record
+
+  try {
+    record = await airtableBase(TABLES.projects).find(id)
+  } catch {
+    return { status: 404 as const }
+  }
+
+  if (record.fields['Artisan ID'] !== artisanId) {
+    return { status: 403 as const }
+  }
+
+  return { status: 200 as const, record }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
@@ -31,8 +47,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const project = await getAuthorizedProject(projetId, session.artisanId)
+    if (project.status === 404) {
+      return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
+    }
+    if (project.status === 403) {
+      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
+    }
+
     const devis = await getDevisByProjet(projetId)
     const list = devis
+      .filter((d) => d.artisanId === session.artisanId)
       .map((d) => ({
         id: d.id,
         numero: d.devisNumber,
@@ -52,9 +77,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, devis: list })
   } catch (error) {
-    console.error('[DEVIS GET]', error)
+    console.error('[DEVIS GET]', error instanceof Error ? error.message : String(error))
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 }
     )
   }
@@ -105,14 +130,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérifie que le dossier projet appartient bien à l'artisan
-    const projectRecord = await airtableBase(TABLES.projects).find(body.projetId)
-    const projectArtisanId = projectRecord.fields['Artisan_id'] as string
-    if (projectArtisanId && projectArtisanId !== session.artisanId) {
-      return NextResponse.json(
-        { success: false, error: 'Accès non autorisé' },
-        { status: 403 }
-      )
+    const project = await getAuthorizedProject(body.projetId, session.artisanId)
+    if (project.status === 404) {
+      return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
+    }
+    if (project.status === 403) {
+      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
     }
 
     const prefixe = config.devisPrefixe || 'DEV'
@@ -148,9 +171,9 @@ export async function POST(request: NextRequest) {
         'Created At': new Date().toISOString(),
       })
     } catch (error) {
-      console.error('[DEVIS POST] Création du devis échouée', error)
+      console.error('[DEVIS POST] Création du devis échouée', error instanceof Error ? error.message : String(error))
       return NextResponse.json(
-        { success: false, error: String(error) },
+        { success: false, error: 'Erreur création devis' },
         { status: 500 }
       )
     }
@@ -169,14 +192,14 @@ export async function POST(request: NextRequest) {
         `Devis ${devisNumber} généré — ${(Number(body.totalTTC) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC`
       )
     } catch (error) {
-      console.error('[DEVIS POST] Mise à jour du projet échouée', error)
+      console.error('[DEVIS POST] Mise à jour du projet échouée', error instanceof Error ? error.message : String(error))
     }
 
     return NextResponse.json({ success: true, devis, devis_id: devis.id, numero: devisNumber, token })
   } catch (error) {
-    console.error('[DEVIS POST]', error)
+    console.error('[DEVIS POST]', error instanceof Error ? error.message : String(error))
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 }
     )
   }
