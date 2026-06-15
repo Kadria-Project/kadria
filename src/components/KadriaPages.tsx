@@ -70,12 +70,12 @@ const features = [
   {
     icon: LayoutDashboard,
     title: 'Dashboard commercial',
-    text: 'Centralise vos prospects, statuts, relances, priorites et chiffre d affaires potentiel.',
+    text: "Centralise vos prospects, statuts, relances, priorités et chiffre d'affaires potentiel.",
   },
   {
     icon: Target,
     title: 'Priorisation IA',
-    text: 'Classe les dossiers par potentiel commercial pour traiter d abord les meilleurs chantiers.',
+    text: "Classe les dossiers par potentiel commercial pour traiter d'abord les meilleurs chantiers.",
   },
   {
     icon: ClipboardCheck,
@@ -1393,7 +1393,7 @@ export const ANIMATION_STYLES = `
   .kr-bento {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: 180px;
+    grid-auto-rows: minmax(180px, auto);
     gap: 16px;
   }
   @media (max-width: 768px) {
@@ -2440,7 +2440,7 @@ export function LandingRoutePage() {
                     }}
                     aria-expanded={isActive}
                     style={{ '--glow-color': FEATURE_GLOW[i].glow } as CSSProperties}
-                    className={`kr-glass-bento kr-bento-item ${sizeClass} flex cursor-pointer flex-col justify-between overflow-hidden rounded-xl p-6 text-left`}
+                    className={`kr-glass-bento kr-bento-item ${sizeClass} flex cursor-pointer flex-col justify-between overflow-visible rounded-xl p-6 text-left`}
                   >
                     {isActive ? (
                       <FadeIn>
