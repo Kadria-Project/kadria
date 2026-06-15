@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Plus, Trash2, X, XCircle } from 'lucide-react';
+import { ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Plus, Trash2, X, XCircle } from 'lucide-react';
 
 interface ArtisanConfig {
   companyName: string;
@@ -86,7 +86,8 @@ function NewDevis() {
   const [configLoading, setConfigLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMode, setSubmitMode] = useState<'draft' | 'send' | null>(null);
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState('');
   const [nextDevisNumber, setNextDevisNumber] = useState('');
@@ -94,7 +95,7 @@ function NewDevis() {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 4000);
+    const timer = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -316,7 +317,7 @@ function NewDevis() {
     missingLegalFields.push('Informations d\'assurance manquantes');
   }
 
-  const save = async () => {
+  const handleSubmit = async (mode: 'draft' | 'send') => {
     setError('');
 
     if (!objet.trim()) {
@@ -330,7 +331,8 @@ function NewDevis() {
       return;
     }
 
-    setSaving(true);
+    setIsSubmitting(true);
+    setSubmitMode(mode);
     try {
       const res = await fetch('/api/devis', {
         method: 'POST',
@@ -360,20 +362,43 @@ function NewDevis() {
         setError(data.error || 'Erreur lors de l\'enregistrement du devis.');
         setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
         console.error('[DEVIS NEW] Erreur enregistrement:', data.error);
-        setSaving(false);
+        setIsSubmitting(false);
+        setSubmitMode(null);
         return;
       }
       const numero = data.numero || data.devis?.devisNumber || devisNumberPreview;
-      setSavedId(data.devis?.id || '');
-      setToast({ type: 'success', message: `✓ Devis ${numero} enregistré — Dossier passé en "Devis envoyé"` });
+      const devisId = data.devis?.id || data.devis_id || '';
+      setSavedId(devisId);
+
+      const finalizeRes = await fetch(`/api/devis/${devisId}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      const finalizeData = await finalizeRes.json();
+      if (!finalizeData.success) {
+        setError(finalizeData.error || 'Erreur lors de la génération du PDF.');
+        setToast({ type: 'error', message: '✗ Erreur lors de la génération du PDF — Veuillez réessayer' });
+        console.error('[DEVIS NEW] Erreur finalize:', finalizeData.error);
+        setIsSubmitting(false);
+        setSubmitMode(null);
+        return;
+      }
+
+      if (mode === 'draft') {
+        setToast({ type: 'success', message: `✓ Devis ${numero} enregistré — PDF généré · Vous pourrez l'envoyer depuis la page du dossier` });
+      } else {
+        setToast({ type: 'success', message: `✓ Devis ${numero} envoyé à ${clientEmail} — PDF joint automatiquement` });
+      }
       setTimeout(() => {
         router.push(`/dashboard-v2/projet/${projetId}`);
-      }, 1500);
+      }, 2000);
     } catch (err) {
       setError('Erreur lors de l\'enregistrement du devis.');
       setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
       console.error('[DEVIS NEW] Erreur enregistrement:', err);
-      setSaving(false);
+      setIsSubmitting(false);
+      setSubmitMode(null);
     }
   };
 
@@ -491,22 +516,6 @@ function NewDevis() {
               }}
             >
               📄 Aperçu PDF
-            </button>
-            <button
-              onClick={save}
-              disabled={saving}
-              style={{
-                background: saving ? '#27272a' : '#22c55e',
-                border: 'none',
-                color: saving ? '#71717a' : 'black',
-                fontWeight: 600,
-                borderRadius: '8px',
-                padding: '8px 16px',
-                fontSize: '13px',
-                cursor: saving ? 'default' : 'pointer',
-              }}
-            >
-              {saving ? 'Enregistrement...' : 'Enregistrer'}
             </button>
           </div>
         </div>
@@ -830,27 +839,59 @@ function NewDevis() {
           gap: '12px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}>
-          <div style={{ fontSize: '14px', color: '#a1a1aa' }}>
-            Total TTC : <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '16px' }}>
-              {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-            </span>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: '#22c55e' }}>
+            Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </div>
-          <button
-            onClick={save}
-            disabled={saving}
-            style={{
-              background: saving ? '#27272a' : '#22c55e',
-              border: 'none',
-              color: saving ? '#71717a' : 'black',
-              fontWeight: 600,
-              borderRadius: '8px',
-              padding: '10px 24px',
-              fontSize: '14px',
-              cursor: saving ? 'default' : 'pointer',
-            }}
-          >
-            {saving ? 'Enregistrement...' : 'Enregistrer le devis'}
-          </button>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => handleSubmit('draft')}
+              disabled={isSubmitting}
+              style={{
+                background: '#18181b',
+                border: '1px solid #27272a',
+                color: '#f4f4f5',
+                fontWeight: 600,
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '14px',
+                cursor: isSubmitting ? 'default' : 'pointer',
+                opacity: isSubmitting && submitMode !== 'draft' ? 0.5 : 1,
+                transition: 'border-color 150ms',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+              onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#27272a'; }}
+            >
+              {isSubmitting && submitMode === 'draft' && <Loader2 className="animate-spin" size={14} />}
+              {isSubmitting && submitMode === 'draft' ? 'Génération du PDF...' : 'Enregistrer · Envoyer plus tard'}
+            </button>
+            <button
+              onClick={() => handleSubmit('send')}
+              disabled={isSubmitting}
+              style={{
+                background: '#22c55e',
+                border: 'none',
+                color: '#09090b',
+                fontWeight: 700,
+                borderRadius: '12px',
+                padding: '12px 32px',
+                fontSize: '14px',
+                cursor: isSubmitting ? 'default' : 'pointer',
+                opacity: isSubmitting && submitMode !== 'send' ? 0.5 : 1,
+                transition: 'opacity 150ms',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+              onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.opacity = '0.9'; }}
+              onMouseLeave={(e) => { if (!isSubmitting) e.currentTarget.style.opacity = '1'; }}
+            >
+              {isSubmitting && submitMode === 'send' && <Loader2 className="animate-spin" size={14} />}
+              {isSubmitting && submitMode === 'send' ? 'Génération du PDF...' : 'Envoyer le devis →'}
+            </button>
+          </div>
         </div>
       </main>
 
