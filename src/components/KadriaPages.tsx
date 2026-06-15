@@ -89,6 +89,15 @@ const features = [
   },
 ];
 
+const FEATURE_GLOW = [
+  { glow: 'rgba(34,197,94,0.15)', iconBg: 'rgba(34,197,94,0.12)', iconBorder: 'rgba(34,197,94,0.25)', iconColor: '#22c55e' },
+  { glow: 'rgba(96,165,250,0.15)', iconBg: 'rgba(96,165,250,0.12)', iconBorder: 'rgba(96,165,250,0.25)', iconColor: '#60a5fa' },
+  { glow: 'rgba(245,158,11,0.15)', iconBg: 'rgba(245,158,11,0.12)', iconBorder: 'rgba(245,158,11,0.25)', iconColor: '#f59e0b' },
+  { glow: 'rgba(167,139,250,0.15)', iconBg: 'rgba(167,139,250,0.12)', iconBorder: 'rgba(167,139,250,0.25)', iconColor: '#a78bfa' },
+  { glow: 'rgba(34,197,94,0.15)', iconBg: 'rgba(34,197,94,0.12)', iconBorder: 'rgba(34,197,94,0.25)', iconColor: '#22c55e' },
+  { glow: 'rgba(96,165,250,0.15)', iconBg: 'rgba(96,165,250,0.12)', iconBorder: 'rgba(96,165,250,0.25)', iconColor: '#60a5fa' },
+];
+
 interface PlanFeature {
   text: string;
   badge?: string;
@@ -324,11 +333,11 @@ function InfoTile({
 }
 
 const QUALIFICATION_STEPS = [
-  { icon: User, title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
-  { icon: Globe, title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
-  { icon: Zap, title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-  { icon: FileText, title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  { icon: CheckCircle, title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate', color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
+  { icon: User, title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', glow: 'rgba(167,139,250,0.3)' },
+  { icon: Globe, title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', glow: 'rgba(96,165,250,0.3)' },
+  { icon: Zap, title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', glow: 'rgba(34,197,94,0.3)' },
+  { icon: FileText, title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', glow: 'rgba(245,158,11,0.3)' },
+  { icon: CheckCircle, title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate', color: '#22c55e', bg: 'rgba(34,197,94,0.15)', glow: 'rgba(34,197,94,0.4)' },
 ];
 
 const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
@@ -1443,6 +1452,72 @@ export const ANIMATION_STYLES = `
     animation: kr-step-text-in 200ms ease-out both;
   }
 
+  /* Liquid glass bento card with hover glow */
+  .kr-glass-bento {
+    position: relative;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    transition: background 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+  }
+  @supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
+    .kr-glass-bento {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  }
+  .kr-glass-bento::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: var(--glow-color, transparent);
+    opacity: 0;
+    filter: blur(20px);
+    z-index: -1;
+    transition: opacity 300ms ease;
+    pointer-events: none;
+  }
+  .kr-glass-bento:hover::before {
+    opacity: 0.6;
+  }
+  .kr-glass-bento:hover,
+  .kr-glass-bento[aria-expanded="true"] {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.15);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 0 0 1px rgba(34,197,94,0.15),
+      0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  /* Liquid glass hero showcase card */
+  .kr-glass-hero {
+    position: relative;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.05),
+      0 24px 80px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    border-radius: 20px;
+  }
+  @supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
+    .kr-glass-hero {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+  }
+  .kr-glass-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    filter: blur(60px);
+    background: radial-gradient(ellipse at center, rgba(34,197,94,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     .kr-reveal,
@@ -1461,6 +1536,10 @@ export const ANIMATION_STYLES = `
       animation: none !important;
       opacity: 1 !important;
       transform: none !important;
+    }
+    .kr-glass-bento,
+    .kr-glass-bento::before {
+      transition: none !important;
     }
   }
 `
@@ -2315,8 +2394,16 @@ export function LandingRoutePage() {
         </section>
 
         {/* 5. FEATURES — BENTO GRID */}
-        <section className="w-full bg-zinc-950 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+        <section className="relative w-full overflow-hidden bg-zinc-950 py-24">
+          <div
+            className="pointer-events-none absolute -left-24 -top-24 -z-0 h-[400px] w-[400px] rounded-full"
+            style={{ background: 'rgba(34,197,94,0.04)', filter: 'blur(80px)' }}
+          />
+          <div
+            className="pointer-events-none absolute -bottom-24 -right-24 -z-0 h-[400px] w-[400px] rounded-full"
+            style={{ background: 'rgba(96,165,250,0.04)', filter: 'blur(80px)' }}
+          />
+          <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Fonctionnalités</p>
               <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
@@ -2350,7 +2437,8 @@ export function LandingRoutePage() {
                       }
                     }}
                     aria-expanded={isActive}
-                    className={`kr-card-hover kr-bento-item ${sizeClass} relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-left`}
+                    style={{ '--glow-color': FEATURE_GLOW[i].glow } as CSSProperties}
+                    className={`kr-glass-bento kr-bento-item ${sizeClass} flex cursor-pointer flex-col justify-between overflow-hidden rounded-xl p-6 text-left`}
                   >
                     {isActive ? (
                       <FadeIn>
@@ -2362,13 +2450,23 @@ export function LandingRoutePage() {
                         >
                           <X className="h-4 w-4" />
                         </button>
-                        <Icon size={28} className="text-green-500" />
+                        <div
+                          className="inline-flex w-fit rounded-[10px] p-2.5"
+                          style={{ background: FEATURE_GLOW[i].iconBg, border: `1px solid ${FEATURE_GLOW[i].iconBorder}` }}
+                        >
+                          <Icon size={28} style={{ color: FEATURE_GLOW[i].iconColor }} />
+                        </div>
                         <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
                         <DemoComponent reduceMotion={reduceMotion} />
                       </FadeIn>
                     ) : (
                       <>
-                        <Icon size={28} className="text-green-500" />
+                        <div
+                          className="inline-flex w-fit rounded-[10px] p-2.5"
+                          style={{ background: FEATURE_GLOW[i].iconBg, border: `1px solid ${FEATURE_GLOW[i].iconBorder}` }}
+                        >
+                          <Icon size={28} style={{ color: FEATURE_GLOW[i].iconColor }} />
+                        </div>
                         <div>
                           <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
                           <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
