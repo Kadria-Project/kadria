@@ -349,6 +349,13 @@ export interface DevisRecord {
   createdAt: string
   sent: boolean
   pdfUrl: string | null
+  token: string
+  opensCount: number
+  lastOpenedDate: string | null
+  firstOpenedAt: string | null
+  accepted: boolean
+  acceptedAt: string | null
+  acceptedIp: string | null
 }
 
 function mapDevisRecord(record: { id: string; fields: Record<string, unknown> }): DevisRecord {
@@ -379,6 +386,13 @@ function mapDevisRecord(record: { id: string; fields: Record<string, unknown> })
     createdAt: fields['Created At'] as string || '',
     sent: fields['Sent'] === true,
     pdfUrl: pdfFile?.[0]?.url || null,
+    token: fields['Token'] as string || '',
+    opensCount: Number(fields['Opens_count']) || 0,
+    lastOpenedDate: fields['Last_opened_date'] as string || null,
+    firstOpenedAt: fields['First_opened_at'] as string || null,
+    accepted: fields['Accepted'] === true,
+    acceptedAt: fields['Accepted_at'] as string || null,
+    acceptedIp: fields['Accepted_ip'] as string || null,
   }
 }
 

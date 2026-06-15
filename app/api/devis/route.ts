@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   airtableBase,
@@ -114,10 +115,13 @@ export async function POST(request: NextRequest) {
     const numero = (config.devisCompteur || 0) + 1
     const devisNumber = `${prefixe}-${new Date().getFullYear()}-${String(numero).padStart(3, '0')}`
 
+    const token = randomUUID()
+
     let devis
     try {
       devis = await createDevis({
         'Devis Number': devisNumber,
+        'Token': token,
         'Projet ID': body.projetId,
         'Artisan ID': session.artisanId,
         'Date Emission': body.dateEmission || '',
@@ -164,7 +168,7 @@ export async function POST(request: NextRequest) {
       console.error('[DEVIS POST] Mise à jour du projet échouée', error)
     }
 
-    return NextResponse.json({ success: true, devis, devis_id: devis.id, numero: devisNumber })
+    return NextResponse.json({ success: true, devis, devis_id: devis.id, numero: devisNumber, token })
   } catch (error) {
     console.error('[DEVIS POST]', error)
     return NextResponse.json(
