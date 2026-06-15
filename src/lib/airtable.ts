@@ -20,51 +20,54 @@ export const TABLES = {
   activity: 'Activity',
   devis: process.env.AIRTABLE_DEVIS_TABLE || 'Devis',
   emailLogs: process.env.AIRTABLE_EMAIL_LOGS_TABLE || 'Email_logs',
-
 } as const;
 
-export async function getArtisanByEmail(email: string) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
-  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+function escapeFormulaValue(value: string) {
+  return value.replace(/"/g, '\\"')
+}
 
-  // Essaie plusieurs variantes du nom du champ email
+function airtableApiUrl(table: string, query = '') {
+  return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}${query}`
+}
+
+async function airtableFetch(url: string, init: RequestInit = {}) {
+  return fetch(url, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      ...(init.headers || {}),
+    },
+    cache: 'no-store',
+  })
+}
+
+export async function getArtisanByEmail(email: string) {
+  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+  const safeEmail = escapeFormulaValue(email)
+
   const filters = [
-    `{Email}="${email}"`,
-    `{email}="${email}"`,
-    `{E-mail}="${email}"`,
-    `{Mail}="${email}"`,
+    `{Email}="${safeEmail}"`,
+    `{email}="${safeEmail}"`,
+    `{E-mail}="${safeEmail}"`,
+    `{Mail}="${safeEmail}"`,
   ]
 
   for (const filter of filters) {
-    const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(filter)}&maxRecords=1`
-
-    console.log('[AIRTABLE] Trying filter:', filter)
-
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      cache: 'no-store',
-    })
-
+    const url = airtableApiUrl(table, `?filterByFormula=${encodeURIComponent(filter)}&maxRecords=1`)
+    const res = await airtableFetch(url)
     const data = await res.json()
-    console.log('[AIRTABLE] Records found:', data.records?.length, 'for filter:', filter)
 
     if (data.records?.length > 0) {
       const record = data.records[0]
-      console.log('[AIRTABLE] Fields available:', JSON.stringify(Object.keys(record.fields)))
 
       return {
         id: record.id,
-        artisanId: (record.fields['Artisan ID'] ||
-                    record.fields['artisanId'] ||
-                    record.fields['ArtisanId'] || '') as string,
-        companyName: (record.fields['Company Name'] ||
-                      record.fields['companyName'] || '') as string,
+        artisanId: (record.fields['Artisan ID'] || '') as string,
+        companyName: (record.fields['Company Name'] || record.fields['companyName'] || '') as string,
         email: email,
         firstName: (record.fields['First Name'] || '') as string,
         lastName: (record.fields['Last Name'] || '') as string,
-        primaryColor: (record.fields['Primary Color'] ||
-                       record.fields['primaryColor'] || '#22c55e') as string,
+        primaryColor: (record.fields['Primary Color'] || record.fields['primaryColor'] || '#22c55e') as string,
         plan: (record.fields['Plan'] || '') as string,
         statut: (record.fields['Statut'] || '') as string,
         active: record.fields['Active'] !== false,
@@ -73,20 +76,14 @@ export async function getArtisanByEmail(email: string) {
     }
   }
 
-  console.log('[AIRTABLE] Email not found in any field variant:', email)
   return null
 }
 
 export async function getEvents(artisanId: string) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  const safeArtisanId = escapeFormulaValue(artisanId)
+  const url = airtableApiUrl('Events', `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}&sort[0][field]=Date&sort[0][direction]=asc`)
 
-  const url = `https://api.airtable.com/v0/${baseId}/Events?filterByFormula=${encodeURIComponent(`{ArtisanId}="${artisanId}"`)}&sort[0][field]=Date&sort[0][direction]=asc`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
+  const res = await airtableFetch(url)
   const data = await res.json()
   return (data.records || []).map((r: any) => ({
     id: r.id,
@@ -94,7 +91,7 @@ export async function getEvents(artisanId: string) {
     date: r.fields.Date as string,
     type: r.fields.Type as string,
     projectId: r.fields.ProjectId as string,
-    artisanId: r.fields.ArtisanId as string,
+    artisanId: r.fields['Artisan ID'] as string,
     status: r.fields.Status as string,
     notes: r.fields.Notes as string,
   }))
@@ -108,69 +105,44 @@ export async function createEvent(data: {
   artisanId: string
   notes?: string
 }) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
-
-  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Events`, {
+  const res = await airtableFetch(airtableApiUrl('Events'), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       fields: {
         Title: data.title,
         Date: data.date,
         Type: data.type,
         ProjectId: data.projectId || '',
-        ArtisanId: data.artisanId,
+        'Artisan ID': data.artisanId,
         Status: 'Prévu',
         Notes: data.notes || '',
       },
     }),
   })
-  const result = await res.json()
-  return result
+  return res.json()
 }
 
 export async function updateEvent(id: string, fields: Record<string, unknown>) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
-
-  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Events/${id}`, {
+  const res = await airtableFetch(airtableApiUrl(`Events/${id}`), {
     method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields }),
   })
   return res.json()
 }
 
 export async function deleteEvent(id: string) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
-
-  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Events/${id}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${apiKey}` },
-  })
+  const res = await airtableFetch(airtableApiUrl(`Events/${id}`), { method: 'DELETE' })
   return res.json()
 }
 
-export async function getArtisanByArtisanId(artisanId: string) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+export async function getUserByArtisanIdentifier(artisanId: string) {
   const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
+  const safeArtisanId = escapeFormulaValue(artisanId)
+  const url = airtableApiUrl(table, `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}&maxRecords=1`)
 
-  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
-
+  const res = await airtableFetch(url)
   const data = await res.json()
   const record = data.records?.[0]
   if (!record) return null
@@ -186,35 +158,21 @@ export async function getArtisanByArtisanId(artisanId: string) {
 }
 
 export async function getArtisanConfig(artisanId: string) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
-
-  console.log('[ARTISAN_CONFIG] artisanId:', artisanId)
-
   let record: { id: string; fields: Record<string, unknown> } | undefined
 
-  // Les nouveaux comptes stockent directement l'ID Airtable du record
-  // Artisan_config dans Users["Artisan ID"] (ex: "recXXXXXXXXXXXXXX")
   if (artisanId?.startsWith('rec')) {
-    const res = await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config/${artisanId}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      cache: 'no-store',
-    })
+    const res = await airtableFetch(airtableApiUrl(`Artisan_config/${artisanId}`))
     if (res.ok) {
       record = await res.json()
     }
   }
 
-  // Comptes existants : recherche par le champ texte "Artisan ID"
   if (!record) {
-    const url = `https://api.airtable.com/v0/${baseId}/Artisan_config?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      cache: 'no-store',
-    })
+    const safeArtisanId = escapeFormulaValue(artisanId)
+    const url = airtableApiUrl('Artisan_config', `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}&maxRecords=1`)
+    const res = await airtableFetch(url)
     const data = await res.json()
     record = data.records?.[0]
-    console.log('[ARTISAN_CONFIG] records found:', data.records?.length)
   }
 
   if (!record) return null
@@ -235,13 +193,10 @@ export async function getArtisanConfig(artisanId: string) {
     secondaryColor: record.fields['Secondary Color'] as string || '#18181b',
     qualificationFlow: record.fields['Qualification Flow'] as string || '',
     websiteUrl: record.fields['Website URL'] as string || '',
-    active: record.fields['Active'] === true ||
-            record.fields['Active'] === 'True' ||
-            record.fields['Active'] === 'true',
+    active: record.fields['Active'] === true || record.fields['Active'] === 'True' || record.fields['Active'] === 'true',
     aiInstructions: record.fields['AI Instructions'] as string || '',
     trades: record.fields['Trades'] as string || '',
 
-    // Informations légales
     raisonSociale: record.fields['raison_sociale'] as string || record.fields['Raison Sociale'] as string || '',
     formeJuridique: record.fields['forme_juridique'] as string || record.fields['Forme Juridique'] as string || '',
     siret: record.fields['siret'] as string || record.fields['SIRET'] as string || '',
@@ -253,12 +208,10 @@ export async function getArtisanConfig(artisanId: string) {
     cpPro: record.fields['cp_pro'] as string || record.fields['CP Pro'] as string || '',
     villePro: record.fields['ville_pro'] as string || record.fields['Ville Pro'] as string || '',
 
-    // Assurance
     assureur: record.fields['assureur'] as string || record.fields['Assureur'] as string || '',
     numAssurance: record.fields['num_assurance'] as string || record.fields['Num Assurance'] as string || '',
     assuranceNonRequise: record.fields['assurance_non_requise'] === true || record.fields['Assurance Non Requise'] === true,
 
-    // Préférences devis
     devisPrefixe: record.fields['devis_prefixe'] as string || record.fields['Devis Prefixe'] as string || 'DEV',
     devisValidite: Number(record.fields['devis_validite'] ?? record.fields['Devis Validite']) || 90,
     devisTvaDefaut: Number(record.fields['devis_tva_defaut'] ?? record.fields['Devis TVA Defaut']) || 10,
@@ -273,24 +226,15 @@ export async function updateArtisanConfig(
   recordId: string,
   fields: Record<string, unknown>
 ) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  console.info('[ARTISAN_CONFIG] Updating record:', recordId, 'fields:', Object.keys(fields))
 
-  console.log('[ARTISAN_CONFIG] Updating record:', recordId, 'fields:', Object.keys(fields))
-
-  const res = await fetch(
-    `https://api.airtable.com/v0/${baseId}/Artisan_config/${recordId}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fields }),
-    }
-  )
+  const res = await airtableFetch(airtableApiUrl(`Artisan_config/${recordId}`), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  })
   const result = await res.json()
-  console.log('[ARTISAN_CONFIG] Update result:', result.id ? 'success' : result)
+  console.info('[ARTISAN_CONFIG] Update status:', result.id ? 'success' : 'error')
   return result
 }
 
@@ -308,40 +252,27 @@ export async function createCommercialLead(data: {
   teamSize?: string
   website?: string
 }) {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  console.info('[COMMERCIAL] Creating lead')
 
-  console.log('[COMMERCIAL] Creating lead:', JSON.stringify(data))
-  console.log('[COMMERCIAL] Base ID:', process.env.AIRTABLE_BASE_ID)
-  console.log('[COMMERCIAL] API Key present:', !!process.env.AIRTABLE_API_KEY)
-
-  const res = await fetch(
-    `https://api.airtable.com/v0/${baseId}/Commercial`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+  const res = await airtableFetch(airtableApiUrl('Commercial'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fields: {
+        'Nom': data.nom,
+        'Prenom': data.prenom,
+        'Societe': data.societe,
+        'Trade': data.trade,
+        'Offer': data.offer,
+        'Answers': data.answers,
+        'Email': data.email || '',
+        'Phone': data.phone || '',
+        'Preferred Slot': data.preferredSlot || '',
       },
-      body: JSON.stringify({
-        fields: {
-          'Nom': data.nom,
-          'Prenom': data.prenom,
-          'Societe': data.societe,
-          'Trade': data.trade,
-          'Offer': data.offer,
-          'Answers': data.answers,
-          'Email': data.email || '',
-          'Phone': data.phone || '',
-          'Preferred Slot': data.preferredSlot || '',
-        },
-      }),
-    }
-  )
+    }),
+  })
   const result = await res.json()
-  console.log('[COMMERCIAL] Response status:', res.status)
-  console.log('[COMMERCIAL] Response:', JSON.stringify(result))
-  console.log('[COMMERCIAL] Lead created:', result.id || result)
+  console.info('[COMMERCIAL] Response status:', res.status, 'record:', result.id || 'none')
   return result
 }
 
@@ -432,15 +363,10 @@ export async function getDevisById(id: string): Promise<DevisRecord | null> {
 }
 
 export async function getDevisByToken(token: string): Promise<DevisRecord | null> {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  const safeToken = escapeFormulaValue(token)
+  const url = airtableApiUrl(TABLES.devis, `?filterByFormula=${encodeURIComponent(`{Token}="${safeToken}"`)}&maxRecords=1`)
 
-  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(TABLES.devis)}?filterByFormula=${encodeURIComponent(`{Token}="${token}"`)}&maxRecords=1`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
+  const res = await airtableFetch(url)
   const data = await res.json()
   const record = data.records?.[0]
   if (!record) return null
@@ -448,29 +374,19 @@ export async function getDevisByToken(token: string): Promise<DevisRecord | null
 }
 
 export async function getDevisByProjet(projetId: string): Promise<DevisRecord[]> {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  const safeProjetId = escapeFormulaValue(projetId)
+  const url = airtableApiUrl(TABLES.devis, `?filterByFormula=${encodeURIComponent(`{Projet ID}="${safeProjetId}"`)}&sort[0][field]=Created At&sort[0][direction]=desc`)
 
-  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(TABLES.devis)}?filterByFormula=${encodeURIComponent(`{Projet ID}="${projetId}"`)}&sort[0][field]=Created At&sort[0][direction]=desc`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
+  const res = await airtableFetch(url)
   const data = await res.json()
   return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
 }
 
 export async function getDevisByArtisan(artisanId: string): Promise<DevisRecord[]> {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  const safeArtisanId = escapeFormulaValue(artisanId)
+  const url = airtableApiUrl(TABLES.devis, `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}`)
 
-  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(TABLES.devis)}?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
+  const res = await airtableFetch(url)
   const data = await res.json()
   return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
 }
@@ -494,7 +410,7 @@ export interface ProjectSummary {
 export async function getProjectsByArtisan(artisanId: string): Promise<ProjectSummary[]> {
   const records = await airtableBase(TABLES.projects)
     .select({
-      filterByFormula: `{Artisan ID}="${artisanId}"`,
+      filterByFormula: `{Artisan ID}="${escapeFormulaValue(artisanId)}"`,
     })
     .firstPage()
 
