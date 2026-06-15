@@ -7,8 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    console.log('[DEMO REQUEST] body:', JSON.stringify(body))
-    console.log('[DEMO REQUEST] quizResult:', JSON.stringify(body.quizResult))
+    console.info('[DEMO REQUEST] received')
     const { nom, prenom, email, phone, societe, trade, website, preferredSlot, quizResult } = body
 
     const fullName = `${prenom || ''} ${nom || ''}`.trim()
@@ -81,9 +80,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('[DEMO_REQUEST] Error:', err)
+    console.error('[DEMO_REQUEST] Error:', err instanceof Error ? err.message : String(err))
     return NextResponse.json(
-      { success: false, error: String(err) },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 }
     )
   }
