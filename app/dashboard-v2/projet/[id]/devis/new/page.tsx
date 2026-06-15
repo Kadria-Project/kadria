@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Plus, Trash2, X, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Plus, Trash2, X, XCircle } from 'lucide-react';
 
 interface ArtisanConfig {
   companyName: string;
@@ -91,7 +91,7 @@ function NewDevis() {
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState('');
   const [nextDevisNumber, setNextDevisNumber] = useState('');
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -386,9 +386,11 @@ function NewDevis() {
       }
 
       if (mode === 'draft') {
-        setToast({ type: 'success', message: `✓ Devis ${numero} enregistré — PDF généré · Vous pourrez l'envoyer depuis la page du dossier` });
+        setToast({ type: 'success', message: `✓ Devis ${numero} enregistré — PDF généré · Envoi possible depuis le dossier` });
+      } else if (finalizeData.email_sent) {
+        setToast({ type: 'success', message: `✓ Devis ${numero} envoyé à ${clientEmail} — PDF joint à l'email` });
       } else {
-        setToast({ type: 'success', message: `✓ Devis ${numero} envoyé à ${clientEmail} — PDF joint automatiquement` });
+        setToast({ type: 'warning', message: `⚠️ Devis ${numero} enregistré mais l'email n'a pas pu être envoyé — vérifiez l'email client` });
       }
       setTimeout(() => {
         router.push(`/dashboard-v2/projet/${projetId}`);
@@ -1048,13 +1050,13 @@ function NewDevis() {
             right: '16px',
             zIndex: 50,
             background: '#18181b',
-            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : '#dc2626'}`,
+            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : toast.type === 'warning' ? 'rgba(245,158,11,0.3)' : '#dc2626'}`,
             borderRadius: '12px',
             padding: '16px 20px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            color: toast.type === 'success' ? 'white' : '#dc2626',
+            color: toast.type === 'success' ? 'white' : toast.type === 'warning' ? '#f59e0b' : '#dc2626',
             fontSize: '13px',
             maxWidth: '360px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
@@ -1062,6 +1064,8 @@ function NewDevis() {
         >
           {toast.type === 'success' ? (
             <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
+          ) : toast.type === 'warning' ? (
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#f59e0b' }} />
           ) : (
             <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#dc2626' }} />
           )}
