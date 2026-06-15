@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     artisanId: artisan.artisanId,
     companyName: artisan.companyName,
     primaryColor: artisan.primaryColor || '#22c55e',
+    role: artisan.role || '',
   })
 
   // Détermine si c'est un nouveau compte (pas encore configuré)

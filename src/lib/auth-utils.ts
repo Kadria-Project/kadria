@@ -10,6 +10,7 @@ export interface AuthPayload {
   artisanId: string
   companyName: string
   primaryColor: string
+  role?: string
   exp?: number
 }
 

@@ -64,6 +64,7 @@ export async function getArtisanByEmail(email: string) {
                        record.fields['primaryColor'] || '#22c55e') as string,
         plan: (record.fields['Plan'] || '') as string,
         active: record.fields['Active'] !== false,
+        role: (record.fields['Role'] || '') as string,
       }
     }
   }

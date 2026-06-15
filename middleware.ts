@@ -16,6 +16,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  if (pathname.startsWith('/admin')) {
+    const token = request.cookies.get('kadria-auth')?.value
+
+    if (!token) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    try {
+      const { payload } = await jwtVerify(token, SECRET)
+      if (payload.role !== 'Admin') {
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+      return NextResponse.next()
+    } catch {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete('kadria-auth')
+      return response
+    }
+  }
+
   if (pathname.startsWith('/dashboard-v2') || pathname === '/onboarding') {
     const token = request.cookies.get('kadria-auth')?.value
 
@@ -53,5 +77,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/onboarding', '/login'],
+  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/onboarding', '/login', '/admin', '/admin/:path*'],
 }
