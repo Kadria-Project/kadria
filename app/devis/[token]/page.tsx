@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 interface DevisLine {
@@ -57,6 +57,7 @@ function formatEuro(value: number) {
 export default function PublicDevisPage() {
   const params = useParams();
   const token = params.token as string;
+  const openTrackedRef = useRef(false);
 
   const [devis, setDevis] = useState<PublicDevis | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +83,31 @@ export default function PublicDevisPage() {
     };
     load();
   }, [token]);
+
+  useEffect(() => {
+    if (!devis || !token || openTrackedRef.current) return;
+
+    const storageKey = `kadria-devis-open-${token}`;
+    const now = Date.now();
+    const lastTrackedAt = Number(sessionStorage.getItem(storageKey) || 0);
+
+    if (now - lastTrackedAt < 5000) return;
+
+    openTrackedRef.current = true;
+    sessionStorage.setItem(storageKey, String(now));
+
+    fetch(`/api/devis/public/${token}/open`, { method: 'POST' })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = await res.json();
+        if (typeof data.opens_count === 'number') {
+          setDevis((prev) => prev ? { ...prev, opens_count: data.opens_count } : prev);
+        }
+      })
+      .catch(() => {
+        // Le tracking ne doit jamais bloquer l'affichage du devis.
+      });
+  }, [devis, token]);
 
   const handleAccept = async () => {
     setAccepting(true);
