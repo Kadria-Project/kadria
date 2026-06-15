@@ -2078,7 +2078,7 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
   }, [visibleMessages, typingBeforeIndex, reduceMotion]);
 
   return (
-    <div className="kr-assistant-card -m-6 flex h-[calc(100%+3rem)] w-[calc(100%+3rem)] flex-col overflow-hidden rounded-xl">
+    <div className="kr-assistant-card -m-6 flex h-[460px] w-[calc(100%+3rem)] flex-col overflow-hidden rounded-xl">
       <div className="flex flex-shrink-0 items-center gap-3 border-b border-[var(--border)] px-4 py-3.5">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-extrabold text-[var(--bg)]">
           K
@@ -2100,7 +2100,7 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
         </div>
       </div>
 
-      <div ref={chatRef} className="kr-assistant-scroll flex flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+      <div ref={chatRef} className="kr-assistant-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
         {CHAT_MESSAGES.slice(0, visibleMessages).map((msg, i) =>
           msg.role === 'assistant' ? (
             <div
