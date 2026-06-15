@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, type CSSProperties } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -35,6 +36,14 @@ import {
 import { KadriaLogo } from '@/src/components/KadriaLogo';
 import { DarkNav } from '@/src/components/DarkNav';
 import ChatWidget from '@/src/components/ChatWidget';
+
+const DottedSurface = dynamic(
+  () => import('@/components/ui/dotted-surface').then((mod) => mod.DottedSurface),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 const features = [
   {
@@ -1951,6 +1960,22 @@ export function LandingRoutePage() {
       <main>
         {/* 2. HERO */}
         <section className="relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-zinc-950 pt-[88px]">
+          {/* Three.js background — desktop uniquement */}
+          <div className="hidden md:block">
+            <DottedSurface
+              className="absolute inset-0 -z-10 opacity-30"
+              style={{ pointerEvents: 'none' }}
+            />
+          </div>
+
+          {/* Gradient overlay pour lisibilité du texte */}
+          <div
+            className="pointer-events-none absolute inset-0 -z-10"
+            style={{
+              background: 'radial-gradient(ellipse 70% 50% at 50% 100%, transparent 40%, #09090b 80%)',
+            }}
+          />
+
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
           <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
             <div>
