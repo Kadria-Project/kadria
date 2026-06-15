@@ -14,8 +14,6 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReduced) return;
 
-    const theme = 'dark';
-
     const SEPARATION = 150;
     const AMOUNTX = 40;
     const AMOUNTY = 60;
@@ -25,17 +23,14 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x000000, 0.001);
 
-    const camera = new THREE.PerspectiveCamera(
-      55,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      1,
-      10000
-    );
-    camera.position.set(0, 355, 1220);
+    const { width, height } = containerRef.current.getBoundingClientRect();
+
+    const camera = new THREE.PerspectiveCamera(55, (width || window.innerWidth) / (height || window.innerHeight), 1, 10000);
+    camera.position.set(0, 200, 800);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setSize(width || window.innerWidth, height || window.innerHeight);
     renderer.setClearColor(0x000000, 0);
 
     containerRef.current.appendChild(renderer.domElement);
@@ -51,7 +46,8 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 
         positions.push(x, y, z);
 
-        const color = theme === 'dark' ? new THREE.Color(0xffffff) : new THREE.Color(0x000000);
+        // Always light dots on dark background
+        const color = new THREE.Color(0xb4b4b4);
         colors.push(color.r, color.g, color.b);
       }
     }
@@ -99,9 +95,10 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 
     function onWindowResize() {
       if (!containerRef.current) return;
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      const rect = containerRef.current.getBoundingClientRect();
+      camera.aspect = rect.width / rect.height;
       camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      renderer.setSize(rect.width, rect.height);
     }
 
     window.addEventListener('resize', onWindowResize);

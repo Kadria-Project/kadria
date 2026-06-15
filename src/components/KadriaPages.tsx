@@ -1963,8 +1963,8 @@ export function LandingRoutePage() {
           {/* Three.js background — desktop uniquement */}
           <div className="hidden md:block">
             <DottedSurface
-              className="absolute inset-0 -z-10 opacity-30"
-              style={{ pointerEvents: 'none' }}
+              className="absolute inset-0 opacity-60"
+              style={{ zIndex: 0, pointerEvents: 'none' }}
             />
           </div>
 
@@ -1977,7 +1977,7 @@ export function LandingRoutePage() {
           />
 
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
-          <div className="relative mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
+          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
             <div>
               <h1 className="kr-reveal kr-reveal-delay-1 text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.05] tracking-tight">
                 Transformez chaque demande en{' '}
