@@ -1909,20 +1909,6 @@ export function LandingRoutePage() {
                   Tester Kadria <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-400">
-                <Link href="/demo-request" className="transition-colors hover:text-white">
-                  Réserver une démonstration
-                </Link>
-                <Link href="/demo" className="transition-colors hover:text-white">
-                  Voir un exemple de dossier →
-                </Link>
-                <Link href="/demo-request" className="underline transition-colors hover:text-white">
-                  Demander une démo
-                </Link>
-                <Link href="/demo-dashboard" className="text-sm text-zinc-400 hover:text-zinc-100">
-                  Voir le dashboard en direct →
-                </Link>
-              </div>
               <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
                 {[
                   'Mise en place rapide',
