@@ -33,8 +33,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[REGISTER] Tentative:', email)
-
     const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const subscriptionStart = new Date().toISOString().split('T')[0]
 
@@ -63,14 +61,14 @@ export async function POST(request: NextRequest) {
     const userData = await userRes.json()
 
     if (!userRes.ok) {
-      console.error('[REGISTER] Airtable error:', JSON.stringify(userData))
+      console.error('[REGISTER] Airtable user error:', userData?.error || userRes.status)
       return NextResponse.json(
         { error: 'Erreur création compte' },
         { status: 500 }
       )
     }
 
-    console.log('[REGISTER] User créé:', userData?.id)
+    console.info('[REGISTER] User créé:', userData?.id)
 
     // Crée la configuration artisan
     const configRes = await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config`, {
@@ -91,14 +89,14 @@ export async function POST(request: NextRequest) {
     const configData = await configRes.json()
 
     if (!configRes.ok) {
-      console.error('[REGISTER] Airtable error:', JSON.stringify(configData))
+      console.error('[REGISTER] Airtable config error:', configData?.error || configRes.status)
       return NextResponse.json(
         { error: 'Erreur création compte' },
         { status: 500 }
       )
     }
 
-    console.log('[REGISTER] Config créée:', configData?.id)
+    console.info('[REGISTER] Config créée:', configData?.id)
 
     // Lie la configuration au compte utilisateur
     const linkRes = await fetch(`https://api.airtable.com/v0/${baseId}/Users/${userData.id}`, {
@@ -117,7 +115,7 @@ export async function POST(request: NextRequest) {
     const linkData = await linkRes.json()
 
     if (!linkRes.ok) {
-      console.error('[REGISTER] Airtable error:', JSON.stringify(linkData))
+      console.error('[REGISTER] Airtable link error:', linkData?.error || linkRes.status)
       return NextResponse.json(
         { error: 'Erreur création compte' },
         { status: 500 }
@@ -180,11 +178,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[REGISTER] Error:', error)
+    console.error('[REGISTER] Error:', error instanceof Error ? error.message : String(error))
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 }
     )
   }
 }
-
