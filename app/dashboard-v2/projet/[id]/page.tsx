@@ -802,7 +802,7 @@ function ProjectDetail() {
                               fontSize: '12px',
                               fontWeight: 600,
                             }}>
-                              ✓ Accepté le {formatDevisDate(devis.accepted_at)}
+                              ✓ Accepté le {formatDevisDate(devis.accepted_at || '')}
                             </span>
                           )}
                           {devis.sent || devis.statut === 'Envoyé' ? (

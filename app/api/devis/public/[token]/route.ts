@@ -24,7 +24,7 @@ export async function GET(
       await airtableBase(TABLES.devis).update(devis.id, {
         'Opens_count': newCount,
         'Last_opened_date': now,
-        'First_opened_at': devis.opensCount === 0 ? now : devis.firstOpenedAt,
+        'First_opened_at': devis.opensCount === 0 ? now : (devis.firstOpenedAt || now),
       })
     } catch (error) {
       console.error('[DEVIS PUBLIC] Erreur mise à jour Opens_count', error)
