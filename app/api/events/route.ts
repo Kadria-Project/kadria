@@ -11,7 +11,8 @@ export async function GET() {
     const events = await getEvents(session.artisanId)
     return NextResponse.json({ success: true, events })
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
+    console.error('[EVENTS GET]', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }
 
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json({ success: true, event: result })
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 })
+    console.error('[EVENTS POST]', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }
