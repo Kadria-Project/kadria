@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { airtableBase, TABLES, getArtisanConfig, getDevisByToken } from '@/src/lib/airtable'
+import { getArtisanConfig, getDevisByToken } from '@/src/lib/airtable'
 
 export async function GET(
   _request: NextRequest,
@@ -15,19 +15,6 @@ export async function GET(
     const devis = await getDevisByToken(token)
     if (!devis) {
       return NextResponse.json({ error: 'Devis introuvable' }, { status: 404 })
-    }
-
-    const now = new Date().toISOString()
-    const newCount = devis.opensCount + 1
-
-    try {
-      await airtableBase(TABLES.devis).update(devis.id, {
-        'Opens_count': newCount,
-        'Last_opened_date': now,
-        'First_opened_at': devis.opensCount === 0 ? now : (devis.firstOpenedAt || now),
-      })
-    } catch (error) {
-      console.error('[DEVIS PUBLIC] Erreur mise à jour Opens_count', error)
     }
 
     const config = await getArtisanConfig(devis.artisanId)
@@ -68,10 +55,10 @@ export async function GET(
       pdf_url: devis.pdfUrl,
       accepted: devis.accepted,
       accepted_at: devis.acceptedAt,
-      opens_count: newCount,
+      opens_count: devis.opensCount,
     })
   } catch (error) {
-    console.error('[DEVIS PUBLIC GET]', error)
+    console.error('[DEVIS PUBLIC GET]', error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }
