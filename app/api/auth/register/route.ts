@@ -4,15 +4,6 @@ import { createMagicToken } from '@/src/lib/auth-utils'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-function generateArtisanId(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let id = ''
-  for (let i = 0; i < 8; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return `ART_${id}`
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { email, firstName, lastName, phone, company, trade } = await request.json()
@@ -42,9 +33,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const artisanId = generateArtisanId()
+    console.log('[REGISTER] Tentative:', email)
 
-    console.log('[REGISTER] Tentative pour:', email)
+    const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const subscriptionStart = new Date().toISOString().split('T')[0]
 
     // Crée l'utilisateur dans Users
     const userRes = await fetch(`https://api.airtable.com/v0/${baseId}/Users`, {
@@ -55,13 +47,15 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         fields: {
-          Email: email,
-          'First Name': firstName,
-          'Last Name': lastName,
-          'Artisan ID': artisanId,
-          'Company Name': company,
-          Active: true,
-          Plan: 'Trial',
+          'Email': email,
+          'First Name': firstName || '',
+          'Last Name': lastName || '',
+          'Company Name': company || '',
+          'Role': 'Artisan',
+          'Plan': 'Performance',
+          'Statut': 'Trial',
+          'Trial_end_date': trialEndDate,
+          'Subscription_start': subscriptionStart,
         },
       }),
     })
@@ -69,14 +63,14 @@ export async function POST(request: NextRequest) {
     const userData = await userRes.json()
 
     if (!userRes.ok) {
-      console.error('[REGISTER] Erreur création Users:', JSON.stringify(userData))
+      console.error('[REGISTER] Airtable error:', JSON.stringify(userData))
       return NextResponse.json(
-        { success: false, error: `Échec de la création du compte: ${userData?.error?.message || JSON.stringify(userData)}` },
+        { error: 'Erreur création compte' },
         { status: 500 }
       )
     }
 
-    console.log('[REGISTER] Airtable create résultat (Users):', userData?.id)
+    console.log('[REGISTER] User créé:', userData?.id)
 
     // Crée la configuration artisan
     const configRes = await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config`, {
@@ -87,16 +81,9 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         fields: {
-          'Artisan ID': artisanId,
-          'Company Name': company,
-          'Primary Trade': trade,
-          Phone: phone || '',
-          Email: email,
-          'Primary Color': '#22c55e',
-          'Secondary Color': '#09090b',
-          'Welcome Name': company,
-          'Welcome Message': '',
-          Active: true,
+          'devis_prefixe': 'DEV',
+          'devis_validite': 90,
+          'devis_tva_defaut': 10,
         },
       }),
     })
@@ -104,14 +91,38 @@ export async function POST(request: NextRequest) {
     const configData = await configRes.json()
 
     if (!configRes.ok) {
-      console.error('[REGISTER] Erreur création Artisan_config:', JSON.stringify(configData))
+      console.error('[REGISTER] Airtable error:', JSON.stringify(configData))
       return NextResponse.json(
-        { success: false, error: `Échec de la création de la configuration: ${configData?.error?.message || JSON.stringify(configData)}` },
+        { error: 'Erreur création compte' },
         { status: 500 }
       )
     }
 
-    console.log('[REGISTER] Airtable create résultat (Artisan_config):', configData?.id)
+    console.log('[REGISTER] Config créée:', configData?.id)
+
+    // Lie la configuration au compte utilisateur
+    const linkRes = await fetch(`https://api.airtable.com/v0/${baseId}/Users/${userData.id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fields: {
+          'Artisan ID': configData.id,
+        },
+      }),
+    })
+
+    const linkData = await linkRes.json()
+
+    if (!linkRes.ok) {
+      console.error('[REGISTER] Airtable error:', JSON.stringify(linkData))
+      return NextResponse.json(
+        { error: 'Erreur création compte' },
+        { status: 500 }
+      )
+    }
 
     // Génère le lien magique
     const magicToken = await createMagicToken(email)
@@ -140,9 +151,6 @@ export async function POST(request: NextRequest) {
              style="display:inline-block;background:#22c55e;color:black;font-weight:700;border-radius:10px;padding:14px 28px;font-size:16px;text-decoration:none;">
             Accéder à mon espace →
           </a>
-          <p style="color:#a1a1aa;font-size:13px;margin:24px 0 0;line-height:1.6;">
-            Votre identifiant artisan : <strong style="color:white">${artisanId}</strong>
-          </p>
           <p style="color:#52525b;font-size:12px;margin:24px 0 0;line-height:1.6;">
             Si vous n'avez pas demandé ce lien, ignorez cet email.<br/>
             Lien valable une seule fois pendant 10 minutes.
@@ -164,12 +172,13 @@ export async function POST(request: NextRequest) {
           <p><strong>Email :</strong> ${email}</p>
           <p><strong>Téléphone :</strong> ${phone || '-'}</p>
           <p><strong>Métier :</strong> ${trade}</p>
-          <p><strong>Artisan ID :</strong> ${artisanId}</p>
+          <p><strong>User record :</strong> ${userData.id}</p>
+          <p><strong>Artisan_config record :</strong> ${configData.id}</p>
         </div>
       `,
     })
 
-    return NextResponse.json({ success: true, artisanId })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[REGISTER] Error:', error)
     return NextResponse.json(
@@ -178,3 +187,4 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
