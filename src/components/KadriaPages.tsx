@@ -1403,7 +1403,7 @@ function MetricsGrid() {
           </p>
           <span ref={(el) => { lineRefs.current[i] = el; }} className="metric-line" />
           <p className="mt-2 text-base font-bold text-white">{m.label}</p>
-          <p className="mx-auto mt-1 max-w-[180px] text-[13px] leading-[1.5] text-zinc-400">{m.description}</p>
+          <p className="mx-auto mt-1 min-h-[36px] max-w-[160px] text-center text-[13px] leading-[1.5] text-zinc-400">{m.description}</p>
         </div>
       ))}
     </div>
@@ -1992,7 +1992,7 @@ export function LandingRoutePage() {
         </section>
 
         {/* 3. SOCIAL PROOF */}
-        <section className="w-full bg-zinc-900 py-16">
+        <section className="w-full border-y border-zinc-800 bg-zinc-900 py-16">
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Résultats</p>
