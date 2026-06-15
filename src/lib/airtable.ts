@@ -347,10 +347,13 @@ export interface DevisRecord {
   clientEmail: string
   clientPhone: string
   createdAt: string
+  sent: boolean
+  pdfUrl: string | null
 }
 
 function mapDevisRecord(record: { id: string; fields: Record<string, unknown> }): DevisRecord {
   const fields = record.fields
+  const pdfFile = fields['PDF File'] as Array<{ url?: string }> | undefined
   return {
     id: record.id,
     devisNumber: fields['Devis Number'] as string || '',
@@ -374,6 +377,8 @@ function mapDevisRecord(record: { id: string; fields: Record<string, unknown> })
     clientEmail: fields['Client Email'] as string || '',
     clientPhone: fields['Client Phone'] as string || '',
     createdAt: fields['Created At'] as string || '',
+    sent: fields['Sent'] === true,
+    pdfUrl: pdfFile?.[0]?.url || null,
   }
 }
 
