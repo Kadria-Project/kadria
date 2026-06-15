@@ -1295,51 +1295,118 @@ export const ANIMATION_STYLES = `
   }
 `
 
-function StatCounter({
-  target,
-  prefix = '',
-  suffix = '',
-  duration = 1200,
-}: {
-  target: number;
-  prefix?: string;
-  suffix?: string;
-  duration?: number;
-}) {
-  const reduceMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const [value, setValue] = useState(reduceMotion ? target : 0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
+const METRICS_DATA: {
+  valeur: string;
+  label: string;
+  description: string;
+  countTarget: number | null;
+  prefix: string;
+  suffix: string;
+}[] = [
+  { valeur: 'Zéro', label: 'saisie manuelle', description: 'tout est structuré automatiquement', countTarget: null, prefix: '', suffix: '' },
+  { valeur: '0', label: 'prospect perdu', description: 'chaque demande est captée et traitée', countTarget: 0, prefix: '', suffix: '' },
+  { valeur: '+40%', label: 'taux de réponse', description: 'vs un artisan sans assistant', countTarget: 40, prefix: '+', suffix: '%' },
+  { valeur: '100%', label: 'dossiers scorés', description: 'priorisés par potentiel commercial', countTarget: 100, prefix: '', suffix: '%' },
+  { valeur: '24h/24', label: 'votre site répond', description: 'même quand vous êtes sur le chantier', countTarget: null, prefix: '', suffix: '' },
+  { valeur: '< 15 min', label: 'mise en place', description: 'opérationnel dès aujourd\'hui', countTarget: 15, prefix: '< ', suffix: ' min' },
+];
+
+function countUp(element: HTMLElement, target: number, duration: number, prefix: string, suffix: string) {
+  const start = performance.now();
+  const animate = (now: number) => {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(target * eased);
+    element.textContent = `${prefix}${current}${suffix}`;
+    if (progress < 1) requestAnimationFrame(animate);
+  };
+  requestAnimationFrame(animate);
+}
+
+function metricBorderClasses(i: number) {
+  const base = i < 5 ? 'border-b border-zinc-800' : 'border-b-0';
+  const mdRight = i % 2 === 0 ? 'md:border-r md:border-zinc-800' : 'md:border-r-0';
+  const mdBottom = i < 4 ? 'md:border-b md:border-zinc-800' : 'md:border-b-0';
+  const lgRight = i % 3 !== 2 ? 'lg:border-r lg:border-zinc-800' : 'lg:border-r-0';
+  const lgBottom = i < 3 ? 'lg:border-b lg:border-zinc-800' : 'lg:border-b-0';
+  return `${base} ${mdRight} ${mdBottom} ${lgRight} ${lgBottom}`;
+}
+
+function MetricsGrid() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const valueRefs = useRef<(HTMLParagraphElement | null)[]>([]);
+  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el || reduceMotion) return;
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReduced) {
+      itemRefs.current.forEach((el) => el?.classList.add('metric-visible'));
+      lineRefs.current.forEach((el) => el?.classList.add('metric-line-visible'));
+      METRICS_DATA.forEach((m, i) => {
+        const el = valueRefs.current[i];
+        if (el && m.countTarget !== null) {
+          el.textContent = `${m.prefix}${m.countTarget}${m.suffix}`;
+        }
+      });
+      return;
+    }
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          const start = performance.now();
-          const tick = (now: number) => {
-            const progress = Math.min((now - start) / duration, 1);
-            setValue(Math.round(progress * target));
-            if (progress < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const index = itemRefs.current.indexOf(entry.target as HTMLDivElement);
+          if (index === -1) return;
+          const delay = index * 100;
+          const metric = METRICS_DATA[index];
+
+          setTimeout(() => {
+            entry.target.classList.add('metric-visible');
+            const valueEl = valueRefs.current[index];
+            if (valueEl && metric.countTarget !== null) {
+              countUp(valueEl, metric.countTarget, 1200, metric.prefix, metric.suffix);
+            }
+          }, delay);
+
+          setTimeout(() => {
+            lineRefs.current[index]?.classList.add('metric-line-visible');
+          }, delay + 300);
+
+          observer.unobserve(entry.target);
+        });
       },
-      { threshold: 0.4 }
+      { threshold: 0.2 }
     );
 
-    observer.observe(el);
+    itemRefs.current.forEach((el) => el && observer.observe(el));
+
     return () => observer.disconnect();
-  }, [target, duration, reduceMotion]);
+  }, []);
 
   return (
-    <span ref={ref}>
-      {prefix}{value}{suffix}
-    </span>
+    <div ref={containerRef} className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      {METRICS_DATA.map((m, i) => (
+        <div
+          key={m.label}
+          ref={(el) => { itemRefs.current[i] = el; }}
+          style={{ transitionDelay: `${i * 100}ms` }}
+          className={`metric-hidden px-8 py-10 text-center ${metricBorderClasses(i)}`}
+        >
+          <p
+            ref={(el) => { valueRefs.current[i] = el; }}
+            className="text-[clamp(2.2rem,4vw,3.2rem)] font-black leading-none tracking-[-0.02em] text-green-500"
+          >
+            {m.valeur}
+          </p>
+          <span ref={(el) => { lineRefs.current[i] = el; }} className="metric-line" />
+          <p className="mt-2 text-base font-bold text-white">{m.label}</p>
+          <p className="mx-auto mt-1 max-w-[180px] text-[13px] leading-[1.5] text-zinc-400">{m.description}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1858,12 +1925,6 @@ export function LandingRoutePage() {
     },
   ];
 
-  const stats = [
-    { value: 100, prefix: '', suffix: '%', text: 'des demandes centralisées dans votre dashboard' },
-    { value: 24, prefix: '', suffix: 'h/24', text: 'Kadria répond même quand vous êtes indisponible' },
-    { value: 3, prefix: '< ', suffix: ' min', text: 'pour qualifier et structurer un projet complet' },
-  ];
-
   const waveBars = [
     'h-[40%] [animation-delay:0ms]',
     'h-[70%] [animation-delay:100ms]',
@@ -1935,21 +1996,11 @@ export function LandingRoutePage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Résultats</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-3 text-2xl font-bold tracking-tight md:text-3xl">
-                Ce que nos artisans gagnent dès le premier mois
+              <h2 className="kr-reveal kr-reveal-delay-1 mt-3 text-2xl font-extrabold tracking-tight md:text-3xl">
+                Ce que Kadria change concrètement
               </h2>
             </div>
-            <div className="mt-12 grid gap-8 text-center md:grid-cols-3 md:divide-x md:divide-zinc-800">
-              {stats.map((stat, i) => (
-                <div key={stat.text} className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} px-4`}>
-                  <p className="text-4xl font-bold text-green-500">
-                    <StatCounter target={stat.value} prefix={stat.prefix} suffix={stat.suffix} duration={1500} />
-                  </p>
-                  <div className="kr-line-grow mx-auto mt-3 h-0.5 w-8 bg-green-500" />
-                  <p className="mt-3 text-zinc-400">{stat.text}</p>
-                </div>
-              ))}
-            </div>
+            <MetricsGrid />
           </div>
         </section>
 
