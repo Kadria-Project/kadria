@@ -66,6 +66,7 @@ export async function getArtisanByEmail(email: string) {
         primaryColor: (record.fields['Primary Color'] ||
                        record.fields['primaryColor'] || '#22c55e') as string,
         plan: (record.fields['Plan'] || '') as string,
+        statut: (record.fields['Statut'] || '') as string,
         active: record.fields['Active'] !== false,
         role: (record.fields['Role'] || '') as string,
       }
@@ -188,17 +189,33 @@ export async function getArtisanConfig(artisanId: string) {
   const apiKey = process.env.AIRTABLE_API_KEY
   const baseId = process.env.AIRTABLE_BASE_ID
 
-  const url = `https://api.airtable.com/v0/${baseId}/Artisan_config?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
-  const data = await res.json()
-  const record = data.records?.[0]
-
   console.log('[ARTISAN_CONFIG] artisanId:', artisanId)
-  console.log('[ARTISAN_CONFIG] records found:', data.records?.length)
+
+  let record: { id: string; fields: Record<string, unknown> } | undefined
+
+  // Les nouveaux comptes stockent directement l'ID Airtable du record
+  // Artisan_config dans Users["Artisan ID"] (ex: "recXXXXXXXXXXXXXX")
+  if (artisanId?.startsWith('rec')) {
+    const res = await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config/${artisanId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      cache: 'no-store',
+    })
+    if (res.ok) {
+      record = await res.json()
+    }
+  }
+
+  // Comptes existants : recherche par le champ texte "Artisan ID"
+  if (!record) {
+    const url = `https://api.airtable.com/v0/${baseId}/Artisan_config?filterByFormula=${encodeURIComponent(`{Artisan ID}="${artisanId}"`)}&maxRecords=1`
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      cache: 'no-store',
+    })
+    const data = await res.json()
+    record = data.records?.[0]
+    console.log('[ARTISAN_CONFIG] records found:', data.records?.length)
+  }
 
   if (!record) return null
 

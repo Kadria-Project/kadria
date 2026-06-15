@@ -6,12 +6,14 @@ const SECRET = new TextEncoder().encode(
 )
 
 export interface AuthPayload {
+  id?: string
   email: string
   artisanId: string
   companyName: string
   primaryColor: string
   role?: string
   plan?: string
+  statut?: string
   firstName?: string
   lastName?: string
   exp?: number
