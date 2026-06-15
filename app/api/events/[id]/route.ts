@@ -39,8 +39,6 @@ export async function PATCH(
 
     const body = await request.json()
     delete body['Artisan ID']
-    delete body.ArtisanId
-    delete body.Artisan_id
 
     const result = await updateEvent(id, body)
     return NextResponse.json({ success: true, event: result })
