@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'fallback-secret'
-)
+function getAuthSecret(): Uint8Array {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+
+  if (!secret) {
+    throw new Error('Missing AUTH_SECRET or NEXTAUTH_SECRET')
+  }
+
+  return new TextEncoder().encode(secret)
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -26,7 +32,7 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      const { payload } = await jwtVerify(token, SECRET)
+      const { payload } = await jwtVerify(token, getAuthSecret())
       if (payload.role !== 'Admin') {
         return NextResponse.redirect(new URL('/login', request.url))
       }
@@ -50,7 +56,7 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, SECRET)
+      await jwtVerify(token, getAuthSecret())
       return NextResponse.next()
     } catch {
       const loginUrl = new URL('/login', request.url)
@@ -65,7 +71,7 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get('kadria-auth')?.value
     if (token) {
       try {
-        await jwtVerify(token, SECRET)
+        await jwtVerify(token, getAuthSecret())
         return NextResponse.redirect(new URL('/dashboard-v2', request.url))
       } catch {
         // Token invalide, laisse passer
