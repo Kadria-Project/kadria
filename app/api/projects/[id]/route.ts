@@ -5,9 +5,6 @@ import { getSession } from '@/src/lib/auth-utils';
 function mapProject(record: any) {
   const fields = record.fields;
 
-  console.log('[PROJECT] Photos raw:', JSON.stringify(fields.Photos));
-  console.log('[PROJECT] Photos type:', typeof fields.Photos);
-
   return {
     id: record.id,
     projectNumber: record.id.slice(-6),
@@ -77,6 +74,22 @@ async function createActivityLog(
   });
 }
 
+async function getAuthorizedProject(id: string, artisanId: string) {
+  let record;
+
+  try {
+    record = await airtableBase(TABLES.projects).find(id);
+  } catch {
+    return { status: 404 as const };
+  }
+
+  if (record.fields['Artisan ID'] !== artisanId) {
+    return { status: 403 as const };
+  }
+
+  return { status: 200 as const, record };
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -88,32 +101,25 @@ export async function GET(
     }
 
     const { id } = await params;
+    const result = await getAuthorizedProject(id, session.artisanId);
 
-    const record = await airtableBase(TABLES.projects).find(id);
+    if (result.status === 404) {
+      return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
+    }
 
-    const projectArtisanId = record.fields['Artisan_id'] as string;
-    if (projectArtisanId && projectArtisanId !== session.artisanId) {
-      return NextResponse.json(
-        { success: false, error: 'Accès non autorisé' },
-        { status: 403 },
-      );
+    if (result.status === 403) {
+      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
     }
 
     return NextResponse.json({
       success: true,
-      project: mapProject(record),
+      project: mapProject(result.record),
     });
   } catch (error) {
-    console.error('GET_PROJECT_DETAIL_ERROR', error);
+    console.error('GET_PROJECT_DETAIL_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : JSON.stringify(error, null, 2),
-      },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 },
     );
   }
@@ -124,9 +130,23 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
-    const input = await request.json();
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
+    }
 
+    const { id } = await params;
+    const authResult = await getAuthorizedProject(id, session.artisanId);
+
+    if (authResult.status === 404) {
+      return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
+    }
+
+    if (authResult.status === 403) {
+      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
+    }
+
+    const input = await request.json();
     const fieldsToUpdate: Record<string, string | number | boolean | undefined> = {};
 
     if (input.status) {
@@ -142,57 +162,55 @@ export async function PATCH(
     }
 
     if (input.callbackDate !== undefined) {
-  fieldsToUpdate['Callback Date'] = input.callbackDate || undefined;
-}
-
-if (input.callbackDate !== undefined) {
-  await createActivityLog(
-    id,
-    'CALLBACK_DATE_UPDATED',
-    input.callbackDate
-      ? `Date de rappel définie : ${input.callbackDate}`
-      : 'Date de rappel supprimée',
-  );
-}
+      fieldsToUpdate['Callback Date'] = input.callbackDate || undefined;
+    }
 
     if (input.fields && typeof input.fields === 'object') {
-      Object.assign(fieldsToUpdate, input.fields);
+      const safeFields = { ...input.fields };
+      delete safeFields['Artisan ID'];
+      delete safeFields['Artisan_id'];
+      delete safeFields.ArtisanId;
+      Object.assign(fieldsToUpdate, safeFields);
     }
 
     const record = await airtableBase(TABLES.projects).update(id, fieldsToUpdate);
 
+    if (input.callbackDate !== undefined) {
+      await createActivityLog(
+        id,
+        'CALLBACK_DATE_UPDATED',
+        input.callbackDate
+          ? `Date de rappel définie : ${input.callbackDate}`
+          : 'Date de rappel supprimée',
+      );
+    }
+
     if (input.callbackDate) {
-      const session = await getSession();
+      try {
+        const existingEvents = await getEvents(session.artisanId);
+        const existingRelance = existingEvents.find(
+          (e: { projectId: string; type: string }) => e.projectId === id && e.type === 'Relance',
+        );
 
-      if (session?.artisanId) {
-        try {
-          const existingEvents = await getEvents(session.artisanId);
-          const existingRelance = existingEvents.find(
-            (e: { projectId: string; type: string }) => e.projectId === id && e.type === 'Relance',
-          );
+        const clientName = record.fields['Client Name'] || 'Prospect';
 
-          const clientName = record.fields['Client Name'] || 'Prospect';
-
-          if (existingRelance) {
-            await updateEvent(existingRelance.id, {
-              Date: input.callbackDate,
-              Title: `Relance — ${clientName}`,
-            });
-          } else {
-            await createEvent({
-              title: `Relance — ${clientName}`,
-              date: input.callbackDate,
-              type: 'Relance',
-              projectId: id,
-              artisanId: session.artisanId,
-              notes: 'Relance programmée depuis le dossier projet',
-            });
-          }
-
-          console.log('[EVENTS] Relance event created/updated for project:', id);
-        } catch (eventError) {
-          console.error('[EVENTS] Failed to sync relance to calendar:', eventError);
+        if (existingRelance) {
+          await updateEvent(existingRelance.id, {
+            Date: input.callbackDate,
+            Title: `Relance — ${clientName}`,
+          });
+        } else {
+          await createEvent({
+            title: `Relance — ${clientName}`,
+            date: input.callbackDate,
+            type: 'Relance',
+            projectId: id,
+            artisanId: session.artisanId,
+            notes: 'Relance programmée depuis le dossier projet',
+          });
         }
+      } catch (eventError) {
+        console.error('[EVENTS] Failed to sync relance:', eventError instanceof Error ? eventError.message : String(eventError));
       }
     }
 
@@ -217,16 +235,10 @@ if (input.callbackDate !== undefined) {
       project: mapProject(record),
     });
   } catch (error) {
-    console.error('UPDATE_PROJECT_ERROR', error);
+    console.error('UPDATE_PROJECT_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : JSON.stringify(error, null, 2),
-      },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 },
     );
   }
