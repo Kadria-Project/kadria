@@ -18,12 +18,14 @@ import {
   ClipboardCheck,
   Clock,
   Euro,
+  Eye,
   FileCheck,
   FileText,
   Globe,
   Hammer,
   KanbanSquare,
   LayoutDashboard,
+  Lightbulb,
   Mail,
   MapPin,
   MessageCircle,
@@ -610,48 +612,84 @@ const DASHBOARD_TABS = [
   },
 ]
 
+const kLabel: CSSProperties = {
+  fontSize: '10px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+}
+
 function MockupDossier() {
+  const criteria = [
+    { ok: true, title: 'Budget cohérent', detail: '8 000 – 12 000€' },
+    { ok: true, title: 'Délai réaliste', detail: 'Sous 1 mois' },
+    { ok: true, title: 'Contact vérifié', detail: 'Tél + email' },
+    { ok: false, title: 'Photos jointes', detail: 'Aucune photo' },
+  ]
   return (
-    <div className="p-5 sm:p-6">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div>
+      <div style={{ borderBottom: '1px solid #27272a' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
         <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-green-500">Dossier qualifié</p>
-          <p className="text-base font-bold text-white sm:text-lg">Leroy Celine</p>
+          <p style={{ ...kLabel, color: '#22c55e' }} className="mb-1">Dossier qualifié</p>
+          <p className="text-lg font-extrabold text-white">Marie Leroy</p>
+          <p className="text-xs text-zinc-400">Rénovation salle de bain · Lyon 3e</p>
         </div>
-        <span style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
-          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold">
-          Score 92%
+        <span style={{ background: '#22c55e', color: '#09090b' }} className="whitespace-nowrap rounded-full px-3 py-1 text-[13px] font-bold">
+          Score 94%
         </span>
       </div>
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        {[
-          { label: 'Type de projet', value: 'Rénovation toiture' },
-          { label: 'Budget estimé', value: '8 000 – 12 000 €' },
-          { label: 'Localisation', value: 'Strasbourg' },
-          { label: 'Délai souhaité', value: 'Sous 1 mois' },
-        ].map((item) => (
-          <div key={item.label} style={{ background: '#27272a', border: '1px solid #3f3f46' }} className="rounded-xl p-3">
-            <p className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">{item.label}</p>
-            <p className="text-sm font-semibold text-white">{item.value}</p>
-          </div>
-        ))}
+
+      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 sm:px-5">
+        <p style={{ color: '#22c55e' }} className="text-sm font-bold">✦ Analyse Kadria</p>
+        <span
+          style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
+          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
+        >
+          🔥 Prospect chaud
+        </span>
       </div>
-      <div style={{ background: '#27272a', border: '1px solid #3f3f46' }} className="mb-4 rounded-xl p-4">
-        <p className="mb-2 text-xs text-zinc-500">Message du client</p>
-        <p className="text-sm leading-relaxed text-zinc-300">
-          « Bonjour, je souhaiterais refaire entièrement la toiture de ma maison, environ 120 m². Disponible pour un
-          rendez-vous dès la semaine prochaine. »
+
+      <div className="mt-3 grid grid-cols-2 gap-2 px-4 sm:px-5">
+        {criteria.map((c) => {
+          const Icon = c.ok ? CheckCircle : XCircle
+          const color = c.ok ? '#22c55e' : '#dc2626'
+          return (
+            <div key={c.title} style={{ background: '#09090b', border: '1px solid #27272a' }} className="rounded-lg p-2.5">
+              <div className="mb-1 flex items-center gap-1.5">
+                <Icon size={12} color={color} />
+                <span className="text-xs font-semibold" style={{ color: c.ok ? '#ffffff' : color, opacity: c.ok ? 1 : 0.6 }}>
+                  {c.title}
+                </span>
+              </div>
+              <p className="text-xs" style={{ color: c.ok ? '#a1a1aa' : '#71717a' }}>{c.detail}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      <div style={{ background: '#09090b' }} className="mx-4 mt-3 rounded-lg p-3 sm:mx-5">
+        <p style={kLabel} className="mb-1.5 text-zinc-500">Synthèse IA</p>
+        <p className="text-xs italic leading-relaxed text-zinc-400">
+          Rénovation complète SDB 7m². Budget cohérent, délai court. Prospect disponible rapidement.
         </p>
       </div>
-      <div className="flex items-center gap-3">
-        <div style={{ background: '#22c55e', color: '#09090b' }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-          LC
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-white">06 12 34 56 78</p>
-          <p className="text-xs text-zinc-500">celine.leroy@email.com</p>
-        </div>
+
+      <div
+        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.3)' }}
+        className="mx-4 mt-2 flex items-start gap-2 rounded-lg p-3 sm:mx-5"
+      >
+        <Lightbulb size={12} color="#22c55e" className="mt-0.5 shrink-0" />
+        <p className="text-xs font-medium text-white">
+          Rappel recommandé sous 24h — fort potentiel de conversion.
+        </p>
+      </div>
+
+      <div style={{ borderTop: '1px solid #27272a' }} className="mt-3 flex items-center gap-3 px-4 py-2.5 sm:px-5">
+        <span style={{ color: '#22c55e' }} className="text-xs font-bold">Score 94%</span>
+        <span className="text-xs text-zinc-600">·</span>
+        <span style={{ color: '#22c55e' }} className="text-xs">Conversion Élevée</span>
+        <span className="text-xs text-zinc-600">·</span>
+        <span className="text-xs text-zinc-600">Reçu il y a 2 min</span>
       </div>
     </div>
   )
@@ -659,35 +697,77 @@ function MockupDossier() {
 
 function MockupPipeline() {
   const columns = [
-    { status: 'Nouveau', color: '#e4e4e7', leads: ['Marc Petit', 'Julie Renard'] },
-    { status: 'À rappeler', color: '#fbbf24', leads: ['Antonin Dugautier'] },
-    { status: 'Qualifié', color: '#4ade80', leads: ['Leroy Celine', 'Karim Aziz'] },
-    { status: 'Devis envoyé', color: '#60a5fa', leads: ['Sophie Martin'] },
-    { status: 'Gagné', color: '#86efac', leads: ['Laurent Martin', 'Famille Dubois'] },
+    {
+      title: 'Nouveau', border: '#3f3f46', badge: '#3f3f46', total: '6.7k€', totalColor: '#a1a1aa',
+      cards: [
+        { initials: 'MT', name: 'Morel Thomas', meta: 'jardin · 85%', metaColor: '#22c55e' },
+        { initials: 'FL', name: 'Fontaine Laura', meta: 'salle de bain · 100%', metaColor: '#22c55e' },
+      ],
+    },
+    {
+      title: 'À rappeler', border: '#d97706', badge: '#d97706', total: '7k€', totalColor: '#a1a1aa',
+      cards: [
+        { initials: 'SM', name: 'Sophie Martin', meta: 'jardin · 100%', metaColor: '#22c55e' },
+        { initials: 'DN', name: 'Dubois Nicolas', meta: 'jardin · 100%', metaColor: '#22c55e' },
+      ],
+    },
+    {
+      title: 'Qualifié', border: '#16a34a', badge: '#16a34a', total: '3k€', totalColor: '#a1a1aa',
+      cards: [
+        { initials: 'DM', name: 'Dumontier', meta: 'paysagiste · 90%', metaColor: '#22c55e' },
+      ],
+    },
+    {
+      title: 'Devis envoyé', border: '#2563eb', badge: '#2563eb', total: '17.2k€', totalColor: '#a1a1aa',
+      cards: [
+        { initials: 'JL', name: 'Julien Lef.', meta: 'jardin · 0%', metaColor: '#dc2626' },
+        { initials: 'LD', name: 'Léon Duval', meta: 'jardin · 100%', metaColor: '#22c55e' },
+      ],
+    },
+    {
+      title: 'Gagné 🏆', border: '#15803d', badge: '#15803d', total: '15.4k€', totalColor: '#22c55e',
+      cards: [
+        { initials: 'LC', name: 'Leroy Celine', meta: 'jardin · 100%', metaColor: '#22c55e' },
+        { initials: 'RS', name: 'Roussel', meta: 'plomberie · 90%', metaColor: '#22c55e' },
+      ],
+    },
   ]
+  const totalCount = columns.reduce((sum, col) => sum + col.cards.length, 0)
   return (
-    <div className="p-5 sm:p-6">
-      <p className="mb-4 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#60a5fa' }}>Pipeline Kanban</p>
-      <div className="flex gap-3 overflow-x-auto pb-1">
+    <div>
+      <div style={{ borderBottom: '1px solid #27272a' }} className="p-3 sm:px-4">
+        <p style={{ ...kLabel, color: '#60a5fa' }} className="mb-1.5">Pipeline Kanban</p>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-zinc-400">{totalCount} dossiers actifs</span>
+          <span style={{ color: '#22c55e' }} className="text-xs font-semibold">42.8k€ potentiel</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-5 gap-1 p-3 sm:gap-2 sm:p-4">
         {columns.map((col) => (
-          <div key={col.status} style={{ minWidth: '140px' }} className="flex-1">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold" style={{ color: col.color }}>{col.status}</span>
-              <span style={{ background: '#27272a' }} className="rounded-full px-2 py-0.5 text-[10px] text-zinc-400">
-                {col.leads.length}
+          <div key={col.title} style={{ borderTop: `2px solid ${col.border}` }} className="flex flex-col gap-1.5 pt-2">
+            <div className="flex items-center justify-between gap-1">
+              <span className="truncate text-[10px] font-bold text-white sm:text-xs">{col.title}</span>
+              <span
+                style={{ background: col.badge, color: '#ffffff' }}
+                className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+              >
+                {col.cards.length}
               </span>
             </div>
-            <div className="flex flex-col gap-2">
-              {col.leads.map((lead) => (
-                <div
-                  key={lead}
-                  style={{ background: '#27272a', border: '1px solid #3f3f46', borderLeft: `2px solid ${col.color}` }}
-                  className="rounded-lg p-2.5"
-                >
-                  <p className="text-xs font-medium text-white">{lead}</p>
+            <div className="flex flex-col gap-1">
+              {col.cards.map((card) => (
+                <div key={card.name} style={{ background: '#09090b', border: '1px solid #27272a' }} className="rounded-md px-1.5 py-1.5">
+                  <div className="mb-1 flex items-center gap-1">
+                    <span style={{ background: '#27272a' }} className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white">
+                      {card.initials}
+                    </span>
+                    <span className="truncate text-[10px] font-semibold text-white">{card.name}</span>
+                  </div>
+                  <p className="truncate text-[10px]" style={{ color: card.metaColor }}>{card.meta}</p>
                 </div>
               ))}
             </div>
+            <p className="mt-auto pt-1 text-[10px] font-semibold" style={{ color: col.totalColor }}>{col.total}</p>
           </div>
         ))}
       </div>
@@ -697,91 +777,162 @@ function MockupPipeline() {
 
 function MockupDevis() {
   const lines = [
-    { label: 'Dépose ancienne cuisine', price: '450,00 €' },
-    { label: 'Fourniture cuisine équipée', price: '6 200,00 €' },
-    { label: 'Installation électrique & plomberie', price: '1 350,00 €' },
-    { label: 'Pose & finitions', price: '1 800,00 €' },
+    { label: 'Dépose ancienne cuisine', price: '450,00 €', bold: false },
+    { label: 'Fourniture cuisine équipée', price: '6 200,00 €', bold: true },
+    { label: 'Installation électrique & plomberie', price: '1 350,00 €', bold: false },
+    { label: 'Pose & finitions', price: '1 800,00 €', bold: false },
   ]
   return (
-    <div className="p-5 sm:p-6">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <div>
+      <div style={{ borderBottom: '1px solid #27272a' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
         <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#f59e0b' }}>Devis en un clic</p>
-          <p className="text-base font-bold text-white sm:text-lg">DEV-2026-002</p>
+          <p style={{ ...kLabel, color: '#f59e0b' }} className="mb-1">Devis en un clic</p>
+          <p className="text-lg font-extrabold text-white">DEV-2026-002</p>
+          <p className="text-xs text-zinc-400">Sophie Martin — Rénovation cuisine</p>
         </div>
-        <span style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
-          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold">
+        <span
+          style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
+          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
+        >
           Brouillon
         </span>
       </div>
-      <p className="mb-4 text-sm text-zinc-400">
-        Client : <span className="font-semibold text-white">Sophie Martin</span> — Rénovation cuisine
-      </p>
-      <div style={{ background: '#27272a', border: '1px solid #3f3f46' }} className="mb-4 overflow-hidden rounded-xl">
-        {lines.map((line, i) => (
-          <div
-            key={line.label}
-            style={{ borderTop: i === 0 ? 'none' : '1px solid #3f3f46' }}
-            className="flex items-center justify-between gap-3 px-4 py-2.5"
-          >
-            <span className="text-sm text-zinc-300">{line.label}</span>
-            <span className="whitespace-nowrap text-sm font-semibold text-white">{line.price}</span>
+
+      <div className="px-4 pt-3 sm:px-5">
+        {lines.map((line) => (
+          <div key={line.label} style={{ borderBottom: '1px solid #27272a' }} className="flex items-center justify-between gap-3 py-2">
+            <span className="text-xs text-white">{line.label}</span>
+            <span className={`whitespace-nowrap text-xs text-white ${line.bold ? 'font-semibold' : 'font-medium'}`}>
+              {line.price}
+            </span>
           </div>
         ))}
       </div>
-      <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm text-zinc-400">Total TTC</span>
-        <span className="text-xl font-bold text-white">9 800,00 €</span>
+
+      <div className="flex items-center justify-between px-4 py-2.5 sm:px-5">
+        <span className="text-sm font-bold text-white">Total TTC</span>
+        <span style={{ color: '#22c55e' }} className="text-xl font-black">9 800,00 €</span>
       </div>
-      <button style={{ background: '#f59e0b', color: '#09090b' }} className="w-full rounded-xl py-3 text-sm font-bold">
-        Envoyer le devis →
-      </button>
+
+      <div
+        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.3)' }}
+        className="mx-4 mt-2 flex items-center gap-2 rounded-lg p-3 sm:mx-5"
+      >
+        <Eye size={12} color="#22c55e" className="shrink-0" />
+        <p className="text-xs font-medium text-white">Envoyé · Ouvert 2 fois · En attente de signature</p>
+      </div>
+
+      <div className="px-4 py-3 sm:px-5">
+        <button style={{ background: '#22c55e', color: '#09090b' }} className="w-full rounded-xl py-2.5 text-sm font-bold">
+          Envoyer le devis →
+        </button>
+      </div>
     </div>
   )
 }
 
+type CalendarEventType = 'rdv' | 'relance' | 'rappel' | 'intervention'
+
+const CALENDAR_TYPE_STYLE: Record<CalendarEventType, { bg: string; color: string }> = {
+  rdv: { bg: 'rgba(34,197,94,0.2)', color: '#22c55e' },
+  relance: { bg: 'rgba(217,119,6,0.2)', color: '#f59e0b' },
+  rappel: { bg: 'rgba(37,99,235,0.2)', color: '#60a5fa' },
+  intervention: { bg: 'rgba(139,92,246,0.2)', color: '#a78bfa' },
+}
+
 function MockupCalendar() {
-  const days = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
-  const events: Record<number, { label: string; color: string }> = {
-    3: { label: 'RDV Leroy Celine', color: '#22c55e' },
-    10: { label: 'Relance Sophie Martin', color: '#f59e0b' },
-    18: { label: 'Début chantier Dubois', color: '#60a5fa' },
-    24: { label: 'Visite chantier', color: '#a78bfa' },
-  }
-  const cells = Array.from({ length: 35 }, (_, i) => (i < 30 ? i + 1 : null))
+  const weekDays = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
+  const events: { day: number; type: CalendarEventType; label: string; struck?: boolean }[] = [
+    { day: 3, type: 'rdv', label: 'Visite chantier' },
+    { day: 10, type: 'relance', label: 'Relance Sophie' },
+    { day: 11, type: 'relance', label: 'Devis à valider' },
+    { day: 16, type: 'rappel', label: 'Rappel Antonin', struck: true },
+    { day: 17, type: 'rappel', label: 'Rappel Leroy' },
+    { day: 19, type: 'relance', label: 'Visite Martin' },
+    { day: 22, type: 'intervention', label: 'Installation PAC' },
+    { day: 24, type: 'rdv', label: 'RDV Blanchard' },
+    { day: 26, type: 'rdv', label: 'Visite TEST' },
+  ]
+  const eventByDay = new Map(events.map((e) => [e.day, e]))
+  const today = 15
+  const cells = Array.from({ length: 42 }, (_, i) => (
+    i < 30 ? { day: i + 1, current: true } : { day: i - 29, current: false }
+  ))
+
   return (
-    <div className="p-5 sm:p-6">
-      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#a78bfa' }}>Calendrier</p>
-      <p className="mb-4 text-base font-bold text-white sm:text-lg">Juin 2026</p>
-      <div className="mb-2 grid grid-cols-7 gap-1">
-        {days.map((d) => (
-          <span key={d} className="text-center text-[10px] font-semibold text-zinc-500">{d}</span>
+    <div>
+      <div style={{ borderBottom: '1px solid #27272a' }} className="flex items-center justify-between gap-2 p-3 sm:px-4">
+        <p className="text-base font-extrabold text-white">Juin 2026</p>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-400">‹ ›</span>
+          <span style={{ background: '#22c55e', color: '#09090b' }} className="whitespace-nowrap rounded-md px-2 py-1 text-xs font-bold">
+            + Événement
+          </span>
+        </div>
+      </div>
+
+      <div style={{ borderBottom: '1px solid #27272a' }} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 sm:px-4">
+        {(['rdv', 'relance', 'rappel', 'intervention'] as CalendarEventType[]).map((type) => (
+          <span key={type} className="flex items-center gap-1.5 text-xs text-zinc-400">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: CALENDAR_TYPE_STYLE[type].color }} />
+            {type === 'rdv' ? 'RDV' : type === 'relance' ? 'Relance' : type === 'rappel' ? 'Rappel' : 'Intervention'}
+          </span>
         ))}
       </div>
-      <div className="mb-4 grid grid-cols-7 gap-1">
-        {cells.map((day, i) => {
-          const event = day ? events[day] : undefined
-          return (
-            <div
-              key={i}
-              style={{
-                background: day ? '#27272a' : 'transparent',
-                border: event ? `1px solid ${event.color}` : '1px solid transparent',
-              }}
-              className="flex aspect-square flex-col rounded-md p-1"
-            >
-              {day && <span className="text-[10px] text-zinc-400">{day}</span>}
-              {event && <span className="mt-auto h-1.5 w-1.5 rounded-full" style={{ background: event.color }} />}
-            </div>
-          )
-        })}
+
+      <div className="p-2 sm:px-4 sm:pt-3">
+        <div className="mb-1 grid grid-cols-7">
+          {weekDays.map((d) => (
+            <span key={d} className="pb-1 text-center text-[10px] text-zinc-600">{d}</span>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {cells.map((cell, i) => {
+            const event = cell.current ? eventByDay.get(cell.day) : undefined
+            const isToday = cell.current && cell.day === today
+            return (
+              <div
+                key={i}
+                style={{ borderRight: '1px solid #27272a', borderBottom: '1px solid #27272a' }}
+                className="flex min-h-[44px] flex-col gap-0.5 p-[3px]"
+              >
+                {isToday ? (
+                  <span style={{ background: '#22c55e', color: '#09090b' }} className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold">
+                    {cell.day}
+                  </span>
+                ) : (
+                  <span className="text-[10px]" style={{ color: cell.current ? '#a1a1aa' : '#3f3f46' }}>{cell.day}</span>
+                )}
+                {event && (
+                  <span
+                    style={{
+                      background: CALENDAR_TYPE_STYLE[event.type].bg,
+                      color: CALENDAR_TYPE_STYLE[event.type].color,
+                      textDecoration: event.struck ? 'line-through' : 'none',
+                      opacity: event.struck ? 0.6 : 1,
+                    }}
+                    className="truncate rounded px-1.5 py-0.5 text-[9px] font-medium"
+                  >
+                    {event.label}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
-      <div className="flex flex-col gap-2">
-        {Object.entries(events).map(([day, e]) => (
-          <div key={day} className="flex items-center gap-2">
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: e.color }} />
+
+      <div style={{ borderTop: '1px solid #27272a' }} className="flex flex-col gap-1.5 p-3 sm:px-4">
+        {[
+          { day: 3, label: 'RDV Leroy Celine', color: CALENDAR_TYPE_STYLE.rdv.color },
+          { day: 10, label: 'Relance Sophie Martin', color: CALENDAR_TYPE_STYLE.relance.color },
+          { day: 19, label: 'Visite technique Martin', color: CALENDAR_TYPE_STYLE.relance.color },
+          { day: 22, label: 'Installation PAC Lamani', color: CALENDAR_TYPE_STYLE.intervention.color },
+        ].map((item) => (
+          <div key={item.label} className="flex items-center gap-2 py-0.5">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: item.color }} />
             <span className="text-xs text-zinc-400">
-              {day} juin — <span className="text-white">{e.label}</span>
+              {item.day} juin — <span className="text-white">{item.label}</span>
             </span>
           </div>
         ))}
