@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { airtableBase, TABLES } from '@/src/lib/airtable';
+import { airtableBase, TABLES, getArtisanConfig } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
 
 function mapProject(record: any) {
@@ -109,15 +109,12 @@ export async function GET(request: Request) {
       projects,
     });
   } catch (error) {
-    console.error('GET_PROJECTS_ERROR', error);
+    console.error('GET_PROJECTS_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : JSON.stringify(error, null, 2),
+        error: 'Erreur serveur',
       },
       { status: 500 },
     );
@@ -126,16 +123,46 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.AIRTABLE_API_KEY;
-    const baseId = process.env.AIRTABLE_BASE_ID;
-    const tableName = process.env.AIRTABLE_PROJECTS_TABLE;
-
-    console.log('[AIRTABLE DEBUG] apiKey present:', !!apiKey);
-    console.log('[AIRTABLE DEBUG] apiKey prefix:', apiKey?.slice(0, 10));
-    console.log('[AIRTABLE DEBUG] baseId:', baseId);
-    console.log('[AIRTABLE DEBUG] tableName:', tableName);
-
     const input = await request.json();
+
+    const artisanId = typeof input.artisanId === 'string' ? input.artisanId.trim() : '';
+    if (!artisanId || artisanId.length > 100) {
+      return NextResponse.json(
+        { success: false, error: 'artisanId invalide' },
+        { status: 400 },
+      );
+    }
+
+    const requiredStrings = ['clientName', 'clientPhone', 'clientEmail', 'siteAddress'];
+    const missingField = requiredStrings.find((field) => typeof input[field] !== 'string' || !input[field].trim());
+    if (missingField) {
+      return NextResponse.json(
+        { success: false, error: 'Payload invalide' },
+        { status: 400 },
+      );
+    }
+
+    if (typeof input.chatHistory === 'string' && input.chatHistory.length > 50000) {
+      return NextResponse.json(
+        { success: false, error: 'Historique trop long' },
+        { status: 400 },
+      );
+    }
+
+    if (input.photos && (!Array.isArray(input.photos) || input.photos.length > 5)) {
+      return NextResponse.json(
+        { success: false, error: 'Photos invalides' },
+        { status: 400 },
+      );
+    }
+
+    const config = await getArtisanConfig(artisanId);
+    if (!config || !config.active) {
+      return NextResponse.json(
+        { success: false, error: 'Artisan introuvable' },
+        { status: 404 },
+      );
+    }
 
     const postalNum = input.postalCode
       ? Number.parseInt(input.postalCode, 10)
@@ -173,7 +200,7 @@ export async function POST(request: Request) {
       Status: 'Nouveau',
       'Lead Status': 'Nouveau',
       Contacted: false,
-      'Artisan ID': input.artisanId ?? 'Artisan_demo',
+      'Artisan ID': artisanId,
       Source: input.source ?? 'web',
       'Call ID': input.callId ?? '',
       'Assigned To': input.assignedTo ?? '',
@@ -187,17 +214,14 @@ export async function POST(request: Request) {
       recordId: record.id,
     });
   } catch (error) {
-    console.error('CREATE_PROJECT_ERROR', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('CREATE_PROJECT_ERROR', error instanceof Error ? error.message : String(error));
 
     const airtableError = error as { message?: string; error?: string; statusCode?: number };
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          airtableError.message ??
-          airtableError.error ??
-          (error instanceof Error ? error.message : JSON.stringify(error, null, 2)),
+        error: airtableError.message ?? airtableError.error ?? 'Erreur serveur',
       },
       { status: 500 },
     );
