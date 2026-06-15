@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Copy, Download, Eye, Loader2, XCircle } from 'lucide-react';
+import { getPublicDevisUrl } from '@/src/lib/base-url';
 
 interface DevisLine {
   type: 'item' | 'section';
@@ -145,7 +146,7 @@ function DevisView() {
 
   const copyClientLink = async () => {
     if (!devis) return;
-    const url = `${process.env.NEXT_PUBLIC_APP_URL}/devis/${devis.token}`;
+    const url = getPublicDevisUrl(devis.token);
     try {
       await navigator.clipboard.writeText(url);
       setToast({ type: 'success', message: '✓ Lien copié !' });
