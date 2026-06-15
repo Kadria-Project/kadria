@@ -21,17 +21,31 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const projetId = searchParams.get('projetId')
+    const projetId = searchParams.get('projet_id') || searchParams.get('projetId')
 
     if (!projetId) {
       return NextResponse.json(
-        { success: false, error: 'projetId requis' },
+        { success: false, error: 'projet_id requis' },
         { status: 400 }
       )
     }
 
     const devis = await getDevisByProjet(projetId)
-    return NextResponse.json({ success: true, devis })
+    const list = devis
+      .map((d) => ({
+        id: d.id,
+        numero: d.devisNumber,
+        amount: d.totalTTC,
+        sent: d.sent,
+        statut: d.statut,
+        pdf_url: d.pdfUrl,
+        date_emission: d.dateEmission,
+        date_validite: d.dateValidite,
+        client_email: d.clientEmail,
+      }))
+      .sort((a, b) => (b.date_emission || '').localeCompare(a.date_emission || ''))
+
+    return NextResponse.json({ success: true, devis: list })
   } catch (error) {
     console.error('[DEVIS GET]', error)
     return NextResponse.json(
