@@ -175,7 +175,7 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   w.page.drawText('K', { x: MARGIN, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: ACCENT })
   const kWidth = fontBold.widthOfTextAtSize('K', 20)
   w.page.drawText('adria', { x: MARGIN + kWidth, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: TEXT_DARK })
-  w.y = headerTop + 20 * 1.3 + 6
+  w.y = headerTop + 20 * 1.3 + 20
 
   const emetteurNom = config?.raisonSociale || config?.companyName || ''
   const emetteurAdresse = [config?.adressePro, [config?.cpPro, config?.villePro].filter(Boolean).join(' ')]
@@ -183,6 +183,7 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
     .join(', ')
 
   const leftStartY = w.y
+  w.drawAt('ARTISAN', MARGIN, leftStartY - 14, CONTENT_WIDTH, 8, fontBold, TEXT_MUTED)
   w.text(emetteurNom, fontBold, 10, TEXT_DARK)
   if (emetteurAdresse) w.text(emetteurAdresse, fontRegular, 9, TEXT_MUTED)
   if (config?.siret) w.text(`SIRET : ${config.siret}`, fontRegular, 9, TEXT_MUTED)
@@ -196,21 +197,22 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   rightHeight += w.drawAt(`Date d'émission : ${formatDate(devis.dateEmission)}`, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
   rightHeight += w.drawAt(`Valide jusqu'au : ${formatDate(devis.dateValidite)}`, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
 
-  w.y = headerTop + Math.max(leftHeight, rightHeight) + 12
+  w.y = Math.max(leftStartY + leftHeight, headerTop + rightHeight) + 16
 
   w.hLine(ACCENT, 2)
-  w.y += 12
+  w.y += 24
 
   // ── Client ──────────────────────────────────────────────────────────
-  w.text('CLIENT', fontBold, 11, TEXT_MUTED)
-  w.y += 4
+  const clientStartY = w.y
+  w.drawAt('CLIENT', MARGIN, clientStartY, CONTENT_WIDTH, 8, fontBold, TEXT_MUTED)
+  w.y = clientStartY + 14
   w.text(devis.clientName || '—', fontBold, 10, TEXT_DARK)
   if (devis.clientAddress) w.text(devis.clientAddress, fontRegular, 9, TEXT_MUTED)
   if (devis.clientEmail) w.text(`Email : ${devis.clientEmail}`, fontRegular, 9, TEXT_MUTED)
   if (devis.clientPhone) w.text(`Téléphone : ${devis.clientPhone}`, fontRegular, 9, TEXT_MUTED)
 
   if (devis.objet) {
-    w.y += 10
+    w.y += 20
     const objetHeight = w.heightOf(devis.objet, fontRegular, 10, CONTENT_WIDTH - 24) + 16
     w.rect(MARGIN, w.y, CONTENT_WIDTH, objetHeight, BG)
     w.drawAt(devis.objet, MARGIN + 12, w.y + 8, CONTENT_WIDTH - 24, 10, fontRegular, TEXT_DARK)
