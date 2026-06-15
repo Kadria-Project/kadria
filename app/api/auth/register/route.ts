@@ -44,8 +44,10 @@ export async function POST(request: NextRequest) {
 
     const artisanId = generateArtisanId()
 
+    console.log('[REGISTER] Tentative pour:', email)
+
     // Crée l'utilisateur dans Users
-    await fetch(`https://api.airtable.com/v0/${baseId}/Users`, {
+    const userRes = await fetch(`https://api.airtable.com/v0/${baseId}/Users`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -54,6 +56,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         fields: {
           Email: email,
+          'First Name': firstName,
+          'Last Name': lastName,
           'Artisan ID': artisanId,
           'Company Name': company,
           Active: true,
@@ -62,8 +66,20 @@ export async function POST(request: NextRequest) {
       }),
     })
 
+    const userData = await userRes.json()
+
+    if (!userRes.ok) {
+      console.error('[REGISTER] Erreur création Users:', JSON.stringify(userData))
+      return NextResponse.json(
+        { success: false, error: `Échec de la création du compte: ${userData?.error?.message || JSON.stringify(userData)}` },
+        { status: 500 }
+      )
+    }
+
+    console.log('[REGISTER] Airtable create résultat (Users):', userData?.id)
+
     // Crée la configuration artisan
-    await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config`, {
+    const configRes = await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -84,6 +100,18 @@ export async function POST(request: NextRequest) {
         },
       }),
     })
+
+    const configData = await configRes.json()
+
+    if (!configRes.ok) {
+      console.error('[REGISTER] Erreur création Artisan_config:', JSON.stringify(configData))
+      return NextResponse.json(
+        { success: false, error: `Échec de la création de la configuration: ${configData?.error?.message || JSON.stringify(configData)}` },
+        { status: 500 }
+      )
+    }
+
+    console.log('[REGISTER] Airtable create résultat (Artisan_config):', configData?.id)
 
     // Génère le lien magique
     const magicToken = await createMagicToken(email)
