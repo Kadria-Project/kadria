@@ -11,9 +11,12 @@ import {
   Banknote,
   BarChart3,
   Bot,
+  Calendar,
   CalendarCheck,
   Check,
   CheckCircle,
+  CheckSquare,
+  ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   Clock,
@@ -21,25 +24,33 @@ import {
   Euro,
   Eye,
   FileCheck,
+  FileQuestion,
   FileText,
   Globe,
   Hammer,
   KanbanSquare,
+  Layers,
   LayoutDashboard,
   Lightbulb,
   Mail,
+  Map as MapIcon,
   MapPin,
   MessageCircle,
+  MessageSquare,
   Minus,
+  PenLine,
   Phone,
+  PieChart,
   Receipt,
   Rocket,
   Search,
   Shield,
   Sparkles,
+  Table,
   Target,
   TrendingUp,
   User,
+  Users,
   X,
   XCircle,
   Zap,
@@ -338,6 +349,116 @@ const QUALIFICATION_STEPS = [
   { icon: Zap, title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', glow: 'rgba(34,197,94,0.3)' },
   { icon: FileText, title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', glow: 'rgba(245,158,11,0.3)' },
   { icon: CheckCircle, title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate', color: '#22c55e', bg: 'rgba(34,197,94,0.15)', glow: 'rgba(34,197,94,0.4)' },
+];
+
+const REPLACE_TOOLS_CARDS = [
+  {
+    number: '01',
+    color: '#22c55e',
+    iconBg: 'rgba(34,197,94,0.12)',
+    iconBorder: 'rgba(34,197,94,0.25)',
+    glow: 'rgba(34,197,94,0.15)',
+    badgeBg: 'rgba(34,197,94,0.08)',
+    badgeBorder: 'rgba(34,197,94,0.2)',
+    icon: MessageSquare,
+    title: 'Acquisition & Qualification',
+    description: 'Capturez et qualifiez chaque prospect 24h/24, par chat ou par téléphone.',
+    features: [
+      'Chat IA 24h/24',
+      'Assistant vocal (appels entrants)',
+      'Qualification automatique',
+      'Questions adaptées au métier',
+      'Résumé IA des besoins',
+    ],
+    tools: [
+      { icon: MessageCircle, color: '#60a5fa', name: 'Tidio / Crisp', desc: 'Chatbot & live chat' },
+      { icon: Phone, color: '#a78bfa', name: 'Aircall / Ringover', desc: 'Standard téléphonique' },
+      { icon: FileQuestion, color: '#f59e0b', name: 'Formulaire de contact', desc: 'Capture de leads web' },
+    ],
+    badge: '3 outils remplacés',
+  },
+  {
+    number: '02',
+    color: '#60a5fa',
+    iconBg: 'rgba(96,165,250,0.12)',
+    iconBorder: 'rgba(96,165,250,0.25)',
+    glow: 'rgba(96,165,250,0.15)',
+    badgeBg: 'rgba(96,165,250,0.08)',
+    badgeBorder: 'rgba(96,165,250,0.2)',
+    icon: BarChart3,
+    title: 'CRM & Suivi commercial',
+    description: 'Gérez tous vos prospects et projets depuis un pipeline visuel centralisé.',
+    features: [
+      'Pipeline commercial visuel',
+      'Vue Kanban par statut',
+      'Historique des échanges',
+      'Notes internes par dossier',
+      'Relances planifiables',
+      'Calendrier intégré',
+    ],
+    tools: [
+      { icon: Users, color: '#60a5fa', name: 'HubSpot / Pipedrive', desc: 'CRM commercial' },
+      { icon: Table, color: '#22c55e', name: 'Excel / Google Sheets', desc: 'Suivi tableur' },
+      { icon: CheckSquare, color: '#a78bfa', name: 'Trello / Notion', desc: 'Gestion de tâches' },
+    ],
+    badge: '3 outils remplacés',
+  },
+  {
+    number: '03',
+    color: '#f59e0b',
+    iconBg: 'rgba(245,158,11,0.12)',
+    iconBorder: 'rgba(245,158,11,0.25)',
+    glow: 'rgba(245,158,11,0.15)',
+    badgeBg: 'rgba(245,158,11,0.08)',
+    badgeBorder: 'rgba(245,158,11,0.2)',
+    icon: Receipt,
+    title: 'Devis & Administration',
+    description: 'Générez, envoyez et suivez vos devis professionnels en quelques clics.',
+    features: [
+      'Génération de devis ligne par ligne',
+      'Envoi automatisé par email',
+      'Suivi des ouvertures en temps réel',
+      'Acceptation électronique client',
+      'Bibliothèque de prestations',
+      'Export PDF professionnel',
+    ],
+    tools: [
+      { icon: FileText, color: '#f59e0b', name: 'Tolteck / Obat', desc: 'Logiciel de devis' },
+      { icon: PenLine, color: '#60a5fa', name: 'DocuSign / YouSign', desc: 'Signature électronique' },
+      { icon: Mail, color: '#22c55e', name: 'Brevo / Mailchimp', desc: "Envoi d'emails" },
+    ],
+    badge: '3 outils remplacés',
+  },
+  {
+    number: '04',
+    color: '#a78bfa',
+    iconBg: 'rgba(167,139,250,0.12)',
+    iconBorder: 'rgba(167,139,250,0.25)',
+    glow: 'rgba(167,139,250,0.15)',
+    badgeBg: 'rgba(167,139,250,0.08)',
+    badgeBorder: 'rgba(167,139,250,0.2)',
+    icon: TrendingUp,
+    title: 'Pilotage & Performance',
+    description: 'Analysez votre activité et prenez les bonnes décisions avec des données en temps réel.',
+    features: [
+      'KPI temps réel (CA, conversion, panier)',
+      'Évolution du CA sur la période',
+      'Score IA des opportunités',
+      'Chantiers géolocalisés',
+      'Top 3 opportunités prioritaires',
+      'Export CSV & rapports PDF',
+    ],
+    tools: [
+      { icon: PieChart, color: '#a78bfa', name: 'Looker Studio / Power BI', desc: 'Reporting BI' },
+      { icon: Table, color: '#f59e0b', name: 'Excel / Google Sheets', desc: 'Tableaux de bord' },
+      { icon: MapIcon, color: '#22c55e', name: 'Google Maps / Calendly', desc: 'Planning terrain' },
+    ],
+    badge: '3+ outils remplacés',
+  },
+];
+
+const REPLACED_TOOL_ICONS = [
+  MessageCircle, Phone, Users, BarChart3, FileText, PenLine, Table, CheckSquare, Mail, PieChart, MapIcon, Calendar,
 ];
 
 const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
@@ -1519,6 +1640,122 @@ export const ANIMATION_STYLES = `
     pointer-events: none;
   }
 
+  /* Replace 12 tools — section scoped tokens */
+  .kr-tools-section {
+    --bg: #09090b;
+    --bg-elevated: #18181b;
+    --bg-hover: #27272a;
+    --border: #27272a;
+    --text-1: #ffffff;
+    --text-2: #a1a1aa;
+    --text-3: #71717a;
+    --accent: #22c55e;
+    --accent-border: rgba(34, 197, 94, 0.3);
+  }
+
+  /* Replace 12 tools — carousel card */
+  .kr-tools-card {
+    width: 720px;
+    max-width: 92vw;
+    border-radius: 24px;
+    overflow: hidden;
+    position: absolute;
+    background: rgba(15, 15, 18, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 32px 80px rgba(0, 0, 0, 0.6);
+    transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+                filter 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @supports (backdrop-filter: blur(24px)) or (-webkit-backdrop-filter: blur(24px)) {
+    .kr-tools-card {
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+    }
+  }
+  @supports not (backdrop-filter: blur(24px)) {
+    .kr-tools-card {
+      background: rgba(15, 15, 18, 0.97);
+    }
+  }
+  .kr-tools-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  }
+  .kr-tools-card[data-position="side"] {
+    pointer-events: none;
+  }
+  @media (max-width: 767px) {
+    .kr-tools-card[data-position="side"] {
+      display: none;
+    }
+    .kr-tools-card[data-position="active"] {
+      width: 95vw !important;
+      transform: none !important;
+    }
+    .kr-tools-card-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .kr-tools-card {
+      width: 640px;
+    }
+  }
+
+  /* Replace 12 tools — nav buttons */
+  .kr-tools-nav-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-1, #fff);
+    transition: background 200ms ease, transform 200ms ease;
+  }
+  @supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
+    .kr-tools-nav-btn {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  }
+  .kr-tools-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+    transform: scale(1.05);
+  }
+  @media (max-width: 767px) {
+    .kr-tools-nav-btn {
+      display: none;
+    }
+  }
+
+  /* Replace 12 tools — dots */
+  .kr-tools-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    transition: width 300ms ease, background 300ms ease;
+  }
+  .kr-tools-dot.kr-tools-dot-active {
+    width: 24px;
+    background: var(--accent, #22c55e);
+  }
+
+  /* Replace 12 tools — float animation on active card */
+  @keyframes card-float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  .carousel-card-float {
+    animation: card-float 5s ease-in-out infinite;
+  }
+
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     .kr-reveal,
@@ -1541,6 +1778,11 @@ export const ANIMATION_STYLES = `
     .kr-glass-bento,
     .kr-glass-bento::before {
       transition: none !important;
+    }
+    .kr-tools-card,
+    .carousel-card-float {
+      transition: none !important;
+      animation: none !important;
     }
   }
 `
@@ -2130,6 +2372,17 @@ export function LandingRoutePage() {
     }
   }, [activeMetier]);
 
+  const [activeToolsCard, setActiveToolsCard] = useState(0);
+  const [toolsCarouselPaused, setToolsCarouselPaused] = useState(false);
+
+  useEffect(() => {
+    if (toolsCarouselPaused) return;
+    const interval = setInterval(() => {
+      setActiveToolsCard((c) => (c + 1) % REPLACE_TOOLS_CARDS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [toolsCarouselPaused]);
+
   const avant = [
     'Appels manqués sur chantier — vos prospects rappellent un concurrent.',
     'Demandes sans informations : « Je voudrais un devis », sans surface ni budget.',
@@ -2327,6 +2580,176 @@ export function LandingRoutePage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. REMPLACE 12 OUTILS */}
+        <section className="kr-tools-section relative w-full border-b border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-24">
+          <div className="relative mx-auto max-w-6xl">
+            <div className="flex justify-center">
+              <span className="kr-reveal rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.08)] px-4 py-1 text-xs font-bold text-[var(--accent)]">
+                KADRIA PRO
+              </span>
+            </div>
+            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-center font-black tracking-[-0.02em] text-[clamp(2.2rem,5vw,3.8rem)]">
+              Remplacez jusqu&apos;à 12 outils.
+              <br />
+              Pilotez tout depuis <span className="text-[var(--accent)]">un seul tableau de bord.</span>
+            </h2>
+            <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-4 max-w-2xl text-center text-lg leading-relaxed text-[var(--text-2)]">
+              Capturez vos demandes, qualifiez vos prospects, gérez vos devis et pilotez votre activité depuis un
+              seul tableau de bord.
+            </p>
+
+            <div
+              className="relative mt-16 flex min-h-[720px] items-center justify-center md:min-h-[480px]"
+              onMouseEnter={() => setToolsCarouselPaused(true)}
+              onMouseLeave={() => setToolsCarouselPaused(false)}
+            >
+              {REPLACE_TOOLS_CARDS.map((card, i) => {
+                const total = REPLACE_TOOLS_CARDS.length;
+                let diff = i - activeToolsCard;
+                if (diff > total / 2) diff -= total;
+                if (diff < -total / 2) diff += total;
+                if (Math.abs(diff) > 1) return null;
+                const isActive = diff === 0;
+                const Icon = card.icon;
+                return (
+                  <div
+                    key={card.title}
+                    data-position={isActive ? 'active' : 'side'}
+                    className={`kr-tools-card kr-tools-card-grid grid grid-cols-2 ${
+                      isActive && !reduceMotion ? 'carousel-card-float' : ''
+                    }`}
+                    style={{
+                      transform: `translateX(${diff * 340}px) scale(${isActive ? 1 : 0.75})`,
+                      opacity: isActive ? 1 : 0.35,
+                      filter: isActive ? 'none' : 'blur(2px)',
+                      zIndex: isActive ? 10 : 0,
+                    }}
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0 -z-10 rounded-[24px]"
+                      style={{ boxShadow: `0 0 80px ${card.glow}` }}
+                    />
+                    {/* GAUCHE */}
+                    <div className="flex flex-col p-9">
+                      <div
+                        className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px]"
+                        style={{ background: card.iconBg, border: `1px solid ${card.iconBorder}` }}
+                      >
+                        <Icon size={24} style={{ color: card.color }} />
+                      </div>
+                      <span className="mt-5 text-xs font-bold" style={{ color: card.color }}>
+                        {card.number}
+                      </span>
+                      <h3 className="mt-2 text-[22px] font-extrabold">{card.title}</h3>
+                      <p className="mt-3 text-sm leading-relaxed text-[var(--text-2)]">{card.description}</p>
+                      <div className="mt-5 flex flex-col gap-2">
+                        {card.features.map((f) => (
+                          <div key={f} className="flex items-start gap-2 text-sm">
+                            <CheckCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: card.color }} />
+                            <span>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* DROITE */}
+                    <div className="flex flex-col border-l border-[rgba(255,255,255,0.06)] p-7">
+                      <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[var(--text-3)]">
+                        Remplace
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        {card.tools.map((tool) => {
+                          const ToolIcon = tool.icon;
+                          return (
+                            <div
+                              key={tool.name}
+                              className="flex items-center gap-3 rounded-[10px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3.5 py-2.5"
+                            >
+                              <ToolIcon size={16} style={{ color: tool.color }} className="flex-shrink-0" />
+                              <div>
+                                <p className="text-sm font-semibold">{tool.name}</p>
+                                <p className="text-xs text-[var(--text-2)]">{tool.desc}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div
+                        className="mt-auto w-fit rounded-full px-3 py-1 text-xs font-bold"
+                        style={{ background: card.badgeBg, border: `1px solid ${card.badgeBorder}`, color: card.color }}
+                      >
+                        {card.badge}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                aria-label="Carte précédente"
+                onClick={() =>
+                  setActiveToolsCard((c) => (c - 1 + REPLACE_TOOLS_CARDS.length) % REPLACE_TOOLS_CARDS.length)
+                }
+                className="kr-tools-nav-btn absolute left-4 z-20 flex h-12 w-12 items-center justify-center rounded-full"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label="Carte suivante"
+                onClick={() => setActiveToolsCard((c) => (c + 1) % REPLACE_TOOLS_CARDS.length)}
+                className="kr-tools-nav-btn absolute right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            <div className="mt-8 flex justify-center gap-2">
+              {REPLACE_TOOLS_CARDS.map((card, i) => (
+                <button
+                  key={card.title}
+                  type="button"
+                  aria-label={`Voir la carte ${card.number}`}
+                  aria-current={i === activeToolsCard}
+                  onClick={() => setActiveToolsCard(i)}
+                  className="flex items-center justify-center p-2"
+                >
+                  <span className={`kr-tools-dot block ${i === activeToolsCard ? 'kr-tools-dot-active' : ''}`} />
+                </button>
+              ))}
+            </div>
+
+            <div className="mx-auto mt-16 grid max-w-4xl grid-cols-1 gap-8 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-6 py-8 md:grid-cols-3 md:items-center md:px-10">
+              <div className="text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.1)]">
+                  <Layers size={24} className="text-[var(--accent)]" />
+                </div>
+                <p className="mt-3 text-4xl font-black text-[var(--accent)]">12</p>
+                <p className="text-sm text-[var(--text-2)]">outils remplacés</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {REPLACED_TOOL_ICONS.map((ToolIcon, i) => (
+                  <div
+                    key={i}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] p-2 text-[var(--text-3)]"
+                  >
+                    <ToolIcon size={20} />
+                  </div>
+                ))}
+                <ArrowRight size={20} className="mx-4 text-[var(--accent)]" />
+                <span className="rounded-[10px] border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-4 py-2 text-lg font-black text-[var(--accent)]">
+                  KADRIA
+                </span>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-black text-[var(--text-1)]">1</p>
+                <p className="text-sm text-[var(--text-2)]">seule plateforme</p>
+                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Tout est connecté.</p>
               </div>
             </div>
           </div>
