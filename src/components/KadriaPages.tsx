@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Clock,
+  Download,
   Euro,
   Eye,
   FileCheck,
@@ -716,85 +717,162 @@ function MockupDossier() {
 }
 
 function MockupPipeline() {
+  const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+    nouveau: { label: 'Nouveau', bg: 'rgba(63,63,70,0.6)', color: '#a1a1aa' },
+    rappeler: { label: 'À rappeler', bg: 'rgba(217,119,6,0.15)', color: '#d97706' },
+    qualifie: { label: 'Qualifié', bg: 'rgba(22,163,74,0.15)', color: '#16a34a' },
+    gagne: { label: 'Gagné', bg: 'rgba(21,128,61,0.15)', color: '#15803d' },
+  }
+  const scoreColor = (score?: number) => {
+    if (score === undefined) return 'var(--text-3)'
+    if (score >= 80) return 'var(--accent)'
+    if (score >= 60) return '#f59e0b'
+    return '#dc2626'
+  }
   const columns = [
     {
-      title: 'Nouveau', border: '#3f3f46', badge: '#3f3f46', total: '6.7k€', totalColor: 'var(--text-2)',
+      title: 'Nouveau', border: '#3f3f46', headerBadgeBg: '#3f3f46', headerBadgeColor: '#a1a1aa',
+      footer: '4 dossiers · 6.7k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'MT', name: 'Morel Thomas', meta: 'jardin · 85%', metaColor: '#22c55e' },
-        { initials: 'FL', name: 'Fontaine Laura', meta: 'salle de bain · 100%', metaColor: '#22c55e' },
+        { initials: 'MT', name: 'Morel Thomas', meta: 'jardin', score: 85, age: 'il y a 2j', status: 'nouveau' },
+        { initials: 'FL', name: 'Fontaine Laura', meta: 'salle de bain', score: 100, age: 'il y a 3j' },
+        { initials: 'BD', name: 'Blanchard David', meta: 'Maçonnerie', score: 100, age: 'il y a 3j' },
+        { initials: 'DB', name: 'Delattre Benjamin', meta: 'Test migration', score: 100, age: 'il y a 4j' },
       ],
     },
     {
-      title: 'À rappeler', border: '#d97706', badge: '#d97706', total: '7k€', totalColor: 'var(--text-2)',
+      title: 'À rappeler', border: '#d97706', headerBadgeBg: '#d97706', headerBadgeColor: '#ffffff',
+      footer: '3 dossiers · 7k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'SM', name: 'Sophie Martin', meta: 'jardin · 100%', metaColor: '#22c55e' },
-        { initials: 'DN', name: 'Dubois Nicolas', meta: 'jardin · 100%', metaColor: '#22c55e' },
+        { initials: 'SM', name: 'Sophie Martin', meta: 'jardin · Rouen', score: 100, age: 'il y a 2j', status: 'rappeler' },
+        { initials: 'DN', name: 'Dubois Nicolas', meta: 'jardin · Rouen', score: 100, age: 'il y a 2j' },
+        { initials: 'HA', name: 'Hubert Aurelie', meta: 'Test migration · Belbeuf', age: 'il y a 4j' },
       ],
     },
     {
-      title: 'Qualifié', border: '#16a34a', badge: '#16a34a', total: '3k€', totalColor: 'var(--text-2)',
+      title: 'Qualifié', border: '#16a34a', headerBadgeBg: '#16a34a', headerBadgeColor: '#ffffff',
+      footer: '1 dossier · 3k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'DM', name: 'Dumontier', meta: 'paysagiste · 90%', metaColor: '#22c55e' },
+        { initials: 'DM', name: 'Dumontier Maxime', meta: 'Paysagiste · Amfreville', score: 90, age: 'il y a 5j', status: 'qualifie' },
       ],
     },
     {
-      title: 'Devis envoyé', border: '#2563eb', badge: '#2563eb', total: '17.2k€', totalColor: 'var(--text-2)',
+      title: 'Devis env...', border: '#2563eb', headerBadgeBg: '#2563eb', headerBadgeColor: '#ffffff',
+      footer: '5 dossiers · 9.9k€', footerColor: 'var(--text-2)',
       cards: [
-        { initials: 'JL', name: 'Julien Lef.', meta: 'jardin · 0%', metaColor: '#dc2626' },
-        { initials: 'LD', name: 'Léon Duval', meta: 'jardin · 100%', metaColor: '#22c55e' },
+        { initials: 'LD', name: 'Léon Duval', meta: 'jardin · Rouen', score: 100, age: 'il y a 2j' },
+        { initials: 'CE', name: 'Carpentier Emilie', meta: 'jardin · Mont-Saint-Aignan', score: 100, age: 'il y a 2j' },
+        { initials: 'RA', name: 'Renault Alexandre', meta: 'jardin · Mesnil-Esnard', score: 100, age: 'il y a 3j' },
+        { initials: 'LM', name: 'Laurent Martin', meta: 'Plomberie · La Neuville', score: 95, age: 'il y a 5j' },
+        { initials: 'AL', name: 'Antoine Lemaire', meta: 'Réparation portail · Saint-Aubin', age: 'il y a 5j' },
       ],
     },
     {
-      title: 'Gagné 🏆', border: '#15803d', badge: '#15803d', total: '15.4k€', totalColor: 'var(--accent)',
+      title: 'Gagné 🏆', border: '#15803d', headerBadgeBg: '#15803d', headerBadgeColor: '#ffffff',
+      footer: '2 dossiers · 15.4k€', footerColor: 'var(--accent)', footerWeight: 700,
       cards: [
-        { initials: 'LC', name: 'Leroy Celine', meta: 'jardin · 100%', metaColor: '#22c55e' },
-        { initials: 'RS', name: 'Roussel', meta: 'plomberie · 90%', metaColor: '#22c55e' },
+        { initials: 'LC', name: 'Leroy Celine', meta: 'jardin · Le Petit-Quevilly', score: 100, age: 'il y a 2j', status: 'gagne' },
+        { initials: 'RS', name: 'Roussel Sebastien', meta: 'Plomberie · Rénovation SDB · Montmain', score: 90, age: 'il y a 3j' },
       ],
     },
   ]
-  const totalCount = columns.reduce((sum, col) => sum + col.cards.length, 0)
   return (
-    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ borderBottom: '1px solid var(--border)' }} className="p-3 sm:px-4">
-        <p style={{ ...kLabel, color: '#60a5fa' }} className="mb-1.5">Pipeline Kanban</p>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-zinc-400">{totalCount} dossiers actifs</span>
-          <span style={{ color: 'var(--accent)' }} className="text-xs font-semibold">42.8k€ potentiel</span>
+    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', padding: '10px 14px', flexShrink: 0 }} className="flex items-center justify-between gap-2">
+        <p style={{ ...kLabel, color: '#60a5fa' }}>Pipeline Kanban</p>
+        <div className="flex items-center gap-3">
+          <span className="text-xs" style={{ color: 'var(--text-2)' }}>17 dossiers</span>
+          <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">42.8k€ potentiel</span>
         </div>
       </div>
-      <div className="grid flex-1 grid-cols-5 gap-1 p-3 sm:gap-2 sm:p-4">
+
+      <div style={{ borderBottom: '1px solid var(--border)', padding: '6px 14px', flexShrink: 0 }} className="flex items-center gap-2">
+        <span
+          style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', width: '140px' }}
+          className="flex items-center gap-1.5 px-2 py-1 text-xs"
+        >
+          <Search size={10} color="var(--text-3)" />
+          <span style={{ color: 'var(--text-3)' }} className="truncate">Nom, projet...</span>
+        </span>
+        <span style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '4px' }} className="px-2 py-0.5 text-xs">
+          Liste
+        </span>
+        <span style={{ background: '#22c55e', color: 'var(--bg)', borderRadius: '4px' }} className="px-2 py-0.5 text-xs font-bold">
+          Kanban
+        </span>
+        <span style={{ border: '1px solid var(--border)', borderRadius: '4px' }} className="flex items-center gap-1 px-2 py-0.5 text-xs">
+          <Download size={10} />
+          Exporter
+        </span>
+      </div>
+
+      <div className="grid flex-1 grid-cols-5" style={{ overflow: 'hidden' }}>
         {columns.map((col) => (
-          <div key={col.title} style={{ borderTop: `2px solid ${col.border}` }} className="flex flex-col gap-1.5 pt-2">
-            <div className="flex items-center justify-between gap-1">
-              <span className="truncate text-[10px] font-bold text-white sm:text-xs">{col.title}</span>
+          <div
+            key={col.title}
+            style={{ borderTop: `2px solid ${col.border}`, borderRight: '1px solid var(--border)' }}
+            className="flex min-h-0 flex-col overflow-hidden"
+          >
+            <div className="flex items-center justify-between gap-1 px-2 py-2">
+              <span className="truncate text-xs font-bold text-white">{col.title}</span>
               <span
-                style={{ background: col.badge, color: 'var(--text-1)' }}
-                className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                style={{ background: col.headerBadgeBg, color: col.headerBadgeColor }}
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs"
               >
                 {col.cards.length}
               </span>
             </div>
-            <div className="flex flex-col gap-1">
-              {col.cards.map((card) => (
-                <div key={card.name} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }} className="rounded-md px-1.5 py-1.5">
-                  <div className="mb-1 flex items-center gap-1">
-                    <span style={{ background: 'var(--bg-hover)' }} className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white">
-                      {card.initials}
-                    </span>
-                    <span className="truncate text-[10px] font-semibold text-white">{card.name}</span>
+            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-2" style={{ minHeight: 0 }}>
+              {col.cards.map((card) => {
+                const badge = card.status ? STATUS_BADGE[card.status] : undefined
+                return (
+                  <div
+                    key={card.name}
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', marginBottom: '4px' }}
+                    className="flex flex-col gap-1"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        style={{ background: 'var(--bg-hover)', fontSize: '8px', fontWeight: 700 }}
+                        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white"
+                      >
+                        {card.initials}
+                      </span>
+                      <span className="flex-1 truncate text-[10px] font-semibold text-white">{card.name}</span>
+                      {badge && (
+                        <span
+                          style={{ background: badge.bg, color: badge.color, borderRadius: '999px', fontWeight: 600 }}
+                          className="shrink-0 px-1.5 py-0.5 text-[8px]"
+                        >
+                          {badge.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="truncate text-[9px]" style={{ color: 'var(--text-2)' }}>{card.meta}</p>
+                    <div className="flex items-center justify-between gap-1">
+                      {card.score !== undefined && (
+                        <span className="text-[9px] font-bold" style={{ color: scoreColor(card.score) }}>Score: {card.score}%</span>
+                      )}
+                      <span className="text-[9px]" style={{ color: 'var(--text-3)' }}>{card.age}</span>
+                    </div>
                   </div>
-                  <p className="truncate text-[10px]" style={{ color: card.metaColor }}>{card.meta}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
-            <p className="mt-auto pt-1 text-[10px] font-semibold" style={{ color: col.totalColor }}>{col.total}</p>
+            <p
+              className="py-1 text-center text-[9px]"
+              style={{ borderTop: '1px solid var(--border)', color: col.footerColor, fontWeight: col.footerWeight }}
+            >
+              {col.footer}
+            </p>
           </div>
         ))}
       </div>
-      <div style={{ borderTop: '1px solid var(--border)', padding: '10px 16px' }} className="mt-auto flex items-center justify-between gap-2">
+
+      <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', flexShrink: 0 }} className="flex items-center justify-between gap-2">
         <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">CA total: 42.8k€</span>
-        <span className="text-xs" style={{ color: 'var(--text-2)' }}>Taux conversion: 23%</span>
-        <span className="text-xs" style={{ color: 'var(--text-2)' }}>Dossiers actifs: 17</span>
+        <span className="text-xs" style={{ color: 'var(--text-2)' }}>Taux conversion: 12%</span>
+        <span className="text-xs" style={{ color: 'var(--text-2)' }}>17 dossiers actifs</span>
       </div>
     </div>
   )
