@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   CreditCard,
   LayoutDashboard,
@@ -13,7 +13,13 @@ import {
   XCircle,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
+interface NavItem {
+  label: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: "Vue d'ensemble", href: '/admin', icon: LayoutDashboard },
   { label: 'Clients', href: '/admin/clients', icon: Users },
   { label: 'Abonnements', href: '/admin/clients?filter=plan', icon: CreditCard },
@@ -23,12 +29,19 @@ const NAV_ITEMS = [
 
 export default function AdminSidebar({ adminEmail }: { adminEmail: string }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (href: string) => {
-    const base = href.split('?')[0];
-    if (base === '/admin') return pathname === '/admin';
-    return pathname === base || pathname.startsWith(base + '/');
+  const isActive = (item: NavItem): boolean => {
+    if (item.href === '/admin') {
+      return pathname === '/admin';
+    }
+    if (item.href.includes('?filter=')) {
+      const [basePath, query] = item.href.split('?');
+      const filterValue = query.replace('filter=', '');
+      return pathname === basePath && searchParams.get('filter') === filterValue;
+    }
+    return pathname === item.href || pathname.startsWith(item.href + '/');
   };
 
   return (
@@ -110,7 +123,7 @@ export default function AdminSidebar({ adminEmail }: { adminEmail: string }) {
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '16px', flex: 1 }}>
           {NAV_ITEMS.map((item) => {
-            const active = isActive(item.href);
+            const active = isActive(item);
             const Icon = item.icon;
             return (
               <Link
