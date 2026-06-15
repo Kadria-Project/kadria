@@ -44,6 +44,7 @@ import {
   Receipt,
   Rocket,
   Search,
+  Send,
   Shield,
   Sparkles,
   Table,
@@ -1640,6 +1641,38 @@ export const ANIMATION_STYLES = `
     pointer-events: none;
   }
 
+  /* Assistant web bento card — scoped tokens */
+  .kr-assistant-card {
+    --bg: #09090b;
+    --bg-elevated: #18181b;
+    --bg-hover: #27272a;
+    --border: #27272a;
+    --text-1: #ffffff;
+    --text-2: #a1a1aa;
+    --text-3: #71717a;
+    --accent: #22c55e;
+    --accent-border: rgba(34, 197, 94, 0.3);
+  }
+
+  /* Assistant web bento card — message enter animations */
+  .kr-assistant-scroll {
+    scroll-behavior: smooth;
+  }
+  @keyframes kr-assistant-msg-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .kr-assistant-msg-in {
+    animation: kr-assistant-msg-in 250ms ease-out both;
+  }
+  @keyframes kr-assistant-user-in {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .kr-assistant-user-in {
+    animation: kr-assistant-user-in 200ms ease-out both;
+  }
+
   /* Replace 12 tools — section scoped tokens */
   .kr-tools-section {
     --bg: #09090b;
@@ -1783,6 +1816,15 @@ export const ANIMATION_STYLES = `
     .carousel-card-float {
       transition: none !important;
       animation: none !important;
+    }
+    .kr-assistant-scroll {
+      scroll-behavior: auto !important;
+    }
+    .kr-assistant-msg-in,
+    .kr-assistant-user-in {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
     }
   }
 `
@@ -1930,6 +1972,173 @@ function FadeIn({ children }: { children: React.ReactNode }) {
   return (
     <div className={`flex h-full flex-col transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}>
       {children}
+    </div>
+  );
+}
+
+const CHAT_MESSAGES: { role: 'assistant' | 'user'; text: string; delay: number }[] = [
+  {
+    role: 'assistant',
+    text: "Bonjour, je suis l'assistant Kadria 👋\nPour commencer, quel type de travaux ou de projet souhaitez-vous réaliser ?",
+    delay: 0,
+  },
+  { role: 'user', text: 'Nouveau projet', delay: 1000 },
+  {
+    role: 'assistant',
+    text: 'Merci pour cette précision. Pour mieux comprendre votre projet, pouvez-vous nous donner une description détaillée de ce que vous souhaitez réaliser ?',
+    delay: 2000,
+  },
+  {
+    role: 'user',
+    text: "Installation d'une prise pour recharger une voiture électrique devant ma maison",
+    delay: 3200,
+  },
+  {
+    role: 'assistant',
+    text: "C'est un projet intéressant ! Pour l'installation de cette prise, avez-vous déjà un emplacement précis en tête et des travaux d'électricité sont-ils nécessaires ?",
+    delay: 4400,
+  },
+  { role: 'user', text: 'Oui à côté du garage', delay: 5600 },
+  {
+    role: 'assistant',
+    text: 'Avez-vous déjà vérifié si le tableau électrique est suffisant pour supporter cette nouvelle prise ?',
+    delay: 6800,
+  },
+  { role: 'user', text: "Oui c'est bon", delay: 7800 },
+  {
+    role: 'assistant',
+    text: 'Parfait ! Pour préparer un devis, pouvez-vous me dire si vous avez une idée du budget que vous souhaitez allouer à ce projet ? 💰',
+    delay: 8800,
+  },
+  { role: 'user', text: 'Moins de 2 000 €', delay: 10000 },
+  {
+    role: 'assistant',
+    text: 'Pour mieux préparer le devis, pouvez-vous estimer plus précisément ? Par exemple, 200-500€, 500-1 000€ ou 1 000-2 000€ ?',
+    delay: 11200,
+  },
+  { role: 'user', text: '200 – 500 €', delay: 12400 },
+  {
+    role: 'assistant',
+    text: 'Merci pour cette précision sur le budget. Souhaitez-vous réaliser ce projet rapidement ou plutôt dans les prochains mois ? 📅',
+    delay: 13600,
+  },
+  { role: 'user', text: 'Dès que possible', delay: 14800 },
+  {
+    role: 'assistant',
+    text: 'Où en êtes-vous dans votre réflexion ?',
+    delay: 15800,
+  },
+  { role: 'user', text: 'Prêt à démarrer', delay: 16800 },
+  {
+    role: 'assistant',
+    text: "Avez-vous des photos, plans ou documents à joindre pour aider l'artisan à préparer son devis ? 📎",
+    delay: 17800,
+  },
+];
+
+function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
+  const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? CHAT_MESSAGES.length : 0);
+  const [typingBeforeIndex, setTypingBeforeIndex] = useState<number | null>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    const run = () => {
+      setVisibleMessages(0);
+      setTypingBeforeIndex(null);
+
+      CHAT_MESSAGES.forEach((msg, i) => {
+        if (msg.role === 'assistant') {
+          timeouts.push(setTimeout(() => setTypingBeforeIndex(i), Math.max(msg.delay - 800, 0)));
+        }
+        timeouts.push(setTimeout(() => {
+          setTypingBeforeIndex(null);
+          setVisibleMessages(i + 1);
+        }, msg.delay));
+      });
+
+      const lastDelay = CHAT_MESSAGES[CHAT_MESSAGES.length - 1].delay;
+      timeouts.push(setTimeout(run, lastDelay + 2000));
+    };
+
+    run();
+
+    return () => timeouts.forEach(clearTimeout);
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (!chatRef.current) return;
+    chatRef.current.scrollTo({
+      top: chatRef.current.scrollHeight,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  }, [visibleMessages, typingBeforeIndex, reduceMotion]);
+
+  return (
+    <div className="kr-assistant-card -m-6 flex h-[calc(100%+3rem)] w-[calc(100%+3rem)] flex-col overflow-hidden rounded-xl">
+      <div className="flex flex-shrink-0 items-center gap-3 border-b border-[var(--border)] px-4 py-3.5">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-extrabold text-[var(--bg)]">
+          K
+        </div>
+        <div>
+          <p className="text-sm font-bold text-[var(--text-1)]">Kadria</p>
+          <p className="text-xs text-[var(--text-2)]">Assistant en ligne</p>
+        </div>
+        <span className="kr-badge-pulse ml-auto h-2 w-2 flex-shrink-0 rounded-full bg-[var(--accent)]" />
+      </div>
+
+      <div className="flex-shrink-0 border-b border-[var(--border)] px-4 py-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-[var(--text-2)]">Votre projet</span>
+          <span className="text-xs text-[var(--text-2)]">Étape 1 sur 4 — Projet</span>
+        </div>
+        <div className="mt-0.5 h-0.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
+          <div className="h-full w-1/4 rounded-full bg-[var(--accent)]" />
+        </div>
+      </div>
+
+      <div ref={chatRef} className="kr-assistant-scroll flex flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+        {CHAT_MESSAGES.slice(0, visibleMessages).map((msg, i) =>
+          msg.role === 'assistant' ? (
+            <div
+              key={i}
+              className={`max-w-[85%] self-start whitespace-pre-line rounded-[12px] rounded-bl-[2px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--text-1)] ${
+                reduceMotion ? '' : 'kr-assistant-msg-in'
+              }`}
+            >
+              {msg.text}
+            </div>
+          ) : (
+            <div
+              key={i}
+              className={`max-w-[75%] self-end rounded-[12px] rounded-br-[2px] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] ${
+                reduceMotion ? '' : 'kr-assistant-user-in'
+              }`}
+            >
+              {msg.text}
+            </div>
+          )
+        )}
+        {typingBeforeIndex !== null && (
+          <div className="flex w-fit items-center gap-1 self-start rounded-[12px] bg-[var(--bg-elevated)] px-3 py-2">
+            <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:0ms]" />
+            <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:150ms]" />
+            <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:300ms]" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-shrink-0 items-center gap-2 border-t border-[var(--border)] px-3.5 py-2.5">
+        <div className="flex-1 rounded-[10px] border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5">
+          <span className="text-xs text-[var(--text-3)]">Écrivez votre message...</span>
+        </div>
+        <div className="flex flex-shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-[var(--bg)]">
+          <Send size={14} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -2802,7 +3011,9 @@ export function LandingRoutePage() {
                     style={{ '--glow-color': FEATURE_GLOW[i].glow } as CSSProperties}
                     className={`kr-glass-bento kr-bento-item ${sizeClass} flex cursor-pointer flex-col justify-between overflow-visible rounded-xl p-6 text-left`}
                   >
-                    {isActive ? (
+                    {i === 0 ? (
+                      <AssistantWebChatCard reduceMotion={reduceMotion} />
+                    ) : isActive ? (
                       <FadeIn>
                         <button
                           type="button"
@@ -2818,7 +3029,7 @@ export function LandingRoutePage() {
                         >
                           <Icon size={28} style={{ color: FEATURE_GLOW[i].iconColor }} />
                         </div>
-                        <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
+                        <h3 className="mt-4 text-base font-bold">{f.title}</h3>
                         <DemoComponent reduceMotion={reduceMotion} />
                       </FadeIn>
                     ) : (
@@ -2830,19 +3041,8 @@ export function LandingRoutePage() {
                           <Icon size={28} style={{ color: FEATURE_GLOW[i].iconColor }} />
                         </div>
                         <div>
-                          <h3 className={i === 0 ? 'mt-4 text-xl font-bold' : 'mt-4 text-base font-bold'}>{f.title}</h3>
+                          <h3 className="mt-4 text-base font-bold">{f.title}</h3>
                           <p className="mt-2 text-sm leading-6 text-zinc-400">{f.text}</p>
-
-                          {i === 0 && (
-                            <div className="mt-4 flex flex-col gap-2">
-                              <div className="max-w-[85%] rounded-lg rounded-tl-sm bg-zinc-800 px-3 py-2 text-xs leading-5 text-zinc-300">
-                                Bonjour, je voudrais un devis pour une rénovation salle de bain
-                              </div>
-                              <div className="ml-auto max-w-[85%] rounded-lg rounded-tr-sm bg-green-500/15 px-3 py-2 text-xs leading-5 text-green-300">
-                                Bien sûr ! Quelle est la surface approximative ?
-                              </div>
-                            </div>
-                          )}
 
                           {i === 1 && (
                             <div className="mt-4 flex h-10 items-end gap-1.5">
