@@ -1,8 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { airtableBase, TABLES } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+async function logEmail(params: {
+  to: string
+  subject: string
+  body: string
+  status: 'sent' | 'error'
+  resendId: string
+  adminEmail: string
+}) {
+  try {
+    await airtableBase(TABLES.emailLogs).create([
+      {
+        fields: {
+          'To': params.to,
+          'Subject': params.subject,
+          'Body': params.body,
+          'Sent_at': new Date().toISOString(),
+          'Status': params.status,
+          'Resend_id': params.resendId,
+          'Admin_email': params.adminEmail,
+        },
+      },
+    ])
+  } catch (err) {
+    console.error('[ADMIN EMAIL] Failed to log email:', err)
+  }
+}
 
 export async function POST(request: NextRequest) {
   const session = await requireAdminSession()
@@ -17,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 })
     }
 
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: 'Kadria <contact@kadria.fr>',
       to,
       subject,
@@ -39,8 +67,11 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[ADMIN EMAIL] Resend error:', error)
+      await logEmail({ to, subject, body, status: 'error', resendId: '', adminEmail: session.email })
       return NextResponse.json({ error: 'Erreur envoi email' }, { status: 500 })
     }
+
+    await logEmail({ to, subject, body, status: 'sent', resendId: data?.id || '', adminEmail: session.email })
 
     return NextResponse.json({ success: true })
   } catch (error) {
