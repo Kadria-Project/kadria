@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, LayoutDashboard, MessageCircle, Zap } from 'lucide-react';
 import { DarkNav } from '@/src/components/DarkNav';
 import { useScrollReveal, ANIMATION_STYLES } from '@/src/components/KadriaPages';
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline';
@@ -309,6 +309,7 @@ export default function DemoPage() {
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
   const [scenarioStep, setScenarioStep] = useState(1);
   const [visibleCount, setVisibleCount] = useState(0);
+  const [activeDemo, setActiveDemo] = useState<'chat' | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const scenario = selectedScenario ? SCENARIOS[selectedScenario] : null;
@@ -348,13 +349,21 @@ export default function DemoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedScenario, scenarioStep]);
 
+  function scrollToChat() {
+    setActiveDemo('chat');
+    requestAnimationFrame(() => {
+      chatRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
   function selectScenario(name: string) {
     setSelectedScenario(name);
     setScenarioStep(1);
+    scrollToChat();
   }
 
-  function scrollToChat() {
-    chatRef.current?.scrollIntoView({ behavior: 'smooth' });
+  function changeScenario() {
+    setSelectedScenario(null);
   }
 
   return (
@@ -366,73 +375,85 @@ export default function DemoPage() {
       <DarkNav />
 
       <main className="relative z-10 mx-auto max-w-5xl px-6 pb-16 pt-[100px]">
-        {!scenario ? (
-          <>
-            <section className="kr-reveal kr-visible space-y-4 pb-12 text-center">
-              <span className="text-xs font-semibold uppercase tracking-widest text-green-500">
-                Démo interactive
-              </span>
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight text-white">
-                Voyez Kadria <span className="text-green-500">qualifier</span> un prospect
-              </h1>
-              <p className="mx-auto max-w-xl text-base text-zinc-400">
-                Choisissez un scénario et observez comment Kadria transforme une demande en dossier
-                complet en moins de 3 minutes.
+        <section className="kr-reveal kr-visible space-y-4 pb-12 text-center">
+          <span className="text-xs font-semibold uppercase tracking-widest text-green-500">
+            Démo interactive
+          </span>
+          <h1 className="text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight text-white">
+            Voyez Kadria <span className="text-green-500">qualifier</span> un prospect
+          </h1>
+          <p className="mx-auto max-w-xl text-base text-zinc-400">
+            Choisissez un scénario et observez comment Kadria transforme une demande en dossier
+            complet en moins de 3 minutes.
+          </p>
+        </section>
+
+        <section className="kr-reveal border-t border-zinc-800 pb-12 pt-12">
+          <p className="mb-4 text-center text-sm text-zinc-400">Que voulez-vous tester ?</p>
+          <div className="mx-auto grid max-w-[600px] grid-cols-1 gap-4 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={scrollToChat}
+              className={`cursor-pointer rounded-2xl border bg-zinc-900 p-6 text-center transition-all duration-200 hover:-translate-y-[2px] ${
+                activeDemo === 'chat'
+                  ? 'border-green-500 bg-green-500/[0.06] shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
+                  : 'border-zinc-800 hover:border-green-500/30 hover:bg-green-500/[0.04]'
+              }`}
+            >
+              <MessageCircle size={28} className="mx-auto mb-3 text-green-500" />
+              <p className="text-base font-bold text-white">Assistant Kadria</p>
+              <p className="mt-1.5 text-sm text-zinc-400">
+                Simulez une conversation de qualification prospect
               </p>
-            </section>
+              <span className="mt-3 inline-block rounded-full border border-green-500/20 bg-green-500/[0.08] px-2 py-0.5 text-xs text-green-500">
+                Interactif
+              </span>
+            </button>
 
-            <section className="border-t border-zinc-800 pb-12 pt-12">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Object.entries(SCENARIOS).map(([name, data], index) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => selectScenario(name)}
-                    className={`kr-reveal kr-reveal-delay-${Math.min(index + 1, 6)} cursor-pointer rounded-2xl border bg-zinc-900 p-7 text-left transition-all duration-200 hover:-translate-y-[3px] ${
-                      selectedScenario === name
-                        ? 'border-green-500 bg-green-500/[0.06] shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
-                        : 'border-zinc-800 hover:border-green-500/30 hover:bg-green-500/[0.04]'
-                    }`}
-                  >
-                    <div className="mb-3 text-[32px]">{data.emoji}</div>
-                    <div className="text-base font-bold text-white">{name}</div>
-                  </button>
-                ))}
-              </div>
-            </section>
+            <button
+              type="button"
+              onClick={() => window.open('/demo-dashboard', '_blank')}
+              className="cursor-pointer rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center transition-all duration-200 hover:-translate-y-[2px] hover:border-green-500/30 hover:bg-green-500/[0.04]"
+            >
+              <LayoutDashboard size={28} className="mx-auto mb-3 text-green-500" />
+              <p className="text-base font-bold text-white">Dashboard complet</p>
+              <p className="mt-1.5 text-sm text-zinc-400">
+                Explorez le CRM, le Kanban et les analytics en lecture seule
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/[0.08] px-2 py-0.5 text-xs text-green-500">
+                Lecture seule <ExternalLink size={12} className="text-zinc-500" />
+              </span>
+            </button>
+          </div>
+        </section>
 
-            <section className="kr-reveal border-t border-zinc-800 pb-12 pt-12">
-              <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-green-500/30 bg-zinc-900 p-6 sm:flex-row sm:p-8">
-                <div className="text-center sm:text-left">
-                  <p className="text-base font-bold text-white">Tester avec votre propre projet</p>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Connectez Kadria à votre activité en 15 minutes
-                  </p>
-                </div>
-                <Link
-                  href="/register"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] sm:w-auto"
+        {!scenario ? (
+          <section className="border-t border-zinc-800 pb-12 pt-12">
+            <p className="mb-3 text-sm text-zinc-400">Choisissez un scénario :</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(SCENARIOS).map(([name, data], index) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => selectScenario(name)}
+                  className={`kr-reveal kr-reveal-delay-${Math.min(index + 1, 6)} cursor-pointer rounded-2xl border bg-zinc-900 p-7 text-left transition-all duration-200 hover:-translate-y-[3px] ${
+                    selectedScenario === name
+                      ? 'border-green-500 bg-green-500/[0.06] shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
+                      : 'border-zinc-800 hover:border-green-500/30 hover:bg-green-500/[0.04]'
+                  }`}
                 >
-                  Commencer gratuitement <ArrowRight size={16} />
-                </Link>
-              </div>
-            </section>
-
-            <section className="kr-reveal border-t border-zinc-800 pt-12">
-              <div ref={chatRef} className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900">
-                <ChatHeader />
-                <div className="p-5">
-                  <ChatWidgetInline artisanId="Artisan_demo" />
-                </div>
-              </div>
-            </section>
-          </>
+                  <div className="mb-3 text-[32px]">{data.emoji}</div>
+                  <div className="text-base font-bold text-white">{name}</div>
+                </button>
+              ))}
+            </div>
+          </section>
         ) : (
           <>
-            <section className="flex items-center justify-between pt-4">
+            <section className="flex items-center justify-between border-t border-zinc-800 pt-12">
               <button
                 type="button"
-                onClick={() => setSelectedScenario(null)}
+                onClick={changeScenario}
                 className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors duration-150 hover:text-white"
               >
                 <ArrowLeft size={16} /> Changer de scénario
@@ -527,20 +548,40 @@ export default function DemoPage() {
                 </div>
               </div>
             </section>
-
-            <section className="border-t border-zinc-800 pt-12">
-              <div ref={chatRef} className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900">
-                <ChatHeader />
-                <div className="border-b border-zinc-800 bg-zinc-800/40 px-5 py-3 text-center text-sm text-zinc-400">
-                  Testez Kadria avec votre propre projet
-                </div>
-                <div className="p-5">
-                  <ChatWidgetInline artisanId="Artisan_demo" />
-                </div>
-              </div>
-            </section>
           </>
         )}
+
+        <section className="kr-reveal border-t border-zinc-800 pb-12 pt-12">
+          <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-green-500/30 bg-zinc-900 p-6 sm:flex-row sm:p-8">
+            <div className="text-center sm:text-left">
+              <p className="text-base font-bold text-white">Tester avec votre propre projet</p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Connectez Kadria à votre activité en 15 minutes
+              </p>
+            </div>
+            <Link
+              href="/register"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] sm:w-auto"
+            >
+              Commencer gratuitement <ArrowRight size={16} />
+            </Link>
+          </div>
+        </section>
+
+        <section
+          ref={chatRef}
+          className={`kr-reveal border-t border-zinc-800 pt-12 ${activeDemo === 'chat' ? 'block' : 'hidden'}`}
+        >
+          <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900">
+            <ChatHeader />
+            <div className="border-b border-zinc-800 bg-zinc-800/40 px-5 py-3 text-center text-sm text-zinc-400">
+              Testez Kadria avec votre propre projet
+            </div>
+            <div className="p-5">
+              <ChatWidgetInline artisanId="Artisan_demo" />
+            </div>
+          </div>
+        </section>
 
         <div className="border-t border-zinc-800 pt-8 text-center">
           <Link
