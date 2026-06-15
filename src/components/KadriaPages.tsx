@@ -627,7 +627,7 @@ function MockupDossier() {
     { ok: false, title: 'Photos jointes', detail: 'Aucune photo' },
   ]
   return (
-    <div className="kr-mockup">
+    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
         <div>
           <p style={{ ...kLabel, color: 'var(--accent)' }} className="mb-1">Dossier qualifié</p>
@@ -684,7 +684,27 @@ function MockupDossier() {
         </p>
       </div>
 
-      <div style={{ borderTop: '1px solid var(--border)' }} className="mt-3 flex items-center gap-3 px-4 py-2.5 sm:px-5">
+      <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '10px 14px', margin: '8px 20px' }} className="flex items-center gap-3">
+        <span
+          style={{ background: 'rgba(34,197,94,0.2)', color: 'var(--accent)', fontWeight: 700, fontSize: '12px' }}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+        >
+          ML
+        </span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-white">Marie Leroy</p>
+          <p className="text-xs" style={{ color: 'var(--text-2)' }}>06 12 34 56 78</p>
+          <p className="text-xs" style={{ color: 'var(--text-2)' }}>marie@email.fr</p>
+        </div>
+        <span
+          style={{ background: 'rgba(63,63,70,0.6)', color: '#a1a1aa', border: '1px solid #3f3f46', borderRadius: '999px' }}
+          className="whitespace-nowrap px-2 py-0.5 text-xs"
+        >
+          Nouveau
+        </span>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border)' }} className="mt-auto flex items-center gap-3 px-4 py-2.5 sm:px-5">
         <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">Score 94%</span>
         <span className="text-xs text-zinc-600">·</span>
         <span style={{ color: 'var(--accent)' }} className="text-xs">Conversion Élevée</span>
@@ -734,7 +754,7 @@ function MockupPipeline() {
   ]
   const totalCount = columns.reduce((sum, col) => sum + col.cards.length, 0)
   return (
-    <div className="kr-mockup">
+    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ borderBottom: '1px solid var(--border)' }} className="p-3 sm:px-4">
         <p style={{ ...kLabel, color: '#60a5fa' }} className="mb-1.5">Pipeline Kanban</p>
         <div className="flex items-center justify-between gap-2">
@@ -742,7 +762,7 @@ function MockupPipeline() {
           <span style={{ color: 'var(--accent)' }} className="text-xs font-semibold">42.8k€ potentiel</span>
         </div>
       </div>
-      <div className="grid grid-cols-5 gap-1 p-3 sm:gap-2 sm:p-4">
+      <div className="grid flex-1 grid-cols-5 gap-1 p-3 sm:gap-2 sm:p-4">
         {columns.map((col) => (
           <div key={col.title} style={{ borderTop: `2px solid ${col.border}` }} className="flex flex-col gap-1.5 pt-2">
             <div className="flex items-center justify-between gap-1">
@@ -771,6 +791,11 @@ function MockupPipeline() {
           </div>
         ))}
       </div>
+      <div style={{ borderTop: '1px solid var(--border)', padding: '10px 16px' }} className="mt-auto flex items-center justify-between gap-2">
+        <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">CA total: 42.8k€</span>
+        <span className="text-xs" style={{ color: 'var(--text-2)' }}>Taux conversion: 23%</span>
+        <span className="text-xs" style={{ color: 'var(--text-2)' }}>Dossiers actifs: 17</span>
+      </div>
     </div>
   )
 }
@@ -783,7 +808,7 @@ function MockupDevis() {
     { label: 'Pose & finitions', price: '1 800,00 €', bold: false },
   ]
   return (
-    <div className="kr-mockup">
+    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
         <div>
           <p style={{ ...kLabel, color: '#f59e0b' }} className="mb-1">Devis en un clic</p>
@@ -822,6 +847,22 @@ function MockupDevis() {
         <p className="text-xs font-medium text-white">Envoyé · Ouvert 2 fois · En attente de signature</p>
       </div>
 
+      <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '10px 14px', margin: '0 20px 12px' }} className="mt-2 flex flex-1 flex-col justify-center gap-1.5">
+        <p style={kLabel} className="mb-0.5 text-zinc-500">Historique devis</p>
+        <p className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-2)' }}>
+          <CheckCircle size={10} color="var(--accent)" />
+          Devis envoyé le 15/06/2026
+        </p>
+        <p className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-2)' }}>
+          <Eye size={10} color="#60a5fa" />
+          Ouvert le 15/06 à 14h32 (2 fois)
+        </p>
+        <p className="flex items-center gap-1.5 text-xs" style={{ color: '#f59e0b' }}>
+          <Clock size={10} color="#f59e0b" />
+          En attente de signature
+        </p>
+      </div>
+
       <div className="px-4 py-3 sm:px-5">
         <button style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="w-full rounded-xl py-2.5 text-sm font-bold">
           Envoyer le devis →
@@ -844,23 +885,29 @@ function MockupCalendar() {
   const weekDays = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
   const events: { day: number; type: CalendarEventType; label: string; struck?: boolean }[] = [
     { day: 3, type: 'rdv', label: 'Visite chantier' },
+    { day: 3, type: 'relance', label: 'Devis Leroy' },
     { day: 10, type: 'relance', label: 'Relance Sophie' },
     { day: 11, type: 'relance', label: 'Devis à valider' },
     { day: 16, type: 'rappel', label: 'Rappel Antonin', struck: true },
     { day: 17, type: 'rappel', label: 'Rappel Leroy' },
     { day: 19, type: 'relance', label: 'Visite Martin' },
     { day: 22, type: 'intervention', label: 'Installation PAC' },
+    { day: 22, type: 'rdv', label: 'RDV Blanchard' },
     { day: 24, type: 'rdv', label: 'RDV Blanchard' },
     { day: 26, type: 'rdv', label: 'Visite TEST' },
+    { day: 29, type: 'relance', label: 'Relance mensuelle' },
   ]
-  const eventByDay = new Map(events.map((e) => [e.day, e]))
+  const eventsByDay = new Map<number, typeof events>()
+  events.forEach((e) => {
+    eventsByDay.set(e.day, [...(eventsByDay.get(e.day) ?? []), e])
+  })
   const today = 15
   const cells = Array.from({ length: 42 }, (_, i) => (
     i < 30 ? { day: i + 1, current: true } : { day: i - 29, current: false }
   ))
 
   return (
-    <div className="kr-mockup">
+    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between gap-2 p-3 sm:px-4">
         <p className="text-base font-extrabold text-white">Juin 2026</p>
         <div className="flex items-center gap-3">
@@ -880,21 +927,21 @@ function MockupCalendar() {
         ))}
       </div>
 
-      <div className="p-2 sm:px-4 sm:pt-3">
+      <div className="flex flex-1 flex-col p-2 sm:px-4 sm:pt-3">
         <div className="mb-1 grid grid-cols-7">
           {weekDays.map((d) => (
             <span key={d} className="pb-1 text-center text-[10px] text-zinc-600">{d}</span>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div className="grid flex-1 grid-cols-7">
           {cells.map((cell, i) => {
-            const event = cell.current ? eventByDay.get(cell.day) : undefined
+            const dayEvents = cell.current ? eventsByDay.get(cell.day) ?? [] : []
             const isToday = cell.current && cell.day === today
             return (
               <div
                 key={i}
                 style={{ borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
-                className="flex min-h-[44px] flex-col gap-0.5 p-[3px]"
+                className="flex min-h-[56px] flex-col gap-0.5 p-[3px]"
               >
                 {isToday ? (
                   <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold">
@@ -903,8 +950,9 @@ function MockupCalendar() {
                 ) : (
                   <span className="text-[10px]" style={{ color: cell.current ? 'var(--text-2)' : '#3f3f46' }}>{cell.day}</span>
                 )}
-                {event && (
+                {dayEvents.map((event, j) => (
                   <span
+                    key={j}
                     style={{
                       background: CALENDAR_TYPE_STYLE[event.type].bg,
                       color: CALENDAR_TYPE_STYLE[event.type].color,
@@ -915,7 +963,7 @@ function MockupCalendar() {
                   >
                     {event.label}
                   </span>
-                )}
+                ))}
               </div>
             )
           })}
@@ -991,7 +1039,7 @@ function DashboardCarousel() {
     <div
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center lg:gap-10"
+      className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-10"
     >
       {/* Tabs liquid glass */}
       <div className="order-2 flex flex-col gap-3 lg:order-1">
@@ -1067,13 +1115,13 @@ function DashboardCarousel() {
       </div>
 
       {/* Mockup + glow */}
-      <div className="relative order-1 lg:order-2">
+      <div className="relative order-1 h-full lg:order-2">
         <div
           className="kr-glow-pulse pointer-events-none absolute -inset-6 -z-10 rounded-[32px] sm:-inset-10"
           style={{ background: activeTabData.glow, filter: 'blur(60px)', transition: 'background 600ms ease' }}
         />
         <div
-          className="mockup-float max-h-[320px] overflow-auto rounded-2xl lg:max-h-none lg:overflow-visible"
+          className="mockup-float max-h-[320px] overflow-auto rounded-2xl lg:max-h-none lg:h-full lg:overflow-visible"
           style={{
             background: 'rgba(24,24,27,0.6)',
             border: '1px solid #27272a',
