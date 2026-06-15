@@ -168,8 +168,6 @@ export async function PATCH(
     if (input.fields && typeof input.fields === 'object') {
       const safeFields = { ...input.fields };
       delete safeFields['Artisan ID'];
-      delete safeFields['Artisan_id'];
-      delete safeFields.ArtisanId;
       Object.assign(fieldsToUpdate, safeFields);
     }
 
