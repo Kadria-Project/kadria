@@ -464,6 +464,28 @@ export async function deleteDevis(id: string): Promise<void> {
   await airtableBase(TABLES.devis).destroy(id)
 }
 
+export interface ProjectSummary {
+  id: string
+  status: string
+  createdAt: string
+  devisAmount: number
+}
+
+export async function getProjectsByArtisan(artisanId: string): Promise<ProjectSummary[]> {
+  const records = await airtableBase(TABLES.projects)
+    .select({
+      filterByFormula: `{Artisan ID}="${artisanId}"`,
+    })
+    .firstPage()
+
+  return records.map((record) => ({
+    id: record.id,
+    status: record.fields['Status'] as string || '',
+    createdAt: record.fields['Created At'] as string || '',
+    devisAmount: (record.fields['Devis_amount'] as number) || 0,
+  }))
+}
+
 export async function createActivityLog(
   projectId: string,
   action: string,
