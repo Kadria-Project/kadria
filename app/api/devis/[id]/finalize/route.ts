@@ -17,8 +17,9 @@ function buildDevisEmailHtml(params: {
   devisNumero: string
   totalTTC: number
   dateValidite: string
+  devisUrl: string
 }) {
-  const { artisanNom, devisNumero, totalTTC, dateValidite } = params
+  const { artisanNom, devisNumero, totalTTC, dateValidite, devisUrl } = params
 
   return `
 <!DOCTYPE html>
@@ -114,15 +115,23 @@ function buildDevisEmailHtml(params: {
           Valable jusqu'au ${dateValidite || "90 jours après émission"}
         </div>
       </div>
-      <p class="text">
-        Le devis est disponible en pièce jointe
-        de cet email au format PDF.
-      </p>
-      <p class="text">
-        Pour accepter ce devis, imprimez-le,
-        signez-le avec la mention
-        <strong>"Bon pour accord"</strong>
-        et retournez-le à votre artisan.
+      <div style="text-align:center; margin: 32px 0;">
+        <a href="${devisUrl}"
+           style="display:inline-block;
+                  background:#22c55e;
+                  color:#000000;
+                  font-weight:700;
+                  font-size:16px;
+                  padding:16px 40px;
+                  border-radius:10px;
+                  text-decoration:none;">
+          Voir et accepter mon devis →
+        </a>
+      </div>
+      <p style="text-align:center; font-size:12px;
+                color:#9ca3af; margin-top:8px;">
+        Vous pouvez également télécharger le PDF
+        depuis cette page.
       </p>
       <p class="text">
         Pour toute question, contactez directement
@@ -222,6 +231,7 @@ export async function POST(
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
         const artisanNom = config?.raisonSociale || config?.companyName || ''
+        const devisUrl = `${process.env.NEXT_PUBLIC_APP_URL}/devis/${devis.token}`
 
         const emailResult = await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
@@ -232,13 +242,11 @@ export async function POST(
             devisNumero: devis.devisNumber,
             totalTTC: devis.totalTTC,
             dateValidite: devis.dateValidite,
+            devisUrl,
           }),
-          attachments: [
-            {
-              filename: `Devis-${devis.devisNumber}.pdf`,
-              content: pdfBuffer,
-            },
-          ],
+          headers: {
+            'X-Entity-Ref-ID': id,
+          },
         })
 
         if (emailResult.error) {
