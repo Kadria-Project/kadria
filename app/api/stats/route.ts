@@ -28,7 +28,7 @@ export async function GET() {
     const records = await airtableBase(TABLES.projects)
       .select({
         maxRecords: 100,
-        filterByFormula: `{Artisan_id}="${artisanId}"`,
+        filterByFormula: `{Artisan ID}="${artisanId}"`,
       })
       .firstPage();
 
@@ -99,15 +99,12 @@ export async function GET() {
       ),
     });
   } catch (error) {
-    console.error('GET_STATS_ERROR', error);
+    console.error('GET_STATS_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : JSON.stringify(error, null, 2),
+        error: 'Erreur serveur',
       },
       { status: 500 },
     );
