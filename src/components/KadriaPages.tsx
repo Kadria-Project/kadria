@@ -8,6 +8,7 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
+  Banknote,
   BarChart3,
   Bot,
   Check,
@@ -17,6 +18,7 @@ import {
   Euro,
   FileText,
   Globe,
+  Hammer,
   LayoutDashboard,
   Mail,
   MapPin,
@@ -29,6 +31,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  User,
   X,
   XCircle,
   Zap,
@@ -313,44 +316,50 @@ function InfoTile({
 }
 
 const QUALIFICATION_STEPS = [
-  { icon: '👤', title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone' },
-  { icon: '🌐', title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria' },
-  { icon: '⚡', title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...' },
-  { icon: '📋', title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer' },
-  { icon: '✅', title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate' },
+  { icon: User, title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
+  { icon: Globe, title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+  { icon: Zap, title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  { icon: FileText, title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  { icon: CheckCircle, title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate', color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
 ];
 
-const DOSSIER_FIELDS: [string, string, string][] = [
-  ['🏗️', 'PROJET', 'Rénovation salle de bain'],
-  ['📍', 'VILLE', 'Lyon 3e'],
-  ['💶', 'BUDGET', '8 000 – 12 000 €'],
-  ['⏱', 'DÉLAI', 'Sous 1 mois'],
+const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
+  [Hammer, 'PROJET', 'Rénovation salle de bain'],
+  [MapPin, 'VILLE', 'Lyon 3e'],
+  [Banknote, 'BUDGET', '8 000 – 12 000 €'],
+  [Clock, 'DÉLAI', 'Sous 1 mois'],
 ];
 
 function QualificationShowcase() {
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 4 : 0
+  );
   const [showDossier, setShowDossier] = useState(false);
 
   useEffect(() => {
-    if (showDossier) {
-      const timeout = setTimeout(() => {
-        setShowDossier(false);
-        setActiveStep(0);
-      }, 4000);
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) return;
 
-      return () => clearTimeout(timeout);
-    }
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
-    if (activeStep === 4) {
-      const timeout = setTimeout(() => setShowDossier(true), 500);
+    const run = () => {
+      setShowDossier(false);
+      setActiveStep(0);
+      timeouts.push(setTimeout(() => setActiveStep(1), 1200));
+      timeouts.push(setTimeout(() => setActiveStep(2), 2400));
+      timeouts.push(setTimeout(() => setActiveStep(3), 3600));
+      timeouts.push(setTimeout(() => setActiveStep(4), 4800));
+      timeouts.push(setTimeout(() => setShowDossier(true), 5300));
+    };
 
-      return () => clearTimeout(timeout);
-    }
+    run();
+    const interval = setInterval(run, 7000);
 
-    const timeout = setTimeout(() => setActiveStep((step) => step + 1), 2000);
-
-    return () => clearTimeout(timeout);
-  }, [activeStep, showDossier]);
+    return () => {
+      timeouts.forEach(clearTimeout);
+      clearInterval(interval);
+    };
+  }, []);
 
   if (showDossier) {
     return (
@@ -372,14 +381,20 @@ function QualificationShowcase() {
             <p className="text-sm font-semibold text-white">Marie Leroy</p>
             <p className="text-xs text-zinc-400">06 12 34 56 78 · marie@email.fr</p>
           </div>
-          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">Nouveau</span>
+          <span
+            className="rounded-full border px-3 py-1 text-xs font-semibold"
+            style={{ background: 'rgba(63,63,70,0.6)', color: '#a1a1aa', borderColor: '#3f3f46' }}
+          >
+            Nouveau
+          </span>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-zinc-800 p-3">
-          {DOSSIER_FIELDS.map(([icon, label, value]) => (
+          {DOSSIER_FIELDS.map(([Icon, label, value]) => (
             <div key={label}>
-              <p className="text-xs text-zinc-400">
-                {icon} {label}
+              <p className="flex items-center gap-1.5 text-xs text-zinc-400">
+                <Icon size={12} className="text-green-500" />
+                {label}
               </p>
               <p className="mt-1 text-sm font-medium text-white">{value}</p>
             </div>
@@ -388,7 +403,9 @@ function QualificationShowcase() {
 
         <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs uppercase tracking-widest text-green-500">✦ Analyse Kadria</p>
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-green-500">
+              <Sparkles size={12} className="text-green-500" /> Analyse Kadria
+            </p>
             <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">🔥 Prospect chaud</span>
           </div>
           <p className="mt-2 text-xs italic text-zinc-300">
@@ -397,12 +414,12 @@ function QualificationShowcase() {
           </p>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 text-xs">
-          <span className="font-semibold text-green-400">Score 94%</span>
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <span className="font-bold text-green-500">Score 94%</span>
           <span className="text-zinc-500">·</span>
-          <span className="text-green-300">Conversion Élevée</span>
+          <span className="font-medium text-green-500">Conversion Élevée</span>
           <span className="text-zinc-500">·</span>
-          <span className="text-zinc-500">Reçu il y a 2 min</span>
+          <span className="text-zinc-400">Reçu il y a 2 min</span>
         </div>
       </div>
     );
@@ -410,36 +427,60 @@ function QualificationShowcase() {
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
-        <span className="h-2 w-2 rounded-full bg-green-500" />
-        Parcours de qualification
-      </p>
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
+          <span className="h-2 w-2 rounded-full bg-green-500" />
+          Parcours de qualification
+        </p>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/[0.08] px-2 py-0.5 text-xs font-bold text-green-500">
+          <span className="kr-badge-pulse h-1.5 w-1.5 rounded-full bg-green-500" />
+          EN DIRECT
+        </span>
+      </div>
+      <div className="relative mt-6 flex flex-col gap-3">
+        <div className="absolute bottom-0 left-[19px] top-0 w-0.5 rounded-full bg-zinc-800" />
+        <div
+          className="absolute left-[19px] top-0 w-0.5 rounded-full bg-green-500 transition-[height] duration-[400ms] ease-out"
+          style={{ height: `${(activeStep / (QUALIFICATION_STEPS.length - 1)) * 100}%` }}
+        />
+
         {QUALIFICATION_STEPS.map((step, index) => {
           const isActive = index === activeStep;
-          const isKadria = index === 2;
+          const isCompleted = index < activeStep;
+          const Icon = step.icon;
 
           const cardClass = isActive
-            ? isKadria
-              ? 'border-green-500 bg-green-500/20'
-              : 'border-zinc-700 bg-zinc-800'
-            : 'border-zinc-800/50 bg-transparent';
+            ? 'border-green-500/30 bg-green-500/[0.06]'
+            : 'border-transparent bg-transparent';
 
-          const iconClass = isActive && isKadria
-            ? 'bg-green-500 text-black rounded-lg'
-            : '';
-
-          const textClass = isActive ? 'text-white font-medium' : 'text-zinc-400';
+          const textClass = isActive ? 'font-bold text-green-500' : 'text-zinc-400';
 
           return (
             <div
               key={step.title}
-              className={`flex items-center gap-3 rounded-md border px-4 py-3 transition-all duration-500 ${cardClass}`}
+              className={`relative flex items-center gap-3 rounded-md border px-4 py-3 transition-all duration-500 ${cardClass}`}
             >
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center text-lg ${iconClass}`}>
-                {step.icon}
+              <span
+                key={`icon-${step.title}-${activeStep}`}
+                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isActive ? 'kr-step-icon-enter' : ''}`}
+                style={{ backgroundColor: step.bg }}
+              >
+                <Icon size={16} style={{ color: step.color }} />
+                <span
+                  className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold"
+                  style={
+                    isCompleted || isActive
+                      ? { background: '#22c55e', color: '#09090b', borderColor: '#22c55e' }
+                      : { background: '#18181b', color: '#a1a1aa', borderColor: '#27272a' }
+                  }
+                >
+                  {index + 1}
+                </span>
               </span>
-              <div>
+              <div
+                key={`text-${step.title}-${activeStep}`}
+                className={isActive ? 'kr-step-text-enter' : ''}
+              >
                 <p className={`text-sm transition-colors duration-500 ${textClass}`}>{step.title}</p>
                 <p className="text-xs text-zinc-500">{step.subtitle}</p>
               </div>
@@ -1284,6 +1325,22 @@ export const ANIMATION_STYLES = `
     animation: kr-typing-dot 1s ease-in-out infinite;
   }
 
+  /* Parcours de qualification — step enter */
+  @keyframes kr-step-icon-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .kr-step-icon-enter {
+    animation: kr-step-icon-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes kr-step-text-in {
+    from { opacity: 0; transform: translateX(-4px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .kr-step-text-enter {
+    animation: kr-step-text-in 200ms ease-out both;
+  }
+
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     .kr-reveal,
@@ -1295,6 +1352,8 @@ export const ANIMATION_STYLES = `
     .kr-line-grow,
     .kr-wave,
     .kr-typing-dot,
+    .kr-step-icon-enter,
+    .kr-step-text-enter,
     .kr-ticker span {
       transition: none !important;
       animation: none !important;
