@@ -410,6 +410,22 @@ export async function getDevisById(id: string): Promise<DevisRecord | null> {
   }
 }
 
+export async function getDevisByToken(token: string): Promise<DevisRecord | null> {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  const baseId = process.env.AIRTABLE_BASE_ID
+
+  const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(TABLES.devis)}?filterByFormula=${encodeURIComponent(`{Token}="${token}"`)}&maxRecords=1`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  const record = data.records?.[0]
+  if (!record) return null
+  return mapDevisRecord({ id: record.id, fields: record.fields })
+}
+
 export async function getDevisByProjet(projetId: string): Promise<DevisRecord[]> {
   const apiKey = process.env.AIRTABLE_API_KEY
   const baseId = process.env.AIRTABLE_BASE_ID
