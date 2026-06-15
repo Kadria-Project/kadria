@@ -5,6 +5,7 @@ import { Resend } from 'resend'
 import { airtableBase, TABLES, getArtisanConfig, getDevisById } from '@/src/lib/airtable'
 import { generateDevisPdf } from '@/src/lib/devis-pdf'
 import { getSession } from '@/src/lib/auth-utils'
+import { getPublicDevisUrl } from '@/src/lib/base-url'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -231,7 +232,7 @@ export async function POST(
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
         const artisanNom = config?.raisonSociale || config?.companyName || ''
-        const devisUrl = `${process.env.NEXT_PUBLIC_APP_URL}/devis/${devis.token}`
+        const devisUrl = getPublicDevisUrl(devis.token)
 
         const emailResult = await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
