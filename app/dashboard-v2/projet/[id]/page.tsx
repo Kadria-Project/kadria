@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ChevronRight,
   Clock,
+  Eye,
   FileText as FileTextIcon,
   Plus,
 } from 'lucide-react';
@@ -37,6 +38,10 @@ interface DevisListItem {
   date_emission: string;
   date_validite: string;
   client_email: string;
+  opens_count: number;
+  last_opened_date: string | null;
+  accepted: boolean;
+  accepted_at: string | null;
 }
 
 function formatDevisDate(value: string) {
@@ -758,10 +763,8 @@ function ProjectDetail() {
                         cursor: 'pointer',
                         marginTop: '8px',
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '12px',
-                        flexWrap: 'wrap',
+                        flexDirection: 'column',
+                        gap: '8px',
                         transition: 'border-color 150ms, transform 150ms',
                       }}
                       onMouseEnter={(e) => {
@@ -773,48 +776,79 @@ function ProjectDetail() {
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                        <FileTextIcon size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
-                        <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
-                        <span style={{ color: '#71717a' }}>·</span>
-                        <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                          {devis.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <FileTextIcon size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
+                          <span style={{ color: '#71717a' }}>·</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                            {devis.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span>Généré le {formatDevisDate(devis.date_emission)}</span>
+                          <span>Expire le {formatDevisDate(devis.date_validite)}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {devis.accepted && (
+                            <span style={{
+                              background: 'rgba(34,197,94,0.1)',
+                              color: '#22c55e',
+                              border: '1px solid rgba(34,197,94,0.3)',
+                              borderRadius: '999px',
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                            }}>
+                              ✓ Accepté le {formatDevisDate(devis.accepted_at)}
+                            </span>
+                          )}
+                          {devis.sent || devis.statut === 'Envoyé' ? (
+                            <span style={{
+                              background: 'rgba(34,197,94,0.1)',
+                              color: '#22c55e',
+                              border: '1px solid rgba(34,197,94,0.3)',
+                              borderRadius: '999px',
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                            }}>
+                              ✓ Envoyé
+                            </span>
+                          ) : (
+                            <span style={{
+                              background: 'rgba(245,158,11,0.1)',
+                              color: '#f59e0b',
+                              border: '1px solid rgba(245,158,11,0.3)',
+                              borderRadius: '999px',
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                            }}>
+                              📄 Enregistré · Non envoyé
+                            </span>
+                          )}
+                          <ChevronRight size={14} style={{ color: '#71717a', marginLeft: '4px' }} />
+                        </div>
                       </div>
 
-                      <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span>Généré le {formatDevisDate(devis.date_emission)}</span>
-                        <span>Expire le {formatDevisDate(devis.date_validite)}</span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {devis.sent || devis.statut === 'Envoyé' ? (
-                          <span style={{
-                            background: 'rgba(34,197,94,0.1)',
-                            color: '#22c55e',
-                            border: '1px solid rgba(34,197,94,0.3)',
-                            borderRadius: '999px',
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                          }}>
-                            ✓ Envoyé
-                          </span>
-                        ) : (
-                          <span style={{
-                            background: 'rgba(245,158,11,0.1)',
-                            color: '#f59e0b',
-                            border: '1px solid rgba(245,158,11,0.3)',
-                            borderRadius: '999px',
-                            padding: '4px 12px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                          }}>
-                            📄 Enregistré · Non envoyé
-                          </span>
-                        )}
-                        <ChevronRight size={14} style={{ color: '#71717a', marginLeft: '4px' }} />
-                      </div>
+                      {(devis.sent || devis.statut === 'Envoyé') && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a' }}>
+                          {devis.opens_count > 0 ? (
+                            <>
+                              <Eye size={12} />
+                              <span>Ouvert {devis.opens_count} fois · Dernière ouverture : {formatDevisDate(devis.last_opened_date || '')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye size={12} />
+                              <span>Pas encore ouvert</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { AlertTriangle, ArrowLeft, CheckCircle, Download, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Copy, Download, Eye, Loader2, XCircle } from 'lucide-react';
 
 interface DevisLine {
   type: 'item' | 'section';
@@ -37,6 +37,13 @@ interface DevisData {
   clientPhone: string;
   sent: boolean;
   pdfUrl: string | null;
+  token: string;
+  opensCount: number;
+  lastOpenedDate: string | null;
+  firstOpenedAt: string | null;
+  accepted: boolean;
+  acceptedAt: string | null;
+  acceptedIp: string | null;
 }
 
 function formatDate(value: string) {
@@ -133,6 +140,18 @@ function DevisView() {
       console.error('[DEVIS VIEW] Erreur envoi:', err);
     } finally {
       setSending(false);
+    }
+  };
+
+  const copyClientLink = async () => {
+    if (!devis) return;
+    const url = `${process.env.NEXT_PUBLIC_APP_URL}/devis/${devis.token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setToast({ type: 'success', message: '✓ Lien copié !' });
+    } catch (err) {
+      setToast({ type: 'error', message: '✗ Impossible de copier le lien' });
+      console.error('[DEVIS VIEW] Erreur copie lien:', err);
     }
   };
 
@@ -281,6 +300,78 @@ function DevisView() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Suivi */}
+        <div style={sectionCard}>
+          <p style={labelStyle}>Suivi</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: devis.accepted ? '16px' : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Eye size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Ouvertures</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{devis.opensCount}</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Première ouverture</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{formatDate(devis.firstOpenedAt || '')}</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {devis.accepted ? (
+                <CheckCircle size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+              ) : devis.opensCount > 0 ? (
+                <Eye size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
+              ) : (
+                <Clock size={16} style={{ color: '#71717a', flexShrink: 0 }} />
+              )}
+              <div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Statut</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
+                  {devis.accepted ? 'Accepté' : devis.opensCount > 0 ? 'En attente' : 'Non ouvert'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {devis.accepted && (
+            <div style={{
+              background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              borderRadius: '10px',
+              padding: '16px',
+              marginBottom: '16px',
+            }}>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#22c55e' }}>
+                ✓ Devis accepté le {formatDate(devis.acceptedAt || '')}
+              </p>
+              {devis.acceptedIp && (
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#71717a' }}>IP : {devis.acceptedIp}</p>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={copyClientLink}
+            style={{
+              background: '#27272a',
+              border: '1px solid #3f3f46',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              color: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Copy size={14} />
+            Copier le lien client
+          </button>
         </div>
 
         {/* Infos générales */}

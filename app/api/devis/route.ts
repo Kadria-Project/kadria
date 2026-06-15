@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
         date_emission: d.dateEmission,
         date_validite: d.dateValidite,
         client_email: d.clientEmail,
+        opens_count: d.opensCount,
+        last_opened_date: d.lastOpenedDate,
+        accepted: d.accepted,
+        accepted_at: d.acceptedAt,
       }))
       .sort((a, b) => (b.date_emission || '').localeCompare(a.date_emission || ''))
 
