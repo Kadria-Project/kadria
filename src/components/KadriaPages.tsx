@@ -380,7 +380,7 @@ function QualificationShowcase() {
 
   if (showDossier) {
     return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <div className="kr-glass-hero animate-in fade-in slide-in-from-bottom-4 duration-500 w-full p-5">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white">
             <span className="text-green-500">●</span> DOSSIER PROJET REÇU
@@ -443,7 +443,7 @@ function QualificationShowcase() {
   }
 
   return (
-    <div className="w-full rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+    <div className="kr-glass-hero w-full p-5">
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
           <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -468,7 +468,7 @@ function QualificationShowcase() {
             const Icon = step.icon;
 
             const cardClass = isActive
-              ? 'border-green-500/30 bg-green-500/[0.06]'
+              ? 'border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.06)]'
               : 'border-transparent bg-transparent';
 
             const textClass = isActive ? 'font-bold text-green-500' : 'text-zinc-400';
@@ -477,11 +477,12 @@ function QualificationShowcase() {
               <div
                 key={step.title}
                 className={`relative flex items-center gap-3 rounded-md border py-3 pl-2 pr-4 transition-all duration-500 ${cardClass}`}
+                style={isActive ? { boxShadow: '0 0 12px rgba(34,197,94,0.08)' } : undefined}
               >
                 <span
                   key={`icon-${step.title}-${activeStep}`}
-                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isActive ? 'kr-step-icon-enter' : ''}`}
-                  style={{ backgroundColor: step.bg }}
+                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-shadow duration-300 ${isActive ? 'kr-step-icon-enter' : ''}`}
+                  style={{ backgroundColor: step.bg, boxShadow: `0 0 16px ${step.glow}` }}
                 >
                   <Icon size={16} style={{ color: step.color }} />
                   <span
@@ -2217,6 +2218,7 @@ export function LandingRoutePage() {
           />
 
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_70%_50%,rgba(34,197,94,0.08)_0%,transparent_60%)]" />
           <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
             <div>
               <h1 className="kr-reveal kr-reveal-delay-1 text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.05] tracking-tight">
