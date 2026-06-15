@@ -5,8 +5,6 @@ import { verifyMagicToken, createToken } from '@/src/lib/auth-utils'
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token')
 
-  console.log('[VERIFY] Token reçu')
-
   try {
     if (!token) {
       return NextResponse.redirect(new URL('/auth/error?error=MissingToken', request.url))
@@ -18,12 +16,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/error?error=Verification', request.url))
     }
 
-    console.log('[VERIFY] Token reçu pour:', magic.email)
-
     const artisan = await getArtisanByEmail(magic.email)
-    console.log('[VERIFY] User trouvé:', artisan?.id)
+    console.info('[VERIFY] User trouvé:', artisan?.id)
     if (!artisan) {
-      console.error('[VERIFY] Erreur: aucun user Airtable pour', magic.email)
+      console.error('[VERIFY] Erreur: aucun user Airtable')
       return NextResponse.redirect(new URL('/auth/error?error=AccessDenied', request.url))
     }
 
@@ -58,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('[VERIFY] Erreur:', error)
+    console.error('[VERIFY] Erreur:', error instanceof Error ? error.message : String(error))
     return NextResponse.redirect(new URL('/auth/error?error=Verification', request.url))
   }
 }
