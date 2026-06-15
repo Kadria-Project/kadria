@@ -345,15 +345,15 @@ function QualificationShowcase() {
     const run = () => {
       setShowDossier(false);
       setActiveStep(0);
-      timeouts.push(setTimeout(() => setActiveStep(1), 1200));
-      timeouts.push(setTimeout(() => setActiveStep(2), 2400));
-      timeouts.push(setTimeout(() => setActiveStep(3), 3600));
-      timeouts.push(setTimeout(() => setActiveStep(4), 4800));
-      timeouts.push(setTimeout(() => setShowDossier(true), 5300));
+      timeouts.push(setTimeout(() => setActiveStep(1), 2000));
+      timeouts.push(setTimeout(() => setActiveStep(2), 4000));
+      timeouts.push(setTimeout(() => setActiveStep(3), 6000));
+      timeouts.push(setTimeout(() => setActiveStep(4), 8000));
+      timeouts.push(setTimeout(() => setShowDossier(true), 8500));
     };
 
     run();
-    const interval = setInterval(run, 7000);
+    const interval = setInterval(run, 12000);
 
     return () => {
       timeouts.forEach(clearTimeout);
@@ -363,7 +363,7 @@ function QualificationShowcase() {
 
   if (showDossier) {
     return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full rounded-xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white">
             <span className="text-green-500">●</span> DOSSIER PROJET REÇU
@@ -426,7 +426,7 @@ function QualificationShowcase() {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+    <div className="w-full rounded-xl border border-zinc-800 bg-zinc-900 p-5">
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
           <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -437,56 +437,58 @@ function QualificationShowcase() {
           EN DIRECT
         </span>
       </div>
-      <div className="relative mt-6 flex flex-col gap-3">
-        <div className="absolute bottom-0 left-[19px] top-0 w-0.5 rounded-full bg-zinc-800" />
+      <div className="relative mt-6" style={{ paddingLeft: 28 }}>
+        <div className="absolute bottom-0 top-0 w-0.5 rounded-full bg-zinc-800" style={{ left: 8 }} />
         <div
-          className="absolute left-[19px] top-0 w-0.5 rounded-full bg-green-500 transition-[height] duration-[400ms] ease-out"
-          style={{ height: `${(activeStep / (QUALIFICATION_STEPS.length - 1)) * 100}%` }}
+          className="absolute top-0 w-0.5 rounded-full bg-green-500 transition-[height] duration-[400ms] ease-out"
+          style={{ left: 8, height: `${(activeStep / (QUALIFICATION_STEPS.length - 1)) * 100}%` }}
         />
 
-        {QUALIFICATION_STEPS.map((step, index) => {
-          const isActive = index === activeStep;
-          const isCompleted = index < activeStep;
-          const Icon = step.icon;
+        <div className="flex flex-col gap-3">
+          {QUALIFICATION_STEPS.map((step, index) => {
+            const isActive = index === activeStep;
+            const isCompleted = index < activeStep;
+            const Icon = step.icon;
 
-          const cardClass = isActive
-            ? 'border-green-500/30 bg-green-500/[0.06]'
-            : 'border-transparent bg-transparent';
+            const cardClass = isActive
+              ? 'border-green-500/30 bg-green-500/[0.06]'
+              : 'border-transparent bg-transparent';
 
-          const textClass = isActive ? 'font-bold text-green-500' : 'text-zinc-400';
+            const textClass = isActive ? 'font-bold text-green-500' : 'text-zinc-400';
 
-          return (
-            <div
-              key={step.title}
-              className={`relative flex items-center gap-3 rounded-md border px-4 py-3 transition-all duration-500 ${cardClass}`}
-            >
-              <span
-                key={`icon-${step.title}-${activeStep}`}
-                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isActive ? 'kr-step-icon-enter' : ''}`}
-                style={{ backgroundColor: step.bg }}
-              >
-                <Icon size={16} style={{ color: step.color }} />
-                <span
-                  className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold"
-                  style={
-                    isCompleted || isActive
-                      ? { background: '#22c55e', color: '#09090b', borderColor: '#22c55e' }
-                      : { background: '#18181b', color: '#a1a1aa', borderColor: '#27272a' }
-                  }
-                >
-                  {index + 1}
-                </span>
-              </span>
+            return (
               <div
-                key={`text-${step.title}-${activeStep}`}
-                className={isActive ? 'kr-step-text-enter' : ''}
+                key={step.title}
+                className={`relative flex items-center gap-3 rounded-md border py-3 pl-2 pr-4 transition-all duration-500 ${cardClass}`}
               >
-                <p className={`text-sm transition-colors duration-500 ${textClass}`}>{step.title}</p>
-                <p className="text-xs text-zinc-500">{step.subtitle}</p>
+                <span
+                  key={`icon-${step.title}-${activeStep}`}
+                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isActive ? 'kr-step-icon-enter' : ''}`}
+                  style={{ backgroundColor: step.bg }}
+                >
+                  <Icon size={16} style={{ color: step.color }} />
+                  <span
+                    className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold"
+                    style={
+                      isCompleted || isActive
+                        ? { background: '#22c55e', color: '#09090b', borderColor: '#22c55e' }
+                        : { background: '#18181b', color: '#a1a1aa', borderColor: '#27272a' }
+                    }
+                  >
+                    {index + 1}
+                  </span>
+                </span>
+                <div
+                  key={`text-${step.title}-${activeStep}`}
+                  className={isActive ? 'kr-step-text-enter' : ''}
+                >
+                  <p className={`text-sm transition-colors duration-500 ${textClass}`}>{step.title}</p>
+                  <p className="text-xs text-zinc-500">{step.subtitle}</p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
