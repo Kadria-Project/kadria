@@ -336,11 +336,11 @@ function InfoTile({
 }
 
 const QUALIFICATION_STEPS = [
-  { icon: User, title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', glow: 'rgba(167,139,250,0.3)' },
-  { icon: Globe, title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', glow: 'rgba(96,165,250,0.3)' },
-  { icon: Zap, title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', glow: 'rgba(34,197,94,0.3)' },
-  { icon: FileText, title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', glow: 'rgba(245,158,11,0.3)' },
-  { icon: CheckCircle, title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate', color: '#22c55e', bg: 'rgba(34,197,94,0.15)', glow: 'rgba(34,197,94,0.4)' },
+  { icon: User, title: 'Prospect', subtitle: 'Demande entrante site ou t\u00e9l\u00e9phone', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', glow: 'rgba(167,139,250,0.3)' },
+  { icon: Sparkles, title: 'Qualification', subtitle: 'Kadria pose les bonnes questions', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', glow: 'rgba(34,197,94,0.3)' },
+  { icon: FileText, title: 'Dossier', subtitle: 'Besoin, budget, d\u00e9lai et priorit\u00e9', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', glow: 'rgba(96,165,250,0.3)' },
+  { icon: Receipt, title: 'Devis', subtitle: 'Opportunit\u00e9 pr\u00eate \u00e0 chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', glow: 'rgba(245,158,11,0.3)' },
+  { icon: Hammer, title: 'Chantier', subtitle: 'Suivi commercial jusqu\u2019\u00e0 signature', color: '#22c55e', bg: 'rgba(34,197,94,0.15)', glow: 'rgba(34,197,94,0.4)' },
 ];
 
 const REPLACE_TOOLS_CARDS = [
@@ -454,10 +454,10 @@ const REPLACED_TOOL_ICONS = [
 ];
 
 const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
-  [Hammer, 'PROJET', 'Rénovation salle de bain'],
-  [MapPin, 'VILLE', 'Lyon 3e'],
-  [Banknote, 'BUDGET', '8 000 – 12 000 €'],
-  [Clock, 'DÉLAI', 'Sous 1 mois'],
+  [Target, 'SCORE', '94 / 100'],
+  [Banknote, 'BUDGET', '8 000 \u2013 12 000 \u20ac'],
+  [Clock, 'D\u00c9LAI', 'Sous 1 mois'],
+  [KanbanSquare, 'STATUT', 'Priorit\u00e9 haute'],
 ];
 
 function QualificationShowcase() {
@@ -2392,34 +2392,41 @@ export function LandingRoutePage() {
 
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_70%_50%,rgba(34,197,94,0.08)_0%,transparent_60%)]" />
-          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
+          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-10 px-6 py-10 lg:px-12 md:grid-cols-[0.95fr_1.05fr] md:items-center">
             <div>
-              <h1 className="kr-reveal kr-reveal-delay-1 text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.05] tracking-tight">
-                Transformez chaque demande en{' '}
-                <span className="kr-gradient-text">chantier qualifié.</span>
+              <div className="kr-reveal inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-400">
+                Assistant commercial IA pour artisans
+              </div>
+              <h1 className="kr-reveal kr-reveal-delay-1 mt-5 max-w-3xl text-[clamp(2.45rem,5vw,4.5rem)] font-bold leading-[1.04] tracking-tight">
+                Transformez chaque demande en chantier qualifi&eacute;.
               </h1>
-              <p className="kr-reveal kr-reveal-delay-2 mt-6 max-w-xl text-lg leading-7 text-zinc-400">
-                Kadria qualifie vos prospects 24h/24 — par téléphone et sur votre site.
-                Chaque conversation devient un dossier complet, scoré et prêt à être chiffré.
+              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-xl text-base leading-7 text-zinc-400 md:text-lg">
+                Kadria qualifie vos prospects 24h/24, sur votre site et par t&eacute;l&eacute;phone. Chaque conversation devient un dossier complet, prioris&eacute; et pr&ecirc;t &agrave; &ecirc;tre chiffr&eacute;.
               </p>
-              <div className="kr-reveal kr-reveal-delay-3 mt-8">
+              <div className="kr-reveal kr-reveal-delay-3 mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/register"
+                  href="/demo-request"
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
                 >
-                  Tester Kadria <ArrowRight className="h-4 w-4" />
+                  R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                >
+                  Essai gratuit
                 </Link>
               </div>
-              <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
+              <div className="kr-reveal kr-reveal-delay-4 mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400">
                 {[
-                  'Mise en place rapide',
-                  'Sans changement de numéro',
-                  'Compatibilité web et téléphone',
-                  'Support inclus',
-                ].map((item) => (
+                  'Installation en moins de 30 minutes',
+                  'Compatible avec votre site actuel',
+                  'Sans engagement',
+                ].map((item, index) => (
                   <span key={item} className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
                     {item}
+                    {index < 2 && <span className="hidden text-zinc-700 sm:inline">&bull;</span>}
                   </span>
                 ))}
               </div>
