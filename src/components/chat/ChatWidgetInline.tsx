@@ -19,6 +19,7 @@ interface Props {
   primaryColor?: string
   inline?: boolean
   fullPage?: boolean
+  fitParentHeight?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ export default function ChatWidgetInline({
   primaryColor = '#22c55e',
   inline = true,
   fullPage = false,
+  fitParentHeight = false,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -373,7 +375,7 @@ export default function ChatWidgetInline({
     border: 'none', display: 'flex', flexDirection: 'column',
     overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
   } : {
-    width: '100%', height: '600px', borderRadius: '16px',
+    width: '100%', height: fitParentHeight ? '100%' : '600px', borderRadius: '16px',
     border: '1px solid #27272a', display: 'flex', flexDirection: 'column',
     overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
   }

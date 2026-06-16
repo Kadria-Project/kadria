@@ -91,7 +91,7 @@ export default function DemoPage() {
 
       <DarkNav />
 
-      <main className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-[100px]">
+      <main className="relative z-10 mx-auto max-w-[1440px] px-6 pb-20 pt-[100px] xl:px-8">
         <section className="kr-reveal kr-visible pb-12 text-center">
           <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
             Demo guidee
@@ -134,8 +134,8 @@ export default function DemoPage() {
           </div>
         </section>
 
-        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-[1fr_1fr]">
-          <div className="kr-reveal overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/80">
+        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-[1.05fr_1fr] xl:gap-8">
+          <div className="kr-reveal flex min-h-[820px] flex-col overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/80">
             <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
@@ -157,8 +157,10 @@ export default function DemoPage() {
                 Ce n&apos;est pas une capture: testez les questions, les reponses et le parcours de qualification en direct.
               </p>
             </div>
-            <div className="p-5">
-              <ChatWidgetInline artisanId="Artisan_demo" />
+            <div className="flex flex-1 p-5">
+              <div className="min-h-[620px] w-full flex-1">
+                <ChatWidgetInline artisanId="Artisan_demo" fitParentHeight />
+              </div>
             </div>
           </div>
 
