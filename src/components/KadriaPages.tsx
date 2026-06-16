@@ -211,10 +211,10 @@ function SiteHeader() {
           <Link href="/dashboard-v2" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex">
             Connexion
           </Link>
-          <Link href="/demo" className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
+          <Link href="/demo-request" className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
             Reserver une demo
           </Link>
-          <Link href="/demo" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+          <Link href="/register" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
             Tester Kadria
           </Link>
         </div>
@@ -2404,7 +2404,7 @@ export function LandingRoutePage() {
               </p>
               <div className="kr-reveal kr-reveal-delay-3 mt-8">
                 <Link
-                  href="/demo"
+                  href="/register"
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
                 >
                   Tester Kadria <ArrowRight className="h-4 w-4" />
@@ -3510,7 +3510,7 @@ export function PricingRoutePage() {
               Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/demo" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
               <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
@@ -3637,7 +3637,7 @@ export function CheckoutRoutePage({ plan }: { plan?: string }) {
             La page de paiement sera bientot disponible. Reservez une demonstration pour demarrer avec votre configuration.
           </p>
           <div className="mt-8 flex justify-center">
-            <PrimaryLink href="/demo">Reserver une demonstration</PrimaryLink>
+            <PrimaryLink href="/demo-request">Reserver une demonstration</PrimaryLink>
           </div>
         </div>
       </main>
