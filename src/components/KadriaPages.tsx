@@ -235,7 +235,7 @@ function Footer() {
   );
 }
 
-function SectionTitle({
+function RouteSectionTitle({
   eyebrow,
   title,
   text,
@@ -251,6 +251,42 @@ function SectionTitle({
       <p className="mt-5 text-base leading-7 text-muted-foreground md:text-lg">{text}</p>
     </div>
   );
+}
+
+const LANDING_SECTION_CLASS = 'w-full py-24 lg:py-32';
+const LANDING_H1_CLASS = 'text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[0.95]';
+const LANDING_H2_CLASS = 'text-4xl md:text-5xl font-bold tracking-tight leading-tight';
+const LANDING_H3_CLASS = 'text-xl font-semibold';
+const LANDING_DESCRIPTION_CLASS = 'text-lg text-zinc-400 leading-relaxed max-w-3xl mx-auto';
+
+function SectionTitle({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <h2 className={`${LANDING_H2_CLASS} ${className}`.trim()}>{children}</h2>;
+}
+
+function SectionDescription({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <p className={`${LANDING_DESCRIPTION_CLASS} ${className}`.trim()}>{children}</p>;
+}
+
+function CardTitle({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <h3 className={`${LANDING_H3_CLASS} ${className}`.trim()}>{children}</h3>;
 }
 
 function PrimaryLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -2162,7 +2198,7 @@ function BenefitsGrid() {
             <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-green-500/20 bg-green-500/[0.08] text-green-500">
               <Icon size={20} />
             </div>
-            <h3 className="mt-5 text-base font-bold leading-snug text-white">{item.title}</h3>
+            <CardTitle className="mt-5 leading-snug text-white">{item.title}</CardTitle>
             <p className="mt-3 text-sm leading-6 text-zinc-400">{item.description}</p>
           </div>
         );
@@ -2413,9 +2449,9 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
                   maxWidth: '80%',
                 }}
               >
-                <span style={{ fontSize: '11px', fontWeight: 700 }}>Jean Dupont</span>
-                <span style={{ fontSize: '11px' }}>Tél : 06 06 77 88 99</span>
-                <span style={{ fontSize: '11px' }}>jean@jean.com</span>
+                <span className="text-[11px] font-bold">Jean Dupont</span>
+                <span className="text-[11px]">Tél : 06 06 77 88 99</span>
+                <span className="text-[11px]">jean@jean.com</span>
               </div>
             );
           }
@@ -2734,12 +2770,12 @@ export function LandingRoutePage() {
               <div className="kr-reveal inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-400">
                 Assistant commercial IA pour artisans
               </div>
-              <h1 className="kr-reveal kr-reveal-delay-1 mt-5 max-w-3xl text-[clamp(2.45rem,5vw,4.5rem)] font-bold leading-[1.04] tracking-tight">
+              <h1 className={`kr-reveal kr-reveal-delay-1 mt-5 max-w-3xl ${LANDING_H1_CLASS}`}>
                 Transformez chaque demande en chantier qualifi&eacute;.
               </h1>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-xl text-base leading-7 text-zinc-400 md:text-lg">
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5 max-w-3xl mx-0">
                 Kadria qualifie vos prospects 24h/24, sur votre site et par t&eacute;l&eacute;phone. Chaque conversation devient un dossier complet, prioris&eacute; et pr&ecirc;t &agrave; &ecirc;tre chiffr&eacute;.
-              </p>
+              </SectionDescription>
               <div className="kr-reveal kr-reveal-delay-3 mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/demo-request"
@@ -2776,30 +2812,30 @@ export function LandingRoutePage() {
         </section>
 
         {/* 3. SOCIAL PROOF */}
-        <section className="w-full border-y border-zinc-800 bg-zinc-900 py-16">
+        <section className={`${LANDING_SECTION_CLASS} border-y border-zinc-800 bg-zinc-900`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal kr-reveal-delay-1 text-2xl font-extrabold tracking-tight md:text-3xl">
+              <SectionTitle className="kr-reveal kr-reveal-delay-1">
                 Ce que Kadria change concr&egrave;tement
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-4 text-base leading-7 text-zinc-400 md:text-lg">
+              </SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
                 Moins de temps perdu, plus de demandes qualifi&eacute;es et un suivi commercial enfin centralis&eacute;.
-              </p>
+              </SectionDescription>
             </div>
             <BenefitsGrid />
           </div>
         </section>
 
         {/* 4. PROBLEME -> SOLUTION */}
-        <section className="w-full bg-zinc-950 py-24">
+        <section className={`${LANDING_SECTION_CLASS} bg-zinc-950`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
+              <SectionTitle className="kr-reveal kr-reveal-delay-1">
                 Chaque demande m&eacute;rite une r&eacute;ponse. Chaque r&eacute;ponse m&eacute;rite un chantier.
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              </SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
                 Les demandes oubli&eacute;es, incompl&egrave;tes ou trait&eacute;es trop tard repr&eacute;sentent des opportunit&eacute;s perdues. Kadria les transforme en dossiers qualifi&eacute;s, pr&ecirc;ts &agrave; &ecirc;tre chiffr&eacute;s.
-              </p>
+              </SectionDescription>
             </div>
             <div className="relative mt-12 grid items-stretch gap-8 lg:grid-cols-2">
               {/* Flèche centrale */}
@@ -2893,15 +2929,15 @@ export function LandingRoutePage() {
           </div>
         </section>
         {/* 4. COMMENT CA MARCHE */}
-        <section id="comment-ca-marche" className="w-full border-y border-zinc-800 bg-zinc-900/70 py-24">
+        <section id="comment-ca-marche" className={`${LANDING_SECTION_CLASS} border-y border-zinc-800 bg-zinc-900/70`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
+              <SectionTitle className="kr-reveal kr-reveal-delay-1">
                 Comment &ccedil;a marche ?
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              </SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
                 Installez Kadria en quelques minutes et laissez l&apos;assistant g&eacute;rer vos demandes.
-              </p>
+              </SectionDescription>
             </div>
 
             <div className="relative mt-14">
@@ -2938,7 +2974,7 @@ export function LandingRoutePage() {
                       </div>
                       <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-5 transition-colors hover:border-green-500/30 hover:bg-zinc-900/80 md:mt-16">
                         <span className="text-xs font-bold uppercase tracking-[0.16em] text-green-500">0{index + 1}</span>
-                        <h3 className="mt-3 text-base font-bold leading-snug text-white">{step.title}</h3>
+                        <CardTitle className="mt-3 leading-snug text-white">{step.title}</CardTitle>
                         <p className="mt-3 text-sm leading-6 text-zinc-400">{step.description}</p>
                       </div>
                     </div>
@@ -2973,22 +3009,22 @@ export function LandingRoutePage() {
           </div>
         </section>
         {/* 4. REMPLACE 12 OUTILS */}
-        <section className="kr-tools-section relative w-full border-b border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-24">
+        <section className="kr-tools-section relative border-b border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-24 lg:py-32">
           <div className="relative mx-auto max-w-6xl">
             <div className="flex justify-center">
               <span className="kr-reveal rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.08)] px-4 py-1 text-xs font-bold text-[var(--accent)]">
                 KADRIA PRO
               </span>
             </div>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-center font-black tracking-[-0.02em] text-[clamp(2.2rem,5vw,3.8rem)]">
+            <SectionTitle className="kr-reveal kr-reveal-delay-1 mt-4 text-center">
               Remplacez jusqu&apos;à 12 outils.
               <br />
               Pilotez toute votre activité depuis <span className="text-[var(--accent)]">une seule plateforme.</span>
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-4 max-w-2xl text-center text-lg leading-relaxed text-[var(--text-2)]">
+            </SectionTitle>
+            <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5 text-center text-[var(--text-2)]">
               Capturez vos demandes, qualifiez vos prospects, envoyez vos devis et suivez votre activité depuis un
               seul tableau de bord.
-            </p>
+            </SectionDescription>
 
             <div
               className="relative mt-16 flex min-h-[720px] items-center justify-center md:min-h-[480px]"
@@ -3032,7 +3068,7 @@ export function LandingRoutePage() {
                       <span className="mt-5 text-xs font-bold" style={{ color: card.color }}>
                         {card.number}
                       </span>
-                      <h3 className="mt-2 text-[22px] font-extrabold">{card.title}</h3>
+                      <CardTitle className="mt-2">{card.title}</CardTitle>
                       <p className="mt-3 text-sm leading-relaxed text-[var(--text-2)]">{card.description}</p>
                       <div className="mt-5 flex flex-col gap-2">
                         {card.features.map((f) => (
@@ -3139,7 +3175,7 @@ export function LandingRoutePage() {
         </section>
 
         {/* 5. FEATURES — BENTO GRID */}
-        <section className="relative w-full overflow-hidden bg-zinc-950 py-24">
+        <section className={`${LANDING_SECTION_CLASS} relative overflow-hidden bg-zinc-950`}>
           <div
             className="pointer-events-none absolute -left-24 -top-24 -z-0 h-[400px] w-[400px] rounded-full"
             style={{ background: 'rgba(34,197,94,0.04)', filter: 'blur(80px)' }}
@@ -3151,15 +3187,12 @@ export function LandingRoutePage() {
           <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Fonctionnalités</p>
-              <h2
-                className="kr-reveal kr-reveal-delay-1 mt-4 font-extrabold tracking-tight"
-                style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)' }}
-              >
+              <SectionTitle className="kr-reveal kr-reveal-delay-1 mt-4">
                 Deux assistants. <span style={{ color: 'var(--accent)' }}>Une seule plateforme.</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-4 max-w-2xl text-sm text-zinc-400">
+              </SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
                 Kadria répond sur votre site et au téléphone, qualifie vos prospects et crée les dossiers — même quand vous êtes sur le chantier.
-              </p>
+              </SectionDescription>
             </div>
             <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
@@ -3191,17 +3224,17 @@ export function LandingRoutePage() {
         </section>
 
         {/* DASHBOARD PREVIEW */}
-        <section className="w-full bg-zinc-900 py-24">
+        <section className={`${LANDING_SECTION_CLASS} bg-zinc-900`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              <SectionTitle className="kr-reveal kr-reveal-delay-1 mt-4">
                 4 fonctionnalités clés,{' '}
                 <span className="kr-gradient-text">révélées en toute fluidité</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              </SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
                 Une expérience moderne et interactive pour piloter votre activité depuis un seul tableau de bord.
-              </p>
+              </SectionDescription>
             </div>
             <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-6xl">
               <DashboardCarousel />
@@ -3213,13 +3246,13 @@ export function LandingRoutePage() {
         <SimulateurSection />
 
         {/* METIERS */}
-        <section id="metiers" className="w-full bg-zinc-900 py-24">
+        <section id="metiers" className={`${LANDING_SECTION_CLASS} bg-zinc-900`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Kadria parle le même langage que vous</h2>
-              <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              <SectionTitle className="kr-reveal">Kadria parle le même langage que vous</SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-1 mt-5">
                 Chaque métier a ses questions, son vocabulaire, ses chantiers. Kadria s&apos;adapte.
-              </p>
+              </SectionDescription>
             </div>
             <div className="kr-reveal kr-reveal-delay-2 mt-10 flex flex-wrap justify-center gap-3">
               {TRADES_DATA.map((m) => (
@@ -3245,9 +3278,9 @@ export function LandingRoutePage() {
                   metierCardVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                 }`}
               >
-                <h3 className="text-xl font-semibold text-white">
+                <CardTitle className="text-white">
                   {displayTrade.emoji} {displayTrade.label}
-                </h3>
+                </CardTitle>
 
                 <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="rounded-lg bg-zinc-900/60 p-4">
@@ -3286,20 +3319,20 @@ export function LandingRoutePage() {
         </section>
 
         {/* PROGRAMME LANCEMENT */}
-        <section className="w-full bg-zinc-950 py-24">
+        <section className={`${LANDING_SECTION_CLASS} bg-zinc-950`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="kr-reveal kr-glass rounded-xl p-8 md:p-12">
               <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
                 Programme de lancement
               </span>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+              <SectionTitle className="kr-reveal kr-reveal-delay-1 mt-4">
                 Programme de lancement <span className="text-green-500">Kadria</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base leading-7 text-zinc-400">
+              </SectionTitle>
+              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl mx-0">
                 Kadria est en cours de déploiement auprès d un nombre limité d artisans et d entreprises du bâtiment.
                 Les premiers partenaires bénéficient d un accompagnement personnalisé pour configurer leur assistant,
                 connecter leur site et leur ligne téléphonique, et adapter Kadria à leur métier.
-              </p>
+              </SectionDescription>
               <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base font-semibold leading-7 text-white">
                 Vous souhaitez faire partie des premiers professionnels à tester Kadria ?
               </p>
@@ -3321,13 +3354,13 @@ export function LandingRoutePage() {
         </section>
 
         {/* 6. TARIFS */}
-        <section className="w-full bg-zinc-900 py-24">
+        <section className={`${LANDING_SECTION_CLASS} bg-zinc-900`}>
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              <SectionTitle className="kr-reveal kr-reveal-delay-1 mt-4">
                 Un tarif simple, <span className="kr-gradient-text">adapté à votre activité.</span>
-              </h2>
+              </SectionTitle>
             </div>
             <div className="mt-12 grid items-center gap-4 md:grid-cols-3">
               {plans.map((plan, i) => (
@@ -3344,7 +3377,7 @@ export function LandingRoutePage() {
                       Populaire
                     </span>
                   )}
-                  <h3 className="mt-3 text-lg font-semibold">{plan.name}</h3>
+                  <CardTitle className="mt-3">{plan.name}</CardTitle>
                   <p className="mt-1 text-2xl font-bold">
                     {plan.price}
                     {plan.price !== 'Sur devis' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
@@ -3383,19 +3416,19 @@ export function LandingRoutePage() {
         </section>
 
         {/* 7. CTA FINAL */}
-        <section className="relative w-full overflow-hidden border-y border-zinc-800 bg-zinc-900 px-6 py-24">
+        <section className="relative overflow-hidden border-y border-zinc-800 bg-zinc-900 px-6 py-24 lg:py-32">
           <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(34,197,94,0.06)_0%,transparent_70%)]" />
           <div className="relative z-10 mx-auto max-w-2xl text-center">
             <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">
               Programme de lancement
             </p>
-            <h2 className="kr-reveal kr-reveal-delay-1 mb-4 mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight">
+            <SectionTitle className="kr-reveal kr-reveal-delay-1 mb-4 mt-4 text-center">
               Rejoignez les premiers artisans Kadria
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mx-auto mb-8 max-w-xl text-lg leading-7 text-zinc-400">
+            </SectionTitle>
+            <SectionDescription className="kr-reveal kr-reveal-delay-2 mb-8 mt-5 max-w-3xl">
               Kadria qualifie vos prospects 24h/24, répond à vos appels et remplit votre dashboard — pendant que vous
               êtes sur le chantier.
-            </p>
+            </SectionDescription>
             <Link
               href="/register"
               className="kr-reveal kr-reveal-delay-3 kr-badge-pulse inline-flex items-center gap-2 rounded-xl bg-green-500 px-10 py-4 text-lg font-bold text-zinc-950 transition-all duration-200 hover:scale-[1.02] hover:opacity-90"
@@ -3516,7 +3549,7 @@ export function FeaturesRoutePage() {
   return (
     <PageShell>
       <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-32">
-        <SectionTitle
+        <RouteSectionTitle
           eyebrow="Fonctionnalites"
           title="Tout ce dont un artisan a besoin pour ne plus perdre de prospects."
           text="Qualification automatique, appels, dashboard projets, suivi commercial et reporting dans une experience coherente."
@@ -3973,7 +4006,7 @@ export function DemoRoutePage() {
   return (
     <PageShell>
       <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-32">
-        <SectionTitle
+        <RouteSectionTitle
           eyebrow="Demo"
           title="Voyez comment une demande devient un dossier chantier pret a traiter."
           text="Voici une simulation du parcours de qualification, de la premiere demande au dossier commercial."
