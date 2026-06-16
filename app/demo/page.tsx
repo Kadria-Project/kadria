@@ -134,7 +134,7 @@ export default function DemoPage() {
           </div>
         </section>
 
-        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-[1fr_1fr]">
           <div className="kr-reveal overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/80">
             <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
               <div>
@@ -163,7 +163,7 @@ export default function DemoPage() {
           </div>
 
           <div className="kr-reveal space-y-6">
-            <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
+            <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6 lg:min-h-[820px]">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
@@ -178,31 +178,60 @@ export default function DemoPage() {
                 </span>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5">
-                <div className="flex items-start justify-between gap-4">
+              <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/90">
+                <div className="flex flex-col gap-4 border-b border-zinc-800 px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-lg font-semibold text-white">Renovation salle de bain</p>
-                    <p className="mt-1 text-sm text-zinc-400">Marie Leroy - Lyon 3e</p>
+                    <p className="text-lg font-semibold text-white">Analyse Kadria</p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Le dossier est structure et priorise des le premier echange.
+                    </p>
                   </div>
-                  <span className="rounded-full bg-green-500/[0.12] px-3 py-1 text-sm font-semibold text-green-500">
-                    Score 92
+                  <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-sm font-semibold text-green-500">
+                    Prospect chaud - Score 92
                   </span>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <InfoPill label="Budget" value="8 000 - 12 000 EUR" />
-                  <InfoPill label="Delai" value="Sous 1 mois" />
-                  <InfoPill label="Besoin" value="Renovation complete" />
-                  <InfoPill label="Zone" value="Lyon et alentours" />
+                <div className="grid border-b border-zinc-800 sm:grid-cols-2 xl:grid-cols-4">
+                  <SignalCell
+                    title="Budget coherent"
+                    value="8 000 - 12 000 EUR"
+                    status="ok"
+                  />
+                  <SignalCell title="Delai realiste" value="Sous 1 mois" status="ok" />
+                  <SignalCell title="Contact verifie" value="Telephone + email" status="ok" />
+                  <SignalCell title="Photos jointes" value="3 photos recues" status="ok" />
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                    Resume IA
+                <div className="border-b border-zinc-800 px-5 py-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                    Resume du projet
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    Projet pret a etre rappele. Besoin clair, budget coherent, demande
-                    exploitable pour preparer un devis.
+                  <div className="mt-4 space-y-3">
+                    <LargeInfoRow label="Le projet" value="Renovation salle de bain - appartement 78m2" />
+                    <LargeInfoRow label="L enjeu" value="8 000 - 12 000 EUR - Sous 1 mois" />
+                    <LargeInfoRow label="Priorite" value="Prospect chaud" accent />
+                    <LargeInfoRow label="Zone" value="Lyon 3e et alentours" />
+                  </div>
+                </div>
+
+                <div className="border-b border-zinc-800 px-5 py-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                    Synthese IA
+                  </p>
+                  <p className="mt-4 text-base leading-8 text-zinc-200">
+                    Projet pret a etre rappele rapidement. Besoin clair, budget coherent avec la
+                    prestation, delai court et cliente disponible pour transmettre les derniers
+                    details avant chiffrage.
+                  </p>
+                </div>
+
+                <div className="bg-green-500/[0.06] px-5 py-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                    Recommandation Kadria
+                  </p>
+                  <p className="mt-3 text-base leading-7 text-zinc-100">
+                    Contactez ce prospect sous 24h pour proposer une visite technique. Toutes les
+                    informations utiles sont deja centralisees pour preparer le devis.
                   </p>
                 </div>
               </div>
@@ -477,6 +506,42 @@ function InfoPill({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-2 text-sm font-medium text-white">{value}</p>
+    </div>
+  );
+}
+
+function SignalCell({
+  title,
+  value,
+  status,
+}: {
+  title: string;
+  value: string;
+  status: 'ok' | 'warning';
+}) {
+  return (
+    <div className="border-b border-zinc-800 px-5 py-4 sm:border-r sm:last:border-r-0 xl:border-b-0">
+      <p className={`text-sm font-semibold ${status === 'ok' ? 'text-white' : 'text-amber-300'}`}>
+        {status === 'ok' ? '✓' : '!'} {title}
+      </p>
+      <p className="mt-2 text-sm text-zinc-400">{value}</p>
+    </div>
+  );
+}
+
+function LargeInfoRow({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="grid gap-1 sm:grid-cols-[120px_1fr] sm:items-start">
+      <p className="text-sm text-zinc-500">{label}</p>
+      <p className={`text-base font-medium ${accent ? 'text-green-500' : 'text-white'}`}>{value}</p>
     </div>
   );
 }
