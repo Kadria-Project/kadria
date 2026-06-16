@@ -1871,6 +1871,15 @@ function countUp(element: HTMLElement, target: number, duration: number, prefix:
   requestAnimationFrame(animate);
 }
 
+const BENEFITS_DATA = [
+  { icon: MessageCircle, title: 'Ne laissez plus une demande sans r\u00e9ponse', description: "R\u00e9pondez instantan\u00e9ment \u00e0 vos prospects, m\u00eame en dehors de vos horaires d'ouverture." },
+  { icon: ClipboardCheck, title: 'Recevez des dossiers complets d\u00e8s le premier \u00e9change', description: 'Budget, d\u00e9lai, besoin, localisation : les informations essentielles sont collect\u00e9es automatiquement.' },
+  { icon: Layers, title: 'Centralisez tous vos \u00e9changes au m\u00eame endroit', description: 'Fini les informations dispers\u00e9es entre appels, SMS, e-mails et formulaires.' },
+  { icon: Target, title: 'Priorisez les opportunit\u00e9s les plus prometteuses', description: 'Kadria vous aide \u00e0 identifier les projets les plus urgents et les plus qualifi\u00e9s.' },
+  { icon: Receipt, title: 'Cr\u00e9ez et envoyez vos devis plus rapidement', description: 'Transformez une demande qualifi\u00e9e en devis en quelques clics.' },
+  { icon: LayoutDashboard, title: 'Gardez le contr\u00f4le de votre activit\u00e9', description: 'Suivez vos demandes, vos devis et votre pipeline commercial depuis un seul tableau de bord.' },
+];
+
 function metricBorderClasses(i: number) {
   const base = i < 5 ? 'border-b border-zinc-800' : 'border-b-0';
   const mdRight = i % 2 === 0 ? 'md:border-r md:border-zinc-800' : 'md:border-r-0';
@@ -1880,83 +1889,28 @@ function metricBorderClasses(i: number) {
   return `${base} ${mdRight} ${mdBottom} ${lgRight} ${lgBottom}`;
 }
 
-function MetricsGrid() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const valueRefs = useRef<(HTMLParagraphElement | null)[]>([]);
-  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReduced) {
-      itemRefs.current.forEach((el) => el?.classList.add('metric-visible'));
-      lineRefs.current.forEach((el) => el?.classList.add('metric-line-visible'));
-      METRICS_DATA.forEach((m, i) => {
-        const el = valueRefs.current[i];
-        if (el && m.countTarget !== null) {
-          el.textContent = `${m.prefix}${m.countTarget}${m.suffix}`;
-        }
-      });
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const index = itemRefs.current.indexOf(entry.target as HTMLDivElement);
-          if (index === -1) return;
-          const delay = index * 100;
-          const metric = METRICS_DATA[index];
-
-          setTimeout(() => {
-            entry.target.classList.add('metric-visible');
-            const valueEl = valueRefs.current[index];
-            if (valueEl && metric.countTarget !== null) {
-              countUp(valueEl, metric.countTarget, 1200, metric.prefix, metric.suffix);
-            }
-          }, delay);
-
-          setTimeout(() => {
-            lineRefs.current[index]?.classList.add('metric-line-visible');
-          }, delay + 300);
-
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.2 }
-    );
-
-    itemRefs.current.forEach((el) => el && observer.observe(el));
-
-    return () => observer.disconnect();
-  }, []);
-
+function BenefitsGrid() {
   return (
-    <div ref={containerRef} className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {METRICS_DATA.map((m, i) => (
-        <div
-          key={m.label}
-          ref={(el) => { itemRefs.current[i] = el; }}
-          style={{ transitionDelay: `${i * 100}ms` }}
-          className={`metric-hidden px-8 py-10 text-center ${metricBorderClasses(i)}`}
-        >
-          <p
-            ref={(el) => { valueRefs.current[i] = el; }}
-            className="text-[clamp(2.2rem,4vw,3.2rem)] font-black leading-none tracking-[-0.02em] text-green-500"
+    <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {BENEFITS_DATA.map((item, i) => {
+        const Icon = item.icon;
+        return (
+          <div
+            key={item.title}
+            className="kr-reveal rounded-xl border border-zinc-800 bg-zinc-950/60 p-6 transition-colors hover:border-green-500/30 hover:bg-zinc-900/80"
+            style={{ transitionDelay: (i * 70) + 'ms' }}
           >
-            {m.valeur}
-          </p>
-          <span ref={(el) => { lineRefs.current[i] = el; }} className="metric-line" />
-          <p className="mt-2 text-base font-bold text-white">{m.label}</p>
-          <p className="mx-auto mt-1 min-h-[36px] max-w-[160px] text-center text-[13px] leading-[1.5] text-zinc-400">{m.description}</p>
-        </div>
-      ))}
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-green-500/20 bg-green-500/[0.08] text-green-500">
+              <Icon size={20} />
+            </div>
+            <h3 className="mt-5 text-base font-bold leading-snug text-white">{item.title}</h3>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">{item.description}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }
-
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -2442,12 +2396,14 @@ export function LandingRoutePage() {
         <section className="w-full border-y border-zinc-800 bg-zinc-900 py-16">
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Résultats</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-3 text-2xl font-extrabold tracking-tight md:text-3xl">
-                Ce que Kadria change concrètement
+              <h2 className="kr-reveal kr-reveal-delay-1 text-2xl font-extrabold tracking-tight md:text-3xl">
+                Ce que Kadria change concr&egrave;tement
               </h2>
+              <p className="kr-reveal kr-reveal-delay-2 mt-4 text-base leading-7 text-zinc-400 md:text-lg">
+                Moins de temps perdu, plus de demandes qualifi&eacute;es et un suivi commercial enfin centralis&eacute;.
+              </p>
             </div>
-            <MetricsGrid />
+            <BenefitsGrid />
           </div>
         </section>
 
