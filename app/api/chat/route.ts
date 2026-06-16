@@ -409,14 +409,35 @@ export async function POST(request: Request) {
     try {
       parsed = JSON.parse(rawText)
     } catch {
-      console.error('[KADRIA] JSON parse failed, raw:', rawText)
-      parsed = {
-        reply: rawText,
-        dossierUpdate: {},
-        completenessScore: 0,
-        readyToSave: false,
-        aiSummary: '',
-        expectedField: '',
+      console.error('[KADRIA] JSON parse failed, attempting regex extraction. Raw:', rawText)
+      // Try to extract a JSON object from the raw text (handles markdown code blocks etc.)
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0])
+        } catch {
+          console.error('[KADRIA] Regex JSON extraction also failed')
+          parsed = {
+            reply: 'Une erreur est survenue, pouvez-vous reformuler ?',
+            dossierUpdate: {},
+            completenessScore: 0,
+            readyToSave: false,
+            aiSummary: '',
+            expectedField: '',
+            quickReplies: [],
+          }
+        }
+      } else {
+        // rawText is plain text (not JSON) — use it as the reply directly
+        parsed = {
+          reply: rawText || 'Une erreur est survenue, pouvez-vous reformuler ?',
+          dossierUpdate: {},
+          completenessScore: 0,
+          readyToSave: false,
+          aiSummary: '',
+          expectedField: '',
+          quickReplies: [],
+        }
       }
     }
 

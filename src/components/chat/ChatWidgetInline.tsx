@@ -24,6 +24,16 @@ interface Props {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function parseReply(raw?: string): { text: string; options: string[] } {
   if (!raw) return { text: '', options: [] }
+  // Guard: if raw looks like a JSON object, extract the reply field to avoid displaying raw JSON
+  const trimmed = raw.trim()
+  if (trimmed.startsWith('{')) {
+    try {
+      const obj = JSON.parse(trimmed)
+      if (typeof obj.reply === 'string' && obj.reply) {
+        return { text: obj.reply.trim(), options: Array.isArray(obj.quickReplies) ? obj.quickReplies : [] }
+      }
+    } catch { /* not valid JSON, fall through */ }
+  }
   const match = raw.match(/<<SUGGESTIONS>>([\s\S]*?)<<\/SUGGESTIONS>>/)
   if (!match) return { text: raw.trim(), options: [] }
   const options = match[1].split('|').map(o => o.trim()).filter(Boolean)
