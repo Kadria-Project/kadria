@@ -662,7 +662,13 @@ function QualificationShowcase() {
                 <span
                   key={`icon-${step.title}-${activeStep}`}
                   className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-shadow duration-300 ${isActive ? 'kr-step-icon-enter' : ''}`}
-                  style={{ backgroundColor: step.bg, boxShadow: `0 0 16px ${step.glow}` }}
+                  style={{
+                    backgroundColor: step.bg,
+                    boxShadow: isActive
+                      ? `0 0 ${index === QUALIFICATION_STEPS.length - 1 ? 18 : 16}px ${step.glow}`
+                      : 'none',
+                    transition: 'box-shadow 300ms ease',
+                  }}
                 >
                   <Icon size={16} style={{ color: step.color }} />
                   <span
@@ -1694,8 +1700,8 @@ export const ANIMATION_STYLES = `
     position: absolute;
     inset: 0;
     z-index: -1;
-    filter: blur(60px);
-    background: radial-gradient(ellipse at center, rgba(34,197,94,0.12) 0%, transparent 70%);
+    filter: blur(80px);
+    background: radial-gradient(ellipse at center, rgba(34,197,94,0.04) 0%, transparent 70%);
     pointer-events: none;
   }
 
