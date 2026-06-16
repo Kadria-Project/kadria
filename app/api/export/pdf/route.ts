@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 type ExportProject = {
   id: string
@@ -293,10 +293,11 @@ function buildMonthlyHtml(projects: ExportProject[], artisanName: string): strin
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+  const access = await requireFeatureAccess('pdfExports')
+  if (!access.ok) {
+    return NextResponse.json(access.body, { status: access.status })
   }
+  const session = access.session
 
   const body = await request.json()
   const projects: ExportProject[] = Array.isArray(body.projects) ? body.projects : []

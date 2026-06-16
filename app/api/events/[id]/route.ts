@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { airtableBase, updateEvent, deleteEvent } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 async function getAuthorizedEvent(id: string, artisanId: string) {
   let record
@@ -23,18 +23,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifi√©' }, { status: 401 })
+    const access = await requireFeatureAccess('calendar')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
 
     const { id } = await params
-    const event = await getAuthorizedEvent(id, session.artisanId)
+    const event = await getAuthorizedEvent(id, access.session.artisanId)
     if (event.status === 404) {
-      return NextResponse.json({ success: false, error: '√âv√©nement introuvable' }, { status: 404 })
+      return NextResponse.json({ success: false, error: '…vÈnement introuvable' }, { status: 404 })
     }
     if (event.status === 403) {
-      return NextResponse.json({ success: false, error: 'Acc√®s non autoris√©' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'AccËs non autorisÈ' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -53,18 +53,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifi√©' }, { status: 401 })
+    const access = await requireFeatureAccess('calendar')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
 
     const { id } = await params
-    const event = await getAuthorizedEvent(id, session.artisanId)
+    const event = await getAuthorizedEvent(id, access.session.artisanId)
     if (event.status === 404) {
-      return NextResponse.json({ success: false, error: '√âv√©nement introuvable' }, { status: 404 })
+      return NextResponse.json({ success: false, error: '…vÈnement introuvable' }, { status: 404 })
     }
     if (event.status === 403) {
-      return NextResponse.json({ success: false, error: 'Acc√®s non autoris√©' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'AccËs non autorisÈ' }, { status: 403 })
     }
 
     await deleteEvent(id)

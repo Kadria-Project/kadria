@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanByEmail, getArtisanConfig } from '@/src/lib/airtable'
 import { verifyMagicToken, createToken } from '@/src/lib/auth-utils'
+import { normalizePlan } from '@/src/lib/plans'
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token')
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       companyName: artisan.companyName,
       primaryColor: artisan.primaryColor || '#22c55e',
       role: artisan.role || '',
-      plan: artisan.plan || 'Performance',
+      plan: normalizePlan(artisan.plan || 'Performance'),
       statut: artisan.statut || '',
       firstName: artisan.firstName || '',
       lastName: artisan.lastName || '',

@@ -41,6 +41,8 @@ import {
 import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { FeatureGate, PlanProvider } from '@/src/components/FeatureGate';
+import { hasFeature, normalizePlan, type PlanKey } from '@/src/lib/plans';
 
 const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
@@ -82,10 +84,18 @@ export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   'Perdu':        { bg: 'rgba(69,10,10,0.5)',    color: '#f87171' },
 };
 
-export default function ArtisanDashboardPage() {
+export default function ArtisanDashboardPage({
+  plan = 'essentiel',
+}: {
+  plan?: PlanKey | string;
+}) {
+  const normalizedPlan = normalizePlan(plan);
+
   return (
     <AuthGuard>
-      <Dashboard />
+      <PlanProvider plan={normalizedPlan}>
+        <Dashboard plan={normalizedPlan} />
+      </PlanProvider>
     </AuthGuard>
   );
 }
@@ -659,8 +669,10 @@ function navButtonStyle(active: boolean): React.CSSProperties {
   };
 }
 
-function Dashboard() {
+function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
+  const canAccessCalendar = hasFeature(plan, 'calendar');
+  const canExportPdf = hasFeature(plan, 'pdfExports');
 
   const user = {
     email: 'demo@kadria.local',
@@ -719,6 +731,12 @@ function Dashboard() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  useEffect(() => {
+    if (activeView === 'calendar' && !canAccessCalendar) {
+      setActiveView('commercial');
+    }
+  }, [activeView, canAccessCalendar]);
 
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
     if (typeof window === 'undefined') return 'list';
@@ -929,6 +947,12 @@ function Dashboard() {
   };
 
   const handleExportPDF = async (type: 'list' | 'monthly') => {
+    if (!canExportPdf) {
+      setExportMenuOpen(false);
+      showToast('Fonction disponible avec le plan Performance', true);
+      return;
+    }
+
     setExportMenuOpen(false);
     showToast('✓ PDF en cours de génération...');
 
@@ -1077,9 +1101,11 @@ function Dashboard() {
             📊 Suivi commercial
           </button>
 
-          <button onClick={() => setActiveView('calendar')} style={{ ...navButtonStyle(activeView === 'calendar'), ...(isMobile ? { flex: 1 } : {}) }}>
-            📅 Calendrier
-          </button>
+          <FeatureGate feature="calendar" requiredPlan="performance" className={isMobile ? 'flex-1' : ''}>
+            <button onClick={() => setActiveView('calendar')} style={{ ...navButtonStyle(activeView === 'calendar'), ...(isMobile ? { flex: 1 } : {}) }}>
+              Calendrier
+            </button>
+          </FeatureGate>
 
           <button
             onClick={() => router.push('/onboarding')}
@@ -1302,9 +1328,11 @@ function Dashboard() {
 
       {/* Vue active */}
       {activeView === 'calendar' ? (
-        <div style={{ padding: '0 32px' }}>
-          <Calendar artisanId="" />
-        </div>
+        <FeatureGate feature="calendar" requiredPlan="performance">
+          <div style={{ padding: '0 32px' }}>
+            <Calendar artisanId="" />
+          </div>
+        </FeatureGate>
       ) : (
         <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
@@ -1741,29 +1769,53 @@ function Dashboard() {
                         onClick={handleExportCSV}
                         className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                       >
-                        📄 Exporter en CSV
-                        <p className="text-xs text-zinc-400">Tous les dossiers filtrés</p>
+                        Exporter en CSV
+                        <p className="text-xs text-zinc-400">Tous les dossiers filtres</p>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleExportPDF('list')}
-                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
-                      >
-                        📑 Exporter en PDF
-                        <p className="text-xs text-zinc-400">Rapport complet mis en forme</p>
-                      </button>
+                      {canExportPdf ? (
+                        <button
+                          type="button"
+                          onClick={() => handleExportPDF('list')}
+                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                        >
+                          Exporter en PDF
+                          <p className="text-xs text-zinc-400">Rapport complet mis en forme</p>
+                        </button>
+                      ) : (
+                        <FeatureGate feature="pdfExports" requiredPlan="performance">
+                          <button
+                            type="button"
+                            className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200"
+                          >
+                            Exporter en PDF
+                            <p className="text-xs text-zinc-400">Rapport complet mis en forme</p>
+                          </button>
+                        </FeatureGate>
+                      )}
 
                       <div className="my-1 border-t border-zinc-800" />
 
-                      <button
-                        type="button"
-                        onClick={() => handleExportPDF('monthly')}
-                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
-                      >
-                        📊 Rapport mensuel PDF
-                        <p className="text-xs text-zinc-400">Synthèse du mois en cours</p>
-                      </button>
+                      {canExportPdf ? (
+                        <button
+                          type="button"
+                          onClick={() => handleExportPDF('monthly')}
+                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                        >
+                          Rapport mensuel PDF
+                          <p className="text-xs text-zinc-400">Synthese du mois en cours</p>
+                        </button>
+                      ) : (
+                        <FeatureGate feature="pdfExports" requiredPlan="performance">
+                          <button
+                            type="button"
+                            className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200"
+                          >
+                            Rapport mensuel PDF
+                            <p className="text-xs text-zinc-400">Synthese du mois en cours</p>
+                          </button>
+                        </FeatureGate>
+                      )}
                     </div>
                   )}
 

@@ -1,5 +1,12 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import {
+  getRequiredPlanForFeature,
+  hasFeature,
+  normalizePlan,
+  type PlanFeatureKey,
+  type PlanKey,
+} from '@/src/lib/plans'
 
 function getAuthSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
@@ -18,7 +25,7 @@ export interface AuthPayload {
   companyName: string
   primaryColor: string
   role?: string
-  plan?: string
+  plan?: PlanKey
   statut?: string
   firstName?: string
   lastName?: string
@@ -26,7 +33,7 @@ export interface AuthPayload {
 }
 
 export async function createToken(payload: AuthPayload): Promise<string> {
-  return new SignJWT({ ...payload })
+  return new SignJWT({ ...payload, plan: normalizePlan(payload.plan) })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
     .sign(getAuthSecret())
@@ -45,13 +52,65 @@ export async function getSession(): Promise<AuthPayload | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get('kadria-auth')?.value
   if (!token) return null
-  return verifyToken(token)
+  const session = await verifyToken(token)
+  if (!session) return null
+  return {
+    ...session,
+    plan: normalizePlan(session.plan),
+  }
 }
 
 export async function requireAdminSession(): Promise<AuthPayload | null> {
   const session = await getSession()
   if (!session || session.role !== 'Admin') return null
   return session
+}
+
+export type FeatureAccessResult =
+  | { ok: true; session: AuthPayload }
+  | {
+      ok: false
+      status: 401 | 403
+      body: {
+        success: false
+        error: string
+        feature?: PlanFeatureKey
+        currentPlan?: PlanKey
+        requiredPlan?: PlanKey
+      }
+    }
+
+export async function requireFeatureAccess(
+  feature: PlanFeatureKey
+): Promise<FeatureAccessResult> {
+  const session = await getSession()
+
+  if (!session) {
+    return {
+      ok: false,
+      status: 401,
+      body: { success: false, error: 'Non authentifié' },
+    }
+  }
+
+  if (!hasFeature(session.plan, feature)) {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        success: false,
+        error: 'Plan insuffisant',
+        feature,
+        currentPlan: normalizePlan(session.plan),
+        requiredPlan: getRequiredPlanForFeature(feature),
+      },
+    }
+  }
+
+  return {
+    ok: true,
+    session,
+  }
 }
 
 export async function createMagicToken(email: string): Promise<string> {
