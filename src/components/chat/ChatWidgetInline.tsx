@@ -152,10 +152,11 @@ export default function ChatWidgetInline({
   const isAddressMode = expectedField === 'siteAddress'
 
   // ── Photo mode detection ─────────────────────────────────────────────────
+  // Use expectedField (set from API response) as primary signal; fall back to
+  // text-based detection in case the field is missing
   const lastAssistantMsg = messages.filter(m => m.role === 'assistant').pop()
-  const isPhotoMode = lastAssistantMsg?.content?.toLowerCase().includes('photo') ||
-    lastAssistantMsg?.content?.toLowerCase().includes('document') ||
-    lastAssistantMsg?.content?.toLowerCase().includes('plan') ||
+  const isPhotoMode = expectedField === 'photos' ||
+    lastAssistantMsg?.content?.toLowerCase().includes('photo') ||
     lastAssistantMsg?.content?.includes('📸')
 
   // ── Input change with address debounce ───────────────────────────────────
@@ -238,8 +239,6 @@ export default function ChatWidgetInline({
 
     if (data.completenessScore > 0) setScore(data.completenessScore)
     setExpectedField(data.expectedField || null)
-
-    if (data.expectedField !== 'photos') setPhotosAnswered(true)
 
     if (data.expectedField === 'contactForm') {
       setShowContactForm(true)
