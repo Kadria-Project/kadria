@@ -17,7 +17,7 @@ export function DarkNav() {
   }, []);
 
   const navLinks = [
-    { href: '/demo', label: 'Essayer' },
+    { href: '/demo', label: 'Mode démo' },
     { href: '/tarifs', label: 'Tarifs' },
   ];
 
