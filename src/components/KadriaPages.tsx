@@ -205,6 +205,34 @@ const LANDING_FAQ_ITEMS = [
   },
 ] as const;
 
+const LANDING_REASSURANCE_ITEMS = [
+  {
+    icon: Rocket,
+    title: 'Installation accompagnée',
+    description: 'Nous vous aidons à configurer Kadria selon votre activité.',
+  },
+  {
+    icon: Globe,
+    title: 'Compatible avec votre site actuel',
+    description: 'Ajoutez Kadria à votre site sans le refaire.',
+  },
+  {
+    icon: CheckCircle,
+    title: 'Sans engagement',
+    description: 'Faites évoluer votre formule à votre rythme.',
+  },
+  {
+    icon: Shield,
+    title: 'Données sécurisées',
+    description: 'Vos informations restent isolées et protégées.',
+  },
+  {
+    icon: MessageCircle,
+    title: 'Support inclus',
+    description: 'Une équipe disponible pour vous accompagner.',
+  },
+] as const;
+
 const demoProjects = [
   {
     client: 'Marie Leroy',
@@ -3559,42 +3587,55 @@ export function LandingRoutePage() {
         {/* 7. CTA FINAL */}
         <section className="relative overflow-hidden border-y border-zinc-800 bg-zinc-900 px-6 py-24 lg:py-32">
           <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(34,197,94,0.06)_0%,transparent_70%)]" />
-          <div className="relative z-10 mx-auto max-w-2xl text-center">
-            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">
-              Programme de lancement
-            </p>
-            <SectionTitle className="kr-reveal kr-reveal-delay-1 mb-4 mt-4 text-center">
-              Rejoignez les premiers artisans Kadria
-            </SectionTitle>
-            <SectionDescription className="kr-reveal kr-reveal-delay-2 mb-8 mt-5 max-w-3xl">
-              Kadria qualifie vos prospects 24h/24, répond à vos appels et remplit votre dashboard — pendant que vous
-              êtes sur le chantier.
-            </SectionDescription>
-            <Link
-              href="/register"
-              className="kr-reveal kr-reveal-delay-3 kr-badge-pulse inline-flex items-center gap-2 rounded-xl bg-green-500 px-10 py-4 text-lg font-bold text-zinc-950 transition-all duration-200 hover:scale-[1.02] hover:opacity-90"
-            >
-              Tester Kadria gratuitement <ArrowRight className="h-5 w-5" />
-            </Link>
-            <p className="kr-reveal kr-reveal-delay-3 mt-5 text-sm text-zinc-400">
-              ✓ Sans engagement · ✓ Résiliation à tout moment · ✓ Support inclus dès J1
-            </p>
-            <div className="kr-reveal kr-reveal-delay-3 mt-6 flex items-center justify-center">
-              <div className="flex">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-600 text-xs font-semibold text-white">
-                  JM
-                </span>
-                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-700 text-xs font-semibold text-white">
-                  SC
-                </span>
-                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-600 text-xs font-semibold text-white">
-                  PB
-                </span>
-                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-700 text-xs font-semibold text-white">
-                  AL
-                </span>
+          <div className="relative z-10 mx-auto max-w-6xl">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {LANDING_REASSURANCE_ITEMS.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="kr-reveal rounded-xl border border-zinc-800 bg-white/[0.03] p-5 transition-colors duration-200 hover:border-green-500/25 hover:bg-white/[0.05]"
+                    style={{ transitionDelay: `${index * 70}ms` }}
+                  >
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-green-500/20 bg-green-500/[0.08] text-green-500">
+                      <Icon size={18} />
+                    </div>
+                    <CardTitle className="mt-4 text-white">{item.title}</CardTitle>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">{item.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="kr-reveal kr-reveal-delay-3 mx-auto mt-12 max-w-3xl text-center">
+              <SectionTitle className="text-center">
+                Prêt à transformer vos demandes en chantiers qualifiés ?
+              </SectionTitle>
+              <SectionDescription className="mt-5">
+                Voyons ensemble comment Kadria peut s&apos;adapter à votre métier, vos demandes et votre façon de travailler.
+              </SectionDescription>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link
+                  href="/demo-request"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+                >
+                  Réserver une démo <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                >
+                  Essai gratuit
+                </Link>
               </div>
-              <span className="ml-3 text-sm text-zinc-400">12 artisans nous font déjà confiance</span>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-400">
+                {['Sans engagement', 'Support inclus dès le premier jour', 'Installation accompagnée'].map((item) => (
+                  <span key={item} className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </section>
