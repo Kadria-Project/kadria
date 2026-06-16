@@ -29,15 +29,54 @@ const DEMO_STEPS = [
   },
   {
     number: '03',
+    title: 'Artisan',
+    subtitle: 'Le dossier arrive dans le dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    number: '04',
     title: 'Dashboard',
     subtitle: 'Le commercial priorise',
     icon: LayoutDashboard,
   },
   {
-    number: '04',
+    number: '05',
     title: 'Devis',
     subtitle: 'Le chantier devient chiffrable',
     icon: FileText,
+  },
+] as const;
+
+const DASHBOARD_ITEMS = [
+  {
+    id: 'DOS-2026-018',
+    title: 'Renovation salle de bain',
+    client: 'Marie Leroy',
+    score: '92',
+    status: 'Nouveau',
+    budget: '8 000 - 12 000 EUR',
+    action: 'Appeler aujourd hui',
+    highlight: true,
+  },
+  {
+    id: 'DOS-2026-017',
+    title: 'Terrasse bois',
+    client: 'Nicolas Martin',
+    score: '84',
+    status: 'Qualifie',
+    budget: '6 500 EUR',
+    action: 'Verifier les photos',
+    highlight: false,
+  },
+  {
+    id: 'DOS-2026-014',
+    title: 'Cloture jardin',
+    client: 'Sophie Bernard',
+    score: '71',
+    status: 'A estimer',
+    budget: '3 200 EUR',
+    action: 'Planifier un rappel',
+    highlight: false,
   },
 ] as const;
 
@@ -67,7 +106,7 @@ export default function DemoPage() {
         </section>
 
         <section className="kr-reveal border-t border-zinc-800 py-8">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
             {DEMO_STEPS.map((step, index) => {
               const Icon = step.icon;
 
@@ -166,12 +205,143 @@ export default function DemoPage() {
           </div>
         </section>
 
+        <section className="kr-reveal border-t border-zinc-800 py-12">
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                Etape 3
+              </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white md:text-5xl">
+                Cote artisan : tout arrive dans votre dashboard
+              </h2>
+              <p className="mx-auto mt-4 max-w-3xl text-lg leading-relaxed text-zinc-400">
+                Chaque demande qualifiee est automatiquement centralisee, priorisee et prete a etre
+                traitee.
+              </p>
+            </div>
+
+            <div className="mt-8 overflow-hidden rounded-[28px] border border-zinc-800 bg-zinc-900/75 shadow-[0_0_0_1px_rgba(34,197,94,0.04)]">
+              <div className="border-b border-zinc-800 bg-zinc-800/35 px-5 py-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Dashboard Kadria</p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Les demandes qualifiees apparaissent aussitot cote artisan.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
+                      3 nouveaux dossiers
+                    </span>
+                    <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
+                      1 a rappeler
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+                <div className="border-b border-zinc-800 p-4 lg:border-b-0 lg:border-r">
+                  <div className="space-y-3">
+                    {DASHBOARD_ITEMS.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`rounded-2xl border p-4 transition-colors ${
+                          item.highlight
+                            ? 'border-green-500/25 bg-green-500/[0.06]'
+                            : 'border-zinc-800 bg-zinc-950/70'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-base font-semibold text-white">{item.title}</p>
+                              <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold text-zinc-300">
+                                {item.id}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm text-zinc-400">{item.client}</p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-green-500/[0.12] px-3 py-1 text-xs font-semibold text-green-500">
+                              Score {item.score}
+                            </span>
+                            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
+                              {item.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <DashboardMeta label="Budget estime" value={item.budget} />
+                          <DashboardMeta label="Action recommandee" value={item.action} />
+                          <DashboardMeta
+                            label="Priorite"
+                            value={item.highlight ? 'A rappeler' : 'A planifier'}
+                            accent={item.highlight}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-zinc-950/80 p-4">
+                  <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/75 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-green-500">
+                          Dossier selectionne
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-white">
+                          Renovation salle de bain
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-green-500/[0.12] px-3 py-1 text-sm font-semibold text-green-500">
+                        A rappeler
+                      </span>
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      <PreviewRow label="Client" value="Marie Leroy" />
+                      <PreviewRow label="Statut du projet" value="Pret a etre chiffre" />
+                      <PreviewRow label="Budget estime" value="8 000 - 12 000 EUR" />
+                      <PreviewRow label="Delai souhaite" value="Sous 1 mois" />
+                      <PreviewRow label="Prochaine action" value="Rappel prioritaire" />
+                    </div>
+
+                    <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        Ce que voit l artisan
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">
+                        Le prospect a deja ete qualifie, les informations sont centralisees et
+                        Kadria indique clairement quoi traiter en premier avant de creer le devis.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 text-center">
+              <Link
+                href="/demo-dashboard"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 transition-colors hover:text-white"
+              >
+                Voir le dashboard complet <ArrowRight size={15} className="text-green-500" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
         <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-2">
           <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
-                  Etape 3
+                  Etape 4
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
                   Le dashboard aide a prioriser
@@ -205,7 +375,7 @@ export default function DemoPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
-                  Etape 4
+                  Etape 5
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
                   Le devis est pret a etre envoye
@@ -277,7 +447,7 @@ export default function DemoPage() {
         </section>
 
         <footer className="border-t border-zinc-800 py-8 text-center text-sm text-zinc-400">
-          (c) 2025 Kadria ·{' '}
+          (c) 2025 Kadria -{' '}
           <Link href="/" className="text-zinc-400 transition-colors duration-150 hover:text-white">
             Retour a l&apos;accueil
           </Link>
@@ -339,6 +509,27 @@ function PipelineColumn({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function DashboardMeta({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+        {label}
+      </p>
+      <p className={`mt-2 text-sm font-medium ${accent ? 'text-green-500' : 'text-white'}`}>
+        {value}
+      </p>
     </div>
   );
 }
