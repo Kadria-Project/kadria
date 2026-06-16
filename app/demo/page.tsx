@@ -142,15 +142,20 @@ export default function DemoPage() {
                   Etape 1
                 </p>
                 <p className="mt-1 text-lg font-semibold text-white">
-                  Le widget qualifie la demande
+                  Testez le vrai assistant cote prospect
                 </p>
               </div>
               <span className="rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
-                Interactif
+                Assistant reel
               </span>
             </div>
-            <div className="border-b border-zinc-800 bg-zinc-800/30 px-5 py-3 text-sm text-zinc-400">
-              Testez la conversation comme un prospect reel.
+            <div className="border-b border-zinc-800 bg-zinc-800/30 px-5 py-3">
+              <p className="text-sm font-medium text-white">
+                Ici, vous pouvez vraiment parler avec l&apos;assistant comme un prospect ou un client.
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Ce n&apos;est pas une capture: testez les questions, les reponses et le parcours de qualification en direct.
+              </p>
             </div>
             <div className="p-5">
               <ChatWidgetInline artisanId="Artisan_demo" />
@@ -325,12 +330,12 @@ export default function DemoPage() {
               </div>
             </div>
 
-            <div className="mt-5 text-center">
+            <div className="mt-6 text-center">
               <Link
                 href="/demo-dashboard"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300 transition-colors hover:text-white"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-green-500/30 bg-green-500/[0.08] px-5 py-3 text-sm font-semibold text-white transition-all duration-150 hover:scale-[1.02] hover:border-green-500/50 hover:bg-green-500/[0.12]"
               >
-                Voir le dashboard complet <ArrowRight size={15} className="text-green-500" />
+                Voir le dashboard complet <ArrowRight size={16} className="text-green-500" />
               </Link>
             </div>
           </div>
