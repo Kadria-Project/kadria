@@ -2297,25 +2297,23 @@ export function LandingRoutePage() {
   }, [toolsCarouselPaused]);
 
   const avant = [
-    'Appels manqués sur chantier — vos prospects rappellent un concurrent.',
-    'Demandes sans informations : « Je voudrais un devis », sans surface ni budget.',
-    'Relances oubliées — 70% des prospects non rappelés sous 24h signent ailleurs.',
-    'Qualification chronophage : 5 allers-retours pour obtenir l\'essentiel.',
-    'Chaque demande non traitée est un chantier qui part chez un concurrent.',
+    'Vous r\u00e9pondez entre deux interventions, quand vous avez le temps.',
+    'Les informations sont dispers\u00e9es entre appels, SMS, e-mails et formulaires.',
+    'Les prospects doivent \u00eatre relanc\u00e9s pour obtenir le budget, le d\u00e9lai ou les photos.',
+    'Certaines demandes passent entre les mailles du filet.',
+    'Le suivi commercial repose sur votre m\u00e9moire ou vos notes.',
   ];
-
   const missedNotifs = [
-    { icon: '📞', text: 'Appel manqué · il y a 2h', rotate: -1.5 },
-    { icon: '📞', text: 'Appel manqué · il y a 5h', rotate: 0.5 },
-    { icon: '💬', text: 'Message sans réponse · 3 jours', rotate: -0.8 },
+    { icon: '\ud83d\udcde', text: 'Appel manqu\u00e9 pendant un chantier', rotate: -1.5 },
+    { icon: '\ud83d\udcac', text: 'Message oubli\u00e9 dans WhatsApp', rotate: 0.5 },
+    { icon: '\ud83d\udccb', text: 'Formulaire incomplet', rotate: -0.8 },
   ];
-
   const apres = [
-    'Disponible 24h/24, 7j/7, par chat et par téléphone.',
-    'Questions adaptées à votre métier, posées automatiquement.',
-    'Photos, adresse et budget collectés sans effort.',
-    'Dossier créé, scoré et priorisé instantanément.',
-    'Relances et calendrier intégrés au dashboard.',
+    'R\u00e9pondez instantan\u00e9ment, m\u00eame lorsque vous \u00eates sur le chantier.',
+    'Recevez des demandes plus compl\u00e8tes d\u00e8s le premier contact.',
+    'Pr\u00e9parez vos devis sans relancer vos prospects.',
+    'Priorisez les opportunit\u00e9s les plus prometteuses.',
+    'Centralisez vos \u00e9changes, relances et rendez-vous.',
   ];
 
   return (
@@ -2412,15 +2410,15 @@ export function LandingRoutePage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
-                De la demande perdue au <span className="kr-gradient-text">chantier qualifié.</span>
+                Chaque demande m&eacute;rite une r&eacute;ponse. Chaque r&eacute;ponse m&eacute;rite un chantier.
               </h2>
               <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
+                Les demandes oubli&eacute;es, incompl&egrave;tes ou trait&eacute;es trop tard repr&eacute;sentent des opportunit&eacute;s perdues. Kadria les transforme en dossiers qualifi&eacute;s, pr&ecirc;ts &agrave; &ecirc;tre chiffr&eacute;s.
               </p>
             </div>
             <div className="relative mt-12 grid items-stretch gap-8 lg:grid-cols-2">
               {/* Flèche centrale */}
-              <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 lg:flex">
+              <div className="kr-reveal kr-reveal-delay-3 pointer-events-none absolute left-1/2 top-1/2 z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-green-500/30 bg-zinc-900 shadow-[0_0_32px_rgba(34,197,94,0.22)] lg:flex">
                 <ArrowRight size={20} className="text-green-500" />
               </div>
 
@@ -2429,8 +2427,8 @@ export function LandingRoutePage() {
                 <div className="flex items-center gap-3 border-b border-[rgba(220,38,38,0.15)] bg-[rgba(220,38,38,0.06)] px-6 py-4">
                   <AlertTriangle size={18} className="text-[#dc2626]" />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-[#dc2626]">Avant Kadria</p>
-                    <p className="text-sm text-zinc-400">Sans qualification automatique</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[#dc2626]">Sans Kadria</p>
+                    <p className="text-sm text-zinc-400">Sans syst&egrave;me commercial centralis&eacute;</p>
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col p-8">
@@ -2455,7 +2453,7 @@ export function LandingRoutePage() {
                   </ul>
                   <div className="mt-5 rounded-[10px] bg-[rgba(220,38,38,0.06)] px-4 py-3">
                     <p className="text-sm font-medium text-[#dc2626]">
-                      70% des prospects non rappelés sous 24h signent chez un concurrent
+                      Chaque demande non trait&eacute;e rapidement est une opportunit&eacute; qui peut partir chez un concurrent.
                     </p>
                   </div>
                 </div>
@@ -2467,7 +2465,7 @@ export function LandingRoutePage() {
                   <CheckCircle size={18} className="text-green-500" />
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Avec Kadria</p>
-                    <p className="text-sm text-zinc-400">Qualification automatique 24h/24</p>
+                    <p className="text-sm text-zinc-400">Disponible 24h/24</p>
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col p-8">
@@ -2482,15 +2480,33 @@ export function LandingRoutePage() {
                   </ul>
                   <div className="mt-5 rounded-[10px] bg-[rgba(34,197,94,0.06)] px-4 py-3">
                     <p className="text-sm font-medium text-green-500">
-                      &lt; 3 minutes pour recevoir un dossier complet et qualifié
+                      Recevez des dossiers complets et exploitables d&egrave;s le premier &eacute;change.
                     </p>
                   </div>
                 </div>
               </div>
             </div>
+            <div className="kr-reveal kr-reveal-delay-3 mt-10 flex flex-col items-center gap-4 text-center">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/demo-request"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+                >
+                  R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                >
+                  Essai gratuit
+                </Link>
+              </div>
+              <p className="text-sm text-zinc-500">
+                Installation accompagn&eacute;e &bull; Compatible avec votre site actuel &bull; Sans engagement
+              </p>
+            </div>
           </div>
         </section>
-
         {/* 4. REMPLACE 12 OUTILS */}
         <section className="kr-tools-section relative w-full border-b border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-24">
           <div className="relative mx-auto max-w-6xl">
