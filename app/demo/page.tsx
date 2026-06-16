@@ -1,24 +1,48 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ExternalLink, LayoutDashboard, MessageCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  ClipboardCheck,
+  FileText,
+  LayoutDashboard,
+  MapPin,
+  MessageCircle,
+} from 'lucide-react';
 import { DarkNav } from '@/src/components/DarkNav';
 import { useScrollReveal, ANIMATION_STYLES } from '@/src/components/KadriaPages';
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline';
 
+const DEMO_STEPS = [
+  {
+    number: '01',
+    title: 'Prospect',
+    subtitle: 'Le visiteur pose sa demande',
+    icon: MessageCircle,
+  },
+  {
+    number: '02',
+    title: 'Qualification',
+    subtitle: 'Kadria structure le dossier',
+    icon: ClipboardCheck,
+  },
+  {
+    number: '03',
+    title: 'Dashboard',
+    subtitle: 'Le commercial priorise',
+    icon: LayoutDashboard,
+  },
+  {
+    number: '04',
+    title: 'Devis',
+    subtitle: 'Le chantier devient chiffrable',
+    icon: FileText,
+  },
+] as const;
+
 export default function DemoPage() {
   useScrollReveal();
-
-  const [activeDemo, setActiveDemo] = useState<'chat' | null>(null);
-  const chatRef = useRef<HTMLDivElement>(null);
-
-  function scrollToChat() {
-    setActiveDemo('chat');
-    requestAnimationFrame(() => {
-      chatRef.current?.scrollIntoView({ behavior: 'smooth' });
-    });
-  }
 
   return (
     <div className="relative min-h-screen bg-zinc-950 text-white">
@@ -28,112 +52,313 @@ export default function DemoPage() {
 
       <DarkNav />
 
-      <main className="relative z-10 mx-auto max-w-5xl px-6 pb-16 pt-[100px]">
-        <section className="kr-reveal kr-visible space-y-4 pb-12 text-center">
-          <span className="text-xs font-semibold uppercase tracking-widest text-green-500">
-            Démo interactive
+      <main className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-[100px]">
+        <section className="kr-reveal kr-visible pb-12 text-center">
+          <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+            Demo guidee
           </span>
-          <h1 className="text-[clamp(2rem,4vw,3rem)] font-extrabold leading-tight text-white">
-            Voyez Kadria <span className="text-green-500">qualifier</span> un prospect
+          <h1 className="mx-auto mt-5 max-w-4xl text-4xl font-bold leading-[0.95] tracking-tight md:text-6xl">
+            Testez Kadria comme un prospect
           </h1>
-          <p className="mx-auto max-w-xl text-base text-zinc-400">
-            Choisissez un scénario et observez comment Kadria transforme une demande en dossier
-            complet en moins de 3 minutes.
+          <p className="mx-auto mt-5 max-w-3xl text-lg leading-relaxed text-zinc-400">
+            En moins de 90 secondes, suivez le parcours complet d&apos;une demande :
+            conversation, qualification, dossier, dashboard et devis.
           </p>
         </section>
 
-        <section className="kr-reveal border-t border-zinc-800 pb-12 pt-12">
-          <p className="mb-4 text-center text-sm text-zinc-400">Que voulez-vous tester ?</p>
-          <div className="mx-auto grid max-w-[600px] grid-cols-1 gap-4 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={scrollToChat}
-              className={`cursor-pointer rounded-2xl border bg-zinc-900 p-6 text-center transition-all duration-200 hover:-translate-y-[2px] ${
-                activeDemo === 'chat'
-                  ? 'border-green-500 bg-green-500/[0.06] shadow-[0_0_0_1px_rgba(34,197,94,0.3)]'
-                  : 'border-zinc-800 hover:border-green-500/30 hover:bg-green-500/[0.04]'
-              }`}
-            >
-              <MessageCircle size={28} className="mx-auto mb-3 text-green-500" />
-              <p className="text-base font-bold text-white">Assistant Kadria</p>
-              <p className="mt-1.5 text-sm text-zinc-400">
-                Simulez une conversation de qualification prospect
-              </p>
-              <span className="mt-3 inline-block rounded-full border border-green-500/20 bg-green-500/[0.08] px-2 py-0.5 text-xs text-green-500">
+        <section className="kr-reveal border-t border-zinc-800 py-8">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            {DEMO_STEPS.map((step, index) => {
+              const Icon = step.icon;
+
+              return (
+                <div
+                  key={step.number}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-4 transition-colors hover:border-green-500/20"
+                  style={{ transitionDelay: `${index * 70}ms` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-green-500/20 bg-green-500/[0.08] text-green-500">
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-green-500">
+                        {step.number}
+                      </p>
+                      <p className="text-base font-semibold text-white">{step.title}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">{step.subtitle}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="kr-reveal overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/80">
+            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                  Etape 1
+                </p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  Le widget qualifie la demande
+                </p>
+              </div>
+              <span className="rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
                 Interactif
               </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => window.open('/demo-dashboard', '_blank')}
-              className="cursor-pointer rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-center transition-all duration-200 hover:-translate-y-[2px] hover:border-green-500/30 hover:bg-green-500/[0.04]"
-            >
-              <LayoutDashboard size={28} className="mx-auto mb-3 text-green-500" />
-              <p className="text-base font-bold text-white">Dashboard complet</p>
-              <p className="mt-1.5 text-sm text-zinc-400">
-                Explorez le CRM, le Kanban et les analytics en lecture seule
-              </p>
-              <span className="mt-3 inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/[0.08] px-2 py-0.5 text-xs text-green-500">
-                Lecture seule <ExternalLink size={12} className="text-zinc-500" />
-              </span>
-            </button>
-          </div>
-        </section>
-
-        <section className="kr-reveal border-t border-zinc-800 pb-12 pt-12">
-          <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-green-500/30 bg-zinc-900 p-6 sm:flex-row sm:p-8">
-            <div className="text-center sm:text-left">
-              <p className="text-base font-bold text-white">Tester avec votre propre projet</p>
-              <p className="mt-1 text-sm text-zinc-400">
-                Connectez Kadria à votre activité en 15 minutes
-              </p>
             </div>
-            <Link
-              href="/register"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] sm:w-auto"
-            >
-              Commencer gratuitement <ArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
-
-        <section
-          ref={chatRef}
-          className={`kr-reveal border-t border-zinc-800 pt-12 ${activeDemo === 'chat' ? 'block' : 'hidden'}`}
-        >
-          <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900">
-            <ChatHeader />
-            <div className="border-b border-zinc-800 bg-zinc-800/40 px-5 py-3 text-center text-sm text-zinc-400">
-              Testez Kadria avec votre propre projet
+            <div className="border-b border-zinc-800 bg-zinc-800/30 px-5 py-3 text-sm text-zinc-400">
+              Testez la conversation comme un prospect reel.
             </div>
             <div className="p-5">
               <ChatWidgetInline artisanId="Artisan_demo" />
             </div>
           </div>
+
+          <div className="kr-reveal space-y-6">
+            <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                    Etape 2
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">
+                    Le dossier se cree automatiquement
+                  </h2>
+                </div>
+                <span className="rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
+                  Qualifie
+                </span>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-lg font-semibold text-white">Renovation salle de bain</p>
+                    <p className="mt-1 text-sm text-zinc-400">Marie Leroy - Lyon 3e</p>
+                  </div>
+                  <span className="rounded-full bg-green-500/[0.12] px-3 py-1 text-sm font-semibold text-green-500">
+                    Score 92
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <InfoPill label="Budget" value="8 000 - 12 000 EUR" />
+                  <InfoPill label="Delai" value="Sous 1 mois" />
+                  <InfoPill label="Besoin" value="Renovation complete" />
+                  <InfoPill label="Zone" value="Lyon et alentours" />
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                    Resume IA
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    Projet pret a etre rappele. Besoin clair, budget coherent, demande
+                    exploitable pour preparer un devis.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-2">
+          <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                  Etape 3
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  Le dashboard aide a prioriser
+                </h2>
+              </div>
+              <LayoutDashboard size={18} className="text-green-500" />
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <PipelineColumn
+                title="Nouveau"
+                amount="3"
+                items={['Salle de bain - Lyon', 'Cloture - Rouen']}
+              />
+              <PipelineColumn
+                title="Qualifie"
+                amount="2"
+                accent
+                items={['Terrasse - Nantes', 'Electricite - Paris']}
+              />
+              <PipelineColumn title="Devis" amount="1" items={['Cuisine - Bordeaux']} />
+            </div>
+
+            <p className="mt-5 text-sm leading-6 text-zinc-400">
+              Le commercial voit immediatement quoi rappeler, quoi chiffrer et quelles
+              opportunites traiter en priorite.
+            </p>
+          </div>
+
+          <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+                  Etape 4
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  Le devis est pret a etre envoye
+                </h2>
+              </div>
+              <FileText size={18} className="text-green-500" />
+            </div>
+
+            <div className="mt-5 rounded-[22px] border border-zinc-800 bg-zinc-950/80 p-5">
+              <div className="flex items-start justify-between gap-4 border-b border-zinc-800 pb-4">
+                <div>
+                  <p className="text-lg font-semibold text-white">DEV-2026-001</p>
+                  <p className="mt-1 text-sm text-zinc-400">Objet : renovation salle de bain</p>
+                </div>
+                <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
+                  PDF
+                </span>
+              </div>
+
+              <div className="space-y-3 py-4">
+                <PreviewRow label="Client" value="Marie Leroy" />
+                <PreviewRow
+                  label="Localisation"
+                  value="Lyon 3e"
+                  icon={<MapPin size={14} className="text-zinc-500" />}
+                />
+                <PreviewRow label="Montant estime" value="9 840 EUR TTC" />
+                <PreviewRow label="Validite" value="90 jours" />
+              </div>
+
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Contenu du devis
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Prestations, montant, PDF genere et pret a etre envoye au client depuis
+                  Kadria.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="kr-reveal border-t border-zinc-800 py-12">
+          <div className="mx-auto max-w-3xl rounded-[28px] border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center md:px-10">
+            <SectionBadge text="Fin du parcours" />
+            <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
+              Passez du prospect au devis sans perdre le fil
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-zinc-400">
+              Reservez une demo pour voir comment Kadria peut s&apos;adapter a votre activite,
+              ou testez la plateforme gratuitement.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/demo-request"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
+              >
+                Reserver une demo <ArrowRight size={16} />
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/30 hover:bg-white/[0.03]"
+              >
+                Essai gratuit
+              </Link>
+            </div>
+          </div>
         </section>
 
         <footer className="border-t border-zinc-800 py-8 text-center text-sm text-zinc-400">
-          © 2025 Kadria · <Link href="/" className="text-zinc-400 transition-colors duration-150 hover:text-white">Retour à l&apos;accueil</Link>
+          (c) 2025 Kadria ·{' '}
+          <Link href="/" className="text-zinc-400 transition-colors duration-150 hover:text-white">
+            Retour a l&apos;accueil
+          </Link>
         </footer>
       </main>
     </div>
   );
 }
 
-function ChatHeader() {
+function SectionBadge({ text }: { text: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm font-extrabold text-zinc-950">
-          K
-        </div>
-        <div>
-          <p className="text-sm font-bold text-white">Kadria</p>
-          <p className="text-xs text-zinc-400">Assistant en ligne</p>
-        </div>
+    <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+      {text}
+    </span>
+  );
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-white">{value}</p>
+    </div>
+  );
+}
+
+function PipelineColumn({
+  title,
+  amount,
+  items,
+  accent = false,
+}: {
+  title: string;
+  amount: string;
+  items: string[];
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        accent ? 'border-green-500/30 bg-green-500/[0.05]' : 'border-zinc-800 bg-zinc-950/80'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-sm font-semibold ${accent ? 'text-green-500' : 'text-white'}`}>
+          {title}
+        </p>
+        <span className="text-xs text-zinc-500">{amount}</span>
       </div>
-      <span className="kr-badge-pulse h-2.5 w-2.5 rounded-full bg-green-500" />
+      <div className="mt-4 space-y-2">
+        {items.map((item) => (
+          <div
+            key={item}
+            className="rounded-xl border border-zinc-800 bg-zinc-900/70 px-3 py-2 text-sm text-zinc-300"
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PreviewRow({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon?: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <div className="flex items-center gap-2 text-zinc-500">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <span className="font-medium text-white">{value}</span>
     </div>
   );
 }
