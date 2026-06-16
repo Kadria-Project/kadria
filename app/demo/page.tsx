@@ -113,15 +113,6 @@ export default function DemoPage() {
           </div>
         </section>
 
-        <div className="border-t border-zinc-800 pt-8 text-center">
-          <Link
-            href="/demo-dashboard"
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors duration-150 hover:text-white"
-          >
-            Voir le tableau de bord complet <ArrowRight size={16} />
-          </Link>
-        </div>
-
         <footer className="border-t border-zinc-800 py-8 text-center text-sm text-zinc-400">
           © 2025 Kadria · <Link href="/" className="text-zinc-400 transition-colors duration-150 hover:text-white">Retour à l&apos;accueil</Link>
         </footer>
