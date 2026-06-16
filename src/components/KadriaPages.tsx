@@ -151,6 +151,59 @@ const plans: { slug: string; name: string; price: string; description: string; f
   },
 ];
 
+const LANDING_FAQ_ITEMS = [
+  {
+    question: 'Combien de temps faut-il pour installer Kadria ?',
+    answer:
+      "Kadria s\u2019installe rapidement sur votre site existant gr\u00e2ce \u00e0 un simple widget. L\u2019installation est accompagn\u00e9e pour que vous puissiez commencer \u00e0 recevoir des demandes qualifi\u00e9es sans complexit\u00e9 technique.",
+  },
+  {
+    question: 'Est-ce que Kadria fonctionne avec mon site actuel ?',
+    answer:
+      'Oui. Kadria peut être ajouté à votre site actuel sans le refaire. Il suffit d’intégrer le widget sur vos pages de contact, devis ou accueil.',
+  },
+  {
+    question: 'Que se passe-t-il quand un prospect me contacte ?',
+    answer:
+      'Kadria échange avec le prospect, pose les bonnes questions, récupère les informations essentielles puis crée automatiquement un dossier structuré dans votre tableau de bord.',
+  },
+  {
+    question: 'Kadria remplace-t-il mon téléphone ?',
+    answer:
+      'Non. Kadria ne remplace pas votre relation client. Il vous aide à ne plus perdre les demandes reçues lorsque vous êtes indisponible, sur chantier ou en dehors de vos horaires.',
+  },
+  {
+    question: 'Quels métiers sont compatibles ?',
+    answer:
+      'Kadria est conçu pour les artisans et entreprises du bâtiment : paysagistes, électriciens, plombiers, peintres, menuisiers, rénovateurs, terrassiers et autres métiers de service sur devis.',
+  },
+  {
+    question: 'Puis-je personnaliser les questions posées aux prospects ?',
+    answer:
+      'Oui. Les questions peuvent être adaptées à votre métier, vos prestations, votre zone d’intervention et votre manière de qualifier les demandes.',
+  },
+  {
+    question: 'Est-ce que je peux générer des devis avec Kadria ?',
+    answer:
+      'Oui. Une fois la demande qualifiée, vous pouvez créer un devis, générer un PDF et l’envoyer au client directement depuis Kadria.',
+  },
+  {
+    question: 'Mes données sont-elles sécurisées ?',
+    answer:
+      'Oui. Les accès sont sécurisés, les données sont isolées par artisan et les informations sensibles ne sont pas exposées publiquement.',
+  },
+  {
+    question: 'Est-ce sans engagement ?',
+    answer:
+      'Oui. Les offres Kadria sont pensées pour rester flexibles. Vous pouvez commencer simplement, tester la valeur créée et faire évoluer votre formule selon vos besoins.',
+  },
+  {
+    question: 'Quelle offre choisir ?',
+    answer:
+      'L’offre Essentiel convient aux artisans indépendants qui veulent structurer leurs demandes. L’offre Performance est recommandée pour les entreprises qui veulent automatiser davantage le suivi commercial. Pour les réseaux ou besoins spécifiques, une offre sur mesure est proposée.',
+  },
+] as const;
+
 const demoProjects = [
   {
     client: 'Marie Leroy',
@@ -287,6 +340,91 @@ function CardTitle({
   className?: string;
 }) {
   return <h3 className={`${LANDING_H3_CLASS} ${className}`.trim()}>{children}</h3>;
+}
+
+function LandingFaqSection() {
+  const [openIndex, setOpenIndex] = useState<number>(0);
+
+  return (
+    <section className={`${LANDING_SECTION_CLASS} border-t border-zinc-800 bg-zinc-950`}>
+      <div className="mx-auto max-w-7xl px-6 lg:px-12">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">FAQ</p>
+          <SectionTitle className="kr-reveal kr-reveal-delay-1 mt-4 text-center">
+            Questions fréquentes
+          </SectionTitle>
+          <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
+            Les réponses essentielles pour comprendre comment Kadria s’intègre à votre activité et vous aide à ne plus perdre de demandes.
+          </SectionDescription>
+        </div>
+
+        <div className="kr-reveal kr-reveal-delay-2 mx-auto mt-12 max-w-4xl space-y-3">
+          {LANDING_FAQ_ITEMS.map((item, index) => {
+            const isOpen = openIndex === index;
+
+            return (
+              <div
+                key={item.question}
+                className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/70 transition-colors duration-200 hover:border-green-500/20"
+              >
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenIndex((current) => (current === index ? -1 : index))}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left md:px-6"
+                >
+                  <span className="text-base font-semibold text-white md:text-lg">{item.question}</span>
+                  <span
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 text-zinc-400 transition-all duration-300 ${
+                      isOpen ? 'rotate-180 border-green-500/30 text-green-500' : ''
+                    }`}
+                  >
+                    <ChevronDown size={18} />
+                  </span>
+                </button>
+                <div
+                  className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                    isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <p
+                      className={`px-5 pb-5 text-sm leading-7 text-zinc-400 transition-opacity duration-200 md:px-6 md:text-base ${
+                        isOpen ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      {item.answer}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="kr-reveal kr-reveal-delay-3 mx-auto mt-12 max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-900/60 px-6 py-8 text-center md:px-10">
+          <SectionTitle className="text-center">Une question spécifique sur votre activité ?</SectionTitle>
+          <SectionDescription className="mt-4">
+            Voyons ensemble comment Kadria peut s’adapter à votre métier, vos demandes et votre façon de travailler.
+          </SectionDescription>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/demo-request"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+            >
+              Réserver une démo <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/register"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+            >
+              Essai gratuit
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function PrimaryLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -3414,6 +3552,8 @@ export function LandingRoutePage() {
             </Link>
           </div>
         </section>
+
+        <LandingFaqSection />
 
         {/* 7. CTA FINAL */}
         <section className="relative overflow-hidden border-y border-zinc-800 bg-zinc-900 px-6 py-24 lg:py-32">
