@@ -353,21 +353,20 @@ const REPLACE_TOOLS_CARDS = [
     badgeBg: 'rgba(34,197,94,0.08)',
     badgeBorder: 'rgba(34,197,94,0.2)',
     icon: MessageSquare,
-    title: 'Acquisition & Qualification',
-    description: 'Capturez et qualifiez chaque prospect 24h/24, par chat ou par téléphone.',
+    title: 'ACQUISITION & QUALIFICATION',
+    description: 'Transformez chaque demande entrante en premier dossier qualifi\u00e9.',
     features: [
-      'Chat IA 24h/24',
-      'Assistant vocal (appels entrants)',
+      'Assistant web 24h/24',
+      'Assistant vocal',
       'Qualification automatique',
-      'Questions adaptées au métier',
-      'Résumé IA des besoins',
+      'Collecte des photos et informations',
     ],
     tools: [
-      { icon: MessageCircle, color: '#60a5fa', name: 'Tidio / Crisp', desc: 'Chatbot & live chat' },
-      { icon: Phone, color: '#a78bfa', name: 'Aircall / Ringover', desc: 'Standard téléphonique' },
-      { icon: FileQuestion, color: '#f59e0b', name: 'Formulaire de contact', desc: 'Capture de leads web' },
+      { icon: FileQuestion, color: '#f59e0b', name: 'Formulaire de contact', desc: 'Demandes web dispers\u00e9es' },
+      { icon: MessageCircle, color: '#60a5fa', name: 'Chatbot', desc: 'R\u00e9ponses isol\u00e9es' },
+      { icon: Phone, color: '#a78bfa', name: 'Standard t\u00e9l\u00e9phonique', desc: 'Appels entrants' },
     ],
-    badge: '3 outils remplacés',
+    badge: '3 outils remplac\u00e9s',
   },
   {
     number: '02',
@@ -378,22 +377,21 @@ const REPLACE_TOOLS_CARDS = [
     badgeBg: 'rgba(96,165,250,0.08)',
     badgeBorder: 'rgba(96,165,250,0.2)',
     icon: BarChart3,
-    title: 'CRM & Suivi commercial',
-    description: 'Gérez tous vos prospects et projets depuis un pipeline visuel centralisé.',
+    title: 'CRM & SUIVI COMMERCIAL',
+    description: 'Gardez chaque opportunit\u00e9 visible, suivie et relanc\u00e9e au bon moment.',
     features: [
-      'Pipeline commercial visuel',
-      'Vue Kanban par statut',
-      'Historique des échanges',
-      'Notes internes par dossier',
-      'Relances planifiables',
-      'Calendrier intégré',
+      'Pipeline commercial',
+      'Historique des \u00e9changes',
+      'Notes internes',
+      'Calendrier int\u00e9gr\u00e9',
+      'Relances',
     ],
     tools: [
-      { icon: Users, color: '#60a5fa', name: 'HubSpot / Pipedrive', desc: 'CRM commercial' },
-      { icon: Table, color: '#22c55e', name: 'Excel / Google Sheets', desc: 'Suivi tableur' },
-      { icon: CheckSquare, color: '#a78bfa', name: 'Trello / Notion', desc: 'Gestion de tâches' },
+      { icon: Table, color: '#22c55e', name: 'Excel', desc: 'Suivi manuel' },
+      { icon: CheckSquare, color: '#a78bfa', name: 'Trello', desc: 'Pipeline bricol\u00e9' },
+      { icon: Users, color: '#60a5fa', name: 'HubSpot / Pipedrive', desc: 'CRM g\u00e9n\u00e9raliste' },
     ],
-    badge: '3 outils remplacés',
+    badge: '3 outils remplac\u00e9s',
   },
   {
     number: '03',
@@ -404,22 +402,20 @@ const REPLACE_TOOLS_CARDS = [
     badgeBg: 'rgba(245,158,11,0.08)',
     badgeBorder: 'rgba(245,158,11,0.2)',
     icon: Receipt,
-    title: 'Devis & Administration',
-    description: 'Générez, envoyez et suivez vos devis professionnels en quelques clics.',
+    title: 'DEVIS & ADMINISTRATION',
+    description: 'Passez d\u2019un dossier qualifi\u00e9 \u00e0 un devis envoy\u00e9 sans changer d\u2019outil.',
     features: [
-      'Génération de devis ligne par ligne',
-      'Envoi automatisé par email',
-      'Suivi des ouvertures en temps réel',
-      'Acceptation électronique client',
-      'Bibliothèque de prestations',
-      'Export PDF professionnel',
+      'G\u00e9n\u00e9ration de devis',
+      'Envoi par e-mail',
+      'Suivi des ouvertures',
+      'Export PDF',
     ],
     tools: [
-      { icon: FileText, color: '#f59e0b', name: 'Tolteck / Obat', desc: 'Logiciel de devis' },
-      { icon: PenLine, color: '#60a5fa', name: 'DocuSign / YouSign', desc: 'Signature électronique' },
-      { icon: Mail, color: '#22c55e', name: 'Brevo / Mailchimp', desc: "Envoi d'emails" },
+      { icon: FileText, color: '#f59e0b', name: 'Tolteck', desc: 'Cr\u00e9ation de devis' },
+      { icon: Receipt, color: '#22c55e', name: 'Obat', desc: 'Devis artisan' },
+      { icon: PenLine, color: '#60a5fa', name: 'DocuSign', desc: 'Validation document' },
     ],
-    badge: '3 outils remplacés',
+    badge: '3 outils remplac\u00e9s',
   },
   {
     number: '04',
@@ -430,22 +426,20 @@ const REPLACE_TOOLS_CARDS = [
     badgeBg: 'rgba(167,139,250,0.08)',
     badgeBorder: 'rgba(167,139,250,0.2)',
     icon: TrendingUp,
-    title: 'Pilotage & Performance',
-    description: 'Analysez votre activité et prenez les bonnes décisions avec des données en temps réel.',
+    title: 'PILOTAGE & PERFORMANCE',
+    description: 'Suivez vos indicateurs et concentrez-vous sur les chantiers les plus prometteurs.',
     features: [
-      'KPI temps réel (CA, conversion, panier)',
-      'Évolution du CA sur la période',
-      'Score IA des opportunités',
-      'Chantiers géolocalisés',
-      'Top 3 opportunités prioritaires',
-      'Export CSV & rapports PDF',
+      'Tableau de bord',
+      'Suivi des indicateurs',
+      'Priorisation des opportunit\u00e9s',
+      'Rapports d\u2019activit\u00e9',
     ],
     tools: [
-      { icon: PieChart, color: '#a78bfa', name: 'Looker Studio / Power BI', desc: 'Reporting BI' },
-      { icon: Table, color: '#f59e0b', name: 'Excel / Google Sheets', desc: 'Tableaux de bord' },
-      { icon: MapIcon, color: '#22c55e', name: 'Google Maps / Calendly', desc: 'Planning terrain' },
+      { icon: Table, color: '#f59e0b', name: 'Excel', desc: 'Tableaux de bord' },
+      { icon: PieChart, color: '#a78bfa', name: 'Power BI', desc: 'Reporting avanc\u00e9' },
+      { icon: Calendar, color: '#22c55e', name: 'Calendly', desc: 'Rendez-vous isol\u00e9s' },
     ],
-    badge: '3+ outils remplacés',
+    badge: '3 outils remplac\u00e9s',
   },
 ];
 
@@ -2598,10 +2592,10 @@ export function LandingRoutePage() {
             <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-center font-black tracking-[-0.02em] text-[clamp(2.2rem,5vw,3.8rem)]">
               Remplacez jusqu&apos;à 12 outils.
               <br />
-              Pilotez tout depuis <span className="text-[var(--accent)]">un seul tableau de bord.</span>
+              Pilotez toute votre activité depuis <span className="text-[var(--accent)]">une seule plateforme.</span>
             </h2>
             <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-4 max-w-2xl text-center text-lg leading-relaxed text-[var(--text-2)]">
-              Capturez vos demandes, qualifiez vos prospects, gérez vos devis et pilotez votre activité depuis un
+              Capturez vos demandes, qualifiez vos prospects, envoyez vos devis et suivez votre activité depuis un
               seul tableau de bord.
             </p>
 
@@ -2738,22 +2732,51 @@ export function LandingRoutePage() {
                 {REPLACED_TOOL_ICONS.map((ToolIcon, i) => (
                   <div
                     key={i}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] p-2 text-[var(--text-3)]"
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] p-2 text-[var(--text-3)] transition-all duration-700 ${
+                      activeToolsCard === REPLACE_TOOLS_CARDS.length - 1 ? 'translate-x-2 scale-90 opacity-70' : ''
+                    }`}
                   >
                     <ToolIcon size={20} />
                   </div>
                 ))}
                 <ArrowRight size={20} className="mx-4 text-[var(--accent)]" />
-                <span className="rounded-[10px] border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-4 py-2 text-lg font-black text-[var(--accent)]">
+                <span
+                  className={`rounded-[10px] border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-4 py-2 text-lg font-black text-[var(--accent)] transition-all duration-700 ${
+                    activeToolsCard === REPLACE_TOOLS_CARDS.length - 1 ? 'scale-110 shadow-[0_0_32px_rgba(34,197,94,0.22)]' : ''
+                  }`}
+                >
                   KADRIA
                 </span>
               </div>
               <div className="text-center">
                 <p className="text-4xl font-black text-[var(--text-1)]">1</p>
                 <p className="text-sm text-[var(--text-2)]">seule plateforme</p>
-                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Tout est connecté.</p>
+                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Tout est centralisé.</p>
               </div>
             </div>
+            <p className="kr-reveal kr-reveal-delay-1 mx-auto mt-8 max-w-2xl text-center text-xl font-bold text-[var(--text-1)]">
+              Moins d&apos;outils. Moins de ressaisies. Plus de chantiers.
+            </p>
+            <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-3 max-w-2xl text-center text-sm text-[var(--text-2)]">
+              Toutes vos demandes, vos devis et votre suivi commercial enfin réunis au même endroit.
+            </p>
+            <div className="kr-reveal kr-reveal-delay-3 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/demo-request"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+              >
+                Réserver une démo <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+              >
+                Essai gratuit
+              </Link>
+            </div>
+            <p className="kr-reveal kr-reveal-delay-4 mt-4 text-center text-sm text-[var(--text-2)]">
+              Installation accompagnée • Compatible avec votre site actuel • Sans engagement
+            </p>
           </div>
         </section>
 
