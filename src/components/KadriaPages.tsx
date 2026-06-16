@@ -2507,6 +2507,86 @@ export function LandingRoutePage() {
             </div>
           </div>
         </section>
+        {/* 4. COMMENT CA MARCHE */}
+        <section id="comment-ca-marche" className="w-full border-y border-zinc-800 bg-zinc-900/70 py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
+                Comment &ccedil;a marche ?
+              </h2>
+              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+                Installez Kadria en quelques minutes et laissez l&apos;assistant g&eacute;rer vos demandes.
+              </p>
+            </div>
+
+            <div className="relative mt-14">
+              <div className="absolute left-5 top-0 h-full w-px bg-zinc-800 md:left-0 md:top-10 md:h-px md:w-full" />
+              <div className="absolute left-5 top-0 h-full w-px bg-gradient-to-b from-green-500 via-green-500/70 to-transparent md:left-0 md:top-10 md:h-px md:w-full md:bg-gradient-to-r" />
+              <div className="relative grid grid-cols-1 gap-4 md:grid-cols-4">
+                {[
+                  {
+                    icon: Globe,
+                    title: "Connectez Kadria \u00e0 votre site.",
+                    description: "Ajoutez le widget en quelques minutes, sans modifier votre site existant.",
+                  },
+                  {
+                    icon: MessageCircle,
+                    title: "Vos prospects \u00e9changent avec Kadria.",
+                    description: "Par chat ou par t\u00e9l\u00e9phone, Kadria pose les bonnes questions au bon moment.",
+                  },
+                  {
+                    icon: ClipboardCheck,
+                    title: "Les demandes sont qualifi\u00e9es automatiquement.",
+                    description: "Budget, d\u00e9lai, photos, localisation et besoin sont structur\u00e9s dans un dossier unique.",
+                  },
+                  {
+                    icon: LayoutDashboard,
+                    title: "Pilotez et envoyez vos devis.",
+                    description: "Retrouvez vos opportunit\u00e9s dans votre dashboard et transformez-les en chantiers.",
+                  },
+                ].map((step, index) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.title} className="kr-reveal relative pl-14 md:pl-0" style={{ transitionDelay: (index * 90) + 'ms' }}>
+                      <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-green-500/30 bg-zinc-950 text-green-500 shadow-[0_0_24px_rgba(34,197,94,0.14)] md:left-1/2 md:-translate-x-1/2">
+                        <Icon size={18} />
+                      </div>
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-5 transition-colors hover:border-green-500/30 hover:bg-zinc-900/80 md:mt-16">
+                        <span className="text-xs font-bold uppercase tracking-[0.16em] text-green-500">0{index + 1}</span>
+                        <h3 className="mt-3 text-base font-bold leading-snug text-white">{step.title}</h3>
+                        <p className="mt-3 text-sm leading-6 text-zinc-400">{step.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="kr-reveal kr-reveal-delay-3 mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-400">
+              {['Compatible avec votre site actuel', 'Installation accompagn\u00e9e', 'Sans engagement'].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            <div className="kr-reveal kr-reveal-delay-4 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/demo-request"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+              >
+                R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+              >
+                Essai gratuit
+              </Link>
+            </div>
+          </div>
+        </section>
         {/* 4. REMPLACE 12 OUTILS */}
         <section className="kr-tools-section relative w-full border-b border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-24">
           <div className="relative mx-auto max-w-6xl">
