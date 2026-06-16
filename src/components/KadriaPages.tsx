@@ -12,6 +12,7 @@ import {
   BarChart3,
   Bot,
   Calendar,
+  Image as ImageIcon,
   CalendarCheck,
   Check,
   CheckCircle,
@@ -2180,63 +2181,112 @@ function usePrefersReducedMotion() {
 
 const fmtNum = (n: number) => n.toLocaleString('fr-FR');
 
-const CHAT_MESSAGES: { role: 'assistant' | 'user'; text: string; delay: number }[] = [
+interface ChatMsg {
+  role: 'assistant' | 'user';
+  text: string;
+  delay: number;
+  isPhotoConfirmation?: boolean;
+  isContactCard?: boolean;
+  isSuccess?: boolean;
+}
+
+const CHAT_MESSAGES: ChatMsg[] = [
   {
     role: 'assistant',
-    text: "Bonjour, je suis l'assistant Kadria 👋\nPour commencer, quel type de travaux ou de projet souhaitez-vous réaliser ?",
+    text: "Bonjour, je suis l'assistant Kadria 👋\nPour commencer, quel type de travaux souhaitez-vous réaliser ?",
     delay: 0,
   },
-  { role: 'user', text: 'Nouveau projet', delay: 1000 },
+  { role: 'user', text: 'Entretien', delay: 1800 },
   {
     role: 'assistant',
-    text: 'Merci pour cette précision. Pour mieux comprendre votre projet, pouvez-vous nous donner une description détaillée de ce que vous souhaitez réaliser ?',
-    delay: 2000,
+    text: "Vous souhaitez donc réaliser des travaux d'entretien. Pouvez-vous préciser quel type d'entretien vous envisagez ? Par exemple, s'agit-il de l'entretien d'un jardin, d'une maison, ou d'un autre domaine ?",
+    delay: 3200,
+  },
+  { role: 'user', text: 'Massif floral', delay: 5800 },
+  {
+    role: 'assistant',
+    text: "Vous souhaitez donc réaliser l'entretien d'un massif floral. Pour mieux comprendre votre besoin, pouvez-vous me dire quelle est la surface approximative de ce massif ?",
+    delay: 7400,
+  },
+  { role: 'user', text: '30m²', delay: 9800 },
+  {
+    role: 'assistant',
+    text: "Merci pour cette précision. Pour l'entretien de votre massif floral de 30m², avez-vous des préférences concernant les types de plantes ou de fleurs à entretenir ?",
+    delay: 11200,
   },
   {
     role: 'user',
-    text: "Installation d'une prise pour recharger une voiture électrique devant ma maison",
-    delay: 3200,
+    text: 'Plantes méditerranéennes (palmiers, yuccas, cordylines, lauriers roses)',
+    delay: 13800,
   },
   {
     role: 'assistant',
-    text: "C'est un projet intéressant ! Pour l'installation de cette prise, avez-vous déjà un emplacement précis en tête et des travaux d'électricité sont-ils nécessaires ?",
-    delay: 4400,
+    text: "Vous souhaitez entretenir des plantes méditerranéennes comme des palmiers, yuccas, cordylines et lauriers roses. Avez-vous besoin de services spécifiques, comme la taille, le désherbage ou l'ajout de terreau ?",
+    delay: 16400,
   },
-  { role: 'user', text: 'Oui à côté du garage', delay: 5600 },
+  { role: 'user', text: 'Taille, nettoyage', delay: 19200 },
   {
     role: 'assistant',
-    text: 'Avez-vous déjà vérifié si le tableau électrique est suffisant pour supporter cette nouvelle prise ?',
-    delay: 6800,
+    text: 'Vous avez besoin de services de taille et de nettoyage pour votre massif floral. Quel est votre budget estimatif pour ces travaux ?',
+    delay: 20800,
   },
-  { role: 'user', text: "Oui c'est bon", delay: 7800 },
+  { role: 'user', text: 'Moins de 2 000 €', delay: 23000 },
   {
     role: 'assistant',
-    text: 'Parfait ! Pour préparer un devis, pouvez-vous me dire si vous avez une idée du budget que vous souhaitez allouer à ce projet ? 💰',
-    delay: 8800,
+    text: "Pour mieux préparer le devis, pouvez-vous estimer plus précisément ? Par exemple, avez-vous une idée si c'est plutôt autour de 200-500 €, 500-1 000 € ou 1 000-2 000 € ?",
+    delay: 24600,
   },
-  { role: 'user', text: 'Moins de 2 000 €', delay: 10000 },
+  { role: 'user', text: '200 – 500 €', delay: 27400 },
   {
     role: 'assistant',
-    text: 'Pour mieux préparer le devis, pouvez-vous estimer plus précisément ? Par exemple, 200-500€, 500-1 000€ ou 1 000-2 000€ ?',
-    delay: 11200,
+    text: "Vous envisagez un budget compris entre 200 et 500 € pour l'entretien de votre massif floral. Souhaitez-vous réaliser ce projet rapidement ou plutôt dans les prochains mois ?",
+    delay: 28800,
   },
-  { role: 'user', text: '200 – 500 €', delay: 12400 },
+  { role: 'user', text: 'Sous 1 mois', delay: 31600 },
   {
     role: 'assistant',
-    text: 'Merci pour cette précision sur le budget. Souhaitez-vous réaliser ce projet rapidement ou plutôt dans les prochains mois ? 📅',
-    delay: 13600,
+    text: 'Vous souhaitez réaliser ce projet sous 1 mois. Où en êtes-vous dans votre réflexion ?',
+    delay: 33000,
   },
-  { role: 'user', text: 'Dès que possible', delay: 14800 },
-  {
-    role: 'assistant',
-    text: 'Où en êtes-vous dans votre réflexion ?',
-    delay: 15800,
-  },
-  { role: 'user', text: 'Prêt à démarrer', delay: 16800 },
+  { role: 'user', text: 'Prêt à démarrer', delay: 34800 },
   {
     role: 'assistant',
     text: "Avez-vous des photos, plans ou documents à joindre pour aider l'artisan à préparer son devis ? 📎",
-    delay: 17800,
+    delay: 36200,
+  },
+  {
+    role: 'user',
+    text: "J'ai ajouté 1 photo(s) à mon dossier.",
+    delay: 38800,
+    isPhotoConfirmation: true,
+  },
+  {
+    role: 'assistant',
+    text: "Quelle est l'adresse du chantier concerné ? 📍",
+    delay: 40200,
+  },
+  { role: 'user', text: '40 Rue Bonnat 31400 Toulouse', delay: 42600 },
+  {
+    role: 'assistant',
+    text: 'Pour finaliser votre dossier, renseignez vos coordonnées ci-dessous.',
+    delay: 44000,
+  },
+  {
+    role: 'user',
+    text: 'Prénom: Jean, Nom: Dupont, Téléphone: 06 06 77 88 99, Email: jean@jean.com',
+    delay: 47000,
+    isContactCard: true,
+  },
+  {
+    role: 'assistant',
+    text: "Parfait ! Vérifiez votre dossier et validez l'envoi. 📋",
+    delay: 48600,
+  },
+  {
+    role: 'assistant',
+    text: "✅ Votre dossier a bien été transmis (réf. #PEIUET). L'artisan va vous recontacter très prochainement. Merci !",
+    delay: 50400,
+    isSuccess: true,
   },
 ];
 
@@ -2255,8 +2305,8 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
       setTypingBeforeIndex(null);
 
       CHAT_MESSAGES.forEach((msg, i) => {
-        if (msg.role === 'assistant') {
-          timeouts.push(setTimeout(() => setTypingBeforeIndex(i), Math.max(msg.delay - 800, 0)));
+        if (msg.role === 'assistant' && !msg.isSuccess) {
+          timeouts.push(setTimeout(() => setTypingBeforeIndex(i), Math.max(msg.delay - 900, 0)));
         }
         timeouts.push(setTimeout(() => {
           setTypingBeforeIndex(null);
@@ -2265,7 +2315,7 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
       });
 
       const lastDelay = CHAT_MESSAGES[CHAT_MESSAGES.length - 1].delay;
-      timeouts.push(setTimeout(run, lastDelay + 2000));
+      timeouts.push(setTimeout(run, lastDelay + 4000));
     };
 
     run();
@@ -2280,6 +2330,12 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
   }, [visibleMessages, typingBeforeIndex, reduceMotion]);
+
+  // Dynamic progress bar
+  const lastIdx = visibleMessages > 0 ? visibleMessages - 1 : 0;
+  const step = lastIdx <= 5 ? 1 : lastIdx <= 11 ? 2 : lastIdx <= 17 ? 3 : 4;
+  const stepLabels = ['', 'Projet', 'Détails', 'Précisions', 'Validation'];
+  const stepWidths = ['', '25%', '50%', '75%', '100%'];
 
   return (
     <div className="kr-assistant-card flex h-full w-full flex-col overflow-hidden">
@@ -2297,35 +2353,106 @@ function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
       <div className="flex-shrink-0 border-b border-[var(--border)] px-4 py-1.5">
         <div className="flex items-center justify-between">
           <span className="text-xs text-[var(--text-2)]">Votre projet</span>
-          <span className="text-xs text-[var(--text-2)]">Étape 1 sur 4 — Projet</span>
+          <span className="text-xs text-[var(--text-2)]">Étape {step} sur 4 — {stepLabels[step]}</span>
         </div>
         <div className="mt-0.5 h-0.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
-          <div className="h-full w-1/4 rounded-full bg-[var(--accent)]" />
+          <div
+            className="h-full rounded-full bg-[var(--accent)]"
+            style={{ width: stepWidths[step], transition: 'width 400ms ease' }}
+          />
         </div>
       </div>
 
       <div ref={chatRef} className="kr-assistant-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        {CHAT_MESSAGES.slice(0, visibleMessages).map((msg, i) =>
-          msg.role === 'assistant' ? (
+        {CHAT_MESSAGES.slice(0, visibleMessages).map((msg, i) => {
+          const animClass = reduceMotion ? '' : msg.role === 'assistant' ? 'kr-assistant-msg-in' : 'kr-assistant-user-in';
+
+          if (msg.isSuccess) {
+            return (
+              <div
+                key={i}
+                className={`self-start ${animClass}`}
+                style={{
+                  background: 'rgba(34,197,94,0.1)',
+                  border: '1px solid var(--accent-border)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  maxWidth: '90%',
+                }}
+              >
+                <CheckCircle size={14} color="var(--accent)" style={{ flexShrink: 0 }} />
+                <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '12px', lineHeight: 1.4 }}>
+                  {msg.text}
+                </span>
+              </div>
+            );
+          }
+
+          if (msg.isContactCard) {
+            return (
+              <div
+                key={i}
+                className={`self-end ${animClass}`}
+                style={{
+                  background: 'var(--accent)',
+                  color: 'var(--bg)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3px',
+                  maxWidth: '80%',
+                }}
+              >
+                <span style={{ fontSize: '11px', fontWeight: 700 }}>Jean Dupont</span>
+                <span style={{ fontSize: '11px' }}>Tél : 06 06 77 88 99</span>
+                <span style={{ fontSize: '11px' }}>jean@jean.com</span>
+              </div>
+            );
+          }
+
+          if (msg.isPhotoConfirmation) {
+            return (
+              <div
+                key={i}
+                className={`max-w-[80%] self-end rounded-[12px] rounded-br-[2px] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] ${animClass}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <div style={{
+                  width: '24px', height: '24px', borderRadius: '4px', flexShrink: 0,
+                  background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(0,0,0,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <ImageIcon size={12} color="rgba(0,0,0,0.55)" />
+                </div>
+                {msg.text}
+              </div>
+            );
+          }
+
+          if (msg.role === 'assistant') {
+            return (
+              <div
+                key={i}
+                className={`max-w-[85%] self-start whitespace-pre-line rounded-[12px] rounded-bl-[2px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--text-1)] ${animClass}`}
+              >
+                {msg.text}
+              </div>
+            );
+          }
+
+          return (
             <div
               key={i}
-              className={`max-w-[85%] self-start whitespace-pre-line rounded-[12px] rounded-bl-[2px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--text-1)] ${
-                reduceMotion ? '' : 'kr-assistant-msg-in'
-              }`}
+              className={`max-w-[75%] self-end rounded-[12px] rounded-br-[2px] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] ${animClass}`}
             >
               {msg.text}
             </div>
-          ) : (
-            <div
-              key={i}
-              className={`max-w-[75%] self-end rounded-[12px] rounded-br-[2px] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] ${
-                reduceMotion ? '' : 'kr-assistant-user-in'
-              }`}
-            >
-              {msg.text}
-            </div>
-          )
-        )}
+          );
+        })}
         {typingBeforeIndex !== null && (
           <div className="flex w-fit items-center gap-1 self-start rounded-[12px] bg-[var(--bg-elevated)] px-3 py-2">
             <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:0ms]" />
