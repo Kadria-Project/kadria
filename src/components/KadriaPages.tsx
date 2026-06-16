@@ -443,8 +443,27 @@ const REPLACE_TOOLS_CARDS = [
   },
 ];
 
-const REPLACED_TOOL_ICONS = [
-  MessageCircle, Phone, Users, BarChart3, FileText, PenLine, Table, CheckSquare, Mail, PieChart, MapIcon, Calendar,
+const REPLACED_TOOL_ICONS: {
+  icon: typeof MessageCircle;
+  key: string;
+  x: string;
+  y: string;
+  endX: string;
+  endY: string;
+  delay: string;
+}[] = [
+  { key: 'chat', icon: MessageCircle, x: '-96px', y: '-88px', endX: '-24px', endY: '-22px', delay: '0.00s' },
+  { key: 'phone', icon: Phone, x: '-32px', y: '-110px', endX: '-8px', endY: '-28px', delay: '0.18s' },
+  { key: 'form', icon: FileQuestion, x: '34px', y: '-110px', endX: '9px', endY: '-28px', delay: '0.36s' },
+  { key: 'crm', icon: Users, x: '100px', y: '-88px', endX: '25px', endY: '-22px', delay: '0.54s' },
+  { key: 'map', icon: MapIcon, x: '-118px', y: '-24px', endX: '-30px', endY: '-6px', delay: '0.72s' },
+  { key: 'table', icon: Table, x: '-54px', y: '-24px', endX: '-14px', endY: '-6px', delay: '0.90s' },
+  { key: 'tasks', icon: CheckSquare, x: '54px', y: '-24px', endX: '14px', endY: '-6px', delay: '1.08s' },
+  { key: 'document', icon: FileText, x: '118px', y: '-24px', endX: '30px', endY: '-6px', delay: '1.26s' },
+  { key: 'reporting', icon: BarChart3, x: '-96px', y: '40px', endX: '-24px', endY: '10px', delay: '1.44s' },
+  { key: 'email', icon: Mail, x: '-32px', y: '62px', endX: '-8px', endY: '16px', delay: '1.62s' },
+  { key: 'calendar', icon: Calendar, x: '34px', y: '62px', endX: '9px', endY: '16px', delay: '1.80s' },
+  { key: 'clock', icon: Clock, x: '100px', y: '40px', endX: '25px', endY: '10px', delay: '1.98s' },
 ];
 
 const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
@@ -453,6 +472,59 @@ const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
   [Clock, 'D\u00c9LAI', 'Sous 1 mois'],
   [KanbanSquare, 'STATUT', 'Priorit\u00e9 haute'],
 ];
+
+function ToolsMergeSummary({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <div className="mx-auto mt-16 max-w-5xl rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-6 py-8 md:px-10">
+      <div className="flex flex-col gap-8 md:grid md:grid-cols-[150px_minmax(0,1fr)_150px] md:items-center">
+        <div className="order-1 md:order-2">
+          <div className={`kr-tools-merge-stage ${reduceMotion ? 'kr-tools-merge-stage-static' : ''}`}>
+            <div className="kr-tools-merge-ambient" />
+            <div className={`kr-tools-merge-halo ${reduceMotion ? 'kr-tools-merge-halo-static' : ''}`} />
+            {REPLACED_TOOL_ICONS.map((item) => {
+              const Icon = item.icon;
+              const style = {
+                '--merge-x': item.x,
+                '--merge-y': item.y,
+                '--merge-end-x': item.endX,
+                '--merge-end-y': item.endY,
+                '--merge-delay': item.delay,
+              } as CSSProperties;
+
+              return (
+                <div
+                  key={item.key}
+                  className={`kr-tools-merge-icon ${reduceMotion ? 'kr-tools-merge-icon-static' : ''}`}
+                  style={style}
+                >
+                  <Icon size={18} />
+                </div>
+              );
+            })}
+            <div className={`kr-tools-merge-core ${reduceMotion ? 'kr-tools-merge-core-static' : ''}`}>
+              <div className="kr-tools-merge-core-ring" />
+              <div className="kr-tools-merge-core-badge">
+                <KadriaLogo noLink size="sm" theme="dark" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="order-2 grid grid-cols-2 gap-4 md:contents">
+          <div className="text-center md:order-1">
+            <p className="text-4xl font-black text-[var(--accent)]">12</p>
+            <p className="mt-1 text-sm text-[var(--text-2)]">outils remplacés</p>
+          </div>
+          <div className="text-center md:order-3">
+            <p className="text-4xl font-black text-[var(--text-1)]">1</p>
+            <p className="mt-1 text-sm text-[var(--text-2)]">seule plateforme</p>
+            <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Tout est centralisé.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function QualificationShowcase() {
   const [activeStep, setActiveStep] = useState(() =>
@@ -1788,6 +1860,192 @@ export const ANIMATION_STYLES = `
   }
 
   /* Replace 12 tools — float animation on active card */
+  /* Replace 12 tools â€” merge showcase */
+  .kr-tools-merge-stage {
+    position: relative;
+    margin: 0 auto;
+    width: min(100%, 420px);
+    min-height: 300px;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background:
+      radial-gradient(circle at center, rgba(34, 197, 94, 0.08), transparent 42%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+  }
+  .kr-tools-merge-ambient {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at center, rgba(34, 197, 94, 0.12), transparent 44%),
+      radial-gradient(circle at center, rgba(34, 197, 94, 0.05), transparent 68%);
+    opacity: 0.9;
+  }
+  .kr-tools-merge-icon,
+  .kr-tools-merge-core,
+  .kr-tools-merge-halo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+  }
+  .kr-tools-merge-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(24, 24, 27, 0.78);
+    color: rgba(244, 244, 245, 0.42);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 12px 30px rgba(0, 0, 0, 0.28);
+    transform: translate(-50%, -50%) translate(var(--merge-x), calc(var(--merge-y) + 10px)) scale(0.82);
+    opacity: 0;
+    animation: tools-merge-icon 8.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    animation-delay: var(--merge-delay);
+  }
+  .kr-tools-merge-halo {
+    width: 168px;
+    height: 168px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.28), rgba(34, 197, 94, 0.08) 48%, transparent 74%);
+    filter: blur(8px);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+    animation: tools-merge-halo 8.6s ease-in-out infinite;
+  }
+  .kr-tools-merge-core {
+    transform: translate(-50%, -50%) scale(0.78);
+    opacity: 0.2;
+    animation: tools-merge-core 8.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+  .kr-tools-merge-core-ring {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 112px;
+    height: 112px;
+    border-radius: 999px;
+    border: 1px solid rgba(34, 197, 94, 0.24);
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.24), rgba(34, 197, 94, 0.08) 58%, transparent 74%);
+    box-shadow:
+      0 0 36px rgba(34, 197, 94, 0.18),
+      inset 0 0 20px rgba(34, 197, 94, 0.12);
+    transform: translate(-50%, -50%);
+  }
+  .kr-tools-merge-core-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    min-height: 60px;
+    padding: 0 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(34, 197, 94, 0.28);
+    background: rgba(10, 10, 12, 0.86);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 0 30px rgba(34, 197, 94, 0.12);
+  }
+  .kr-tools-merge-stage-static .kr-tools-merge-halo,
+  .kr-tools-merge-halo-static {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+    animation: none;
+  }
+  .kr-tools-merge-stage-static .kr-tools-merge-core,
+  .kr-tools-merge-core-static {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    animation: none;
+  }
+  .kr-tools-merge-stage-static .kr-tools-merge-icon,
+  .kr-tools-merge-icon-static {
+    opacity: 0.95;
+    color: rgba(244, 244, 245, 0.72);
+    transform: translate(-50%, -50%) translate(var(--merge-x), var(--merge-y)) scale(1);
+    animation: none;
+  }
+  @keyframes tools-merge-icon {
+    0%, 8% {
+      opacity: 0;
+      color: rgba(244, 244, 245, 0.32);
+      transform: translate(-50%, -50%) translate(var(--merge-x), calc(var(--merge-y) + 10px)) scale(0.82);
+    }
+    18%, 34% {
+      opacity: 0.9;
+      color: rgba(244, 244, 245, 0.54);
+      transform: translate(-50%, -50%) translate(var(--merge-x), var(--merge-y)) scale(1);
+    }
+    44%, 58% {
+      opacity: 1;
+      color: #22c55e;
+      border-color: rgba(34, 197, 94, 0.34);
+      box-shadow:
+        0 0 24px rgba(34, 197, 94, 0.18),
+        inset 0 0 18px rgba(34, 197, 94, 0.12);
+      transform: translate(-50%, -50%) translate(var(--merge-x), var(--merge-y)) scale(1.02);
+    }
+    78% {
+      opacity: 0.95;
+      color: #22c55e;
+      transform: translate(-50%, -50%) translate(var(--merge-end-x), var(--merge-end-y)) scale(0.88);
+    }
+    92%, 100% {
+      opacity: 0;
+      color: #22c55e;
+      transform: translate(-50%, -50%) translate(0px, 0px) scale(0.38);
+    }
+  }
+  @keyframes tools-merge-halo {
+    0%, 48% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.7);
+    }
+    66% {
+      opacity: 0.6;
+      transform: translate(-50%, -50%) scale(0.92);
+    }
+    82% {
+      opacity: 0.95;
+      transform: translate(-50%, -50%) scale(1.18);
+    }
+    100% {
+      opacity: 0.35;
+      transform: translate(-50%, -50%) scale(1.02);
+    }
+  }
+  @keyframes tools-merge-core {
+    0%, 54% {
+      opacity: 0.18;
+      transform: translate(-50%, -50%) scale(0.78);
+    }
+    72% {
+      opacity: 0.82;
+      transform: translate(-50%, -50%) scale(0.96);
+    }
+    86%, 100% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  @media (max-width: 767px) {
+    .kr-tools-merge-stage {
+      min-height: 250px;
+    }
+    .kr-tools-merge-icon {
+      width: 38px;
+      height: 38px;
+    }
+    .kr-tools-merge-core-badge {
+      min-width: 132px;
+      min-height: 54px;
+      padding: 0 14px;
+    }
+  }
+
   @keyframes card-float {
     0%, 100% { transform: translateY(0px); }
     50% { transform: translateY(-8px); }
@@ -2720,40 +2978,7 @@ export function LandingRoutePage() {
               ))}
             </div>
 
-            <div className="mx-auto mt-16 grid max-w-4xl grid-cols-1 gap-8 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-6 py-8 md:grid-cols-3 md:items-center md:px-10">
-              <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.1)]">
-                  <Layers size={24} className="text-[var(--accent)]" />
-                </div>
-                <p className="mt-3 text-4xl font-black text-[var(--accent)]">12</p>
-                <p className="text-sm text-[var(--text-2)]">outils remplacés</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {REPLACED_TOOL_ICONS.map((ToolIcon, i) => (
-                  <div
-                    key={i}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] p-2 text-[var(--text-3)] transition-all duration-700 ${
-                      activeToolsCard === REPLACE_TOOLS_CARDS.length - 1 ? 'translate-x-2 scale-90 opacity-70' : ''
-                    }`}
-                  >
-                    <ToolIcon size={20} />
-                  </div>
-                ))}
-                <ArrowRight size={20} className="mx-4 text-[var(--accent)]" />
-                <span
-                  className={`rounded-[10px] border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-4 py-2 text-lg font-black text-[var(--accent)] transition-all duration-700 ${
-                    activeToolsCard === REPLACE_TOOLS_CARDS.length - 1 ? 'scale-110 shadow-[0_0_32px_rgba(34,197,94,0.22)]' : ''
-                  }`}
-                >
-                  KADRIA
-                </span>
-              </div>
-              <div className="text-center">
-                <p className="text-4xl font-black text-[var(--text-1)]">1</p>
-                <p className="text-sm text-[var(--text-2)]">seule plateforme</p>
-                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Tout est centralisé.</p>
-              </div>
-            </div>
+            <ToolsMergeSummary reduceMotion={reduceMotion} />
             <p className="kr-reveal kr-reveal-delay-1 mx-auto mt-8 max-w-2xl text-center text-xl font-bold text-[var(--text-1)]">
               Moins d&apos;outils. Moins de ressaisies. Plus de chantiers.
             </p>
