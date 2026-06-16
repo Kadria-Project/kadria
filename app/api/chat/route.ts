@@ -427,11 +427,31 @@ export async function POST(request: Request) {
       parsed.completenessScore = parseInt(parsed.completenessScore as string, 10) || 0
     }
 
+    // Compute score server-side from merged dossier fields (reliable, not AI-guessed)
+    const mergedDossier = {
+      ...currentDossier,
+      ...(typeof parsed.dossierUpdate === 'object' && parsed.dossierUpdate !== null
+        ? parsed.dossierUpdate
+        : {}),
+    } as Record<string, unknown>
+    const scoredFields: (keyof typeof mergedDossier)[] = [
+      'trade', 'projectType', 'description', 'budget',
+      'desiredTimeline', 'maturity', 'siteAddress',
+      'clientFirstName', 'clientName', 'clientPhone', 'clientEmail',
+    ]
+    const filledCount = scoredFields.filter(
+      k => mergedDossier[k] && String(mergedDossier[k]).trim() !== ''
+    ).length
+    // 11 fields, each worth ~9 pts, capped at 100
+    const computedScore = Math.min(Math.round((filledCount / 11) * 100), 100)
+    // Use the higher of computed vs AI-reported score
+    const finalScore = Math.max(computedScore, (parsed.completenessScore as number) ?? 0)
+
     return NextResponse.json({
       success: true,
       reply: parsed.reply ?? '',
       dossierUpdate: parsed.dossierUpdate ?? {},
-      completenessScore: parsed.completenessScore ?? 0,
+      completenessScore: finalScore,
       readyToSave: parsed.readyToSave ?? false,
       aiSummary: parsed.aiSummary ?? '',
       expectedField: parsed.expectedField ?? '',

@@ -302,7 +302,7 @@ export default function ChatWidget({
     } finally {
       setUploadingPhotos(false)
     }
-  }, [])
+  }, [sendMessage])
 
   // ── Save dossier ─────────────────────────────────────────────────────────
   const saveDossier = async () => {
@@ -811,16 +811,18 @@ export default function ChatWidget({
                     e.target.value = ''
                   }}
                 />
-                <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhotos}
-                  style={{
-                    width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #3f3f46',
-                    background: '#18181b', color: 'white',
-                    cursor: uploadingPhotos ? 'default' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, fontSize: '16px',
-                  }}>
-                  {uploadingPhotos ? '⏳' : '📸'}
-                </button>
+                {isPhotoMode && !photosAnswered && (
+                  <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhotos}
+                    style={{
+                      width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #3f3f46',
+                      background: '#18181b', color: 'white',
+                      cursor: uploadingPhotos ? 'default' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, fontSize: '16px',
+                    }}>
+                    {uploadingPhotos ? '⏳' : '📸'}
+                  </button>
+                )}
                 <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
                   style={{
                     width: '38px', height: '38px', borderRadius: '8px', border: 'none',
