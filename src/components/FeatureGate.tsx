@@ -1,6 +1,16 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  cloneElement,
+  createContext,
+  isValidElement,
+  useContext,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import {
@@ -52,11 +62,45 @@ export function FeatureGate({
     return <>{children}</>;
   }
 
+  const lockedChildren =
+    variant === 'default' && isValidElement(children)
+      ? cloneElement(
+          children as ReactElement<{
+            children?: ReactNode;
+            className?: string;
+            style?: CSSProperties;
+          }>,
+          {
+            className: [
+              (children.props as { className?: string }).className,
+              'inline-flex items-center justify-center gap-2 whitespace-nowrap',
+            ]
+              .filter(Boolean)
+              .join(' '),
+            style: {
+              ...((children.props as { style?: CSSProperties }).style || {}),
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap',
+              minWidth: 'max-content',
+            },
+            children: (
+              <>
+                {(children.props as { children?: ReactNode }).children}
+                <Lock className="h-3.5 w-3.5 shrink-0 text-green-500/80" aria-hidden />
+              </>
+            ),
+          }
+        )
+      : children;
+
   return (
     <>
       <div className={`relative ${className}`}>
         <div aria-hidden className="pointer-events-none opacity-60">
-          {children}
+          {lockedChildren}
         </div>
 
         <button
@@ -66,9 +110,7 @@ export function FeatureGate({
           onClick={() => setIsOpen(true)}
           className="absolute inset-0 z-10 rounded-[inherit] bg-zinc-950/5 transition-colors hover:bg-zinc-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
         >
-          {variant === 'default' && (
-            <Lock className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-green-500/80" />
-          )}
+          <span className="sr-only">Disponible avec {getPlanLabel(upgradePlan)}</span>
         </button>
       </div>
 

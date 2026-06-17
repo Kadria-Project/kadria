@@ -667,6 +667,11 @@ function navButtonStyle(active: boolean): React.CSSProperties {
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    whiteSpace: 'nowrap',
   };
 }
 
