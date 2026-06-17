@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, getDevisById } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 interface DevisLine {
   type: 'item' | 'section'
@@ -26,10 +26,11 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+  const access = await requireFeatureAccess('quoteGeneration')
+  if (!access.ok) {
+    return NextResponse.json(access.body, { status: access.status })
   }
+  const session = access.session
 
   const { id } = await params
   const devis = await getDevisById(id)

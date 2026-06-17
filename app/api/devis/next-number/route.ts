@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getArtisanConfig, getDevisByArtisan } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 export async function GET() {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('quoteGeneration')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const config = await getArtisanConfig(session.artisanId)
     const prefixe = config?.devisPrefixe || 'DEV'
@@ -32,9 +30,9 @@ export async function GET() {
 
     return NextResponse.json({ success: true, nextNumber })
   } catch (error) {
-    console.error('[DEVIS NEXT-NUMBER]', error)
+    console.error('[DEVIS NEXT-NUMBER]', error instanceof Error ? error.message : String(error))
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: 'Erreur serveur' },
       { status: 500 }
     )
   }

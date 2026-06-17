@@ -293,15 +293,15 @@ function buildMonthlyHtml(projects: ExportProject[], artisanName: string): strin
 }
 
 export async function POST(request: NextRequest) {
-  const access = await requireFeatureAccess('pdfExports')
+  const body = await request.json()
+  const type: 'list' | 'monthly' = body.type === 'monthly' ? 'monthly' : 'list'
+  const access = await requireFeatureAccess(type === 'monthly' ? 'monthlyPdfReport' : 'pdfExports')
   if (!access.ok) {
     return NextResponse.json(access.body, { status: access.status })
   }
   const session = access.session
 
-  const body = await request.json()
   const projects: ExportProject[] = Array.isArray(body.projects) ? body.projects : []
-  const type: 'list' | 'monthly' = body.type === 'monthly' ? 'monthly' : 'list'
   const filtersLabel: string = typeof body.filtersLabel === 'string' ? body.filtersLabel : ''
 
   const artisanName = session.companyName || 'Artisan'

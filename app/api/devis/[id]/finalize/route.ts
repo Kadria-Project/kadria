@@ -4,7 +4,7 @@ import Airtable from 'airtable'
 import { Resend } from 'resend'
 import { airtableBase, TABLES, getArtisanConfig, getDevisById } from '@/src/lib/airtable'
 import { generateDevisPdf } from '@/src/lib/devis-pdf'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 
 cloudinary.config({
@@ -156,10 +156,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+  const access = await requireFeatureAccess('quoteGeneration')
+  if (!access.ok) {
+    return NextResponse.json(access.body, { status: access.status })
   }
+  const session = access.session
 
   const { id } = await params
   const body = await request.json()

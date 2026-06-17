@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { deleteDevis, getDevisById, updateDevis } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 const ALLOWED_STATUTS = ['Brouillon', 'Envoyé', 'Accepté', 'Refusé']
 
@@ -9,13 +9,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('quoteGeneration')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const { id } = await params
     const devis = await getDevisById(id)
@@ -49,13 +47,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('quoteGeneration')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const { id } = await params
     const existing = await getDevisById(id)
@@ -118,13 +114,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('quoteGeneration')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const { id } = await params
     const existing = await getDevisById(id)

@@ -9,7 +9,7 @@ import {
   getDevisByProjet,
   updateArtisanConfig,
 } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 async function getAuthorizedProject(id: string, artisanId: string) {
   let record
@@ -29,13 +29,11 @@ async function getAuthorizedProject(id: string, artisanId: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('quoteGeneration')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const { searchParams } = new URL(request.url)
     const projetId = searchParams.get('projet_id') || searchParams.get('projetId')
@@ -87,13 +85,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('quoteGeneration')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const body = await request.json()
 

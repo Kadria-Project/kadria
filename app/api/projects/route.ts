@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
-import { airtableBase, TABLES, getArtisanConfig } from '@/src/lib/airtable';
+import { airtableBase, TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
+import { getMonthlyProjectLimit } from '@/src/lib/plans';
+
+function escapeFormulaValue(value: string) {
+  return value.replace(/"/g, '\\"');
+}
 
 function mapProject(record: any) {
   const fields = record.fields;
@@ -162,6 +167,30 @@ export async function POST(request: Request) {
         { success: false, error: 'Artisan introuvable' },
         { status: 404 },
       );
+    }
+
+    const artisanUser = await getUserByArtisanIdentifier(artisanId);
+    const monthlyLimit = getMonthlyProjectLimit(artisanUser?.plan);
+    if (monthlyLimit !== null) {
+      const monthKey = new Date().toISOString().slice(0, 7);
+      const safeArtisanId = escapeFormulaValue(artisanId);
+      const recordsThisMonth = await airtableBase(TABLES.projects)
+        .select({
+          maxRecords: monthlyLimit + 1,
+          filterByFormula: `AND({Artisan ID}="${safeArtisanId}", DATETIME_FORMAT({Created At}, 'YYYY-MM')="${monthKey}")`,
+        })
+        .firstPage();
+
+      if (recordsThisMonth.length >= monthlyLimit) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Limite mensuelle atteinte',
+            requiredPlan: 'performance',
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const postalNum = input.postalCode

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/src/lib/auth-utils'
+import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +8,11 @@ export async function GET(
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+  }
+
+  const featureAccess = await requireFeatureAccess('pdfExports')
+  if (!featureAccess.ok) {
+    return NextResponse.json(featureAccess.body, { status: featureAccess.status })
   }
 
   const { id } = await params
@@ -19,8 +24,17 @@ export async function GET(
     headers: { Authorization: `Bearer ${apiKey}` },
     cache: 'no-store',
   })
+  if (res.status === 404) {
+    return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
+  }
+  if (!res.ok) {
+    return NextResponse.json({ success: false, error: 'Erreur Airtable' }, { status: 500 })
+  }
   const record = await res.json()
   const f = record.fields || {}
+  if (f['Artisan ID'] !== session.artisanId) {
+    return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
+  }
 
   const score = Number(f['Completeness Score'] || 0)
   let verdictLabel = 'À qualifier'

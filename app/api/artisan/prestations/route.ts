@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, updateArtisanConfig } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
 
 interface Prestation {
   id: string
@@ -26,13 +26,11 @@ function makeId() {
 
 export async function GET() {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('pricingCatalog')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const config = await getArtisanConfig(session.artisanId)
     if (!config) {
@@ -55,13 +53,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('pricingCatalog')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const body = await request.json()
 
@@ -105,13 +101,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('pricingCatalog')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const body = await request.json()
     if (!body.id) {
@@ -157,13 +151,11 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+    const access = await requireFeatureAccess('pricingCatalog')
+    if (!access.ok) {
+      return NextResponse.json(access.body, { status: access.status })
     }
+    const session = access.session
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

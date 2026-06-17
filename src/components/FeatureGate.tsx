@@ -62,8 +62,10 @@ export function FeatureGate({
     return <>{children}</>;
   }
 
+  const shouldInjectInlineLock = isValidElement(children) && children.type === 'button';
+
   const lockedChildren =
-    variant === 'default' && isValidElement(children)
+    variant === 'default' && shouldInjectInlineLock
       ? cloneElement(
           children as ReactElement<{
             children?: ReactNode;

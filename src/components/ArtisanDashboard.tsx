@@ -679,6 +679,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
   const canAccessCalendar = hasFeature(plan, 'calendar');
   const canExportPdf = hasFeature(plan, 'pdfExports');
+  const canExportMonthlyReport = hasFeature(plan, 'monthlyPdfReport');
+  const canUseKanban = hasFeature(plan, 'kanbanView');
+  const canUseAdvancedFilters = hasFeature(plan, 'advancedFilters');
+  const canViewKpiTrends = hasFeature(plan, 'kpiTrends');
+  const canViewPipeline = hasFeature(plan, 'commercialPipeline');
+  const canViewGeoProjects = hasFeature(plan, 'geoProjects');
 
   const user = {
     email: 'demo@kadria.local',
@@ -720,6 +726,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   });
 
   const setPeriod = (period: KpiPeriod) => {
+    if (!canViewKpiTrends) return;
     setKpiPeriod(period);
     localStorage.setItem('kadria_kpi_period', period);
   };
@@ -751,9 +758,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   });
 
   const setView = (mode: 'list' | 'kanban') => {
+    if (mode === 'kanban' && !canUseKanban) return;
     setViewMode(mode);
     localStorage.setItem('kadria_view_mode', mode);
   };
+
+  useEffect(() => {
+    if (viewMode === 'kanban' && !canUseKanban) {
+      setViewMode('list');
+      localStorage.setItem('kadria_view_mode', 'list');
+    }
+  }, [canUseKanban, viewMode]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setAllProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
@@ -775,12 +790,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   }, []);
 
   const togglePanel = (panel: 'pipeline' | 'chantiers') => {
+    if (panel === 'pipeline' && !canViewPipeline) return;
+    if (panel === 'chantiers' && !canViewGeoProjects) return;
+
     setOpenPanel((prev) => {
       const next = prev === panel ? null : panel;
       localStorage.setItem('kadria_dashboard_panels', next ?? '');
       return next;
     });
   };
+
+  useEffect(() => {
+    if ((openPanel === 'pipeline' && !canViewPipeline) || (openPanel === 'chantiers' && !canViewGeoProjects)) {
+      setOpenPanel(null);
+      localStorage.setItem('kadria_dashboard_panels', '');
+    }
+  }, [canViewGeoProjects, canViewPipeline, openPanel]);
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -826,6 +851,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   }, [loadData]);
 
   const updateFilter = (key: keyof FilterState, value: string) => {
+    if (!canUseAdvancedFilters && (key === 'budget' || key === 'score' || key === 'periode' || key === 'source')) return;
+
     setQuickFilter(null);
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
@@ -953,7 +980,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const handleExportPDF = async (type: 'list' | 'monthly') => {
-    if (!canExportPdf) {
+    if ((type === 'list' && !canExportPdf) || (type === 'monthly' && !canExportMonthlyReport)) {
       setExportMenuOpen(false);
       showToast('Fonction disponible avec le plan Performance', true);
       return;
@@ -1148,6 +1175,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <p className="text-sm text-zinc-400">Période analysée · {periodLabel}</p>
 
+        <FeatureGate feature="kpiTrends" requiredPlan="performance">
         <div className="flex flex-row items-center gap-2">
           {KPI_PERIOD_OPTIONS.map((opt) => (
             <button
@@ -1168,6 +1196,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
           ))}
         </div>
+        </FeatureGate>
       </div>
 
       {/* KPIs */}
@@ -1198,7 +1227,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <AnimatedKpiValue value={card.value} format={card.format} />
                 </span>
 
-                {card.delta !== null && (
+                {card.delta !== null && canViewKpiTrends && (
                   <TrendIndicator delta={card.delta} unit={card.label === 'Taux de conversion' ? ' pts' : '%'} />
                 )}
               </div>
@@ -1209,6 +1238,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {/* Sparkline CA potentiel */}
       {!loading && (
+        <FeatureGate feature="kpiTrends" requiredPlan="performance">
         <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-5 mb-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
@@ -1233,6 +1263,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <Sparkline data={kpiPeriodData.sparkline} height={80} />
           </div>
         </div>
+        </FeatureGate>
       )}
 
       {/* Alertes */}
@@ -1343,6 +1374,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {!loading && topOpportunities.length > 0 && (
+            <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
             <>
               <div className="my-2 border-t border-zinc-800" />
 
@@ -1401,6 +1433,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 ))}
               </div>
             </>
+            </FeatureGate>
           )}
 
           {/* ZONE 2 — Toggles */}
@@ -1412,6 +1445,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <FeatureGate feature="commercialPipeline" requiredPlan="performance">
               <button
                 onClick={() => togglePanel('pipeline')}
                 className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
@@ -1439,7 +1473,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   }`}
                 />
               </button>
+              </FeatureGate>
 
+              <FeatureGate feature="geoProjects" requiredPlan="performance">
               <button
                 onClick={() => togglePanel('chantiers')}
                 className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
@@ -1467,6 +1503,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   }`}
                 />
               </button>
+              </FeatureGate>
             </div>
           </div>
 
@@ -1613,6 +1650,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 </SelectContent>
               </Select>
 
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.budget} onValueChange={(v) => updateFilter('budget', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Tous les budgets" />
@@ -1628,7 +1666,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   ))}
                 </SelectContent>
               </Select>
+              </FeatureGate>
 
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.score} onValueChange={(v) => updateFilter('score', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Tous les scores" />
@@ -1644,7 +1684,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   ))}
                 </SelectContent>
               </Select>
+              </FeatureGate>
 
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.periode} onValueChange={(v) => updateFilter('periode', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Toutes les dates" />
@@ -1660,7 +1702,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   ))}
                 </SelectContent>
               </Select>
+              </FeatureGate>
 
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.source} onValueChange={(v) => updateFilter('source', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Toutes les sources" />
@@ -1676,6 +1720,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   ))}
                 </SelectContent>
               </Select>
+              </FeatureGate>
 
               {hasActiveFilters && (
                 <button
@@ -1746,6 +1791,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   📋 Liste
                 </button>
 
+                <FeatureGate feature="kanbanView" requiredPlan="performance">
                 <button
                   type="button"
                   onClick={() => setView('kanban')}
@@ -1757,6 +1803,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 >
                   🗂️ Kanban
                 </button>
+                </FeatureGate>
 
                 <div className="relative" ref={exportMenuRef}>
                   <button
@@ -1808,7 +1855,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                       <div className="my-1 border-t border-zinc-800" />
 
-                      {canExportPdf ? (
+                      {canExportMonthlyReport ? (
                         <button
                           type="button"
                           onClick={() => handleExportPDF('monthly')}
@@ -1818,7 +1865,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           <p className="text-xs text-zinc-400">Synthèse PDF du mois en cours</p>
                         </button>
                       ) : (
-                        <FeatureGate feature="pdfExports" requiredPlan="performance" variant="menuItem">
+                        <FeatureGate feature="monthlyPdfReport" requiredPlan="performance" variant="menuItem">
                           <button
                             type="button"
                             className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-zinc-300"
