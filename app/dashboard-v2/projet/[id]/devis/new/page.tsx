@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Plus, Trash2, X, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Lock, Plus, Trash2, X, XCircle } from 'lucide-react';
+import { UpgradeModal } from '@/src/components/FeatureGate';
+import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 
 interface ArtisanConfig {
   companyName: string;
@@ -91,7 +93,11 @@ function NewDevis() {
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState('');
   const [nextDevisNumber, setNextDevisNumber] = useState('');
+  const [plan, setPlan] = useState<PlanKey>('essentiel');
+  const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
+  const canQuote = hasFeature(plan, 'quoteGeneration');
+  const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
 
   useEffect(() => {
     if (!toast) return;
@@ -134,14 +140,20 @@ function NewDevis() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [configRes, projectRes, nextNumberRes] = await Promise.all([
+        const [configRes, projectRes, nextNumberRes, sessionRes] = await Promise.all([
           fetch('/api/artisan/config'),
           fetch(`/api/projects/${projetId}`),
           fetch('/api/devis/next-number'),
+          fetch('/api/auth/session'),
         ]);
         const configData = await configRes.json();
         const projectData = await projectRes.json();
         const nextNumberData = await nextNumberRes.json();
+        const sessionData = await sessionRes.json();
+
+        if (sessionData.success) {
+          setPlan(normalizePlan(sessionData.plan));
+        }
 
         if (configData.success) {
           const config = configData.config as ArtisanConfig;
@@ -319,6 +331,10 @@ function NewDevis() {
 
   const handleSubmit = async (mode: 'draft' | 'send') => {
     setError('');
+    if (!canQuote) {
+      openUpgradeModal('quoteGeneration');
+      return;
+    }
 
     if (!objet.trim()) {
       setError('Veuillez renseigner l\'objet du devis.');
@@ -405,8 +421,16 @@ function NewDevis() {
   };
 
   const openPdfPreview = async () => {
+    if (!canQuote) {
+      openUpgradeModal('quoteGeneration');
+      return;
+    }
     if (!savedId) return;
     const res = await fetch(`/api/devis/${savedId}/pdf`);
+    if (res.status === 403) {
+      openUpgradeModal('quoteGeneration');
+      return;
+    }
     const html = await res.text();
     const win = window.open('', '_blank');
     if (win) {
@@ -504,8 +528,8 @@ function NewDevis() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={openPdfPreview}
-              disabled={!savedId}
-              title={!savedId ? 'Enregistrez le devis pour pouvoir l\'exporter en PDF' : undefined}
+              disabled={!savedId && canQuote}
+              title={!canQuote ? 'Disponible avec Performance' : !savedId ? 'Enregistrez le devis pour pouvoir l\'exporter en PDF' : undefined}
               style={{
                 background: '#18181b',
                 border: '1px solid #27272a',
@@ -513,10 +537,14 @@ function NewDevis() {
                 borderRadius: '8px',
                 padding: '8px 16px',
                 fontSize: '13px',
-                cursor: savedId ? 'pointer' : 'not-allowed',
-                opacity: savedId ? 1 : 0.4,
-              }}
-            >
+                cursor: !canQuote || savedId ? 'pointer' : 'not-allowed',
+                opacity: !canQuote || savedId ? 1 : 0.4,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+            }}
+          >
+              {!canQuote && <Lock size={14} />}
               📄 Aperçu PDF
             </button>
           </div>
@@ -532,6 +560,21 @@ function NewDevis() {
             fontSize: '13px',
           }}>
             {error}
+          </div>
+        )}
+
+        {!canQuote && (
+          <div
+            style={{
+              background: 'rgba(34,197,94,0.08)',
+              border: '1px solid rgba(34,197,94,0.25)',
+              borderRadius: '12px',
+              padding: '14px 18px',
+              color: '#d4d4d8',
+              fontSize: '13px',
+            }}
+          >
+            Passez à Performance pour envoyer vos devis, générer des PDF et suivre leur statut.
           </div>
         )}
 
@@ -866,6 +909,7 @@ function NewDevis() {
               onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#27272a'; }}
             >
+              {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'draft' && <Loader2 className="animate-spin" size={14} />}
               {isSubmitting && submitMode === 'draft' ? 'Génération du PDF...' : 'Enregistrer · Envoyer plus tard'}
             </button>
@@ -890,6 +934,7 @@ function NewDevis() {
               onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.opacity = '0.9'; }}
               onMouseLeave={(e) => { if (!isSubmitting) e.currentTarget.style.opacity = '1'; }}
             >
+              {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'send' && <Loader2 className="animate-spin" size={14} />}
               {isSubmitting && submitMode === 'send' ? 'Génération du PDF...' : 'Envoyer le devis →'}
             </button>
@@ -1071,6 +1116,14 @@ function NewDevis() {
           )}
           <span>{toast.message}</span>
         </div>
+      )}
+
+      {upgradeFeature && (
+        <UpgradeModal
+          feature={upgradeFeature}
+          requiredPlan="performance"
+          onClose={() => setUpgradeFeature(null)}
+        />
       )}
     </div>
   );

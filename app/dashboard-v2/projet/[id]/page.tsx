@@ -13,8 +13,11 @@ import {
   Clock,
   Eye,
   FileText as FileTextIcon,
+  Lock,
   Plus,
 } from 'lucide-react';
+import { UpgradeModal } from '@/src/components/FeatureGate';
+import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: '#a1a1aa', border: '#3f3f46' },
@@ -100,6 +103,11 @@ function ProjectDetail() {
     project?.devisAmount ? String(project.devisAmount) : ''
   );
   const [savingDevis, setSavingDevis] = useState(false);
+  const [plan, setPlan] = useState<PlanKey>('essentiel');
+  const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
+  const canQuote = hasFeature(plan, 'quoteGeneration');
+  const canExportPdf = hasFeature(plan, 'pdfExports');
+  const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
 
   const [showAllHistory, setShowAllHistory] = useState(false);
 
@@ -164,6 +172,15 @@ function ProjectDetail() {
       .then((r) => r.json())
       .then((data) => {
         if (data.success) setArtisanConfig(data.config);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setPlan(normalizePlan(data.plan));
       })
       .catch(() => {});
   }, []);
@@ -329,7 +346,15 @@ function ProjectDetail() {
           </Button>
           <button
             onClick={async () => {
+              if (!canExportPdf) {
+                openUpgradeModal('pdfExports');
+                return;
+              }
               const res = await fetch(`/api/projects/${project.id}/pdf`);
+              if (res.status === 403) {
+                openUpgradeModal('pdfExports');
+                return;
+              }
               const html = await res.text();
               const win = window.open('', '_blank');
               if (win) {
@@ -351,6 +376,7 @@ function ProjectDetail() {
               gap: '6px',
             }}
           >
+            {!canExportPdf && <Lock size={14} />}
             📄 Exporter PDF
           </button>
         </div>
@@ -721,10 +747,14 @@ function ProjectDetail() {
             }}>
               <button
                 onClick={() => {
+                  if (!canQuote) {
+                    openUpgradeModal('quoteGeneration');
+                    return;
+                  }
                   if (!legalComplete) return;
                   router.push(`/dashboard-v2/projet/${id}/devis/new`);
                 }}
-                disabled={!legalComplete}
+                disabled={!legalComplete && canQuote}
                 title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
                 style={{
                   width: '100%',
@@ -735,8 +765,12 @@ function ProjectDetail() {
                   fontSize: '13px',
                   fontWeight: 600,
                   color: '#22c55e',
-                  cursor: legalComplete ? 'pointer' : 'not-allowed',
-                  opacity: legalComplete ? 1 : 0.4,
+                  cursor: !canQuote || legalComplete ? 'pointer' : 'not-allowed',
+                  opacity: !canQuote || legalComplete ? 1 : 0.4,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
                   transition: 'background 0.15s',
                 }}
                 onMouseEnter={(e) => {
@@ -746,6 +780,7 @@ function ProjectDetail() {
                   e.currentTarget.style.background = '#18181b';
                 }}
               >
+                {!canQuote && <Lock size={14} />}
                 📄 Générer un devis
               </button>
 
@@ -1606,6 +1641,14 @@ function ProjectDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {upgradeFeature && (
+        <UpgradeModal
+          feature={upgradeFeature}
+          requiredPlan="performance"
+          onClose={() => setUpgradeFeature(null)}
+        />
       )}
     </div>
   );

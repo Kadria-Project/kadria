@@ -40,6 +40,57 @@ export function useCurrentPlan(): PlanKey {
   return useContext(PlanContext);
 }
 
+export function UpgradeModal({
+  feature,
+  requiredPlan,
+  onClose,
+}: {
+  feature: PlanFeatureKey;
+  requiredPlan?: PlanKey;
+  onClose: () => void;
+}) {
+  const upgradePlan = requiredPlan ?? getRequiredPlanForFeature(feature);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
+          Plan {getPlanLabel(upgradePlan)}
+        </p>
+        <h3 className="mt-3 text-2xl font-semibold text-white">
+          Débloquez le suivi avancé
+        </h3>
+        <p className="mt-3 text-sm leading-6 text-zinc-400">
+          Cette fonctionnalité est incluse dans le plan {getPlanLabel(upgradePlan)}. Passez au
+          niveau supérieur pour automatiser davantage votre suivi commercial.
+        </p>
+
+        <div className="mt-6 flex flex-col gap-3">
+          <Link
+            href={`/checkout/${upgradePlan}`}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-green-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
+          >
+            Passer à {getPlanLabel(upgradePlan)}
+          </Link>
+          <Link
+            href="/pricing"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-zinc-500"
+          >
+            Comparer les plans
+          </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-4 py-3 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+          >
+            Plus tard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FeatureGate({
   children,
   feature,

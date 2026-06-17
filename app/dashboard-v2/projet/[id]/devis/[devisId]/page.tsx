@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
-import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Copy, Download, Eye, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Copy, Download, Eye, Loader2, Lock, XCircle } from 'lucide-react';
 import { getPublicDevisUrl } from '@/src/lib/base-url';
+import { UpgradeModal } from '@/src/components/FeatureGate';
+import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 
 interface DevisLine {
   type: 'item' | 'section';
@@ -77,7 +79,11 @@ function DevisView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const [plan, setPlan] = useState<PlanKey>('essentiel');
+  const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
+  const canQuote = hasFeature(plan, 'quoteGeneration');
+  const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
 
   useEffect(() => {
     if (!toast) return;
@@ -88,12 +94,18 @@ function DevisView() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [devisRes, projectRes] = await Promise.all([
+        const [devisRes, projectRes, sessionRes] = await Promise.all([
           fetch(`/api/devis/${devisId}`),
           fetch(`/api/projects/${projetId}`),
+          fetch('/api/auth/session'),
         ]);
         const devisData = await devisRes.json();
         const projectData = await projectRes.json();
+        const sessionData = await sessionRes.json();
+
+        if (sessionData.success) {
+          setPlan(normalizePlan(sessionData.plan));
+        }
 
         if (devisData.success) {
           setDevis(devisData.devis);
@@ -117,6 +129,10 @@ function DevisView() {
 
   const sendNow = async () => {
     if (!devis) return;
+    if (!canQuote) {
+      openUpgradeModal('quoteGeneration');
+      return;
+    }
     setSending(true);
     try {
       const res = await fetch(`/api/devis/${devisId}/finalize`, {
@@ -125,6 +141,10 @@ function DevisView() {
         body: JSON.stringify({ mode: 'send' }),
       });
       const data = await res.json();
+      if (res.status === 403) {
+        openUpgradeModal('quoteGeneration');
+        return;
+      }
       if (!data.success) {
         setToast({ type: 'error', message: '✗ Erreur lors de l\'envoi — Veuillez réessayer' });
         console.error('[DEVIS VIEW] Erreur finalize:', data.error);
@@ -257,9 +277,15 @@ function DevisView() {
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
-              onClick={() => devis.pdfUrl && window.open(devis.pdfUrl, '_blank')}
-              disabled={!devis.pdfUrl}
-              title={!devis.pdfUrl ? 'PDF non disponible' : undefined}
+              onClick={() => {
+                if (!canQuote) {
+                  openUpgradeModal('quoteGeneration');
+                  return;
+                }
+                if (devis.pdfUrl) window.open(devis.pdfUrl, '_blank');
+              }}
+              disabled={!devis.pdfUrl && canQuote}
+              title={!canQuote ? 'Disponible avec Performance' : !devis.pdfUrl ? 'PDF non disponible' : undefined}
               style={{
                 background: '#18181b',
                 border: '1px solid #27272a',
@@ -267,13 +293,14 @@ function DevisView() {
                 borderRadius: '8px',
                 padding: '8px 16px',
                 fontSize: '13px',
-                cursor: devis.pdfUrl ? 'pointer' : 'not-allowed',
-                opacity: devis.pdfUrl ? 1 : 0.4,
+                cursor: !canQuote || devis.pdfUrl ? 'pointer' : 'not-allowed',
+                opacity: !canQuote || devis.pdfUrl ? 1 : 0.4,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
               }}
             >
+              {!canQuote && <Lock size={14} />}
               <Download size={14} />
               Télécharger PDF
             </button>
@@ -296,12 +323,29 @@ function DevisView() {
                   gap: '6px',
                 }}
               >
+                {!canQuote && <Lock size={14} />}
                 {sending && <Loader2 className="animate-spin" size={14} />}
                 {sending ? 'Envoi...' : 'Envoyer maintenant →'}
               </button>
             )}
           </div>
         </div>
+
+        {!canQuote && (
+          <div
+            style={{
+              background: 'rgba(34,197,94,0.08)',
+              border: '1px solid rgba(34,197,94,0.25)',
+              borderRadius: '12px',
+              padding: '14px 18px',
+              color: '#d4d4d8',
+              fontSize: '13px',
+              marginBottom: '16px',
+            }}
+          >
+            Passez à Performance pour envoyer vos devis, générer des PDF et suivre leur statut.
+          </div>
+        )}
 
         {/* Suivi */}
         <div style={sectionCard}>
@@ -522,6 +566,14 @@ function DevisView() {
           )}
           <span>{toast.message}</span>
         </div>
+      )}
+
+      {upgradeFeature && (
+        <UpgradeModal
+          feature={upgradeFeature}
+          requiredPlan="performance"
+          onClose={() => setUpgradeFeature(null)}
+        />
       )}
     </div>
   );

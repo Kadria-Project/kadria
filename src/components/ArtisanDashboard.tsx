@@ -42,8 +42,8 @@ import {
 import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { FeatureGate, PlanProvider } from '@/src/components/FeatureGate';
-import { hasFeature, normalizePlan, type PlanKey } from '@/src/lib/plans';
+import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
+import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 
 const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
@@ -685,6 +685,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const canViewKpiTrends = hasFeature(plan, 'kpiTrends');
   const canViewPipeline = hasFeature(plan, 'commercialPipeline');
   const canViewGeoProjects = hasFeature(plan, 'geoProjects');
+  const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
+  const canAccessFeature = (feature: PlanFeatureKey) => hasFeature(plan, feature);
+  const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
 
   const user = {
     email: 'demo@kadria.local',
@@ -790,8 +793,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   }, []);
 
   const togglePanel = (panel: 'pipeline' | 'chantiers') => {
-    if (panel === 'pipeline' && !canViewPipeline) return;
-    if (panel === 'chantiers' && !canViewGeoProjects) return;
+    if (panel === 'pipeline' && !canAccessFeature('commercialPipeline')) {
+      openUpgradeModal('commercialPipeline');
+      return;
+    }
+    if (panel === 'chantiers' && !canAccessFeature('geoProjects')) {
+      openUpgradeModal('geoProjects');
+      return;
+    }
 
     setOpenPanel((prev) => {
       const next = prev === panel ? null : panel;
@@ -980,9 +989,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const handleExportPDF = async (type: 'list' | 'monthly') => {
-    if ((type === 'list' && !canExportPdf) || (type === 'monthly' && !canExportMonthlyReport)) {
+    const feature = type === 'monthly' ? 'monthlyPdfReport' : 'pdfExports';
+    if (!canAccessFeature(feature)) {
       setExportMenuOpen(false);
-      showToast('Fonction disponible avec le plan Performance', true);
+      openUpgradeModal(feature);
       return;
     }
 
@@ -1000,11 +1010,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         }),
       });
 
+      if (res.status === 403) {
+        openUpgradeModal(feature);
+        return;
+      }
       if (!res.ok) throw new Error('Export PDF failed');
 
       const html = await res.text();
       const win = window.open('', '_blank');
-
       if (win) {
         win.document.write(html);
         win.document.close();
@@ -1392,7 +1405,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {topOpportunities.map((project, index) => (
+                {canAccessFeature('topAiOpportunities') ? topOpportunities.map((project, index) => (
                   <button
                     key={project.id}
                     onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
@@ -1430,6 +1443,30 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       </span>
                     </div>
                   </button>
+                )) : Array.from({ length: 3 }).map((_, index) => (
+                  <button
+                    key={`locked-top-${index}`}
+                    type="button"
+                    onClick={() => openUpgradeModal('topAiOpportunities')}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-left transition-colors duration-200 hover:border-green-500/25"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-bold text-zinc-500">
+                        #{index + 1}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
+                        <Lock className="h-3 w-3 text-green-500" />
+                        Performance
+                      </span>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-4 w-2/3 rounded bg-zinc-800" />
+                      <div className="h-3 w-1/2 rounded bg-zinc-800/80" />
+                    </div>
+                    <p className="mt-4 text-xs leading-5 text-zinc-500">
+                      Classement IA des dossiers prioritaires disponible avec Performance.
+                    </p>
+                  </button>
                 ))}
               </div>
             </>
@@ -1445,7 +1482,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <FeatureGate feature="commercialPipeline" requiredPlan="performance">
+              <div className="contents">
               <button
                 onClick={() => togglePanel('pipeline')}
                 className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
@@ -1467,15 +1504,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </div>
                 </div>
 
-                <ChevronDown
-                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
-                    openPanel === 'pipeline' ? 'rotate-180' : 'animate-bounce'
-                  }`}
-                />
+                {!canAccessFeature('commercialPipeline') ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                    <Lock className="h-3 w-3 text-green-500" />
+                    Performance
+                  </span>
+                ) : (
+                  <ChevronDown
+                    className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
+                      openPanel === 'pipeline' ? 'rotate-180' : 'animate-bounce'
+                    }`}
+                  />
+                )}
               </button>
-              </FeatureGate>
+              </div>
 
-              <FeatureGate feature="geoProjects" requiredPlan="performance">
+              <div className="contents">
               <button
                 onClick={() => togglePanel('chantiers')}
                 className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
@@ -1497,13 +1541,20 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </div>
                 </div>
 
-                <ChevronDown
-                  className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
-                    openPanel === 'chantiers' ? 'rotate-180' : 'animate-bounce'
-                  }`}
-                />
+                {!canAccessFeature('geoProjects') ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                    <Lock className="h-3 w-3 text-green-500" />
+                    Performance
+                  </span>
+                ) : (
+                  <ChevronDown
+                    className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
+                      openPanel === 'chantiers' ? 'rotate-180' : 'animate-bounce'
+                    }`}
+                  />
+                )}
               </button>
-              </FeatureGate>
+              </div>
             </div>
           </div>
 
@@ -1954,6 +2005,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         {toast.error ? <XCircle className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
         {toast.message}
       </div>
+
+      {upgradeFeature && (
+        <UpgradeModal
+          feature={upgradeFeature}
+          requiredPlan="performance"
+          onClose={() => setUpgradeFeature(null)}
+        />
+      )}
     </div>
   );
 }

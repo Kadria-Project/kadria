@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getArtisanConfig, getDevisByArtisan } from '@/src/lib/airtable'
-import { requireFeatureAccess } from '@/src/lib/auth-utils'
+import { getSession } from '@/src/lib/auth-utils'
 
 export async function GET() {
   try {
-    const access = await requireFeatureAccess('quoteGeneration')
-    if (!access.ok) {
-      return NextResponse.json(access.body, { status: access.status })
+    const session = await getSession()
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Non authentifié' },
+        { status: 401 }
+      )
     }
-    const session = access.session
 
     const config = await getArtisanConfig(session.artisanId)
     const prefixe = config?.devisPrefixe || 'DEV'
