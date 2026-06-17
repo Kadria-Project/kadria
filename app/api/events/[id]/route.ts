@@ -31,10 +31,10 @@ export async function PATCH(
     const { id } = await params
     const event = await getAuthorizedEvent(id, access.session.artisanId)
     if (event.status === 404) {
-      return NextResponse.json({ success: false, error: 'Événement introuvable' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'Evenement introuvable' }, { status: 404 })
     }
     if (event.status === 403) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -61,10 +61,10 @@ export async function DELETE(
     const { id } = await params
     const event = await getAuthorizedEvent(id, access.session.artisanId)
     if (event.status === 404) {
-      return NextResponse.json({ success: false, error: 'Événement introuvable' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'Evenement introuvable' }, { status: 404 })
     }
     if (event.status === 403) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
 
     await deleteEvent(id)
