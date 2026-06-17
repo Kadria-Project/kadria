@@ -1769,8 +1769,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         onClick={handleExportCSV}
                         className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                       >
-                        Exporter en CSV
-                        <p className="text-xs text-zinc-400">Tous les dossiers filtres</p>
+                        Export CSV
+                        <p className="text-xs text-zinc-400">Tous les dossiers filtres selectionnes</p>
                       </button>
 
                       {canExportPdf ? (
@@ -1779,8 +1779,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           onClick={() => handleExportPDF('list')}
                           className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                         >
-                          Exporter en PDF
-                          <p className="text-xs text-zinc-400">Rapport complet mis en forme</p>
+                          Export PDF
+                          <p className="text-xs text-zinc-400">Version PDF de la liste en cours</p>
                         </button>
                       ) : (
                         <FeatureGate feature="pdfExports" requiredPlan="performance">
@@ -1788,8 +1788,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                             type="button"
                             className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200"
                           >
-                            Exporter en PDF
-                            <p className="text-xs text-zinc-400">Rapport complet mis en forme</p>
+                            Export PDF
+                            <p className="text-xs text-zinc-400">Version PDF de la liste en cours</p>
                           </button>
                         </FeatureGate>
                       )}
@@ -1802,8 +1802,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           onClick={() => handleExportPDF('monthly')}
                           className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                         >
-                          Rapport mensuel PDF
-                          <p className="text-xs text-zinc-400">Synthese du mois en cours</p>
+                          Rapport mensuel
+                          <p className="text-xs text-zinc-400">Synthese PDF du mois en cours</p>
                         </button>
                       ) : (
                         <FeatureGate feature="pdfExports" requiredPlan="performance">
@@ -1811,8 +1811,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                             type="button"
                             className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200"
                           >
-                            Rapport mensuel PDF
-                            <p className="text-xs text-zinc-400">Synthese du mois en cours</p>
+                            Rapport mensuel
+                            <p className="text-xs text-zinc-400">Synthese PDF du mois en cours</p>
                           </button>
                         </FeatureGate>
                       )}

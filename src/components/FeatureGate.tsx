@@ -59,12 +59,13 @@ export function FeatureGate({
 
         <button
           type="button"
+          aria-label={`Decouvrir le plan ${getPlanLabel(upgradePlan)}`}
           onClick={() => setIsOpen(true)}
-          className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-zinc-950/20 transition-colors hover:bg-zinc-950/30"
+          className="absolute inset-0 z-10 rounded-[inherit] bg-zinc-950/10 transition-colors hover:bg-zinc-950/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/95 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
-            <Lock className="h-3.5 w-3.5 text-green-500" />
-            Disponible avec {getPlanLabel(upgradePlan)}
+          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-zinc-700/80 bg-zinc-950/95 px-2 py-1 text-[11px] font-semibold text-zinc-200 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
+            <Lock className="h-3 w-3 text-green-500" />
+            {getPlanLabel(upgradePlan)}
           </span>
         </button>
       </div>
@@ -79,24 +80,30 @@ export function FeatureGate({
               Cette fonctionnalite est reservee au plan {getPlanLabel(upgradePlan)}
             </h3>
             <p className="mt-3 text-sm leading-6 text-zinc-400">
-              Votre plan actuel est {getPlanLabel(currentPlan)}. Kadria est deja pret pour une
-              future facturation: ici, nous verrouillons simplement l&apos;acces sans activer de
-              logique Stripe.
+              Votre plan actuel est {getPlanLabel(currentPlan)}. Passez au plan{' '}
+              {getPlanLabel(upgradePlan)} pour debloquer cette fonctionnalite et automatiser
+              davantage votre suivi commercial.
             </p>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col gap-3">
               <Link
-                href="/pricing"
+                href={`/checkout/${upgradePlan}`}
                 className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-green-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
               >
-                Voir les plans
+                Passer a {getPlanLabel(upgradePlan)}
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-zinc-500"
+              >
+                Comparer les plans
               </Link>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-zinc-500"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-4 py-3 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
               >
-                Fermer
+                Plus tard
               </button>
             </div>
           </div>
