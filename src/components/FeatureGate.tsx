@@ -35,11 +35,13 @@ export function FeatureGate({
   feature,
   requiredPlan,
   className = '',
+  variant = 'default',
 }: {
   children: ReactNode;
   feature: PlanFeatureKey;
   requiredPlan?: PlanKey;
   className?: string;
+  variant?: 'default' | 'menuItem';
 }) {
   const currentPlan = useCurrentPlan();
   const [isOpen, setIsOpen] = useState(false);
@@ -59,14 +61,14 @@ export function FeatureGate({
 
         <button
           type="button"
-          aria-label={`Decouvrir le plan ${getPlanLabel(upgradePlan)}`}
+          aria-label={`Découvrir le plan ${getPlanLabel(upgradePlan)}`}
+          title={`Disponible avec ${getPlanLabel(upgradePlan)}`}
           onClick={() => setIsOpen(true)}
-          className="absolute inset-0 z-10 rounded-[inherit] bg-zinc-950/10 transition-colors hover:bg-zinc-950/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
+          className="absolute inset-0 z-10 rounded-[inherit] bg-zinc-950/5 transition-colors hover:bg-zinc-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
         >
-          <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-zinc-700/80 bg-zinc-950/95 px-2 py-1 text-[11px] font-semibold text-zinc-200 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
-            <Lock className="h-3 w-3 text-green-500" />
-            {getPlanLabel(upgradePlan)}
-          </span>
+          {variant === 'default' && (
+            <Lock className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-green-500/80" />
+          )}
         </button>
       </div>
 
@@ -74,15 +76,14 @@ export function FeatureGate({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
-              Upgrade requis
+              Plan {getPlanLabel(upgradePlan)}
             </p>
             <h3 className="mt-3 text-2xl font-semibold text-white">
-              Cette fonctionnalite est reservee au plan {getPlanLabel(upgradePlan)}
+              Débloquez le suivi avancé
             </h3>
             <p className="mt-3 text-sm leading-6 text-zinc-400">
-              Votre plan actuel est {getPlanLabel(currentPlan)}. Passez au plan{' '}
-              {getPlanLabel(upgradePlan)} pour debloquer cette fonctionnalite et automatiser
-              davantage votre suivi commercial.
+              Cette fonctionnalité est incluse dans le plan {getPlanLabel(upgradePlan)}. Passez au
+              niveau supérieur pour automatiser davantage votre suivi commercial.
             </p>
 
             <div className="mt-6 flex flex-col gap-3">
@@ -90,7 +91,7 @@ export function FeatureGate({
                 href={`/checkout/${upgradePlan}`}
                 className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-green-500 px-4 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
               >
-                Passer a {getPlanLabel(upgradePlan)}
+                Passer à {getPlanLabel(upgradePlan)}
               </Link>
               <Link
                 href="/pricing"

@@ -37,6 +37,7 @@ import {
   Download,
   CheckCircle,
   XCircle,
+  Lock,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
@@ -1763,14 +1764,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </button>
 
                   {exportMenuOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                    <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
                       <button
                         type="button"
                         onClick={handleExportCSV}
                         className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                       >
                         Export CSV
-                        <p className="text-xs text-zinc-400">Tous les dossiers filtres selectionnes</p>
+                        <p className="text-xs text-zinc-400">Tous les dossiers filtrés sélectionnés</p>
                       </button>
 
                       {canExportPdf ? (
@@ -1783,13 +1784,19 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           <p className="text-xs text-zinc-400">Version PDF de la liste en cours</p>
                         </button>
                       ) : (
-                        <FeatureGate feature="pdfExports" requiredPlan="performance">
+                        <FeatureGate feature="pdfExports" requiredPlan="performance" variant="menuItem">
                           <button
                             type="button"
-                            className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200"
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-zinc-300"
                           >
-                            Export PDF
-                            <p className="text-xs text-zinc-400">Version PDF de la liste en cours</p>
+                            <span className="min-w-0">
+                              <span className="block font-medium text-zinc-200">Export PDF</span>
+                              <span className="block text-xs text-zinc-400">Version PDF de la liste en cours</span>
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700/80 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                              <Lock className="h-3 w-3 text-green-500" />
+                              Performance
+                            </span>
                           </button>
                         </FeatureGate>
                       )}
@@ -1803,16 +1810,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                         >
                           Rapport mensuel
-                          <p className="text-xs text-zinc-400">Synthese PDF du mois en cours</p>
+                          <p className="text-xs text-zinc-400">Synthèse PDF du mois en cours</p>
                         </button>
                       ) : (
-                        <FeatureGate feature="pdfExports" requiredPlan="performance">
+                        <FeatureGate feature="pdfExports" requiredPlan="performance" variant="menuItem">
                           <button
                             type="button"
-                            className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200"
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-zinc-300"
                           >
-                            Rapport mensuel
-                            <p className="text-xs text-zinc-400">Synthese PDF du mois en cours</p>
+                            <span className="min-w-0">
+                              <span className="block font-medium text-zinc-200">Rapport mensuel</span>
+                              <span className="block text-xs text-zinc-400">Synthèse PDF du mois en cours</span>
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700/80 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                              <Lock className="h-3 w-3 text-green-500" />
+                              Performance
+                            </span>
                           </button>
                         </FeatureGate>
                       )}
