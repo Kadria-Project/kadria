@@ -254,6 +254,39 @@ export const KANBAN_COLUMNS: { status: string; label: string; color: string }[] 
   { status: 'Gagné', label: 'Gagné', color: '#15803d' },
 ];
 
+const KANBAN_GROUPED_COLUMNS: { id: string; label: string; statuses: string[]; defaultStatus: string; color: string }[] = [
+  { id: 'new', label: 'Nouveau', statuses: ['Nouveau'], defaultStatus: 'Nouveau', color: '#60a5fa' },
+  { id: 'action', label: 'Action requise', statuses: ['\u00c0 rappeler', 'A relancer', 'En risque'], defaultStatus: '\u00c0 rappeler', color: '#f97316' },
+  { id: 'ready', label: 'Pr\u00eat \u00e0 chiffrer', statuses: ['Qualifi\u00e9'], defaultStatus: 'Qualifi\u00e9', color: '#16a34a' },
+  { id: 'quote', label: 'Devis en attente', statuses: ['Devis envoy\u00e9'], defaultStatus: 'Devis envoy\u00e9', color: '#2563eb' },
+  { id: 'closed', label: 'Cl\u00f4tur\u00e9', statuses: ['Gagn\u00e9', 'Perdu'], defaultStatus: 'Gagn\u00e9', color: '#71717a' },
+];
+
+const ACTION_REQUIRED_PRIORITY: Record<string, number> = {
+  'En risque': 0,
+  '\u00c0 rappeler': 1,
+  'A relancer': 2,
+};
+
+function resolveKanbanDropStatus(project: Project | undefined, column: (typeof KANBAN_GROUPED_COLUMNS)[number]) {
+  if (project?.status && column.statuses.includes(project.status)) return project.status;
+  return column.defaultStatus;
+}
+
+function sortKanbanProjects(projects: Project[], columnId: string) {
+  return [...projects].sort((a, b) => {
+    if (columnId === 'action') {
+      const priorityA = ACTION_REQUIRED_PRIORITY[a.status || ''] ?? 99;
+      const priorityB = ACTION_REQUIRED_PRIORITY[b.status || ''] ?? 99;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+    }
+
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
+}
+
 export const METIER_OPTIONS = [
   'Plomberie',
   'Électricité',
@@ -2485,25 +2518,31 @@ export function KanbanBoard({
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full pb-2 [scroll-snap-type:x_mandatory] md:[scroll-snap-type:none]">
-        {KANBAN_COLUMNS.map((col) => {
-          const colProjects = projects.filter((p) => p.status === col.status);
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3 w-full pb-2 [scroll-snap-type:x_mandatory] md:[scroll-snap-type:none]">
+        {KANBAN_GROUPED_COLUMNS.map((col) => {
+          const colProjects = sortKanbanProjects(
+            projects.filter((p) => col.statuses.includes(p.status || '')),
+            col.id,
+          );
           const total = colProjects.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
-          const isGagne = col.status === 'Gagné';
-          const headerColor = isGagne ? '#f59e0b' : col.color;
-          const isOver = overColumn === col.status;
+          const isClosed = col.id === 'closed';
+          const headerColor = col.color;
+          const isOver = overColumn === col.id;
 
           return (
             <div
-              key={col.status}
+              key={col.id}
               onDragOver={(e) => {
                 e.preventDefault();
-                setOverColumn(col.status);
+                setOverColumn(col.id);
               }}
-              onDragLeave={() => setOverColumn((prev) => (prev === col.status ? null : prev))}
+              onDragLeave={() => setOverColumn((prev) => (prev === col.id ? null : prev))}
               onDrop={(e) => {
                 e.preventDefault();
-                if (dragId) onStatusChange(dragId, col.status);
+                if (dragId) {
+                  const draggedProject = projects.find((project) => project.id === dragId);
+                  onStatusChange(dragId, resolveKanbanDropStatus(draggedProject, col));
+                }
                 setDragId(null);
                 setOverColumn(null);
               }}
@@ -2514,7 +2553,6 @@ export function KanbanBoard({
             >
               <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
                 <span className="text-sm font-bold text-white">
-                  {isGagne && '🏆 '}
                   {col.label}
                 </span>
 
@@ -2539,7 +2577,7 @@ export function KanbanBoard({
                       project={p}
                       router={router}
                       isDragging={dragId === p.id}
-                      isGagne={isGagne}
+                      isClosed={isClosed}
                       onDragStart={() => setDragId(p.id)}
                       onDragEnd={() => setDragId(null)}
                     />
@@ -2564,19 +2602,19 @@ function KanbanCard({
   project,
   router,
   isDragging,
-  isGagne,
+  isClosed,
   onDragStart,
   onDragEnd,
 }: {
   project: Project;
   router: ReturnType<typeof useRouter>;
   isDragging: boolean;
-  isGagne: boolean;
+  isClosed: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
   const score = project.completenessScore || 0;
-  const scoreColor = score > 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#dc2626';
+  const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : score > 0 ? '#dc2626' : '#a1a1aa';
   const initials = `${project.clientFirstName?.[0] || ''}${project.clientName?.[0] || ''}`.toUpperCase() || '?';
 
   return (
@@ -2589,7 +2627,7 @@ function KanbanCard({
       onDragEnd={onDragEnd}
       onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
       className={`cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
-        isGagne ? 'bg-green-500/[0.03]' : ''
+        isClosed ? 'bg-zinc-800/40' : ''
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       <div className="flex items-center gap-2">
