@@ -186,6 +186,19 @@ export function timeAgo(dateStr: string): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
+function formatIsoDate(dateStr?: string): string {
+  if (!dateStr) return '—';
+  const iso = String(dateStr).slice(0, 10);
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '—';
+
+  const [, year, month, day] = match;
+  const monthIndex = Number(month) - 1;
+  const monthNames = ['janv.', 'fevr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'aout', 'sept.', 'oct.', 'nov.', 'dec.'];
+
+  return `${Number(day)} ${monthNames[monthIndex] ?? year}`;
+}
+
 function escapeCsvValue(value: unknown): string {
   const str = String(value ?? '').replace(/"/g, '""');
 
@@ -750,35 +763,58 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [filters, setFilters] = useState<FilterState>(() => {
-    if (typeof window === 'undefined') return DEFAULT_FILTERS;
-
-    try {
-      const raw = localStorage.getItem('kadria_filters');
-      if (!raw) return DEFAULT_FILTERS;
-
-      const parsed = JSON.parse(raw);
-      const isExpired = !parsed.timestamp || Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000;
-
-      if (isExpired || !parsed.filters) return DEFAULT_FILTERS;
-
-      return { ...DEFAULT_FILTERS, ...parsed.filters };
-    } catch {
-      return DEFAULT_FILTERS;
-    }
-  });
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [todayLabel, setTodayLabel] = useState("Aujourd'hui");
 
   useEffect(() => {
+    try {
+      const rawFilters = localStorage.getItem('kadria_filters');
+      if (rawFilters) {
+        const parsed = JSON.parse(rawFilters);
+        const isExpired = !parsed.timestamp || Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000;
+        if (!isExpired && parsed.filters) {
+          const restoredFilters = { ...DEFAULT_FILTERS, ...parsed.filters };
+          setFilters(restoredFilters);
+          setSearchInput(restoredFilters.search || '');
+        }
+      }
+
+      const savedPeriod = localStorage.getItem('kadria_kpi_period');
+      if (savedPeriod === '7d' || savedPeriod === '30d' || savedPeriod === '90d' || savedPeriod === '1y') {
+        setKpiPeriod(savedPeriod);
+      }
+
+      const savedViewMode = localStorage.getItem('kadria_view_mode');
+      if (savedViewMode === 'list' || savedViewMode === 'kanban') {
+        setViewMode(savedViewMode);
+      }
+
+      const savedPanel = localStorage.getItem('kadria_dashboard_panels');
+      if (savedPanel === 'pipeline' || savedPanel === 'chantiers') {
+        setOpenPanel(savedPanel);
+      }
+    } catch {
+      // Ignore invalid persisted dashboard preferences.
+    } finally {
+      setTodayLabel(
+        new Date().toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+      );
+      setPreferencesReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
     localStorage.setItem('kadria_filters', JSON.stringify({ filters, timestamp: Date.now() }));
-  }, [filters]);
+  }, [filters, preferencesReady]);
 
-  const [kpiPeriod, setKpiPeriod] = useState<KpiPeriod>(() => {
-    if (typeof window === 'undefined') return '30d';
-
-    const saved = localStorage.getItem('kadria_kpi_period');
-
-    return saved === '7d' || saved === '30d' || saved === '90d' || saved === '1y' ? saved : '30d';
-  });
+  const [kpiPeriod, setKpiPeriod] = useState<KpiPeriod>('30d');
 
   const setPeriod = (period: KpiPeriod) => {
     if (!canViewKpiTrends) return;
@@ -801,11 +837,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
-    if (typeof window === 'undefined') return 'list';
-    const saved = localStorage.getItem('kadria_view_mode');
-    return saved === 'list' || saved === 'kanban' ? saved : 'list';
-  });
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
   const setView = (mode: 'list' | 'kanban') => {
     if (mode === 'kanban' && !canUseKanban) return;
@@ -831,13 +863,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [openPanel, setOpenPanel] = useState<'pipeline' | 'chantiers' | null>(null);
-  useEffect(() => {
-    const restore = () => {
-      const saved = localStorage.getItem('kadria_dashboard_panels');
-      if (saved === 'pipeline' || saved === 'chantiers') setOpenPanel(saved);
-    };
-    restore();
-  }, []);
 
   const togglePanel = (panel: 'pipeline' | 'chantiers') => {
     if (panel === 'pipeline' && !canAccessFeature('commercialPipeline')) {
@@ -1261,7 +1286,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </h1>
 
           <p style={{ color: '#71717a', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
-            {today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {todayLabel}
           </p>
         </div>
 
@@ -2469,34 +2494,45 @@ export function ProjectList({
             </span>
           </div>
 
-          <div className="md:hidden flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
-              {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
-            </span>
+          <div className="space-y-3 md:hidden">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              </span>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm text-white">
-                  {p.clientFirstName} {p.clientName}
-                </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-white">
+                    {p.clientFirstName} {p.clientName}
+                  </span>
+                  <StatusBadge status={p.status} />
+                </div>
 
-                <StatusBadge status={p.status} />
-              </div>
-
-              <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400">
-                <span>{String(p.id).slice(0, 6)}</span>
-
-                {p.createdAt && (
-                  <span>· {format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr })}</span>
-                )}
-
-                {p.trade && <span>· {p.trade}</span>}
-                {p.city && <span>· {p.city}</span>}
-                {p.budget && <span>· {p.budget}</span>}
+                <p className="mt-1 text-sm text-zinc-400">
+                  {p.trade || p.projectType || 'Projet'}
+                </p>
               </div>
             </div>
 
-            <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
+            <p className="text-sm text-zinc-400">
+              {p.city || 'Ville non renseignee'}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-300">
+              <span>{p.budget || 'Budget non renseigne'}</span>
+              <span className="text-zinc-600">•</span>
+              <ScorePill score={p.completenessScore || 0} />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-zinc-500">
+                {p.createdAt ? timeAgo(p.createdAt) : formatIsoDate(p.createdAt)}
+              </span>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-400">
+                Voir le dossier
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </div>
           </div>
         </div>
       ))}

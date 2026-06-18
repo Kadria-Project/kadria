@@ -56,7 +56,69 @@ function formatDevisDate(value: string) {
   if (!value) return '—';
   const d = new Date(value);
   if (isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return formatMediumDate(value, value);
+}
+
+const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+const MEDIUM_DATE_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+const INTEGER_FORMATTER = new Intl.NumberFormat('fr-FR', {
+  maximumFractionDigits: 0,
+});
+
+const MONEY_FORMATTER = new Intl.NumberFormat('fr-FR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function parseValidDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatShortDate(value?: string | null, fallback = 'Non renseigné') {
+  const date = parseValidDate(value);
+  return date ? SHORT_DATE_FORMATTER.format(date) : fallback;
+}
+
+function formatMediumDate(value?: string | null, fallback = 'Non renseigné') {
+  const date = parseValidDate(value);
+  return date ? MEDIUM_DATE_FORMATTER.format(date) : fallback;
+}
+
+function formatDateTime(value?: string | null, fallback = 'Date non renseignée') {
+  const date = parseValidDate(value);
+  return date ? DATE_TIME_FORMATTER.format(date) : fallback;
+}
+
+function formatInteger(value?: number | null) {
+  return INTEGER_FORMATTER.format(Number(value || 0));
+}
+
+function formatMoney(value?: number | null) {
+  return MONEY_FORMATTER.format(Number(value || 0));
 }
 
 export default function ProjectDetailPage() {
@@ -405,9 +467,9 @@ function ProjectDetail() {
   const followUpTime = getBestFollowUpTime(project);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6" style={isMobile ? { padding: '12px' } : undefined}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-white">
+      <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: '24px', gap: isMobile ? '12px' : '16px' }}>
           <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour
@@ -436,12 +498,14 @@ function ProjectDetail() {
               border: '1px solid #27272a',
               color: '#a1a1aa',
               borderRadius: '8px',
-              padding: '8px 16px',
+              padding: isMobile ? '10px 14px' : '8px 16px',
               fontSize: '13px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
+              justifyContent: 'center',
+              width: isMobile ? '100%' : undefined,
             }}
           >
             {!canExportPdf && <Lock size={14} />}
@@ -456,7 +520,7 @@ function ProjectDetail() {
               background: 'rgba(217,119,6,0.08)',
               border: '1px solid rgba(217,119,6,0.3)',
               borderRadius: '12px',
-              padding: '14px 20px',
+              padding: isMobile ? '14px 16px' : '14px 20px',
             }}
           >
             <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#f59e0b' }} />
@@ -473,7 +537,7 @@ function ProjectDetail() {
           background: '#18181b',
           border: '1px solid #27272a',
           borderRadius: '16px',
-          padding: '24px',
+          padding: isMobile ? '18px 16px' : '24px',
           marginBottom: '16px',
           maxWidth: '100%',
         }}>
@@ -489,7 +553,7 @@ function ProjectDetail() {
             <div>
               <h1 style={{
                 color: 'white',
-                fontSize: '24px',
+                fontSize: isMobile ? '22px' : '24px',
                 fontWeight: 700,
                 margin: '0 0 4px',
               }}>
@@ -550,9 +614,10 @@ function ProjectDetail() {
           {/* Ligne 2 : Infos de contact */}
           <div style={{
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             flexWrap: 'wrap',
-            gap: '20px',
-            alignItems: 'center',
+            gap: isMobile ? '12px' : '20px',
+            alignItems: isMobile ? 'flex-start' : 'center',
           }}>
             {project.clientPhone && (
               <a href={`tel:${project.clientPhone}`} style={{
@@ -594,7 +659,7 @@ function ProjectDetail() {
               marginLeft: 'auto',
             }}>
               <span>📅</span>
-              Créé le {new Date(project.createdAt).toLocaleDateString('fr-FR')}
+              Créé le {formatShortDate(project.createdAt)}
             </div>
             <button
               onClick={() => {
@@ -613,12 +678,14 @@ function ProjectDetail() {
                 border: '1px solid #3f3f46',
                 color: '#71717a',
                 borderRadius: '6px',
-                padding: '4px 8px',
+                padding: isMobile ? '8px 10px' : '4px 8px',
                 fontSize: '12px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
+                width: isMobile ? '100%' : undefined,
+                justifyContent: 'center',
               }}
             >
               ✏️ Modifier
@@ -630,7 +697,7 @@ function ProjectDetail() {
           background: 'rgba(34,197,94,0.06)',
           border: '1px solid rgba(34,197,94,0.22)',
           borderRadius: '14px',
-          padding: '16px 20px',
+          padding: isMobile ? '16px' : '16px 20px',
           marginBottom: '16px',
           display: 'flex',
           justifyContent: 'space-between',
@@ -656,12 +723,12 @@ function ProjectDetail() {
             </p>
           </div>
 
-          <div style={{ color: '#a1a1aa', fontSize: '12px', minWidth: '220px' }}>
+          <div style={{ color: '#a1a1aa', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
             <p style={{ margin: '0 0 4px' }}>
               Dernier échange :{' '}
               <span style={{ color: '#e4e4e7' }}>
                 {followUpTime.lastInteractionDate
-                  ? new Date(followUpTime.lastInteractionDate).toLocaleDateString('fr-FR')
+                  ? formatShortDate(followUpTime.lastInteractionDate)
                   : 'Non renseigné'}
               </span>
             </p>
@@ -685,11 +752,13 @@ function ProjectDetail() {
         }}>
           {/* Header */}
           <div style={{
-            padding: '16px 20px',
+            padding: isMobile ? '16px' : '16px 20px',
             borderBottom: '1px solid #27272a',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '10px' : 0,
           }}>
             <h2 style={{
               color: 'white',
@@ -700,7 +769,7 @@ function ProjectDetail() {
               Suivi commercial
             </h2>
             {/* ID + source */}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{
                 fontSize: '11px', color: '#52525b',
                 background: '#27272a', borderRadius: '6px',
@@ -723,7 +792,7 @@ function ProjectDetail() {
 
           {/* Pipeline — changer de statut */}
           <div style={{
-            padding: '14px 20px',
+            padding: isMobile ? '14px 16px' : '14px 20px',
             borderBottom: '1px solid #27272a',
           }}>
             <p style={{
@@ -743,7 +812,7 @@ function ProjectDetail() {
                   disabled={updating}
                   onClick={() => updateStatus(s)}
                   style={{
-                    padding: isMobile ? '6px 10px' : '7px 14px',
+                    padding: isMobile ? '8px 10px' : '7px 14px',
                     borderRadius: '8px',
                     fontSize: isMobile ? '12px' : '13px',
                     fontWeight: (project.status === s) ? 700 : 500,
@@ -776,7 +845,7 @@ function ProjectDetail() {
               }}>
                 Montant du devis
               </p>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
                   <input
                     type="number"
@@ -836,6 +905,7 @@ function ProjectDetail() {
                     cursor: savingDevis ? 'default' : 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
+                    width: isMobile ? '100%' : undefined,
                   }}
                 >
                   {savingDevis ? '...' : 'Enregistrer'}
@@ -845,7 +915,7 @@ function ProjectDetail() {
                 <p style={{
                   color: '#22c55e', fontSize: '12px', margin: '6px 0 0',
                 }}>
-                  ✓ Montant réel : {Number(devisAmount).toLocaleString('fr-FR')} €
+                  ✓ Montant réel : {formatInteger(Number(devisAmount))} €
                   {' '}— utilisé pour les KPIs
                 </p>
               )}
@@ -912,7 +982,7 @@ function ProjectDetail() {
                         background: '#18181b',
                         border: '1px solid #27272a',
                         borderRadius: '12px',
-                        padding: '14px 20px',
+                        padding: isMobile ? '14px 16px' : '14px 20px',
                         cursor: 'pointer',
                         marginTop: '8px',
                         display: 'flex',
@@ -929,22 +999,22 @@ function ProjectDetail() {
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '12px', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, width: isMobile ? '100%' : undefined, flexWrap: 'wrap' }}>
                           <FileTextIcon size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
                           <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
                           <span style={{ color: '#71717a' }}>·</span>
                           <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                            {devis.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                            {formatMoney(devis.amount)} €
                           </span>
                         </div>
 
-                        <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px', width: isMobile ? '100%' : undefined }}>
                           <span>Généré le {formatDevisDate(devis.date_emission)}</span>
                           <span>Expire le {formatDevisDate(devis.date_validite)}</span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
                           {devis.accepted && (
                             <span style={{
                               background: 'rgba(34,197,94,0.1)',
@@ -1006,6 +1076,7 @@ function ProjectDetail() {
                                 fontWeight: 700,
                                 cursor: followingUpDevisId === devis.id ? 'default' : 'pointer',
                                 opacity: followingUpDevisId === devis.id ? 0.7 : 1,
+                                width: isMobile ? '100%' : undefined,
                               }}
                             >
                               {followingUpDevisId === devis.id ? 'Envoi...' : isMobile ? 'Relancer' : 'Relancer le devis'}
@@ -1013,7 +1084,7 @@ function ProjectDetail() {
                           )}
 
                           {(devis.sent || devis.statut?.startsWith('Envoy')) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a', flexWrap: 'wrap' }}>
                               {devis.opens_count > 0 ? (
                                 <>
                                   <Eye size={12} />
@@ -1048,7 +1119,7 @@ function ProjectDetail() {
                   }}>
                     Cloture du dossier
                   </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px' }}>
                 <button
                   onClick={() => updateStatus('Gagné')}
                   style={{
@@ -1098,7 +1169,7 @@ function ProjectDetail() {
           </div>
 
           {/* Planificateur calendrier */}
-          <div style={{ padding: '14px 20px' }}>
+            <div style={{ padding: isMobile ? '14px 16px' : '14px 20px' }}>
             <div style={{
               borderTop: '1px solid #27272a',
               marginTop: '12px',
@@ -1136,7 +1207,7 @@ function ProjectDetail() {
               </div>
 
               {/* Date + bouton */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center' }}>
                 <input
                   type="datetime-local"
                   value={eventDate}
@@ -1166,6 +1237,7 @@ function ProjectDetail() {
                     cursor: savingEvent || !eventDate ? 'default' : 'pointer',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
+                    width: isMobile ? '100%' : undefined,
                   }}
                 >
                   {savingEvent ? '...' : '+ Calendrier'}
@@ -1183,13 +1255,15 @@ function ProjectDetail() {
         }}>
           {/* Header avec badge verdict */}
           <div style={{
-            padding: '16px 20px',
+            padding: isMobile ? '16px' : '16px 20px',
             borderBottom: '1px solid #27272a',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '10px' : 0,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '16px' }}>✦</span>
               <span style={{
                 color: '#22c55e',
@@ -1243,7 +1317,7 @@ function ProjectDetail() {
                 return (
                   <div key={i} style={{
                     background: '#09090b',
-                    padding: '12px 16px',
+                    padding: isMobile ? '12px' : '12px 16px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
@@ -1254,7 +1328,7 @@ function ProjectDetail() {
                         Photos jointes
                       </span>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', paddingLeft: '20px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '6px', paddingLeft: isMobile ? '0' : '20px', flexWrap: 'wrap' }}>
                       {photos.slice(0, 4).map((photo: any, idx: number) => {
                         const url = photo.url || (typeof photo === 'string' ? photo : '#');
                         const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
@@ -1307,7 +1381,7 @@ function ProjectDetail() {
               return (
                 <div key={i} style={{
                   background: '#09090b',
-                  padding: '12px 16px',
+                  padding: isMobile ? '12px' : '12px 16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
@@ -1340,7 +1414,7 @@ function ProjectDetail() {
           </div>
 
           {/* Résumé structuré */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #27272a' }}>
+          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid #27272a' }}>
             <p style={{
               color: '#22c55e',
               fontSize: '10px',
@@ -1366,7 +1440,7 @@ function ProjectDetail() {
                   <span style={{
                     color: '#71717a',
                     fontSize: '12px',
-                    minWidth: '80px',
+                      minWidth: isMobile ? '72px' : '80px',
                     flexShrink: 0,
                   }}>
                     {item.label} :
@@ -1381,7 +1455,7 @@ function ProjectDetail() {
 
           {/* Synthèse IA longue */}
           {project.aiSummary && (
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #27272a' }}>
+            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid #27272a' }}>
               <p style={{
                 color: '#22c55e',
                 fontSize: '10px',
@@ -1406,7 +1480,7 @@ function ProjectDetail() {
 
           {/* Recommandation IA */}
           <div style={{
-            padding: '14px 20px',
+            padding: isMobile ? '14px 16px' : '14px 20px',
             background: 'rgba(34, 197, 94, 0.05)',
             display: 'flex',
             gap: '12px',
@@ -1441,7 +1515,7 @@ function ProjectDetail() {
             background: '#18181b',
             border: '1px solid #27272a',
             borderRadius: '16px',
-            padding: '16px 20px',
+            padding: isMobile ? '16px' : '16px 20px',
             marginBottom: '16px',
           }}>
             <button
@@ -1472,7 +1546,8 @@ function ProjectDetail() {
                 </span>
               )}
               <span style={{
-                marginLeft: 'auto',
+                marginLeft: isMobile ? 0 : 'auto',
+                width: isMobile ? '100%' : undefined,
                 fontSize: '12px',
                 color: '#22c55e',
               }}>
@@ -1491,11 +1566,11 @@ function ProjectDetail() {
         ) : (
           <div style={{
             background: '#18181b', border: '1px solid #27272a',
-            borderRadius: '16px', padding: '20px', marginBottom: '16px',
+            borderRadius: '16px', padding: isMobile ? '16px' : '20px', marginBottom: '16px',
           }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', marginBottom: '12px',
+              alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '12px', gap: '12px',
             }}>
               <h3 style={{ color: 'white', fontSize: '15px', fontWeight: 600, margin: 0 }}>
                 📝 Notes internes
@@ -1529,7 +1604,7 @@ function ProjectDetail() {
                 marginTop: '10px', background: '#22c55e',
                 border: 'none', color: 'black', fontWeight: 600,
                 borderRadius: '8px', padding: '8px 20px',
-                fontSize: '13px', cursor: 'pointer',
+                fontSize: '13px', cursor: 'pointer', width: isMobile ? '100%' : undefined,
               }}
             >
               Enregistrer la note
@@ -1537,7 +1612,7 @@ function ProjectDetail() {
           </div>
         )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-white mb-5">Historique du dossier</h2>
 
           {(() => {
@@ -1562,7 +1637,7 @@ function ProjectDetail() {
 
                       <p className="text-xs text-zinc-400 mt-0.5">
                         {activity.createdAt
-                          ? new Date(activity.createdAt).toLocaleString('fr-FR')
+                          ? formatDateTime(activity.createdAt)
                           : 'Date inconnue'}
                       </p>
                     </div>
@@ -1586,7 +1661,7 @@ function ProjectDetail() {
 
       {showRdvModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-white font-bold text-lg">📅 Nouveau rendez-vous</h2>
 
@@ -1624,7 +1699,7 @@ function ProjectDetail() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-xs text-zinc-400 uppercase tracking-wide">Date</label>
                   <input
@@ -1670,7 +1745,7 @@ function ProjectDetail() {
 
       {editingContact && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-white font-bold text-lg">✏️ Modifier les informations</h2>
 
@@ -1683,7 +1758,7 @@ function ProjectDetail() {
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-xs text-zinc-400 uppercase tracking-wide">Prénom</label>
                   <input
@@ -1736,7 +1811,7 @@ function ProjectDetail() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => setEditingContact(false)}
                 className="flex-1 bg-zinc-800 text-white font-bold rounded-lg px-4 py-2 border border-zinc-700"
@@ -1791,7 +1866,7 @@ function ProjectDetail() {
 
       {followUpToast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${
+          className={`fixed bottom-4 left-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-2xl sm:bottom-6 sm:left-auto sm:right-6 sm:max-w-sm ${
             followUpToast.type === 'error'
               ? 'border-red-500/30 bg-zinc-900 text-red-200'
               : 'border-green-500/30 bg-zinc-900 text-zinc-100'
