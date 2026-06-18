@@ -90,38 +90,8 @@ export default function ChatWidgetInline({
     firstName: '', lastName: '', phone: '', email: ''
   })
 
-  // Config artisan
-  const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor)
-  const [secondaryColorLocal, setSecondaryColorLocal] = useState('#09090b')
-  const [widgetName, setWidgetName] = useState('Kadria')
-  const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
-
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  // ── Charge la config artisan ─────────────────────────────────────────────
-  useEffect(() => {
-    // Si la couleur primaire est fournie via la prop (ex: query param), on l'utilise directement
-    if (primaryColor) {
-      setPrimaryColorLocal(primaryColor)
-    }
-    const loadConfig = async () => {
-      if (!artisanId || artisanId === 'Artisan_demo') return
-      try {
-        const res = await fetch(`/api/artisan/public-config?artisan_id=${artisanId}`)
-        const data = await res.json()
-        if (data.success && data.config) {
-          if (data.config.primaryColor && !primaryColor) setPrimaryColorLocal(data.config.primaryColor)
-          if (data.config.secondaryColor) setSecondaryColorLocal(data.config.secondaryColor)
-          if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
-          if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
-        }
-      } catch (e) {
-        console.error('Config load error:', e)
-      }
-    }
-    loadConfig()
-  }, [artisanId, primaryColor])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -360,13 +330,13 @@ export default function ChatWidgetInline({
 
   // ── Container styles ──────────────────────────────────────────────────────
   const containerStyle: React.CSSProperties = fullPage ? {
-    width: '100%', height: '100dvh', borderRadius: '0',
+    width: '100%', height: '100%', borderRadius: '0',
     border: 'none', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
+    overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
   } : {
     width: '100%', height: '600px', borderRadius: '16px',
     border: '1px solid #27272a', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
+    overflow: 'hidden', background: '#09090b', fontFamily: 'system-ui, sans-serif',
   }
 
   // ── Centered wrapper for full-page mode ──────────────────────────────────
@@ -381,19 +351,19 @@ export default function ChatWidgetInline({
 
         {/* Header */}
         <div style={{
-          background: secondaryColorLocal, borderBottom: '1px solid #27272a',
+          background: '#18181b', borderBottom: '1px solid #27272a',
           padding: '12px 16px', display: 'flex',
           alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
               width: '36px', height: '36px', borderRadius: '50%',
-              background: primaryColorLocal, display: 'flex',
+              background: primaryColor, display: 'flex',
               alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, fontSize: '16px', color: 'black',
             }}>K</div>
             <div>
-              <p style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '14px' }}>{widgetName}</p>
+              <p style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '14px' }}>Kadria</p>
               <p style={{ margin: 0, color: '#a1a1aa', fontSize: '12px' }}>Assistant en ligne</p>
             </div>
           </div>
@@ -412,7 +382,7 @@ export default function ChatWidgetInline({
             <div style={{ height: '3px', background: '#27272a', borderRadius: '2px' }}>
               <div style={{
                 height: '100%', width: `${step * 25}%`,
-                background: primaryColorLocal, borderRadius: '2px',
+                background: primaryColor, borderRadius: '2px',
                 transition: 'width 0.5s ease',
               }} />
             </div>
@@ -427,20 +397,12 @@ export default function ChatWidgetInline({
                 background: '#18181b', border: '1px solid #27272a',
                 borderRadius: '12px', padding: '16px', marginBottom: '16px',
               }}>
-                {customWelcomeMessage ? (
-                  <p style={{ margin: 0, color: 'white', fontSize: '15px', fontWeight: 500 }}>
-                    {customWelcomeMessage}
-                  </p>
-                ) : (
-                  <>
-                    <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
-                      👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
-                    </p>
-                    <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
-                      Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
-                    </p>
-                  </>
-                )}
+                <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
+                  👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
+                </p>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
+                  Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
+                </p>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {WELCOME_OPTIONS.map(opt => (
@@ -463,10 +425,10 @@ export default function ChatWidgetInline({
           <>
             {/* Messages */}
             <div ref={scrollRef} style={{
-              flex: 1, overflowY: 'auto', padding: fullPage ? '12px 16px' : '16px',
+              flex: 1, overflowY: 'auto', padding: '16px',
               display: 'flex', flexDirection: 'column',
             }}>
-              <div className="chat-messages-container" style={{
+              <div style={{
                 ...centerStyle,
                 display: 'flex', flexDirection: 'column', gap: '10px',
               }}>
@@ -478,7 +440,7 @@ export default function ChatWidgetInline({
                   <div style={{
                     maxWidth: '78%', padding: '10px 14px',
                     borderRadius: msg.role === 'user' ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                    background: msg.role === 'user' ? primaryColorLocal : '#27272a',
+                    background: msg.role === 'user' ? primaryColor : '#27272a',
                     color: msg.role === 'user' ? 'black' : 'white',
                     fontSize: '13.5px', lineHeight: '1.6',
                   }}>
@@ -547,23 +509,19 @@ export default function ChatWidgetInline({
 
               {/* Quick replies */}
               {!loading && !isPhotoMode && !showContactForm && quickReplies.length > 0 && (
-                <div style={{
-                  display: 'flex', flexWrap: 'nowrap', overflowX: 'auto',
-                  gap: '6px', marginTop: '4px', paddingBottom: '8px',
-                  WebkitOverflowScrolling: 'touch',
-                }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
                   {quickReplies.map(opt => (
                     <button key={opt} onClick={() => sendMessage(opt)}
                       style={{
                         background: '#18181b', border: '1px solid #3f3f46',
                         color: 'white', borderRadius: '20px',
                         padding: '6px 14px', fontSize: '12.5px', cursor: 'pointer',
-                        transition: 'all 0.15s', flexShrink: 0,
+                        transition: 'all 0.15s',
                       }}
                       onMouseEnter={e => {
-                        (e.target as HTMLButtonElement).style.background = primaryColorLocal;
+                        (e.target as HTMLButtonElement).style.background = primaryColor;
                         (e.target as HTMLButtonElement).style.color = 'black';
-                        (e.target as HTMLButtonElement).style.borderColor = primaryColorLocal
+                        (e.target as HTMLButtonElement).style.borderColor = primaryColor
                       }}
                       onMouseLeave={e => {
                         (e.target as HTMLButtonElement).style.background = '#18181b';
@@ -676,7 +634,7 @@ export default function ChatWidgetInline({
                               borderRadius: '8px',
                               padding: '8px 10px',
                               color: 'white',
-                              fontSize: '16px',
+                              fontSize: '13px',
                               outline: 'none',
                               boxSizing: 'border-box',
                             }}
@@ -788,7 +746,7 @@ export default function ChatWidgetInline({
 
             {/* Input */}
             {!saved && !showContactForm && (
-              <div className="chat-input-container" style={{
+              <div style={{
                 padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
                 flexShrink: 0, background: '#09090b',
                 position: 'relative',
@@ -808,9 +766,8 @@ export default function ChatWidgetInline({
                     disabled={loading}
                     style={{
                       flex: 1, background: '#18181b', border: '1px solid #3f3f46',
-                      borderRadius: '8px',
-                      padding: fullPage ? '14px 16px' : '8px 12px',
-                      color: 'white', fontSize: fullPage ? '16px' : '13.5px', outline: 'none',
+                      borderRadius: '8px', padding: '8px 12px',
+                      color: 'white', fontSize: '13.5px', outline: 'none',
                     }}
                   />
                   <input
@@ -837,7 +794,7 @@ export default function ChatWidgetInline({
                   <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
                     style={{
                       width: '38px', height: '38px', borderRadius: '8px', border: 'none',
-                      background: loading || !input.trim() ? '#27272a' : primaryColorLocal,
+                      background: loading || !input.trim() ? '#27272a' : primaryColor,
                       color: loading || !input.trim() ? '#71717a' : 'black',
                       cursor: loading || !input.trim() ? 'default' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -887,7 +844,7 @@ export default function ChatWidgetInline({
             </div>
 
             {/* Projet */}
-            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColorLocal, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColor, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Projet
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
@@ -909,7 +866,7 @@ export default function ChatWidgetInline({
             <hr style={{ border: 'none', borderTop: '1px solid #27272a', margin: '16px 0' }} />
 
             {/* Contact */}
-            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColorLocal, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', color: primaryColor, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Contact
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
@@ -930,7 +887,7 @@ export default function ChatWidgetInline({
             {dossier.aiSummary && (
               <>
                 <hr style={{ border: 'none', borderTop: '1px solid #27272a', margin: '16px 0' }} />
-                <p style={{ margin: '0 0 8px', fontSize: '11px', color: primaryColorLocal, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '11px', color: primaryColor, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   Résumé IA
                 </p>
                 <p style={{
@@ -946,12 +903,12 @@ export default function ChatWidgetInline({
             <div style={{ marginTop: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                 <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Dossier complété à {score}%</span>
-                <span style={{ fontSize: '12px', color: primaryColorLocal, fontWeight: 600 }}>{score}%</span>
+                <span style={{ fontSize: '12px', color: primaryColor, fontWeight: 600 }}>{score}%</span>
               </div>
               <div style={{ height: '4px', background: '#27272a', borderRadius: '2px' }}>
                 <div style={{
                   height: '100%', width: `${score}%`,
-                  background: primaryColorLocal, borderRadius: '2px', transition: 'width 0.5s',
+                  background: primaryColor, borderRadius: '2px', transition: 'width 0.5s',
                 }} />
               </div>
             </div>
@@ -971,7 +928,7 @@ export default function ChatWidgetInline({
               </button>
               <button onClick={saveDossier} disabled={saving}
                 style={{
-                  flex: 1, background: saving ? '#52525b' : primaryColorLocal,
+                  flex: 1, background: saving ? '#52525b' : primaryColor,
                   border: 'none', color: saving ? 'white' : 'black',
                   fontWeight: 700, borderRadius: '10px', padding: '11px',
                   fontSize: '14px', cursor: saving ? 'default' : 'pointer',
@@ -987,16 +944,6 @@ export default function ChatWidgetInline({
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-5px); }
-        }
-        @media (max-width: 640px) {
-          .chat-messages-container {
-            max-width: 100% !important;
-            padding: 0 12px !important;
-          }
-          .chat-input-container {
-            max-width: 100% !important;
-            padding: 12px !important;
-          }
         }
       `}</style>
     </>

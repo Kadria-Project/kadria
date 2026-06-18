@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { KadriaLogo } from '@/src/components/KadriaLogo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -51,8 +50,9 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-            <KadriaLogo size="lg" theme="dark" noLink />
+          <div style={{ fontSize: '32px', fontWeight: 800, marginBottom: '8px' }}>
+            <span style={{ color: '#22c55e' }}>K</span>
+            <span style={{ color: 'white' }}>adria</span>
           </div>
           <p style={{ color: '#71717a', fontSize: '14px', margin: 0 }}>
             Espace professionnel artisan

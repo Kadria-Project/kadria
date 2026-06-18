@@ -6,16 +6,10 @@ const SECRET = new TextEncoder().encode(
 )
 
 export interface AuthPayload {
-  id?: string
   email: string
   artisanId: string
   companyName: string
   primaryColor: string
-  role?: string
-  plan?: string
-  statut?: string
-  firstName?: string
-  lastName?: string
   exp?: number
 }
 
@@ -40,12 +34,6 @@ export async function getSession(): Promise<AuthPayload | null> {
   const token = cookieStore.get('kadria-auth')?.value
   if (!token) return null
   return verifyToken(token)
-}
-
-export async function requireAdminSession(): Promise<AuthPayload | null> {
-  const session = await getSession()
-  if (!session || session.role !== 'Admin') return null
-  return session
 }
 
 export async function createMagicToken(email: string): Promise<string> {

@@ -6,50 +6,26 @@ import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import {
-  AlertTriangle,
   ArrowLeft,
-  ArrowRight,
-  ChevronRight,
-  Clock,
-  Eye,
-  FileText as FileTextIcon,
-  Plus,
+  CircleDot,
 } from 'lucide-react';
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: '#a1a1aa', border: '#3f3f46' },
-  'À rappeler':   { bg: 'rgba(217,119,6,0.15)', text: '#d97706', border: 'rgba(217,119,6,0.3)' },
-  'Qualifié':     { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' },
-  'Devis envoyé': { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' },
-  'Gagné':        { bg: 'rgba(21,128,61,0.15)', text: '#15803d', border: 'rgba(21,128,61,0.3)' },
-  'Perdu':        { bg: 'rgba(220,38,38,0.15)', text: '#dc2626', border: 'rgba(220,38,38,0.3)' },
+const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+  'À rappeler': { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
+  'Qualifié':   { bg: '#14532d', text: '#4ade80', border: '#16a34a' },
+  'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
+  'Gagné':      { bg: '#14532d', text: '#86efac', border: '#22c55e' },
+  'Perdu':      { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
 };
 
-const statusColors = STATUS_COLORS;
-const statusStyles = STATUS_COLORS;
-
-interface DevisListItem {
-  id: string;
-  numero: string;
-  amount: number;
-  sent: boolean;
-  statut: string;
-  pdf_url: string | null;
-  date_emission: string;
-  date_validite: string;
-  client_email: string;
-  opens_count: number;
-  last_opened_date: string | null;
-  accepted: boolean;
-  accepted_at: string | null;
-}
-
-function formatDevisDate(value: string) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+const statusStyles: Record<string, { bg: string; text: string; border: string }> = {
+  'Nouveau':      { bg: '#27272a', text: '#e4e4e7', border: '#3f3f46' },
+  'À rappeler':   { bg: '#78350f', text: '#fbbf24', border: '#d97706' },
+  'Qualifié':     { bg: '#14532d', text: '#4ade80', border: '#16a34a' },
+  'Devis envoyé': { bg: '#1e3a5f', text: '#60a5fa', border: '#2563eb' },
+  'Gagné':        { bg: '#14532d', text: '#86efac', border: '#22c55e' },
+  'Perdu':        { bg: '#450a0a', text: '#f87171', border: '#dc2626' },
+};
 
 export default function ProjectDetailPage() {
   return (
@@ -101,27 +77,6 @@ function ProjectDetail() {
   );
   const [savingDevis, setSavingDevis] = useState(false);
 
-  const [showAllHistory, setShowAllHistory] = useState(false);
-
-  const [artisanConfig, setArtisanConfig] = useState<{
-    siret?: string;
-    raisonSociale?: string;
-    adressePro?: string;
-    assuranceNonRequise?: boolean;
-    assureur?: string;
-    numAssurance?: string;
-  } | null>(null);
-
-  const [devisList, setDevisList] = useState<DevisListItem[]>([]);
-
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
-
   const EVENT_TYPES = [
     { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
     { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
@@ -158,32 +113,6 @@ function ProjectDetail() {
 
     if (id) loadProject();
   }, [id]);
-
-  useEffect(() => {
-    fetch('/api/artisan/config')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setArtisanConfig(data.config);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!id) return;
-    fetch(`/api/devis?projet_id=${id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setDevisList(data.devis);
-      })
-      .catch(() => {});
-  }, [id]);
-
-  const legalComplete = !!(
-    artisanConfig?.siret &&
-    artisanConfig?.raisonSociale &&
-    artisanConfig?.adressePro &&
-    (artisanConfig?.assuranceNonRequise || (artisanConfig?.assureur && artisanConfig?.numAssurance))
-  );
 
   async function updateStatus(status: string) {
     try {
@@ -321,59 +250,11 @@ function ProjectDetail() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6" style={isMobile ? { padding: '12px' } : undefined}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Retour
-          </Button>
-          <button
-            onClick={async () => {
-              const res = await fetch(`/api/projects/${project.id}/pdf`);
-              const html = await res.text();
-              const win = window.open('', '_blank');
-              if (win) {
-                win.document.write(html);
-                win.document.close();
-                setTimeout(() => win.print(), 500);
-              }
-            }}
-            style={{
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#a1a1aa',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            📄 Exporter PDF
-          </button>
-        </div>
-
-        {artisanConfig && !legalComplete && (
-          <div
-            className="flex items-center gap-3 flex-wrap mb-4"
-            style={{
-              background: 'rgba(217,119,6,0.08)',
-              border: '1px solid rgba(217,119,6,0.3)',
-              borderRadius: '12px',
-              padding: '14px 20px',
-            }}
-          >
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#f59e0b' }} />
-            <p className="text-sm text-zinc-300 flex-1 m-0">
-              Complétez vos informations légales pour générer des devis professionnels.
-            </p>
-            <a href="/onboarding" className="text-sm font-semibold whitespace-nowrap" style={{ color: '#22c55e' }}>
-              Compléter mon profil →
-            </a>
-          </div>
-        )}
+      <main className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+        <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Retour
+        </Button>
 
         <div style={{
           background: '#18181b',
@@ -381,15 +262,12 @@ function ProjectDetail() {
           borderRadius: '16px',
           padding: '24px',
           marginBottom: '16px',
-          maxWidth: '100%',
         }}>
           {/* Ligne 1 : Nom + Statut */}
           <div style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: isMobile ? 'flex-start' : 'flex-start',
-            gap: isMobile ? '12px' : 0,
+            alignItems: 'flex-start',
             marginBottom: '6px',
           }}>
             <div>
@@ -413,8 +291,7 @@ function ProjectDetail() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: isMobile ? 'flex-start' : 'flex-end',
-              alignSelf: isMobile ? 'flex-start' : undefined,
+              alignItems: 'flex-end',
               gap: '8px',
               flexShrink: 0,
             }}>
@@ -426,7 +303,7 @@ function ProjectDetail() {
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   margin: '0 0 4px',
-                  textAlign: isMobile ? 'left' : 'right',
+                  textAlign: 'right',
                 }}>
                   Statut dossier
                 </p>
@@ -438,7 +315,6 @@ function ProjectDetail() {
                   padding: '5px 14px',
                   fontSize: '13px',
                   fontWeight: 600,
-                  alignSelf: 'flex-start',
                 }}>
                   {project.status || 'Nouveau'}
                 </span>
@@ -592,16 +468,16 @@ function ProjectDetail() {
             }}>
               Faire avancer le dossier
             </p>
-            <div style={{ display: 'flex', gap: isMobile ? '6px' : '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'].map(s => (
                 <button
                   key={s}
                   disabled={updating}
                   onClick={() => updateStatus(s)}
                   style={{
-                    padding: isMobile ? '6px 10px' : '7px 14px',
+                    padding: '7px 14px',
                     borderRadius: '8px',
-                    fontSize: isMobile ? '12px' : '13px',
+                    fontSize: '13px',
                     fontWeight: (project.status === s) ? 700 : 500,
                     cursor: 'pointer',
                     transition: 'all 0.15s',
@@ -711,147 +587,6 @@ function ProjectDetail() {
                 }}>
                   Budget estimé utilisé par défaut : {project.budget}
                 </p>
-              )}
-            </div>
-
-            <div style={{
-              borderTop: '1px solid #27272a',
-              marginTop: '12px',
-              paddingTop: '14px',
-            }}>
-              <button
-                onClick={() => {
-                  if (!legalComplete) return;
-                  router.push(`/dashboard-v2/projet/${id}/devis/new`);
-                }}
-                disabled={!legalComplete}
-                title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
-                style={{
-                  width: '100%',
-                  background: '#18181b',
-                  border: '1px solid rgba(34,197,94,0.3)',
-                  borderRadius: '10px',
-                  padding: '10px 20px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#22c55e',
-                  cursor: legalComplete ? 'pointer' : 'not-allowed',
-                  opacity: legalComplete ? 1 : 0.4,
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  if (legalComplete) e.currentTarget.style.background = 'rgba(34,197,94,0.08)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#18181b';
-                }}
-              >
-                📄 Générer un devis
-              </button>
-
-              {devisList.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {devisList.map((devis) => (
-                    <div
-                      key={devis.id}
-                      onClick={() => router.push(`/dashboard-v2/projet/${id}/devis/${devis.id}`)}
-                      style={{
-                        background: '#18181b',
-                        border: '1px solid #27272a',
-                        borderRadius: '12px',
-                        padding: '14px 20px',
-                        cursor: 'pointer',
-                        marginTop: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        transition: 'border-color 150ms, transform 150ms',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)';
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#27272a';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                          <FileTextIcon size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
-                          <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
-                          <span style={{ color: '#71717a' }}>·</span>
-                          <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                            {devis.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-                          </span>
-                        </div>
-
-                        <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span>Généré le {formatDevisDate(devis.date_emission)}</span>
-                          <span>Expire le {formatDevisDate(devis.date_validite)}</span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {devis.accepted && (
-                            <span style={{
-                              background: 'rgba(34,197,94,0.1)',
-                              color: '#22c55e',
-                              border: '1px solid rgba(34,197,94,0.3)',
-                              borderRadius: '999px',
-                              padding: '4px 12px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                            }}>
-                              ✓ Accepté le {formatDevisDate(devis.accepted_at || '')}
-                            </span>
-                          )}
-                          {devis.sent || devis.statut === 'Envoyé' ? (
-                            <span style={{
-                              background: 'rgba(34,197,94,0.1)',
-                              color: '#22c55e',
-                              border: '1px solid rgba(34,197,94,0.3)',
-                              borderRadius: '999px',
-                              padding: '4px 12px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                            }}>
-                              ✓ Envoyé
-                            </span>
-                          ) : (
-                            <span style={{
-                              background: 'rgba(245,158,11,0.1)',
-                              color: '#f59e0b',
-                              border: '1px solid rgba(245,158,11,0.3)',
-                              borderRadius: '999px',
-                              padding: '4px 12px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                            }}>
-                              📄 Enregistré · Non envoyé
-                            </span>
-                          )}
-                          <ChevronRight size={14} style={{ color: '#71717a', marginLeft: '4px' }} />
-                        </div>
-                      </div>
-
-                      {(devis.sent || devis.statut === 'Envoyé') && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a' }}>
-                          {devis.opens_count > 0 ? (
-                            <>
-                              <Eye size={12} />
-                              <span>Ouvert {devis.opens_count} fois · Dernière ouverture : {formatDevisDate(devis.last_opened_date || '')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={12} />
-                              <span>Pas encore ouvert</span>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
 
@@ -1050,7 +785,7 @@ function ProjectDetail() {
           {/* Indicateurs qualité */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(4, 1fr)',
             gap: '1px',
             background: '#27272a',
             borderBottom: '1px solid #27272a',
@@ -1356,49 +1091,35 @@ function ProjectDetail() {
           </div>
         )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="text-lg font-semibold text-white mb-5">Historique du dossier</h2>
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-white">Historique du dossier</h2>
 
-          {(() => {
-            const allEvents = [...activities, {
+          <div className="space-y-4">
+            {[...activities, {
               id: 'creation',
               description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
               createdAt: project.createdAt,
-              action: 'CREATED',
-            }];
-            const events = showAllHistory ? allEvents : allEvents.slice(0, 3);
-
-            return (
-              <>
-                <div className="relative">
-                  <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-zinc-800" />
-
-                  {events.map((activity) => (
-                    <div key={activity.id} className="relative pl-10 pb-5 last:pb-0">
-                      <TimelineIcon action={activity.action} />
-
-                      <p className="font-medium text-white text-sm">{activity.description}</p>
-
-                      <p className="text-xs text-zinc-400 mt-0.5">
-                        {activity.createdAt
-                          ? new Date(activity.createdAt).toLocaleString('fr-FR')
-                          : 'Date inconnue'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {allEvents.length > 3 && (
-                  <button
-                    onClick={() => setShowAllHistory((v) => !v)}
-                    className="text-sm text-green-500 hover:underline"
-                  >
-                    {showAllHistory ? 'Réduire' : "Voir tout l'historique"}
-                  </button>
+              type: 'creation',
+            }].map((activity) => (
+              <div key={activity.id} className="flex gap-3">
+                {activity.type === 'creation' ? (
+                  <span className="w-4 h-4 mt-1 text-green-500 flex-shrink-0 leading-none">✦</span>
+                ) : (
+                  <CircleDot className="w-4 h-4 mt-1 text-green-500" />
                 )}
-              </>
-            );
-          })()}
+
+                <div>
+                  <p className="font-medium text-white">{activity.description}</p>
+
+                  <p className="text-xs text-zinc-400">
+                    {activity.createdAt
+                      ? new Date(activity.createdAt).toLocaleString('fr-FR')
+                      : 'Date inconnue'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
       </main>
@@ -1611,46 +1332,6 @@ function ProjectDetail() {
   );
 }
 
-function TimelineIcon({ action }: { action?: string }) {
-  if (action === 'CREATED') {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-        <Plus className="w-3 h-3 text-zinc-950" />
-      </span>
-    );
-  }
-
-  if (action?.includes('STATUS')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center">
-        <ArrowRight className="w-3 h-3 text-white" />
-      </span>
-    );
-  }
-
-  if (action?.includes('CALLBACK')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
-        <Clock className="w-3 h-3 text-amber-500" />
-      </span>
-    );
-  }
-
-  if (action?.includes('NOTE')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-        <FileTextIcon className="w-3 h-3 text-blue-400" />
-      </span>
-    );
-  }
-
-  return (
-    <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center">
-      <ArrowRight className="w-3 h-3 text-white" />
-    </span>
-  );
-}
-
 function getVerdict(project: any) {
   const score = project.completenessScore || 0;
   const maturity = project.maturity || '';
@@ -1669,24 +1350,24 @@ function getVerdict(project: any) {
   if (isHot) return {
     label: 'Prospect chaud',
     color: '#22c55e',
-    bg: 'rgba(34,197,94,0.15)',
-    border: 'rgba(34,197,94,0.25)',
+    bg: '#14532d',
+    border: '#16a34a',
     icon: '🔥',
     description: 'Budget défini, délai court, prêt à démarrer'
   };
   if (isCold) return {
     label: 'Prospect froid',
     color: '#f87171',
-    bg: 'rgba(220,38,38,0.10)',
-    border: 'rgba(220,38,38,0.2)',
+    bg: '#450a0a',
+    border: '#dc2626',
     icon: '❄️',
     description: 'Budget flou ou projet peu défini'
   };
   return {
-    label: 'Prospect tiède',
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.15)',
-    border: 'rgba(245,158,11,0.3)',
+    label: 'À qualifier',
+    color: '#fbbf24',
+    bg: '#78350f',
+    border: '#d97706',
     icon: '⚡',
     description: 'Quelques informations manquantes'
   };

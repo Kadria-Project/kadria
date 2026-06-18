@@ -70,20 +70,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Met à jour la date de dernière connexion
-    const apiKey = process.env.AIRTABLE_API_KEY
-    const baseId = process.env.AIRTABLE_BASE_ID
-    await fetch(`https://api.airtable.com/v0/${baseId}/Users/${artisan.id}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: { 'Last_login': new Date().toISOString() },
-      }),
-    })
-
     console.log('[AUTH] Magic link sent to:', email)
     return NextResponse.json({ success: true })
   } catch (err) {

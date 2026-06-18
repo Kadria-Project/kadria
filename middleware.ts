@@ -8,39 +8,7 @@ const SECRET = new TextEncoder().encode(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/devis/')) {
-    return NextResponse.next()
-  }
-
-  if (pathname.startsWith('/api/devis/public/')) {
-    return NextResponse.next()
-  }
-
-  if (pathname.startsWith('/admin')) {
-    const token = request.cookies.get('kadria-auth')?.value
-
-    if (!token) {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
-
-    try {
-      const { payload } = await jwtVerify(token, SECRET)
-      if (payload.role !== 'Admin') {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      return NextResponse.next()
-    } catch {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
-      const response = NextResponse.redirect(loginUrl)
-      response.cookies.delete('kadria-auth')
-      return response
-    }
-  }
-
-  if (pathname.startsWith('/dashboard-v2') || pathname === '/onboarding') {
+  if (pathname.startsWith('/dashboard-v2')) {
     const token = request.cookies.get('kadria-auth')?.value
 
     if (!token) {
@@ -77,5 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/onboarding', '/login', '/admin', '/admin/:path*'],
+  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/login'],
 }

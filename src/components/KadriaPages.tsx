@@ -1,152 +1,88 @@
 'use client';
 
-import { useState, useEffect, useRef, type CSSProperties } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  AlertTriangle,
-  ArrowDown,
   ArrowRight,
-  ArrowUp,
-  Banknote,
   BarChart3,
   Bot,
-  Calendar,
-  CalendarCheck,
   Check,
   CheckCircle,
-  CheckSquare,
-  ChevronLeft,
-  ChevronRight,
   ClipboardCheck,
   Clock,
-  Download,
   Euro,
-  Eye,
-  FileCheck,
-  FileQuestion,
   FileText,
   Globe,
-  Hammer,
-  KanbanSquare,
-  Layers,
   LayoutDashboard,
-  Lightbulb,
-  Mail,
-  Map as MapIcon,
   MapPin,
   MessageCircle,
-  MessageSquare,
-  Minus,
-  PenLine,
   Phone,
-  PieChart,
-  Receipt,
   Rocket,
   Search,
-  Send,
   Shield,
   Sparkles,
-  Table,
   Target,
   TrendingUp,
-  User,
-  Users,
-  X,
-  XCircle,
   Zap,
 } from 'lucide-react';
-import { KadriaLogo } from '@/src/components/KadriaLogo';
-import { DarkNav } from '@/src/components/DarkNav';
+import { KadriaLogoImg } from '@/src/components/KadriaLogo';
 import ChatWidget from '@/src/components/ChatWidget';
-
-const DottedSurface = dynamic(
-  () => import('@/components/ui/dotted-surface').then((mod) => mod.DottedSurface),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-);
 
 const features = [
   {
     icon: Globe,
     title: 'Assistant web',
-    text: 'Qualifie chaque demande entrante, collecte le besoin, le budget, les délais et cree un dossier complet.',
+    text: 'Qualifie chaque demande entrante, collecte le besoin, le budget, les delais et cree un dossier complet.',
   },
   {
     icon: Phone,
     title: 'Assistant vocal',
-    text: 'Répond aux appels quand vous etes indisponible et transforme les appels manqués en opportunités.',
+    text: 'Repond aux appels quand vous etes indisponible et transforme les appels manques en opportunites.',
   },
   {
     icon: LayoutDashboard,
     title: 'Dashboard commercial',
-    text: "Centralise vos prospects, statuts, relances, priorités et chiffre d'affaires potentiel.",
+    text: 'Centralise vos prospects, statuts, relances, priorites et chiffre d affaires potentiel.',
   },
   {
     icon: Target,
     title: 'Priorisation IA',
-    text: "Classe les dossiers par potentiel commercial pour traiter d'abord les meilleurs chantiers.",
+    text: 'Classe les dossiers par potentiel commercial pour traiter d abord les meilleurs chantiers.',
   },
   {
     icon: ClipboardCheck,
     title: 'Dossiers structures',
-    text: 'Resume IA, coordonnées, adresse, métier, budget, delai et score de complétude au meme endroit.',
+    text: 'Resume IA, coordonnees, adresse, metier, budget, delai et score de completude au meme endroit.',
   },
   {
     icon: BarChart3,
     title: 'Pilotage',
-    text: 'Suit vos conversions, paniers moyens, dossiers a relancer et opportunités gagnées.',
+    text: 'Suit vos conversions, paniers moyens, dossiers a relancer et opportunites gagnees.',
   },
 ];
 
-interface PlanFeature {
-  text: string;
-  badge?: string;
-}
-
-const plans: { slug: string; name: string; price: string; description: string; features: PlanFeature[]; highlighted?: boolean }[] = [
+const plans = [
   {
     slug: 'essentiel',
     name: 'Essentiel',
     price: '149 €',
-    description: 'Pour démarrer et ne plus manquer de demandes web.',
-    features: [
-      { text: 'Assistant chat web 24h/24' },
-      { text: 'Qualification IA + score dossier' },
-      { text: 'CRM vue liste' },
-      { text: '50 dossiers / mois' },
-      { text: 'Export CSV' },
-    ],
+    description: 'Pour centraliser et qualifier vos demandes web.',
+    features: ['Assistant web', 'Dashboard prospects', 'Resume IA', 'Relances manuelles'],
   },
   {
     slug: 'performance',
     name: 'Performance',
     price: '249 €',
-    description: 'Pour ne plus perdre aucune opportunité.',
-    features: [
-      { text: 'Tout Essentiel inclus' },
-      { text: 'Dossiers illimités + vue Kanban' },
-      { text: 'Pipeline commercial' },
-      { text: 'Génération de devis professionnels' },
-      { text: 'Assistant vocal', badge: 'Bientôt' },
-      { text: 'Relances automatiques', badge: 'Bientôt' },
-    ],
+    description: 'Pour ne plus perdre les demandes et appels importants.',
+    features: ['Tout Essentiel', 'Assistant vocal', 'Priorisation IA', 'Reporting avance'],
     highlighted: true,
   },
   {
-    slug: 'agence',
-    name: 'Agence',
-    price: 'Sur devis',
-    description: "Pour les groupements d'artisans et réseaux.",
-    features: [
-      { text: 'Tout Performance inclus' },
-      { text: "Jusqu'à 10 artisans" },
-      { text: 'Marque blanche complète' },
-      { text: 'API access' },
-      { text: 'Account manager dédié' },
-    ],
+    slug: 'kadria360',
+    name: 'Kadria 360',
+    price: 'Sur mesure',
+    description: 'Pour une mise en place complete, site, vocal et suivi.',
+    features: ['Site connecte', 'Parcours sur mesure', 'Accompagnement', 'Support prioritaire'],
   },
 ];
 
@@ -190,6 +126,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
 function SiteHeader() {
   const links = [
     { label: 'Comment ca marche', href: '/#comment-ca-marche' },
+    { label: 'Fonctionnalites', href: '/fonctionnalites' },
     { label: 'Demo', href: '/demo' },
     { label: 'Tarifs', href: '/tarifs' },
   ];
@@ -197,7 +134,7 @@ function SiteHeader() {
   return (
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/5 bg-[#0a0b0f]/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1488px] items-center justify-between px-6">
-        <KadriaLogo size="sm" />
+        <KadriaLogoImg />
 
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           {links.map((link) => (
@@ -214,7 +151,7 @@ function SiteHeader() {
           <Link href="/demo" className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
             Reserver une demo
           </Link>
-          <Link href="/demo" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+          <Link href="/assistant" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
             Tester Kadria
           </Link>
         </div>
@@ -227,7 +164,7 @@ function Footer() {
   return (
     <footer className="border-t border-white/5 py-12">
       <div className="mx-auto flex max-w-[1488px] flex-col gap-4 px-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-        <KadriaLogo size="md" />
+        <KadriaLogoImg />
         <p>© {new Date().getFullYear()} Kadria. Tous droits reserves.</p>
       </div>
     </footer>
@@ -336,195 +273,73 @@ function InfoTile({
 }
 
 const QUALIFICATION_STEPS = [
-  { icon: User, title: 'Prospect', subtitle: 'Vous contacte via votre site ou téléphone', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', glow: 'rgba(167,139,250,0.3)' },
-  { icon: Globe, title: 'Site web ou téléphone', subtitle: 'Le prospect arrive sur Kadria', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', glow: 'rgba(96,165,250,0.3)' },
-  { icon: Zap, title: 'Kadria qualifie', subtitle: 'Budget, délai, adresse, coordonnées...', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', glow: 'rgba(34,197,94,0.3)' },
-  { icon: FileText, title: 'Dossier scoré', subtitle: 'Complet, structuré, prêt à chiffrer', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', glow: 'rgba(245,158,11,0.3)' },
-  { icon: CheckCircle, title: 'Artisan notifié', subtitle: 'Dossier reçu — action immédiate', color: '#22c55e', bg: 'rgba(34,197,94,0.15)', glow: 'rgba(34,197,94,0.4)' },
+  { icon: '👤', title: 'Prospect', subtitle: 'Un client vous contacte' },
+  { icon: '🌐', title: 'Site web ou téléphone', subtitle: 'Via votre site ou par appel' },
+  { icon: '⚡', title: 'Kadria', subtitle: 'Qualifie automatiquement' },
+  { icon: '🎯', title: 'Dossier projet', subtitle: 'Complet et scoré' },
+  { icon: '✅', title: 'Artisan', subtitle: 'Prêt à chiffrer' },
 ];
 
-const REPLACE_TOOLS_CARDS = [
-  {
-    number: '01',
-    color: '#22c55e',
-    iconBg: 'rgba(34,197,94,0.12)',
-    iconBorder: 'rgba(34,197,94,0.25)',
-    glow: 'rgba(34,197,94,0.15)',
-    badgeBg: 'rgba(34,197,94,0.08)',
-    badgeBorder: 'rgba(34,197,94,0.2)',
-    icon: MessageSquare,
-    title: 'Acquisition & Qualification',
-    description: 'Capturez et qualifiez chaque prospect 24h/24, par chat ou par téléphone.',
-    features: [
-      'Chat IA 24h/24',
-      'Assistant vocal (appels entrants)',
-      'Qualification automatique',
-      'Questions adaptées au métier',
-      'Résumé IA des besoins',
-    ],
-    tools: [
-      { icon: MessageCircle, color: '#60a5fa', name: 'Tidio / Crisp', desc: 'Chatbot & live chat' },
-      { icon: Phone, color: '#a78bfa', name: 'Aircall / Ringover', desc: 'Standard téléphonique' },
-      { icon: FileQuestion, color: '#f59e0b', name: 'Formulaire de contact', desc: 'Capture de leads web' },
-    ],
-    badge: '3 outils remplacés',
-  },
-  {
-    number: '02',
-    color: '#60a5fa',
-    iconBg: 'rgba(96,165,250,0.12)',
-    iconBorder: 'rgba(96,165,250,0.25)',
-    glow: 'rgba(96,165,250,0.15)',
-    badgeBg: 'rgba(96,165,250,0.08)',
-    badgeBorder: 'rgba(96,165,250,0.2)',
-    icon: BarChart3,
-    title: 'CRM & Suivi commercial',
-    description: 'Gérez tous vos prospects et projets depuis un pipeline visuel centralisé.',
-    features: [
-      'Pipeline commercial visuel',
-      'Vue Kanban par statut',
-      'Historique des échanges',
-      'Notes internes par dossier',
-      'Relances planifiables',
-      'Calendrier intégré',
-    ],
-    tools: [
-      { icon: Users, color: '#60a5fa', name: 'HubSpot / Pipedrive', desc: 'CRM commercial' },
-      { icon: Table, color: '#22c55e', name: 'Excel / Google Sheets', desc: 'Suivi tableur' },
-      { icon: CheckSquare, color: '#a78bfa', name: 'Trello / Notion', desc: 'Gestion de tâches' },
-    ],
-    badge: '3 outils remplacés',
-  },
-  {
-    number: '03',
-    color: '#f59e0b',
-    iconBg: 'rgba(245,158,11,0.12)',
-    iconBorder: 'rgba(245,158,11,0.25)',
-    glow: 'rgba(245,158,11,0.15)',
-    badgeBg: 'rgba(245,158,11,0.08)',
-    badgeBorder: 'rgba(245,158,11,0.2)',
-    icon: Receipt,
-    title: 'Devis & Administration',
-    description: 'Générez, envoyez et suivez vos devis professionnels en quelques clics.',
-    features: [
-      'Génération de devis ligne par ligne',
-      'Envoi automatisé par email',
-      'Suivi des ouvertures en temps réel',
-      'Acceptation électronique client',
-      'Bibliothèque de prestations',
-      'Export PDF professionnel',
-    ],
-    tools: [
-      { icon: FileText, color: '#f59e0b', name: 'Tolteck / Obat', desc: 'Logiciel de devis' },
-      { icon: PenLine, color: '#60a5fa', name: 'DocuSign / YouSign', desc: 'Signature électronique' },
-      { icon: Mail, color: '#22c55e', name: 'Brevo / Mailchimp', desc: "Envoi d'emails" },
-    ],
-    badge: '3 outils remplacés',
-  },
-  {
-    number: '04',
-    color: '#a78bfa',
-    iconBg: 'rgba(167,139,250,0.12)',
-    iconBorder: 'rgba(167,139,250,0.25)',
-    glow: 'rgba(167,139,250,0.15)',
-    badgeBg: 'rgba(167,139,250,0.08)',
-    badgeBorder: 'rgba(167,139,250,0.2)',
-    icon: TrendingUp,
-    title: 'Pilotage & Performance',
-    description: 'Analysez votre activité et prenez les bonnes décisions avec des données en temps réel.',
-    features: [
-      'KPI temps réel (CA, conversion, panier)',
-      'Évolution du CA sur la période',
-      'Score IA des opportunités',
-      'Chantiers géolocalisés',
-      'Top 3 opportunités prioritaires',
-      'Export CSV & rapports PDF',
-    ],
-    tools: [
-      { icon: PieChart, color: '#a78bfa', name: 'Looker Studio / Power BI', desc: 'Reporting BI' },
-      { icon: Table, color: '#f59e0b', name: 'Excel / Google Sheets', desc: 'Tableaux de bord' },
-      { icon: MapIcon, color: '#22c55e', name: 'Google Maps / Calendly', desc: 'Planning terrain' },
-    ],
-    badge: '3+ outils remplacés',
-  },
-];
-
-const REPLACED_TOOL_ICONS = [
-  MessageCircle, Phone, Users, BarChart3, FileText, PenLine, Table, CheckSquare, Mail, PieChart, MapIcon, Calendar,
-];
-
-const DOSSIER_FIELDS: [typeof Hammer, string, string][] = [
-  [Hammer, 'PROJET', 'Rénovation salle de bain'],
-  [MapPin, 'VILLE', 'Lyon 3e'],
-  [Banknote, 'BUDGET', '8 000 – 12 000 €'],
-  [Clock, 'DÉLAI', 'Sous 1 mois'],
+const DOSSIER_FIELDS: [string, string, string][] = [
+  ['🏢', 'Projet', 'Rénovation SDB'],
+  ['📍', 'Ville', 'Lyon 3e'],
+  ['💶', 'Budget', '8 000 – 12 000 €'],
+  ['⏱', 'Délai', 'Sept. 2026'],
 ];
 
 function QualificationShowcase() {
-  const [activeStep, setActiveStep] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 4 : 0
-  );
+  const [activeStep, setActiveStep] = useState(0);
   const [showDossier, setShowDossier] = useState(false);
 
   useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) return;
+    if (showDossier) {
+      const timeout = setTimeout(() => {
+        setShowDossier(false);
+        setActiveStep(0);
+      }, 4000);
 
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
+      return () => clearTimeout(timeout);
+    }
 
-    const run = () => {
-      setShowDossier(false);
-      setActiveStep(0);
-      timeouts.push(setTimeout(() => setActiveStep(1), 2000));
-      timeouts.push(setTimeout(() => setActiveStep(2), 4000));
-      timeouts.push(setTimeout(() => setActiveStep(3), 6000));
-      timeouts.push(setTimeout(() => setActiveStep(4), 8000));
-      timeouts.push(setTimeout(() => setShowDossier(true), 8500));
-    };
+    if (activeStep === 4) {
+      const timeout = setTimeout(() => setShowDossier(true), 500);
 
-    run();
-    const interval = setInterval(run, 12000);
+      return () => clearTimeout(timeout);
+    }
 
-    return () => {
-      timeouts.forEach(clearTimeout);
-      clearInterval(interval);
-    };
-  }, []);
+    const timeout = setTimeout(() => setActiveStep((step) => step + 1), 2000);
+
+    return () => clearTimeout(timeout);
+  }, [activeStep, showDossier]);
 
   if (showDossier) {
     return (
-      <div className="kr-glass-hero animate-in fade-in slide-in-from-bottom-4 duration-500 w-full p-5">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="flex items-center justify-between">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white">
+          <p className="flex items-center gap-2 text-sm font-semibold text-white">
             <span className="text-green-500">●</span> DOSSIER PROJET REÇU
           </p>
           <span className="rounded-full border border-green-500/30 bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
-            Score 94%
+            92%
           </span>
         </div>
 
         <div className="mt-4 flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-700 text-sm font-bold text-white">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-900 text-sm font-semibold text-green-300">
             ML
           </span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-white">Marie Leroy</p>
-            <p className="text-xs text-zinc-400">06 12 34 56 78 · marie@email.fr</p>
+            <p className="font-semibold text-white">Marie Leroy</p>
+            <p className="text-sm text-zinc-400">06 12 34 56 78 · marie.leroy@email.fr</p>
           </div>
-          <span
-            className="rounded-full border px-3 py-1 text-xs font-semibold"
-            style={{ background: 'rgba(63,63,70,0.6)', color: '#a1a1aa', borderColor: '#3f3f46' }}
-          >
-            Nouveau
-          </span>
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">Nouveau</span>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-zinc-800 p-3">
-          {DOSSIER_FIELDS.map(([Icon, label, value]) => (
-            <div key={label}>
-              <p className="flex items-center gap-1.5 text-xs text-zinc-400">
-                <Icon size={12} className="text-green-500" />
-                {label}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {DOSSIER_FIELDS.map(([icon, label, value]) => (
+            <div key={label} className="rounded-lg bg-zinc-800 p-3">
+              <p className="text-xs text-zinc-400">
+                {icon} {label}
               </p>
               <p className="mt-1 text-sm font-medium text-white">{value}</p>
             </div>
@@ -532,94 +347,62 @@ function QualificationShowcase() {
         </div>
 
         <div className="mt-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3">
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-green-500">
-              <Sparkles size={12} className="text-green-500" /> Analyse Kadria
-            </p>
-            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">🔥 Prospect chaud</span>
-          </div>
-          <p className="mt-2 text-xs italic text-zinc-300">
-            Rénovation complète SDB 7m². Budget cohérent, délai court.
-            Prêt à démarrer — rappel recommandé sous 24h.
+          <p className="text-xs uppercase tracking-wide text-green-500">Résumé IA</p>
+          <p className="mt-1 text-sm text-zinc-300">
+            Rénovation complète d'une salle de bain de 7m². Douche italienne + double vasque. Budget
+            confortable, délai réaliste.
           </p>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 text-sm">
-          <span className="font-bold text-green-500">Score 94%</span>
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          <span className="text-green-400">Score 92%</span>
           <span className="text-zinc-500">·</span>
-          <span className="font-medium text-green-500">Conversion Élevée</span>
+          <span className="text-green-300">Conversion Élevée</span>
           <span className="text-zinc-500">·</span>
-          <span className="text-zinc-400">Reçu il y a 2 min</span>
+          <span className="text-zinc-500">Reçu il y a 2 min</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="kr-glass-hero w-full p-5">
-      <div className="flex items-center justify-between">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          Parcours de qualification
-        </p>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/[0.08] px-2 py-0.5 text-xs font-bold text-green-500">
-          <span className="kr-badge-pulse h-1.5 w-1.5 rounded-full bg-green-500" />
-          EN DIRECT
-        </span>
-      </div>
-      <div className="relative mt-6" style={{ paddingLeft: 28 }}>
-        <div className="absolute bottom-0 top-0 w-0.5 rounded-full bg-zinc-800" style={{ left: 8 }} />
-        <div
-          className="absolute top-0 w-0.5 rounded-full bg-green-500 transition-[height] duration-[400ms] ease-out"
-          style={{ left: 8, height: `${(activeStep / (QUALIFICATION_STEPS.length - 1)) * 100}%` }}
-        />
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-green-500">
+        <span className="h-2 w-2 rounded-full bg-green-500" />
+        Parcours de qualification
+      </p>
+      <div className="mt-6 flex flex-col gap-3">
+        {QUALIFICATION_STEPS.map((step, index) => {
+          const isActive = index === activeStep;
+          const isKadria = index === 2;
 
-        <div className="flex flex-col gap-3">
-          {QUALIFICATION_STEPS.map((step, index) => {
-            const isActive = index === activeStep;
-            const isCompleted = index < activeStep;
-            const Icon = step.icon;
+          const cardClass = isActive
+            ? isKadria
+              ? 'border-green-500 bg-green-500/20'
+              : 'border-zinc-700 bg-zinc-800'
+            : 'border-zinc-800/50 bg-transparent';
 
-            const cardClass = isActive
-              ? 'border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.06)]'
-              : 'border-transparent bg-transparent';
+          const iconClass = isActive && isKadria
+            ? 'bg-green-500 text-black rounded-lg'
+            : '';
 
-            const textClass = isActive ? 'font-bold text-green-500' : 'text-zinc-400';
+          const textClass = isActive ? 'text-white font-medium' : 'text-zinc-400';
 
-            return (
-              <div
-                key={step.title}
-                className={`relative flex items-center gap-3 rounded-md border py-3 pl-2 pr-4 transition-all duration-500 ${cardClass}`}
-                style={isActive ? { boxShadow: '0 0 12px rgba(34,197,94,0.08)' } : undefined}
-              >
-                <span
-                  key={`icon-${step.title}-${activeStep}`}
-                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-shadow duration-300 ${isActive ? 'kr-step-icon-enter' : ''}`}
-                  style={{ backgroundColor: step.bg, boxShadow: `0 0 16px ${step.glow}` }}
-                >
-                  <Icon size={16} style={{ color: step.color }} />
-                  <span
-                    className="absolute right-0 top-0 flex h-3.5 w-3.5 items-center justify-center rounded-full border text-[9px] font-bold"
-                    style={
-                      isCompleted || isActive
-                        ? { background: '#22c55e', color: '#09090b', borderColor: '#22c55e' }
-                        : { background: '#18181b', color: '#a1a1aa', borderColor: '#27272a' }
-                    }
-                  >
-                    {index + 1}
-                  </span>
-                </span>
-                <div
-                  key={`text-${step.title}-${activeStep}`}
-                  className={isActive ? 'kr-step-text-enter' : ''}
-                >
-                  <p className={`text-sm transition-colors duration-500 ${textClass}`}>{step.title}</p>
-                  <p className="text-xs text-zinc-500">{step.subtitle}</p>
-                </div>
+          return (
+            <div
+              key={step.title}
+              className={`flex items-center gap-3 rounded-md border px-4 py-3 transition-all duration-500 ${cardClass}`}
+            >
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center text-lg ${iconClass}`}>
+                {step.icon}
+              </span>
+              <div>
+                <p className={`text-sm transition-colors duration-500 ${textClass}`}>{step.title}</p>
+                <p className="text-xs text-zinc-500">{step.subtitle}</p>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -692,2079 +475,318 @@ const TRADES_DATA = [
   },
 ];
 
-
-const DASHBOARD_TABS = [
-  {
-    number: '01.',
-    title: 'Dossier qualifié en un coup d’œil',
-    description: 'Chaque demande entrante est automatiquement qualifiée et enrichie : coordonnées, type de projet, budget estimé et score de priorité.',
-    icon: FileCheck,
-    color: '#22c55e',
-    iconBg: 'rgba(34,197,94,0.1)',
-    iconBorder: 'rgba(34,197,94,0.3)',
-    glow: 'rgba(34,197,94,0.35)',
-  },
-  {
-    number: '02.',
-    title: 'Pipeline visuel par étape',
-    description: 'Glissez-déposez vos opportunités d’une étape à l’autre : nouveau, à rappeler, qualifié, devis envoyé, gagné.',
-    icon: KanbanSquare,
-    color: '#60a5fa',
-    iconBg: 'rgba(96,165,250,0.1)',
-    iconBorder: 'rgba(96,165,250,0.3)',
-    glow: 'rgba(96,165,250,0.35)',
-  },
-  {
-    number: '03.',
-    title: 'Devis générés en un clic',
-    description: 'Transformez un dossier qualifié en devis professionnel prêt à envoyer, avec vos tarifs et conditions personnalisées.',
-    icon: Receipt,
-    color: '#f59e0b',
-    iconBg: 'rgba(245,158,11,0.1)',
-    iconBorder: 'rgba(245,158,11,0.3)',
-    glow: 'rgba(245,158,11,0.35)',
-  },
-  {
-    number: '04.',
-    title: 'Calendrier centralisé',
-    description: 'Visualisez rendez-vous, relances et chantiers planifiés sur un calendrier unique, partagé avec toute votre équipe.',
-    icon: CalendarCheck,
-    color: '#a78bfa',
-    iconBg: 'rgba(167,139,250,0.1)',
-    iconBorder: 'rgba(167,139,250,0.3)',
-    glow: 'rgba(167,139,250,0.35)',
-  },
-]
-
-const kLabel: CSSProperties = {
-  fontSize: '10px',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-}
-
-function MockupDossier() {
-  const criteria = [
-    { ok: true, title: 'Budget cohérent', detail: '8 000 – 12 000€' },
-    { ok: true, title: 'Délai réaliste', detail: 'Sous 1 mois' },
-    { ok: true, title: 'Contact vérifié', detail: 'Tél + email' },
-    { ok: false, title: 'Photos jointes', detail: 'Aucune photo' },
-  ]
-  return (
-    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
-        <div>
-          <p style={{ ...kLabel, color: 'var(--accent)' }} className="mb-1">Dossier qualifié</p>
-          <p className="text-lg font-extrabold text-white">Marie Leroy</p>
-          <p className="text-xs text-zinc-400">Rénovation salle de bain · Lyon 3e</p>
-        </div>
-        <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="whitespace-nowrap rounded-full px-3 py-1 text-[13px] font-bold">
-          Score 94%
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 sm:px-5">
-        <p style={{ color: 'var(--accent)' }} className="text-sm font-bold">✦ Analyse Kadria</p>
-        <span
-          style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
-          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
-        >
-          🔥 Prospect chaud
-        </span>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 px-4 sm:px-5">
-        {criteria.map((c) => {
-          const Icon = c.ok ? CheckCircle : XCircle
-          const color = c.ok ? 'var(--accent)' : '#dc2626'
-          return (
-            <div key={c.title} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }} className="rounded-lg p-2.5">
-              <div className="mb-1 flex items-center gap-1.5">
-                <Icon size={12} color={c.ok ? 'var(--accent)' : '#dc2626'} />
-                <span className="text-xs font-semibold" style={{ color: c.ok ? 'var(--text-1)' : color, opacity: c.ok ? 1 : 0.6 }}>
-                  {c.title}
-                </span>
-              </div>
-              <p className="text-xs" style={{ color: c.ok ? 'var(--text-2)' : 'var(--text-3)' }}>{c.detail}</p>
-            </div>
-          )
-        })}
-      </div>
-
-      <div style={{ background: 'var(--bg)' }} className="mx-4 mt-3 rounded-lg p-3 sm:mx-5">
-        <p style={kLabel} className="mb-1.5 text-zinc-500">Synthèse IA</p>
-        <p className="text-xs italic leading-relaxed text-zinc-400">
-          Rénovation complète SDB 7m². Budget cohérent, délai court. Prospect disponible rapidement.
-        </p>
-      </div>
-
-      <div
-        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid var(--accent-border)' }}
-        className="mx-4 mt-2 flex items-start gap-2 rounded-lg p-3 sm:mx-5"
-      >
-        <Lightbulb size={12} color="#22c55e" className="mt-0.5 shrink-0" />
-        <p className="text-xs font-medium text-white">
-          Rappel recommandé sous 24h — fort potentiel de conversion.
-        </p>
-      </div>
-
-      <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '10px 14px', margin: '8px 20px' }} className="flex items-center gap-3">
-        <span
-          style={{ background: 'rgba(34,197,94,0.2)', color: 'var(--accent)', fontWeight: 700, fontSize: '12px' }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-        >
-          ML
-        </span>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-white">Marie Leroy</p>
-          <p className="text-xs" style={{ color: 'var(--text-2)' }}>06 12 34 56 78</p>
-          <p className="text-xs" style={{ color: 'var(--text-2)' }}>marie@email.fr</p>
-        </div>
-        <span
-          style={{ background: 'rgba(63,63,70,0.6)', color: '#a1a1aa', border: '1px solid #3f3f46', borderRadius: '999px' }}
-          className="whitespace-nowrap px-2 py-0.5 text-xs"
-        >
-          Nouveau
-        </span>
-      </div>
-
-      <div style={{ borderTop: '1px solid var(--border)' }} className="mt-auto flex items-center gap-3 px-4 py-2.5 sm:px-5">
-        <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">Score 94%</span>
-        <span className="text-xs text-zinc-600">·</span>
-        <span style={{ color: 'var(--accent)' }} className="text-xs">Conversion Élevée</span>
-        <span className="text-xs text-zinc-600">·</span>
-        <span className="text-xs text-zinc-600">Reçu il y a 2 min</span>
-      </div>
-    </div>
-  )
-}
-
-function MockupPipeline() {
-  const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-    nouveau: { label: 'Nouveau', bg: 'rgba(63,63,70,0.6)', color: '#a1a1aa' },
-    rappeler: { label: 'À rappeler', bg: 'rgba(217,119,6,0.15)', color: '#d97706' },
-    qualifie: { label: 'Qualifié', bg: 'rgba(22,163,74,0.15)', color: '#16a34a' },
-    devis: { label: 'Devis envoyé', bg: 'rgba(37,99,235,0.15)', color: '#60a5fa' },
-    gagne: { label: 'Gagné', bg: 'rgba(21,128,61,0.15)', color: '#15803d' },
-  }
-  const scoreColor = (score: number) => {
-    if (score >= 80) return 'var(--accent)'
-    if (score >= 60) return '#f59e0b'
-    return '#dc2626'
-  }
-  const columns = [
-    {
-      title: 'Nouveau', border: '#3f3f46', headerBadgeBg: '#3f3f46', headerBadgeColor: '#a1a1aa', count: 4,
-      footer: '4 dossiers · 6.7k€', footerColor: 'var(--text-2)',
-      cards: [
-        { initials: 'MT', name: 'Morel Thomas', project: 'jardin', city: 'Sotteville-lès-Rouen', score: 85, age: 'il y a 2j', status: 'nouveau' },
-        { initials: 'FL', name: 'Fontaine Laura', project: 'salle de bain', city: 'Franqueville', score: 100, age: 'il y a 3j', status: 'nouveau' },
-      ],
-    },
-    {
-      title: 'À rappeler', border: '#d97706', headerBadgeBg: '#d97706', headerBadgeColor: '#ffffff', count: 3,
-      footer: '3 dossiers · 7k€', footerColor: 'var(--text-2)',
-      cards: [
-        { initials: 'SM', name: 'Sophie Martin', project: 'jardin', city: 'Rouen', score: 100, age: 'il y a 2j', status: 'rappeler' },
-        { initials: 'DN', name: 'Dubois Nicolas', project: 'jardin', city: 'Rouen', score: 100, age: 'il y a 2j', status: 'rappeler' },
-      ],
-    },
-    {
-      title: 'Qualifié', border: '#16a34a', headerBadgeBg: '#16a34a', headerBadgeColor: '#ffffff', count: 1,
-      footer: '1 dossier · 3k€', footerColor: 'var(--text-2)',
-      cards: [
-        { initials: 'DM', name: 'Dumontier Maxime', project: 'Paysagiste', city: 'Amfreville', score: 90, age: 'il y a 5j', status: 'qualifie' },
-      ],
-    },
-    {
-      title: 'Devis env...', border: '#2563eb', headerBadgeBg: '#2563eb', headerBadgeColor: '#ffffff', count: 5,
-      footer: '5 dossiers · 9.9k€', footerColor: 'var(--text-2)',
-      cards: [
-        { initials: 'LD', name: 'Léon Duval', project: 'jardin', city: 'Rouen', score: 100, age: 'il y a 2j', status: 'devis' },
-        { initials: 'LM', name: 'Laurent Martin', project: 'Plomberie', city: 'La Neuville', score: 95, age: 'il y a 5j', status: 'devis' },
-      ],
-    },
-    {
-      title: 'Gagné 🏆', border: '#15803d', headerBadgeBg: '#15803d', headerBadgeColor: '#ffffff', count: 2,
-      footer: '2 dossiers · 15.4k€', footerColor: 'var(--accent)', footerWeight: 700,
-      cards: [
-        { initials: 'LC', name: 'Leroy Celine', project: 'jardin', city: 'Le Petit-Quevilly', score: 100, age: 'il y a 2j', status: 'gagne' },
-        { initials: 'RS', name: 'Roussel Sebastien', project: 'Plomberie', city: 'Montmain', score: 90, age: 'il y a 4j', status: 'gagne' },
-      ],
-    },
-  ]
-  return (
-    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ borderBottom: '1px solid var(--border)', padding: '10px 14px', flexShrink: 0 }} className="flex items-center justify-between gap-2">
-        <p style={{ ...kLabel, color: '#60a5fa' }}>Pipeline Kanban</p>
-        <div className="flex items-center gap-3">
-          <span className="text-xs" style={{ color: 'var(--text-2)' }}>17 dossiers</span>
-          <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">42.8k€ potentiel</span>
-        </div>
-      </div>
-
-      <div style={{ borderBottom: '1px solid var(--border)', padding: '6px 14px', flexShrink: 0 }} className="flex items-center gap-2">
-        <span
-          style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', width: '140px' }}
-          className="flex items-center gap-1.5 px-2 py-1 text-xs"
-        >
-          <Search size={10} color="var(--text-3)" />
-          <span style={{ color: 'var(--text-3)' }} className="truncate">Nom, projet...</span>
-        </span>
-        <span style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '4px' }} className="px-2 py-0.5 text-xs">
-          Liste
-        </span>
-        <span style={{ background: '#22c55e', color: 'var(--bg)', borderRadius: '4px' }} className="px-2 py-0.5 text-xs font-bold">
-          Kanban
-        </span>
-        <span style={{ border: '1px solid var(--border)', borderRadius: '4px' }} className="flex items-center gap-1 px-2 py-0.5 text-xs">
-          <Download size={10} />
-          Exporter
-        </span>
-      </div>
-
-      <div className="grid flex-1 grid-cols-5 gap-1.5" style={{ overflow: 'hidden', padding: '8px' }}>
-        {columns.map((col) => (
-          <div
-            key={col.title}
-            style={{ borderTop: `2px solid ${col.border}`, borderRight: '1px solid var(--border)' }}
-            className="flex min-h-0 flex-col overflow-hidden"
-          >
-            <div className="flex items-center justify-between gap-1 px-2 py-2">
-              <span className="truncate text-xs font-bold text-white">{col.title}</span>
-              <span
-                style={{ background: col.headerBadgeBg, color: col.headerBadgeColor }}
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs"
-              >
-                {col.count}
-              </span>
-            </div>
-            <div className="flex flex-1 flex-col overflow-hidden px-2" style={{ minHeight: 0 }}>
-              {col.cards.map((card) => {
-                const badge = STATUS_BADGE[card.status]
-                return (
-                  <div
-                    key={card.name}
-                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '6px' }}
-                    className="flex flex-col"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        style={{ background: 'var(--bg-hover)', fontSize: '9px', fontWeight: 700 }}
-                        className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-white"
-                      >
-                        {card.initials}
-                      </span>
-                      <span className="truncate text-[11px] font-semibold" style={{ color: 'var(--text-1)' }}>{card.name}</span>
-                    </div>
-                    <p className="truncate text-[10px]" style={{ color: 'var(--text-2)', marginTop: '3px' }}>{card.project}</p>
-                    <p className="truncate text-[10px]" style={{ color: 'var(--text-3)' }}>{card.city}</p>
-                    <div className="flex items-center justify-between gap-1" style={{ marginTop: '6px' }}>
-                      <span className="text-[10px] font-bold" style={{ color: scoreColor(card.score) }}>Score: {card.score}%</span>
-                      <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>{card.age}</span>
-                    </div>
-                    <span
-                      style={{ background: badge.bg, color: badge.color, borderRadius: '999px', fontWeight: 700, marginTop: '6px', width: 'fit-content' }}
-                      className="px-2 py-0.5 text-[9px]"
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
-                )
-              })}
-              {col.cards.length < 2 && <div className="flex-1" />}
-            </div>
-            <p
-              className="py-1 text-center text-xs"
-              style={{ borderTop: '1px solid var(--border)', color: col.footerColor, fontWeight: col.footerWeight, marginTop: 'auto' }}
-            >
-              {col.footer}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', flexShrink: 0 }} className="flex items-center justify-between gap-2">
-        <span style={{ color: 'var(--accent)' }} className="text-xs font-bold">CA total: 42.8k€</span>
-        <span className="text-xs" style={{ color: 'var(--text-2)' }}>Taux conversion: 12%</span>
-        <span className="text-xs" style={{ color: 'var(--text-2)' }}>17 dossiers actifs</span>
-      </div>
-    </div>
-  )
-}
-
-function MockupDevis() {
-  const lines = [
-    { label: 'Dépose ancienne cuisine', price: '450,00 €', bold: false },
-    { label: 'Fourniture cuisine équipée', price: '6 200,00 €', bold: true },
-    { label: 'Installation électrique & plomberie', price: '1 350,00 €', bold: false },
-    { label: 'Pose & finitions', price: '1 800,00 €', bold: false },
-  ]
-  return (
-    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-start justify-between gap-3 p-4 sm:px-5">
-        <div>
-          <p style={{ ...kLabel, color: '#f59e0b' }} className="mb-1">Devis en un clic</p>
-          <p className="text-lg font-extrabold text-white">DEV-2026-002</p>
-          <p className="text-xs text-zinc-400">Sophie Martin — Rénovation cuisine</p>
-        </div>
-        <span
-          style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' }}
-          className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
-        >
-          Brouillon
-        </span>
-      </div>
-
-      <div className="px-4 pt-3 sm:px-5">
-        {lines.map((line) => (
-          <div key={line.label} style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between gap-3 py-2">
-            <span className="text-xs text-white">{line.label}</span>
-            <span className={`whitespace-nowrap text-xs text-white ${line.bold ? 'font-semibold' : 'font-medium'}`}>
-              {line.price}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between px-4 py-2.5 sm:px-5">
-        <span className="text-sm font-bold text-white">Total TTC</span>
-        <span style={{ color: 'var(--accent)' }} className="text-xl font-black">9 800,00 €</span>
-      </div>
-
-      <div
-        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid var(--accent-border)' }}
-        className="mx-4 mt-2 flex items-center gap-2 rounded-lg p-3 sm:mx-5"
-      >
-        <Eye size={12} color="#22c55e" className="shrink-0" />
-        <p className="text-xs font-medium text-white">Envoyé · Ouvert 2 fois · En attente de signature</p>
-      </div>
-
-      <div style={{ background: 'var(--bg)', borderRadius: '8px', padding: '10px 14px', margin: '0 20px 12px' }} className="mt-2 flex flex-1 flex-col justify-center gap-1.5">
-        <p style={kLabel} className="mb-0.5 text-zinc-500">Historique devis</p>
-        <p className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-2)' }}>
-          <CheckCircle size={10} color="var(--accent)" />
-          Devis envoyé le 15/06/2026
-        </p>
-        <p className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-2)' }}>
-          <Eye size={10} color="#60a5fa" />
-          Ouvert le 15/06 à 14h32 (2 fois)
-        </p>
-        <p className="flex items-center gap-1.5 text-xs" style={{ color: '#f59e0b' }}>
-          <Clock size={10} color="#f59e0b" />
-          En attente de signature
-        </p>
-      </div>
-
-      <div className="px-4 py-3 sm:px-5">
-        <button style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="w-full rounded-xl py-2.5 text-sm font-bold">
-          Envoyer le devis →
-        </button>
-      </div>
-    </div>
-  )
-}
-
-type CalendarEventType = 'rdv' | 'relance' | 'rappel' | 'intervention'
-
-const CALENDAR_TYPE_STYLE: Record<CalendarEventType, { bg: string; color: string }> = {
-  rdv: { bg: 'rgba(34,197,94,0.2)', color: '#22c55e' },
-  relance: { bg: 'rgba(217,119,6,0.2)', color: '#f59e0b' },
-  rappel: { bg: 'rgba(37,99,235,0.2)', color: '#60a5fa' },
-  intervention: { bg: 'rgba(139,92,246,0.2)', color: '#a78bfa' },
-}
-
-function MockupCalendar() {
-  const weekDays = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM']
-  const events: { day: number; type: CalendarEventType; label: string; struck?: boolean }[] = [
-    { day: 3, type: 'rdv', label: 'Visite chantier' },
-    { day: 3, type: 'relance', label: 'Devis Leroy' },
-    { day: 10, type: 'relance', label: 'Relance Sophie' },
-    { day: 11, type: 'relance', label: 'Devis à valider' },
-    { day: 16, type: 'rappel', label: 'Rappel Antonin', struck: true },
-    { day: 17, type: 'rappel', label: 'Rappel Leroy' },
-    { day: 19, type: 'relance', label: 'Visite Martin' },
-    { day: 22, type: 'intervention', label: 'Installation PAC' },
-    { day: 22, type: 'rdv', label: 'RDV Blanchard' },
-    { day: 24, type: 'rdv', label: 'RDV Blanchard' },
-    { day: 26, type: 'rdv', label: 'Visite TEST' },
-    { day: 29, type: 'relance', label: 'Relance mensuelle' },
-  ]
-  const eventsByDay = new Map<number, typeof events>()
-  events.forEach((e) => {
-    eventsByDay.set(e.day, [...(eventsByDay.get(e.day) ?? []), e])
-  })
-  const today = 15
-  const cells = Array.from({ length: 42 }, (_, i) => (
-    i < 30 ? { day: i + 1, current: true } : { day: i - 29, current: false }
-  ))
-
-  return (
-    <div className="kr-mockup" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between gap-2 p-3 sm:px-4">
-        <p className="text-base font-extrabold text-white">Juin 2026</p>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-400">‹ ›</span>
-          <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="whitespace-nowrap rounded-md px-2 py-1 text-xs font-bold">
-            + Événement
-          </span>
-        </div>
-      </div>
-
-      <div style={{ borderBottom: '1px solid var(--border)' }} className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 sm:px-4">
-        {(['rdv', 'relance', 'rappel', 'intervention'] as CalendarEventType[]).map((type) => (
-          <span key={type} className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: CALENDAR_TYPE_STYLE[type].color }} />
-            {type === 'rdv' ? 'RDV' : type === 'relance' ? 'Relance' : type === 'rappel' ? 'Rappel' : 'Intervention'}
-          </span>
-        ))}
-      </div>
-
-      <div className="flex flex-1 flex-col p-2 sm:px-4 sm:pt-3">
-        <div className="mb-1 grid grid-cols-7">
-          {weekDays.map((d) => (
-            <span key={d} className="pb-1 text-center text-[10px] text-zinc-600">{d}</span>
-          ))}
-        </div>
-        <div className="grid flex-1 grid-cols-7">
-          {cells.map((cell, i) => {
-            const dayEvents = cell.current ? eventsByDay.get(cell.day) ?? [] : []
-            const isToday = cell.current && cell.day === today
-            return (
-              <div
-                key={i}
-                style={{ borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
-                className="flex min-h-[56px] flex-col gap-0.5 p-[3px]"
-              >
-                {isToday ? (
-                  <span style={{ background: 'var(--accent)', color: 'var(--bg)' }} className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[10px] font-bold">
-                    {cell.day}
-                  </span>
-                ) : (
-                  <span className="text-[10px]" style={{ color: cell.current ? 'var(--text-2)' : '#3f3f46' }}>{cell.day}</span>
-                )}
-                {dayEvents.map((event, j) => (
-                  <span
-                    key={j}
-                    style={{
-                      background: CALENDAR_TYPE_STYLE[event.type].bg,
-                      color: CALENDAR_TYPE_STYLE[event.type].color,
-                      textDecoration: event.struck ? 'line-through' : 'none',
-                      opacity: event.struck ? 0.6 : 1,
-                    }}
-                    className="truncate rounded px-1.5 py-0.5 text-[9px] font-medium"
-                  >
-                    {event.label}
-                  </span>
-                ))}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div style={{ borderTop: '1px solid var(--border)' }} className="flex flex-col gap-1.5 p-3 sm:px-4">
-        {[
-          { day: 3, label: 'RDV Leroy Celine', color: CALENDAR_TYPE_STYLE.rdv.color },
-          { day: 10, label: 'Relance Sophie Martin', color: CALENDAR_TYPE_STYLE.relance.color },
-          { day: 19, label: 'Visite technique Martin', color: CALENDAR_TYPE_STYLE.relance.color },
-          { day: 22, label: 'Installation PAC Lamani', color: CALENDAR_TYPE_STYLE.intervention.color },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-2 py-0.5">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: item.color }} />
-            <span className="text-xs text-zinc-400">
-              {item.day} juin — <span className="text-white">{item.label}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-const DASHBOARD_MOCKUPS = [MockupDossier, MockupPipeline, MockupDevis, MockupCalendar]
-
-function DashboardCarousel() {
-  const [activeTab, setActiveTab] = useState(0)
-  const [displayedTab, setDisplayedTab] = useState(0)
-  const [phase, setPhase] = useState<'idle' | 'exit' | 'enter-start' | 'enter'>('idle')
-  const [paused, setPaused] = useState(false)
-
-  const switchMockup = (next: number) => {
-    setPhase('exit')
-    setTimeout(() => {
-      setDisplayedTab(next)
-      setPhase('enter-start')
-      requestAnimationFrame(() => {
-        setPhase('enter')
-        setTimeout(() => setPhase('idle'), 350)
-      })
-    }, 250)
-  }
-
-  const handleSelect = (i: number) => {
-    if (i === activeTab) return
-    setActiveTab(i)
-    switchMockup(i)
-  }
-
-  useEffect(() => {
-    if (paused) return
-    const timer = setTimeout(() => {
-      const next = (activeTab + 1) % DASHBOARD_TABS.length
-      setActiveTab(next)
-      switchMockup(next)
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [activeTab, paused])
-
-  const mockupStyle: CSSProperties = {
-    idle: { opacity: 1, transform: 'translateY(0) scale(1)', transition: 'opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1)' },
-    exit: { opacity: 0, transform: 'translateY(-12px) scale(0.98)', transition: 'opacity 200ms cubic-bezier(0.16,1,0.3,1), transform 200ms cubic-bezier(0.16,1,0.3,1)' },
-    'enter-start': { opacity: 0, transform: 'translateY(12px) scale(0.98)', transition: 'none' },
-    enter: { opacity: 1, transform: 'translateY(0) scale(1)', transition: 'opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1)' },
-  }[phase]
-
-  const activeTabData = DASHBOARD_TABS[displayedTab]
-  const ActiveMockup = DASHBOARD_MOCKUPS[displayedTab]
-
-  return (
-    <div
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-10"
-    >
-      {/* Tabs liquid glass */}
-      <div className="order-2 flex flex-col gap-3 lg:order-1">
-        {DASHBOARD_TABS.map((tab, i) => {
-          const active = i === activeTab
-          const Icon = tab.icon
-          return (
-            <div
-              key={tab.number}
-              onClick={() => handleSelect(i)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') handleSelect(i)
-              }}
-              style={{
-                background: active ? 'rgba(39,39,42,0.6)' : 'rgba(24,24,27,0.4)',
-                border: `1px solid ${active ? tab.iconBorder : '#27272a'}`,
-                borderRadius: '16px',
-                padding: '16px 20px',
-                cursor: 'pointer',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                transition: 'background 300ms ease, border-color 300ms ease',
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  style={{
-                    width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                    background: tab.iconBg, border: `1px solid ${tab.iconBorder}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Icon size={18} color={tab.color} />
-                </div>
-                <div className="flex-1">
-                  <span style={{ color: tab.color, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em' }}>
-                    {tab.number}
-                  </span>
-                  <p className="text-sm font-bold text-white sm:text-base">{tab.title}</p>
-                </div>
-                <ChevronRight
-                  size={18}
-                  style={{
-                    color: active ? tab.color : '#52525b',
-                    transform: active ? 'rotate(90deg)' : 'rotate(0deg)',
-                    transition: 'transform 300ms ease',
-                    flexShrink: 0,
-                  }}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateRows: active ? '1fr' : '0fr', transition: 'grid-template-rows 300ms ease' }}>
-                <div style={{ overflow: 'hidden' }}>
-                  <p className="pt-3 text-sm leading-relaxed text-zinc-400">{tab.description}</p>
-                  <div style={{ width: '100%', height: '2px', borderRadius: '1px', background: '#27272a', marginTop: '14px', overflow: 'hidden' }}>
-                    {active && (
-                      <div
-                        key={activeTab}
-                        style={{
-                          height: '100%', borderRadius: '1px', background: tab.color, width: '0%',
-                          animation: 'kr-dash-progress-v2 5000ms linear forwards',
-                          animationPlayState: paused ? 'paused' : 'running',
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Mockup + glow */}
-      <div className="relative order-1 h-full lg:order-2">
-        <div
-          className="kr-glow-pulse pointer-events-none absolute -inset-6 -z-10 rounded-[32px] sm:-inset-10"
-          style={{ background: activeTabData.glow, filter: 'blur(60px)', transition: 'background 600ms ease' }}
-        />
-        <div
-          className="mockup-float max-h-[320px] overflow-auto rounded-2xl lg:max-h-none lg:h-full lg:overflow-visible"
-          style={{
-            background: 'rgba(24,24,27,0.6)',
-            border: '1px solid #27272a',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            ...mockupStyle,
-          }}
-        >
-          <ActiveMockup />
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes kr-dash-progress-v2 {
-          from { width: 0%; }
-          to { width: 100%; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          @keyframes kr-dash-progress-v2 {
-            from { width: 100%; }
-            to { width: 100%; }
-          }
-        }
-      `}</style>
-    </div>
-  )
-}
-export function useScrollReveal() {
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('kr-visible')
-            observer.unobserve(entry.target)
-          }
-        })
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
-    )
-    const elements = document.querySelectorAll('.kr-reveal')
-    elements.forEach(el => observer.observe(el))
-    return () => observer.disconnect()
-  }, [])
-}
-
-export const ANIMATION_STYLES = `
-  .kr-reveal {
-    opacity: 0;
-    transform: translateY(28px);
-    transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .kr-reveal.kr-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  .kr-reveal-delay-1 { transition-delay: 0.1s; }
-  .kr-reveal-delay-2 { transition-delay: 0.2s; }
-  .kr-reveal-delay-3 { transition-delay: 0.3s; }
-  .kr-reveal-delay-4 { transition-delay: 0.4s; }
-  .kr-reveal-delay-5 { transition-delay: 0.5s; }
-  .kr-reveal-delay-6 { transition-delay: 0.6s; }
-
-  .kr-reveal-left {
-    opacity: 0;
-    transform: translateX(-32px);
-    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .kr-reveal-left.kr-visible {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .kr-reveal-right {
-    opacity: 0;
-    transform: translateX(32px);
-    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .kr-reveal-right.kr-visible {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .kr-reveal-scale {
-    opacity: 0;
-    transform: scale(0.92);
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .kr-reveal-scale.kr-visible {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  /* Compteur animé */
-  @keyframes kr-count-up {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .kr-count {
-    animation: kr-count-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  /* Ligne verte underline animée */
-  .kr-underline {
-    position: relative;
-    display: inline-block;
-  }
-  .kr-underline::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #22c55e;
-    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s;
-  }
-  .kr-reveal.kr-visible .kr-underline::after,
-  .kr-underline.kr-visible::after {
-    width: 100%;
-  }
-
-  /* Carte hover lift */
-  .kr-card-hover {
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.3s ease,
-                border-color 0.3s ease;
-  }
-  .kr-card-hover:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    border-color: rgba(34,197,94,0.25) !important;
-  }
-
-  /* Badge pulse */
-  @keyframes kr-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
-    50%       { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
-  }
-  .kr-badge-pulse {
-    animation: kr-pulse 2.5s infinite;
-  }
-
-  /* Gradient text */
-  .kr-gradient-text {
-    background: linear-gradient(135deg, #22c55e 0%, #86efac 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  /* Ligne qui s'étend */
-  @keyframes kr-line-grow {
-    from { transform: scaleX(0); }
-    to   { transform: scaleX(1); }
-  }
-  .kr-line-grow {
-    transform-origin: left;
-    animation: kr-line-grow 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  /* Number ticker */
-  @keyframes kr-ticker {
-    from { opacity: 0; transform: translateY(100%); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .kr-ticker {
-    overflow: hidden;
-    display: inline-block;
-  }
-  .kr-ticker span {
-    display: inline-block;
-    animation: kr-ticker 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  /* Glassmorphism */
-  .kr-glass {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  /* Bento grid */
-  .kr-bento {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: minmax(180px, auto);
-    gap: 16px;
-  }
-  @media (max-width: 768px) {
-    .kr-bento {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-  @media (max-width: 400px) {
-    .kr-bento {
-      grid-template-columns: repeat(1, 1fr);
-      grid-auto-rows: auto;
-    }
-    .kr-bento-item {
-      grid-column: span 1 !important;
-      grid-row: span 1 !important;
-    }
-  }
-
-  /* Sound wave */
-  @keyframes kr-wave {
-    0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
-    50% { transform: scaleY(1); opacity: 1; }
-  }
-  .kr-wave {
-    animation: kr-wave 1.2s ease-in-out infinite;
-    transform-origin: bottom;
-  }
-
-  /* Kanban card entry */
-  @keyframes kr-card-in {
-    from { opacity: 0; transform: translateX(-8px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  /* Typing indicator */
-  @keyframes kr-typing-dot {
-    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-    40% { transform: scale(1); opacity: 1; }
-  }
-  .kr-typing-dot {
-    animation: kr-typing-dot 1s ease-in-out infinite;
-  }
-
-  /* Parcours de qualification — step enter */
-  @keyframes kr-step-icon-in {
-    from { opacity: 0; transform: scale(0.8); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-  .kr-step-icon-enter {
-    animation: kr-step-icon-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  @keyframes kr-step-text-in {
-    from { opacity: 0; transform: translateX(-4px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  .kr-step-text-enter {
-    animation: kr-step-text-in 200ms ease-out both;
-  }
-
-  /* Liquid glass bento card with hover glow */
-  .kr-glass-bento {
-    position: relative;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-    transition: background 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
-  }
-  @supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
-    .kr-glass-bento {
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-  }
-  .kr-glass-bento::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    background: var(--glow-color, transparent);
-    opacity: 0;
-    filter: blur(20px);
-    z-index: -1;
-    transition: opacity 300ms ease;
-    pointer-events: none;
-  }
-  .kr-glass-bento:hover::before {
-    opacity: 0.6;
-  }
-  .kr-glass-bento:hover,
-  .kr-glass-bento[aria-expanded="true"] {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,255,255,0.15);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.1),
-      0 0 0 1px rgba(34,197,94,0.15),
-      0 8px 32px rgba(0,0,0,0.3);
-  }
-
-  /* Liquid glass hero showcase card */
-  .kr-glass-hero {
-    position: relative;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.10);
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.05),
-      0 24px 80px rgba(0,0,0,0.4),
-      inset 0 1px 0 rgba(255,255,255,0.08);
-    border-radius: 20px;
-  }
-  @supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
-    .kr-glass-hero {
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-    }
-  }
-  .kr-glass-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    filter: blur(60px);
-    background: radial-gradient(ellipse at center, rgba(34,197,94,0.12) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  /* Assistant web bento card — scoped tokens */
-  .kr-assistant-card {
-    --bg: #09090b;
-    --bg-elevated: #18181b;
-    --bg-hover: #27272a;
-    --border: #27272a;
-    --text-1: #ffffff;
-    --text-2: #a1a1aa;
-    --text-3: #71717a;
-    --accent: #22c55e;
-    --accent-border: rgba(34, 197, 94, 0.3);
-  }
-
-  /* Assistant web bento card — message enter animations */
-  .kr-assistant-scroll {
-    scroll-behavior: smooth;
-  }
-  @keyframes kr-assistant-msg-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .kr-assistant-msg-in {
-    animation: kr-assistant-msg-in 250ms ease-out both;
-  }
-  @keyframes kr-assistant-user-in {
-    from { opacity: 0; transform: translateX(8px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  .kr-assistant-user-in {
-    animation: kr-assistant-user-in 200ms ease-out both;
-  }
-
-  /* Assistant vocal bento card — scoped tokens */
-  .kr-voice-card {
-    --bg: #09090b;
-    --bg-elevated: #18181b;
-    --bg-hover: #27272a;
-    --border: #27272a;
-    --text-1: #ffffff;
-    --text-2: #a1a1aa;
-    --text-3: #71717a;
-    --accent: #22c55e;
-    --accent-border: rgba(34, 197, 94, 0.3);
-  }
-
-  /* Assistant vocal bento card — waveform */
-  @keyframes voice-wave {
-    0%, 100% { height: 8px; opacity: 0.4; }
-    50% { height: 36px; opacity: 1; }
-  }
-  .voice-bar {
-    animation: voice-wave var(--duration) var(--delay) ease-in-out infinite;
-  }
-
-  /* Replace 12 tools — section scoped tokens */
-  .kr-tools-section {
-    --bg: #09090b;
-    --bg-elevated: #18181b;
-    --bg-hover: #27272a;
-    --border: #27272a;
-    --text-1: #ffffff;
-    --text-2: #a1a1aa;
-    --text-3: #71717a;
-    --accent: #22c55e;
-    --accent-border: rgba(34, 197, 94, 0.3);
-  }
-
-  /* Replace 12 tools — carousel card */
-  .kr-tools-card {
-    width: 720px;
-    max-width: 92vw;
-    border-radius: 24px;
-    overflow: hidden;
-    position: absolute;
-    background: rgba(15, 15, 18, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 32px 80px rgba(0, 0, 0, 0.6);
-    transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
-                filter 600ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @supports (backdrop-filter: blur(24px)) or (-webkit-backdrop-filter: blur(24px)) {
-    .kr-tools-card {
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-    }
-  }
-  @supports not (backdrop-filter: blur(24px)) {
-    .kr-tools-card {
-      background: rgba(15, 15, 18, 0.97);
-    }
-  }
-  .kr-tools-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-  }
-  .kr-tools-card[data-position="side"] {
-    pointer-events: none;
-  }
-  @media (max-width: 767px) {
-    .kr-tools-card[data-position="side"] {
-      display: none;
-    }
-    .kr-tools-card[data-position="active"] {
-      width: 95vw !important;
-      transform: none !important;
-    }
-    .kr-tools-card-grid {
-      grid-template-columns: 1fr !important;
-    }
-  }
-  @media (min-width: 768px) and (max-width: 1023px) {
-    .kr-tools-card {
-      width: 640px;
-    }
-  }
-
-  /* Replace 12 tools — nav buttons */
-  .kr-tools-nav-btn {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: var(--text-1, #fff);
-    transition: background 200ms ease, transform 200ms ease;
-  }
-  @supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
-    .kr-tools-nav-btn {
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-    }
-  }
-  .kr-tools-nav-btn:hover {
-    background: rgba(255, 255, 255, 0.10);
-    transform: scale(1.05);
-  }
-  @media (max-width: 767px) {
-    .kr-tools-nav-btn {
-      display: none;
-    }
-  }
-
-  /* Replace 12 tools — dots */
-  .kr-tools-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.2);
-    transition: width 300ms ease, background 300ms ease;
-  }
-  .kr-tools-dot.kr-tools-dot-active {
-    width: 24px;
-    background: var(--accent, #22c55e);
-  }
-
-  /* Replace 12 tools — float animation on active card */
-  @keyframes card-float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
-  }
-  .carousel-card-float {
-    animation: card-float 5s ease-in-out infinite;
-  }
-
-  /* Reduced motion */
-  @media (prefers-reduced-motion: reduce) {
-    .kr-reveal,
-    .kr-reveal-left,
-    .kr-reveal-right,
-    .kr-reveal-scale,
-    .kr-card-hover,
-    .kr-badge-pulse,
-    .kr-line-grow,
-    .kr-wave,
-    .kr-typing-dot,
-    .kr-step-icon-enter,
-    .kr-step-text-enter,
-    .kr-ticker span {
-      transition: none !important;
-      animation: none !important;
-      opacity: 1 !important;
-      transform: none !important;
-    }
-    .kr-glass-bento,
-    .kr-glass-bento::before {
-      transition: none !important;
-    }
-    .kr-tools-card,
-    .carousel-card-float {
-      transition: none !important;
-      animation: none !important;
-    }
-    .kr-assistant-scroll {
-      scroll-behavior: auto !important;
-    }
-    .kr-assistant-msg-in,
-    .kr-assistant-user-in {
-      animation: none !important;
-      opacity: 1 !important;
-      transform: none !important;
-    }
-  }
-`
-
-const METRICS_DATA: {
-  valeur: string;
-  label: string;
-  description: string;
-  countTarget: number | null;
-  prefix: string;
-  suffix: string;
-}[] = [
-  { valeur: 'Zéro', label: 'saisie manuelle', description: 'tout est structuré automatiquement', countTarget: null, prefix: '', suffix: '' },
-  { valeur: '0', label: 'prospect perdu', description: 'chaque demande est captée et traitée', countTarget: 0, prefix: '', suffix: '' },
-  { valeur: '+40%', label: 'taux de réponse', description: 'vs un artisan sans assistant', countTarget: 40, prefix: '+', suffix: '%' },
-  { valeur: '100%', label: 'dossiers scorés', description: 'priorisés par potentiel commercial', countTarget: 100, prefix: '', suffix: '%' },
-  { valeur: '24h/24', label: 'votre site répond', description: 'même quand vous êtes sur le chantier', countTarget: null, prefix: '', suffix: '' },
-  { valeur: '< 15 min', label: 'mise en place', description: 'opérationnel dès aujourd\'hui', countTarget: 15, prefix: '< ', suffix: ' min' },
-];
-
-function countUp(element: HTMLElement, target: number, duration: number, prefix: string, suffix: string) {
-  const start = performance.now();
-  const animate = (now: number) => {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const current = Math.round(target * eased);
-    element.textContent = `${prefix}${current}${suffix}`;
-    if (progress < 1) requestAnimationFrame(animate);
-  };
-  requestAnimationFrame(animate);
-}
-
-function metricBorderClasses(i: number) {
-  const base = i < 5 ? 'border-b border-zinc-800' : 'border-b-0';
-  const mdRight = i % 2 === 0 ? 'md:border-r md:border-zinc-800' : 'md:border-r-0';
-  const mdBottom = i < 4 ? 'md:border-b md:border-zinc-800' : 'md:border-b-0';
-  const lgRight = i % 3 !== 2 ? 'lg:border-r lg:border-zinc-800' : 'lg:border-r-0';
-  const lgBottom = i < 3 ? 'lg:border-b lg:border-zinc-800' : 'lg:border-b-0';
-  return `${base} ${mdRight} ${mdBottom} ${lgRight} ${lgBottom}`;
-}
-
-function MetricsGrid() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const valueRefs = useRef<(HTMLParagraphElement | null)[]>([]);
-  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReduced) {
-      itemRefs.current.forEach((el) => el?.classList.add('metric-visible'));
-      lineRefs.current.forEach((el) => el?.classList.add('metric-line-visible'));
-      METRICS_DATA.forEach((m, i) => {
-        const el = valueRefs.current[i];
-        if (el && m.countTarget !== null) {
-          el.textContent = `${m.prefix}${m.countTarget}${m.suffix}`;
-        }
-      });
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const index = itemRefs.current.indexOf(entry.target as HTMLDivElement);
-          if (index === -1) return;
-          const delay = index * 100;
-          const metric = METRICS_DATA[index];
-
-          setTimeout(() => {
-            entry.target.classList.add('metric-visible');
-            const valueEl = valueRefs.current[index];
-            if (valueEl && metric.countTarget !== null) {
-              countUp(valueEl, metric.countTarget, 1200, metric.prefix, metric.suffix);
-            }
-          }, delay);
-
-          setTimeout(() => {
-            lineRefs.current[index]?.classList.add('metric-line-visible');
-          }, delay + 300);
-
-          observer.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.2 }
-    );
-
-    itemRefs.current.forEach((el) => el && observer.observe(el));
-
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={containerRef} className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      {METRICS_DATA.map((m, i) => (
-        <div
-          key={m.label}
-          ref={(el) => { itemRefs.current[i] = el; }}
-          style={{ transitionDelay: `${i * 100}ms` }}
-          className={`metric-hidden px-8 py-10 text-center ${metricBorderClasses(i)}`}
-        >
-          <p
-            ref={(el) => { valueRefs.current[i] = el; }}
-            className="text-[clamp(2.2rem,4vw,3.2rem)] font-black leading-none tracking-[-0.02em] text-green-500"
-          >
-            {m.valeur}
-          </p>
-          <span ref={(el) => { lineRefs.current[i] = el; }} className="metric-line" />
-          <p className="mt-2 text-base font-bold text-white">{m.label}</p>
-          <p className="mx-auto mt-1 min-h-[36px] max-w-[160px] text-center text-[13px] leading-[1.5] text-zinc-400">{m.description}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-
-  return reduced;
-}
-
-const fmtNum = (n: number) => n.toLocaleString('fr-FR');
-
-const CHAT_MESSAGES: { role: 'assistant' | 'user'; text: string; delay: number }[] = [
-  {
-    role: 'assistant',
-    text: "Bonjour, je suis l'assistant Kadria 👋\nPour commencer, quel type de travaux ou de projet souhaitez-vous réaliser ?",
-    delay: 0,
-  },
-  { role: 'user', text: 'Nouveau projet', delay: 1000 },
-  {
-    role: 'assistant',
-    text: 'Merci pour cette précision. Pour mieux comprendre votre projet, pouvez-vous nous donner une description détaillée de ce que vous souhaitez réaliser ?',
-    delay: 2000,
-  },
-  {
-    role: 'user',
-    text: "Installation d'une prise pour recharger une voiture électrique devant ma maison",
-    delay: 3200,
-  },
-  {
-    role: 'assistant',
-    text: "C'est un projet intéressant ! Pour l'installation de cette prise, avez-vous déjà un emplacement précis en tête et des travaux d'électricité sont-ils nécessaires ?",
-    delay: 4400,
-  },
-  { role: 'user', text: 'Oui à côté du garage', delay: 5600 },
-  {
-    role: 'assistant',
-    text: 'Avez-vous déjà vérifié si le tableau électrique est suffisant pour supporter cette nouvelle prise ?',
-    delay: 6800,
-  },
-  { role: 'user', text: "Oui c'est bon", delay: 7800 },
-  {
-    role: 'assistant',
-    text: 'Parfait ! Pour préparer un devis, pouvez-vous me dire si vous avez une idée du budget que vous souhaitez allouer à ce projet ? 💰',
-    delay: 8800,
-  },
-  { role: 'user', text: 'Moins de 2 000 €', delay: 10000 },
-  {
-    role: 'assistant',
-    text: 'Pour mieux préparer le devis, pouvez-vous estimer plus précisément ? Par exemple, 200-500€, 500-1 000€ ou 1 000-2 000€ ?',
-    delay: 11200,
-  },
-  { role: 'user', text: '200 – 500 €', delay: 12400 },
-  {
-    role: 'assistant',
-    text: 'Merci pour cette précision sur le budget. Souhaitez-vous réaliser ce projet rapidement ou plutôt dans les prochains mois ? 📅',
-    delay: 13600,
-  },
-  { role: 'user', text: 'Dès que possible', delay: 14800 },
-  {
-    role: 'assistant',
-    text: 'Où en êtes-vous dans votre réflexion ?',
-    delay: 15800,
-  },
-  { role: 'user', text: 'Prêt à démarrer', delay: 16800 },
-  {
-    role: 'assistant',
-    text: "Avez-vous des photos, plans ou documents à joindre pour aider l'artisan à préparer son devis ? 📎",
-    delay: 17800,
-  },
-];
-
-function AssistantWebChatCard({ reduceMotion }: { reduceMotion: boolean }) {
-  const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? CHAT_MESSAGES.length : 0);
-  const [typingBeforeIndex, setTypingBeforeIndex] = useState<number | null>(null);
-  const chatRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (reduceMotion) return;
-
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-    const run = () => {
-      setVisibleMessages(0);
-      setTypingBeforeIndex(null);
-
-      CHAT_MESSAGES.forEach((msg, i) => {
-        if (msg.role === 'assistant') {
-          timeouts.push(setTimeout(() => setTypingBeforeIndex(i), Math.max(msg.delay - 800, 0)));
-        }
-        timeouts.push(setTimeout(() => {
-          setTypingBeforeIndex(null);
-          setVisibleMessages(i + 1);
-        }, msg.delay));
-      });
-
-      const lastDelay = CHAT_MESSAGES[CHAT_MESSAGES.length - 1].delay;
-      timeouts.push(setTimeout(run, lastDelay + 2000));
-    };
-
-    run();
-
-    return () => timeouts.forEach(clearTimeout);
-  }, [reduceMotion]);
-
-  useEffect(() => {
-    if (!chatRef.current) return;
-    chatRef.current.scrollTo({
-      top: chatRef.current.scrollHeight,
-      behavior: reduceMotion ? 'auto' : 'smooth',
-    });
-  }, [visibleMessages, typingBeforeIndex, reduceMotion]);
-
-  return (
-    <div className="kr-assistant-card flex h-full w-full flex-col overflow-hidden">
-      <div className="flex flex-shrink-0 items-center gap-3 border-b border-[var(--border)] px-4 py-3.5">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-extrabold text-[var(--bg)]">
-          K
-        </div>
-        <div>
-          <p className="text-sm font-bold text-[var(--text-1)]">Kadria</p>
-          <p className="text-xs text-[var(--text-2)]">Assistant en ligne</p>
-        </div>
-        <span className="kr-badge-pulse ml-auto h-2 w-2 flex-shrink-0 rounded-full bg-[var(--accent)]" />
-      </div>
-
-      <div className="flex-shrink-0 border-b border-[var(--border)] px-4 py-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[var(--text-2)]">Votre projet</span>
-          <span className="text-xs text-[var(--text-2)]">Étape 1 sur 4 — Projet</span>
-        </div>
-        <div className="mt-0.5 h-0.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
-          <div className="h-full w-1/4 rounded-full bg-[var(--accent)]" />
-        </div>
-      </div>
-
-      <div ref={chatRef} className="kr-assistant-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        {CHAT_MESSAGES.slice(0, visibleMessages).map((msg, i) =>
-          msg.role === 'assistant' ? (
-            <div
-              key={i}
-              className={`max-w-[85%] self-start whitespace-pre-line rounded-[12px] rounded-bl-[2px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--text-1)] ${
-                reduceMotion ? '' : 'kr-assistant-msg-in'
-              }`}
-            >
-              {msg.text}
-            </div>
-          ) : (
-            <div
-              key={i}
-              className={`max-w-[75%] self-end rounded-[12px] rounded-br-[2px] bg-[var(--accent)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] ${
-                reduceMotion ? '' : 'kr-assistant-user-in'
-              }`}
-            >
-              {msg.text}
-            </div>
-          )
-        )}
-        {typingBeforeIndex !== null && (
-          <div className="flex w-fit items-center gap-1 self-start rounded-[12px] bg-[var(--bg-elevated)] px-3 py-2">
-            <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:0ms]" />
-            <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:150ms]" />
-            <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:300ms]" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-shrink-0 items-center gap-2 border-t border-[var(--border)] px-3.5 py-2.5">
-        <div className="flex-1 rounded-[10px] border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5">
-          <span className="text-xs text-[var(--text-3)]">Écrivez votre message...</span>
-        </div>
-        <div className="flex flex-shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-[var(--bg)]">
-          <Send size={14} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const VOICE_MESSAGES: { role: 'client' | 'kadria'; text: string; delay: number }[] = [
-  { role: 'client', text: "Bonjour, je cherche un électricien pour installer une borne de recharge.", delay: 0 },
-  { role: 'kadria', text: "Bonjour ! Je suis l'assistant de AD Elec. Je peux vous aider. Avez-vous déjà un emplacement prévu pour la borne ?", delay: 2000 },
-  { role: 'client', text: "Oui, dans mon garage.", delay: 4500 },
-  { role: 'kadria', text: "Parfait. Votre tableau électrique est-il récent ? Et quel est votre budget approximatif ?", delay: 6000 },
-  { role: 'client', text: "Tableau de 2018, budget autour de 1 500€.", delay: 8500 },
-  { role: 'kadria', text: "Très bien. Je note votre demande et transmets un dossier complet à notre artisan. Vous recevrez un devis sous 24h.", delay: 10500 },
-  { role: 'client', text: "Merci beaucoup !", delay: 13000 },
-  { role: 'kadria', text: "Avec plaisir. Bonne journée ! 🎯 Dossier créé — Score 91%", delay: 14500 },
-];
-
-const VOICE_WAVE_BARS: { duration: number; delay: number; accent: boolean }[] = [
-  { duration: 600, delay: 0, accent: true },
-  { duration: 700, delay: 100, accent: true },
-  { duration: 500, delay: 50, accent: true },
-  { duration: 650, delay: 150, accent: true },
-  { duration: 550, delay: 75, accent: true },
-  { duration: 750, delay: 200, accent: false },
-  { duration: 625, delay: 125, accent: false },
-  { duration: 575, delay: 175, accent: false },
-];
-
-function VoiceAssistantCard({ reduceMotion }: { reduceMotion: boolean }) {
-  const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? VOICE_MESSAGES.length : 0);
-  const [elapsed, setElapsed] = useState(0);
-  const transcriptRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (reduceMotion) return;
-
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-    const run = () => {
-      setVisibleMessages(0);
-
-      VOICE_MESSAGES.forEach((msg, i) => {
-        timeouts.push(setTimeout(() => setVisibleMessages(i + 1), msg.delay));
-      });
-
-      const lastDelay = VOICE_MESSAGES[VOICE_MESSAGES.length - 1].delay;
-      timeouts.push(setTimeout(run, lastDelay + 3000));
-    };
-
-    run();
-
-    return () => timeouts.forEach(clearTimeout);
-  }, [reduceMotion]);
-
-  useEffect(() => {
-    if (reduceMotion) return;
-
-    const interval = setInterval(() => {
-      setElapsed((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [reduceMotion]);
-
-  useEffect(() => {
-    if (!transcriptRef.current) return;
-    transcriptRef.current.scrollTo({
-      top: transcriptRef.current.scrollHeight,
-      behavior: reduceMotion ? 'auto' : 'smooth',
-    });
-  }, [visibleMessages, reduceMotion]);
-
-  const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-  const seconds = (elapsed % 60).toString().padStart(2, '0');
-
-  return (
-    <div className="kr-voice-card flex h-full w-full flex-col overflow-hidden">
-      <div className="flex flex-shrink-0 items-center gap-3 border-b border-[var(--border)] px-4 py-3.5">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#60a5fa] text-sm font-extrabold text-white">
-          K
-        </div>
-        <div>
-          <p className="text-sm font-bold text-[var(--text-1)]">Kadria Vocal</p>
-          <p className="text-xs text-[var(--text-2)]">Appel en cours...</p>
-        </div>
-        <span className="ml-auto font-mono text-xs font-semibold text-[var(--accent)]">
-          {minutes}:{seconds}
-        </span>
-        <span className="kr-badge-pulse flex-shrink-0 rounded-full border border-[rgba(220,38,38,0.3)] bg-[rgba(220,38,38,0.15)] px-2 py-0.5 text-xs font-bold text-[#dc2626]">
-          🔴 EN DIRECT
-        </span>
-      </div>
-
-      <div className="flex h-12 flex-shrink-0 items-end justify-center gap-1 border-b border-[var(--border)] px-4 py-4">
-        {VOICE_WAVE_BARS.map((bar, i) => (
-          <div
-            key={i}
-            className={`w-1 rounded-sm ${reduceMotion ? '' : 'voice-bar'} ${bar.accent ? 'bg-[var(--accent)]' : 'bg-[rgba(96,165,250,0.4)]'}`}
-            style={
-              reduceMotion
-                ? { height: '22px' }
-                : ({ '--duration': `${bar.duration}ms`, '--delay': `${bar.delay}ms` } as CSSProperties)
-            }
-          />
-        ))}
-      </div>
-
-      <div ref={transcriptRef} className="kr-assistant-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3.5">
-        {VOICE_MESSAGES.slice(0, visibleMessages).map((msg, i) =>
-          msg.role === 'client' ? (
-            <div
-              key={i}
-              className={`max-w-[85%] self-start rounded-[10px] rounded-bl-[2px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-2)] ${
-                reduceMotion ? '' : 'kr-assistant-msg-in'
-              }`}
-            >
-              <span className="text-[10px] text-[var(--text-3)]">👤 Client · </span>
-              {msg.text}
-            </div>
-          ) : (
-            <div
-              key={i}
-              className={`max-w-[85%] self-end rounded-[10px] rounded-br-[2px] border border-[rgba(96,165,250,0.25)] bg-[rgba(96,165,250,0.12)] px-3 py-2 text-xs text-[var(--text-1)] ${
-                reduceMotion ? '' : 'kr-assistant-user-in'
-              }`}
-            >
-              <span className="text-[10px] text-[#60a5fa]">🤖 Kadria · </span>
-              {msg.text}
-            </div>
-          )
-        )}
-      </div>
-
-      <div className="flex flex-shrink-0 items-center justify-between border-t border-[var(--border)] px-3.5 py-2.5" style={{ background: 'rgba(34,197,94,0.06)' }}>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)]">
-          <CheckCircle size={12} color="var(--accent)" />
-          Dossier créé automatiquement
-        </div>
-        <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-xs font-bold text-[var(--bg)]">
-          Score: 91%
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function DossierReceivedCard({ reduceMotion }: { reduceMotion: boolean }) {
-  const [visible, setVisible] = useState(reduceMotion);
-
-  useEffect(() => {
-    if (reduceMotion) return;
-    let cancelled = false;
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-    const run = () => {
-      setVisible(false);
-      timeouts.push(setTimeout(() => { if (!cancelled) setVisible(true); }, 50));
-      timeouts.push(setTimeout(() => { if (!cancelled) run(); }, 3000));
-    };
-
-    run();
-    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
-  }, [reduceMotion]);
-
-  return (
-    <div
-      className={`mb-5 rounded-xl border border-green-500/25 bg-zinc-900 p-3.5 transition-[opacity,transform] duration-[600ms] ${
-        visible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.97]'
-      }`}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Dossier reçu</p>
-      <p className="mt-2 text-sm font-semibold text-white">Marie Leroy</p>
-      <p className="text-sm text-zinc-400">Rénovation SDB · 8 000–12 000€</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className="rounded-full bg-green-500 px-2.5 py-1 text-xs font-bold text-zinc-950">Score 94%</span>
-        <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">🟢 Prospect chaud</span>
-      </div>
-    </div>
-  );
-}
-
 export function LandingRoutePage() {
-  useScrollReveal();
-  const reduceMotion = usePrefersReducedMotion();
-  const [activeMetier, setActiveMetier] = useState<string | null>(TRADES_DATA[0].id);
-  const [metierCardVisible, setMetierCardVisible] = useState(true);
-  const displayTrade = TRADES_DATA.find((m) => m.id === activeMetier);
+  const [selectedTrade, setSelectedTrade] = useState<string | null>(TRADES_DATA[0].id);
+  const [lastTradeId, setLastTradeId] = useState(TRADES_DATA[0].id);
+  const [tradeCardVisible, setTradeCardVisible] = useState(true);
+  const displayTrade = TRADES_DATA.find((m) => m.id === lastTradeId);
 
   useEffect(() => {
-    if (activeMetier) {
-      setMetierCardVisible(false);
-      const timeout = setTimeout(() => setMetierCardVisible(true), 20);
+    if (selectedTrade) {
+      setLastTradeId(selectedTrade);
+      setTradeCardVisible(false);
+      const timeout = setTimeout(() => setTradeCardVisible(true), 20);
       return () => clearTimeout(timeout);
     }
-  }, [activeMetier]);
 
-  const [activeToolsCard, setActiveToolsCard] = useState(0);
-  const [toolsCarouselPaused, setToolsCarouselPaused] = useState(false);
+    setTradeCardVisible(false);
+  }, [selectedTrade]);
 
-  useEffect(() => {
-    if (toolsCarouselPaused) return;
-    const interval = setInterval(() => {
-      setActiveToolsCard((c) => (c + 1) % REPLACE_TOOLS_CARDS.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [toolsCarouselPaused]);
-
-  const avant = [
-    'Appels manqués sur chantier — vos prospects rappellent un concurrent.',
-    'Demandes sans informations : « Je voudrais un devis », sans surface ni budget.',
-    'Relances oubliées — 70% des prospects non rappelés sous 24h signent ailleurs.',
-    'Qualification chronophage : 5 allers-retours pour obtenir l\'essentiel.',
-    'Chaque demande non traitée est un chantier qui part chez un concurrent.',
+  const problemes = [
+    {
+      icon: '🔧',
+      title: 'Appels manqués',
+      text: 'Chaque appel manqué est une opportunité qui part directement chez un concurrent plus réactif.',
+    },
+    {
+      icon: '👤',
+      title: 'Demandes incomplètes',
+      text: 'Sans qualification, vous perdez du temps à recontacter vos prospects pour obtenir des informations de base.',
+    },
+    {
+      icon: '💬',
+      title: 'Messages oubliés',
+      text: 'Les messages laissés sur le répondeur ou via un formulaire restent parfois sans réponse pendant plusieurs jours.',
+    },
+    {
+      icon: '🔁',
+      title: 'Prospects non rappelés',
+      text: 'Un prospect non rappelé rapidement a beaucoup moins de chances de se transformer en client.',
+    },
+    {
+      icon: 'ℹ️',
+      title: "Manque d'informations",
+      text: "Sans budget, délai ni adresse, impossible d'évaluer rapidement si un projet mérite d'être traité en priorité.",
+    },
   ];
 
-  const missedNotifs = [
-    { icon: '📞', text: 'Appel manqué · il y a 2h', rotate: -1.5 },
-    { icon: '📞', text: 'Appel manqué · il y a 5h', rotate: 0.5 },
-    { icon: '💬', text: 'Message sans réponse · 3 jours', rotate: -0.8 },
+  const solutions = [
+    {
+      icon: '🌐',
+      title: 'Assistant Web',
+      items: [
+        'Répond instantanément aux visiteurs de votre site',
+        'Qualifie le besoin, le budget et le délai',
+        'Crée automatiquement un dossier projet structuré',
+      ],
+    },
+    {
+      icon: '📞',
+      title: 'Assistant Vocal',
+      items: [
+        'Décroche les appels manqués, même en dehors des horaires',
+        'Pose les bonnes questions pour qualifier le projet',
+        'Transcrit et résume chaque appel automatiquement',
+      ],
+    },
+    {
+      icon: '📊',
+      title: 'Dashboard commercial',
+      items: [
+        'Centralise tous vos prospects et dossiers au même endroit',
+        'Priorise les opportunités selon leur potentiel',
+        'Suit le statut et les relances de chaque projet',
+      ],
+    },
   ];
 
-  const apres = [
-    'Disponible 24h/24, 7j/7, par chat et par téléphone.',
-    'Questions adaptées à votre métier, posées automatiquement.',
-    'Photos, adresse et budget collectés sans effort.',
-    'Dossier créé, scoré et priorisé instantanément.',
-    'Relances et calendrier intégrés au dashboard.',
+  const etapes = [
+    {
+      number: '01',
+      title: 'Le prospect vous contacte',
+      text: 'Depuis votre site web ou par téléphone, à n importe quelle heure du jour ou de la nuit.',
+    },
+    {
+      number: '02',
+      title: 'Kadria qualifie le besoin',
+      text: 'Questions utiles, budget, délai, adresse et contexte sont collectés automatiquement.',
+    },
+    {
+      number: '03',
+      title: 'Un dossier complet est généré',
+      text: 'Résumé IA, coordonnées, score de priorité et informations clés, prêts à être exploités.',
+    },
+    {
+      number: '04',
+      title: 'Vous traitez les meilleures opportunités',
+      text: 'Votre équipe se concentre sur les chantiers les plus prometteurs, au bon moment.',
+    },
   ];
+
+  const dossiers = [
+    { initials: 'ML', client: 'Mario Leroy', metier: 'Plomberie', ville: 'Lyon', budget: '8 000 - 12 000 €', score: 92, statut: 'Nouveau' },
+    { initials: 'JP', client: 'Jean-Pierre M.', metier: 'Couverture', ville: 'Nantes', budget: '15 000 - 20 000 €', score: 95, statut: 'A rappeler' },
+    { initials: 'AD', client: 'Antonin D.', metier: 'Carrelage', ville: 'Rouen', budget: '3 000 - 5 000 €', score: 85, statut: 'Qualifie' },
+    { initials: 'CJ', client: 'Claire & Julien P.', metier: 'Rénovation', ville: 'Lyon', budget: '80 000 - 100 000 €', score: 97, statut: 'Devis envoye' },
+    { initials: 'AB', client: 'Ahmad B.', metier: 'Électricité', ville: 'Paris', budget: '~ 10 000 €', score: 90, statut: 'Gagne' },
+    { initials: 'SF', client: 'Sophie F.', metier: 'Paysagiste', ville: 'Bordeaux', budget: '5 000 - 8 000 €', score: 45, statut: 'Perdu' },
+  ];
+
+  const statusClass: Record<string, string> = {
+    Nouveau: 'bg-blue-500/10 text-blue-400',
+    'A rappeler': 'bg-amber-500/10 text-amber-400',
+    Qualifie: 'bg-purple-500/10 text-purple-400',
+    'Devis envoye': 'bg-cyan-500/10 text-cyan-400',
+    Gagne: 'bg-green-500/10 text-green-400',
+    Perdu: 'bg-red-500/10 text-red-400',
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <style>{ANIMATION_STYLES}</style>
-
-      {/* 1. NAV */}
+      {/* NAV */}
       <DarkNav />
 
       <main>
-        {/* 2. HERO */}
-        <section className="relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-zinc-950 pt-[88px]">
-          {/* Three.js background — desktop uniquement */}
-          <div className="hidden md:block">
-            <DottedSurface
-              className="absolute inset-0 opacity-60"
-              style={{ zIndex: 0, pointerEvents: 'none' }}
-            />
-          </div>
-
-          {/* Gradient overlay pour lisibilité du texte */}
-          <div
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background: 'radial-gradient(ellipse 70% 50% at 50% 100%, transparent 40%, #09090b 80%)',
-            }}
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_70%_50%,rgba(34,197,94,0.08)_0%,transparent_60%)]" />
-          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-12 px-6 py-20 lg:px-12 md:grid-cols-2 md:items-center">
-            <div>
-              <h1 className="kr-reveal kr-reveal-delay-1 text-[clamp(2.5rem,6vw,4.5rem)] font-bold leading-[1.05] tracking-tight">
-                Transformez chaque demande en{' '}
-                <span className="kr-gradient-text">chantier qualifié.</span>
-              </h1>
-              <p className="kr-reveal kr-reveal-delay-2 mt-6 max-w-xl text-lg leading-7 text-zinc-400">
-                Kadria qualifie vos prospects 24h/24 — par téléphone et sur votre site.
-                Chaque conversation devient un dossier complet, scoré et prêt à être chiffré.
-              </p>
-              <div className="kr-reveal kr-reveal-delay-3 mt-8">
-                <Link
-                  href="/demo"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-                >
-                  Tester Kadria <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="kr-reveal kr-reveal-delay-4 mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
-                {[
-                  'Mise en place rapide',
-                  'Sans changement de numéro',
-                  'Compatibilité web et téléphone',
-                  'Support inclus',
-                ].map((item) => (
-                  <span key={item} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="kr-reveal kr-reveal-right rounded-xl shadow-[0_0_60px_rgba(34,197,94,0.08)]">
-              <QualificationShowcase />
-            </div>
-          </div>
-        </section>
-
-        {/* 3. SOCIAL PROOF */}
-        <section className="w-full border-y border-zinc-800 bg-zinc-900 py-16">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Résultats</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-3 text-2xl font-extrabold tracking-tight md:text-3xl">
-                Ce que Kadria change concrètement
-              </h2>
-            </div>
-            <MetricsGrid />
-          </div>
-        </section>
-
-        {/* 4. PROBLEME -> SOLUTION */}
-        <section className="w-full bg-zinc-950 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal kr-reveal-delay-1 text-3xl font-bold tracking-tight md:text-5xl">
-                De la demande perdue au <span className="kr-gradient-text">chantier qualifié.</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
-              </p>
-            </div>
-            <div className="relative mt-12 grid items-stretch gap-8 lg:grid-cols-2">
-              {/* Flèche centrale */}
-              <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 lg:flex">
-                <ArrowRight size={20} className="text-green-500" />
-              </div>
-
-              {/* AVANT KADRIA */}
-              <div className="kr-reveal kr-reveal-left flex flex-col overflow-hidden rounded-xl border border-[rgba(220,38,38,0.25)] bg-[rgba(220,38,38,0.03)]">
-                <div className="flex items-center gap-3 border-b border-[rgba(220,38,38,0.15)] bg-[rgba(220,38,38,0.06)] px-6 py-4">
-                  <AlertTriangle size={18} className="text-[#dc2626]" />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-[#dc2626]">Avant Kadria</p>
-                    <p className="text-sm text-zinc-400">Sans qualification automatique</p>
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-col p-8">
-                  <div className="mb-5 space-y-2">
-                    {missedNotifs.map((n) => (
-                      <div
-                        key={n.text}
-                        style={{ transform: `rotate(${n.rotate}deg)` }}
-                        className="rounded-[10px] border border-[rgba(220,38,38,0.15)] bg-[rgba(220,38,38,0.06)] px-3.5 py-2.5 text-sm text-zinc-300"
-                      >
-                        {n.icon} {n.text}
-                      </div>
-                    ))}
-                  </div>
-                  <ul className="space-y-4">
-                    {avant.map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-sm leading-6 text-zinc-400">
-                        <XCircle size={15} className="mt-0.5 flex-shrink-0 text-[#dc2626]" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 rounded-[10px] bg-[rgba(220,38,38,0.06)] px-4 py-3">
-                    <p className="text-sm font-medium text-[#dc2626]">
-                      70% des prospects non rappelés sous 24h signent chez un concurrent
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* AVEC KADRIA */}
-              <div className="kr-reveal kr-reveal-right flex flex-col overflow-hidden rounded-xl border border-green-500/25 bg-[rgba(34,197,94,0.02)]">
-                <div className="flex items-center gap-3 border-b border-green-500/25 bg-[rgba(34,197,94,0.06)] px-6 py-4">
-                  <CheckCircle size={18} className="text-green-500" />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Avec Kadria</p>
-                    <p className="text-sm text-zinc-400">Qualification automatique 24h/24</p>
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-col p-8">
-                  <DossierReceivedCard reduceMotion={reduceMotion} />
-                  <ul className="space-y-4">
-                    {apres.map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-sm font-medium leading-6 text-zinc-200">
-                        <CheckCircle size={15} className="mt-0.5 flex-shrink-0 text-green-500" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 rounded-[10px] bg-[rgba(34,197,94,0.06)] px-4 py-3">
-                    <p className="text-sm font-medium text-green-500">
-                      &lt; 3 minutes pour recevoir un dossier complet et qualifié
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. REMPLACE 12 OUTILS */}
-        <section className="kr-tools-section relative w-full border-b border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-24">
-          <div className="relative mx-auto max-w-6xl">
-            <div className="flex justify-center">
-              <span className="kr-reveal rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.08)] px-4 py-1 text-xs font-bold text-[var(--accent)]">
-                KADRIA PRO
-              </span>
-            </div>
-            <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-center font-black tracking-[-0.02em] text-[clamp(2.2rem,5vw,3.8rem)]">
-              Remplacez jusqu&apos;à 12 outils.
+        {/* HERO */}
+        <section className="mx-auto grid max-w-[1280px] gap-12 px-6 py-20 md:grid-cols-2 md:items-center">
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
+              Transformez chaque appel et chaque demande en
               <br />
-              Pilotez tout depuis <span className="text-[var(--accent)]">un seul tableau de bord.</span>
-            </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-4 max-w-2xl text-center text-lg leading-relaxed text-[var(--text-2)]">
-              Capturez vos demandes, qualifiez vos prospects, gérez vos devis et pilotez votre activité depuis un
-              seul tableau de bord.
+              <span className="text-green-500">chantier potentiel.</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-7 text-zinc-400">
+              Kadria répond à vos prospects 24h/24, comprend leur besoin, qualifie automatiquement
+              leur projet et prépare un dossier prêt à être chiffré.
             </p>
-
-            <div
-              className="relative mt-16 flex min-h-[720px] items-center justify-center md:min-h-[480px]"
-              onMouseEnter={() => setToolsCarouselPaused(true)}
-              onMouseLeave={() => setToolsCarouselPaused(false)}
-            >
-              {REPLACE_TOOLS_CARDS.map((card, i) => {
-                const total = REPLACE_TOOLS_CARDS.length;
-                let diff = i - activeToolsCard;
-                if (diff > total / 2) diff -= total;
-                if (diff < -total / 2) diff += total;
-                if (Math.abs(diff) > 1) return null;
-                const isActive = diff === 0;
-                const Icon = card.icon;
-                return (
-                  <div
-                    key={card.title}
-                    data-position={isActive ? 'active' : 'side'}
-                    className={`kr-tools-card kr-tools-card-grid grid grid-cols-2 ${
-                      isActive && !reduceMotion ? 'carousel-card-float' : ''
-                    }`}
-                    style={{
-                      transform: `translateX(${diff * 340}px) scale(${isActive ? 1 : 0.75})`,
-                      opacity: isActive ? 1 : 0.35,
-                      filter: isActive ? 'none' : 'blur(2px)',
-                      zIndex: isActive ? 10 : 0,
-                    }}
-                  >
-                    <div
-                      className="pointer-events-none absolute inset-0 -z-10 rounded-[24px]"
-                      style={{ boxShadow: `0 0 80px ${card.glow}` }}
-                    />
-                    {/* GAUCHE */}
-                    <div className="flex flex-col p-9">
-                      <div
-                        className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px]"
-                        style={{ background: card.iconBg, border: `1px solid ${card.iconBorder}` }}
-                      >
-                        <Icon size={24} style={{ color: card.color }} />
-                      </div>
-                      <span className="mt-5 text-xs font-bold" style={{ color: card.color }}>
-                        {card.number}
-                      </span>
-                      <h3 className="mt-2 text-[22px] font-extrabold">{card.title}</h3>
-                      <p className="mt-3 text-sm leading-relaxed text-[var(--text-2)]">{card.description}</p>
-                      <div className="mt-5 flex flex-col gap-2">
-                        {card.features.map((f) => (
-                          <div key={f} className="flex items-start gap-2 text-sm">
-                            <CheckCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: card.color }} />
-                            <span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* DROITE */}
-                    <div className="flex flex-col border-l border-[rgba(255,255,255,0.06)] p-7">
-                      <p className="mb-4 text-xs font-bold uppercase tracking-widest text-[var(--text-3)]">
-                        Remplace
-                      </p>
-                      <div className="flex flex-col gap-3">
-                        {card.tools.map((tool) => {
-                          const ToolIcon = tool.icon;
-                          return (
-                            <div
-                              key={tool.name}
-                              className="flex items-center gap-3 rounded-[10px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3.5 py-2.5"
-                            >
-                              <ToolIcon size={16} style={{ color: tool.color }} className="flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-semibold">{tool.name}</p>
-                                <p className="text-xs text-[var(--text-2)]">{tool.desc}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div
-                        className="mt-auto w-fit rounded-full px-3 py-1 text-xs font-bold"
-                        style={{ background: card.badgeBg, border: `1px solid ${card.badgeBorder}`, color: card.color }}
-                      >
-                        {card.badge}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              <button
-                type="button"
-                aria-label="Carte précédente"
-                onClick={() =>
-                  setActiveToolsCard((c) => (c - 1 + REPLACE_TOOLS_CARDS.length) % REPLACE_TOOLS_CARDS.length)
-                }
-                className="kr-tools-nav-btn absolute left-4 z-20 flex h-12 w-12 items-center justify-center rounded-full"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button
-                type="button"
-                aria-label="Carte suivante"
-                onClick={() => setActiveToolsCard((c) => (c + 1) % REPLACE_TOOLS_CARDS.length)}
-                className="kr-tools-nav-btn absolute right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full"
-              >
-                <ChevronRight size={20} />
-              </button>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                Tester Kadria <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                Réserver une démonstration
+              </Link>
             </div>
-
-            <div className="mt-8 flex justify-center gap-2">
-              {REPLACE_TOOLS_CARDS.map((card, i) => (
-                <button
-                  key={card.title}
-                  type="button"
-                  aria-label={`Voir la carte ${card.number}`}
-                  aria-current={i === activeToolsCard}
-                  onClick={() => setActiveToolsCard(i)}
-                  className="flex items-center justify-center p-2"
-                >
-                  <span className={`kr-tools-dot block ${i === activeToolsCard ? 'kr-tools-dot-active' : ''}`} />
-                </button>
+            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              👁 Voir un exemple de dossier
+            </Link>
+            <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-zinc-400">
+              {[
+                'Mise en place rapide',
+                'Sans changement de numéro',
+                'Compatibilité web et téléphone',
+                'Support inclus',
+              ].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-500" />
+                  {item}
+                </span>
               ))}
             </div>
+          </div>
 
-            <div className="mx-auto mt-16 grid max-w-4xl grid-cols-1 gap-8 rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-6 py-8 md:grid-cols-3 md:items-center md:px-10">
-              <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.1)]">
-                  <Layers size={24} className="text-[var(--accent)]" />
-                </div>
-                <p className="mt-3 text-4xl font-black text-[var(--accent)]">12</p>
-                <p className="text-sm text-[var(--text-2)]">outils remplacés</p>
+          <QualificationShowcase />
+        </section>
+
+        {/* STATS */}
+        <section className="border-y border-zinc-800 bg-zinc-900 py-16">
+          <div className="mx-auto grid max-w-[1280px] gap-8 px-6 text-center md:grid-cols-3">
+            {[
+              ['100%', 'des demandes centralisées dans votre dashboard'],
+              ['24/7', 'Kadria répond même quand vous êtes indisponible'],
+              ['< 2 min', 'pour qualifier et structurer un projet complet'],
+            ].map(([value, text]) => (
+              <div key={value}>
+                <p className="text-4xl font-bold text-green-500">{value}</p>
+                <p className="mt-3 text-zinc-400">{text}</p>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {REPLACED_TOOL_ICONS.map((ToolIcon, i) => (
-                  <div
-                    key={i}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] p-2 text-[var(--text-3)]"
-                  >
-                    <ToolIcon size={20} />
-                  </div>
-                ))}
-                <ArrowRight size={20} className="mx-4 text-[var(--accent)]" />
-                <span className="rounded-[10px] border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-4 py-2 text-lg font-black text-[var(--accent)]">
-                  KADRIA
-                </span>
-              </div>
-              <div className="text-center">
-                <p className="text-4xl font-black text-[var(--text-1)]">1</p>
-                <p className="text-sm text-[var(--text-2)]">seule plateforme</p>
-                <p className="mt-1 text-xs font-semibold text-[var(--accent)]">Tout est connecté.</p>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
 
-        {/* 5. FEATURES — BENTO GRID */}
-        <section className="relative w-full overflow-hidden bg-zinc-950 py-24">
-          <div
-            className="pointer-events-none absolute -left-24 -top-24 -z-0 h-[400px] w-[400px] rounded-full"
-            style={{ background: 'rgba(34,197,94,0.04)', filter: 'blur(80px)' }}
-          />
-          <div
-            className="pointer-events-none absolute -bottom-24 -right-24 -z-0 h-[400px] w-[400px] rounded-full"
-            style={{ background: 'rgba(96,165,250,0.04)', filter: 'blur(80px)' }}
-          />
-          <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Fonctionnalités</p>
-              <h2
-                className="kr-reveal kr-reveal-delay-1 mt-4 font-extrabold tracking-tight"
-                style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)' }}
-              >
-                Deux assistants. <span style={{ color: 'var(--accent)' }}>Une seule plateforme.</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-4 max-w-2xl text-sm text-zinc-400">
-                Kadria répond sur votre site et au téléphone, qualifie vos prospects et crée les dossiers — même quand vous êtes sur le chantier.
-              </p>
-            </div>
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div>
-                <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Assistant web</p>
-                <p className="kr-reveal mb-4 mt-2 text-sm text-zinc-400">
-                  Qualifie chaque demande 24h/24 par chat sur votre site
-                </p>
-                <div
-                  className="kr-reveal h-[420px] overflow-hidden rounded-[20px] border border-white/[0.08] bg-white/[0.03] md:h-[520px]"
-                  style={{ boxShadow: '0 0 40px rgba(34,197,94,0.08)' }}
-                >
-                  <AssistantWebChatCard reduceMotion={reduceMotion} />
-                </div>
+        {/* PROBLEME */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
+              Chaque prospect non traité est un chantier <span className="text-red-500">perdu.</span>
+            </h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Sans système de qualification automatique, une partie de vos demandes ne se transforme jamais en chantier.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+            {problemes.map((p) => (
+              <div key={p.title} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <span className="text-2xl text-red-500">{p.icon}</span>
+                <h3 className="mt-4 text-base font-semibold">{p.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{p.text}</p>
               </div>
-              <div>
-                <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Assistant vocal</p>
-                <p className="kr-reveal mb-4 mt-2 text-sm text-zinc-400">
-                  Répond aux appels entrants et qualifie les prospects par téléphone
-                </p>
-                <div
-                  className="kr-reveal h-[420px] overflow-hidden rounded-[20px] border border-white/[0.08] bg-white/[0.03] md:h-[520px]"
-                  style={{ boxShadow: '0 0 40px rgba(96,165,250,0.08)' }}
-                >
-                  <VoiceAssistantCard reduceMotion={reduceMotion} />
-                </div>
+            ))}
+          </div>
+        </section>
+
+        {/* SOLUTION */}
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">La solution</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Votre assistant commercial, <span className="text-green-500">disponible 24h/24.</span>
+            </h2>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {solutions.map((s) => (
+              <div key={s.title} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <span className="text-2xl">{s.icon}</span>
+                <h3 className="mt-4 text-lg font-semibold">{s.title}</h3>
+                <ul className="mt-4 space-y-3">
+                  {s.items.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
+            ))}
+          </div>
+        </section>
+
+        {/* COMMENT CA MARCHE */}
+        <section id="comment-ca-marche" className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Comment ça fonctionne</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Kadria transforme les demandes brutes en dossiers exploitables par votre équipe, du premier
+              contact au dossier prêt à chiffrer.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {etapes.map((e) => (
+              <div key={e.number} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-green-500">
+                  {e.number}
+                </span>
+                <h3 className="mt-4 text-base font-semibold">{e.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{e.text}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* DASHBOARD PREVIEW */}
-        <section className="w-full bg-zinc-900 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-                4 fonctionnalités clés,{' '}
-                <span className="kr-gradient-text">révélées en toute fluidité</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Une expérience moderne et interactive pour piloter votre activité depuis un seul tableau de bord.
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Dashboard</p>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+              Pilotez toutes vos opportunités depuis <span className="text-green-500">un seul tableau de bord</span>
+            </h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Suivez chaque dossier, son score de priorité et son statut, sans rien saisir manuellement.
+            </p>
+          </div>
+
+          <div className="mt-12 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                Tableau de bord — 17 dossiers
               </p>
+              <div className="flex items-center gap-4 text-xs text-zinc-400">
+                <span>Nouveau: 5</span>
+                <span>A rappeler: 3</span>
+                <span>Qualifie: 4</span>
+                <span>Devis envoyé: 2</span>
+                <span>Gagné: 2</span>
+                <span>Perdu: 1</span>
+              </div>
             </div>
-            <div className="kr-reveal kr-reveal-scale kr-reveal-delay-2 mx-auto mt-12 max-w-6xl">
-              <DashboardCarousel />
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-zinc-500">
+                    <th className="py-2 pr-4">Client</th>
+                    <th className="py-2 pr-4">Métier</th>
+                    <th className="py-2 pr-4">Ville</th>
+                    <th className="py-2 pr-4">Budget</th>
+                    <th className="py-2 pr-4">Score</th>
+                    <th className="py-2 pr-4">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dossiers.map((d) => (
+                    <tr key={d.client} className="border-t border-zinc-800">
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-zinc-300">
+                            {d.initials}
+                          </span>
+                          {d.client}
+                        </div>
+                      </td>
+                      <td className="py-3 pr-4 text-zinc-400">{d.metier}</td>
+                      <td className="py-3 pr-4 text-zinc-400">{d.ville}</td>
+                      <td className="py-3 pr-4 text-zinc-400">{d.budget}</td>
+                      <td className="py-3 pr-4 font-semibold text-white">{d.score}%</td>
+                      <td className="py-3 pr-4">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusClass[d.statut] ?? 'bg-zinc-800 text-zinc-300'}`}>
+                          {d.statut}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -2773,299 +795,174 @@ export function LandingRoutePage() {
         <SimulateurSection />
 
         {/* METIERS */}
-        <section id="metiers" className="w-full bg-zinc-900 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="kr-reveal text-3xl font-bold tracking-tight md:text-5xl">Kadria parle le même langage que vous</h2>
-              <p className="kr-reveal kr-reveal-delay-1 mt-5 text-base leading-7 text-zinc-400 md:text-lg">
-                Chaque métier a ses questions, son vocabulaire, ses chantiers. Kadria s&apos;adapte.
-              </p>
-            </div>
-            <div className="kr-reveal kr-reveal-delay-2 mt-10 flex flex-wrap justify-center gap-3">
-              {TRADES_DATA.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setActiveMetier((prev) => (prev === m.id ? null : m.id))}
-                  className={`w-28 cursor-pointer rounded-xl border px-4 py-3 text-center transition-colors ${
-                    activeMetier === m.id
-                      ? 'border-green-500/25 bg-green-500/[0.08] text-green-500'
-                      : 'border-zinc-700 bg-zinc-800 text-white hover:bg-zinc-700'
-                  }`}
-                >
-                  <div className="mb-2 text-2xl">{m.emoji}</div>
-                  <div className="text-sm">{m.label}</div>
-                </button>
-              ))}
-            </div>
-
-            {activeMetier && displayTrade && (
-              <div
-                className={`mt-6 rounded-2xl border border-zinc-700 bg-zinc-800 p-8 transition-all duration-[250ms] ease-out ${
-                  metierCardVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+        <section
+          id="metiers"
+          className="mx-auto max-w-[1280px] px-6 py-24"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedTrade(null);
+          }}
+        >
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Conçu pour chaque métier du bâtiment</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Kadria s adapte au vocabulaire et aux besoins de chaque corps de métier.
+            </p>
+          </div>
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            {TRADES_DATA.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setSelectedTrade((prev) => (prev === m.id ? null : m.id))}
+                className={`w-28 cursor-pointer rounded-xl border p-4 text-center transition-colors ${
+                  selectedTrade === m.id
+                    ? 'border-green-500 bg-green-500/10 text-green-500'
+                    : 'border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
                 }`}
               >
-                <h3 className="text-xl font-semibold text-white">
-                  {displayTrade.emoji} {displayTrade.label}
-                </h3>
+                <div className="mb-2 text-2xl">{m.emoji}</div>
+                <div className="text-sm">{m.label}</div>
+              </button>
+            ))}
+          </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="rounded-lg bg-zinc-900/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-                      Types de projets
-                    </p>
-                    <p className="mt-2 text-sm text-white">{displayTrade.types}</p>
-                  </div>
+          {displayTrade && (
+            <div
+              className={`mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-300 overflow-hidden ${
+                selectedTrade !== null && tradeCardVisible ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              <h3 className="text-xl font-semibold text-white">
+                {displayTrade.emoji} {displayTrade.label}
+              </h3>
 
-                  <div className="rounded-lg bg-zinc-900/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-                      Questions posées par Kadria
-                    </p>
-                    <p className="mt-2 text-sm text-white">{displayTrade.questions}</p>
-                  </div>
-
-                  <div className="rounded-xl border border-green-500/25 bg-green-500/[0.08] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-green-500">
-                      Résultat
-                    </p>
-                    <p className="mt-2 text-sm font-medium text-white">
-                      ✅ {displayTrade.resultat}
-                    </p>
-                  </div>
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-lg bg-zinc-800/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">
+                    Types de projets qualifiés
+                  </p>
+                  <p className="mt-2 text-sm text-white">{displayTrade.types}</p>
                 </div>
 
-                <Link
-                  href="/demo"
-                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-green-500 transition-colors hover:bg-green-500/10"
-                >
-                  Voir un exemple de conversation →
-                </Link>
+                <div className="rounded-lg bg-zinc-800/50 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-400">
+                    Questions posées par Kadria
+                  </p>
+                  <p className="mt-2 text-sm text-white">{displayTrade.questions}</p>
+                </div>
+
+                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                  <p className="text-xs uppercase tracking-wide text-green-500">
+                    Résultat
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    ✅ {displayTrade.resultat}
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+
+              <Link
+                href="/demo"
+                className="mt-6 inline-flex items-center gap-2 rounded-md border border-zinc-700 px-4 py-2 text-sm text-white transition-colors hover:bg-zinc-800"
+              >
+                Voir un exemple de conversation →
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* PROGRAMME LANCEMENT */}
-        <section className="w-full bg-zinc-950 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="kr-reveal kr-glass rounded-xl p-8 md:p-12">
-              <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
-                Programme de lancement
-              </span>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-4xl">
-                Programme de lancement <span className="text-green-500">Kadria</span>
-              </h2>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base leading-7 text-zinc-400">
-                Kadria est en cours de déploiement auprès d un nombre limité d artisans et d entreprises du bâtiment.
-                Les premiers partenaires bénéficient d un accompagnement personnalisé pour configurer leur assistant,
-                connecter leur site et leur ligne téléphonique, et adapter Kadria à leur métier.
-              </p>
-              <p className="kr-reveal kr-reveal-delay-2 mt-5 max-w-2xl text-base font-semibold leading-7 text-white">
-                Vous souhaitez faire partie des premiers professionnels à tester Kadria ?
-              </p>
-              <p className="kr-reveal kr-reveal-delay-3 mt-6 flex items-center gap-2 text-sm text-zinc-400">
-                <span className="kr-badge-pulse inline-block h-2 w-2 rounded-full bg-green-500" />
-                12 artisans déjà partenaires · 8 places restantes
-              </p>
-              <Link
-                href="/onboarding"
-                className="kr-reveal kr-reveal-delay-3 mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-              >
-                Rejoindre les premiers artisans Kadria <ArrowRight className="h-4 w-4" />
-              </Link>
-              <p className="kr-reveal kr-reveal-delay-3 mt-3 text-sm text-zinc-400">
-                Places limitées · Accompagnement personnalisé inclus
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 6. TARIFS */}
-        <section className="w-full bg-zinc-900 py-24">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
-              <h2 className="kr-reveal kr-reveal-delay-1 mt-4 text-3xl font-bold tracking-tight md:text-5xl">
-                Un tarif simple, <span className="kr-gradient-text">adapté à votre activité.</span>
-              </h2>
-            </div>
-            <div className="mt-12 grid items-center gap-4 md:grid-cols-3">
-              {plans.map((plan, i) => (
-                <div
-                  key={plan.slug}
-                  className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} kr-card-hover rounded-xl border p-6 ${
-                    plan.highlighted
-                      ? 'border-green-500/40 bg-green-500/5 shadow-[0_0_40px_rgba(34,197,94,0.08)] lg:scale-[1.02]'
-                      : 'border-zinc-700 bg-zinc-800'
-                  }`}
-                >
-                  {plan.highlighted && (
-                    <span className="kr-badge-pulse inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-widest text-green-400">
-                      Populaire
-                    </span>
-                  )}
-                  <h3 className="mt-3 text-lg font-semibold">{plan.name}</h3>
-                  <p className="mt-1 text-2xl font-bold">
-                    {plan.price}
-                    {plan.price !== 'Sur devis' && <span className="text-sm font-normal text-zinc-400"> / mois</span>}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">{plan.description}</p>
-                  <ul className="mt-4 space-y-2">
-                    {plan.features.map((feat) => (
-                      <li key={feat.text} className="flex items-start gap-2 text-sm leading-6 text-zinc-400">
-                        <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                        <span>
-                          {feat.text}
-                          {feat.badge && (
-                            <span className="ml-2 inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
-                              {feat.badge}
-                            </span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <p className="kr-reveal kr-reveal-delay-2 mt-8 text-center text-sm text-green-500">
-              <Link href="/tarifs#addon" className="hover:underline">
-                ➕ Site vitrine clé en main — +50€/mois avec Performance
-              </Link>
-            </p>
-            <p className="kr-reveal kr-reveal-delay-2 mt-4 text-center text-sm text-zinc-400">
-              ✓ Sans engagement&nbsp;&nbsp;·&nbsp;&nbsp;✓ Résiliation à tout moment&nbsp;&nbsp;·&nbsp;&nbsp;✓ Support inclus dès le premier jour
-            </p>
-            <Link href="/tarifs" className="mt-6 block text-center text-sm text-green-500 hover:underline">
-              Voir le détail complet des tarifs →
-            </Link>
-          </div>
-        </section>
-
-        {/* 7. CTA FINAL */}
-        <section className="relative w-full overflow-hidden border-y border-zinc-800 bg-zinc-900 px-6 py-24">
-          <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,rgba(34,197,94,0.06)_0%,transparent_70%)]" />
-          <div className="relative z-10 mx-auto max-w-2xl text-center">
-            <p className="kr-reveal text-xs font-semibold uppercase tracking-widest text-green-500">
+        <section className="mx-auto max-w-[1280px] px-6 py-24">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 md:p-12">
+            <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-green-400">
               Programme de lancement
-            </p>
-            <h2 className="kr-reveal kr-reveal-delay-1 mb-4 mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight">
-              Rejoignez les premiers artisans Kadria
+            </span>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-4xl">
+              Programme de lancement <span className="text-green-500">Kadria</span>
             </h2>
-            <p className="kr-reveal kr-reveal-delay-2 mx-auto mb-8 max-w-xl text-lg leading-7 text-zinc-400">
-              Kadria qualifie vos prospects 24h/24, répond à vos appels et remplit votre dashboard — pendant que vous
-              êtes sur le chantier.
+            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400">
+              Kadria est en cours de déploiement auprès d un nombre limité d artisans et d entreprises du bâtiment.
+              Les premiers partenaires bénéficient d un accompagnement personnalisé pour configurer leur assistant,
+              connecter leur site et leur ligne téléphonique, et adapter Kadria à leur métier.
             </p>
-            <Link
-              href="/register"
-              className="kr-reveal kr-reveal-delay-3 kr-badge-pulse inline-flex items-center gap-2 rounded-xl bg-green-500 px-10 py-4 text-lg font-bold text-zinc-950 transition-all duration-200 hover:scale-[1.02] hover:opacity-90"
-            >
-              Tester Kadria gratuitement <ArrowRight className="h-5 w-5" />
+            <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-white">
+              Vous souhaitez faire partie des premiers professionnels à tester Kadria ?
+            </p>
+            <Link href="/onboarding" className="mt-6 inline-flex items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              Devenir partenaire pilote <ArrowRight className="h-4 w-4" />
             </Link>
-            <p className="kr-reveal kr-reveal-delay-3 mt-5 text-sm text-zinc-400">
-              ✓ Sans engagement · ✓ Résiliation à tout moment · ✓ Support inclus dès J1
+          </div>
+        </section>
+
+        {/* CTA FINAL */}
+        <section className="border-t border-zinc-800 bg-zinc-900 py-24">
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
+            <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+              Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
             </p>
-            <div className="kr-reveal kr-reveal-delay-3 mt-6 flex items-center justify-center">
-              <div className="flex">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-600 text-xs font-semibold text-white">
-                  JM
-                </span>
-                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-700 text-xs font-semibold text-white">
-                  SC
-                </span>
-                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-600 text-xs font-semibold text-white">
-                  PB
-                </span>
-                <span className="-ml-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-zinc-900 bg-zinc-700 text-xs font-semibold text-white">
-                  AL
-                </span>
-              </div>
-              <span className="ml-3 text-sm text-zinc-400">12 artisans nous font déjà confiance</span>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+                Tester Kadria <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+                Réserver une démonstration
+              </Link>
             </div>
+            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              👁 Voir un exemple de dossier
+            </Link>
           </div>
         </section>
       </main>
 
-      {/* 8. FOOTER */}
+      {/* FOOTER */}
       <DarkFooter />
     </div>
   );
 }
 
-function DarkFooter() {
+function DarkNav() {
   return (
-    <footer>
-      {/* ZONE 1 — PRINCIPALE */}
-      <div className="border-t border-zinc-800 py-16">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-12">
-          {/* Colonne 1 — Brand */}
-          <div>
-            <Link href="/" className="text-lg font-bold text-white">
-              <KadriaLogo size="md" noLink />
-            </Link>
-            <p className="mt-3 max-w-[200px] text-sm text-zinc-400">
-              L&apos;assistant qui transforme vos appels en chantiers qualifiés.
-            </p>
-            <div className="mt-5 flex items-center gap-4">
-              <Link href="#" aria-label="LinkedIn" className="text-zinc-400 transition-colors hover:text-white">
-                <Globe size={18} />
-              </Link>
-              <Link href="#" aria-label="Twitter / X" className="text-zinc-400 transition-colors hover:text-white">
-                <X size={18} />
-              </Link>
-            </div>
-          </div>
-
-          {/* Colonne 2 — Produit */}
-          <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Produit</p>
-            <div className="flex flex-col gap-3">
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Fonctionnalités</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Tarifs</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Démo</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Assistant vocal</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">CRM</Link>
-            </div>
-          </div>
-
-          {/* Colonne 3 — Ressources */}
-          <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Ressources</p>
-            <div className="flex flex-col gap-3">
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Comment ça marche</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Par métier</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Blog</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Support</Link>
-            </div>
-          </div>
-
-          {/* Colonne 4 — Contact */}
-          <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Contact</p>
-            <Link href="#" className="flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
-              <Mail size={14} />
-              contact@kadria.fr
-            </Link>
-            <p className="mt-2 text-xs text-zinc-400">Réponse sous 24h</p>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="kr-badge-pulse inline-flex items-center gap-1.5 rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
-                🟢 Disponible
-              </span>
-              <span className="text-sm text-zinc-400">Onboarding ouvert</span>
-            </div>
-          </div>
+    <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6">
+        <Link href="/" className="text-xl font-bold">
+          <span className="text-green-500">K</span>adria
+        </Link>
+        <nav className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">
+          <Link href="/#comment-ca-marche" className="transition-colors hover:text-white">Comment ça marche</Link>
+          <Link href="/demo" className="transition-colors hover:text-white">Exemple de dossier</Link>
+          <Link href="/#metiers" className="transition-colors hover:text-white">Métiers</Link>
+          <Link href="/tarifs" className="transition-colors hover:text-white">Tarifs</Link>
+        </nav>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard-v2" className="hidden text-sm text-zinc-400 transition-colors hover:text-white sm:inline-flex">
+            Connexion
+          </Link>
+          <Link href="/demo" className="rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+            Réserver une démo
+          </Link>
+          <Link href="/assistant" className="rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+            Tester Kadria
+          </Link>
         </div>
       </div>
+    </header>
+  );
+}
 
-      {/* ZONE 2 — BARRE LÉGALE */}
-      <div className="border-t border-zinc-800 py-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 lg:px-12">
-          <p className="text-sm text-zinc-400">© 2025 Kadria. Tous droits réservés.</p>
-          <div className="flex items-center gap-6">
-            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Mentions légales</Link>
-            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Politique de confidentialité</Link>
-            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">CGU</Link>
-          </div>
+function DarkFooter() {
+  return (
+    <footer className="border-t border-zinc-800 bg-zinc-900 py-12">
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-6 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
+        <Link href="/" className="text-lg font-bold text-white">
+          <span className="text-green-500">K</span>adria
+        </Link>
+        <p>© 2025 Kadria. Tous droits réservés.</p>
+        <div className="flex items-center gap-4">
+          <Link href="/mentions-legales" className="transition-colors hover:text-white">Mentions légales</Link>
+          <Link href="/cgu" className="transition-colors hover:text-white">CGU</Link>
+          <Link href="/contact" className="transition-colors hover:text-white">Contact</Link>
         </div>
       </div>
     </footer>
@@ -3101,406 +998,93 @@ export function FeaturesRoutePage() {
   );
 }
 
-interface PricingFeature {
-  text: string;
-  badge?: string;
-}
-
-interface PricingPlanCard {
-  slug: string;
-  name: string;
-  price: string;
-  priceSize: string;
-  period: string;
-  description: string;
-  features: PricingFeature[];
-  highlighted: boolean;
-  cta: { label: string; href: string; primary: boolean };
-}
-
-const pricingPlanCards: PricingPlanCard[] = [
-  {
-    slug: 'essentiel',
-    name: 'Essentiel',
-    price: '149€',
-    priceSize: 'text-5xl',
-    period: '/mois',
-    description: 'Pour démarrer et ne plus manquer de demandes web',
-    features: [
-      { text: 'Assistant chat web 24h/24' },
-      { text: 'Qualification IA + score dossier' },
-      { text: 'Résumé IA + recommandation par dossier' },
-      { text: 'CRM vue liste' },
-      { text: 'Filtres simples (statut, métier)' },
-      { text: '50 dossiers / mois' },
-      { text: 'KPI essentiels' },
-      { text: 'Export CSV' },
-      { text: 'Support email' },
-      { text: '1 utilisateur' },
-    ],
-    highlighted: false,
-    cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
-  },
-  {
-    slug: 'performance',
-    name: 'Performance',
-    price: '249€',
-    priceSize: 'text-5xl',
-    period: '/mois',
-    description: 'Pour ne plus perdre aucune opportunité',
-    features: [
-      { text: 'Tout Essentiel inclus' },
-      { text: 'Dossiers illimités' },
-      { text: 'Vue Kanban' },
-      { text: 'Filtres avancés (budget, score IA, période, source)' },
-      { text: 'KPI avancés avec tendances et sparkline' },
-      { text: 'Top 3 opportunités scorées par IA' },
-      { text: 'Pipeline commercial' },
-      { text: 'Chantiers géolocalisés' },
-      { text: 'Calendrier + rappels' },
-      { text: 'Export PDF dossiers' },
-      { text: 'Génération de devis professionnels' },
-      { text: 'Relances planifiables' },
-      { text: 'Assistant vocal', badge: 'Bientôt disponible' },
-      { text: 'Relances automatiques', badge: 'Bientôt disponible' },
-      { text: 'Support prioritaire' },
-      { text: '1 utilisateur' },
-    ],
-    highlighted: true,
-    cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
-  },
-  {
-    slug: 'agence',
-    name: 'Agence',
-    price: 'Sur devis',
-    priceSize: 'text-[28px]',
-    period: '',
-    description: "Pour les groupements d'artisans et réseaux",
-    features: [
-      { text: 'Tout Performance inclus' },
-      { text: "Jusqu'à 10 artisans" },
-      { text: 'Dashboard multi-comptes' },
-      { text: 'Marque blanche complète' },
-      { text: 'API access' },
-      { text: 'Account manager dédié' },
-      { text: 'Onboarding personnalisé' },
-      { text: 'Rapports consolidés multi-sites' },
-      { text: 'Support téléphonique dédié' },
-    ],
-    highlighted: false,
-    cta: { label: 'Nous contacter', href: '/contact', primary: false },
-  },
-];
-
-const addonSiteVitrine = {
-  title: '➕ Site vitrine clé en main',
-  description: 'Votre site professionnel créé et intégré avec votre assistant Kadria',
-  price: '+50€/mois',
-  priceSub: 'avec le plan Performance',
-  features: [
-    'Site vitrine professionnel (template métier)',
-    'Intégration automatique du widget Kadria',
-    '1 modification incluse par mois',
-    'Support technique site inclus',
-  ],
-  mention: '⚠️ Hébergement et nom de domaine non inclus (~15€/mois chez votre hébergeur)',
-  cta: { label: 'Ajouter au plan Performance', href: '/contact?sujet=addon-site' },
-};
-
-const pricingGuarantees = [
-  { title: 'Sans engagement', subtitle: 'Résiliez à tout moment' },
-  { title: 'Essai 14 jours', subtitle: 'Sans carte bancaire' },
-  { title: 'Support J+1', subtitle: 'Réponse sous 24h ouvrées' },
-];
-
-const pricingFaqQuick = [
-  {
-    question: 'Puis-je changer de plan ?',
-    answer: 'Oui, à tout moment depuis votre espace client.',
-  },
-  {
-    question: "L'essai gratuit inclut-il toutes les fonctionnalités ?",
-    answer: 'Oui, accès complet au plan Performance pendant 14 jours.',
-  },
-  {
-    question: "Que se passe-t-il après l'essai ?",
-    answer: 'Vous choisissez votre plan ou vous arrêtez — sans frais, sans engagement.',
-  },
-];
-
-type ComparatifValue = '✓' | '✗' | 'bientot' | string;
-
-const comparatifCategories: { category: string; rows: [string, ComparatifValue, ComparatifValue, ComparatifValue][] }[] = [
-  {
-    category: 'Assistant IA',
-    rows: [
-      ['Chat web 24h/24', '✓', '✓', '✓'],
-      ['Qualification automatique', '✓', '✓', '✓'],
-      ['Score IA par dossier', '✓', '✓', '✓'],
-      ['Résumé + recommandation', '✓', '✓', '✓'],
-      ['Adaptation par métier', '✓', '✓', '✓'],
-      ['Assistant vocal', '✗', 'bientot', '✓'],
-    ],
-  },
-  {
-    category: 'CRM',
-    rows: [
-      ['Vue liste', '✓', '✓', '✓'],
-      ['Vue Kanban', '✗', '✓', '✓'],
-      ['Filtres simples', '✓', '✓', '✓'],
-      ['Filtres avancés', '✗', '✓', '✓'],
-      ['Dossiers / mois', '50', 'Illimités', 'Illimités'],
-      ['Fiches dossiers complètes', '✓', '✓', '✓'],
-      ['Historique dossier', '✓', '✓', '✓'],
-      ['Notes internes', '✓', '✓', '✓'],
-    ],
-  },
-  {
-    category: 'Pilotage',
-    rows: [
-      ['KPI essentiels', '✓', '✓', '✓'],
-      ['KPI avancés + tendances', '✗', '✓', '✓'],
-      ['Sparkline CA', '✗', '✓', '✓'],
-      ['Top 3 opportunités IA', '✗', '✓', '✓'],
-      ['Pipeline commercial', '✗', '✓', '✓'],
-      ['Chantiers géolocalisés', '✗', '✓', '✓'],
-    ],
-  },
-  {
-    category: 'Actions',
-    rows: [
-      ['Relances manuelles', '✓', '✓', '✓'],
-      ['Relances automatiques', '✗', 'bientot', '✓'],
-      ['Calendrier + rappels', '✗', '✓', '✓'],
-      ['Génération de devis', '✗', '✓', '✓'],
-    ],
-  },
-  {
-    category: 'Export',
-    rows: [
-      ['Export CSV', '✓', '✓', '✓'],
-      ['Export PDF dossiers', '✗', '✓', '✓'],
-      ['Rapport mensuel PDF', '✗', '✓', '✓'],
-    ],
-  },
-  {
-    category: 'Compte',
-    rows: [
-      ['Utilisateurs', '1', '1', '10'],
-      ['Dashboard multi-comptes', '✗', '✗', '✓'],
-      ['Marque blanche', '✗', '✗', '✓'],
-      ['API access', '✗', '✗', '✓'],
-    ],
-  },
-  {
-    category: 'Support',
-    rows: [
-      ['Support email', '✓', '✓', '✓'],
-      ['Support prioritaire', '✗', '✓', '✓'],
-      ['Account manager', '✗', '✗', '✓'],
-      ['Support téléphonique', '✗', '✗', '✓'],
-    ],
-  },
-  {
-    category: 'Add-on',
-    rows: [
-      ['Site vitrine clé en main', '✗', '+50€/mois', '✓'],
-    ],
-  },
-];
-
-function ComparatifCell({ value }: { value: ComparatifValue }) {
-  if (value === '✓') return <CheckCircle size={16} className="text-green-500" />;
-  if (value === '✗') return <Minus size={16} className="text-zinc-500" />;
-  if (value === 'bientot') {
-    return (
-      <span className="inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
-        Bientôt
-      </span>
-    );
-  }
-  return <span className="text-zinc-300">{value}</span>;
-}
-
 export function PricingRoutePage() {
+  const pricingPlans = [
+    {
+      slug: 'essentiel',
+      name: 'Essentiel',
+      monthly: 99,
+      yearly: 79,
+      description: 'Pour démarrer et ne plus manquer aucun appel.',
+      features: [
+        'Assistant chat web 24h/24',
+        '50 dossiers qualifiés / mois',
+        'Dashboard de suivi',
+        'Scoring automatique',
+        'Support email',
+      ],
+      cta: "Commencer l'essai gratuit",
+      highlighted: false,
+    },
+    {
+      slug: 'pro',
+      name: 'Pro',
+      monthly: 199,
+      yearly: 159,
+      description: "L'outil complet pour ne plus perdre aucune opportunité.",
+      features: [
+        'Tout Essentiel inclus',
+        'Assistant vocal (appels entrants)',
+        'Dossiers illimités',
+        'CRM intégré + relances',
+        'Export CSV',
+        'Rappels automatiques',
+        'Support prioritaire',
+      ],
+      cta: "Commencer l'essai gratuit",
+      highlighted: true,
+    },
+    {
+      slug: 'agence',
+      name: 'Agence',
+      monthly: null,
+      yearly: null,
+      description: "Pour les groupements et réseaux d'artisans.",
+      features: [
+        "Jusqu'à 10 artisans",
+        'Marque blanche complète',
+        'API access',
+        'Dashboard multi-comptes',
+        'Account manager dédié',
+        'Onboarding personnalisé',
+      ],
+      cta: 'Nous contacter',
+      highlighted: false,
+    },
+  ];
+
+  const comparatif = [
+    ['Assistant chat web', '✓', '✓', '✓'],
+    ['Assistant vocal', '✗', '✓', '✓'],
+    ['Dossiers / mois', '50', 'Illimités', 'Illimités'],
+    ['Dashboard', 'Basique', 'Complet', 'Multi-comptes'],
+    ['CRM + relances', '✗', '✓', '✓'],
+    ['Export CSV', '✗', '✓', '✓'],
+    ['API access', '✗', '✗', '✓'],
+    ['Marque blanche', '✗', '✗', '✓'],
+    ['Support', 'Email', 'Prioritaire', 'Account manager'],
+  ];
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <DarkNav />
 
-      <main className="px-6 pt-[100px]">
-        <div className="mx-auto max-w-6xl">
-          {/* HEADER */}
-          <section className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
-            <h1 className="mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight">
-              Un tarif simple, <span className="text-green-500">adapté</span> à votre activité.
-            </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-base text-zinc-400">
-              Sans engagement. Résiliation à tout moment. Support inclus dès le premier jour.
-            </p>
-          </section>
+      <main>
+        {/* HERO PRICING */}
+        <section className="mx-auto max-w-[1280px] px-6 py-20 text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Tarifs</p>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">
+            Un seul outil. <span className="text-green-500">Zéro prospect perdu.</span>
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-zinc-400 md:text-lg">
+            Choisissez la formule adaptée à votre activité. Sans engagement, sans frais cachés.
+          </p>
 
-          {/* GRILLE 3 PLANS */}
-          <section className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {pricingPlanCards.map((plan) => (
-              <div
-                key={plan.slug}
-                className={`relative flex flex-col rounded-[20px] p-8 ${
-                  plan.highlighted
-                    ? 'border-2 border-green-500/30 bg-zinc-900 shadow-[0_0_40px_rgba(34,197,94,0.08)] md:scale-[1.02]'
-                    : 'border border-zinc-800 bg-zinc-900'
-                }`}
-              >
-                {plan.highlighted && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-green-500 px-4 py-1 text-xs font-bold text-black">
-                    LE PLUS POPULAIRE
-                  </span>
-                )}
+          <BillingToggle pricingPlans={pricingPlans} comparatif={comparatif} />
+        </section>
 
-                <h3 className="text-xl font-extrabold">{plan.name}</h3>
-
-                <p className="mt-3">
-                  <span className={`${plan.priceSize} font-black`}>{plan.price}</span>
-                  {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
-                </p>
-
-                <p className="mb-6 mt-2 text-sm text-zinc-400">{plan.description}</p>
-
-                <div className="border-t border-zinc-800" />
-
-                <ul className="mt-5 flex flex-col gap-3">
-                  {plan.features.map((feat) => (
-                    <li key={feat.text} className="flex items-start gap-2 text-sm">
-                      <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
-                      <span>
-                        {feat.text}
-                        {feat.badge && (
-                          <span className="ml-2 inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
-                            {feat.badge}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-auto pt-6">
-                  <Link
-                    href={plan.cta.href}
-                    className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
-                      plan.cta.primary
-                        ? 'bg-green-500 font-bold text-black hover:bg-green-400'
-                        : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
-                    }`}
-                  >
-                    {plan.cta.label}
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </section>
-
-          {/* ADD-ON SITE VITRINE */}
-          <section id="addon" className="mx-auto mt-8 max-w-2xl rounded-[20px] border border-green-500/30 bg-green-500/[0.03] p-8">
-            <div className="flex flex-col items-start gap-8 md:flex-row md:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Add-on</p>
-                <h3 className="mt-2 text-xl font-extrabold">{addonSiteVitrine.title.replace('➕ ', '')}</h3>
-                <p className="mt-2 text-sm text-zinc-400">{addonSiteVitrine.description}</p>
-                <p className="mt-4">
-                  <span className="text-3xl font-black text-green-500">{addonSiteVitrine.price}</span>
-                </p>
-                <p className="text-sm text-zinc-400">{addonSiteVitrine.priceSub}</p>
-                <ul className="mt-4 flex flex-col gap-2">
-                  {addonSiteVitrine.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2 text-sm">
-                      <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs text-zinc-500">{addonSiteVitrine.mention}</p>
-              </div>
-
-              <div className="w-full md:min-w-[200px] md:w-auto">
-                <Link
-                  href={addonSiteVitrine.cta.href}
-                  className="block w-full rounded-xl bg-green-500 px-6 py-3 text-center text-sm font-bold text-black transition-colors hover:bg-green-400"
-                >
-                  {addonSiteVitrine.cta.label}
-                </Link>
-                <p className="mt-2 text-center text-xs text-zinc-400">
-                  Disponible uniquement avec Performance
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* GARANTIES */}
-          <section className="mt-12 grid grid-cols-1 gap-6 text-center md:grid-cols-3">
-            {pricingGuarantees.map((g) => (
-              <div key={g.title}>
-                <p className="flex items-center justify-center gap-2 font-bold">
-                  <Check size={16} className="text-green-500" />
-                  {g.title}
-                </p>
-                <p className="mt-1 text-sm text-zinc-400">{g.subtitle}</p>
-              </div>
-            ))}
-          </section>
-
-          {/* TABLEAU COMPARATIF */}
-          <section className="mt-16">
-            <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">Comparez les formules</h2>
-            <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-800">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead>
-                  <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
-                    <th className="px-4 py-3">Fonctionnalité</th>
-                    <th className="px-4 py-3">Essentiel</th>
-                    <th className="px-4 py-3 text-green-500">Performance</th>
-                    <th className="px-4 py-3">Agence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparatifCategories.map((group) => (
-                    <>
-                      <tr key={group.category} className="border-t border-zinc-800 bg-zinc-950">
-                        <td colSpan={4} className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-widest text-green-500">
-                          {group.category}
-                        </td>
-                      </tr>
-                      {group.rows.map(([feature, essentiel, performance, agence], rowIndex) => (
-                        <tr
-                          key={feature}
-                          className={rowIndex % 2 === 1 ? 'bg-zinc-900' : 'bg-zinc-950'}
-                        >
-                          <td className="px-4 py-3 font-medium text-white">{feature}</td>
-                          <td className="px-4 py-3"><ComparatifCell value={essentiel} /></td>
-                          <td className="px-4 py-3"><ComparatifCell value={performance} /></td>
-                          <td className="px-4 py-3"><ComparatifCell value={agence} /></td>
-                        </tr>
-                      ))}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* FAQ RAPIDE */}
-          <section className="mx-auto mt-16 max-w-3xl pb-24">
-            <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">Questions fréquentes</h2>
-            <div className="mt-8 space-y-6">
-              {pricingFaqQuick.map((faq) => (
-                <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-                  <p className="font-semibold">{faq.question}</p>
-                  <p className="mt-2 text-sm text-zinc-400">{faq.answer}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
+        {/* FAQ */}
+        <PricingFaq />
 
         {/* CTA FINAL */}
         <section className="border-t border-zinc-800 bg-zinc-900 py-24">
@@ -3510,10 +1094,10 @@ export function PricingRoutePage() {
               Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/demo" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              <Link href="/assistant" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              <Link href="/demo" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
                 Réserver une démonstration
               </Link>
             </div>
@@ -3744,299 +1328,475 @@ export function AdminRoutePage() {
 }
 
 export function SimulateurSection() {
-  const [callsPerWeek, setCallsPerWeek] = useState(10)
-  const [lostPercent, setLostPercent] = useState(40)
-  const [avgValue, setAvgValue] = useState(3000)
-  const [margin, setMargin] = useState(25)
+  const [demandes, setDemandes] = useState(10);
+  const [part, setPart] = useState(40);
+  const [valeur, setValeur] = useState(3000);
+  const [marge, setMarge] = useState(25);
 
-  // Calculs — même logique que le code de référence
-  const lostPerMonth = Math.round((callsPerWeek * (lostPercent / 100)) * 4.3)
-  const lostRevenue = lostPerMonth * avgValue
-  const lostMargin = Math.round(lostRevenue * (margin / 100))
-  const kadriaMonthly = 249
-  const marginPerJob = avgValue * (margin / 100)
-  const breakevenJobs = marginPerJob > 0 ? Math.max(1, Math.ceil(kadriaMonthly / marginPerJob)) : 1
-
-  const fmt = (n: number) => n.toLocaleString('fr-FR')
-
-  const sliders = [
-    {
-      label: 'Demandes reçues par semaine',
-      value: callsPerWeek,
-      min: 1, max: 40, step: 1,
-      display: `${callsPerWeek}`,
-      onChange: (v: number) => setCallsPerWeek(v),
-    },
-    {
-      label: 'Part non traitée ou mal qualifiée',
-      value: lostPercent,
-      min: 10, max: 80, step: 5,
-      display: `${lostPercent} %`,
-      onChange: (v: number) => setLostPercent(v),
-    },
-    {
-      label: "Valeur moyenne d'un chantier",
-      value: avgValue,
-      min: 500, max: 20000, step: 500,
-      display: `${fmt(avgValue)} €`,
-      onChange: (v: number) => setAvgValue(v),
-    },
-    {
-      label: 'Marge nette moyenne',
-      value: margin,
-      min: 10, max: 50, step: 5,
-      display: `${margin} %`,
-      onChange: (v: number) => setMargin(v),
-    },
-  ]
-
-  const results = [
-    {
-      icon: '⚠️',
-      label: 'Opportunités perdues / mois',
-      value: `≈ ${lostPerMonth}`,
-    },
-    {
-      icon: '📉',
-      label: 'CA potentiel perdu / mois',
-      value: `${fmt(lostRevenue)} €`,
-    },
-    {
-      icon: '€',
-      label: 'Marge perdue / mois',
-      value: `${fmt(lostMargin)} €`,
-    },
-  ]
+  const opportunitesPerdues = Math.round(demandes * 4 * (part / 100));
+  const caPerdu = opportunitesPerdues * valeur;
+  const margePerdue = caPerdu * (marge / 100);
+  const breakeven = valeur > 0 ? Math.ceil(199 / valeur) : 1;
 
   return (
-    <section style={{
-      padding: '96px 0',
-      background: '#09090b',
-    }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 24px' }}>
-        {/* Header */}
-        <div className="kr-reveal" style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <p style={{
-            color: '#22c55e', fontSize: '11px', fontWeight: 700,
-            letterSpacing: '0.1em', textTransform: 'uppercase',
-            margin: '0 0 12px',
-          }}>
-            SIMULATEUR
-          </p>
-          <h2 style={{
-            color: 'white', fontSize: '38px', fontWeight: 800,
-            margin: '0 0 12px', lineHeight: 1.2,
-          }}>
-            Combien de chantiers{' '}
-            <span style={{
-              background: 'linear-gradient(135deg, #22c55e 0%, #86efac 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}>
-              perdez-vous
-            </span>{' '}
-            chaque mois ?
-          </h2>
-          <p style={{ color: '#71717a', fontSize: '16px', margin: 0, lineHeight: 1.6 }}>
-            Ajustez les curseurs selon votre activité pour estimer
-            l&apos;impact des opportunités manquées.
-          </p>
-        </div>
+    <section className="mx-auto max-w-[1280px] px-6 py-24">
+      <div className="mx-auto max-w-3xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Simulateur</p>
+        <h2 className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+          Combien de chantiers <span className="text-green-500">perdez-vous</span> chaque mois ?
+        </h2>
+        <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
+          Estimez l impact financier des demandes non traitées ou mal qualifiées sur votre activité.
+        </p>
+      </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 items-stretch gap-12 lg:grid-cols-2">
-          {/* Sliders */}
-          <div className="kr-reveal-left kr-reveal" style={{
-            background: '#18181b',
-            border: '1px solid #27272a',
-            borderRadius: '20px',
-            padding: '40px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '32px',
-            height: '100%',
-          }}>
-            {sliders.map((slider, i) => (
-              <div key={i}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '10px',
-                }}>
-                  <span style={{ color: 'white', fontSize: '16px', fontWeight: 500 }}>
-                    {slider.label}
-                  </span>
-                  <span style={{
-                    color: '#22c55e', fontSize: '16px',
-                    fontWeight: 700, minWidth: '80px', textAlign: 'right',
-                  }}>
-                    {slider.display}
-                  </span>
-                </div>
-                <div style={{ position: 'relative', height: '20px', display: 'flex', alignItems: 'center' }}>
-                  {/* Track background */}
-                  <div style={{
-                    position: 'absolute',
-                    width: '100%', height: '6px',
-                    background: '#3f3f46', borderRadius: '3px',
-                  }} />
-                  {/* Track fill */}
-                  <div style={{
-                    position: 'absolute',
-                    height: '6px',
-                    background: '#22c55e',
-                    borderRadius: '3px',
-                    width: `${((slider.value - slider.min) / (slider.max - slider.min)) * 100}%`,
-                  }} />
-                  {/* Input range */}
-                  <input
-                    type="range"
-                    min={slider.min}
-                    max={slider.max}
-                    step={slider.step}
-                    value={slider.value}
-                    onChange={e => slider.onChange(Number(e.target.value))}
-                    style={{
-                      position: 'absolute',
-                      width: '100%',
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      margin: 0,
-                      padding: 0,
-                      height: '20px',
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+      <div className="mt-12 grid gap-8 md:grid-cols-2">
+        <div className="space-y-8">
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Demandes reçues par semaine</label>
+              <span className="font-semibold text-green-500">{demandes}</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={50}
+              value={demandes}
+              onChange={(e) => setDemandes(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
           </div>
 
-          {/* Results */}
-          <div className="kr-reveal-right kr-reveal" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            {results.map((result, i) => (
-              <div key={i} style={{
-                background: '#18181b',
-                border: '1px solid #27272a',
-                borderRadius: '14px',
-                padding: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-              }}>
-                <div style={{
-                  width: '36px', height: '36px',
-                  borderRadius: '10px',
-                  background: 'rgba(239,68,68,0.1)',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '16px',
-                  flexShrink: 0,
-                }}>
-                  {result.icon}
-                </div>
-                <div>
-                  <p style={{ color: '#71717a', fontSize: '11px', margin: '0 0 2px' }}>
-                    {result.label}
-                  </p>
-                  <p style={{
-                    color: i === 0 ? '#f59e0b' : i === 1 ? '#dc2626' : 'white',
-                    fontSize: 'clamp(2rem, 4vw, 3rem)',
-                    fontWeight: 800,
-                    margin: 0,
-                    transition: 'color 0.3s ease',
-                  }}>
-                    {result.value}
-                  </p>
-                </div>
-              </div>
-            ))}
-
-            {/* Card Abonnement Kadria */}
-            <div style={{
-              background: 'rgba(34,197,94,0.06)',
-              border: '1px solid rgba(34,197,94,0.3)',
-              borderRadius: '14px',
-              padding: '20px',
-            }}>
-              <div style={{
-                display: 'flex', alignItems: 'center',
-                gap: '8px', marginBottom: '8px',
-              }}>
-                <span style={{ color: '#22c55e', fontSize: '16px' }}>✓</span>
-                <span style={{
-                  color: 'white', fontSize: '13px', fontWeight: 600,
-                }}>
-                  Abonnement Kadria
-                </span>
-              </div>
-              <p style={{
-                color: '#22c55e', fontSize: '2.5rem',
-                fontWeight: 800, margin: '0 0 8px',
-              }}>
-                {kadriaMonthly} €
-                <span style={{
-                  color: '#71717a', fontSize: '14px', fontWeight: 400,
-                }}>
-                  /mois
-                </span>
-              </p>
-              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
-                {lostPerMonth >= 1
-                  ? <>Avec{' '}
-                      <strong style={{ color: 'white' }}>{Math.min(breakevenJobs, lostPerMonth)}</strong>{' '}
-                      chantier{Math.min(breakevenJobs, lostPerMonth) > 1 ? 's' : ''} récupéré{Math.min(breakevenJobs, lostPerMonth) > 1 ? 's' : ''} sur{' '}
-                      <strong style={{ color: 'white' }}>{lostPerMonth}</strong>,
-                      Kadria s&apos;autofinance.</>
-                  : 'Kadria sécurise chaque opportunité entrante.'
-                }
-              </p>
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Part non traitée ou mal qualifiée</label>
+              <span className="font-semibold text-green-500">{part}%</span>
             </div>
+            <input
+              type="range"
+              min={10}
+              max={90}
+              value={part}
+              onChange={(e) => setPart(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
 
-            {/* Disclaimer en dehors de la card */}
-            <p style={{
-              color: '#52525b',
-              fontSize: '11px',
-              margin: '4px 0 0',
-              fontStyle: 'italic',
-              textAlign: 'center',
-            }}>
-              Estimation indicative basée sur vos hypothèses.
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Valeur moyenne d un chantier</label>
+              <span className="font-semibold text-green-500">{valeur} €</span>
+            </div>
+            <input
+              type="range"
+              min={500}
+              max={20000}
+              step={100}
+              value={valeur}
+              onChange={(e) => setValeur(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <label className="text-white">Marge nette moyenne</label>
+              <span className="font-semibold text-green-500">{marge}%</span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={50}
+              value={marge}
+              onChange={(e) => setMarge(Number(e.target.value))}
+              className="mt-3 w-full accent-green-500"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-2xl font-bold text-white">{opportunitesPerdues}</p>
+            <p className="mt-1 text-sm text-zinc-400">Opportunités perdues / mois</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-2xl font-bold text-white">{caPerdu.toLocaleString('fr-FR')} €</p>
+            <p className="mt-1 text-sm text-zinc-400">CA potentiel perdu / mois</p>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+            <p className="text-2xl font-bold text-white">{margePerdue.toLocaleString('fr-FR')} €</p>
+            <p className="mt-1 text-sm text-zinc-400">Marge perdue / mois</p>
+          </div>
+
+          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+            <p className="text-sm font-semibold text-green-400">✓ Abonnement Kadria</p>
+            <p className="mt-2 text-3xl font-bold text-white">199 €/mois</p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Un seul chantier récupéré sur {breakeven} suffit à rentabiliser Kadria.
             </p>
           </div>
         </div>
       </div>
-
-      {/* Style pour le thumb du slider */}
-      <style>{`
-        input[type=range]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #22c55e;
-          cursor: pointer;
-          border: 2px solid #09090b;
-          box-shadow: 0 0 0 2px #22c55e;
-        }
-        input[type=range]::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: #22c55e;
-          cursor: pointer;
-          border: 2px solid #09090b;
-          box-shadow: 0 0 0 2px #22c55e;
-        }
-      `}</style>
     </section>
-  )
+  );
 }
 
+interface PricingPlan {
+  slug: string;
+  name: string;
+  monthly: number | null;
+  yearly: number | null;
+  description: string;
+  features: string[];
+  cta: string;
+  highlighted: boolean;
+}
+
+function BillingToggle({
+  pricingPlans,
+  comparatif,
+}: {
+  pricingPlans: PricingPlan[];
+  comparatif: string[][];
+}) {
+  const [annual, setAnnual] = useState(false);
+  const [selectedMobilePlan, setSelectedMobilePlan] = useState<'essentiel' | 'pro' | 'agence'>('pro');
+  const [openMobileCategory, setOpenMobileCategory] = useState<string | null>(null);
+
+  const planLabels = {
+    essentiel: 'Essentiel',
+    pro: 'Performance',
+    agence: 'Agence',
+  } as const;
+  const excludedComparatifValues = new Set(['✗', 'âœ—', 'Ã¢Å“â€”']);
+  const includedComparatifValues = new Set(['✓', 'âœ“', 'Ã¢Å“â€œ']);
+
+  const comparatifRows = comparatif.map(([feature, essentiel, pro, agence]) => ({
+    feature,
+    values: { essentiel, pro, agence },
+  }));
+
+  const mobileComparatifCategories = [
+    {
+      key: 'assistant',
+      title: 'Assistant IA',
+      rows: comparatifRows.filter((row) => ['Assistant chat web', 'Assistant vocal', 'Dossiers / mois'].includes(row.feature)),
+    },
+    {
+      key: 'suivi',
+      title: 'Suivi commercial',
+      rows: comparatifRows.filter((row) => ['CRM + relances'].includes(row.feature)),
+    },
+    {
+      key: 'devis',
+      title: 'Devis',
+      rows: comparatifRows.filter((row) => ['Export CSV'].includes(row.feature)),
+    },
+    {
+      key: 'dashboard',
+      title: 'Dashboard',
+      rows: comparatifRows.filter((row) => ['Dashboard'].includes(row.feature)),
+    },
+    {
+      key: 'support',
+      title: 'Support / accompagnement',
+      rows: comparatifRows.filter((row) => ['Support', 'API access', 'Marque blanche'].includes(row.feature)),
+    },
+  ].map((category) => ({
+    ...category,
+    includedRows: category.rows.filter((row) => !excludedComparatifValues.has(row.values[selectedMobilePlan])),
+  }));
+
+  return (
+    <>
+      <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => setAnnual(false)}
+          className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
+            !annual ? 'bg-green-500 text-black' : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+          }`}
+        >
+          Mensuel
+        </button>
+        <button
+          type="button"
+          onClick={() => setAnnual(true)}
+          className={`rounded-md px-5 py-2.5 text-sm font-medium transition-colors ${
+            annual ? 'bg-green-500 text-black' : 'border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800'
+          }`}
+        >
+          Annuel
+        </button>
+        {annual && (
+          <span className="rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-400">
+            2 mois offerts
+          </span>
+        )}
+      </div>
+
+      {/* PLANS */}
+      <div className="mt-4 flex items-center justify-center text-xs text-zinc-500 md:hidden">
+        Faites glisser pour comparer les offres
+      </div>
+      <div className="mt-6 -mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 text-left [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden">
+        {pricingPlans.map((plan) => (
+          <div
+            key={plan.slug}
+            className={`relative min-w-[85%] snap-center rounded-xl bg-zinc-900 p-6 ${
+              plan.highlighted ? 'border-2 border-green-500' : 'border border-zinc-800'
+            }`}
+          >
+            {plan.highlighted && (
+              <span className="absolute -top-3 left-6 rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-black">
+                Le plus populaire
+              </span>
+            )}
+            <h3 className="text-xl font-semibold">{plan.name}</h3>
+            <p className="mt-5">
+              {plan.monthly === null ? (
+                <span className="text-4xl font-bold">Sur devis</span>
+              ) : (
+                <>
+                  <span className="text-4xl font-bold">{annual ? plan.yearly : plan.monthly} €</span>
+                  <span className="text-sm text-zinc-400"> / mois</span>
+                </>
+              )}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">{plan.description}</p>
+            <ul className="mt-6 space-y-3 text-sm">
+              {plan.features.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-zinc-300">
+                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/onboarding"
+              className={`mt-8 inline-flex w-full items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors ${
+                plan.highlighted
+                  ? 'bg-green-500 text-black hover:bg-green-400'
+                  : 'border border-zinc-700 text-white hover:bg-zinc-800'
+              }`}
+            >
+              {plan.cta}
+            </Link>
+          </div>
+        ))}
+      </div>
+      <div className="mt-12 hidden gap-6 text-left lg:grid-cols-3 md:grid">
+        {pricingPlans.map((plan) => (
+          <div
+            key={plan.slug}
+            className={`relative rounded-xl bg-zinc-900 p-6 ${
+              plan.highlighted ? 'border-2 border-green-500' : 'border border-zinc-800'
+            }`}
+          >
+            {plan.highlighted && (
+              <span className="absolute -top-3 left-6 rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-black">
+                Le plus populaire
+              </span>
+            )}
+            <h3 className="text-xl font-semibold">{plan.name}</h3>
+            <p className="mt-5">
+              {plan.monthly === null ? (
+                <span className="text-4xl font-bold">Sur devis</span>
+              ) : (
+                <>
+                  <span className="text-4xl font-bold">{annual ? plan.yearly : plan.monthly} â‚¬</span>
+                  <span className="text-sm text-zinc-400"> / mois</span>
+                </>
+              )}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">{plan.description}</p>
+            <ul className="mt-6 space-y-3 text-sm">
+              {plan.features.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-zinc-300">
+                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/onboarding"
+              className={`mt-8 inline-flex w-full items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors ${
+                plan.highlighted
+                  ? 'bg-green-500 text-black hover:bg-green-400'
+                  : 'border border-zinc-700 text-white hover:bg-zinc-800'
+              }`}
+            >
+              {plan.cta}
+            </Link>
+          </div>
+        ))}
+      </div>
+
+      {/* COMPARATIF */}
+      <div className="mt-24">
+        <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Comparez les formules</h2>
+        <div className="mt-8 space-y-3 md:hidden">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+            <p className="text-sm font-medium text-white">Choisissez une offre</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(['essentiel', 'pro', 'agence'] as const).map((planKey) => {
+                const isActive = selectedMobilePlan === planKey;
+                return (
+                  <button
+                    key={planKey}
+                    type="button"
+                    onClick={() => setSelectedMobilePlan(planKey)}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-green-500 text-black'
+                        : 'border border-zinc-800 bg-zinc-950 text-zinc-300 hover:bg-zinc-800'
+                    }`}
+                  >
+                    {planLabels[planKey]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {mobileComparatifCategories.map((category) => {
+            const isOpen = openMobileCategory === category.key;
+            return (
+              <div key={category.key} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+                <button
+                  type="button"
+                  onClick={() => setOpenMobileCategory(isOpen ? null : category.key)}
+                  className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">{category.title}</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {category.includedRows.length} fonctionnalit{category.includedRows.length > 1 ? 'és' : 'é'} incluse
+                      {category.includedRows.length > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <span className="text-lg text-green-500">{isOpen ? 'âˆ’' : '+'}</span>
+                </button>
+
+                {isOpen && (
+                  <div className="space-y-3 border-t border-zinc-800 px-4 py-4">
+                    {category.includedRows.length > 0 ? (
+                      category.includedRows.map((row) => (
+                        <div key={row.feature} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                          <div className="flex items-start gap-3">
+                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                            <div>
+                              <p className="text-sm font-medium text-white">{row.feature}</p>
+                              {!includedComparatifValues.has(row.values[selectedMobilePlan]) && (
+                                <p className="mt-1 text-xs text-zinc-400">{row.values[selectedMobilePlan]}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 text-sm text-zinc-400">
+                        Aucune fonctionnalitÃ© supplÃ©mentaire dans cette catÃ©gorie pour cette offre.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-10 hidden overflow-hidden overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900 md:block">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr className="bg-zinc-800 text-xs uppercase tracking-wide text-zinc-400">
+                <th className="px-4 py-3">Fonctionnalité</th>
+                <th className="px-4 py-3">Essentiel</th>
+                <th className="px-4 py-3">Pro</th>
+                <th className="px-4 py-3">Agence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparatif.map(([feature, essentiel, pro, agence]) => (
+                <tr key={feature} className="border-b border-zinc-800/50 last:border-b-0">
+                  <td className="px-4 py-3 font-medium text-white">{feature}</td>
+                  {[essentiel, pro, agence].map((value, index) => (
+                    <td key={index} className="px-4 py-3 text-zinc-400">
+                      {value === '✓' ? (
+                        <span className="text-green-500">✓</span>
+                      ) : value === '✗' ? (
+                        <span className="text-zinc-600">✗</span>
+                      ) : (
+                        value
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PricingFaq() {
+  const faqs = [
+    {
+      question: "Est-ce que je peux tester avant de m'engager ?",
+      answer:
+        'Oui. Chaque formule inclut un essai gratuit de 14 jours, sans carte bancaire requise. Vous pouvez annuler à tout moment.',
+    },
+    {
+      question: "Comment Kadria s'intègre sur mon site ?",
+      answer:
+        "En copiant-collant une seule ligne de code. Notre équipe peut aussi s'en charger gratuitement lors de l'onboarding.",
+    },
+    {
+      question: 'Que se passe-t-il si je dépasse mon quota de dossiers ?',
+      answer:
+        'Vous recevez une notification avant d atteindre la limite. Vous pouvez upgrader à tout moment ou passer au plan supérieur.',
+    },
+    {
+      question: 'Mes données clients sont-elles sécurisées ?',
+      answer:
+        "Oui. Toutes les données sont hébergées en Europe, chiffrées, et vous en restez l'unique propriétaire. RGPD conforme.",
+    },
+    {
+      question: "L'assistant vocal fonctionne-t-il avec mon numéro actuel ?",
+      answer:
+        'Oui. Nous redirigeons vos appels vers Kadria sans changer votre numéro. Vos clients appellent le même numéro qu avant.',
+    },
+  ];
+
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <section className="mx-auto max-w-[1280px] px-6 py-24">
+      <div className="mx-auto max-w-3xl text-center">
+        <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Questions fréquentes</h2>
+      </div>
+      <div className="mx-auto mt-12 max-w-3xl space-y-4">
+        {faqs.map((faq, index) => {
+          const isOpen = openIndex === index;
+          return (
+            <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900">
+              <button
+                type="button"
+                onClick={() => setOpenIndex(isOpen ? null : index)}
+                className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left text-sm font-semibold text-white"
+              >
+                {faq.question}
+                <span className="text-green-500">{isOpen ? '−' : '+'}</span>
+              </button>
+              {isOpen && (
+                <div className="px-6 pb-4 text-sm leading-6 text-zinc-400">{faq.answer}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
