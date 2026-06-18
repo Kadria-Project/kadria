@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       .map((d) => ({
         id: d.id,
         numero: d.devisNumber,
+        token: d.token,
         amount: d.totalTTC,
         sent: d.sent,
         statut: d.statut,

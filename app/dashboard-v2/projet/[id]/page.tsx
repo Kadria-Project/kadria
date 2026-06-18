@@ -35,6 +35,7 @@ const statusStyles = STATUS_COLORS;
 interface DevisListItem {
   id: string;
   numero: string;
+  token?: string;
   amount: number;
   sent: boolean;
   statut: string;
@@ -125,7 +126,14 @@ function ProjectDetail() {
   } | null>(null);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
+  const [followUpToast, setFollowUpToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [followingUpDevisId, setFollowingUpDevisId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!followUpToast) return;
+    const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [followUpToast]);
+
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -199,40 +207,56 @@ function ProjectDetail() {
       })
       .catch(() => {});
   }, [id]);
-
-  async function followUpQuote(devisId: string) {
+  async function followUpQuote(devis: DevisListItem) {
     if (!canQuote) {
       openUpgradeModal('quoteGeneration');
       return;
     }
 
-    setFollowingUpDevisId(devisId);
-    try {
-      const res = await fetch(`/api/devis/${devisId}/follow-up`, { method: 'POST' });
-      const data = await res.json();
+    if (!devis.token || devis.token.includes('undefined')) {
+      setFollowUpToast({ type: 'error', message: 'Impossible de relancer ce devis : lien de devis introuvable.' });
+      return;
+    }
 
-      if (res.status === 403) {
+    setFollowingUpDevisId(devis.id);
+    try {
+      const response = await fetch(`/api/devis/${devis.id}/follow-up`, { method: 'POST' });
+      const text = await response.text();
+      let data: { success?: boolean; error?: string; message?: string; sent_at?: string } = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { success: false, error: text || 'Reponse serveur invalide' };
+      }
+
+      if (response.status === 403) {
         openUpgradeModal('quoteGeneration');
         return;
       }
-      if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de la relance');
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Impossible de relancer le devis');
       }
 
       await loadActivities();
       setDevisList((prev) =>
-        prev.map((devis) =>
-          devis.id === devisId
+        prev.map((item) =>
+          item.id === devis.id
             ? {
-                ...devis,
+                ...item,
                 last_follow_up_at: data.sent_at,
-                follow_up_count: (devis.follow_up_count || 0) + 1,
+                follow_up_count: (item.follow_up_count || 0) + 1,
               }
-            : devis
+            : item
         )
       );
+      setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyee' });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Erreur lors de la relance');
+      setFollowUpToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Impossible de relancer le devis',
+      });
     } finally {
       setFollowingUpDevisId(null);
     }
@@ -968,7 +992,7 @@ function ProjectDetail() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                followUpQuote(devis.id);
+                                followUpQuote(devis);
                               }}
                               disabled={followingUpDevisId === devis.id}
                               style={{
@@ -984,7 +1008,7 @@ function ProjectDetail() {
                                 opacity: followingUpDevisId === devis.id ? 0.7 : 1,
                               }}
                             >
-                              {followingUpDevisId === devis.id ? 'Relance...' : 'Relancer le devis'}
+                              {followingUpDevisId === devis.id ? 'Envoi...' : isMobile ? 'Relancer' : 'Relancer le devis'}
                             </button>
                           )}
 
@@ -1764,6 +1788,19 @@ function ProjectDetail() {
           </div>
         </div>
       )}
+
+      {followUpToast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm shadow-2xl ${
+            followUpToast.type === 'error'
+              ? 'border-red-500/30 bg-zinc-900 text-red-200'
+              : 'border-green-500/30 bg-zinc-900 text-zinc-100'
+          }`}
+        >
+          {followUpToast.message}
+        </div>
+      )}
+
 
       {upgradeFeature && (
         <UpgradeModal
