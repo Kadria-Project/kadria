@@ -24,12 +24,17 @@ import {
   ChevronRight,
   ChevronDown,
   BarChart3,
+  Bell,
+  AlertTriangle,
   MapPin,
   LogOut,
   Euro,
   Target,
   ShoppingBag,
   Clock,
+  PhoneCall,
+  Mail,
+  CalendarDays,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -44,7 +49,15 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { calculateOpportunityScore, getOpportunityBadge } from '@/src/lib/commercial-actions';
+import {
+  buildAutomaticTasks,
+  calculateOpportunityScore,
+  getHotLeadMessage,
+  getOpportunityBadge,
+  getProjectRiskStatus,
+  isHotLead,
+  type Task,
+} from '@/src/lib/commercial-actions';
 
 const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
@@ -72,6 +85,8 @@ const STATUS_OPTIONS = [
   { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
   { value: 'En cours', label: 'En cours', cls: 'bg-purple-500/20 text-purple-400' },
   { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'bg-blue-500/20 text-blue-400' },
+  { value: 'En risque', label: 'En risque', cls: 'bg-red-500/20 text-red-300' },
+  { value: 'A relancer', label: 'A relancer', cls: 'bg-amber-500/20 text-amber-300' },
   { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
   { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
 ];
@@ -81,6 +96,8 @@ export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   'À rappeler':   { bg: 'rgba(120,53,15,0.5)',   color: '#fbbf24' },
   'Qualifié':     { bg: 'rgba(20,83,45,0.5)',    color: '#4ade80' },
   'Devis envoyé': { bg: 'rgba(30,58,95,0.5)',    color: '#60a5fa' },
+  'En risque':     { bg: 'rgba(127,29,29,0.45)',   color: '#fca5a5' },
+  'A relancer':    { bg: 'rgba(120,53,15,0.5)',    color: '#fbbf24' },
   'En cours':     { bg: 'rgba(88,28,135,0.5)',   color: '#c084fc' },
   'Gagné':        { bg: 'rgba(20,83,45,0.7)',    color: '#86efac' },
   'Perdu':        { bg: 'rgba(69,10,10,0.5)',    color: '#f87171' },
@@ -232,6 +249,8 @@ export const KANBAN_COLUMNS: { status: string; label: string; color: string }[] 
   { status: 'À rappeler', label: 'À rappeler', color: '#d97706' },
   { status: 'Qualifié', label: 'Qualifié', color: '#16a34a' },
   { status: 'Devis envoyé', label: 'Devis envoyé', color: '#2563eb' },
+  { status: 'A relancer', label: 'A relancer', color: '#d97706' },
+  { status: 'En risque', label: 'En risque', color: '#ef4444' },
   { status: 'Gagné', label: 'Gagné', color: '#15803d' },
 ];
 
@@ -736,10 +755,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | null>(null);
   const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -902,6 +922,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     { label: 'À rappeler', value: allProjects.filter((p) => p.status === 'À rappeler').length },
     { label: 'Qualifié', value: allProjects.filter((p) => p.status === 'Qualifié').length },
     { label: 'Devis envoyé', value: allProjects.filter((p) => p.status === 'Devis envoyé').length },
+    { label: 'A relancer', value: allProjects.filter((p) => p.status === 'A relancer').length },
+    { label: 'En risque', value: allProjects.filter((p) => p.status === 'En risque').length },
     { label: 'Gagné', value: allProjects.filter((p) => p.status === 'Gagné').length },
   ];
 
@@ -909,6 +931,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
     .sort((a, b) => opportunityScore(b) - opportunityScore(a))
     .slice(0, 5);
+
+  const hotLeads = allProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
+  const riskProjects = allProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
+  const todayTasks = buildAutomaticTasks(allProjects).filter((task) => {
+    const due = new Date(task.dueDate);
+    return !Number.isNaN(due.getTime()) && due <= new Date(Date.now() + 24 * 60 * 60 * 1000);
+  });
 
   const filteredProjects = useMemo(
     () => filterProjects(allProjects, filters),
@@ -931,7 +960,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       ? todayCallbacks
       : quickFilter === 'overdue'
         ? overdueCallbacks
-        : sortedProjects;
+        : quickFilter === 'hot'
+          ? hotLeads
+          : quickFilter === 'risk'
+            ? riskProjects
+            : sortedProjects;
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -1054,6 +1087,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const periodLabel = `Du ${format(kpiPeriodData.start, 'd MMMM', { locale: fr })} au ${format(kpiPeriodData.end, 'd MMMM yyyy', { locale: fr })}`;
 
+  const taskCounts = todayTasks.reduce(
+    (acc, task) => {
+      acc[task.type] = (acc[task.type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<Task['type'], number>,
+  );
+
+  const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
+
+
   const kpiCards: {
     label: string;
     value: number;
@@ -1111,6 +1155,42 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       borderColor: '#d97706',
       format: (v: number) => `${Math.round(v)} dossier(s)`,
       alert: kpiPeriodData.current.dossiersARelancer > 0,
+    },
+    {
+      label: 'Opportunites prioritaires',
+      value: topOpportunities.length,
+      delta: null,
+      icon: Target,
+      borderColor: '#22c55e',
+      format: (v: number) => `${Math.round(v)} dossier(s)`,
+      alert: topOpportunities.length > 0,
+    },
+    {
+      label: 'Relances a effectuer',
+      value: relanceCount,
+      delta: null,
+      icon: Mail,
+      borderColor: '#f59e0b',
+      format: (v: number) => `${Math.round(v)} relance(s)`,
+      alert: relanceCount > 0,
+    },
+    {
+      label: 'Dossiers en risque',
+      value: riskProjects.length,
+      delta: null,
+      icon: AlertTriangle,
+      borderColor: '#ef4444',
+      format: (v: number) => `${Math.round(v)} dossier(s)`,
+      alert: riskProjects.length > 0,
+    },
+    {
+      label: 'Prospects chauds',
+      value: hotLeads.length,
+      delta: null,
+      icon: Bell,
+      borderColor: '#22c55e',
+      format: (v: number) => `${Math.round(v)} prospect(s)`,
+      alert: hotLeads.length > 0,
     },
   ];
 
@@ -1249,6 +1329,111 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
         )}
       </div>
+
+      {!loading && hotLeads.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-green-500/25 bg-green-500/[0.06] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500/15 text-green-400">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-green-400">Prospect chaud detecte</p>
+                <p className="mt-1 text-sm text-zinc-300">{getHotLeadMessage(hotLeads[0])}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setQuickFilter('hot');
+                setFilters(DEFAULT_FILTERS);
+                setSearchInput('');
+              }}
+              className="rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
+            >
+              Voir les prospects chauds
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 lg:col-span-2">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-bold text-white">Mes actions du jour</p>
+                <p className="text-sm text-zinc-400">Taches triees par priorite puis echeance.</p>
+              </div>
+              <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300">{todayTasks.length} action(s)</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} />
+              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} />
+              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} />
+            </div>
+            <div className="mt-4 space-y-2">
+              {todayTasks.slice(0, 4).map((task) => {
+                const project = allProjects.find((p) => p.id === task.projectId);
+                return (
+                  <button
+                    key={task.id}
+                    onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-left hover:border-green-500/25"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-white">{task.title}</p>
+                      <p className="text-xs text-zinc-400">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                      {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              <div>
+                <p className="font-bold text-white">Dossiers en risque</p>
+                <p className="text-sm text-zinc-400">Actions rapides recommandees.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {riskProjects.slice(0, 3).map((project) => {
+                const risk = getProjectRiskStatus(project);
+                return (
+                  <div key={project.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}</p>
+                        <p className="mt-1 text-xs text-red-300">Dossier en risque - {risk.reason}</p>
+                      </div>
+                      <StatusBadge status={risk.label} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)} className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200">Relancer</button>
+                      <button onClick={() => showToast('Tache ajoutee a vos actions du jour')} className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200">Creer une tache</button>
+                      <button onClick={() => handleStatusChange(project.id, 'Perdu')} className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-300">Cloturer</button>
+                    </div>
+                  </div>
+                );
+              })}
+              {riskProjects.length === 0 && <p className="text-sm text-zinc-500">Aucun dossier en risque pour le moment.</p>}
+            </div>
+            {riskProjects.length > 0 && (
+              <button
+                onClick={() => { setQuickFilter('risk'); setFilters(DEFAULT_FILTERS); setSearchInput(''); }}
+                className="mt-4 w-full rounded-lg border border-red-500/25 bg-red-500/[0.04] px-4 py-2 text-sm font-semibold text-red-300"
+              >
+                Voir tous les dossiers en risque
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sparkline CA potentiel */}
       {!loading && (
@@ -1682,6 +1867,40 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 />
               </div>
 
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickFilter(quickFilter === 'hot' ? null : 'hot');
+                  setFilters(DEFAULT_FILTERS);
+                  setSearchInput('');
+                }}
+                className={`inline-flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold ${
+                  quickFilter === 'hot'
+                    ? 'border-green-500/40 bg-green-500/[0.08] text-green-400'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-green-500/25'
+                }`}
+              >
+                <Bell className="h-4 w-4" />
+                Prospects chauds
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickFilter(quickFilter === 'risk' ? null : 'risk');
+                  setFilters(DEFAULT_FILTERS);
+                  setSearchInput('');
+                }}
+                className={`inline-flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold ${
+                  quickFilter === 'risk'
+                    ? 'border-red-500/40 bg-red-500/[0.08] text-red-300'
+                    : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-red-500/25'
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                En risque
+              </button>
+
               <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Tous les statuts" />
@@ -2010,6 +2229,29 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
+      <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-green-400">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-white">Synchroniser mon agenda</p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Google Calendar est prevu en V1. Outlook et Apple Calendar sont prepares pour la suite.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCalendarModalOpen(true)}
+            className="rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
+          >
+            Connecter Google Calendar
+          </button>
+        </div>
+      </div>
+
       <div
         className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border px-5 py-3.5 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
           toast.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
@@ -2018,6 +2260,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         {toast.error ? <XCircle className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
         {toast.message}
       </div>
+
+      {calendarModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <CalendarDays className="h-5 w-5 text-green-400" />
+              <p className="font-bold text-white">Bientot disponible</p>
+            </div>
+            <p className="text-sm leading-6 text-zinc-400">
+              La synchronisation Google Calendar est preparee, mais l'authentification OAuth n'est pas encore activee.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCalendarModalOpen(false)}
+              className="mt-5 w-full rounded-lg bg-green-500 px-4 py-2 text-sm font-bold text-zinc-950"
+            >
+              Compris
+            </button>
+          </div>
+        </div>
+      )}
 
       {upgradeFeature && (
         <UpgradeModal
@@ -2318,6 +2581,18 @@ function StatusBadge({ status }: { status?: string }) {
     >
       {status || 'Inconnu'}
     </span>
+  );
+}
+
+function ActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 text-green-400">
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-xs text-zinc-400">{label}</p>
+    </div>
   );
 }
 

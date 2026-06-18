@@ -6,12 +6,20 @@ export type OpportunityBadge = {
 }
 
 type ProjectLike = {
+  id?: string
+  status?: string
   completenessScore?: number
   budget?: string
   desiredTimeline?: string
   maturity?: string
   createdAt?: string
   callbackDate?: string
+  updatedAt?: string
+  lastInteractionAt?: string | null
+  quoteSentAt?: string | null
+  lastFollowUpAt?: string | null
+  lastOpenedDate?: string | null
+  opensCount?: number
   city?: string
   latitude?: number | null
   longitude?: number | null
@@ -19,11 +27,29 @@ type ProjectLike = {
   trade?: string
   clientFirstName?: string
   clientName?: string
+  clientEmail?: string
 }
 
 type FollowUpProjectLike = ProjectLike & {
   lastOpenedDate?: string | null
   firstOpenedAt?: string | null
+}
+
+export type ProjectRiskStatus = {
+  status: 'none' | 'atRisk' | 'followUp'
+  label: string
+  reason: string
+  daysWithoutAction: number | null
+}
+
+export type Task = {
+  id: string
+  projectId: string
+  type: 'call' | 'quote' | 'followUp' | 'email'
+  title: string
+  dueDate: string
+  priority: 'high' | 'medium' | 'low'
+  completed: boolean
 }
 
 function clamp(value: number, min = 0, max = 100) {
@@ -85,6 +111,138 @@ function distanceScore(project: ProjectLike): number {
   if (project.latitude && project.longitude) return 100
   if (project.city) return 70
   return 35
+}
+
+function daysSince(value?: string | null): number | null {
+  if (!value) return null
+  const time = new Date(value).getTime()
+  if (!Number.isFinite(time)) return null
+  return Math.max(0, Math.floor((Date.now() - time) / 86400000))
+}
+
+function addDays(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString()
+}
+
+export function isHotLead(project: ProjectLike): boolean {
+  const budgetHigh = parseBudgetValue(project.budget) >= 10000
+  const urgencyHigh = urgencyScore(project) >= 80 || timelineScore(project.desiredTimeline) >= 90
+  const complete = Number(project.completenessScore) >= 100
+  const meetingRequested = `${project.maturity || ''} ${project.desiredTimeline || ''}`.toLowerCase().includes('rdv')
+  const recentAfterFollowUp = daysSince(project.lastFollowUpAt) !== null && daysSince(project.lastFollowUpAt)! <= 1
+  const quoteOpenedOften = Number(project.opensCount || 0) >= 2
+
+  return budgetHigh || urgencyHigh || complete || meetingRequested || recentAfterFollowUp || quoteOpenedOften
+}
+
+export function getHotLeadMessage(project: ProjectLike): string {
+  const name = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Un prospect'
+  const followUpDays = daysSince(project.lastFollowUpAt)
+  if (followUpDays !== null && followUpDays < 1) return `${name} a repondu a votre e-mail recemment.`
+  if (Number(project.opensCount || 0) >= 2) return `${name} a consulte le devis plusieurs fois.`
+  if (parseBudgetValue(project.budget) >= 10000) return `${name} a un budget eleve a traiter en priorite.`
+  if (Number(project.completenessScore) >= 100) return `${name} a un dossier complet pret a etre chiffre.`
+  return `${name} montre des signaux commerciaux forts.`
+}
+
+export function getProjectRiskStatus(project: ProjectLike): ProjectRiskStatus {
+  const lastAction = project.lastInteractionAt || project.updatedAt || project.callbackDate || project.createdAt
+  const daysWithoutAction = daysSince(lastAction)
+  const quoteAge = project.status?.startsWith('Devis') ? daysSince(project.quoteSentAt || project.updatedAt || project.createdAt) : null
+  const incompleteAge = Number(project.completenessScore || 0) < 100 ? daysSince(project.createdAt) : null
+  const appointmentUnconfirmed = `${project.maturity || ''} ${project.desiredTimeline || ''}`.toLowerCase().includes('rdv non confirme')
+
+  if (appointmentUnconfirmed) {
+    return { status: 'atRisk', label: 'En risque', reason: 'Rendez-vous non confirme', daysWithoutAction }
+  }
+  if (quoteAge !== null && quoteAge >= 10) {
+    return { status: 'followUp', label: 'A relancer', reason: 'Devis envoye depuis 10 jours sans reponse', daysWithoutAction }
+  }
+  if (daysWithoutAction !== null && daysWithoutAction >= 14) {
+    return { status: 'atRisk', label: 'En risque', reason: 'Aucune action depuis 14 jours', daysWithoutAction }
+  }
+  if (incompleteAge !== null && incompleteAge >= 7) {
+    return { status: 'followUp', label: 'A relancer', reason: 'Dossier incomplet depuis 7 jours', daysWithoutAction }
+  }
+
+  return { status: 'none', label: 'OK', reason: '', daysWithoutAction }
+}
+
+export function buildAutomaticTasks(projects: ProjectLike[]): Task[] {
+  const tasks = projects.flatMap((project) => {
+    const projectId = project.id || ''
+    if (!projectId) return []
+    const list: Task[] = []
+    const budget = parseBudgetValue(project.budget)
+    const risk = getProjectRiskStatus(project)
+
+    if (Number(project.completenessScore || 0) >= 100) {
+      list.push({
+        id: `${projectId}-call`,
+        projectId,
+        type: 'call',
+        title: 'Appeler le prospect',
+        dueDate: new Date().toISOString(),
+        priority: budget > 10000 ? 'high' : 'medium',
+        completed: false,
+      })
+    }
+
+    if (Number(project.completenessScore || 0) >= 100 && !project.status?.startsWith('Devis')) {
+      list.push({
+        id: `${projectId}-quote`,
+        projectId,
+        type: 'quote',
+        title: 'Preparer le devis',
+        dueDate: new Date().toISOString(),
+        priority: budget > 10000 ? 'high' : 'medium',
+        completed: false,
+      })
+    }
+
+    if (budget > 10000) {
+      list.push({
+        id: `${projectId}-high-priority`,
+        projectId,
+        type: 'call',
+        title: 'Priorite haute',
+        dueDate: new Date().toISOString(),
+        priority: 'high',
+        completed: false,
+      })
+    }
+
+    if (project.status?.startsWith('Devis')) {
+      list.push({
+        id: `${projectId}-quote-follow-up`,
+        projectId,
+        type: 'followUp',
+        title: 'Relancer dans 3 jours',
+        dueDate: addDays(3),
+        priority: 'medium',
+        completed: false,
+      })
+    }
+
+    if (risk.status !== 'none') {
+      list.push({
+        id: `${projectId}-email`,
+        projectId,
+        type: 'email',
+        title: 'Envoyer un e-mail',
+        dueDate: new Date().toISOString(),
+        priority: risk.status === 'atRisk' ? 'high' : 'medium',
+        completed: false,
+      })
+    }
+
+    return list
+  })
+
+  const priorityWeight = { high: 0, medium: 1, low: 2 }
+  return tasks.sort((a, b) => priorityWeight[a.priority] - priorityWeight[b.priority] || new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
 }
 
 export function calculateOpportunityScore(project: ProjectLike): number {

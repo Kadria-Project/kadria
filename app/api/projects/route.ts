@@ -30,6 +30,7 @@ function mapProject(record: any) {
     projectType: fields['Project Type'] ?? '',
     budget: fields.Budget ?? '',
     desiredTimeline: fields['Desired Timeline'] ?? '',
+    maturity: fields.Maturity ?? '',
 
     aiSummary: fields['AI Summary'] ?? '',
     chatHistory: fields['Chat History'] ?? '',

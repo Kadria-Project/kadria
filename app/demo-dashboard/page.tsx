@@ -9,6 +9,11 @@ import {
   Target,
   ShoppingBag,
   Clock,
+  Bell,
+  AlertTriangle,
+  PhoneCall,
+  Mail,
+  CalendarDays,
   ChevronRight,
 } from 'lucide-react';
 import {
@@ -282,6 +287,59 @@ export default function DemoDashboardPage() {
                 <TrendIndicator delta={card.delta} unit={card.label === 'Taux de conversion' ? ' pts' : '%'} />
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-green-500/25 bg-green-500/[0.06] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500/15 text-green-400">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-green-400">Prospect chaud detecte</p>
+                <p className="mt-1 text-sm text-zinc-300">Monsieur Bertrand a consulte son devis plusieurs fois et doit etre rappele rapidement.</p>
+              </div>
+            </div>
+            <button onClick={showToast} className="rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400">
+              Voir le prospect
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 lg:col-span-2">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-bold text-white">Mes actions du jour</p>
+                <p className="text-sm text-zinc-400">Une vue simple pour savoir qui rappeler maintenant.</p>
+              </div>
+              <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300">6 actions</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <DemoActionSummary icon={PhoneCall} label="appels a effectuer" value={3} />
+              <DemoActionSummary icon={CalendarDays} label="devis a envoyer" value={2} />
+              <DemoActionSummary icon={Mail} label="relance a faire" value={1} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              <div>
+                <p className="font-bold text-white">Dossiers en risque</p>
+                <p className="text-sm text-zinc-400">Actions rapides recommandees.</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+              <p className="text-sm font-semibold text-white">Sophie Mercier</p>
+              <p className="mt-1 text-xs text-red-300">Dossier en risque - Devis envoye depuis 10 jours</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button onClick={showToast} className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200">Relancer</button>
+                <button onClick={showToast} className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200">Creer une tache</button>
+                <button onClick={showToast} className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-300">Cloturer</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -870,6 +928,18 @@ function DemoKanbanBoard({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function DemoActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 text-green-400">
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-xs text-zinc-400">{label}</p>
     </div>
   );
 }
