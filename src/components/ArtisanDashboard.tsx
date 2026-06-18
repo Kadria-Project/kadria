@@ -30,7 +30,6 @@ import {
   LogOut,
   Euro,
   Target,
-  ShoppingBag,
   Clock,
   PhoneCall,
   Mail,
@@ -58,8 +57,6 @@ import {
   isHotLead,
   type Task,
 } from '@/src/lib/commercial-actions';
-
-const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
 const ProspectsLeafletMap = dynamic(
   () => import('@/src/components/ProspectsLeafletMap'),
@@ -697,7 +694,6 @@ function navButtonStyle(active: boolean): React.CSSProperties {
 
 function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
-  const canAccessCalendar = hasFeature(plan, 'calendar');
   const canExportPdf = hasFeature(plan, 'pdfExports');
   const canExportMonthlyReport = hasFeature(plan, 'monthlyPdfReport');
   const canUseKanban = hasFeature(plan, 'kanbanView');
@@ -755,8 +751,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | null>(null);
-  const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | null>(null);
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
@@ -768,12 +763,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  useEffect(() => {
-    if (activeView === 'calendar' && !canAccessCalendar) {
-      setActiveView('commercial');
-    }
-  }, [activeView, canAccessCalendar]);
 
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
     if (typeof window === 'undefined') return 'list';
@@ -955,6 +944,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     [filteredProjects],
   );
 
+  const priorityProjects = Array.from(
+    new Map(
+      [...topOpportunities, ...riskProjects, ...hotLeads]
+        .filter((project) => project.id)
+        .map((project) => [project.id, project]),
+    ).values(),
+  );
+
   const displayedProjects =
     quickFilter === 'today'
       ? todayCallbacks
@@ -964,7 +961,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           ? hotLeads
           : quickFilter === 'risk'
             ? riskProjects
-            : sortedProjects;
+            : quickFilter === 'priority'
+              ? priorityProjects
+              : sortedProjects;
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -1096,6 +1095,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   );
 
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
+  const primaryHotLead = hotLeads.find((project) => opportunityScore(project) >= 80 || Number(project.completenessScore || 0) >= 100);
+  const primaryHotLeadName = primaryHotLead
+    ? [primaryHotLead.clientFirstName, primaryHotLead.clientName].filter(Boolean).join(' ') || 'Dossier prioritaire'
+    : '';
+  const primaryHotLeadReason = primaryHotLead && Number(primaryHotLead.completenessScore || 0) >= 100
+    ? 'dossier pret a chiffrer'
+    : primaryHotLead
+      ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
+      : '';
 
 
   const kpiCards: {
@@ -1138,14 +1146,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       icon: Target,
       borderColor: '#7c3aed',
       format: (v: number) => `${v.toFixed(1)}%`,
-    },
-    {
-      label: 'Panier moyen',
-      value: kpiPeriodData.current.panierMoyen,
-      delta: calcDelta(kpiPeriodData.current.panierMoyen, kpiPeriodData.previous.panierMoyen),
-      icon: ShoppingBag,
-      borderColor: '#d97706',
-      format: formatCurrency,
     },
     {
       label: 'À relancer',
@@ -1224,15 +1224,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <button onClick={() => setActiveView('commercial')} style={{ ...navButtonStyle(activeView === 'commercial'), ...(isMobile ? { flex: 1 } : {}) }}>
+          <button type="button" style={{ ...navButtonStyle(true), ...(isMobile ? { flex: 1 } : {}) }}>
             📊 Suivi commercial
           </button>
 
-          <FeatureGate feature="calendar" requiredPlan="performance" className={isMobile ? 'flex-1' : ''}>
-            <button onClick={() => setActiveView('calendar')} style={{ ...navButtonStyle(activeView === 'calendar'), ...(isMobile ? { flex: 1 } : {}) }}>
-              Calendrier
-            </button>
-          </FeatureGate>
+          <button
+            type="button"
+            onClick={() => setCalendarModalOpen(true)}
+            style={{ ...navButtonStyle(false), ...(isMobile ? { flex: 1 } : {}) }}
+          >
+            Synchroniser mon agenda
+          </button>
 
           <button
             onClick={() => router.push('/onboarding')}
@@ -1296,14 +1298,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {/* KPIs */}
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: '16px' }}>
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: '16px' }}>
+            {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: '16px' }}>
-            {kpiCards.map((card) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: '16px' }}>
+            {kpiCards.slice(0, 4).map((card) => (
               <div
                 key={card.label}
                 className={`flex flex-col gap-2 rounded-2xl border px-[22px] py-5 min-h-[100px] ${card.alert ? 'bg-orange-600/[0.04] border-orange-600/30' : 'bg-zinc-900 border-zinc-800'}`}
@@ -1330,29 +1332,50 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         )}
       </div>
 
-      {!loading && hotLeads.length > 0 && (
-        <div className="mb-6 rounded-2xl border border-green-500/25 bg-green-500/[0.06] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500/15 text-green-400">
-                <Bell className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-green-400">Prospect chaud detecte</p>
-                <p className="mt-1 text-sm text-zinc-300">{getHotLeadMessage(hotLeads[0])}</p>
-              </div>
+      {!loading && (
+        <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-base font-bold text-white">Priorites du jour</p>
+              <p className="mt-1 text-sm text-zinc-400">Qui rappeler maintenant, sans disperser les signaux.</p>
             </div>
+
+            <div className="grid flex-1 grid-cols-2 gap-3 lg:max-w-3xl lg:grid-cols-4">
+              <PriorityMetric label="Opportunites prioritaires" value={topOpportunities.length} />
+              <PriorityMetric label="Relances a effectuer" value={relanceCount} />
+              <PriorityMetric label="Dossiers en risque" value={riskProjects.length} />
+              <PriorityMetric label="Prospects chauds" value={hotLeads.length} />
+            </div>
+
             <button
               onClick={() => {
-                setQuickFilter('hot');
+                setQuickFilter('priority');
                 setFilters(DEFAULT_FILTERS);
                 setSearchInput('');
               }}
-              className="rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
+              className="inline-flex items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400"
             >
-              Voir les prospects chauds
+              Voir les priorites
             </button>
           </div>
+        </div>
+      )}
+
+      {!loading && primaryHotLead && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Bell className="h-4 w-4 shrink-0 text-green-400" />
+            <p className="truncate text-sm text-zinc-200">
+              <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
+              {primaryHotLeadName} - {primaryHotLeadReason}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
+            className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm font-semibold text-zinc-200 hover:border-green-500/30"
+          >
+            Voir
+          </button>
         </div>
       )}
 
@@ -1562,15 +1585,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {/* Vue active */}
-      {activeView === 'calendar' ? (
-        <FeatureGate feature="calendar" requiredPlan="performance">
-          <div style={{ padding: '0 32px' }}>
-            <Calendar artisanId="" />
-          </div>
-        </FeatureGate>
-      ) : (
-        <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
+      <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {!loading && topOpportunities.length > 0 && (
             <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
@@ -2181,7 +2196,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <p className="text-sm text-zinc-400">
                   Filtre actif :{' '}
                   <span className="text-white font-medium">
-                    {quickFilter === 'today' ? 'Relances du jour' : 'Relances en retard'}
+                    {quickFilter === 'today'
+                      ? 'Relances du jour'
+                      : quickFilter === 'overdue'
+                        ? 'Relances en retard'
+                        : quickFilter === 'hot'
+                          ? 'Prospects chauds'
+                          : quickFilter === 'risk'
+                            ? 'Dossiers en risque'
+                            : 'Priorites du jour'}
                   </span>
                 </p>
 
@@ -2226,30 +2249,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <ProjectList projects={displayedProjects} router={router} />
             )}
           </div>
-        </div>
-      )}
-
-      <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-green-400">
-              <CalendarDays className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-bold text-white">Synchroniser mon agenda</p>
-              <p className="mt-1 text-sm text-zinc-400">
-                Google Calendar est prevu en V1. Outlook et Apple Calendar sont prepares pour la suite.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCalendarModalOpen(true)}
-            className="rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
-          >
-            Connecter Google Calendar
-          </button>
-        </div>
       </div>
 
       <div
@@ -2581,6 +2580,15 @@ function StatusBadge({ status }: { status?: string }) {
     >
       {status || 'Inconnu'}
     </span>
+  );
+}
+
+function PriorityMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+      <p className="text-2xl font-bold tracking-tight text-white">{value}</p>
+      <p className="mt-1 text-xs text-zinc-400">{label}</p>
+    </div>
   );
 }
 
