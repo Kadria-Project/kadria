@@ -58,6 +58,8 @@ import {
   type Task,
 } from '@/src/lib/commercial-actions';
 
+const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
+
 const ProspectsLeafletMap = dynamic(
   () => import('@/src/components/ProspectsLeafletMap'),
   {
@@ -75,6 +77,7 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
+type DashboardMode = 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-zinc-800 text-zinc-200' },
@@ -752,6 +755,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | null>(null);
+  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
@@ -1104,6 +1108,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     : primaryHotLead
       ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
       : '';
+  const showBusinessOverview = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showTasksOverview = dashboardMode === 'all' || dashboardMode === 'tasks';
+  const showCommercialWorkspace = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showClientsWorkspace = dashboardMode === 'clients';
+  const showCalendarWorkspace = dashboardMode === 'calendar';
 
 
   const kpiCards: {
@@ -1224,18 +1233,25 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <button type="button" style={{ ...navButtonStyle(true), ...(isMobile ? { flex: 1 } : {}) }}>
-            📊 Suivi commercial
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCalendarModalOpen(true)}
-            style={{ ...navButtonStyle(false), ...(isMobile ? { flex: 1 } : {}) }}
-          >
-            Synchroniser mon agenda
-          </button>
-
+          {[
+            { mode: 'all' as const, label: 'Vue complete' },
+            { mode: 'commercial' as const, label: 'Suivi commercial' },
+            { mode: 'calendar' as const, label: 'Calendrier' },
+            { mode: 'clients' as const, label: 'Mes clients' },
+            { mode: 'tasks' as const, label: 'Mes taches a faire' },
+          ].map((item) => (
+            <button
+              key={item.mode}
+              type="button"
+              onClick={() => {
+                setDashboardMode(item.mode);
+                setQuickFilter(null);
+              }}
+              style={{ ...navButtonStyle(dashboardMode === item.mode), ...(isMobile ? { flex: '1 1 140px' } : {}) }}
+            >
+              {item.label}
+            </button>
+          ))}
           <button
             onClick={() => router.push('/onboarding')}
             style={{
@@ -1268,6 +1284,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
 
       {/* Barre période */}
+      {showBusinessOverview && (
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <p className="text-sm text-zinc-400">Période analysée · {periodLabel}</p>
 
@@ -1294,8 +1311,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
         </FeatureGate>
       </div>
+      )}
 
       {/* KPIs */}
+      {showBusinessOverview && (
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: '16px' }}>
@@ -1331,8 +1350,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
         )}
       </div>
+      )}
 
-      {!loading && (
+      {showBusinessOverview && !loading && (
         <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -1361,7 +1381,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {!loading && primaryHotLead && (
+      {showBusinessOverview && !loading && primaryHotLead && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <Bell className="h-4 w-4 shrink-0 text-green-400" />
@@ -1379,7 +1399,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {!loading && (
+      {showTasksOverview && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 lg:col-span-2">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -1459,7 +1479,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* Sparkline CA potentiel */}
-      {!loading && (
+      {showBusinessOverview && !loading && (
         <FeatureGate feature="kpiTrends" requiredPlan="performance">
         <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-5 mb-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1489,7 +1509,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* Alertes */}
-      {!loading && (overdueCount > 0 || todayCount > 0) && (
+      {showBusinessOverview && !loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {overdueCount > 0 && (
             <div
@@ -1585,9 +1605,36 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
+      {showCalendarWorkspace && (
+        <FeatureGate feature="calendar" requiredPlan="performance">
+          <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-base font-bold text-white">Calendrier Kadria</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Utilisez le calendrier integre de Kadria. La synchronisation Google Calendar reste optionnelle.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCalendarModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Synchroniser mon agenda
+              </button>
+            </div>
+
+            <Calendar artisanId="" />
+          </div>
+        </FeatureGate>
+      )}
+
+      {(showCommercialWorkspace || showClientsWorkspace) && (
       <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
-          {!loading && topOpportunities.length > 0 && (
+          {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (
             <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
             <>
               <div className="my-2 border-t border-zinc-800" />
@@ -1686,6 +1733,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </FeatureGate>
           )}
 
+          {showCommercialWorkspace && (
+          <>
           {/* ZONE 2 — Toggles */}
           <div>
             <div className="relative my-2 border-t border-zinc-800">
@@ -1865,15 +1914,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
           </div>
 
+          </>
+          )}
+
           {/* ZONE 4 — Liste projets, pleine largeur */}
           <div className="space-y-4 w-full">
+            {showClientsWorkspace && (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+                <p className="text-base font-bold text-white">Mes clients</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Base clients avec les informations utiles pour rappeler, suivre et retrouver un dossier.
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <div className="relative min-w-[260px] flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
 
                 <Input
                   className="pl-9 rounded-[10px] py-2.5 focus:border-green-500"
-                  placeholder="Nom, projet, ville, référence..."
+                  placeholder={showClientsWorkspace ? 'Nom, e-mail, telephone, ville...' : 'Nom, projet, ville, reference...'}
                   value={searchInput}
                   onChange={(e) => {
                     setSearchInput(e.target.value);
@@ -1882,6 +1943,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 />
               </div>
 
+              {showCommercialWorkspace && (
               <button
                 type="button"
                 onClick={() => {
@@ -1898,7 +1960,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <Bell className="h-4 w-4" />
                 Prospects chauds
               </button>
+              )}
 
+              {showCommercialWorkspace && (
               <button
                 type="button"
                 onClick={() => {
@@ -1915,6 +1979,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <AlertTriangle className="h-4 w-4" />
                 En risque
               </button>
+              )}
 
               <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-[180px]">
@@ -2076,6 +2141,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   : `${displayedProjects.length} dossier(s) trouvé(s)`}
               </p>
 
+              {showCommercialWorkspace && (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -2189,6 +2255,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   )}
                 </div>
               </div>
+              )}
             </div>
 
             {quickFilter && (
@@ -2243,6 +2310,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </button>
                 )}
               </div>
+            ) : showClientsWorkspace ? (
+              <ClientList projects={displayedProjects} router={router} />
             ) : viewMode === 'kanban' ? (
               <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
             ) : (
@@ -2250,6 +2319,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
           </div>
       </div>
+      )}
 
       <div
         className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border px-5 py-3.5 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
@@ -2560,6 +2630,79 @@ export function FilterPill({ label, onRemove }: { label: string; onRemove: () =>
         <X className="w-3 h-3" />
       </button>
     </span>
+  );
+}
+
+function ClientList({
+  projects,
+  router,
+}: {
+  projects: Project[];
+  router: ReturnType<typeof useRouter>;
+}) {
+  return (
+    <div>
+      <div
+        className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-zinc-500 uppercase tracking-widest"
+        style={{ fontSize: '11px', padding: '10px 16px' }}
+      >
+        <span className="col-span-3">Client</span>
+        <span className="col-span-3">Contact</span>
+        <span className="col-span-2">Ville</span>
+        <span className="col-span-2">Dernier projet</span>
+        <span className="col-span-1">Statut</span>
+        <span className="col-span-1"></span>
+      </div>
+
+      {projects.map((p) => (
+        <div
+          key={p.id}
+          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
+        >
+          <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
+            <span className="col-span-3 flex items-center gap-2 font-medium text-white truncate">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              </span>
+              {p.clientFirstName} {p.clientName}
+            </span>
+
+            <span className="col-span-3 min-w-0 text-zinc-400">
+              <span className="block truncate">{p.clientEmail || 'Email non renseigne'}</span>
+              <span className="block truncate text-xs text-zinc-500">{p.clientPhone || 'Telephone non renseigne'}</span>
+            </span>
+
+            <span className="col-span-2 text-zinc-400 truncate">{p.city || 'Ville non renseignee'}</span>
+            <span className="col-span-2 text-zinc-400 truncate">{p.projectType || p.trade || 'Projet'}</span>
+            <span className="col-span-1"><StatusBadge status={p.status} /></span>
+            <span className="col-span-1 text-right"><ChevronRight className="w-4 h-4 text-zinc-400 inline" /></span>
+          </div>
+
+          <div className="md:hidden flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+              {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+            </span>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm text-white">
+                  {p.clientFirstName} {p.clientName}
+                </span>
+                <StatusBadge status={p.status} />
+              </div>
+
+              <div className="mt-1 text-xs text-zinc-400">
+                <p className="truncate">{p.clientEmail || p.clientPhone || 'Contact non renseigne'}</p>
+                <p className="truncate">{p.city || 'Ville non renseignee'} - {p.projectType || p.trade || 'Projet'}</p>
+              </div>
+            </div>
+
+            <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
