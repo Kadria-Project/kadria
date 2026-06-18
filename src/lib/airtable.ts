@@ -308,6 +308,9 @@ export interface DevisRecord {
   accepted: boolean
   acceptedAt: string | null
   acceptedIp: string | null
+  quoteSentAt: string
+  lastFollowUpAt: string | null
+  followUpCount: number
 }
 
 function mapDevisRecord(record: { id: string; fields: Record<string, unknown> }): DevisRecord {
@@ -345,6 +348,9 @@ function mapDevisRecord(record: { id: string; fields: Record<string, unknown> })
     accepted: fields['Accepted'] === true,
     acceptedAt: fields['Accepted_at'] as string || null,
     acceptedIp: fields['Accepted_ip'] as string || null,
+    quoteSentAt: fields['Quote Sent At'] as string || fields['Date Emission'] as string || '',
+    lastFollowUpAt: fields['Last Follow Up At'] as string || null,
+    followUpCount: Number(fields['Follow Up Count']) || 0,
   }
 }
 

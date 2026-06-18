@@ -350,27 +350,29 @@ export default function DemoDashboardPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
-            {/* Top opportunités */}
+            {/* Opportunites prioritaires */}
             <div className="my-2 border-t border-zinc-800" />
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-base font-bold text-white">Top opportunités Kadria</p>
+                <p className="text-base font-bold text-white">Opportunites prioritaires</p>
                 <p className="mt-1 text-xs text-zinc-400">
-                  Classées par score IA — budget, urgence, complétude du dossier et délai de réponse
+                  Les dossiers a rappeler en premier selon completude, budget, urgence, delai, reactivite et distance.
                 </p>
               </div>
 
               <span className="rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
-                🤖 Score IA
+                Score IA
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {[
-                { id: 'demo-1', rang: 1, score: 247, nom: 'Laurent Bertrand', metier: 'Plomberie', ville: 'Lyon 3e', statut: 'Devis envoyé', budget: '3 000 – 5 000 €' },
-                { id: 'demo-2', rang: 2, score: 231, nom: 'Sophie Mercier', metier: 'Rénovation salle de bain', ville: 'Villeurbanne', statut: 'À rappeler', budget: '8 000 – 12 000 €' },
-                { id: 'demo-3', rang: 3, score: 218, nom: 'Marc Fontaine', metier: 'Dépannage urgent', ville: 'Lyon 6e', statut: 'Qualifié', budget: '500 – 1 000 €' },
+                { id: 'demo-1', rang: 1, score: 92, badge: 'Priorite elevee', nom: 'Laurent Bertrand', metier: 'Remplacement chaudiere', ville: 'Lyon 3e', budget: '3 000 - 5 000 EUR' },
+                { id: 'demo-2', rang: 2, score: 86, badge: 'Priorite elevee', nom: 'Sophie Mercier', metier: 'Renovation salle de bain', ville: 'Villeurbanne', budget: '8 000 - 12 000 EUR' },
+                { id: 'demo-3', rang: 3, score: 78, badge: 'A suivre', nom: 'Marc Fontaine', metier: 'Depannage urgent', ville: 'Lyon 6e', budget: '500 - 1 000 EUR' },
+                { id: 'demo-4', rang: 4, score: 67, badge: 'A suivre', nom: 'Claire Martin', metier: 'Peinture interieure', ville: 'Bron', budget: '2 000 - 4 000 EUR' },
+                { id: 'demo-5', rang: 5, score: 44, badge: 'Faible potentiel', nom: 'Nicolas Faure', metier: 'Terrasse bois', ville: 'Ecully', budget: 'Budget a preciser' },
               ].map((opp, index) => (
                 <button
                   key={opp.id}
@@ -386,21 +388,22 @@ export default function DemoDashboardPage() {
                       #{opp.rang}
                     </span>
 
-                    <span className="text-green-400 font-bold text-sm">{opp.score}</span>
+                    <span className="text-green-400 font-bold text-sm">{opp.score}/100</span>
                   </div>
 
                   <div>
                     <p className="font-bold text-white truncate">{opp.nom}</p>
-                    <p className="text-sm text-zinc-400 truncate">{opp.metier} · {opp.ville}</p>
+                    <p className="text-sm text-zinc-400 truncate">{opp.metier} - {opp.ville}</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={opp.statut} />
+                  <div className="flex flex-col gap-2">
+                    <span className="rounded-full border border-green-500/25 bg-green-500/[0.08] px-2 py-0.5 text-xs font-semibold text-green-400">{opp.badge}</span>
                     <span className="text-zinc-400 text-xs">{opp.budget}</span>
                   </div>
                 </button>
               ))}
             </div>
+
 
             {/* Toggles */}
             <div>

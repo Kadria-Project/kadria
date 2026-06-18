@@ -44,6 +44,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { calculateOpportunityScore, getOpportunityBadge } from '@/src/lib/commercial-actions';
 
 const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
@@ -132,7 +133,7 @@ function budgetScore(budget?: string): number {
 }
 
 export function opportunityScore(project: Project): number {
-  return (project.completenessScore || 0) * 2 + budgetScore(project.budget);
+  return calculateOpportunityScore(project);
 }
 
 function parseBudget(budgetStr: string): number {
@@ -907,7 +908,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const topOpportunities = [...allProjects]
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
     .sort((a, b) => opportunityScore(b) - opportunityScore(a))
-    .slice(0, 3);
+    .slice(0, 5);
 
   const filteredProjects = useMemo(
     () => filterProjects(allProjects, filters),
@@ -1393,9 +1394,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-base font-bold text-white">Top opportunités Kadria</p>
+                  <p className="text-base font-bold text-white">Opportunites prioritaires</p>
                   <p className="mt-1 text-xs text-zinc-400">
-                    Classées par score IA — budget, urgence, complétude du dossier et délai de réponse
+                    Les dossiers a rappeler en premier selon completude, budget, urgence, delai, reactivite et distance.
                   </p>
                 </div>
 
@@ -1404,7 +1405,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {canAccessFeature('topAiOpportunities') ? topOpportunities.map((project, index) => (
                   <button
                     key={project.id}
@@ -1421,7 +1422,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       </span>
 
                       <span className="text-green-400 font-bold text-sm">
-                        {opportunityScore(project)}
+                        {opportunityScore(project)}/100
                       </span>
                     </div>
 
@@ -1431,17 +1432,29 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       </p>
 
                       <p className="text-sm text-zinc-400 truncate">
-                        {project.trade || 'Projet'} · {project.city || 'Ville non renseignée'}
+                        {project.projectType || project.trade || 'Projet'} - {project.city || 'Ville non renseignee'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={project.status} />
+                    <div className="flex flex-col gap-2">
+                      {(() => {
+                        const badge = getOpportunityBadge(opportunityScore(project));
+                        return (
+                          <span
+                            className="rounded-full border px-2.5 py-1 text-xs font-semibold"
+                            style={{ color: badge.color, background: badge.bg, borderColor: badge.border }}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
 
                       <span className="text-zinc-400 text-xs">
-                        {project.budget || 'Budget non renseigné'}
+                        {project.budget || 'Budget non renseigne'}
                       </span>
                     </div>
+
+                    <span className="mt-auto text-sm font-semibold text-green-400">Voir le dossier</span>
                   </button>
                 )) : Array.from({ length: 3 }).map((_, index) => (
                   <button

@@ -160,6 +160,32 @@ export default function DemoProjectDetailPage() {
           </div>
         </div>
 
+        <div style={{
+          background: 'rgba(34,197,94,0.06)',
+          border: '1px solid rgba(34,197,94,0.22)',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}>
+          <div>
+            <p style={{ color: '#22c55e', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+              Moment idéal de relance
+            </p>
+            <p style={{ color: 'white', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
+              Aujourd’hui entre 12 h et 14 h
+            </p>
+            <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>Ou entre 17 h et 20 h</p>
+          </div>
+          <div style={{ color: '#a1a1aa', fontSize: '12px', minWidth: '220px' }}>
+            <p style={{ margin: '0 0 4px' }}>Dernier échange : <span style={{ color: '#e4e4e7' }}>Hier</span></p>
+            <p style={{ margin: 0 }}>Sans interaction : <span style={{ color: '#e4e4e7' }}>1 jour</span></p>
+          </div>
+        </div>
+
         {/* Suivi commercial */}
         <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', overflow: 'hidden', marginBottom: '16px' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #27272a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -260,6 +286,23 @@ export default function DemoProjectDetailPage() {
                 }}
               >
                 📄 Générer un devis
+              </button>
+              <button
+                onClick={showToast}
+                style={{
+                  width: '100%',
+                  marginTop: '8px',
+                  background: '#22c55e',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px 20px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: '#09090b',
+                  cursor: 'pointer',
+                }}
+              >
+                Relancer le devis
               </button>
             </div>
 

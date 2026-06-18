@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: '#a1a1aa', border: '#3f3f46' },
@@ -45,6 +46,9 @@ interface DevisListItem {
   last_opened_date: string | null;
   accepted: boolean;
   accepted_at: string | null;
+  quote_sent_at?: string;
+  last_follow_up_at?: string | null;
+  follow_up_count?: number;
 }
 
 function formatDevisDate(value: string) {
@@ -121,6 +125,7 @@ function ProjectDetail() {
   } | null>(null);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
+  const [followingUpDevisId, setFollowingUpDevisId] = useState<string | null>(null);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -194,6 +199,44 @@ function ProjectDetail() {
       })
       .catch(() => {});
   }, [id]);
+
+  async function followUpQuote(devisId: string) {
+    if (!canQuote) {
+      openUpgradeModal('quoteGeneration');
+      return;
+    }
+
+    setFollowingUpDevisId(devisId);
+    try {
+      const res = await fetch(`/api/devis/${devisId}/follow-up`, { method: 'POST' });
+      const data = await res.json();
+
+      if (res.status === 403) {
+        openUpgradeModal('quoteGeneration');
+        return;
+      }
+      if (!data.success) {
+        throw new Error(data.error || 'Erreur lors de la relance');
+      }
+
+      await loadActivities();
+      setDevisList((prev) =>
+        prev.map((devis) =>
+          devis.id === devisId
+            ? {
+                ...devis,
+                last_follow_up_at: data.sent_at,
+                follow_up_count: (devis.follow_up_count || 0) + 1,
+              }
+            : devis
+        )
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Erreur lors de la relance');
+    } finally {
+      setFollowingUpDevisId(null);
+    }
+  }
 
   const legalComplete = !!(
     artisanConfig?.siret &&
@@ -335,6 +378,7 @@ function ProjectDetail() {
   const recommendation = getRecommendation(project);
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
+  const followUpTime = getBestFollowUpTime(project);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -555,6 +599,56 @@ function ProjectDetail() {
             >
               ✏️ Modifier
             </button>
+          </div>
+        </div>
+
+        <div style={{
+          background: 'rgba(34,197,94,0.06)',
+          border: '1px solid rgba(34,197,94,0.22)',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}>
+          <div>
+            <p style={{
+              color: '#22c55e',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              margin: '0 0 8px',
+            }}>
+              Moment idéal de relance
+            </p>
+            <p style={{ color: 'white', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
+              {followUpTime.primarySlot}
+            </p>
+            <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+              {followUpTime.secondarySlot}
+            </p>
+          </div>
+
+          <div style={{ color: '#a1a1aa', fontSize: '12px', minWidth: '220px' }}>
+            <p style={{ margin: '0 0 4px' }}>
+              Dernier échange :{' '}
+              <span style={{ color: '#e4e4e7' }}>
+                {followUpTime.lastInteractionDate
+                  ? new Date(followUpTime.lastInteractionDate).toLocaleDateString('fr-FR')
+                  : 'Non renseigné'}
+              </span>
+            </p>
+            <p style={{ margin: 0 }}>
+              Sans interaction :{' '}
+              <span style={{ color: '#e4e4e7' }}>
+                {followUpTime.daysWithoutInteraction === null
+                  ? 'Non renseigné'
+                  : `${followUpTime.daysWithoutInteraction} jour(s)`}
+              </span>
+            </p>
           </div>
         </div>
 
@@ -840,7 +934,7 @@ function ProjectDetail() {
                               ✓ Accepté le {formatDevisDate(devis.accepted_at || '')}
                             </span>
                           )}
-                          {devis.sent || devis.statut === 'Envoyé' ? (
+                          {devis.sent || devis.statut?.startsWith('Envoy') ? (
                             <span style={{
                               background: 'rgba(34,197,94,0.1)',
                               color: '#22c55e',
@@ -869,39 +963,67 @@ function ProjectDetail() {
                         </div>
                       </div>
 
-                      {(devis.sent || devis.statut === 'Envoyé') && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a' }}>
-                          {devis.opens_count > 0 ? (
-                            <>
-                              <Eye size={12} />
-                              <span>Ouvert {devis.opens_count} fois · Dernière ouverture : {formatDevisDate(devis.last_opened_date || '')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={12} />
-                              <span>Pas encore ouvert</span>
-                            </>
+                          {(devis.sent || devis.statut?.startsWith('Envoy')) && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                followUpQuote(devis.id);
+                              }}
+                              disabled={followingUpDevisId === devis.id}
+                              style={{
+                                alignSelf: 'flex-start',
+                                background: '#22c55e',
+                                border: 'none',
+                                color: '#09090b',
+                                borderRadius: '9px',
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                fontWeight: 700,
+                                cursor: followingUpDevisId === devis.id ? 'default' : 'pointer',
+                                opacity: followingUpDevisId === devis.id ? 0.7 : 1,
+                              }}
+                            >
+                              {followingUpDevisId === devis.id ? 'Relance...' : 'Relancer le devis'}
+                            </button>
+                          )}
+
+                          {(devis.sent || devis.statut?.startsWith('Envoy')) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a' }}>
+                              {devis.opens_count > 0 ? (
+                                <>
+                                  <Eye size={12} />
+                                  <span>Ouvert {devis.opens_count} fois - Derniere ouverture : {formatDevisDate(devis.last_opened_date || '')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye size={12} />
+                                  <span>Pas encore ouvert</span>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div style={{
-              borderTop: '1px solid #27272a',
-              marginTop: '12px',
-              paddingTop: '12px',
-            }}>
-              <p style={{
-                color: '#71717a', fontSize: '11px', fontWeight: 600,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-                margin: '0 0 8px',
-              }}>
-                Clôture du dossier
-              </p>
+                <div style={{
+                  borderTop: '1px solid #27272a',
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                }}>
+                  <p style={{
+                    color: '#71717a',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    margin: '0 0 8px',
+                  }}>
+                    Cloture du dossier
+                  </p>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => updateStatus('Gagné')}
