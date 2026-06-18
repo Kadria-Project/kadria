@@ -1237,7 +1237,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', padding: '24px 32px 40px' }}>
+    <div style={{ minHeight: '100vh', background: '#09090b', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
       {/* Header */}
       <div
         style={{
@@ -1265,7 +1265,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : 'auto' }}>
           {[
             { mode: 'all' as const, label: 'Vue complete' },
             { mode: 'commercial' as const, label: 'Suivi commercial' },
@@ -1318,19 +1318,19 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {/* Barre période */}
       {showBusinessOverview && (
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-zinc-400">Période analysée · {periodLabel}</p>
 
         <FeatureGate feature="kpiTrends" requiredPlan="performance">
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-row">
           {KPI_PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setPeriod(opt.value)}
               className={
                 opt.value === kpiPeriod
-                  ? 'rounded-full border px-4 py-1.5 text-sm font-semibold cursor-pointer'
-                  : 'rounded-full border px-4 py-1.5 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-white'
+                  ? 'rounded-full border px-4 py-2 text-sm font-semibold cursor-pointer'
+                  : 'rounded-full border px-4 py-2 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-white'
               }
               style={
                 opt.value === kpiPeriod
@@ -1350,17 +1350,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {showBusinessOverview && (
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: '16px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: '16px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
             {kpiCards.slice(0, 4).map((card) => (
               <div
                 key={card.label}
-                className={`flex flex-col gap-2 rounded-2xl border px-[22px] py-5 min-h-[100px] ${card.alert ? 'bg-orange-600/[0.04] border-orange-600/30' : 'bg-zinc-900 border-zinc-800'}`}
+                className={`flex min-h-[100px] flex-col gap-2 rounded-2xl border px-4 py-4 sm:px-[22px] sm:py-5 ${card.alert ? 'bg-orange-600/[0.04] border-orange-600/30' : 'bg-zinc-900 border-zinc-800'}`}
                 style={{ borderTopWidth: '2px', borderTopColor: card.borderColor }}
               >
                 <div className="flex items-center justify-between">
@@ -1371,7 +1371,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </div>
                 </div>
 
-                <span className="text-[28px] font-bold tracking-tight text-white">
+                  <span className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">
                   <AnimatedKpiValue value={card.value} format={card.format} />
                 </span>
 
@@ -1386,14 +1386,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {showBusinessOverview && !loading && (
-        <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+        <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-base font-bold text-white">Priorites du jour</p>
               <p className="mt-1 text-sm text-zinc-400">Qui rappeler maintenant, sans disperser les signaux.</p>
             </div>
 
-            <div className="grid flex-1 grid-cols-2 gap-3 lg:max-w-3xl lg:grid-cols-4">
+            <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
               <PriorityMetric label="Opportunites prioritaires" value={topOpportunities.length} />
               <PriorityMetric label="Relances a effectuer" value={relanceCount} />
               <PriorityMetric label="Dossiers en risque" value={riskProjects.length} />
@@ -1406,7 +1406,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 setFilters(DEFAULT_FILTERS);
                 setSearchInput('');
               }}
-              className="inline-flex items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
             >
               Voir les priorites
             </button>
@@ -1415,7 +1415,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {showBusinessOverview && !loading && primaryHotLead && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3">
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Bell className="h-4 w-4 shrink-0 text-green-400" />
             <p className="truncate text-sm text-zinc-200">
@@ -1425,7 +1425,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
           <button
             onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
-            className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm font-semibold text-zinc-200 hover:border-green-500/30"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-green-500/30 sm:w-auto"
           >
             Voir
           </button>
@@ -1435,7 +1435,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {showTasksOverview && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 lg:col-span-2">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-bold text-white">Mes actions du jour</p>
                 <p className="text-sm text-zinc-400">Taches triees par priorite puis echeance.</p>
@@ -1454,7 +1454,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <button
                     key={task.id}
                     onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-left hover:border-green-500/25"
+                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
                       <p className="text-sm font-semibold text-white">{task.title}</p>
@@ -1514,8 +1514,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {/* Sparkline CA potentiel */}
       {showBusinessOverview && !loading && (
         <FeatureGate feature="kpiTrends" requiredPlan="performance">
-        <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-5 mb-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="mb-6 w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="font-bold text-white">Évolution du CA potentiel</p>
               <p className="text-sm text-zinc-400">
@@ -1529,13 +1529,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </p>
             </div>
 
-            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-sm text-green-500">
+            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-500 sm:text-sm">
               {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
             </span>
           </div>
 
           <div className="mt-3">
-            <Sparkline data={kpiPeriodData.sparkline} height={80} />
+            <Sparkline data={kpiPeriodData.sparkline} height={isMobile ? 56 : 80} />
           </div>
         </div>
         </FeatureGate>
@@ -1548,7 +1548,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div
               style={{
                 flex: 1,
-                minWidth: '280px',
+                minWidth: isMobile ? '100%' : '280px',
                 background: 'rgba(239,68,68,0.08)',
                 border: '1px solid rgba(239,68,68,0.25)',
                 borderRadius: '12px',
@@ -1594,7 +1594,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div
               style={{
                 flex: 1,
-                minWidth: '280px',
+                minWidth: isMobile ? '100%' : '280px',
                 background: 'rgba(251,191,36,0.08)',
                 border: '1px solid rgba(251,191,36,0.25)',
                 borderRadius: '12px',
@@ -1672,25 +1672,25 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <>
               <div className="my-2 border-t border-zinc-800" />
 
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-base font-bold text-white">Opportunites prioritaires</p>
                   <p className="mt-1 text-xs text-zinc-400">
                     Les dossiers a rappeler en premier selon completude, budget, urgence, delai, reactivite et distance.
                   </p>
                 </div>
 
-                <span className="rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
+                <span className="inline-flex w-fit rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
                   🤖 Score IA
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {canAccessFeature('topAiOpportunities') ? topOpportunities.map((project, index) => (
                   <button
                     key={project.id}
                     onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-                    className={`rounded-2xl border p-5 flex flex-col gap-3 text-left transition-transform duration-200 hover:-translate-y-0.5 ${
+                      className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
                       index === 0
                         ? 'border-green-500/25 bg-green-500/[0.02]'
                         : 'border-zinc-800 bg-zinc-900'
@@ -1776,11 +1776,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="contents">
               <button
                 onClick={() => togglePanel('pipeline')}
-                className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
                   openPanel === 'pipeline'
                     ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
                     : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
@@ -1817,7 +1817,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <div className="contents">
               <button
                 onClick={() => togglePanel('chantiers')}
-                className={`flex h-20 items-center justify-between gap-3 rounded-2xl border-2 px-5 transition-colors duration-200 ${
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
                   openPanel === 'chantiers'
                     ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
                     : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
@@ -1862,7 +1862,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             }}
           >
             {openPanel === 'pipeline' && !loading && (
-              <div className="p-6">
+               <div className="p-4 sm:p-6">
                 <h3 className="text-white font-semibold mb-3">Pipeline</h3>
 
                 <div>
@@ -1934,10 +1934,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             }}
           >
             {openPanel === 'chantiers' && !loading && (
-              <div className="p-6">
+               <div className="p-4 sm:p-6">
                 <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
 
-                <div style={{ height: '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
+                 <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
                   <ProspectsLeafletMap
                     projects={sortedProjects.slice(0, 8)}
                     onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
@@ -1961,8 +1961,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <div className="relative min-w-[260px] flex-1">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <div className="relative w-full sm:min-w-[260px] sm:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
 
                 <Input
@@ -1984,7 +1984,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   setFilters(DEFAULT_FILTERS);
                   setSearchInput('');
                 }}
-                className={`inline-flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold ${
+                className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold sm:w-auto ${
                   quickFilter === 'hot'
                     ? 'border-green-500/40 bg-green-500/[0.08] text-green-400'
                     : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-green-500/25'
@@ -2003,7 +2003,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   setFilters(DEFAULT_FILTERS);
                   setSearchInput('');
                 }}
-                className={`inline-flex items-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold ${
+                className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold sm:w-auto ${
                   quickFilter === 'risk'
                     ? 'border-red-500/40 bg-red-500/[0.08] text-red-300'
                     : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-red-500/25'
@@ -2015,7 +2015,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               )}
 
               <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
 
@@ -2031,7 +2031,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </Select>
 
               <Select value={filters.metier} onValueChange={(v) => updateFilter('metier', v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Tous les métiers" />
                 </SelectTrigger>
 
@@ -2048,7 +2048,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.budget} onValueChange={(v) => updateFilter('budget', v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Tous les budgets" />
                 </SelectTrigger>
 
@@ -2066,7 +2066,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.score} onValueChange={(v) => updateFilter('score', v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Tous les scores" />
                 </SelectTrigger>
 
@@ -2084,7 +2084,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.periode} onValueChange={(v) => updateFilter('periode', v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Toutes les dates" />
                 </SelectTrigger>
 
@@ -2102,7 +2102,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <FeatureGate feature="advancedFilters" requiredPlan="performance">
               <Select value={filters.source} onValueChange={(v) => updateFilter('source', v === 'all' ? '' : v)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Toutes les sources" />
                 </SelectTrigger>
 
@@ -2122,7 +2122,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="rounded-lg border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-400 transition-colors duration-150 hover:border-red-600 hover:text-red-600"
+                    className="min-h-11 w-full rounded-lg border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-400 transition-colors duration-150 hover:border-red-600 hover:text-red-600 sm:w-auto"
                 >
                   ✕ Réinitialiser
                 </button>
@@ -2167,7 +2167,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-3">
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-zinc-400">
                 {hasActiveFilters
                   ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
@@ -2175,11 +2175,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </p>
 
               {showCommercialWorkspace && (
-              <div className="flex items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setView('list')}
-                  className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
+                    className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm transition-colors duration-150 sm:flex-none ${
                     viewMode === 'list'
                       ? 'bg-green-500 font-semibold text-zinc-950'
                       : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
@@ -2192,7 +2192,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <button
                   type="button"
                   onClick={() => setView('kanban')}
-                  className={`rounded-lg px-4 py-2 text-sm transition-colors duration-150 ${
+                    className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm transition-colors duration-150 sm:flex-none ${
                     viewMode === 'kanban'
                       ? 'bg-green-500 font-semibold text-zinc-950'
                       : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
@@ -2202,18 +2202,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 </button>
                 </FeatureGate>
 
-                <div className="relative" ref={exportMenuRef}>
+                <div className="relative w-full sm:w-auto" ref={exportMenuRef}>
                   <button
                     type="button"
                     onClick={() => setExportMenuOpen((v) => !v)}
-                    className="flex items-center gap-2 rounded-[10px] border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors duration-150 hover:border-green-500/30"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors duration-150 hover:border-green-500/30 sm:w-auto sm:justify-start"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Exporter
                   </button>
 
                   {exportMenuOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+                    <div className="absolute left-0 right-0 z-50 mt-2 rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)] sm:left-auto sm:right-0 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
                       <button
                         type="button"
                         onClick={handleExportCSV}
@@ -2292,7 +2292,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             {quickFilter && (
-              <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+              <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-zinc-400">
                   Filtre actif :{' '}
                   <span className="text-white font-medium">
@@ -2308,7 +2308,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </span>
                 </p>
 
-                <Button variant="ghost" size="sm" onClick={() => setQuickFilter(null)}>
+                  <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setQuickFilter(null)}>
                   Afficher tous les dossiers
                 </Button>
               </div>
@@ -2321,7 +2321,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 ))}
               </div>
             ) : displayedProjects.length === 0 ? (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-16 text-center">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center sm:p-16">
                 <SearchX className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
                 <p className="font-bold text-white">Aucun dossier trouvé</p>
 
@@ -2355,7 +2355,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       <div
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border px-5 py-3.5 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
+        className={`fixed bottom-4 left-4 right-4 z-50 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 sm:bottom-6 sm:left-auto sm:right-6 sm:px-5 sm:py-3.5 ${
           toast.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
         } ${toast.error ? 'border-red-600 bg-zinc-900 text-red-400' : 'border-green-500/30 bg-zinc-900 text-zinc-100'}`}
       >
@@ -2517,8 +2517,9 @@ export function KanbanBoard({
   const [overColumn, setOverColumn] = useState<string | null>(null);
 
   return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3 w-full pb-2 [scroll-snap-type:x_mandatory] md:[scroll-snap-type:none]">
+    <div className="w-full overflow-hidden">
+      <div className="-mx-1 overflow-x-auto pb-2">
+        <div className="flex min-w-max gap-3 px-1 [scroll-snap-type:x_mandatory] md:grid md:min-w-0 md:grid-cols-3 md:[scroll-snap-type:none] xl:grid-cols-5">
         {KANBAN_GROUPED_COLUMNS.map((col) => {
           const colProjects = sortKanbanProjects(
             projects.filter((p) => col.statuses.includes(p.status || '')),
@@ -2547,7 +2548,7 @@ export function KanbanBoard({
                 setOverColumn(null);
               }}
               style={{ borderTop: `3px solid ${col.color}` }}
-              className={`flex min-w-0 flex-col rounded-2xl border bg-zinc-900 transition-colors duration-200 [scroll-snap-align:start] ${
+              className={`flex min-w-[280px] flex-col rounded-2xl border bg-zinc-900 transition-colors duration-200 [scroll-snap-align:start] sm:min-w-[320px] md:min-w-0 ${
                 isOver ? 'border-green-500 bg-green-500/[0.04]' : 'border-zinc-800'
               }`}
             >
@@ -2591,6 +2592,7 @@ export function KanbanBoard({
             </div>
           );
         })}
+        </div>
       </div>
 
       <p className="mt-2 text-center text-xs text-zinc-500 md:hidden">← Faites défiler →</p>

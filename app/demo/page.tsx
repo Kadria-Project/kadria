@@ -84,22 +84,22 @@ export default function DemoPage() {
   useScrollReveal();
 
   return (
-    <div className="relative min-h-screen bg-zinc-950 text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-zinc-950 text-white">
       <style>{ANIMATION_STYLES}</style>
 
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,rgba(34,197,94,0.05)_0%,transparent_60%)]" />
 
       <DarkNav />
 
-      <main className="relative z-10 mx-auto max-w-[1440px] px-6 pb-20 pt-[100px] xl:px-8">
-        <section className="kr-reveal kr-visible pb-12 text-center">
+      <main className="relative z-10 mx-auto max-w-[1440px] px-4 pb-16 pt-[92px] sm:px-6 sm:pb-20 sm:pt-[100px] xl:px-8">
+        <section className="kr-reveal kr-visible pb-10 text-center sm:pb-12">
           <span className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
             Demo guidee
           </span>
-          <h1 className="mx-auto mt-5 max-w-4xl text-4xl font-bold leading-[0.95] tracking-tight md:text-6xl">
+          <h1 className="mx-auto mt-5 max-w-4xl text-3xl font-bold leading-[0.95] tracking-tight sm:text-4xl md:text-6xl">
             Testez Kadria comme un prospect
           </h1>
-          <p className="mx-auto mt-5 max-w-3xl text-lg leading-relaxed text-zinc-400">
+          <p className="mx-auto mt-5 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-lg">
             En moins de 90 secondes, suivez le parcours complet d&apos;une demande :
             conversation, qualification, dossier, dashboard et devis.
           </p>
@@ -134,10 +134,10 @@ export default function DemoPage() {
           </div>
         </section>
 
-        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-[1.05fr_1fr] xl:gap-8">
-          <div className="kr-reveal flex min-h-[820px] flex-col overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/80">
-            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800/40 px-5 py-4">
-              <div>
+        <section className="grid gap-6 border-t border-zinc-800 py-10 sm:py-12 lg:grid-cols-[1.05fr_1fr] xl:gap-8">
+          <div id="demo-chat" className="kr-reveal flex min-h-[700px] flex-col overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/80 sm:min-h-[820px]">
+            <div className="flex flex-col gap-3 border-b border-zinc-800 bg-zinc-800/40 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
                   Etape 1
                 </p>
@@ -145,37 +145,43 @@ export default function DemoPage() {
                   Testez le vrai assistant cote prospect
                 </p>
               </div>
-              <span className="rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
+              <span className="inline-flex w-fit rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
                 Assistant reel
               </span>
             </div>
-            <div className="border-b border-zinc-800 bg-zinc-800/30 px-5 py-3">
+            <div className="border-b border-zinc-800 bg-zinc-800/30 px-4 py-3 sm:px-5">
               <p className="text-sm font-medium text-white">
                 Ici, vous pouvez vraiment parler avec l&apos;assistant comme un prospect ou un client.
               </p>
               <p className="mt-1 text-sm text-zinc-400">
                 Ce n&apos;est pas une capture: testez les questions, les reponses et le parcours de qualification en direct.
               </p>
+              <a
+                href="#demo-chat"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-green-500/30 bg-green-500/[0.08] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500/[0.12] sm:w-auto"
+              >
+                Tester en direct
+              </a>
             </div>
-            <div className="flex flex-1 p-5">
-              <div className="min-h-[620px] w-full flex-1">
+            <div className="flex flex-1 p-3 sm:p-5">
+              <div className="min-h-[540px] w-full flex-1 sm:min-h-[620px]">
                 <ChatWidgetInline artisanId="Artisan_demo" fitParentHeight />
               </div>
             </div>
           </div>
 
           <div className="kr-reveal space-y-6">
-            <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6 lg:min-h-[820px]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
+            <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-4 sm:p-6 lg:min-h-[820px]">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
                     Etape 2
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">
+                  <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
                     Le dossier se cree automatiquement
                   </h2>
                 </div>
-                <span className="rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
+                <span className="inline-flex w-fit rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-500">
                   Qualifie
                 </span>
               </div>
@@ -241,7 +247,7 @@ export default function DemoPage() {
           </div>
         </section>
 
-        <section className="kr-reveal border-t border-zinc-800 py-12">
+        <section className="kr-reveal border-t border-zinc-800 py-10 sm:py-12">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
@@ -256,7 +262,7 @@ export default function DemoPage() {
               </p>
             </div>
 
-            <div className="mt-8 overflow-hidden rounded-[28px] border border-zinc-800 bg-zinc-900/75 shadow-[0_0_0_1px_rgba(34,197,94,0.04)]">
+            <div className="mt-8 overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/75 shadow-[0_0_0_1px_rgba(34,197,94,0.04)] sm:rounded-[28px]">
               <div className="border-b border-zinc-800 bg-zinc-800/35 px-5 py-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
@@ -277,7 +283,7 @@ export default function DemoPage() {
               </div>
 
               <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-                <div className="border-b border-zinc-800 p-4 lg:border-b-0 lg:border-r">
+                <div className="border-b border-zinc-800 p-3 sm:p-4 lg:border-b-0 lg:border-r">
                   <div className="space-y-3">
                     {DASHBOARD_ITEMS.map((item) => (
                       <div
@@ -309,7 +315,7 @@ export default function DemoPage() {
                           </div>
                         </div>
 
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           <DashboardMeta label="Budget estime" value={item.budget} />
                           <DashboardMeta label="Action recommandee" value={item.action} />
                           <DashboardMeta
@@ -323,8 +329,8 @@ export default function DemoPage() {
                   </div>
                 </div>
 
-                <div className="bg-zinc-950/80 p-4">
-                  <div className="rounded-[24px] border border-zinc-800 bg-zinc-900/75 p-5">
+                <div className="bg-zinc-950/80 p-3 sm:p-4">
+                  <div className="rounded-[20px] border border-zinc-800 bg-zinc-900/75 p-4 sm:rounded-[24px] sm:p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-green-500">
@@ -372,8 +378,8 @@ export default function DemoPage() {
           </div>
         </section>
 
-        <section className="grid gap-6 border-t border-zinc-800 py-12 lg:grid-cols-2">
-          <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
+        <section className="grid gap-6 border-t border-zinc-800 py-10 sm:py-12 lg:grid-cols-2">
+          <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-4 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
@@ -386,7 +392,7 @@ export default function DemoPage() {
               <LayoutDashboard size={18} className="text-green-500" />
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <PipelineColumn
                 title="Nouveau"
                 amount="3"
@@ -407,7 +413,7 @@ export default function DemoPage() {
             </p>
           </div>
 
-          <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-6">
+          <div className="kr-reveal rounded-[24px] border border-zinc-800 bg-zinc-900/70 p-4 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">
@@ -420,13 +426,13 @@ export default function DemoPage() {
               <FileText size={18} className="text-green-500" />
             </div>
 
-            <div className="mt-5 rounded-[22px] border border-zinc-800 bg-zinc-950/80 p-5">
-              <div className="flex items-start justify-between gap-4 border-b border-zinc-800 pb-4">
-                <div>
+            <div className="mt-5 rounded-[22px] border border-zinc-800 bg-zinc-950/80 p-4 sm:p-5">
+              <div className="flex flex-col gap-3 border-b border-zinc-800 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-lg font-semibold text-white">DEV-2026-001</p>
                   <p className="mt-1 text-sm text-zinc-400">Objet : renovation salle de bain</p>
                 </div>
-                <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
+                <span className="inline-flex w-fit rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
                   PDF
                 </span>
               </div>
@@ -456,7 +462,7 @@ export default function DemoPage() {
         </section>
 
         <section className="kr-reveal border-t border-zinc-800 py-12">
-          <div className="mx-auto max-w-3xl rounded-[28px] border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center md:px-10">
+          <div className="mx-auto max-w-3xl rounded-[28px] border border-zinc-800 bg-zinc-900/80 px-4 py-8 text-center sm:px-6 md:px-10">
             <SectionBadge text="Fin du parcours" />
             <h2 className="mt-4 text-3xl font-bold tracking-tight text-white md:text-5xl">
               Passez du prospect au devis sans perdre le fil
@@ -468,13 +474,13 @@ export default function DemoPage() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/demo-request"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02]"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] sm:w-auto"
               >
                 Reserver une demo <ArrowRight size={16} />
               </Link>
               <Link
                 href="/register"
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/30 hover:bg-white/[0.03]"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/30 hover:bg-white/[0.03] sm:w-auto"
               >
                 Essai gratuit
               </Link>
@@ -522,7 +528,7 @@ function SignalCell({
   status: 'ok' | 'warning';
 }) {
   return (
-    <div className="border-b border-zinc-800 px-5 py-4 sm:border-r sm:last:border-r-0 xl:border-b-0">
+    <div className="border-b border-zinc-800 px-4 py-4 sm:px-5 sm:border-r sm:last:border-r-0 xl:border-b-0">
       <p className={`text-sm font-semibold ${status === 'ok' ? 'text-white' : 'text-amber-300'}`}>
         {status === 'ok' ? '✓' : '!'} {title}
       </p>
@@ -616,12 +622,12 @@ function PreviewRow({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
+    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex items-center gap-2 text-zinc-500">
         {icon}
         <span>{label}</span>
       </div>
-      <span className="font-medium text-white">{value}</span>
+      <span className="font-medium text-white sm:text-right">{value}</span>
     </div>
   );
 }

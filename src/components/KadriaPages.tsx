@@ -37,7 +37,9 @@ import {
   Mail,
   Map as MapIcon,
   MapPin,
+  Menu,
   MessageCircle,
+  X,
   MessageSquare,
   Minus,
   PenLine,
@@ -54,7 +56,6 @@ import {
   TrendingUp,
   User,
   Users,
-  X,
   XCircle,
   Zap,
 } from 'lucide-react';
@@ -262,7 +263,7 @@ const demoProjects = [
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
       <SiteHeader />
       {children}
       <Footer />
@@ -271,6 +272,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
 }
 
 function SiteHeader() {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const links = [
     { label: 'Comment ca marche', href: '/#comment-ca-marche' },
     { label: 'Demo', href: '/demo' },
@@ -278,31 +280,95 @@ function SiteHeader() {
   ];
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/5 bg-[#0a0b0f]/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1488px] items-center justify-between px-6">
-        <KadriaLogo size="sm" />
+    <>
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Fermer le menu"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+        />
+      )}
+      <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/5 bg-[#0a0b0f]/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1488px] items-center justify-between px-4 sm:px-6">
+          <KadriaLogo size="sm" />
 
-        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground">
-              {link.label}
+          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex lg:gap-8">
+            {links.map((link) => (
+              <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground">
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="hidden items-center gap-3 md:flex">
+            <Link href="/dashboard-v2" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+              Connexion
             </Link>
-          ))}
-        </nav>
+            <Link href="/demo-request" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
+              Reserver une demo
+            </Link>
+            <Link href="/register" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+              Tester Kadria
+            </Link>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard-v2" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex">
-            Connexion
-          </Link>
-          <Link href="/demo-request" className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
-            Reserver une demo
-          </Link>
-          <Link href="/register" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-            Tester Kadria
-          </Link>
+          <button
+            type="button"
+            aria-expanded={mobileOpen}
+            aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+            onClick={() => setMobileOpen((value) => !value)}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white md:hidden"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
-      </div>
-    </header>
+
+        <div
+          className={`mx-auto max-w-[1488px] overflow-hidden px-4 transition-all duration-200 ease-out sm:px-6 md:hidden ${
+            mobileOpen ? 'max-h-[420px] pb-4 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/95 p-2 shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+            <nav className="flex flex-col">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-xl px-4 py-3 text-base text-zinc-300 transition-colors hover:bg-white/[0.03] hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Link
+                href="/dashboard-v2"
+                onClick={() => setMobileOpen(false)}
+                className="rounded-xl px-4 py-3 text-base text-zinc-300 transition-colors hover:bg-white/[0.03] hover:text-white"
+              >
+                Connexion
+              </Link>
+            </nav>
+            <div className="mt-2 grid gap-3 border-t border-white/10 p-3">
+              <Link
+                href="/demo-request"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-3 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]"
+              >
+                Reserver une demo
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Tester Kadria
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+    </>
   );
 }
 
@@ -2905,7 +2971,7 @@ export function LandingRoutePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-white">
       <style>{ANIMATION_STYLES}</style>
 
       {/* 1. NAV */}
@@ -2932,9 +2998,9 @@ export function LandingRoutePage() {
 
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_70%_50%,rgba(34,197,94,0.08)_0%,transparent_60%)]" />
-          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-10 px-6 py-10 lg:px-12 md:grid-cols-[0.95fr_1.05fr] md:items-center">
+          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 md:grid-cols-[0.95fr_1.05fr] md:items-center md:gap-10 md:py-10 lg:px-12">
             <div>
-              <div className="kr-reveal inline-flex items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-green-400">
+              <div className="kr-reveal inline-flex max-w-full items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-green-400 sm:text-xs sm:tracking-[0.18em]">
                 Assistant commercial IA pour artisans
               </div>
               <h1 className={`kr-reveal kr-reveal-delay-1 mt-5 max-w-3xl ${LANDING_H1_CLASS}`}>
@@ -2946,13 +3012,13 @@ export function LandingRoutePage() {
               <div className="kr-reveal kr-reveal-delay-3 mt-7 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/demo-request"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400 sm:w-auto"
                 >
                   R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03] sm:w-auto"
                 >
                   Essai gratuit
                 </Link>
@@ -2972,7 +3038,7 @@ export function LandingRoutePage() {
               </div>
             </div>
 
-            <div className="kr-reveal kr-reveal-right rounded-xl shadow-[0_0_60px_rgba(34,197,94,0.08)]">
+            <div className="kr-reveal kr-reveal-right min-w-0 rounded-xl shadow-[0_0_60px_rgba(34,197,94,0.08)]">
               <QualificationShowcase />
             </div>
           </div>
@@ -3982,7 +4048,7 @@ export function PricingRoutePage() {
     <div className="min-h-screen bg-zinc-950 text-white">
       <DarkNav />
 
-      <main className="px-6 pt-[100px]">
+      <main className="px-4 pt-[92px] sm:px-6 sm:pt-[100px]">
         <div className="mx-auto max-w-6xl">
           {/* HEADER */}
           <section className="text-center">
@@ -3990,17 +4056,17 @@ export function PricingRoutePage() {
             <h1 className="mt-4 text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight">
               Un tarif simple, <span className="text-green-500">adapté</span> à votre activité.
             </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-base text-zinc-400">
+            <p className="mx-auto mt-4 max-w-2xl text-sm text-zinc-400 sm:text-base">
               Sans engagement. Résiliation à tout moment. Support inclus dès le premier jour.
             </p>
           </section>
 
           {/* GRILLE 3 PLANS */}
-          <section className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+          <section className="mt-10 grid grid-cols-1 gap-5 md:mt-12 md:grid-cols-3 md:gap-6">
             {pricingPlanCards.map((plan) => (
               <div
                 key={plan.slug}
-                className={`relative flex flex-col rounded-[20px] p-8 ${
+                className={`relative flex flex-col rounded-[20px] p-5 sm:p-6 lg:p-8 ${
                   plan.highlighted
                     ? 'border-2 border-green-500/30 bg-zinc-900 shadow-[0_0_40px_rgba(34,197,94,0.08)] md:scale-[1.02]'
                     : 'border border-zinc-800 bg-zinc-900'
@@ -4019,11 +4085,11 @@ export function PricingRoutePage() {
                   {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
                 </p>
 
-                <p className="mb-6 mt-2 text-sm text-zinc-400">{plan.description}</p>
+                <p className="mb-5 mt-2 text-sm text-zinc-400 sm:mb-6">{plan.description}</p>
 
                 <div className="border-t border-zinc-800" />
 
-                <ul className="mt-5 flex flex-col gap-3">
+                <ul className="mt-5 flex flex-col gap-2.5 sm:gap-3">
                   {plan.features.map((feat) => (
                     <li key={feat.text} className="flex items-start gap-2 text-sm">
                       <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
@@ -4056,7 +4122,7 @@ export function PricingRoutePage() {
           </section>
 
           {/* ADD-ON SITE VITRINE */}
-          <section id="addon" className="mx-auto mt-8 max-w-2xl rounded-[20px] border border-green-500/30 bg-green-500/[0.03] p-8">
+          <section id="addon" className="mx-auto mt-8 max-w-2xl rounded-[20px] border border-green-500/30 bg-green-500/[0.03] p-5 sm:p-8">
             <div className="flex flex-col items-start gap-8 md:flex-row md:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Add-on</p>
@@ -4092,9 +4158,9 @@ export function PricingRoutePage() {
           </section>
 
           {/* GARANTIES */}
-          <section className="mt-12 grid grid-cols-1 gap-6 text-center md:grid-cols-3">
+          <section className="mt-10 grid grid-cols-1 gap-5 text-center md:mt-12 md:grid-cols-3 md:gap-6">
             {pricingGuarantees.map((g) => (
-              <div key={g.title}>
+              <div key={g.title} className="rounded-[18px] border border-zinc-800/80 bg-zinc-900/60 px-4 py-5">
                 <p className="flex items-center justify-center gap-2 font-bold">
                   <Check size={16} className="text-green-500" />
                   {g.title}
@@ -4107,7 +4173,43 @@ export function PricingRoutePage() {
           {/* TABLEAU COMPARATIF */}
           <section className="mt-16">
             <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">Comparez les formules</h2>
-            <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-800">
+            <div className="mt-8 space-y-4 md:hidden">
+              {comparatifCategories.map((group) => (
+                <div key={group.category} className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900/70">
+                  <div className="border-b border-zinc-800 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-green-500">{group.category}</p>
+                  </div>
+                  <div className="divide-y divide-zinc-800">
+                    {group.rows.map(([feature, essentiel, performance, agence]) => (
+                      <div key={feature} className="space-y-3 px-4 py-4">
+                        <p className="text-sm font-medium text-white">{feature}</p>
+                        <div className="grid gap-2">
+                          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Essentiel</p>
+                            <div className="mt-2 flex items-center text-sm text-white">
+                              <ComparatifCell value={essentiel} />
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-green-500/20 bg-green-500/[0.04] px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-green-500">Performance</p>
+                            <div className="mt-2 flex items-center text-sm text-white">
+                              <ComparatifCell value={performance} />
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Agence</p>
+                            <div className="mt-2 flex items-center text-sm text-white">
+                              <ComparatifCell value={agence} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 hidden overflow-x-auto rounded-xl border border-zinc-800 md:block">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
@@ -4144,11 +4246,11 @@ export function PricingRoutePage() {
           </section>
 
           {/* FAQ RAPIDE */}
-          <section className="mx-auto mt-16 max-w-3xl pb-24">
+          <section className="mx-auto mt-16 max-w-3xl pb-20 sm:pb-24">
             <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">Questions fréquentes</h2>
-            <div className="mt-8 space-y-6">
+            <div className="mt-8 space-y-4 sm:space-y-6">
               {pricingFaqQuick.map((faq) => (
-                <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+                <div key={faq.question} className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
                   <p className="font-semibold">{faq.question}</p>
                   <p className="mt-2 text-sm text-zinc-400">{faq.answer}</p>
                 </div>
@@ -4158,17 +4260,17 @@ export function PricingRoutePage() {
         </div>
 
         {/* CTA FINAL */}
-        <section className="border-t border-zinc-800 bg-zinc-900 py-24">
-          <div className="mx-auto max-w-3xl px-6 text-center">
+        <section className="border-t border-zinc-800 bg-zinc-900 py-20 sm:py-24">
+          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 className="text-3xl font-bold tracking-tight md:text-5xl">Arrêtez de perdre des opportunités.</h2>
             <p className="mt-5 text-base leading-7 text-zinc-400 md:text-lg">
               Mettez en place Kadria en quelques jours et ne laissez plus aucune demande sans suite.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400">
+              <Link href="/register" className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-green-400 sm:w-auto">
                 Tester Kadria <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/demo-request" className="inline-flex items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+              <Link href="/demo-request" className="inline-flex w-full items-center justify-center rounded-md border border-zinc-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 sm:w-auto">
                 Réserver une démonstration
               </Link>
             </div>
