@@ -3834,9 +3834,11 @@ interface PricingPlanCard {
   priceSize: string;
   period: string;
   description: string;
+  priceNote?: string;
   features: PricingFeature[];
   highlighted: boolean;
-  cta: { label: string; href: string; primary: boolean };
+  availabilityBadge?: string;
+  cta: { label: string; href: string; primary: boolean; disabled?: boolean };
 }
 
 const pricingPlanCards: PricingPlanCard[] = [
@@ -3882,8 +3884,8 @@ const pricingPlanCards: PricingPlanCard[] = [
       { text: 'Export PDF dossiers' },
       { text: 'Génération de devis professionnels' },
       { text: 'Relances planifiables' },
-      { text: 'Assistant vocal', badge: 'Bientôt disponible' },
-      { text: 'Relances automatiques', badge: 'Bientôt disponible' },
+      { text: 'Assistant vocal' },
+      { text: 'Relances automatiques' },
       { text: 'Support prioritaire' },
       { text: '1 utilisateur' },
     ],
@@ -3897,6 +3899,7 @@ const pricingPlanCards: PricingPlanCard[] = [
     priceSize: 'text-[28px]',
     period: '',
     description: "Pour les groupements d'artisans et réseaux",
+    priceNote: "Offre réservée aux réseaux et groupements d’artisans - disponibilité prochaine.",
     features: [
       { text: 'Tout Performance inclus' },
       { text: "Jusqu'à 10 artisans" },
@@ -3909,7 +3912,8 @@ const pricingPlanCards: PricingPlanCard[] = [
       { text: 'Support téléphonique dédié' },
     ],
     highlighted: false,
-    cta: { label: 'Nous contacter', href: '/contact', primary: false },
+    availabilityBadge: 'BIENTÔT DISPONIBLE',
+    cta: { label: 'Bientôt disponible', href: '/contact', primary: false, disabled: true },
   },
 ];
 
@@ -4072,10 +4076,19 @@ export function PricingRoutePage() {
                     : 'border border-zinc-800 bg-zinc-900'
                 }`}
               >
-                {plan.highlighted && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-green-500 px-4 py-1 text-xs font-bold text-black">
-                    LE PLUS POPULAIRE
-                  </span>
+                {(plan.highlighted || plan.availabilityBadge) && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {plan.highlighted && (
+                      <span className="inline-flex items-center rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-black">
+                        LE PLUS POPULAIRE
+                      </span>
+                    )}
+                    {plan.availabilityBadge && (
+                      <span className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-xs font-semibold text-zinc-200">
+                        {plan.availabilityBadge}
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 <h3 className="text-xl font-extrabold">{plan.name}</h3>
@@ -4085,6 +4098,7 @@ export function PricingRoutePage() {
                   {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
                 </p>
 
+                {plan.priceNote && <p className="mt-2 text-sm leading-6 text-zinc-500">{plan.priceNote}</p>}
                 <p className="mb-5 mt-2 text-sm text-zinc-400 sm:mb-6">{plan.description}</p>
 
                 <div className="border-t border-zinc-800" />
@@ -4106,16 +4120,22 @@ export function PricingRoutePage() {
                 </ul>
 
                 <div className="mt-auto pt-6">
-                  <Link
-                    href={plan.cta.href}
-                    className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
-                      plan.cta.primary
-                        ? 'bg-green-500 font-bold text-black hover:bg-green-400'
-                        : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
-                    }`}
-                  >
-                    {plan.cta.label}
-                  </Link>
+                  {plan.cta.disabled ? (
+                    <span className="block w-full cursor-not-allowed rounded-xl border border-zinc-800 bg-zinc-900/80 py-3 text-center text-sm font-semibold text-zinc-500 opacity-70">
+                      {plan.cta.label}
+                    </span>
+                  ) : (
+                    <Link
+                      href={plan.cta.href}
+                      className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
+                        plan.cta.primary
+                          ? 'bg-green-500 font-bold text-black hover:bg-green-400'
+                          : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
+                      }`}
+                    >
+                      {plan.cta.label}
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
