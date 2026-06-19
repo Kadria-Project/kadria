@@ -4070,11 +4070,11 @@ export function PricingRoutePage() {
             <p className="mb-4 text-center text-xs text-zinc-500 md:hidden">
               Faites glisser horizontalement pour comparer les formules
             </p>
-            <div className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 scroll-px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0">
               {pricingPlanCards.map((plan) => (
                 <div
                   key={plan.slug}
-                  className={`relative flex min-w-[84vw] snap-start flex-col rounded-[20px] p-5 sm:min-w-[82vw] sm:p-6 md:min-w-0 lg:p-8 ${
+                  className={`relative flex min-w-[calc(100vw-64px)] max-w-[360px] shrink-0 snap-start flex-col rounded-[20px] p-5 sm:p-6 md:min-w-0 md:max-w-none md:shrink lg:p-8 ${
                     plan.highlighted
                       ? 'border-2 border-green-500/30 bg-zinc-900 shadow-[0_0_40px_rgba(34,197,94,0.08)] md:scale-[1.02]'
                       : 'border border-zinc-800 bg-zinc-900'
@@ -4198,14 +4198,53 @@ export function PricingRoutePage() {
           {/* TABLEAU COMPARATIF */}
           <section className="mt-16">
             <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">Comparez les formules</h2>
-            <p className="mt-6 text-center text-xs text-zinc-500 md:hidden">
-              Faites glisser horizontalement pour comparer les formules
-            </p>
-            <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <table className="w-full min-w-[720px] text-left text-sm md:min-w-[640px]">
+            <div className="mt-8 space-y-3 md:hidden">
+              <p className="text-center text-xs text-zinc-500">
+                Faites glisser horizontalement pour comparer les formules
+              </p>
+              {comparatifCategories.map((group, index) => (
+                <details
+                  key={group.category}
+                  className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900/70"
+                  open={index === 0}
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-left marker:content-none">
+                    <span className="text-sm font-semibold text-white">{group.category}</span>
+                    <span className="text-xs uppercase tracking-wide text-zinc-500">Ouvrir</span>
+                  </summary>
+                  <div className="overflow-x-auto border-t border-zinc-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead>
+                        <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
+                          <th className="px-4 py-3">Fonctionnalit?</th>
+                          <th className="px-4 py-3">Essentiel</th>
+                          <th className="px-4 py-3 text-green-500">Performance</th>
+                          <th className="px-4 py-3">Agence</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.rows.map(([feature, essentiel, performance, agence], rowIndex) => (
+                          <tr
+                            key={feature}
+                            className={rowIndex % 2 === 1 ? 'bg-zinc-900' : 'bg-zinc-950'}
+                          >
+                            <td className="px-4 py-3 font-medium text-white">{feature}</td>
+                            <td className="px-4 py-3"><ComparatifCell value={essentiel} /></td>
+                            <td className="px-4 py-3"><ComparatifCell value={performance} /></td>
+                            <td className="px-4 py-3"><ComparatifCell value={agence} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              ))}
+            </div>
+            <div className="mt-8 hidden overflow-x-auto rounded-xl border border-zinc-800 md:block">
+              <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
-                    <th className="px-4 py-3">Fonctionnalité</th>
+                    <th className="px-4 py-3">Fonctionnalit?</th>
                     <th className="px-4 py-3">Essentiel</th>
                     <th className="px-4 py-3 text-green-500">Performance</th>
                     <th className="px-4 py-3">Agence</th>
