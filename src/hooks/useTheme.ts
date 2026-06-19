@@ -18,10 +18,10 @@ export function useTheme() {
     setLoaded(true)
 
     // Puis synchronise avec la config Airtable (asynchrone)
-    fetch('/api/artisan/config')
+    fetch('/api/user/theme')
       .then(r => r.json())
       .then(data => {
-        const remoteTheme = data?.config?.theme as Theme | undefined
+        const remoteTheme = data?.theme as Theme | undefined
         if (remoteTheme === 'light' || remoteTheme === 'dark') {
           setThemeState(remoteTheme)
           document.documentElement.setAttribute('data-theme', remoteTheme)
@@ -38,7 +38,7 @@ export function useTheme() {
 
     // Sauvegarde async côté Airtable, ne bloque pas l'UI
     try {
-      await fetch('/api/artisan/config', {
+      await fetch('/api/user/theme', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme: newTheme }),

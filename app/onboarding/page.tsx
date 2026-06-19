@@ -90,7 +90,7 @@ export default function OnboardingPage() {
     welcomeName: '',
     welcomeMessage: '',
     primaryColor: '#22c55e',
-    secondaryColor: '#18181b',
+    secondaryColor: 'var(--bg-elevated)',
     websiteUrl: '',
     raisonSociale: '',
     formeJuridique: '',
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
             welcomeName: data.config.welcomeName || '',
             welcomeMessage: data.config.welcomeMessage || '',
             primaryColor: data.config.primaryColor || '#22c55e',
-            secondaryColor: data.config.secondaryColor || '#18181b',
+            secondaryColor: data.config.secondaryColor || 'var(--bg-elevated)',
             websiteUrl: data.config.websiteUrl || '',
             raisonSociale: data.config.raisonSociale || '',
             formeJuridique: data.config.formeJuridique || '',
@@ -201,11 +201,11 @@ export default function OnboardingPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: '#27272a',
-    border: '1px solid #3f3f46',
+    background: 'var(--bg-hover)',
+    border: '1px solid var(--border)',
     borderRadius: '10px',
     padding: '10px 14px',
-    color: 'white',
+    color: 'var(--text-1)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
@@ -213,7 +213,7 @@ export default function OnboardingPage() {
   }
 
   const labelStyle: React.CSSProperties = {
-    color: '#a1a1aa',
+    color: 'var(--text-2)',
     fontSize: '12px',
     fontWeight: 600,
     letterSpacing: '0.06em',
@@ -232,14 +232,14 @@ export default function OnboardingPage() {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    color: '#a1a1aa',
+    color: 'var(--text-2)',
     fontSize: '13px',
     cursor: 'pointer',
   }
 
   const sectionCard: React.CSSProperties = {
-    background: '#18181b',
-    border: '1px solid #27272a',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
     borderRadius: '16px',
     padding: '24px',
     marginBottom: '16px',
@@ -247,9 +247,9 @@ export default function OnboardingPage() {
 
   if (loading) return (
     <div style={{
-      minHeight: '100vh', background: '#09090b',
+      minHeight: '100vh', background: 'var(--bg)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#a1a1aa', fontFamily: 'system-ui',
+      color: 'var(--text-2)', fontFamily: 'system-ui',
     }}>
       Chargement...
     </div>
@@ -258,14 +258,14 @@ export default function OnboardingPage() {
   return (
     <main className="dashboard-shell" style={{
       minHeight: '100vh',
-      background: '#09090b',
+      background: 'var(--bg)',
       fontFamily: 'system-ui, sans-serif',
-      color: 'white',
+      color: 'var(--text-1)',
     }}>
       {/* Header */}
       <div style={{
-        background: '#18181b',
-        borderBottom: '1px solid #27272a',
+        background: 'var(--bg-elevated)',
+        borderBottom: '1px solid var(--border)',
         padding: '16px 32px',
         display: 'flex',
         alignItems: 'center',
@@ -279,7 +279,7 @@ export default function OnboardingPage() {
             onClick={() => router.push('/dashboard-v2')}
             style={{
               background: 'transparent', border: 'none',
-              color: '#a1a1aa', cursor: 'pointer', fontSize: '14px',
+              color: 'var(--text-2)', cursor: 'pointer', fontSize: '14px',
               display: 'flex', alignItems: 'center', gap: '6px',
             }}
           >
@@ -287,7 +287,7 @@ export default function OnboardingPage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
             <KadriaLogo size="sm" theme="dark" noLink />
-            <span style={{ color: '#71717a', fontWeight: 400, fontSize: '14px' }}>
+            <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
               · Configuration
             </span>
           </div>
@@ -296,9 +296,9 @@ export default function OnboardingPage() {
           onClick={save}
           disabled={saving}
           style={{
-            background: saved ? 'rgba(34,197,94,0.2)' : saving ? '#27272a' : '#22c55e',
-            border: saved ? '1px solid #22c55e' : 'none',
-            color: saved ? '#4ade80' : saving ? '#71717a' : 'black',
+            background: saved ? 'rgba(34,197,94,0.2)' : saving ? 'var(--bg-hover)' : 'var(--accent)',
+            border: saved ? '1px solid var(--accent)' : 'none',
+            color: saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
             fontWeight: 700, borderRadius: '10px',
             padding: '10px 24px', fontSize: '14px',
             cursor: saving ? 'default' : 'pointer',
@@ -355,10 +355,10 @@ export default function OnboardingPage() {
                     ? 'rgba(34,197,94,0.1)' : 'transparent',
                   border: 'none',
                   borderLeft: !isMobile && activeSection === section.id
-                    ? '2px solid #22c55e' : isMobile ? 'none' : '2px solid transparent',
+                    ? '2px solid var(--accent)' : isMobile ? 'none' : '2px solid transparent',
                   borderBottom: isMobile && activeSection === section.id
-                    ? '2px solid #22c55e' : isMobile ? '2px solid transparent' : undefined,
-                  color: activeSection === section.id ? '#22c55e' : '#a1a1aa',
+                    ? '2px solid var(--accent)' : isMobile ? '2px solid transparent' : undefined,
+                  color: activeSection === section.id ? 'var(--accent)' : 'var(--text-2)',
                   borderRadius: isMobile ? '8px' : '0 8px 8px 0',
                   padding: '10px 14px',
                   fontSize: '14px',
@@ -386,7 +386,7 @@ export default function OnboardingPage() {
             ...(isMobile ? { display: 'none' } : {}),
           }}>
             <p style={{
-              color: '#71717a', fontSize: '11px', fontWeight: 600,
+              color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
               letterSpacing: '0.08em', textTransform: 'uppercase',
               margin: '0 0 12px',
             }}>
@@ -449,7 +449,7 @@ export default function OnboardingPage() {
               </h2>
 
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Informations générales
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -511,7 +511,7 @@ export default function OnboardingPage() {
               </div>
 
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Horaires d&apos;ouverture
                 </h3>
                 <div>
@@ -540,7 +540,7 @@ export default function OnboardingPage() {
               </h2>
 
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Couleurs
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -553,7 +553,7 @@ export default function OnboardingPage() {
                         onChange={e => setConfig(c => ({ ...c, primaryColor: e.target.value }))}
                         style={{
                           width: '48px', height: '44px',
-                          borderRadius: '8px', border: '1px solid #3f3f46',
+                          borderRadius: '8px', border: '1px solid var(--border)',
                           background: 'transparent', cursor: 'pointer',
                           padding: '2px',
                         }}
@@ -565,7 +565,7 @@ export default function OnboardingPage() {
                         style={{ ...inputStyle, flex: 1 }}
                       />
                     </div>
-                    <p style={{ color: '#71717a', fontSize: '12px', margin: '6px 0 0' }}>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
                       Couleur du header et des boutons CTA
                     </p>
                   </div>
@@ -578,7 +578,7 @@ export default function OnboardingPage() {
                         onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
                         style={{
                           width: '48px', height: '44px',
-                          borderRadius: '8px', border: '1px solid #3f3f46',
+                          borderRadius: '8px', border: '1px solid var(--border)',
                           background: 'transparent', cursor: 'pointer',
                           padding: '2px',
                         }}
@@ -586,11 +586,11 @@ export default function OnboardingPage() {
                       <input
                         value={config.secondaryColor}
                         onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
-                        placeholder="#18181b"
+                        placeholder="var(--bg-elevated)"
                         style={{ ...inputStyle, flex: 1 }}
                       />
                     </div>
-                    <p style={{ color: '#71717a', fontSize: '12px', margin: '6px 0 0' }}>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
                       Fond du widget
                     </p>
                   </div>
@@ -601,7 +601,7 @@ export default function OnboardingPage() {
                   <p style={{ ...labelStyle, marginBottom: '8px' }}>Palettes suggérées</p>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {[
-                      { name: 'Kadria', primary: '#22c55e', secondary: '#09090b' },
+                      { name: 'Kadria', primary: '#22c55e', secondary: 'var(--bg)' },
                       { name: 'Océan', primary: '#3b82f6', secondary: '#0f172a' },
                       { name: 'Ardoise', primary: '#64748b', secondary: '#0f172a' },
                       { name: 'Terracotta', primary: '#ea580c', secondary: '#1c0a00' },
@@ -617,9 +617,9 @@ export default function OnboardingPage() {
                         }))}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '6px',
-                          background: '#27272a', border: '1px solid #3f3f46',
+                          background: 'var(--bg-hover)', border: '1px solid var(--border)',
                           borderRadius: '8px', padding: '6px 12px',
-                          cursor: 'pointer', color: 'white', fontSize: '12px',
+                          cursor: 'pointer', color: 'var(--text-1)', fontSize: '12px',
                         }}
                       >
                         <div style={{
@@ -634,10 +634,10 @@ export default function OnboardingPage() {
               </div>
 
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Message d&apos;accueil
                 </h3>
-                <p style={{ color: '#71717a', fontSize: '13px', margin: '0 0 16px' }}>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
                   Personnalise le premier message affiché au prospect.
                   Le moteur de qualification Kadria reste identique.
                 </p>
@@ -650,7 +650,7 @@ export default function OnboardingPage() {
                       placeholder="Assistant Martin Rénovation"
                       style={inputStyle}
                     />
-                    <p style={{ color: '#71717a', fontSize: '12px', margin: '5px 0 0' }}>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
                       Affiché dans le header du widget à la place de &quot;Kadria&quot;
                     </p>
                   </div>
@@ -663,7 +663,7 @@ export default function OnboardingPage() {
                       rows={4}
                       style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
                     />
-                    <p style={{ color: '#71717a', fontSize: '12px', margin: '5px 0 0' }}>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
                       Si vide, le message Kadria par défaut est utilisé.
                     </p>
                   </div>
@@ -672,16 +672,16 @@ export default function OnboardingPage() {
 
               {/* Code d'intégration */}
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Intégration sur votre site
                 </h3>
-                <p style={{ color: '#71717a', fontSize: '13px', margin: '0 0 14px' }}>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 14px' }}>
                   Copiez ce code et collez-le sur votre site
                   pour afficher le widget Kadria.
                 </p>
                 <div style={{
-                  background: '#09090b',
-                  border: '1px solid #27272a',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
                   borderRadius: '10px',
                   padding: '16px',
                   position: 'relative',
@@ -709,10 +709,10 @@ export default function OnboardingPage() {
                       position: 'absolute',
                       top: '10px',
                       right: '10px',
-                      background: copied ? 'rgba(34,197,94,0.2)' : '#27272a',
+                      background: copied ? 'rgba(34,197,94,0.2)' : 'var(--bg-hover)',
                       border: '1px solid',
-                      borderColor: copied ? '#22c55e' : '#3f3f46',
-                      color: copied ? '#4ade80' : '#a1a1aa',
+                      borderColor: copied ? 'var(--accent)' : 'var(--border)',
+                      color: copied ? '#4ade80' : 'var(--text-2)',
                       borderRadius: '6px',
                       padding: '4px 10px',
                       fontSize: '12px',
@@ -722,7 +722,7 @@ export default function OnboardingPage() {
                     {copied ? '✓ Copié !' : 'Copier'}
                   </button>
                 </div>
-                <p style={{ color: '#52525b', fontSize: '12px', margin: '8px 0 0' }}>
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
                   Collez ce code avant la balise &lt;/body&gt; de votre site.
                   Le widget apparaît automatiquement aux couleurs de votre entreprise.
                 </p>
@@ -737,7 +737,7 @@ export default function OnboardingPage() {
                 📍 Coordonnées
               </h2>
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Informations de contact
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -771,13 +771,13 @@ export default function OnboardingPage() {
               <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
                 📋 Informations légales
               </h2>
-              <p style={{ color: '#71717a', fontSize: '13px', margin: '-12px 0 16px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '-12px 0 16px' }}>
                 Ces informations apparaissent sur vos devis et documents officiels.
               </p>
 
               {/* Groupe 1 — Identité professionnelle */}
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Identité professionnelle
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -849,7 +849,7 @@ export default function OnboardingPage() {
 
               {/* Groupe 2 — Adresse professionnelle */}
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Adresse professionnelle
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -891,7 +891,7 @@ export default function OnboardingPage() {
 
               {/* Groupe 3 — Assurance */}
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Assurance
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -935,7 +935,7 @@ export default function OnboardingPage() {
 
               {/* Groupe 4 — Préférences devis */}
               <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#22c55e' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Préférences devis
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

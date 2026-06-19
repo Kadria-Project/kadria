@@ -832,6 +832,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
@@ -1292,71 +1293,174 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : 'auto' }}>
-          {[
-            { mode: 'all' as const, label: 'Vue complete' },
-            { mode: 'commercial' as const, label: 'Suivi commercial' },
-            { mode: 'calendar' as const, label: 'Calendrier' },
-            { mode: 'clients' as const, label: 'Mes clients' },
-            { mode: 'tasks' as const, label: 'Mes taches a faire' },
-          ].map((item) => (
+        {isMobile ? (
+          <div style={{ width: '100%', position: 'relative' }}>
             <button
-              key={item.mode}
-              type="button"
-              onClick={() => {
-                setDashboardMode(item.mode);
-                setQuickFilter(null);
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                gap: '8px',
               }}
-              style={{ ...navButtonStyle(dashboardMode === item.mode), ...(isMobile ? { flex: '1 1 140px' } : {}) }}
             >
-              {item.label}
+              <span>☰ Menu</span>
+              <span>{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
-          ))}
-          <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
-            style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-2)',
-              borderRadius: '8px',
-              padding: '9px 12px',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
 
-          <button
-            onClick={() => router.push('/onboarding')}
-            style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-2)',
-              borderRadius: '8px',
-              padding: '9px 14px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              ...(isMobile ? { flex: 1 } : {}),
-            }}
-          >
-            ⚙️ Mon profil
-          </button>
+            {mobileMenuOpen && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginTop: '8px',
+                  padding: '12px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                }}
+              >
+                {[
+                  { mode: 'all' as const, label: 'Vue complete' },
+                  { mode: 'commercial' as const, label: 'Suivi commercial' },
+                  { mode: 'calendar' as const, label: 'Calendrier' },
+                  { mode: 'clients' as const, label: 'Mes clients' },
+                  { mode: 'tasks' as const, label: 'Mes taches a faire' },
+                ].map((item) => (
+                  <button
+                    key={item.mode}
+                    type="button"
+                    onClick={() => {
+                      setDashboardMode(item.mode);
+                      setQuickFilter(null);
+                      setMobileMenuOpen(false);
+                    }}
+                    style={navButtonStyle(dashboardMode === item.mode)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
 
-          <button
-            onClick={logout}
-            title="Déconnexion"
-            className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
-            style={{ padding: '9px 12px', cursor: 'pointer' }}
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
+                <button
+                  onClick={toggleTheme}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-2)',
+                    borderRadius: '8px',
+                    padding: '9px 12px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    textAlign: 'left',
+                  }}
+                >
+                  {theme === 'dark' ? '☀️ Thème clair' : '🌙 Thème sombre'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push('/onboarding');
+                  }}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-2)',
+                    borderRadius: '8px',
+                    padding: '9px 14px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                  }}
+                >
+                  ⚙️ Mon profil
+                </button>
+
+                <button
+                  onClick={logout}
+                  className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
+                  style={{ padding: '9px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}
+                >
+                  <LogOut className="w-4 h-4" /> Déconnexion
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: 'auto' }}>
+            {[
+              { mode: 'all' as const, label: 'Vue complete' },
+              { mode: 'commercial' as const, label: 'Suivi commercial' },
+              { mode: 'calendar' as const, label: 'Calendrier' },
+              { mode: 'clients' as const, label: 'Mes clients' },
+              { mode: 'tasks' as const, label: 'Mes taches a faire' },
+            ].map((item) => (
+              <button
+                key={item.mode}
+                type="button"
+                onClick={() => {
+                  setDashboardMode(item.mode);
+                  setQuickFilter(null);
+                }}
+                style={navButtonStyle(dashboardMode === item.mode)}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
+                borderRadius: '8px',
+                padding: '9px 12px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
+            <button
+              onClick={() => router.push('/onboarding')}
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
+                borderRadius: '8px',
+                padding: '9px 14px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              ⚙️ Mon profil
+            </button>
+
+            <button
+              onClick={logout}
+              title="Déconnexion"
+              className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
+              style={{ padding: '9px 12px', cursor: 'pointer' }}
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Barre période */}

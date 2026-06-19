@@ -219,7 +219,6 @@ export async function getArtisanConfig(artisanId: string) {
     devisMentionLegale: record.fields['devis_mention_legale'] as string || record.fields['Devis Mention Legale'] as string || '',
     devisCompteur: Number(record.fields['devis_compteur'] ?? record.fields['Devis Compteur']) || 0,
     prestationsJson: record.fields['prestations_json'] as string || record.fields['Prestations JSON'] as string || '',
-    theme: (record.fields['Theme'] as string) || 'dark',
   }
 }
 
@@ -463,6 +462,7 @@ export interface UserRecord {
   suspendedAt: string
   cancelledAt: string
   cancellationReason: string
+  theme: string
 }
 
 function mapUserRecord(record: { id: string; fields: Record<string, unknown> }): UserRecord {
@@ -489,6 +489,7 @@ function mapUserRecord(record: { id: string; fields: Record<string, unknown> }):
     suspendedAt: fields['Suspended_at'] as string || '',
     cancelledAt: fields['Cancelled_at'] as string || '',
     cancellationReason: fields['Cancellation_reason'] as string || '',
+    theme: fields['Theme'] as string || '',
   }
 }
 
