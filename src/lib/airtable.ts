@@ -219,6 +219,7 @@ export async function getArtisanConfig(artisanId: string) {
     devisMentionLegale: record.fields['devis_mention_legale'] as string || record.fields['Devis Mention Legale'] as string || '',
     devisCompteur: Number(record.fields['devis_compteur'] ?? record.fields['Devis Compteur']) || 0,
     prestationsJson: record.fields['prestations_json'] as string || record.fields['Prestations JSON'] as string || '',
+    theme: (record.fields['Theme'] as string) || 'dark',
   }
 }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
+import { useTheme } from '@/src/hooks/useTheme'
 
 const TRADES = [
   'Plombier', 'Électricien', 'Maçon', 'Peintre', 'Menuisier',
@@ -15,6 +16,7 @@ const SECTIONS = [
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
   { id: 'legal', label: 'Infos légales', icon: '📋' },
+  { id: 'apparence', label: 'Apparence', icon: '🌓' },
 ]
 
 const FORMES_JURIDIQUES = [
@@ -73,6 +75,7 @@ function validateLegalConfig(config: LegalConfig): Record<string, string> {
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const [activeSection, setActiveSection] = useState('entreprise')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -253,7 +256,7 @@ export default function OnboardingPage() {
   )
 
   return (
-    <main style={{
+    <main className="dashboard-shell" style={{
       minHeight: '100vh',
       background: '#09090b',
       fontFamily: 'system-ui, sans-serif',
@@ -995,6 +998,84 @@ export default function OnboardingPage() {
                       style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'apparence' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                🌓 Apparence
+              </h2>
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Thème du dashboard
+                </h3>
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 20px' }}>
+                  Choisissez l'apparence de votre espace de travail Kadria.
+                  Ce réglage n'affecte que votre dashboard, pas le widget
+                  visible par vos prospects.
+                </p>
+                <div style={{ display: 'flex', gap: '14px' }}>
+                  {[
+                    { value: 'dark', label: 'Sombre', icon: '🌙',
+                      preview: { bg: '#09090b', card: '#18181b', text: '#f4f4f5' } },
+                    { value: 'light', label: 'Clair', icon: '☀️',
+                      preview: { bg: '#fafafa', card: '#ffffff', text: '#18181b' } },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setTheme(opt.value as 'dark' | 'light')}
+                      style={{
+                        flex: 1,
+                        background: opt.preview.bg,
+                        border: theme === opt.value
+                          ? '2px solid var(--accent)'
+                          : '1px solid var(--border)',
+                        borderRadius: '14px',
+                        padding: '20px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'border-color 0.2s',
+                      }}
+                    >
+                      <div style={{
+                        background: opt.preview.card,
+                        border: '1px solid rgba(128,128,128,0.15)',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        marginBottom: '12px',
+                      }}>
+                        <div style={{
+                          width: '60%', height: '8px',
+                          background: opt.preview.text,
+                          opacity: 0.8, borderRadius: '4px',
+                          marginBottom: '6px',
+                        }} />
+                        <div style={{
+                          width: '40%', height: '8px',
+                          background: opt.preview.text,
+                          opacity: 0.4, borderRadius: '4px',
+                        }} />
+                      </div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                      }}>
+                        <span>{opt.icon}</span>
+                        <span style={{ color: opt.preview.text, fontWeight: 600, fontSize: '14px' }}>
+                          {opt.label}
+                        </span>
+                        {theme === opt.value && (
+                          <span style={{
+                            marginLeft: 'auto', color: 'var(--accent)', fontSize: '12px',
+                          }}>
+                            ✓ Actif
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

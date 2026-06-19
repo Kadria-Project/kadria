@@ -21,7 +21,7 @@ import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/
 import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: '#a1a1aa', border: '#3f3f46' },
+  'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
   'À rappeler':   { bg: 'rgba(217,119,6,0.15)', text: '#d97706', border: 'rgba(217,119,6,0.3)' },
   'Qualifié':     { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' },
   'Devis envoyé': { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' },
@@ -208,7 +208,7 @@ function ProjectDetail() {
   const EVENT_TYPES = [
     { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
     { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
-    { value: 'RDV', color: '#4ade80', bg: 'rgba(34,197,94,0.15)', border: '#22c55e' },
+    { value: 'RDV', color: '#4ade80', bg: 'rgba(34,197,94,0.15)', border: 'var(--accent)' },
     { value: 'Intervention', color: '#c084fc', bg: 'rgba(192,132,252,0.15)', border: '#a855f7' },
   ];
 
@@ -445,7 +445,7 @@ function ProjectDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+      <div className="dashboard-shell min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <p className="text-zinc-400">Chargement du dossier...</p>
       </div>
     );
@@ -453,7 +453,7 @@ function ProjectDetail() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+      <div className="dashboard-shell min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <p className="text-zinc-400">Dossier introuvable.</p>
       </div>
     );
@@ -467,7 +467,7 @@ function ProjectDetail() {
   const followUpTime = getBestFollowUpTime(project);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-white">
+    <div className="dashboard-shell min-h-screen overflow-x-hidden bg-zinc-950 text-white">
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: '24px', gap: isMobile ? '12px' : '16px' }}>
           <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
@@ -494,9 +494,9 @@ function ProjectDetail() {
               }
             }}
             style={{
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#a1a1aa',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-2)',
               borderRadius: '8px',
               padding: isMobile ? '10px 14px' : '8px 16px',
               fontSize: '13px',
@@ -527,15 +527,15 @@ function ProjectDetail() {
             <p className="text-sm text-zinc-300 flex-1 m-0">
               Complétez vos informations légales pour générer des devis professionnels.
             </p>
-            <a href="/onboarding" className="text-sm font-semibold whitespace-nowrap" style={{ color: '#22c55e' }}>
+            <a href="/onboarding" className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--accent)' }}>
               Compléter mon profil →
             </a>
           </div>
         )}
 
         <div style={{
-          background: '#18181b',
-          border: '1px solid #27272a',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           padding: isMobile ? '18px 16px' : '24px',
           marginBottom: '16px',
@@ -552,7 +552,7 @@ function ProjectDetail() {
           }}>
             <div>
               <h1 style={{
-                color: 'white',
+                color: 'var(--text-1)',
                 fontSize: isMobile ? '22px' : '24px',
                 fontWeight: 700,
                 margin: '0 0 4px',
@@ -560,7 +560,7 @@ function ProjectDetail() {
                 {project.clientFirstName} {project.clientName}
               </h1>
               <p style={{
-                color: '#a1a1aa',
+                color: 'var(--text-2)',
                 fontSize: '14px',
                 margin: 0,
               }}>
@@ -578,7 +578,7 @@ function ProjectDetail() {
             }}>
               <div>
                 <p style={{
-                  color: '#71717a',
+                  color: 'var(--text-3)',
                   fontSize: '10px',
                   fontWeight: 600,
                   letterSpacing: '0.08em',
@@ -607,7 +607,7 @@ function ProjectDetail() {
           {/* Séparateur */}
           <hr style={{
             border: 'none',
-            borderTop: '1px solid #3f3f46',
+            borderTop: '1px solid var(--border)',
             margin: '16px 0',
           }} />
 
@@ -622,27 +622,27 @@ function ProjectDetail() {
             {project.clientPhone && (
               <a href={`tel:${project.clientPhone}`} style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                color: 'white', textDecoration: 'none', fontSize: '13px',
+                color: 'var(--text-1)', textDecoration: 'none', fontSize: '13px',
               }}>
-                <span style={{ color: '#22c55e', fontSize: '14px' }}>📞</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>📞</span>
                 {project.clientPhone}
               </a>
             )}
             {project.clientEmail && (
               <a href={`mailto:${project.clientEmail}`} style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                color: 'white', textDecoration: 'none', fontSize: '13px',
+                color: 'var(--text-1)', textDecoration: 'none', fontSize: '13px',
               }}>
-                <span style={{ color: '#22c55e', fontSize: '14px' }}>✉️</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✉️</span>
                 {project.clientEmail}
               </a>
             )}
             {project.siteAddress && (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                color: 'white', fontSize: '13px',
+                color: 'var(--text-1)', fontSize: '13px',
               }}>
-                <span style={{ color: '#22c55e', fontSize: '14px' }}>📍</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>📍</span>
                 {(() => {
                   const addr = project.siteAddress || '';
                   const city = project.city || '';
@@ -655,7 +655,7 @@ function ProjectDetail() {
             )}
             <div style={{
               display: 'flex', alignItems: 'center', gap: '6px',
-              color: '#71717a', fontSize: '12px',
+              color: 'var(--text-3)', fontSize: '12px',
               marginLeft: 'auto',
             }}>
               <span>📅</span>
@@ -675,8 +675,8 @@ function ProjectDetail() {
               title="Modifier les informations"
               style={{
                 background: 'transparent',
-                border: '1px solid #3f3f46',
-                color: '#71717a',
+                border: '1px solid var(--border)',
+                color: 'var(--text-3)',
                 borderRadius: '6px',
                 padding: isMobile ? '8px 10px' : '4px 8px',
                 fontSize: '12px',
@@ -706,7 +706,7 @@ function ProjectDetail() {
         }}>
           <div>
             <p style={{
-              color: '#22c55e',
+              color: 'var(--accent)',
               fontSize: '11px',
               fontWeight: 700,
               letterSpacing: '0.08em',
@@ -715,15 +715,15 @@ function ProjectDetail() {
             }}>
               Moment idéal de relance
             </p>
-            <p style={{ color: 'white', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
+            <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
               {followUpTime.primarySlot}
             </p>
-            <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+            <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
               {followUpTime.secondarySlot}
             </p>
           </div>
 
-          <div style={{ color: '#a1a1aa', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
+          <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
             <p style={{ margin: '0 0 4px' }}>
               Dernier échange :{' '}
               <span style={{ color: '#e4e4e7' }}>
@@ -744,8 +744,8 @@ function ProjectDetail() {
         </div>
 
         <div style={{
-          background: '#18181b',
-          border: '1px solid #27272a',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
           marginBottom: '16px',
@@ -753,7 +753,7 @@ function ProjectDetail() {
           {/* Header */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: '1px solid #27272a',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
@@ -761,7 +761,7 @@ function ProjectDetail() {
             gap: isMobile ? '10px' : 0,
           }}>
             <h2 style={{
-              color: 'white',
+              color: 'var(--text-1)',
               fontSize: '15px',
               fontWeight: 600,
               margin: 0
@@ -771,8 +771,8 @@ function ProjectDetail() {
             {/* ID + source */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{
-                fontSize: '11px', color: '#52525b',
-                background: '#27272a', borderRadius: '6px',
+                fontSize: '11px', color: 'var(--text-3)',
+                background: 'var(--border)', borderRadius: '6px',
                 padding: '3px 8px', whiteSpace: 'nowrap',
                 fontFamily: 'monospace',
               }}>
@@ -780,8 +780,8 @@ function ProjectDetail() {
               </span>
               {project.source && (
                 <span style={{
-                  fontSize: '11px', color: '#52525b',
-                  background: '#27272a', borderRadius: '6px',
+                  fontSize: '11px', color: 'var(--text-3)',
+                  background: 'var(--border)', borderRadius: '6px',
                   padding: '3px 8px', whiteSpace: 'nowrap',
                 }}>
                   via {project.source}
@@ -793,10 +793,10 @@ function ProjectDetail() {
           {/* Pipeline — changer de statut */}
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
-            borderBottom: '1px solid #27272a',
+            borderBottom: '1px solid var(--border)',
           }}>
             <p style={{
-              color: '#71717a',
+              color: 'var(--text-3)',
               fontSize: '11px',
               fontWeight: 600,
               letterSpacing: '0.08em',
@@ -820,10 +820,10 @@ function ProjectDetail() {
                     transition: 'all 0.15s',
                     background: (project.status === s)
                       ? statusColors[s].bg
-                      : '#09090b',
+                      : 'var(--bg)',
                     color: (project.status === s)
                       ? statusColors[s].text
-                      : '#a1a1aa',
+                      : 'var(--text-2)',
                     border: `1px solid ${statusColors[s].border}`,
                     opacity: (project.status === s) ? 1 : 0.75,
                   }}
@@ -834,12 +834,12 @@ function ProjectDetail() {
             </div>
 
             <div style={{
-              borderTop: '1px solid #27272a',
+              borderTop: '1px solid var(--border)',
               marginTop: '12px',
               paddingTop: '14px',
             }}>
               <p style={{
-                color: '#71717a', fontSize: '11px', fontWeight: 600,
+                color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
                 letterSpacing: '0.08em', textTransform: 'uppercase',
                 margin: '0 0 10px',
               }}>
@@ -854,11 +854,11 @@ function ProjectDetail() {
                     placeholder={`Budget estimé : ${project.budget || 'non renseigné'}`}
                     style={{
                       width: '100%',
-                      background: '#27272a',
-                      border: devisAmount ? '1px solid #22c55e' : '1px solid #3f3f46',
+                      background: 'var(--border)',
+                      border: devisAmount ? '1px solid var(--accent)' : '1px solid var(--border)',
                       borderRadius: '8px',
                       padding: '8px 40px 8px 12px',
-                      color: 'white',
+                      color: 'var(--text-1)',
                       fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
@@ -869,7 +869,7 @@ function ProjectDetail() {
                     right: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: '#71717a',
+                    color: 'var(--text-3)',
                     fontSize: '14px',
                   }}>€</span>
                 </div>
@@ -895,9 +895,9 @@ function ProjectDetail() {
                   }}
                   disabled={savingDevis}
                   style={{
-                    background: savingDevis ? '#27272a' : '#22c55e',
+                    background: savingDevis ? 'var(--border)' : 'var(--accent)',
                     border: 'none',
-                    color: savingDevis ? '#71717a' : 'black',
+                    color: savingDevis ? 'var(--text-3)' : 'black',
                     fontWeight: 600,
                     borderRadius: '8px',
                     padding: '8px 14px',
@@ -913,7 +913,7 @@ function ProjectDetail() {
               </div>
               {devisAmount && (
                 <p style={{
-                  color: '#22c55e', fontSize: '12px', margin: '6px 0 0',
+                  color: 'var(--accent)', fontSize: '12px', margin: '6px 0 0',
                 }}>
                   ✓ Montant réel : {formatInteger(Number(devisAmount))} €
                   {' '}— utilisé pour les KPIs
@@ -921,7 +921,7 @@ function ProjectDetail() {
               )}
               {!devisAmount && project.budget && (
                 <p style={{
-                  color: '#71717a', fontSize: '12px', margin: '6px 0 0',
+                  color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0',
                 }}>
                   Budget estimé utilisé par défaut : {project.budget}
                 </p>
@@ -929,7 +929,7 @@ function ProjectDetail() {
             </div>
 
             <div style={{
-              borderTop: '1px solid #27272a',
+              borderTop: '1px solid var(--border)',
               marginTop: '12px',
               paddingTop: '14px',
             }}>
@@ -946,13 +946,13 @@ function ProjectDetail() {
                 title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
                 style={{
                   width: '100%',
-                  background: '#18181b',
+                  background: 'var(--bg-elevated)',
                   border: '1px solid rgba(34,197,94,0.3)',
                   borderRadius: '10px',
                   padding: '10px 20px',
                   fontSize: '13px',
                   fontWeight: 600,
-                  color: '#22c55e',
+                  color: 'var(--accent)',
                   cursor: !canQuote || legalComplete ? 'pointer' : 'not-allowed',
                   opacity: !canQuote || legalComplete ? 1 : 0.4,
                   display: 'inline-flex',
@@ -965,7 +965,7 @@ function ProjectDetail() {
                   if (legalComplete) e.currentTarget.style.background = 'rgba(34,197,94,0.08)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#18181b';
+                  e.currentTarget.style.background = 'var(--bg-elevated)';
                 }}
               >
                 {!canQuote && <Lock size={14} />}
@@ -979,8 +979,8 @@ function ProjectDetail() {
                       key={devis.id}
                       onClick={() => router.push(`/dashboard-v2/projet/${id}/devis/${devis.id}`)}
                       style={{
-                        background: '#18181b',
-                        border: '1px solid #27272a',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border)',
                         borderRadius: '12px',
                         padding: isMobile ? '14px 16px' : '14px 20px',
                         cursor: 'pointer',
@@ -995,21 +995,21 @@ function ProjectDetail() {
                         e.currentTarget.style.transform = 'translateY(-1px)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#27272a';
+                        e.currentTarget.style.borderColor = 'var(--border)';
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '12px', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, width: isMobile ? '100%' : undefined, flexWrap: 'wrap' }}>
-                          <FileTextIcon size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+                          <FileTextIcon size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                           <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
-                          <span style={{ color: '#71717a' }}>·</span>
+                          <span style={{ color: 'var(--text-3)' }}>·</span>
                           <span style={{ fontSize: '13px', fontWeight: 600 }}>
                             {formatMoney(devis.amount)} €
                           </span>
                         </div>
 
-                        <div style={{ fontSize: '12px', color: '#71717a', display: 'flex', flexDirection: 'column', gap: '2px', width: isMobile ? '100%' : undefined }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-3)', display: 'flex', flexDirection: 'column', gap: '2px', width: isMobile ? '100%' : undefined }}>
                           <span>Généré le {formatDevisDate(devis.date_emission)}</span>
                           <span>Expire le {formatDevisDate(devis.date_validite)}</span>
                         </div>
@@ -1018,7 +1018,7 @@ function ProjectDetail() {
                           {devis.accepted && (
                             <span style={{
                               background: 'rgba(34,197,94,0.1)',
-                              color: '#22c55e',
+                              color: 'var(--accent)',
                               border: '1px solid rgba(34,197,94,0.3)',
                               borderRadius: '999px',
                               padding: '4px 12px',
@@ -1031,7 +1031,7 @@ function ProjectDetail() {
                           {devis.sent || devis.statut?.startsWith('Envoy') ? (
                             <span style={{
                               background: 'rgba(34,197,94,0.1)',
-                              color: '#22c55e',
+                              color: 'var(--accent)',
                               border: '1px solid rgba(34,197,94,0.3)',
                               borderRadius: '999px',
                               padding: '4px 12px',
@@ -1053,7 +1053,7 @@ function ProjectDetail() {
                               📄 Enregistré · Non envoyé
                             </span>
                           )}
-                          <ChevronRight size={14} style={{ color: '#71717a', marginLeft: '4px' }} />
+                          <ChevronRight size={14} style={{ color: 'var(--text-3)', marginLeft: '4px' }} />
                         </div>
                       </div>
 
@@ -1067,9 +1067,9 @@ function ProjectDetail() {
                               disabled={followingUpDevisId === devis.id}
                               style={{
                                 alignSelf: 'flex-start',
-                                background: '#22c55e',
+                                background: 'var(--accent)',
                                 border: 'none',
-                                color: '#09090b',
+                                color: 'var(--bg)',
                                 borderRadius: '9px',
                                 padding: '8px 14px',
                                 fontSize: '13px',
@@ -1084,7 +1084,7 @@ function ProjectDetail() {
                           )}
 
                           {(devis.sent || devis.statut?.startsWith('Envoy')) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? '#a1a1aa' : '#71717a', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? 'var(--text-2)' : 'var(--text-3)', flexWrap: 'wrap' }}>
                               {devis.opens_count > 0 ? (
                                 <>
                                   <Eye size={12} />
@@ -1105,12 +1105,12 @@ function ProjectDetail() {
                 </div>
 
                 <div style={{
-                  borderTop: '1px solid #27272a',
+                  borderTop: '1px solid var(--border)',
                   marginTop: '12px',
                   paddingTop: '12px',
                 }}>
                   <p style={{
-                    color: '#71717a',
+                    color: 'var(--text-3)',
                     fontSize: '11px',
                     fontWeight: 600,
                     letterSpacing: '0.08em',
@@ -1171,12 +1171,12 @@ function ProjectDetail() {
           {/* Planificateur calendrier */}
             <div style={{ padding: isMobile ? '14px 16px' : '14px 20px' }}>
             <div style={{
-              borderTop: '1px solid #27272a',
+              borderTop: '1px solid var(--border)',
               marginTop: '12px',
               paddingTop: '14px',
             }}>
               <p style={{
-                color: '#71717a', fontSize: '11px', fontWeight: 600,
+                color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
                 letterSpacing: '0.08em', textTransform: 'uppercase',
                 margin: '0 0 10px',
               }}>
@@ -1190,9 +1190,9 @@ function ProjectDetail() {
                     key={t.value}
                     onClick={() => setEventType(t.value)}
                     style={{
-                      background: eventType === t.value ? t.bg : '#27272a',
-                      border: `1px solid ${eventType === t.value ? t.border : '#3f3f46'}`,
-                      color: eventType === t.value ? t.color : '#a1a1aa',
+                      background: eventType === t.value ? t.bg : 'var(--border)',
+                      border: `1px solid ${eventType === t.value ? t.border : 'var(--border)'}`,
+                      color: eventType === t.value ? t.color : 'var(--text-2)',
                       borderRadius: '8px',
                       padding: '5px 12px',
                       fontSize: '12px',
@@ -1214,11 +1214,11 @@ function ProjectDetail() {
                   onChange={e => setEventDate(e.target.value)}
                   style={{
                     flex: 1,
-                    background: '#27272a',
-                    border: '1px solid #3f3f46',
+                    background: 'var(--border)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     padding: '7px 10px',
-                    color: 'white',
+                    color: 'var(--text-1)',
                     fontSize: '13px',
                     outline: 'none',
                   }}
@@ -1227,9 +1227,9 @@ function ProjectDetail() {
                   onClick={saveCalendarEvent}
                   disabled={savingEvent || !eventDate}
                   style={{
-                    background: savingEvent || !eventDate ? '#27272a' : '#22c55e',
+                    background: savingEvent || !eventDate ? 'var(--border)' : 'var(--accent)',
                     border: 'none',
-                    color: savingEvent || !eventDate ? '#71717a' : 'black',
+                    color: savingEvent || !eventDate ? 'var(--text-3)' : 'black',
                     fontWeight: 600,
                     borderRadius: '8px',
                     padding: '7px 16px',
@@ -1248,15 +1248,15 @@ function ProjectDetail() {
         </div>
 
         <div style={{
-          background: '#09090b',
-          border: '1px solid #27272a',
+          background: 'var(--bg)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
         }}>
           {/* Header avec badge verdict */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: '1px solid #27272a',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
@@ -1266,7 +1266,7 @@ function ProjectDetail() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '16px' }}>✦</span>
               <span style={{
-                color: '#22c55e',
+                color: 'var(--accent)',
                 fontWeight: 700,
                 fontSize: '14px',
                 letterSpacing: '0.02em'
@@ -1307,8 +1307,8 @@ function ProjectDetail() {
             display: 'grid',
             gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
             gap: '1px',
-            background: '#27272a',
-            borderBottom: '1px solid #27272a',
+            background: 'var(--border)',
+            borderBottom: '1px solid var(--border)',
           }}>
             {indicators.map((ind, i) => {
               if (i === 3 && project.photos && project.photos.length > 0) {
@@ -1316,14 +1316,14 @@ function ProjectDetail() {
 
                 return (
                   <div key={i} style={{
-                    background: '#09090b',
+                    background: 'var(--bg)',
                     padding: isMobile ? '12px' : '12px 16px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ color: '#22c55e', fontSize: '14px' }}>✓</span>
+                      <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
                       <span style={{ color: '#e4e4e7', fontSize: '12px', fontWeight: 500 }}>
                         Photos jointes
                       </span>
@@ -1344,7 +1344,7 @@ function ProjectDetail() {
                               height: '40px',
                               borderRadius: '6px',
                               overflow: 'hidden',
-                              border: '1px solid #27272a',
+                              border: '1px solid var(--border)',
                               display: 'block',
                             }}
                           >
@@ -1361,9 +1361,9 @@ function ProjectDetail() {
                           width: '40px',
                           height: '40px',
                           borderRadius: '6px',
-                          border: '1px solid #27272a',
-                          background: '#18181b',
-                          color: '#a1a1aa',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-elevated)',
+                          color: 'var(--text-2)',
                           fontSize: '11px',
                           fontWeight: 600,
                           display: 'flex',
@@ -1380,7 +1380,7 @@ function ProjectDetail() {
 
               return (
                 <div key={i} style={{
-                  background: '#09090b',
+                  background: 'var(--bg)',
                   padding: isMobile ? '12px' : '12px 16px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -1388,13 +1388,13 @@ function ProjectDetail() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{
-                      color: ind.ok ? '#22c55e' : '#f87171',
+                      color: ind.ok ? 'var(--accent)' : '#f87171',
                       fontSize: '14px'
                     }}>
                       {ind.ok ? '✓' : '✗'}
                     </span>
                     <span style={{
-                      color: ind.ok ? '#e4e4e7' : '#a1a1aa',
+                      color: ind.ok ? '#e4e4e7' : 'var(--text-2)',
                       fontSize: '12px',
                       fontWeight: 500,
                     }}>
@@ -1402,7 +1402,7 @@ function ProjectDetail() {
                     </span>
                   </div>
                   <span style={{
-                    color: '#71717a',
+                    color: 'var(--text-3)',
                     fontSize: '11px',
                     paddingLeft: '20px',
                   }}>
@@ -1414,9 +1414,9 @@ function ProjectDetail() {
           </div>
 
           {/* Résumé structuré */}
-          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid #27272a' }}>
+          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <p style={{
-              color: '#22c55e',
+              color: 'var(--accent)',
               fontSize: '10px',
               fontWeight: 700,
               letterSpacing: '0.1em',
@@ -1438,14 +1438,14 @@ function ProjectDetail() {
                 }}>
                   <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
                   <span style={{
-                    color: '#71717a',
+                    color: 'var(--text-3)',
                     fontSize: '12px',
                       minWidth: isMobile ? '72px' : '80px',
                     flexShrink: 0,
                   }}>
                     {item.label} :
                   </span>
-                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 500 }}>
+                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 500 }}>
                     {item.value}
                   </span>
                 </div>
@@ -1455,9 +1455,9 @@ function ProjectDetail() {
 
           {/* Synthèse IA longue */}
           {project.aiSummary && (
-            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid #27272a' }}>
+            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <p style={{
-                color: '#22c55e',
+                color: 'var(--accent)',
                 fontSize: '10px',
                 fontWeight: 700,
                 letterSpacing: '0.1em',
@@ -1489,7 +1489,7 @@ function ProjectDetail() {
             <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
             <div>
               <p style={{
-                color: '#22c55e',
+                color: 'var(--accent)',
                 fontSize: '11px',
                 fontWeight: 700,
                 letterSpacing: '0.08em',
@@ -1512,8 +1512,8 @@ function ProjectDetail() {
 
         {!showNotes ? (
           <div style={{
-            background: '#18181b',
-            border: '1px solid #27272a',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
             borderRadius: '16px',
             padding: isMobile ? '16px' : '16px 20px',
             marginBottom: '16px',
@@ -1523,7 +1523,7 @@ function ProjectDetail() {
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#a1a1aa',
+                color: 'var(--text-2)',
                 cursor: 'pointer',
                 fontSize: '14px',
                 padding: 0,
@@ -1535,10 +1535,10 @@ function ProjectDetail() {
               }}
             >
               <span>📝</span>
-              <span style={{ color: 'white', fontWeight: 500 }}>Notes internes</span>
+              <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>Notes internes</span>
               {note && (
                 <span style={{
-                  background: '#22c55e', color: 'black',
+                  background: 'var(--accent)', color: 'black',
                   borderRadius: '10px', padding: '1px 7px',
                   fontSize: '11px', fontWeight: 700,
                 }}>
@@ -1549,7 +1549,7 @@ function ProjectDetail() {
                 marginLeft: isMobile ? 0 : 'auto',
                 width: isMobile ? '100%' : undefined,
                 fontSize: '12px',
-                color: '#22c55e',
+                color: 'var(--accent)',
               }}>
                 {note ? 'Voir / modifier →' : '+ Ajouter une note →'}
               </span>
@@ -1565,21 +1565,21 @@ function ProjectDetail() {
           </div>
         ) : (
           <div style={{
-            background: '#18181b', border: '1px solid #27272a',
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
             borderRadius: '16px', padding: isMobile ? '16px' : '20px', marginBottom: '16px',
           }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
               alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '12px', gap: '12px',
             }}>
-              <h3 style={{ color: 'white', fontSize: '15px', fontWeight: 600, margin: 0 }}>
+              <h3 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>
                 📝 Notes internes
               </h3>
               <button
                 onClick={() => setShowNotes(false)}
                 style={{
                   background: 'transparent', border: 'none',
-                  color: '#71717a', cursor: 'pointer', fontSize: '18px',
+                  color: 'var(--text-3)', cursor: 'pointer', fontSize: '18px',
                 }}
               >✕</button>
             </div>
@@ -1590,9 +1590,9 @@ function ProjectDetail() {
               placeholder="Ajouter une note interne pour le suivi commercial..."
               style={{
                 width: '100%', minHeight: '120px',
-                background: '#27272a', border: '1px solid #3f3f46',
+                background: 'var(--border)', border: '1px solid var(--border)',
                 borderRadius: '10px', padding: '12px',
-                color: 'white', fontSize: '13px',
+                color: 'var(--text-1)', fontSize: '13px',
                 resize: 'vertical', outline: 'none',
                 fontFamily: 'system-ui, sans-serif',
                 lineHeight: 1.6, boxSizing: 'border-box',
@@ -1601,7 +1601,7 @@ function ProjectDetail() {
             <button
               onClick={() => { saveNote(); setShowNotes(false); }}
               style={{
-                marginTop: '10px', background: '#22c55e',
+                marginTop: '10px', background: 'var(--accent)',
                 border: 'none', color: 'black', fontWeight: 600,
                 borderRadius: '8px', padding: '8px 20px',
                 fontSize: '13px', cursor: 'pointer', width: isMobile ? '100%' : undefined,
@@ -1945,7 +1945,7 @@ function getVerdict(project: any) {
 
   if (isHot) return {
     label: 'Prospect chaud',
-    color: '#22c55e',
+    color: 'var(--accent)',
     bg: 'rgba(34,197,94,0.15)',
     border: 'rgba(34,197,94,0.25)',
     icon: '🔥',

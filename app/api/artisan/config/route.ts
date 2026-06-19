@@ -71,6 +71,7 @@ export async function PATCH(request: NextRequest) {
     if (body.secondaryColor !== undefined) fields['Secondary Color'] = body.secondaryColor
     if (body.websiteUrl   !== undefined) fields['Website URL']      = body.websiteUrl
     if (body.trades       !== undefined) fields['Trades']           = body.trades
+    if (body.theme        !== undefined) fields['Theme']            = body.theme
 
     // Informations légales
 if (body.raisonSociale !== undefined) fields['raison_sociale'] = body.raisonSociale

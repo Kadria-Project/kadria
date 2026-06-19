@@ -44,6 +44,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
+import { useTheme } from '@/src/hooks/useTheme';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
@@ -258,7 +259,7 @@ function exportToCSV(projects: Project[], filename: string) {
 }
 
 export const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
-  { status: 'Nouveau', label: 'Nouveau', color: '#3f3f46' },
+  { status: 'Nouveau', label: 'Nouveau', color: 'var(--status-new)' },
   { status: 'À rappeler', label: 'À rappeler', color: '#d97706' },
   { status: 'Qualifié', label: 'Qualifié', color: '#16a34a' },
   { status: 'Devis envoyé', label: 'Devis envoyé', color: '#2563eb' },
@@ -272,7 +273,7 @@ const KANBAN_GROUPED_COLUMNS: { id: string; label: string; statuses: string[]; d
   { id: 'action', label: 'Action requise', statuses: ['\u00c0 rappeler', 'A relancer', 'En risque'], defaultStatus: '\u00c0 rappeler', color: '#f97316' },
   { id: 'ready', label: 'Pr\u00eat \u00e0 chiffrer', statuses: ['Qualifi\u00e9'], defaultStatus: 'Qualifi\u00e9', color: '#16a34a' },
   { id: 'quote', label: 'Devis en attente', statuses: ['Devis envoy\u00e9'], defaultStatus: 'Devis envoy\u00e9', color: '#2563eb' },
-  { id: 'closed', label: 'Cl\u00f4tur\u00e9', statuses: ['Gagn\u00e9', 'Perdu'], defaultStatus: 'Gagn\u00e9', color: '#71717a' },
+  { id: 'closed', label: 'Cl\u00f4tur\u00e9', statuses: ['Gagn\u00e9', 'Perdu'], defaultStatus: 'Gagn\u00e9', color: 'var(--text-3)' },
 ];
 
 const ACTION_REQUIRED_PRIORITY: Record<string, number> = {
@@ -329,7 +330,7 @@ export const BUDGET_OPTIONS = [
 ];
 
 export const SCORE_OPTIONS = [
-  { value: 'excellent', label: 'Excellent (>80%)', color: '#22c55e' },
+  { value: 'excellent', label: 'Excellent (>80%)', color: 'var(--accent)' },
   { value: 'bon', label: 'Bon (60-80%)', color: '#f59e0b' },
   { value: 'faible', label: 'Faible (<60%)', color: '#dc2626' },
 ];
@@ -681,13 +682,13 @@ export function Sparkline({ data, height = 60 }: { data: { label: string; value:
         </defs>
 
         {points.length > 1 && <path d={areaPath} fill="url(#sparklineGradient)" stroke="none" />}
-        {points.length > 1 && <path d={linePath} fill="none" stroke="#22c55e" strokeWidth={2} />}
+        {points.length > 1 && <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth={2} />}
 
         {points.length > 0 && (
-          <circle cx={points[0].x} cy={points[0].y} r={3} fill="#22c55e" />
+          <circle cx={points[0].x} cy={points[0].y} r={3} fill="var(--accent)" />
         )}
         {points.length > 1 && (
-          <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r={3} fill="#22c55e" />
+          <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r={3} fill="var(--accent)" />
         )}
 
         {points.map((p, i) => (
@@ -708,7 +709,7 @@ export function Sparkline({ data, height = 60 }: { data: { label: string; value:
         <div
           className="absolute pointer-events-none rounded-lg border bg-zinc-900 px-3 py-2 text-xs"
           style={{
-            borderColor: '#27272a',
+            borderColor: 'var(--border)',
             left: `${(hover.x / width) * 100}%`,
             top: 0,
             transform: 'translate(-50%, -100%)',
@@ -727,9 +728,9 @@ function navButtonStyle(active: boolean): React.CSSProperties {
   return {
     padding: '10px 16px',
     borderRadius: '10px',
-    border: `1px solid ${active ? '#22c55e' : '#3f3f46'}`,
-    background: active ? '#22c55e' : '#18181b',
-    color: active ? '#09090b' : 'white',
+    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    background: active ? 'var(--accent)' : 'var(--bg-elevated)',
+    color: active ? 'var(--bg)' : 'var(--text-1)',
     fontSize: '13px',
     fontWeight: 600,
     cursor: 'pointer',
@@ -743,6 +744,7 @@ function navButtonStyle(active: boolean): React.CSSProperties {
 
 function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const canExportPdf = hasFeature(plan, 'pdfExports');
   const canExportMonthlyReport = hasFeature(plan, 'monthlyPdfReport');
   const canUseKanban = hasFeature(plan, 'kanbanView');
@@ -1187,7 +1189,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       value: kpiPeriodData.current.caPotentiel,
       delta: calcDelta(kpiPeriodData.current.caPotentiel, kpiPeriodData.previous.caPotentiel),
       icon: Euro,
-      borderColor: '#22c55e',
+      borderColor: 'var(--accent)',
       format: formatCurrency,
     },
     {
@@ -1228,7 +1230,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       value: topOpportunities.length,
       delta: null,
       icon: Target,
-      borderColor: '#22c55e',
+      borderColor: 'var(--accent)',
       format: (v: number) => `${Math.round(v)} dossier(s)`,
       alert: topOpportunities.length > 0,
     },
@@ -1255,14 +1257,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       value: hotLeads.length,
       delta: null,
       icon: Bell,
-      borderColor: '#22c55e',
+      borderColor: 'var(--accent)',
       format: (v: number) => `${Math.round(v)} prospect(s)`,
       alert: hotLeads.length > 0,
     },
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
+    <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
       {/* Header */}
       <div
         style={{
@@ -1277,15 +1279,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: '#22c55e', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 6px' }}>
+          <p style={{ color: 'var(--accent)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 6px' }}>
             Kadria Pro
           </p>
 
-          <h1 style={{ color: 'white', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
+          <h1 style={{ color: 'var(--text-1)', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
             Tableau de bord
           </h1>
 
-          <p style={{ color: '#71717a', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
+          <p style={{ color: 'var(--text-3)', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
             {todayLabel}
           </p>
         </div>
@@ -1311,11 +1313,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
           ))}
           <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-2)',
+              borderRadius: '8px',
+              padding: '9px 12px',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+
+          <button
             onClick={() => router.push('/onboarding')}
             style={{
-              background: '#18181b',
-              border: '1px solid #3f3f46',
-              color: '#a1a1aa',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-2)',
               borderRadius: '8px',
               padding: '9px 14px',
               cursor: 'pointer',
@@ -1359,8 +1377,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               }
               style={
                 opt.value === kpiPeriod
-                  ? { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: '#22c55e' }
-                  : { background: '#18181b', borderColor: '#27272a', color: '#a1a1aa' }
+                  ? { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: 'var(--accent)' }
+                  : { background: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-2)' }
               }
             >
               {opt.label}
@@ -1587,7 +1605,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <p style={{ color: '#f87171', fontWeight: 600, fontSize: '14px', margin: '0 0 2px' }}>
                   ⚠️ Relances en retard
                 </p>
-                <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
                   {overdueCount} relance(s) en retard
                 </p>
               </div>
@@ -1599,9 +1617,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   setSearchInput('');
                 }}
                 style={{
-                  background: '#27272a',
-                  border: '1px solid #3f3f46',
-                  color: 'white',
+                  background: 'var(--border)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-1)',
                   borderRadius: '8px',
                   padding: '7px 14px',
                   fontSize: '13px',
@@ -1633,7 +1651,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <p style={{ color: '#fbbf24', fontWeight: 600, fontSize: '14px', margin: '0 0 2px' }}>
                   📅 Relances du jour
                 </p>
-                <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
                   {todayCount} relance(s) programmée(s) aujourd'hui
                 </p>
               </div>
@@ -1645,9 +1663,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   setSearchInput('');
                 }}
                 style={{
-                  background: '#27272a',
-                  border: '1px solid #3f3f46',
-                  color: 'white',
+                  background: 'var(--border)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-1)',
                   borderRadius: '8px',
                   padding: '7px 14px',
                   fontSize: '13px',
@@ -1901,7 +1919,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         key={step.label}
                         style={{
                           padding: '10px 14px',
-                          background: '#18181b',
+                          background: 'var(--bg-elevated)',
                           borderRadius: '8px',
                           marginBottom: '4px',
                           fontSize: '13px',
@@ -1927,7 +1945,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         <div
                           style={{
                             height: '3px',
-                            background: '#27272a',
+                            background: 'var(--border)',
                             borderRadius: '2px',
                             marginTop: '6px',
                             overflow: 'hidden',
@@ -1962,7 +1980,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                <div className="p-4 sm:p-6">
                 <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
 
-                 <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #27272a' }}>
+                 <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <ProspectsLeafletMap
                     projects={sortedProjects.slice(0, 8)}
                     onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
@@ -2652,7 +2670,7 @@ function KanbanCard({
   onDragEnd: () => void;
 }) {
   const score = project.completenessScore || 0;
-  const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : score > 0 ? '#dc2626' : '#a1a1aa';
+  const scoreColor = score >= 80 ? 'var(--accent)' : score >= 60 ? '#f59e0b' : score > 0 ? '#dc2626' : 'var(--text-2)';
   const initials = `${project.clientFirstName?.[0] || ''}${project.clientName?.[0] || ''}`.toUpperCase() || '?';
 
   return (
