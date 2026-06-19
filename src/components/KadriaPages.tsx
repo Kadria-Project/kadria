@@ -4049,7 +4049,7 @@ function ComparatifCell({ value }: { value: ComparatifValue }) {
 
 function SwipeHint({ label, className = '' }: { label: string; className?: string }) {
   return (
-    <p className={`kr-swipe-hint flex items-center gap-1.5 text-zinc-500 ${className}`}>
+    <p className={`kr-swipe-hint flex items-center gap-1.5 text-green-500 ${className}`}>
       <ChevronLeft size={14} className="kr-swipe-arrow-left" />
       <span>{label}</span>
       <ChevronRight size={14} className="kr-swipe-arrow-right" />
