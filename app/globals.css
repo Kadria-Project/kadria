@@ -293,9 +293,39 @@ body {
   animation: glow-pulse 4s ease-in-out infinite;
 }
 
+@keyframes kr-swipe-nudge {
+  0%, 100% { transform: translateX(0); opacity: 0.55; }
+  50% { transform: translateX(6px); opacity: 1; }
+}
+
+@keyframes kr-swipe-arrow-left {
+  0%, 100% { transform: translateX(0); opacity: 0.5; }
+  50% { transform: translateX(-4px); opacity: 1; }
+}
+
+@keyframes kr-swipe-arrow-right {
+  0%, 100% { transform: translateX(0); opacity: 0.5; }
+  50% { transform: translateX(4px); opacity: 1; }
+}
+
+.kr-swipe-hint {
+  animation: kr-swipe-nudge 1.6s ease-in-out infinite;
+}
+
+.kr-swipe-arrow-left {
+  animation: kr-swipe-arrow-left 1.6s ease-in-out infinite;
+}
+
+.kr-swipe-arrow-right {
+  animation: kr-swipe-arrow-right 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mockup-float,
-  .kr-glow-pulse {
+  .kr-glow-pulse,
+  .kr-swipe-hint,
+  .kr-swipe-arrow-left,
+  .kr-swipe-arrow-right {
     animation: none;
   }
 }

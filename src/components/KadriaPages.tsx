@@ -4047,6 +4047,16 @@ function ComparatifCell({ value }: { value: ComparatifValue }) {
   return <span className="text-zinc-300">{value}</span>;
 }
 
+function SwipeHint({ label, className = '' }: { label: string; className?: string }) {
+  return (
+    <p className={`kr-swipe-hint flex items-center gap-1.5 text-zinc-500 ${className}`}>
+      <ChevronLeft size={14} className="kr-swipe-arrow-left" />
+      <span>{label}</span>
+      <ChevronRight size={14} className="kr-swipe-arrow-right" />
+    </p>
+  );
+}
+
 export function PricingRoutePage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -4067,9 +4077,10 @@ export function PricingRoutePage() {
 
           {/* GRILLE 3 PLANS */}
           <section className="mt-10 md:mt-12">
-            <p className="mb-4 text-center text-xs text-zinc-500 md:hidden">
-              Faites glisser horizontalement pour comparer les formules
-            </p>
+            <SwipeHint
+              label="Faites glisser horizontalement pour comparer les formules"
+              className="mb-4 justify-center text-xs md:hidden"
+            />
             <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 scroll-px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0">
               {pricingPlanCards.map((plan) => (
                 <div
@@ -4199,9 +4210,10 @@ export function PricingRoutePage() {
           <section className="mt-16">
             <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">Comparez les formules</h2>
             <div className="mt-8 space-y-3 md:hidden">
-              <p className="text-center text-xs text-zinc-500">
-                Faites glisser horizontalement pour comparer les formules
-              </p>
+              <SwipeHint
+                label="Faites glisser horizontalement pour comparer les formules"
+                className="justify-center text-xs"
+              />
               {comparatifCategories.map((group, index) => (
                 <details
                   key={group.category}
@@ -4215,9 +4227,10 @@ export function PricingRoutePage() {
                     </span>
                   </summary>
                   <div className="border-t border-zinc-800 px-4 pb-4 pt-3">
-                    <p className="mb-3 text-[11px] font-medium text-zinc-500">
-                      ← Glissez pour voir Performance et Agence →
-                    </p>
+                    <SwipeHint
+                      label="Glissez pour voir Performance et Agence"
+                      className="mb-3 text-[11px] font-medium"
+                    />
                     <div className="relative">
                       <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <table className="w-full min-w-[680px] text-left text-sm">
