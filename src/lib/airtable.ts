@@ -234,7 +234,11 @@ export async function updateArtisanConfig(
     body: JSON.stringify({ fields }),
   })
   const result = await res.json()
-  console.info('[ARTISAN_CONFIG] Update status:', result.id ? 'success' : 'error')
+  if (!res.ok) {
+    console.error('[ARTISAN_CONFIG] Update FULL error:', JSON.stringify(result, null, 2))
+  } else {
+    console.info('[ARTISAN_CONFIG] Update status: success')
+  }
   return result
 }
 
