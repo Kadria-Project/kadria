@@ -4066,79 +4066,84 @@ export function PricingRoutePage() {
           </section>
 
           {/* GRILLE 3 PLANS */}
-          <section className="mt-10 grid grid-cols-1 gap-5 md:mt-12 md:grid-cols-3 md:gap-6">
-            {pricingPlanCards.map((plan) => (
-              <div
-                key={plan.slug}
-                className={`relative flex flex-col rounded-[20px] p-5 sm:p-6 lg:p-8 ${
-                  plan.highlighted
-                    ? 'border-2 border-green-500/30 bg-zinc-900 shadow-[0_0_40px_rgba(34,197,94,0.08)] md:scale-[1.02]'
-                    : 'border border-zinc-800 bg-zinc-900'
-                }`}
-              >
-                {(plan.highlighted || plan.availabilityBadge) && (
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    {plan.highlighted && (
-                      <span className="inline-flex items-center rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-black">
-                        LE PLUS POPULAIRE
+          <section className="mt-10 md:mt-12">
+            <p className="mb-4 text-center text-xs text-zinc-500 md:hidden">
+              Faites glisser horizontalement pour comparer les formules
+            </p>
+            <div className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0">
+              {pricingPlanCards.map((plan) => (
+                <div
+                  key={plan.slug}
+                  className={`relative flex min-w-[84vw] snap-start flex-col rounded-[20px] p-5 sm:min-w-[82vw] sm:p-6 md:min-w-0 lg:p-8 ${
+                    plan.highlighted
+                      ? 'border-2 border-green-500/30 bg-zinc-900 shadow-[0_0_40px_rgba(34,197,94,0.08)] md:scale-[1.02]'
+                      : 'border border-zinc-800 bg-zinc-900'
+                  }`}
+                >
+                  {(plan.highlighted || plan.availabilityBadge) && (
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {plan.highlighted && (
+                        <span className="inline-flex items-center rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-black">
+                          LE PLUS POPULAIRE
+                        </span>
+                      )}
+                      {plan.availabilityBadge && (
+                        <span className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-xs font-semibold text-zinc-200">
+                          {plan.availabilityBadge}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <h3 className="text-xl font-extrabold">{plan.name}</h3>
+
+                  <p className="mt-3">
+                    <span className={`${plan.priceSize} font-black`}>{plan.price}</span>
+                    {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
+                  </p>
+
+                  {plan.priceNote && <p className="mt-2 text-sm leading-6 text-zinc-500">{plan.priceNote}</p>}
+                  <p className="mb-5 mt-2 text-sm text-zinc-400 sm:mb-6">{plan.description}</p>
+
+                  <div className="border-t border-zinc-800" />
+
+                  <ul className="mt-5 flex flex-col gap-2.5 sm:gap-3">
+                    {plan.features.map((feat) => (
+                      <li key={feat.text} className="flex items-start gap-2 text-sm">
+                        <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
+                        <span>
+                          {feat.text}
+                          {feat.badge && (
+                            <span className="ml-2 inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
+                              {feat.badge}
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-auto pt-6">
+                    {plan.cta.disabled ? (
+                      <span className="block w-full cursor-not-allowed rounded-xl border border-zinc-800 bg-zinc-900/80 py-3 text-center text-sm font-semibold text-zinc-500 opacity-70">
+                        {plan.cta.label}
                       </span>
-                    )}
-                    {plan.availabilityBadge && (
-                      <span className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-xs font-semibold text-zinc-200">
-                        {plan.availabilityBadge}
-                      </span>
+                    ) : (
+                      <Link
+                        href={plan.cta.href}
+                        className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
+                          plan.cta.primary
+                            ? 'bg-green-500 font-bold text-black hover:bg-green-400'
+                            : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
+                        }`}
+                      >
+                        {plan.cta.label}
+                      </Link>
                     )}
                   </div>
-                )}
-
-                <h3 className="text-xl font-extrabold">{plan.name}</h3>
-
-                <p className="mt-3">
-                  <span className={`${plan.priceSize} font-black`}>{plan.price}</span>
-                  {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
-                </p>
-
-                {plan.priceNote && <p className="mt-2 text-sm leading-6 text-zinc-500">{plan.priceNote}</p>}
-                <p className="mb-5 mt-2 text-sm text-zinc-400 sm:mb-6">{plan.description}</p>
-
-                <div className="border-t border-zinc-800" />
-
-                <ul className="mt-5 flex flex-col gap-2.5 sm:gap-3">
-                  {plan.features.map((feat) => (
-                    <li key={feat.text} className="flex items-start gap-2 text-sm">
-                      <Check size={14} className="mt-0.5 flex-shrink-0 text-green-500" />
-                      <span>
-                        {feat.text}
-                        {feat.badge && (
-                          <span className="ml-2 inline-flex items-center rounded-full border border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.1)] px-2 py-0.5 text-xs font-semibold text-[#f59e0b]">
-                            {feat.badge}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-auto pt-6">
-                  {plan.cta.disabled ? (
-                    <span className="block w-full cursor-not-allowed rounded-xl border border-zinc-800 bg-zinc-900/80 py-3 text-center text-sm font-semibold text-zinc-500 opacity-70">
-                      {plan.cta.label}
-                    </span>
-                  ) : (
-                    <Link
-                      href={plan.cta.href}
-                      className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
-                        plan.cta.primary
-                          ? 'bg-green-500 font-bold text-black hover:bg-green-400'
-                          : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
-                      }`}
-                    >
-                      {plan.cta.label}
-                    </Link>
-                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </section>
 
           {/* ADD-ON SITE VITRINE */}
@@ -4193,44 +4198,11 @@ export function PricingRoutePage() {
           {/* TABLEAU COMPARATIF */}
           <section className="mt-16">
             <h2 className="text-center text-3xl font-bold tracking-tight md:text-4xl">Comparez les formules</h2>
-            <div className="mt-8 space-y-4 md:hidden">
-              {comparatifCategories.map((group) => (
-                <div key={group.category} className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900/70">
-                  <div className="border-b border-zinc-800 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-green-500">{group.category}</p>
-                  </div>
-                  <div className="divide-y divide-zinc-800">
-                    {group.rows.map(([feature, essentiel, performance, agence]) => (
-                      <div key={feature} className="space-y-3 px-4 py-4">
-                        <p className="text-sm font-medium text-white">{feature}</p>
-                        <div className="grid gap-2">
-                          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Essentiel</p>
-                            <div className="mt-2 flex items-center text-sm text-white">
-                              <ComparatifCell value={essentiel} />
-                            </div>
-                          </div>
-                          <div className="rounded-xl border border-green-500/20 bg-green-500/[0.04] px-3 py-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-green-500">Performance</p>
-                            <div className="mt-2 flex items-center text-sm text-white">
-                              <ComparatifCell value={performance} />
-                            </div>
-                          </div>
-                          <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Agence</p>
-                            <div className="mt-2 flex items-center text-sm text-white">
-                              <ComparatifCell value={agence} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 hidden overflow-x-auto rounded-xl border border-zinc-800 md:block">
-              <table className="w-full min-w-[640px] text-left text-sm">
+            <p className="mt-6 text-center text-xs text-zinc-500 md:hidden">
+              Faites glisser horizontalement pour comparer les formules
+            </p>
+            <div className="mt-8 overflow-x-auto rounded-xl border border-zinc-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <table className="w-full min-w-[720px] text-left text-sm md:min-w-[640px]">
                 <thead>
                   <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
                     <th className="px-4 py-3">Fonctionnalité</th>
