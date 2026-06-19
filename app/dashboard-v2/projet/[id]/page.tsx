@@ -445,16 +445,16 @@ function ProjectDetail() {
 
   if (loading) {
     return (
-      <div className="dashboard-shell min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-        <p className="text-zinc-400">Chargement du dossier...</p>
+      <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)] flex items-center justify-center">
+        <p className="text-[var(--text-2)]">Chargement du dossier...</p>
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="dashboard-shell min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-        <p className="text-zinc-400">Dossier introuvable.</p>
+      <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)] flex items-center justify-center">
+        <p className="text-[var(--text-2)]">Dossier introuvable.</p>
       </div>
     );
   }
@@ -467,7 +467,7 @@ function ProjectDetail() {
   const followUpTime = getBestFollowUpTime(project);
 
   return (
-    <div className="dashboard-shell min-h-screen overflow-x-hidden bg-zinc-950 text-white">
+    <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: '24px', gap: isMobile ? '12px' : '16px' }}>
           <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>
@@ -524,7 +524,7 @@ function ProjectDetail() {
             }}
           >
             <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#f59e0b' }} />
-            <p className="text-sm text-zinc-300 flex-1 m-0">
+            <p className="text-sm text-[var(--text-2)] flex-1 m-0">
               Complétez vos informations légales pour générer des devis professionnels.
             </p>
             <a href="/onboarding" className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--accent)' }}>
@@ -1612,8 +1612,8 @@ function ProjectDetail() {
           </div>
         )}
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-white mb-5">Historique du dossier</h2>
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-[var(--text-1)] mb-5">Historique du dossier</h2>
 
           {(() => {
             const allEvents = [...activities, {
@@ -1627,15 +1627,15 @@ function ProjectDetail() {
             return (
               <>
                 <div className="relative">
-                  <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-zinc-800" />
+                  <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-[var(--bg-hover)]" />
 
                   {events.map((activity) => (
                     <div key={activity.id} className="relative pl-10 pb-5 last:pb-0">
                       <TimelineIcon action={activity.action} />
 
-                      <p className="font-medium text-white text-sm">{activity.description}</p>
+                      <p className="font-medium text-[var(--text-1)] text-sm">{activity.description}</p>
 
-                      <p className="text-xs text-zinc-400 mt-0.5">
+                      <p className="text-xs text-[var(--text-2)] mt-0.5">
                         {activity.createdAt
                           ? formatDateTime(activity.createdAt)
                           : 'Date inconnue'}
@@ -1661,13 +1661,13 @@ function ProjectDetail() {
 
       {showRdvModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
+          <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-bold text-lg">📅 Nouveau rendez-vous</h2>
+              <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Nouveau rendez-vous</h2>
 
               <button
                 onClick={() => setShowRdvModal(false)}
-                className="text-zinc-400 hover:text-white"
+                className="text-[var(--text-2)] hover:text-[var(--text-1)]"
               >
                 ✕
               </button>
@@ -1675,22 +1675,22 @@ function ProjectDetail() {
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-zinc-400 uppercase tracking-wide">Titre</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Titre</label>
                 <input
                   type="text"
                   value={rdvData.title}
                   onChange={(e) => setRdvData({ ...rdvData, title: e.target.value })}
                   placeholder="Visite technique, Devis..."
-                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400 uppercase tracking-wide">Type</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Type</label>
                 <select
                   value={rdvData.type}
                   onChange={(e) => setRdvData({ ...rdvData, type: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                 >
                   <option value="RDV">RDV</option>
                   <option value="Relance">Relance</option>
@@ -1701,33 +1701,33 @@ function ProjectDetail() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Date</label>
+                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Date</label>
                   <input
                     type="date"
                     value={rdvData.date}
                     onChange={(e) => setRdvData({ ...rdvData, date: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Heure</label>
+                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Heure</label>
                   <input
                     type="time"
                     value={rdvData.time}
                     onChange={(e) => setRdvData({ ...rdvData, time: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400 uppercase tracking-wide">Notes</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Notes</label>
                 <textarea
                   value={rdvData.notes}
                   onChange={(e) => setRdvData({ ...rdvData, notes: e.target.value })}
                   rows={3}
-                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
             </div>
@@ -1745,13 +1745,13 @@ function ProjectDetail() {
 
       {editingContact && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
+          <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-bold text-lg">✏️ Modifier les informations</h2>
+              <h2 className="text-[var(--text-1)] font-bold text-lg">✏️ Modifier les informations</h2>
 
               <button
                 onClick={() => setEditingContact(false)}
-                className="text-zinc-400 hover:text-white"
+                className="text-[var(--text-2)] hover:text-[var(--text-1)]"
               >
                 ✕
               </button>
@@ -1760,53 +1760,53 @@ function ProjectDetail() {
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Prénom</label>
+                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Prénom</label>
                   <input
                     type="text"
                     value={contactForm.clientFirstName}
                     onChange={(e) => setContactForm({ ...contactForm, clientFirstName: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs text-zinc-400 uppercase tracking-wide">Nom</label>
+                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Nom</label>
                   <input
                     type="text"
                     value={contactForm.clientName}
                     onChange={(e) => setContactForm({ ...contactForm, clientName: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400 uppercase tracking-wide">Téléphone</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Téléphone</label>
                 <input
                   type="text"
                   value={contactForm.clientPhone}
                   onChange={(e) => setContactForm({ ...contactForm, clientPhone: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400 uppercase tracking-wide">Email</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Email</label>
                 <input
                   type="email"
                   value={contactForm.clientEmail}
                   onChange={(e) => setContactForm({ ...contactForm, clientEmail: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400 uppercase tracking-wide">Adresse du chantier</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Adresse du chantier</label>
                 <input
                   type="text"
                   value={contactForm.siteAddress}
                   onChange={(e) => setContactForm({ ...contactForm, siteAddress: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-zinc-700 bg-zinc-800 p-2 text-sm text-white outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
             </div>
@@ -1814,7 +1814,7 @@ function ProjectDetail() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => setEditingContact(false)}
-                className="flex-1 bg-zinc-800 text-white font-bold rounded-lg px-4 py-2 border border-zinc-700"
+                className="flex-1 bg-[var(--bg-hover)] text-[var(--text-1)] font-bold rounded-lg px-4 py-2 border border-[var(--border)]"
               >
                 Annuler
               </button>
@@ -1868,8 +1868,8 @@ function ProjectDetail() {
         <div
           className={`fixed bottom-4 left-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-2xl sm:bottom-6 sm:left-auto sm:right-6 sm:max-w-sm ${
             followUpToast.type === 'error'
-              ? 'border-red-500/30 bg-zinc-900 text-red-200'
-              : 'border-green-500/30 bg-zinc-900 text-zinc-100'
+              ? 'border-red-500/30 bg-[var(--bg-elevated)] text-red-200'
+              : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'
           }`}
         >
           {followUpToast.message}
@@ -1899,8 +1899,8 @@ function TimelineIcon({ action }: { action?: string }) {
 
   if (action?.includes('STATUS')) {
     return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center">
-        <ArrowRight className="w-3 h-3 text-white" />
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-[var(--bg-hover)] border-2 border-[var(--border)] flex items-center justify-center">
+        <ArrowRight className="w-3 h-3 text-[var(--text-1)]" />
       </span>
     );
   }
@@ -1922,8 +1922,8 @@ function TimelineIcon({ action }: { action?: string }) {
   }
 
   return (
-    <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center">
-      <ArrowRight className="w-3 h-3 text-white" />
+    <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-[var(--bg-hover)] border-2 border-[var(--border)] flex items-center justify-center">
+      <ArrowRight className="w-3 h-3 text-[var(--text-1)]" />
     </span>
   );
 }

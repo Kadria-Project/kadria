@@ -81,7 +81,7 @@ export type Project = GetProjectsOutputType['projects'][0];
 type DashboardMode = 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
 
 const STATUS_OPTIONS = [
-  { value: 'Nouveau', label: 'Nouveau', cls: 'bg-zinc-800 text-zinc-200' },
+  { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
   { value: 'À rappeler', label: 'À rappeler', cls: 'bg-amber-500/20 text-amber-400' },
   { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
   { value: 'En cours', label: 'En cours', cls: 'bg-purple-500/20 text-purple-400' },
@@ -644,7 +644,7 @@ export function TrendIndicator({ delta, unit = '%' }: { delta: number; unit?: st
   }
 
   return (
-    <div className="flex items-center gap-1 text-xs text-zinc-500">
+    <div className="flex items-center gap-1 text-xs text-[var(--text-3)]">
       <Minus className="w-3 h-3" />
       <span>Stable vs période précédente</span>
     </div>
@@ -707,7 +707,7 @@ export function Sparkline({ data, height = 60 }: { data: { label: string; value:
 
       {hover && (
         <div
-          className="absolute pointer-events-none rounded-lg border bg-zinc-900 px-3 py-2 text-xs"
+          className="absolute pointer-events-none rounded-lg border bg-[var(--bg-elevated)] px-3 py-2 text-xs"
           style={{
             borderColor: 'var(--border)',
             left: `${(hover.x / width) * 100}%`,
@@ -716,8 +716,8 @@ export function Sparkline({ data, height = 60 }: { data: { label: string; value:
             whiteSpace: 'nowrap',
           }}
         >
-          <div className="text-zinc-400">{data[hover.index].label}</div>
-          <div className="font-semibold text-white">{formatCurrency(data[hover.index].value)}</div>
+          <div className="text-[var(--text-2)]">{data[hover.index].label}</div>
+          <div className="font-semibold text-[var(--text-1)]">{formatCurrency(data[hover.index].value)}</div>
         </div>
       )}
     </div>
@@ -1351,7 +1351,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <button
             onClick={logout}
             title="Déconnexion"
-            className="bg-zinc-800 border border-zinc-700 text-zinc-400 rounded-lg"
+            className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
             style={{ padding: '9px 12px', cursor: 'pointer' }}
           >
             <LogOut className="w-4 h-4" />
@@ -1362,7 +1362,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {/* Barre période */}
       {showBusinessOverview && (
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-zinc-400">Période analysée · {periodLabel}</p>
+        <p className="text-sm text-[var(--text-2)]">Période analysée · {periodLabel}</p>
 
         <FeatureGate feature="kpiTrends" requiredPlan="performance">
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-row">
@@ -1373,7 +1373,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               className={
                 opt.value === kpiPeriod
                   ? 'rounded-full border px-4 py-2 text-sm font-semibold cursor-pointer'
-                  : 'rounded-full border px-4 py-2 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-white'
+                  : 'rounded-full border px-4 py-2 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-[var(--text-1)]'
               }
               style={
                 opt.value === kpiPeriod
@@ -1395,7 +1395,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-xl bg-zinc-800" />
+              <Skeleton key={i} className="h-28 rounded-xl bg-[var(--bg-hover)]" />
             ))}
           </div>
         ) : (
@@ -1403,18 +1403,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             {kpiCards.slice(0, 4).map((card) => (
               <div
                 key={card.label}
-                className={`flex min-h-[100px] flex-col gap-2 rounded-2xl border px-4 py-4 sm:px-[22px] sm:py-5 ${card.alert ? 'bg-orange-600/[0.04] border-orange-600/30' : 'bg-zinc-900 border-zinc-800'}`}
+                className={`flex min-h-[100px] flex-col gap-2 rounded-2xl border px-4 py-4 sm:px-[22px] sm:py-5 ${card.alert ? 'bg-orange-600/[0.04] border-orange-600/30' : 'bg-[var(--bg-elevated)] border-[var(--border)]'}`}
                 style={{ borderTopWidth: '2px', borderTopColor: card.borderColor }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-500 text-[13px]">{card.label}</span>
+                  <span className="text-[var(--text-3)] text-[13px]">{card.label}</span>
 
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-green-500">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-500">
                     <card.icon className="w-4 h-4" />
                   </div>
                 </div>
 
-                  <span className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">
+                  <span className="text-2xl font-bold tracking-tight text-[var(--text-1)] sm:text-[28px]">
                   <AnimatedKpiValue value={card.value} format={card.format} />
                 </span>
 
@@ -1429,11 +1429,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {showBusinessOverview && !loading && (
-        <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
+        <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-base font-bold text-white">Priorites du jour</p>
-              <p className="mt-1 text-sm text-zinc-400">Qui rappeler maintenant, sans disperser les signaux.</p>
+              <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
+              <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
             </div>
 
             <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
@@ -1461,14 +1461,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Bell className="h-4 w-4 shrink-0 text-green-400" />
-            <p className="truncate text-sm text-zinc-200">
+            <p className="truncate text-sm text-[var(--text-1)]">
               <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
               {primaryHotLeadName} - {primaryHotLeadReason}
             </p>
           </div>
           <button
             onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-green-500/30 sm:w-auto"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm font-semibold text-[var(--text-1)] hover:border-green-500/30 sm:w-auto"
           >
             Voir
           </button>
@@ -1477,13 +1477,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {showTasksOverview && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 lg:col-span-2">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-white">Mes actions du jour</p>
-                <p className="text-sm text-zinc-400">Taches triees par priorite puis echeance.</p>
+                <p className="font-bold text-[var(--text-1)]">Mes actions du jour</p>
+                <p className="text-sm text-[var(--text-2)]">Taches triees par priorite puis echeance.</p>
               </div>
-              <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300">{todayTasks.length} action(s)</span>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} />
@@ -1497,11 +1497,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <button
                     key={task.id}
                     onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
-                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-white">{task.title}</p>
-                      <p className="text-xs text-zinc-400">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
+                      <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
                       {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
@@ -1512,35 +1512,35 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="mb-4 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <div>
-                <p className="font-bold text-white">Dossiers en risque</p>
-                <p className="text-sm text-zinc-400">Actions rapides recommandees.</p>
+                <p className="font-bold text-[var(--text-1)]">Dossiers en risque</p>
+                <p className="text-sm text-[var(--text-2)]">Actions rapides recommandees.</p>
               </div>
             </div>
             <div className="space-y-3">
               {riskProjects.slice(0, 3).map((project) => {
                 const risk = getProjectRiskStatus(project);
                 return (
-                  <div key={project.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+                  <div key={project.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-white">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}</p>
+                        <p className="text-sm font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}</p>
                         <p className="mt-1 text-xs text-red-300">Dossier en risque - {risk.reason}</p>
                       </div>
                       <StatusBadge status={risk.label} />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)} className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200">Relancer</button>
-                      <button onClick={() => showToast('Tache ajoutee a vos actions du jour')} className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200">Creer une tache</button>
+                      <button onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)} className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-1)]">Relancer</button>
+                      <button onClick={() => showToast('Tache ajoutee a vos actions du jour')} className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-1)]">Creer une tache</button>
                       <button onClick={() => handleStatusChange(project.id, 'Perdu')} className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-300">Cloturer</button>
                     </div>
                   </div>
                 );
               })}
-              {riskProjects.length === 0 && <p className="text-sm text-zinc-500">Aucun dossier en risque pour le moment.</p>}
+              {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier en risque pour le moment.</p>}
             </div>
             {riskProjects.length > 0 && (
               <button
@@ -1557,11 +1557,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {/* Sparkline CA potentiel */}
       {showBusinessOverview && !loading && (
         <FeatureGate feature="kpiTrends" requiredPlan="performance">
-        <div className="mb-6 w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5">
+        <div className="mb-6 w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="font-bold text-white">Évolution du CA potentiel</p>
-              <p className="text-sm text-zinc-400">
+              <p className="font-bold text-[var(--text-1)]">Évolution du CA potentiel</p>
+              <p className="text-sm text-[var(--text-2)]">
                 {kpiPeriod === '7d'
                   ? 'Sur les 7 derniers jours'
                   : kpiPeriod === '30d'
@@ -1683,11 +1683,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {showCalendarWorkspace && (
         <FeatureGate feature="calendar" requiredPlan="performance">
-          <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-base font-bold text-white">Calendrier Kadria</p>
-                <p className="mt-1 text-sm text-zinc-400">
+                <p className="text-base font-bold text-[var(--text-1)]">Calendrier Kadria</p>
+                <p className="mt-1 text-sm text-[var(--text-2)]">
                   Utilisez le calendrier integre de Kadria. La synchronisation Google Calendar reste optionnelle.
                 </p>
               </div>
@@ -1695,7 +1695,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <button
                 type="button"
                 onClick={() => setCalendarModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-zinc-950 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
+                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
               >
                 <CalendarDays className="h-4 w-4" />
                 Synchroniser mon agenda
@@ -1713,12 +1713,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (
             <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
             <>
-              <div className="my-2 border-t border-zinc-800" />
+              <div className="my-2 border-t border-[var(--border)]" />
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-base font-bold text-white">Opportunites prioritaires</p>
-                  <p className="mt-1 text-xs text-zinc-400">
+                  <p className="text-base font-bold text-[var(--text-1)]">Opportunites prioritaires</p>
+                  <p className="mt-1 text-xs text-[var(--text-2)]">
                     Les dossiers a rappeler en premier selon completude, budget, urgence, delai, reactivite et distance.
                   </p>
                 </div>
@@ -1736,7 +1736,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
                       index === 0
                         ? 'border-green-500/25 bg-green-500/[0.02]'
-                        : 'border-zinc-800 bg-zinc-900'
+                        : 'border-[var(--border)] bg-[var(--bg-elevated)]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1750,11 +1750,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     </div>
 
                     <div>
-                      <p className="font-bold text-white truncate">
+                      <p className="font-bold text-[var(--text-1)] truncate">
                         {project.clientFirstName} {project.clientName}
                       </p>
 
-                      <p className="text-sm text-zinc-400 truncate">
+                      <p className="text-sm text-[var(--text-2)] truncate">
                         {project.projectType || project.trade || 'Projet'} - {project.city || 'Ville non renseignee'}
                       </p>
                     </div>
@@ -1772,7 +1772,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         );
                       })()}
 
-                      <span className="text-zinc-400 text-xs">
+                      <span className="text-[var(--text-2)] text-xs">
                         {project.budget || 'Budget non renseigne'}
                       </span>
                     </div>
@@ -1784,22 +1784,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     key={`locked-top-${index}`}
                     type="button"
                     onClick={() => openUpgradeModal('topAiOpportunities')}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-left transition-colors duration-200 hover:border-green-500/25"
+                    className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 text-left transition-colors duration-200 hover:border-green-500/25"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-bold text-zinc-500">
+                      <span className="rounded bg-[var(--bg-hover)] px-2 py-0.5 text-xs font-bold text-[var(--text-3)]">
                         #{index + 1}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-2)]">
                         <Lock className="h-3 w-3 text-green-500" />
                         Performance
                       </span>
                     </div>
                     <div className="mt-4 space-y-2">
-                      <div className="h-4 w-2/3 rounded bg-zinc-800" />
-                      <div className="h-3 w-1/2 rounded bg-zinc-800/80" />
+                      <div className="h-4 w-2/3 rounded bg-[var(--bg-hover)]" />
+                      <div className="h-3 w-1/2 rounded bg-[var(--bg-hover)]/80" />
                     </div>
-                    <p className="mt-4 text-xs leading-5 text-zinc-500">
+                    <p className="mt-4 text-xs leading-5 text-[var(--text-3)]">
                       Classement IA des dossiers prioritaires disponible avec Performance.
                     </p>
                   </button>
@@ -1813,8 +1813,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <>
           {/* ZONE 2 — Toggles */}
           <div>
-            <div className="relative my-2 border-t border-zinc-800">
-              <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-zinc-950 px-4 text-xs uppercase tracking-[0.08em] text-zinc-400">
+            <div className="relative my-2 border-t border-[var(--border)]">
+              <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg)] px-4 text-xs uppercase tracking-[0.08em] text-[var(--text-2)]">
                 Analyses détaillées
               </span>
             </div>
@@ -1826,30 +1826,30 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
                   openPanel === 'pipeline'
                     ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
-                    : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <BarChart3
-                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'pipeline' ? 'text-green-400' : 'text-zinc-400'}`}
+                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'pipeline' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
                   />
 
                   <div className="flex flex-col text-left">
-                    <span className="text-[15px] font-bold text-white">Pipeline commerciale</span>
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-[15px] font-bold text-[var(--text-1)]">Pipeline commerciale</span>
+                    <span className="text-xs text-[var(--text-2)]">
                       {pipelineSteps.length} étapes · {allProjects.length} dossiers
                     </span>
                   </div>
                 </div>
 
                 {!canAccessFeature('commercialPipeline') ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
                     <Lock className="h-3 w-3 text-green-500" />
                     Performance
                   </span>
                 ) : (
                   <ChevronDown
-                    className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
+                    className={`h-[18px] w-[18px] shrink-0 text-[var(--text-2)] transition-transform duration-200 ${
                       openPanel === 'pipeline' ? 'rotate-180' : 'animate-bounce'
                     }`}
                   />
@@ -1863,30 +1863,30 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
                   openPanel === 'chantiers'
                     ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
-                    : 'border-zinc-800 bg-zinc-900 hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <MapPin
-                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'chantiers' ? 'text-green-400' : 'text-zinc-400'}`}
+                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'chantiers' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
                   />
 
                   <div className="flex flex-col text-left">
-                    <span className="text-[15px] font-bold text-white">Chantiers géolocalisés</span>
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-[15px] font-bold text-[var(--text-1)]">Chantiers géolocalisés</span>
+                    <span className="text-xs text-[var(--text-2)]">
                       Vue géographique · {sortedProjects.slice(0, 8).length} points
                     </span>
                   </div>
                 </div>
 
                 {!canAccessFeature('geoProjects') ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
                     <Lock className="h-3 w-3 text-green-500" />
                     Performance
                   </span>
                 ) : (
                   <ChevronDown
-                    className={`h-[18px] w-[18px] shrink-0 text-zinc-400 transition-transform duration-200 ${
+                    className={`h-[18px] w-[18px] shrink-0 text-[var(--text-2)] transition-transform duration-200 ${
                       openPanel === 'chantiers' ? 'rotate-180' : 'animate-bounce'
                     }`}
                   />
@@ -1898,7 +1898,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
           {/* ZONE 3 — Panneau accordéon */}
           <div
-            className="rounded-2xl border border-zinc-800 overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
+            className="rounded-2xl border border-[var(--border)] overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
             style={{
               maxHeight: openPanel === 'pipeline' ? '600px' : '0px',
               opacity: openPanel === 'pipeline' ? 1 : 0,
@@ -1906,7 +1906,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           >
             {openPanel === 'pipeline' && !loading && (
                <div className="p-4 sm:p-6">
-                <h3 className="text-white font-semibold mb-3">Pipeline</h3>
+                <h3 className="text-[var(--text-1)] font-semibold mb-3">Pipeline</h3>
 
                 <div>
                   {pipelineSteps.map((step) => {
@@ -1970,7 +1970,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-800 overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
+            className="rounded-2xl border border-[var(--border)] overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
             style={{
               maxHeight: openPanel === 'chantiers' ? '600px' : '0px',
               opacity: openPanel === 'chantiers' ? 1 : 0,
@@ -1978,7 +1978,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           >
             {openPanel === 'chantiers' && !loading && (
                <div className="p-4 sm:p-6">
-                <h3 className="text-white font-semibold mb-3">📍 Chantiers</h3>
+                <h3 className="text-[var(--text-1)] font-semibold mb-3">📍 Chantiers</h3>
 
                  <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <ProspectsLeafletMap
@@ -1996,9 +1996,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           {/* ZONE 4 — Liste projets, pleine largeur */}
           <div className="space-y-4 w-full">
             {showClientsWorkspace && (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-                <p className="text-base font-bold text-white">Mes clients</p>
-                <p className="mt-1 text-sm text-zinc-400">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+                <p className="text-base font-bold text-[var(--text-1)]">Mes clients</p>
+                <p className="mt-1 text-sm text-[var(--text-2)]">
                   Base clients avec les informations utiles pour rappeler, suivre et retrouver un dossier.
                 </p>
               </div>
@@ -2006,7 +2006,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <div className="relative w-full sm:min-w-[260px] sm:flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-3)]" />
 
                 <Input
                   className="pl-9 rounded-[10px] py-2.5 focus:border-green-500"
@@ -2030,7 +2030,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold sm:w-auto ${
                   quickFilter === 'hot'
                     ? 'border-green-500/40 bg-green-500/[0.08] text-green-400'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-green-500/25'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:border-green-500/25'
                 }`}
               >
                 <Bell className="h-4 w-4" />
@@ -2049,7 +2049,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold sm:w-auto ${
                   quickFilter === 'risk'
                     ? 'border-red-500/40 bg-red-500/[0.08] text-red-300'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-red-500/25'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:border-red-500/25'
                 }`}
               >
                 <AlertTriangle className="h-4 w-4" />
@@ -2165,7 +2165,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <button
                   type="button"
                   onClick={resetFilters}
-                    className="min-h-11 w-full rounded-lg border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-400 transition-colors duration-150 hover:border-red-600 hover:text-red-600 sm:w-auto"
+                    className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text-2)] transition-colors duration-150 hover:border-red-600 hover:text-red-600 sm:w-auto"
                 >
                   ✕ Réinitialiser
                 </button>
@@ -2211,7 +2211,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
 
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-[var(--text-2)]">
                 {hasActiveFilters
                   ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
                   : `${displayedProjects.length} dossier(s) trouvé(s)`}
@@ -2225,7 +2225,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm transition-colors duration-150 sm:flex-none ${
                     viewMode === 'list'
                       ? 'bg-green-500 font-semibold text-zinc-950'
-                      : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
+                      : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:text-[var(--text-1)]'
                   }`}
                 >
                   📋 Liste
@@ -2238,7 +2238,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm transition-colors duration-150 sm:flex-none ${
                     viewMode === 'kanban'
                       ? 'bg-green-500 font-semibold text-zinc-950'
-                      : 'border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
+                      : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:text-[var(--text-1)]'
                   }`}
                 >
                   🗂️ Kanban
@@ -2249,43 +2249,43 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <button
                     type="button"
                     onClick={() => setExportMenuOpen((v) => !v)}
-                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors duration-150 hover:border-green-500/30 sm:w-auto sm:justify-start"
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--text-1)] transition-colors duration-150 hover:border-green-500/30 sm:w-auto sm:justify-start"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Exporter
                   </button>
 
                   {exportMenuOpen && (
-                    <div className="absolute left-0 right-0 z-50 mt-2 rounded-xl border border-zinc-800 bg-zinc-900 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)] sm:left-auto sm:right-0 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
+                    <div className="absolute left-0 right-0 z-50 mt-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)] sm:left-auto sm:right-0 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
                       <button
                         type="button"
                         onClick={handleExportCSV}
-                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
                       >
                         Export CSV
-                        <p className="text-xs text-zinc-400">Tous les dossiers filtrés sélectionnés</p>
+                        <p className="text-xs text-[var(--text-2)]">Tous les dossiers filtrés sélectionnés</p>
                       </button>
 
                       {canExportPdf ? (
                         <button
                           type="button"
                           onClick={() => handleExportPDF('list')}
-                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
                         >
                           Export PDF
-                          <p className="text-xs text-zinc-400">Version PDF de la liste en cours</p>
+                          <p className="text-xs text-[var(--text-2)]">Version PDF de la liste en cours</p>
                         </button>
                       ) : (
                         <FeatureGate feature="pdfExports" requiredPlan="performance" variant="menuItem">
                           <button
                             type="button"
-                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-zinc-300"
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-[var(--text-2)]"
                           >
                             <span className="min-w-0">
-                              <span className="block font-medium text-zinc-200">Export PDF</span>
-                              <span className="block text-xs text-zinc-400">Version PDF de la liste en cours</span>
+                              <span className="block font-medium text-[var(--text-1)]">Export PDF</span>
+                              <span className="block text-xs text-[var(--text-2)]">Version PDF de la liste en cours</span>
                             </span>
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700/80 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)]/80 px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
                               <Lock className="h-3 w-3 text-green-500" />
                               Performance
                             </span>
@@ -2293,28 +2293,28 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         </FeatureGate>
                       )}
 
-                      <div className="my-1 border-t border-zinc-800" />
+                      <div className="my-1 border-t border-[var(--border)]" />
 
                       {canExportMonthlyReport ? (
                         <button
                           type="button"
                           onClick={() => handleExportPDF('monthly')}
-                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
                         >
                           Rapport mensuel
-                          <p className="text-xs text-zinc-400">Synthèse PDF du mois en cours</p>
+                          <p className="text-xs text-[var(--text-2)]">Synthèse PDF du mois en cours</p>
                         </button>
                       ) : (
                         <FeatureGate feature="monthlyPdfReport" requiredPlan="performance" variant="menuItem">
                           <button
                             type="button"
-                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-zinc-300"
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-[var(--text-2)]"
                           >
                             <span className="min-w-0">
-                              <span className="block font-medium text-zinc-200">Rapport mensuel</span>
-                              <span className="block text-xs text-zinc-400">Synthèse PDF du mois en cours</span>
+                              <span className="block font-medium text-[var(--text-1)]">Rapport mensuel</span>
+                              <span className="block text-xs text-[var(--text-2)]">Synthèse PDF du mois en cours</span>
                             </span>
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-700/80 px-2 py-1 text-[11px] font-semibold text-zinc-300">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)]/80 px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
                               <Lock className="h-3 w-3 text-green-500" />
                               Performance
                             </span>
@@ -2325,7 +2325,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   )}
 
                   {hasActiveFilters && (
-                    <p className="mt-1 text-right text-xs text-zinc-400">
+                    <p className="mt-1 text-right text-xs text-[var(--text-2)]">
                       {filteredProjects.length} dossier(s) sélectionné(s)
                     </p>
                   )}
@@ -2335,10 +2335,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             {quickFilter && (
-              <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-zinc-400">
+              <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-[var(--text-2)]">
                   Filtre actif :{' '}
-                  <span className="text-white font-medium">
+                  <span className="text-[var(--text-1)] font-medium">
                     {quickFilter === 'today'
                       ? 'Relances du jour'
                       : quickFilter === 'overdue'
@@ -2360,15 +2360,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             {loading ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 rounded-xl bg-zinc-800" />
+                  <Skeleton key={i} className="h-20 rounded-xl bg-[var(--bg-hover)]" />
                 ))}
               </div>
             ) : displayedProjects.length === 0 ? (
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center sm:p-16">
-                <SearchX className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
-                <p className="font-bold text-white">Aucun dossier trouvé</p>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-8 text-center sm:p-16">
+                <SearchX className="w-10 h-10 text-[var(--text-3)] mx-auto mb-3" />
+                <p className="font-bold text-[var(--text-1)]">Aucun dossier trouvé</p>
 
-                <p className="text-zinc-400 mt-1">
+                <p className="text-[var(--text-2)] mt-1">
                   {filters.search
                     ? `Aucun résultat pour '${filters.search}'`
                     : filters.statut
@@ -2400,7 +2400,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       <div
         className={`fixed bottom-4 left-4 right-4 z-50 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 sm:bottom-6 sm:left-auto sm:right-6 sm:px-5 sm:py-3.5 ${
           toast.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
-        } ${toast.error ? 'border-red-600 bg-zinc-900 text-red-400' : 'border-green-500/30 bg-zinc-900 text-zinc-100'}`}
+        } ${toast.error ? 'border-red-600 bg-[var(--bg-elevated)] text-red-400' : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'}`}
       >
         {toast.error ? <XCircle className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
         {toast.message}
@@ -2408,12 +2408,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {calendarModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6 shadow-2xl">
             <div className="mb-4 flex items-center gap-3">
               <CalendarDays className="h-5 w-5 text-green-400" />
-              <p className="font-bold text-white">Bientot disponible</p>
+              <p className="font-bold text-[var(--text-1)]">Bientot disponible</p>
             </div>
-            <p className="text-sm leading-6 text-zinc-400">
+            <p className="text-sm leading-6 text-[var(--text-2)]">
               La synchronisation Google Calendar est preparee, mais l'authentification OAuth n'est pas encore activee.
             </p>
             <button
@@ -2448,7 +2448,7 @@ export function ProjectList({
   return (
     <div>
       <div
-        className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-zinc-500 uppercase tracking-widest"
+        className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
         style={{ fontSize: '11px', padding: '10px 16px' }}
       >
         <span className="col-span-1">Réf</span>
@@ -2465,37 +2465,37 @@ export function ProjectList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
-            <span className="col-span-1 text-zinc-500 font-mono">
+            <span className="col-span-1 text-[var(--text-3)] font-mono">
               {String(p.id).slice(0, 6)}
             </span>
 
-            <span className="col-span-1 text-zinc-400">
+            <span className="col-span-1 text-[var(--text-2)]">
               {p.createdAt ? timeAgo(p.createdAt) : '—'}
             </span>
 
-            <span className="col-span-2 flex items-center gap-2 font-medium text-white truncate">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+            <span className="col-span-2 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
                 {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
               </span>
               {p.clientFirstName} {p.clientName}
             </span>
 
             <span
-              className="col-span-2 text-zinc-400"
+              className="col-span-2 text-[var(--text-2)]"
               style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {p.trade || '—'}
             </span>
 
-            <span className="col-span-2 text-zinc-400 truncate">
+            <span className="col-span-2 text-[var(--text-2)] truncate">
               {p.city || '—'}
             </span>
 
-            <span className="col-span-1 text-zinc-400">
+            <span className="col-span-1 text-[var(--text-2)]">
               {p.budget || '—'}
             </span>
 
@@ -2508,42 +2508,42 @@ export function ProjectList({
             </span>
 
             <span className="col-span-1 text-right">
-              <ChevronRight className="w-4 h-4 text-zinc-400 inline" />
+              <ChevronRight className="w-4 h-4 text-[var(--text-2)] inline" />
             </span>
           </div>
 
           <div className="space-y-3 md:hidden">
             <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
                 {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
               </span>
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-[var(--text-1)]">
                     {p.clientFirstName} {p.clientName}
                   </span>
                   <StatusBadge status={p.status} />
                 </div>
 
-                <p className="mt-1 text-sm text-zinc-400">
+                <p className="mt-1 text-sm text-[var(--text-2)]">
                   {p.trade || p.projectType || 'Projet'}
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-[var(--text-2)]">
               {p.city || 'Ville non renseignee'}
             </p>
 
-            <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-300">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-2)]">
               <span>{p.budget || 'Budget non renseigne'}</span>
-              <span className="text-zinc-600">•</span>
+              <span className="text-[var(--text-3)]">•</span>
               <ScorePill score={p.completenessScore || 0} />
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-[var(--text-3)]">
                 {p.createdAt ? timeAgo(p.createdAt) : formatIsoDate(p.createdAt)}
               </span>
               <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-400">
@@ -2602,12 +2602,12 @@ export function KanbanBoard({
                 setOverColumn(null);
               }}
               style={{ borderTop: `3px solid ${col.color}` }}
-              className={`flex min-w-[280px] flex-col rounded-2xl border bg-zinc-900 transition-colors duration-200 [scroll-snap-align:start] sm:min-w-[320px] md:min-w-0 ${
-                isOver ? 'border-green-500 bg-green-500/[0.04]' : 'border-zinc-800'
+              className={`flex min-w-[280px] flex-col rounded-2xl border bg-[var(--bg-elevated)] transition-colors duration-200 [scroll-snap-align:start] sm:min-w-[320px] md:min-w-0 ${
+                isOver ? 'border-green-500 bg-green-500/[0.04]' : 'border-[var(--border)]'
               }`}
             >
-              <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-                <span className="text-sm font-bold text-white">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <span className="text-sm font-bold text-[var(--text-1)]">
                   {col.label}
                 </span>
 
@@ -2621,8 +2621,8 @@ export function KanbanBoard({
 
               <div className="flex max-h-[calc(100vh-300px)] flex-col gap-3 overflow-y-auto p-3">
                 {colProjects.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-zinc-500">
-                    <FolderOpen className="mx-auto mb-2 h-6 w-6 text-zinc-600" />
+                  <div className="py-8 text-center text-sm text-[var(--text-3)]">
+                    <FolderOpen className="mx-auto mb-2 h-6 w-6 text-[var(--text-3)]" />
                     Aucun dossier
                   </div>
                 ) : (
@@ -2640,7 +2640,7 @@ export function KanbanBoard({
                 )}
               </div>
 
-              <div className="border-t border-zinc-800 px-2 py-2 text-center text-xs text-zinc-400">
+              <div className="border-t border-[var(--border)] px-2 py-2 text-center text-xs text-[var(--text-2)]">
                 {colProjects.length} dossier{colProjects.length === 1 ? '' : 's'} · {formatAmount(total)} potentiel
               </div>
             </div>
@@ -2649,7 +2649,7 @@ export function KanbanBoard({
         </div>
       </div>
 
-      <p className="mt-2 text-center text-xs text-zinc-500 md:hidden">← Faites défiler →</p>
+      <p className="mt-2 text-center text-xs text-[var(--text-3)] md:hidden">← Faites défiler →</p>
     </div>
   );
 }
@@ -2682,25 +2682,25 @@ function KanbanCard({
       }}
       onDragEnd={onDragEnd}
       onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-      className={`cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
-        isClosed ? 'bg-zinc-800/40' : ''
+      className={`cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
+        isClosed ? 'bg-[var(--bg-hover)]/40' : ''
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
           {initials}
         </span>
 
-        <span className="truncate text-sm font-semibold text-white">
+        <span className="truncate text-sm font-semibold text-[var(--text-1)]">
           {project.clientFirstName} {project.clientName}
         </span>
 
         <StatusBadge status={project.status} />
       </div>
 
-      <p className="mt-1.5 truncate text-xs text-zinc-400">{project.trade || project.projectType || 'Projet'}</p>
+      <p className="mt-1.5 truncate text-xs text-[var(--text-2)]">{project.trade || project.projectType || 'Projet'}</p>
 
-      <p className="truncate text-xs text-zinc-400">
+      <p className="truncate text-xs text-[var(--text-2)]">
         {project.city || '—'} · {project.budget || '—'}
       </p>
 
@@ -2709,7 +2709,7 @@ function KanbanCard({
           Score: {score}%
         </span>
 
-        <span className="ml-auto text-xs text-zinc-500">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
+        <span className="ml-auto text-xs text-[var(--text-3)]">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
       </div>
     </div>
   );
@@ -2737,7 +2737,7 @@ function ClientList({
   return (
     <div>
       <div
-        className="hidden md:grid grid-cols-12 gap-4 bg-zinc-900 rounded-t-xl text-zinc-500 uppercase tracking-widest"
+        className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
         style={{ fontSize: '11px', padding: '10px 16px' }}
       >
         <span className="col-span-3">Client</span>
@@ -2751,48 +2751,48 @@ function ClientList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="border-b border-zinc-800/50 bg-zinc-900 hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
-            <span className="col-span-3 flex items-center gap-2 font-medium text-white truncate">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+            <span className="col-span-3 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
                 {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
               </span>
               {p.clientFirstName} {p.clientName}
             </span>
 
-            <span className="col-span-3 min-w-0 text-zinc-400">
+            <span className="col-span-3 min-w-0 text-[var(--text-2)]">
               <span className="block truncate">{p.clientEmail || 'Email non renseigne'}</span>
-              <span className="block truncate text-xs text-zinc-500">{p.clientPhone || 'Telephone non renseigne'}</span>
+              <span className="block truncate text-xs text-[var(--text-3)]">{p.clientPhone || 'Telephone non renseigne'}</span>
             </span>
 
-            <span className="col-span-2 text-zinc-400 truncate">{p.city || 'Ville non renseignee'}</span>
-            <span className="col-span-2 text-zinc-400 truncate">{p.projectType || p.trade || 'Projet'}</span>
+            <span className="col-span-2 text-[var(--text-2)] truncate">{p.city || 'Ville non renseignee'}</span>
+            <span className="col-span-2 text-[var(--text-2)] truncate">{p.projectType || p.trade || 'Projet'}</span>
             <span className="col-span-1"><StatusBadge status={p.status} /></span>
-            <span className="col-span-1 text-right"><ChevronRight className="w-4 h-4 text-zinc-400 inline" /></span>
+            <span className="col-span-1 text-right"><ChevronRight className="w-4 h-4 text-[var(--text-2)] inline" /></span>
           </div>
 
           <div className="md:hidden flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
               {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
             </span>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm text-white">
+                <span className="font-medium text-sm text-[var(--text-1)]">
                   {p.clientFirstName} {p.clientName}
                 </span>
                 <StatusBadge status={p.status} />
               </div>
 
-              <div className="mt-1 text-xs text-zinc-400">
+              <div className="mt-1 text-xs text-[var(--text-2)]">
                 <p className="truncate">{p.clientEmail || p.clientPhone || 'Contact non renseigne'}</p>
                 <p className="truncate">{p.city || 'Ville non renseignee'} - {p.projectType || p.trade || 'Projet'}</p>
               </div>
             </div>
 
-            <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[var(--text-2)] shrink-0" />
           </div>
         </div>
       ))}
@@ -2822,21 +2822,21 @@ function StatusBadge({ status }: { status?: string }) {
 
 function PriorityMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3">
-      <p className="text-2xl font-bold tracking-tight text-white">{value}</p>
-      <p className="mt-1 text-xs text-zinc-400">{label}</p>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+      <p className="text-2xl font-bold tracking-tight text-[var(--text-1)]">{value}</p>
+      <p className="mt-1 text-xs text-[var(--text-2)]">{label}</p>
     </div>
   );
 }
 
 function ActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 text-green-400">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-400">
         <Icon className="h-4 w-4" />
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-2xl font-bold text-[var(--text-1)]">{value}</p>
+      <p className="text-xs text-[var(--text-2)]">{label}</p>
     </div>
   );
 }
