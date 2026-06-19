@@ -90,7 +90,7 @@ export default function OnboardingPage() {
     welcomeName: '',
     welcomeMessage: '',
     primaryColor: '#22c55e',
-    secondaryColor: 'var(--bg-elevated)',
+    secondaryColor: '#18181b',
     websiteUrl: '',
     raisonSociale: '',
     formeJuridique: '',
@@ -118,7 +118,7 @@ export default function OnboardingPage() {
 
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640)
+    const check = () => setIsMobile(window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
             welcomeName: data.config.welcomeName || '',
             welcomeMessage: data.config.welcomeMessage || '',
             primaryColor: data.config.primaryColor || '#22c55e',
-            secondaryColor: data.config.secondaryColor || 'var(--bg-elevated)',
+            secondaryColor: data.config.secondaryColor || '#18181b',
             websiteUrl: data.config.websiteUrl || '',
             raisonSociale: data.config.raisonSociale || '',
             formeJuridique: data.config.formeJuridique || '',
@@ -266,7 +266,7 @@ export default function OnboardingPage() {
       <div style={{
         background: 'var(--bg-elevated)',
         borderBottom: '1px solid var(--border)',
-        padding: '16px 32px',
+        padding: isMobile ? '12px 16px' : '16px 32px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -274,7 +274,7 @@ export default function OnboardingPage() {
         top: 0,
         zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '16px' }}>
           <button
             onClick={() => router.push('/dashboard-v2')}
             style={{
@@ -287,9 +287,11 @@ export default function OnboardingPage() {
           </button>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
             <KadriaLogo size="sm" theme="dark" noLink />
-            <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
-              · Configuration
-            </span>
+            {!isMobile && (
+              <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
+                · Configuration
+              </span>
+            )}
           </div>
         </div>
         <button
@@ -300,7 +302,7 @@ export default function OnboardingPage() {
             border: saved ? '1px solid var(--accent)' : 'none',
             color: saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
             fontWeight: 700, borderRadius: '10px',
-            padding: '10px 24px', fontSize: '14px',
+            padding: isMobile ? '9px 16px' : '10px 24px', fontSize: '14px',
             cursor: saving ? 'default' : 'pointer',
             transition: 'all 0.2s',
           }}
@@ -453,7 +455,7 @@ export default function OnboardingPage() {
                   Informations générales
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                     <div>
                       <label style={labelStyle}>Nom de l&apos;entreprise</label>
                       <input
@@ -543,7 +545,7 @@ export default function OnboardingPage() {
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Couleurs
                 </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                   <div>
                     <label style={labelStyle}>Couleur principale</label>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -552,7 +554,7 @@ export default function OnboardingPage() {
                         value={config.primaryColor}
                         onChange={e => setConfig(c => ({ ...c, primaryColor: e.target.value }))}
                         style={{
-                          width: '48px', height: '44px',
+                          width: isMobile ? '40px' : '48px', height: '44px',
                           borderRadius: '8px', border: '1px solid var(--border)',
                           background: 'transparent', cursor: 'pointer',
                           padding: '2px',
@@ -577,7 +579,7 @@ export default function OnboardingPage() {
                         value={config.secondaryColor}
                         onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
                         style={{
-                          width: '48px', height: '44px',
+                          width: isMobile ? '40px' : '48px', height: '44px',
                           borderRadius: '8px', border: '1px solid var(--border)',
                           background: 'transparent', cursor: 'pointer',
                           padding: '2px',
@@ -601,7 +603,7 @@ export default function OnboardingPage() {
                   <p style={{ ...labelStyle, marginBottom: '8px' }}>Palettes suggérées</p>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {[
-                      { name: 'Kadria', primary: '#22c55e', secondary: 'var(--bg)' },
+                      { name: 'Kadria', primary: '#22c55e', secondary: '#09090b' },
                       { name: 'Océan', primary: '#3b82f6', secondary: '#0f172a' },
                       { name: 'Ardoise', primary: '#64748b', secondary: '#0f172a' },
                       { name: 'Terracotta', primary: '#ea580c', secondary: '#1c0a00' },
@@ -792,7 +794,7 @@ export default function OnboardingPage() {
                     {legalErrors.raisonSociale && <p style={errorStyle}>{legalErrors.raisonSociale}</p>}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                     <div>
                       <label style={labelStyle}>Forme juridique *</label>
                       <select
@@ -864,7 +866,7 @@ export default function OnboardingPage() {
                     {legalErrors.adressePro && <p style={errorStyle}>{legalErrors.adressePro}</p>}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                     <div>
                       <label style={labelStyle}>Code postal *</label>
                       <input
@@ -907,7 +909,7 @@ export default function OnboardingPage() {
                   </div>
 
                   {!config.assuranceNonRequise && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                       <div>
                         <label style={labelStyle}>Nom de l&apos;assureur *</label>
                         <input
@@ -939,7 +941,7 @@ export default function OnboardingPage() {
                   Préférences devis
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '14px' }}>
                     <div>
                       <label style={labelStyle}>Préfixe numérotation</label>
                       <input
@@ -1017,7 +1019,7 @@ export default function OnboardingPage() {
                   Ce réglage n'affecte que votre dashboard, pas le widget
                   visible par vos prospects.
                 </p>
-                <div style={{ display: 'flex', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '14px' }}>
                   {[
                     { value: 'dark', label: 'Sombre', icon: '🌙',
                       preview: { bg: '#09090b', card: '#18181b', text: '#f4f4f5' } },

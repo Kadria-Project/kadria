@@ -6,6 +6,7 @@ export async function GET() {
   try {
     const access = await requireFeatureAccess('calendar')
     if (!access.ok) {
+      console.warn('[EVENTS GET] Accès refusé — plan:', access.status === 403 ? access.body.currentPlan : undefined, 'requis:', access.status === 403 ? access.body.requiredPlan : undefined)
       return NextResponse.json(access.body, { status: access.status })
     }
 

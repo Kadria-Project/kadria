@@ -35,8 +35,10 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  let userId: string | undefined
   try {
     const session = await getSession()
+    userId = session?.id
     if (!session?.id) {
       return NextResponse.json(
         { success: false, error: 'Non authentifié' },
@@ -52,12 +54,14 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    await updateUser(session.id, { Theme: toAirtableTheme(body.theme) })
+    const airtableTheme = toAirtableTheme(body.theme)
+    await updateUser(session.id, { Theme: airtableTheme })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[USER THEME PATCH]', error)
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[USER THEME PATCH] userId:', userId, '— error:', message)
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: `Échec de la sauvegarde du thème (champ Airtable "Theme" sur Users) : ${message}` },
       { status: 500 }
     )
   }
