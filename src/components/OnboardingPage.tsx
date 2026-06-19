@@ -1,11 +1,13 @@
-import { useNavigate } from 'react-router-dom';
+'use client';
+
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Rocket } from 'lucide-react';
 import SiteNav from '@/components/SiteNav';
 
 export default function OnboardingPage() {
-  const nav = useNavigate();
+  const router = useRouter();
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
@@ -25,7 +27,7 @@ export default function OnboardingPage() {
               <li>4. Mise en ligne</li>
             </ul>
           </Card>
-          <Button onClick={() => nav('/pro')} className="gap-2">Accéder au dashboard <ArrowRight className="w-4 h-4" /></Button>
+          <Button onClick={() => router.push('/pro')} className="gap-2">Accéder au dashboard <ArrowRight className="w-4 h-4" /></Button>
         </div>
       </main>
     </div>

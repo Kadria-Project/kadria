@@ -1,5 +1,7 @@
+'use client';
+
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,7 @@ function loadLocalDemoProjects(): DemoProject[] {
 }
 
 export default function DashboardDemoPage() {
-  const nav = useNavigate();
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<DemoProject | null>(null);
   const [localProjects, setLocalProjects] = useState<DemoProject[]>([]);
@@ -83,7 +85,7 @@ export default function DashboardDemoPage() {
             <p className="text-xs text-muted-foreground mt-0.5">Voici le type de dossiers que vous recevriez automatiquement avec Kadria.</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button size="sm" variant="outline" onClick={() => nav('/demo')} className="gap-1.5 text-xs">
+            <Button size="sm" variant="outline" onClick={() => router.push('/demo')} className="gap-1.5 text-xs">
               <ArrowLeft className="w-3 h-3" /> Tester l'assistant
             </Button>
             <Button size="sm" onClick={() => window.open(CALENDLY_URL, '_blank')} className="gap-1.5 text-xs">

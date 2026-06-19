@@ -1,10 +1,12 @@
-import { useNavigate } from 'react-router-dom';
+'use client';
+
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import SiteNav from '@/components/SiteNav';
 
 export default function ThankYouPage() {
-  const nav = useNavigate();
+  const router = useRouter();
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SiteNav />
@@ -15,7 +17,7 @@ export default function ThankYouPage() {
           </div>
           <h1 className="text-2xl font-bold">Merci !</h1>
           <p className="text-muted-foreground">Votre demande a bien été prise en compte. Nous vous recontacterons rapidement pour la mise en place.</p>
-          <Button onClick={() => nav('/')} className="gap-2">Retour à l'accueil <ArrowRight className="w-4 h-4" /></Button>
+          <Button onClick={() => router.push('/')} className="gap-2">Retour à l'accueil <ArrowRight className="w-4 h-4" /></Button>
         </div>
       </main>
     </div>

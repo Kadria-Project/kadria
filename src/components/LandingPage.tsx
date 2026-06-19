@@ -1,4 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+'use client';
+
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle, Phone, Globe, LayoutDashboard, PhoneOff, MessageSquareOff, UserX, FileX, AlertTriangle, Target, Zap, Check } from 'lucide-react';
 import { KadriaLogoImg } from '@/components/KadriaLogo';
@@ -15,7 +17,8 @@ const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0 } };
 const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 
 export default function LandingPage() {
-  const nav = useNavigate();
+  const router = useRouter();
+  const nav = useCallback((href: string) => router.push(href), [router]);
   const [sampleOpen, setSampleOpen] = useState(false);
 
   const scrollTo = useCallback((id: string) => {
@@ -48,7 +51,7 @@ export default function LandingPage() {
 }
 
 /* ── Nav ── */
-function Nav({ nav, scrollTo, openSample }: { nav: ReturnType<typeof useNavigate>; scrollTo: (id: string) => void; openSample: () => void }) {
+function Nav({ nav, scrollTo, openSample }: { nav: (href: string) => void; scrollTo: (id: string) => void; openSample: () => void }) {
   const navLinks = [
     { label: 'Comment ça marche', action: () => scrollTo('comment-ca-marche') },
     { label: 'Exemple de dossier', action: openSample },
@@ -78,7 +81,7 @@ function Nav({ nav, scrollTo, openSample }: { nav: ReturnType<typeof useNavigate
 }
 
 /* ── Hero ── */
-function Hero({ nav }: { nav: ReturnType<typeof useNavigate> }) {
+function Hero({ nav }: { nav: (href: string) => void }) {
   const trustBadges = [
     'Mise en place rapide',
     'Sans changement de numéro',
@@ -383,7 +386,7 @@ function HowItWorks() {
 }
 
 /* ── Final CTA ── */
-function FinalCTA({ nav }: { nav: ReturnType<typeof useNavigate> }) {
+function FinalCTA({ nav }: { nav: (href: string) => void }) {
   return (
     <section className="py-24 border-t border-border/50">
       <div className="container mx-auto px-6 text-center max-w-2xl">

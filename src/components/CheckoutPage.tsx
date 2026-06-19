@@ -1,4 +1,6 @@
-import { useNavigate, useParams } from 'react-router-dom';
+'use client';
+
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
@@ -7,8 +9,9 @@ import SiteNav from '@/components/SiteNav';
 const PLAN_NAMES: Record<string, string> = { essentiel: 'Essentiel', performance: 'Performance', kadria360: 'Performance' };
 
 export default function CheckoutPage() {
-  const { plan } = useParams();
-  const nav = useNavigate();
+  const params = useParams<{ plan?: string | string[] }>();
+  const router = useRouter();
+  const plan = Array.isArray(params?.plan) ? params.plan[0] : params?.plan;
   const planName = PLAN_NAMES[plan || ''] || plan;
 
   return (
@@ -24,7 +27,7 @@ export default function CheckoutPage() {
               Réserver une démonstration <ArrowRight className="w-4 h-4" />
             </Button>
           </Card>
-          <Button variant="link" onClick={() => nav('/tarifs')}>Retour aux tarifs</Button>
+          <Button variant="link" onClick={() => router.push('/tarifs')}>Retour aux tarifs</Button>
         </div>
       </main>
     </div>

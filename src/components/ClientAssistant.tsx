@@ -1,5 +1,7 @@
+'use client';
+
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'next/navigation';
 import { getArtisanConfig, GetArtisanConfigOutputType } from 'zite-endpoints-sdk';
 import { detectTrade } from 'zite-endpoints-sdk';
 import { generateSummary } from 'zite-endpoints-sdk';
@@ -66,7 +68,7 @@ const TIMELINES = ['Dès que possible', 'Sous 2 semaines', 'Sous 1 mois', 'Sous 
 const VAGUE_PATTERNS = /^(je ne sais pas|pas encore|à voir|aucune idée|pas défini|je sais pas|aucun budget|pas de budget|on verra|à déterminer|à définir|pas encore défini|pas encore décidé)/i;
 
 export default function ClientAssistant() {
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const artisanId = useMemo(() => searchParams.get('artisan_id') || undefined, [searchParams]);
   const [cfg, setCfg] = useState<ArtisanCfg | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);

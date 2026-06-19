@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { useAuth } from 'zite-auth-sdk';
 import { getUsers, GetUsersOutputType } from 'zite-endpoints-sdk';
 import { getProjects, GetProjectsOutputType } from 'zite-endpoints-sdk';
@@ -46,7 +46,7 @@ function fmt(n: number): string { return n.toLocaleString('fr-FR') + ' €'; }
 
 function AdminContent() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [tab, setTab] = useState('projects');
 
   return (
@@ -58,7 +58,7 @@ function AdminContent() {
             <Badge variant="secondary" className="text-[10px] bg-destructive/15 text-destructive">Admin</Badge>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={() => navigate('/pro')}>Dashboard</Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/pro')}>Dashboard</Button>
             <span className="text-sm text-muted-foreground hidden sm:block">{user?.email}</span>
             <Button variant="ghost" size="icon" onClick={() => logout()} title="Déconnexion">
               <LogOut className="w-4 h-4" />
@@ -90,7 +90,7 @@ function AdminContent() {
 
 /* ── Projects Tab ── */
 function AdminProjectsTab() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<GetStatsOutputType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,7 +203,7 @@ function AdminProjectsTab() {
             <span className="col-span-1"></span>
           </div>
           {projects.map(p => (
-            <Card key={p.id} className="px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate(`/pro/projet/${p.id}`)}>
+            <Card key={p.id} className="px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => router.push(`/pro/projet/${p.id}`)}>
               <div className="hidden md:grid grid-cols-12 gap-3 items-center text-sm">
                 <span className="col-span-1 text-muted-foreground font-mono text-xs">#{p.projectNumber}</span>
                 <span className="col-span-1 text-muted-foreground text-xs">{p.createdAt ? format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr }) : '—'}</span>

@@ -1,5 +1,7 @@
+'use client';
+
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { KadriaLogoImg } from '@/components/KadriaLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,7 +86,7 @@ function Bubble({ role, children }: { role: 'user' | 'assistant'; children: Reac
 }
 
 export default function DemoPage() {
-  const nav = useNavigate();
+  const router = useRouter();
   const [selected, setSelected] = useState<Scenario | null>(null);
   const [step, setStep] = useState(0);
   const showResult = selected && step >= selected.steps.length;
@@ -99,11 +101,11 @@ export default function DemoPage() {
       <main className="pt-28 pb-20">
         <div className="container mx-auto max-w-4xl px-6">
           {!selected ? (
-            <ScenarioPicker scenarios={SCENARIOS} onSelect={s => { setSelected(s); setStep(0); }} onTestReal={() => nav('/projet?artisan_id=Artisan_demo')} />
+            <ScenarioPicker scenarios={SCENARIOS} onSelect={s => { setSelected(s); setStep(0); }} onTestReal={() => router.push('/projet?artisan_id=Artisan_demo')} />
           ) : !showResult ? (
-            <DemoWalkthrough scenario={selected} step={step} onNext={next} onBack={reset} onTestReal={() => nav('/projet?artisan_id=Artisan_demo')} />
+            <DemoWalkthrough scenario={selected} step={step} onNext={next} onBack={reset} onTestReal={() => router.push('/projet?artisan_id=Artisan_demo')} />
           ) : (
-            <DemoResult scenario={selected} onReset={reset} onDashboard={() => nav('/dashboard-demo')} onTestReal={() => nav('/projet?artisan_id=Artisan_demo')} />
+            <DemoResult scenario={selected} onReset={reset} onDashboard={() => router.push('/dashboard-demo')} onTestReal={() => router.push('/projet?artisan_id=Artisan_demo')} />
           )}
         </div>
       </main>

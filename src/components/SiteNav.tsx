@@ -1,10 +1,12 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+'use client';
+
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { KadriaLogoImg } from '@/components/KadriaLogo';
 
 export default function SiteNav() {
-  const nav = useNavigate();
-  const { pathname } = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const links = [
     { label: 'Accueil', href: '/' },
@@ -22,7 +24,7 @@ export default function SiteNav() {
             <a
               key={l.href}
               href={l.href}
-              onClick={e => { e.preventDefault(); nav(l.href); }}
+              onClick={e => { e.preventDefault(); router.push(l.href); }}
               className={`transition-colors ${pathname === l.href ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {l.label}
@@ -31,9 +33,9 @@ export default function SiteNav() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => nav('/pro')} className="hidden sm:inline-flex">Connexion</Button>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/pro')} className="hidden sm:inline-flex">Connexion</Button>
           <Button variant="outline" size="sm" onClick={() => window.open('https://calendly.com', '_blank')} className="hidden sm:inline-flex">Réserver une démo</Button>
-          <Button size="sm" onClick={() => nav('/demo')}>Tester Kadria</Button>
+          <Button size="sm" onClick={() => router.push('/demo')}>Tester Kadria</Button>
         </div>
       </div>
     </header>

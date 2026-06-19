@@ -1,16 +1,18 @@
+'use client';
+
 import { useAuth } from 'zite-auth-sdk';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     if (user && user.role !== 'Admin') {
-      navigate('/pro', { replace: true });
+      router.replace('/pro');
     }
-  }, [user, navigate]);
+  }, [user, router]);
 
   if (!user || user.role !== 'Admin') return null;
   return <>{children}</>;

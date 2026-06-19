@@ -1,4 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+'use client';
+
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +27,7 @@ const FEATURES: Feature[] = [
 ];
 
 export default function FeaturesPage() {
-  const nav = useNavigate();
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -67,7 +69,7 @@ export default function FeaturesPage() {
             <motion.div variants={fadeUp} className="text-center mt-16 space-y-4">
               <h2 className="text-2xl font-bold">Prêt à ne plus perdre un seul prospect ?</h2>
               <div className="flex flex-wrap justify-center gap-3">
-                <Button size="lg" onClick={() => nav('/demo')} className="gap-2">Tester Kadria <ArrowRight className="w-4 h-4" /></Button>
+                <Button size="lg" onClick={() => router.push('/demo')} className="gap-2">Tester Kadria <ArrowRight className="w-4 h-4" /></Button>
                 <Button size="lg" variant="outline" onClick={() => window.open('https://calendly.com', '_blank')}>Réserver une démonstration</Button>
               </div>
             </motion.div>
