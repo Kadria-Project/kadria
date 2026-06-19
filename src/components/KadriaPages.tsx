@@ -4205,21 +4205,28 @@ export function PricingRoutePage() {
               {comparatifCategories.map((group, index) => (
                 <details
                   key={group.category}
-                  className="overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900/70"
+                  className="group overflow-hidden rounded-[20px] border border-zinc-800 bg-zinc-900/70 transition-colors group-open:border-green-500/30 group-open:bg-[rgba(10,25,18,0.92)]"
                   open={index === 0}
                 >
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-left marker:content-none">
                     <span className="text-sm font-semibold text-white">{group.category}</span>
-                    <span className="text-xs uppercase tracking-wide text-zinc-500">Ouvrir</span>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950/80 text-zinc-400 transition-all group-open:border-green-500/30 group-open:bg-green-500/10 group-open:text-green-400">
+                      <ChevronDown size={16} className="transition-transform duration-200 group-open:rotate-180" />
+                    </span>
                   </summary>
-                  <div className="overflow-x-auto border-t border-zinc-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <table className="w-full min-w-[720px] text-left text-sm">
+                  <div className="border-t border-zinc-800 px-4 pb-4 pt-3">
+                    <p className="mb-3 text-[11px] font-medium text-zinc-500">
+                      ← Glissez pour voir Performance et Agence →
+                    </p>
+                    <div className="relative">
+                      <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <table className="w-full min-w-[680px] text-left text-sm">
                       <thead>
                         <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
-                          <th className="px-4 py-3">Fonctionnalit?</th>
-                          <th className="px-4 py-3">Essentiel</th>
-                          <th className="px-4 py-3 text-green-500">Performance</th>
-                          <th className="px-4 py-3">Agence</th>
+                          <th className="w-[260px] px-4 py-3">Fonctionnalité</th>
+                          <th className="w-[120px] px-4 py-3">Essentiel</th>
+                          <th className="w-[140px] px-4 py-3 text-green-500">Performance</th>
+                          <th className="w-[120px] px-4 py-3">Agence</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4235,7 +4242,10 @@ export function PricingRoutePage() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                        </table>
+                      </div>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-zinc-950 via-zinc-950/80 to-transparent" />
+                    </div>
                   </div>
                 </details>
               ))}
@@ -4244,7 +4254,7 @@ export function PricingRoutePage() {
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
-                    <th className="px-4 py-3">Fonctionnalit?</th>
+                    <th className="px-4 py-3">Fonctionnalité</th>
                     <th className="px-4 py-3">Essentiel</th>
                     <th className="px-4 py-3 text-green-500">Performance</th>
                     <th className="px-4 py-3">Agence</th>
