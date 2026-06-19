@@ -962,7 +962,7 @@ function DarkFooter() {
         <div className="flex items-center gap-4">
           <Link href="/mentions-legales" className="transition-colors hover:text-white">Mentions légales</Link>
           <Link href="/cgu" className="transition-colors hover:text-white">CGU</Link>
-          <Link href="/contact" className="transition-colors hover:text-white">Contact</Link>
+          <Link href="/demo" className="transition-colors hover:text-white">Contact</Link>
         </div>
       </div>
     </footer>
@@ -1480,12 +1480,12 @@ function BillingToggle({
     {
       key: 'assistant',
       title: 'Assistant IA',
-      rows: comparatifRows.filter((row) => ['Assistant chat web', 'Assistant vocal', 'Dossiers / mois'].includes(row.feature)),
+      rows: comparatifRows.filter((row) => ['Assistant chat web', 'Assistant vocal'].includes(row.feature)),
     },
     {
       key: 'suivi',
       title: 'Suivi commercial',
-      rows: comparatifRows.filter((row) => ['CRM + relances'].includes(row.feature)),
+      rows: comparatifRows.filter((row) => ['CRM + relances', 'Dossiers / mois'].includes(row.feature)),
     },
     {
       key: 'devis',
@@ -1496,6 +1496,11 @@ function BillingToggle({
       key: 'dashboard',
       title: 'Dashboard',
       rows: comparatifRows.filter((row) => ['Dashboard'].includes(row.feature)),
+    },
+    {
+      key: 'relances',
+      title: 'Relances',
+      rows: comparatifRows.filter((row) => ['CRM + relances'].includes(row.feature)),
     },
     {
       key: 'support',
