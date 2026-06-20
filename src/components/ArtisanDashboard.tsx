@@ -93,15 +93,15 @@ const STATUS_OPTIONS = [
 ];
 
 export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
-  'Nouveau':      { bg: 'rgba(39,39,42,0.8)',    color: '#e4e4e7' },
-  'À rappeler':   { bg: 'rgba(120,53,15,0.5)',   color: '#fbbf24' },
-  'Qualifié':     { bg: 'rgba(20,83,45,0.5)',    color: '#4ade80' },
-  'Devis envoyé': { bg: 'rgba(30,58,95,0.5)',    color: '#60a5fa' },
-  'En risque':     { bg: 'rgba(127,29,29,0.45)',   color: '#fca5a5' },
-  'A relancer':    { bg: 'rgba(120,53,15,0.5)',    color: '#fbbf24' },
-  'En cours':     { bg: 'rgba(88,28,135,0.5)',   color: '#c084fc' },
-  'Gagné':        { bg: 'rgba(20,83,45,0.7)',    color: '#86efac' },
-  'Perdu':        { bg: 'rgba(69,10,10,0.5)',    color: '#f87171' },
+  'Nouveau':      { bg: 'var(--badge-new-bg)',       color: 'var(--badge-new-text)' },
+  'À rappeler':   { bg: 'var(--badge-callback-bg)',  color: 'var(--badge-callback-text)' },
+  'Qualifié':     { bg: 'var(--badge-qualified-bg)', color: 'var(--badge-qualified-text)' },
+  'Devis envoyé': { bg: 'var(--badge-quote-bg)',     color: 'var(--badge-quote-text)' },
+  'En risque':    { bg: 'var(--badge-risk-bg)',      color: 'var(--badge-risk-text)' },
+  'A relancer':   { bg: 'var(--badge-callback-bg)',  color: 'var(--badge-callback-text)' },
+  'En cours':     { bg: 'var(--badge-progress-bg)',  color: 'var(--badge-progress-text)' },
+  'Gagné':        { bg: 'var(--badge-won-bg)',       color: 'var(--badge-won-text)' },
+  'Perdu':        { bg: 'var(--badge-lost-bg)',      color: 'var(--badge-lost-text)' },
 };
 
 export default function ArtisanDashboardPage({
@@ -2014,7 +2014,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                 <div>
                   {pipelineSteps.map((step) => {
-                    const style = BADGE_STYLES[step.label] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
+                    const style = BADGE_STYLES[step.label] || { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' };
                     const total = allProjects.length || 1;
                     const pct = step.value > 0 ? Math.max(Math.round((step.value / total) * 100), 4) : 0;
 
@@ -2905,7 +2905,7 @@ function ClientList({
 }
 
 function StatusBadge({ status }: { status?: string }) {
-  const style = BADGE_STYLES[status || ''] || { bg: 'rgba(39,39,42,0.8)', color: '#e4e4e7' };
+  const style = BADGE_STYLES[status || ''] || { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' };
 
   return (
     <span

@@ -17,10 +17,10 @@ interface Props {
 }
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'RDV':          { bg: 'rgba(34,197,94,0.2)',   text: '#4ade80', border: '#22c55e' },
-  'Relance':      { bg: 'rgba(251,191,36,0.2)',  text: '#fbbf24', border: '#d97706' },
-  'Rappel':       { bg: 'rgba(96,165,250,0.2)',  text: '#60a5fa', border: '#3b82f6' },
-  'Intervention': { bg: 'rgba(192,132,252,0.2)', text: '#c084fc', border: '#a855f7' },
+  'RDV':          { bg: 'var(--event-rdv-bg)',          text: 'var(--event-rdv-text)',          border: 'var(--event-rdv-border)' },
+  'Relance':      { bg: 'var(--event-relance-bg)',      text: 'var(--event-relance-text)',      border: 'var(--event-relance-border)' },
+  'Rappel':       { bg: 'var(--event-rappel-bg)',       text: 'var(--event-rappel-text)',       border: 'var(--event-rappel-border)' },
+  'Intervention': { bg: 'var(--event-intervention-bg)', text: 'var(--event-intervention-text)', border: 'var(--event-intervention-border)' },
 }
 
 const DAYS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -29,6 +29,7 @@ const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8) // 8h → 20h
 
 export default function Calendar({ artisanId }: Props) {
+  const [isMobile, setIsMobile] = useState(false)
   const [view, setView] = useState<'month' | 'week'>('month')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -59,6 +60,13 @@ export default function Calendar({ artisanId }: Props) {
   }, [])
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const prev = () => {
@@ -179,35 +187,36 @@ export default function Calendar({ artisanId }: Props) {
   // ── Styles ────────────────────────────────────────────────────────────────
   const s = {
     container: {
-      background: '#09090b',
+      background: 'var(--bg)',
       minHeight: '100%',
       fontFamily: 'system-ui, sans-serif',
-      color: 'white',
+      color: 'var(--text-1)',
     } as React.CSSProperties,
     header: {
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '20px',
-      gap: '12px',
+      alignItems: isMobile ? 'stretch' : 'center',
+      flexDirection: isMobile ? 'column' as const : 'row' as const,
+      marginBottom: '16px',
+      gap: '10px',
       flexWrap: 'wrap' as const,
     },
     navBtn: {
-      background: '#18181b',
-      border: '1px solid #27272a',
-      color: 'white',
+      background: 'var(--bg-elevated)',
+      border: '1px solid var(--border)',
+      color: 'var(--text-1)',
       borderRadius: '8px',
-      padding: '8px 14px',
+      padding: isMobile ? '7px 12px' : '8px 14px',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: isMobile ? '13px' : '14px',
     } as React.CSSProperties,
     viewBtn: (active: boolean) => ({
-      background: active ? '#22c55e' : '#18181b',
+      background: active ? 'var(--accent)' : 'var(--bg-elevated)',
       border: '1px solid',
-      borderColor: active ? '#22c55e' : '#27272a',
-      color: active ? 'black' : 'white',
+      borderColor: active ? 'var(--accent)' : 'var(--border)',
+      color: active ? '#05130d' : 'var(--text-1)',
       borderRadius: '8px',
-      padding: '8px 16px',
+      padding: isMobile ? '7px 12px' : '8px 16px',
       cursor: 'pointer',
       fontSize: '13px',
       fontWeight: active ? 700 : 400,
@@ -225,27 +234,29 @@ export default function Calendar({ artisanId }: Props) {
     <div style={s.container}>
       {/* Header */}
       <div style={s.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
           <button style={s.navBtn} onClick={prev}>‹</button>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, minWidth: '220px', textAlign: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: isMobile ? '14px' : '18px', fontWeight: 600, minWidth: isMobile ? 'auto' : '220px', textAlign: 'center', whiteSpace: 'nowrap' }}>
             {title}
           </h2>
           <button style={s.navBtn} onClick={next}>›</button>
-          <button
-            style={{ ...s.navBtn, fontSize: '12px', color: '#22c55e', borderColor: '#22c55e' }}
-            onClick={() => setCurrentDate(new Date())}
-          >
-            Aujourd'hui
-          </button>
+          {!isMobile && (
+            <button
+              style={{ ...s.navBtn, fontSize: '12px', color: 'var(--accent)', borderColor: 'var(--accent)' }}
+              onClick={() => setCurrentDate(new Date())}
+            >
+              Aujourd'hui
+            </button>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
           <button style={s.viewBtn(view === 'month')} onClick={() => setView('month')}>Mois</button>
           <button style={s.viewBtn(view === 'week')} onClick={() => setView('week')}>Semaine</button>
           <button
             onClick={() => openNewEvent(formatDateStr(new Date()))}
             style={{
-              background: '#22c55e', border: 'none', color: 'black',
-              fontWeight: 700, borderRadius: '8px', padding: '8px 16px',
+              background: 'var(--accent)', border: 'none', color: '#05130d',
+              fontWeight: 700, borderRadius: '8px', padding: isMobile ? '7px 12px' : '8px 16px',
               cursor: 'pointer', fontSize: '13px',
             }}
           >
@@ -262,29 +273,31 @@ export default function Calendar({ artisanId }: Props) {
               width: '10px', height: '10px', borderRadius: '50%',
               background: color.border,
             }} />
-            <span style={{ color: '#a1a1aa', fontSize: '12px' }}>{type}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>{type}</span>
           </div>
         ))}
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#71717a' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-3)' }}>
           Chargement...
         </div>
       ) : view === 'month' ? (
         // ── MONTH VIEW ────────────────────────────────────────────────────
+        <div style={{ overflowX: 'auto' }}>
         <div style={{
-          background: '#18181b',
-          border: '1px solid #27272a',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
+          minWidth: isMobile ? '700px' : 'auto',
         }}>
           {/* Day headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #27272a' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border)' }}>
             {DAYS_FR.map(d => (
               <div key={d} style={{
                 padding: '10px', textAlign: 'center',
-                color: '#71717a', fontSize: '12px',
+                color: 'var(--text-3)', fontSize: '12px',
                 fontWeight: 600, letterSpacing: '0.05em',
                 textTransform: 'uppercase',
               }}>
@@ -304,19 +317,19 @@ export default function Calendar({ artisanId }: Props) {
                   style={{
                     minHeight: '100px',
                     padding: '8px',
-                    borderRight: (i + 1) % 7 !== 0 ? '1px solid #27272a' : 'none',
-                    borderBottom: '1px solid #27272a',
+                    borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--border)' : 'none',
+                    borderBottom: '1px solid var(--border)',
                     cursor: date ? 'pointer' : 'default',
-                    background: today ? 'rgba(34,197,94,0.05)' : 'transparent',
+                    background: today ? 'var(--accent-dim)' : 'transparent',
                     transition: 'background 0.1s',
                   }}
                   onMouseEnter={e => {
                     if (date) (e.currentTarget as HTMLDivElement).style.background = today
-                      ? 'rgba(34,197,94,0.08)' : '#1f1f23'
+                      ? 'var(--accent-dim)' : 'var(--bg-hover)'
                   }}
                   onMouseLeave={e => {
                     (e.currentTarget as HTMLDivElement).style.background = today
-                      ? 'rgba(34,197,94,0.05)' : 'transparent'
+                      ? 'var(--accent-dim)' : 'transparent'
                   }}
                 >
                   {date && (
@@ -324,8 +337,8 @@ export default function Calendar({ artisanId }: Props) {
                       <div style={{
                         width: '26px', height: '26px',
                         borderRadius: '50%',
-                        background: today ? '#22c55e' : 'transparent',
-                        color: today ? 'black' : '#e4e4e7',
+                        background: today ? 'var(--accent)' : 'transparent',
+                        color: today ? '#05130d' : 'var(--text-1)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '13px', fontWeight: today ? 700 : 400,
                         marginBottom: '4px',
@@ -359,7 +372,7 @@ export default function Calendar({ artisanId }: Props) {
                         )
                       })}
                       {dayEvents.length > 3 && (
-                        <div style={{ color: '#71717a', fontSize: '11px' }}>
+                        <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
                           +{dayEvents.length - 3} autres
                         </div>
                       )}
@@ -370,19 +383,22 @@ export default function Calendar({ artisanId }: Props) {
             })}
           </div>
         </div>
+        </div>
       ) : (
         // ── WEEK VIEW ─────────────────────────────────────────────────────
+        <div style={{ overflowX: 'auto' }}>
         <div style={{
-          background: '#18181b',
-          border: '1px solid #27272a',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
+          minWidth: isMobile ? '700px' : 'auto',
         }}>
           {/* Week header */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '60px repeat(7, 1fr)',
-            borderBottom: '1px solid #27272a',
+            borderBottom: '1px solid var(--border)',
           }}>
             <div style={{ padding: '10px' }} />
             {getWeekDays().map((date, i) => {
@@ -391,18 +407,18 @@ export default function Calendar({ artisanId }: Props) {
                 <div key={i} style={{
                   padding: '10px',
                   textAlign: 'center',
-                  borderLeft: '1px solid #27272a',
+                  borderLeft: '1px solid var(--border)',
                 }}>
                   <p style={{
-                    color: '#71717a', fontSize: '11px',
+                    color: 'var(--text-3)', fontSize: '11px',
                     textTransform: 'uppercase', margin: '0 0 4px',
                   }}>
                     {DAYS_FR[i]}
                   </p>
                   <div style={{
                     width: '28px', height: '28px', borderRadius: '50%',
-                    background: today ? '#22c55e' : 'transparent',
-                    color: today ? 'black' : 'white',
+                    background: today ? 'var(--accent)' : 'transparent',
+                    color: today ? '#05130d' : 'var(--text-1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '14px', fontWeight: 600,
                     margin: '0 auto',
@@ -419,12 +435,12 @@ export default function Calendar({ artisanId }: Props) {
               <div key={hour} style={{
                 display: 'grid',
                 gridTemplateColumns: '60px repeat(7, 1fr)',
-                borderBottom: '1px solid #27272a',
+                borderBottom: '1px solid var(--border)',
                 minHeight: '60px',
               }}>
                 <div style={{
                   padding: '4px 8px',
-                  color: '#52525b',
+                  color: 'var(--text-3)',
                   fontSize: '11px',
                   textAlign: 'right',
                   paddingTop: '8px',
@@ -441,13 +457,13 @@ export default function Calendar({ artisanId }: Props) {
                       key={i}
                       onClick={() => openNewEvent(`${formatDateStr(date)}T${String(hour).padStart(2, '0')}:00`)}
                       style={{
-                        borderLeft: '1px solid #27272a',
+                        borderLeft: '1px solid var(--border)',
                         padding: '2px 4px',
                         cursor: 'pointer',
                         minHeight: '60px',
                       }}
                       onMouseEnter={e => {
-                        (e.currentTarget as HTMLDivElement).style.background = '#1f1f23'
+                        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)'
                       }}
                       onMouseLeave={e => {
                         (e.currentTarget as HTMLDivElement).style.background = 'transparent'
@@ -483,6 +499,7 @@ export default function Calendar({ artisanId }: Props) {
             ))}
           </div>
         </div>
+        </div>
       )}
 
       {/* ── Modal création/édition ── */}
@@ -494,7 +511,7 @@ export default function Calendar({ artisanId }: Props) {
           padding: '16px',
         }}>
           <div style={{
-            background: '#18181b', border: '1px solid #27272a',
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
             borderRadius: '20px', width: '100%', maxWidth: '480px',
             padding: '28px', fontFamily: 'system-ui, sans-serif',
           }}>
@@ -502,11 +519,11 @@ export default function Calendar({ artisanId }: Props) {
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', marginBottom: '24px',
             }}>
-              <h2 style={{ color: 'white', fontSize: '18px', fontWeight: 700, margin: 0 }}>
+              <h2 style={{ color: 'var(--text-1)', fontSize: '18px', fontWeight: 700, margin: 0 }}>
                 {selectedEvent ? 'Modifier l\'événement' : 'Nouvel événement'}
               </h2>
               <button onClick={() => setShowModal(false)} style={{
-                background: 'none', border: 'none', color: '#71717a',
+                background: 'none', border: 'none', color: 'var(--text-3)',
                 cursor: 'pointer', fontSize: '20px',
               }}>✕</button>
             </div>
@@ -524,9 +541,9 @@ export default function Calendar({ artisanId }: Props) {
                 }}
                 style={{
                   width: '100%',
-                  background: 'rgba(34,197,94,0.1)',
-                  border: '1px solid rgba(34,197,94,0.3)',
-                  color: '#4ade80',
+                  background: 'var(--accent-dim)',
+                  border: '1px solid var(--accent-border)',
+                  color: 'var(--accent)',
                   borderRadius: '10px',
                   padding: '10px',
                   fontSize: '14px',
@@ -545,13 +562,13 @@ export default function Calendar({ artisanId }: Props) {
 
             {selectedEvent && selectedEvent.status === 'Fait' && (
               <div style={{
-                background: 'rgba(34,197,94,0.1)',
-                border: '1px solid rgba(34,197,94,0.2)',
+                background: 'var(--accent-dim)',
+                border: '1px solid var(--accent-border)',
                 borderRadius: '10px',
                 padding: '10px',
                 marginBottom: '16px',
                 textAlign: 'center',
-                color: '#4ade80',
+                color: 'var(--accent)',
                 fontSize: '13px',
                 fontWeight: 600,
               }}>
@@ -562,7 +579,7 @@ export default function Calendar({ artisanId }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Type */}
               <div>
-                <label style={{ color: '#a1a1aa', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
                   TYPE
                 </label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -572,15 +589,15 @@ export default function Calendar({ artisanId }: Props) {
                       onClick={() => setForm(f => ({ ...f, type: t }))}
                       style={{
                         background: form.type === t
-                          ? (EVENT_COLORS[t]?.bg || '#27272a')
-                          : '#27272a',
+                          ? (EVENT_COLORS[t]?.bg || 'var(--bg)')
+                          : 'var(--bg)',
                         border: '1px solid',
                         borderColor: form.type === t
-                          ? (EVENT_COLORS[t]?.border || '#3f3f46')
-                          : '#3f3f46',
+                          ? (EVENT_COLORS[t]?.border || 'var(--border)')
+                          : 'var(--border)',
                         color: form.type === t
-                          ? (EVENT_COLORS[t]?.text || 'white')
-                          : '#a1a1aa',
+                          ? (EVENT_COLORS[t]?.text || 'var(--text-1)')
+                          : 'var(--text-2)',
                         borderRadius: '8px', padding: '6px 14px',
                         fontSize: '13px', cursor: 'pointer',
                         fontWeight: form.type === t ? 600 : 400,
@@ -594,7 +611,7 @@ export default function Calendar({ artisanId }: Props) {
 
               {/* Titre */}
               <div>
-                <label style={{ color: '#a1a1aa', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
                   TITRE
                 </label>
                 <input
@@ -602,17 +619,17 @@ export default function Calendar({ artisanId }: Props) {
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Ex: Visite technique Martin"
                   style={{
-                    width: '100%', background: '#27272a', border: '1px solid #3f3f46',
-                    borderRadius: '10px', padding: '10px 12px', color: 'white',
+                    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)',
                     fontSize: '14px', outline: 'none', boxSizing: 'border-box',
                   }}
                 />
               </div>
 
               {/* Date + Heure */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label style={{ color: '#a1a1aa', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
                     DATE
                   </label>
                   <input
@@ -620,14 +637,14 @@ export default function Calendar({ artisanId }: Props) {
                     value={form.date.split('T')[0]}
                     onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
                     style={{
-                      width: '100%', background: '#27272a', border: '1px solid #3f3f46',
-                      borderRadius: '10px', padding: '10px 12px', color: 'white',
+                      width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                      borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)',
                       fontSize: '14px', outline: 'none', boxSizing: 'border-box',
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ color: '#a1a1aa', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
                     HEURE
                   </label>
                   <input
@@ -635,8 +652,8 @@ export default function Calendar({ artisanId }: Props) {
                     value={form.time}
                     onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
                     style={{
-                      width: '100%', background: '#27272a', border: '1px solid #3f3f46',
-                      borderRadius: '10px', padding: '10px 12px', color: 'white',
+                      width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                      borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)',
                       fontSize: '14px', outline: 'none', boxSizing: 'border-box',
                     }}
                   />
@@ -645,7 +662,7 @@ export default function Calendar({ artisanId }: Props) {
 
               {/* Notes */}
               <div>
-                <label style={{ color: '#a1a1aa', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
                   NOTES (optionnel)
                 </label>
                 <textarea
@@ -654,8 +671,8 @@ export default function Calendar({ artisanId }: Props) {
                   placeholder="Informations complémentaires..."
                   rows={3}
                   style={{
-                    width: '100%', background: '#27272a', border: '1px solid #3f3f46',
-                    borderRadius: '10px', padding: '10px 12px', color: 'white',
+                    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)',
                     fontSize: '14px', outline: 'none', resize: 'vertical',
                     fontFamily: 'system-ui', boxSizing: 'border-box',
                   }}
@@ -666,14 +683,14 @@ export default function Calendar({ artisanId }: Props) {
             {/* Buttons */}
             <div style={{
               display: 'flex', gap: '10px', marginTop: '20px',
-              paddingTop: '16px', borderTop: '1px solid #27272a',
+              paddingTop: '16px', borderTop: '1px solid var(--border)',
             }}>
               {selectedEvent && (
                 <button
                   onClick={() => deleteEventById(selectedEvent.id)}
                   style={{
-                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                    color: '#f87171', borderRadius: '10px', padding: '11px 16px',
+                    background: 'var(--badge-lost-bg)', border: '1px solid rgba(239,68,68,0.3)',
+                    color: 'var(--badge-lost-text)', borderRadius: '10px', padding: '11px 16px',
                     fontSize: '13px', cursor: 'pointer',
                   }}
                 >
@@ -681,8 +698,8 @@ export default function Calendar({ artisanId }: Props) {
                 </button>
               )}
               <button onClick={() => setShowModal(false)} style={{
-                flex: 1, background: 'transparent', border: '1px solid #3f3f46',
-                color: 'white', borderRadius: '10px', padding: '11px',
+                flex: 1, background: 'transparent', border: '1px solid var(--border)',
+                color: 'var(--text-1)', borderRadius: '10px', padding: '11px',
                 fontSize: '14px', cursor: 'pointer',
               }}>
                 Annuler
@@ -691,8 +708,8 @@ export default function Calendar({ artisanId }: Props) {
                 onClick={saveEvent}
                 disabled={saving || !form.title || !form.date}
                 style={{
-                  flex: 2, background: saving ? '#52525b' : '#22c55e',
-                  border: 'none', color: saving ? 'white' : 'black',
+                  flex: 2, background: saving ? 'var(--text-3)' : 'var(--accent)',
+                  border: 'none', color: saving ? 'var(--text-1)' : '#05130d',
                   fontWeight: 700, borderRadius: '10px', padding: '11px',
                   fontSize: '14px', cursor: saving ? 'default' : 'pointer',
                 }}

@@ -69,6 +69,20 @@ body {
   --status-quote:     #2563eb;
   --status-won:       #15803d;
   --status-lost:      #dc2626;
+
+  --badge-new-bg:      rgba(39,39,42,0.8);    --badge-new-text:      #e4e4e7;
+  --badge-callback-bg: rgba(120,53,15,0.5);   --badge-callback-text: #fbbf24;
+  --badge-qualified-bg:rgba(20,83,45,0.5);    --badge-qualified-text:#4ade80;
+  --badge-quote-bg:    rgba(30,58,95,0.5);    --badge-quote-text:    #60a5fa;
+  --badge-risk-bg:     rgba(127,29,29,0.45);  --badge-risk-text:     #fca5a5;
+  --badge-progress-bg: rgba(88,28,135,0.5);   --badge-progress-text: #c084fc;
+  --badge-won-bg:      rgba(20,83,45,0.7);    --badge-won-text:      #86efac;
+  --badge-lost-bg:     rgba(69,10,10,0.5);    --badge-lost-text:     #f87171;
+
+  --event-rdv-bg:          rgba(34,197,94,0.2);   --event-rdv-text:          #4ade80; --event-rdv-border:          #22c55e;
+  --event-relance-bg:      rgba(251,191,36,0.2);  --event-relance-text:      #fbbf24; --event-relance-border:      #d97706;
+  --event-rappel-bg:       rgba(96,165,250,0.2);  --event-rappel-text:       #60a5fa; --event-rappel-border:       #3b82f6;
+  --event-intervention-bg: rgba(192,132,252,0.2); --event-intervention-text: #c084fc; --event-intervention-border: #a855f7;
 }
 
 [data-theme="light"] .dashboard-shell {
@@ -89,6 +103,20 @@ body {
   --status-quote:     #2563eb;
   --status-won:       #15803d;
   --status-lost:      #dc2626;
+
+  --badge-new-bg:      #e4e4e7; --badge-new-text:      #3f3f46;
+  --badge-callback-bg: #fef3c7; --badge-callback-text: #92400e;
+  --badge-qualified-bg:#dcfce7; --badge-qualified-text:#15803d;
+  --badge-quote-bg:    #dbeafe; --badge-quote-text:    #1d4ed8;
+  --badge-risk-bg:     #fee2e2; --badge-risk-text:     #b91c1c;
+  --badge-progress-bg: #f3e8ff; --badge-progress-text: #7e22ce;
+  --badge-won-bg:      #bbf7d0; --badge-won-text:      #166534;
+  --badge-lost-bg:     #fecaca; --badge-lost-text:     #991b1b;
+
+  --event-rdv-bg:          #dcfce7; --event-rdv-text:          #15803d; --event-rdv-border:          #16a34a;
+  --event-relance-bg:      #fef3c7; --event-relance-text:      #92400e; --event-relance-border:      #d97706;
+  --event-rappel-bg:       #dbeafe; --event-rappel-text:       #1d4ed8; --event-rappel-border:       #3b82f6;
+  --event-intervention-bg: #f3e8ff; --event-intervention-text: #7e22ce; --event-intervention-border: #a855f7;
 }
 
 /* =========================
@@ -257,8 +285,13 @@ body {
   font-size: 10px;
 }
 
-.dashboard-shell {
+.dashboard-shell,
+[data-theme="dark"] .dashboard-shell {
   color-scheme: dark;
+}
+
+[data-theme="light"] .dashboard-shell {
+  color-scheme: light;
 }
 
 .dashboard-shell .rounded-xl {
