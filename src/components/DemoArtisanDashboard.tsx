@@ -1,409 +1,3023 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
 import {
-  AlertTriangle,
-  Bell,
-  CalendarDays,
-  ChevronRight,
-  Clock,
-  Euro,
-  Mail,
-  PhoneCall,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/src/components/ui/select';
+import { Skeleton } from '@/src/components/ui/skeleton';
+import {
+  Search,
+  SearchX,
+  FolderOpen,
   Send,
-  Target,
   Trophy,
+  ChevronRight,
+  ChevronDown,
+  BarChart3,
+  Bell,
+  AlertTriangle,
+  MapPin,
+  LogOut,
+  Euro,
+  Target,
+  Clock,
+  PhoneCall,
+  Mail,
+  CalendarDays,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  X,
+  Download,
+  CheckCircle,
+  XCircle,
+  Lock,
 } from 'lucide-react';
-import DemoCalendar from '@/src/components/DemoCalendar';
+import { useDebouncedCallback } from 'use-debounce';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
+import { hasFeature, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import {
+  buildAutomaticTasks,
+  calculateOpportunityScore,
+  getHotLeadMessage,
+  getOpportunityBadge,
+  getProjectRiskStatus,
+  isHotLead,
+  type Task,
+} from '@/src/lib/commercial-actions';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
-import { computeDemoKPIs } from '@/src/lib/demo-data';
-import { calculateOpportunityScore, getProjectRiskStatus, isHotLead } from '@/src/lib/commercial-actions';
 
-function formatCurrency(value: number) {
-  return `${Math.round(value).toLocaleString('fr-FR')} EUR`;
+const DemoCalendar = dynamic(() => import('./DemoCalendar'), { ssr: false });
+
+const ProspectsLeafletMap = dynamic(
+  () => import('@/src/components/ProspectsLeafletMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-[240px] w-full items-center justify-center bg-muted/40 text-sm text-muted-foreground">
+        Chargement de la carte...
+      </div>
+    ),
+  },
+);
+
+type GetProjectsOutputType = {
+  projects: any[];
+};
+
+export type Project = GetProjectsOutputType['projects'][0];
+type DashboardMode = 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
+
+const DEMO_PLAN: PlanKey = 'performance';
+const DEMO_ARTISAN_ID = 'DEMO_ARTISAN_001';
+
+const STATUS_NORMALIZATION: Record<string, string> = {
+  'A rappeler': 'À rappeler',
+  'Qualifie': 'Qualifié',
+  'Devis envoye': 'Devis envoyé',
+  'Gagne': 'Gagné',
+};
+
+const STATUS_OPTIONS = [
+  { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
+  { value: 'À rappeler', label: 'À rappeler', cls: 'bg-amber-500/20 text-amber-400' },
+  { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
+  { value: 'En cours', label: 'En cours', cls: 'bg-purple-500/20 text-purple-400' },
+  { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'bg-blue-500/20 text-blue-400' },
+  { value: 'En risque', label: 'En risque', cls: 'bg-red-500/20 text-red-300' },
+  { value: 'A relancer', label: 'A relancer', cls: 'bg-amber-500/20 text-amber-300' },
+  { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
+  { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
+];
+
+export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
+  'Nouveau':      { bg: 'var(--badge-new-bg)',       color: 'var(--badge-new-text)' },
+  'À rappeler':   { bg: 'var(--badge-callback-bg)',  color: 'var(--badge-callback-text)' },
+  'Qualifié':     { bg: 'var(--badge-qualified-bg)', color: 'var(--badge-qualified-text)' },
+  'Devis envoyé': { bg: 'var(--badge-quote-bg)',     color: 'var(--badge-quote-text)' },
+  'En risque':    { bg: 'var(--badge-risk-bg)',      color: 'var(--badge-risk-text)' },
+  'A relancer':   { bg: 'var(--badge-callback-bg)',  color: 'var(--badge-callback-text)' },
+  'En cours':     { bg: 'var(--badge-progress-bg)',  color: 'var(--badge-progress-text)' },
+  'Gagné':        { bg: 'var(--badge-won-bg)',       color: 'var(--badge-won-text)' },
+  'Perdu':        { bg: 'var(--badge-lost-bg)',      color: 'var(--badge-lost-text)' },
+};
+
+function normalizeDemoStatus(status?: string) {
+  return STATUS_NORMALIZATION[status || ''] || status || '';
 }
 
-function timeAgo(value: string) {
-  const date = new Date(value);
-  const diff = Date.now() - date.getTime();
-  const minutes = Math.max(1, Math.floor(diff / 60000));
-  if (minutes < 60) return `il y a ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `il y a ${days} j`;
+function normalizeDemoProject(project: Project): Project {
+  const normalizedStatus = normalizeDemoStatus(project.status);
+  return {
+    ...project,
+    artisanId: project.artisanId || DEMO_ARTISAN_ID,
+    status: normalizedStatus,
+    updatedAt: project.updatedAt || project.createdAt,
+    lastInteractionAt: project.lastInteractionAt || project.callbackDate || project.createdAt,
+    quoteSentAt:
+      project.quoteSentAt || (normalizedStatus.startsWith('Devis') ? project.createdAt : project.quoteSentAt),
+    opensCount:
+      typeof project.opensCount === 'number'
+        ? project.opensCount
+        : normalizedStatus.startsWith('Devis')
+          ? 2
+          : 0,
+  };
 }
 
-function StatusPill({ status }: { status: string }) {
-  const tone =
-    status === 'Gagne'
-      ? 'border-green-500/30 bg-green-500/10 text-green-300'
-      : status === 'Perdu'
-        ? 'border-red-500/30 bg-red-500/10 text-red-300'
-        : status === 'Devis envoye'
-          ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
-          : status === 'Qualifie'
-            ? 'border-green-500/30 bg-green-500/10 text-green-300'
-            : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+function DemoCalendarAdapter() {
+  const { events, createEvent, updateEvent, deleteEvent } = useDemoMode();
 
-  return <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{status}</span>;
-}
-
-function isAtRiskStatus(status: string) {
-  return status === 'A rappeler' || status === 'En risque' || status === 'A relancer' || status === 'Devis envoye';
+  return (
+    <DemoCalendar
+      events={events}
+      onCreateEvent={createEvent}
+      onUpdateEvent={updateEvent}
+      onDeleteEvent={deleteEvent}
+    />
+  );
 }
 
 export default function DemoArtisanDashboard() {
+  return (
+    <PlanProvider plan={DEMO_PLAN}>
+      <Dashboard plan={DEMO_PLAN} />
+    </PlanProvider>
+  );
+}
+
+function fmt(n?: number): string {
+  return Math.round(n ?? 0).toLocaleString('fr-FR') + ' €';
+}
+
+function parseBudgetValue(budget?: string): number {
+  if (!budget) return 0;
+
+  const matches = String(budget).match(/[\d\s]+/g);
+
+  if (!matches) return 0;
+
+  const numbers = matches
+    .map((m) => parseInt(m.replace(/\s/g, ''), 10))
+    .filter((n) => !Number.isNaN(n));
+
+  return numbers.length ? Math.max(...numbers) : 0;
+}
+
+function budgetScore(budget?: string): number {
+  const value = parseBudgetValue(budget);
+
+  if (value > 20000) return 160;
+  if (value > 10000) return 120;
+  if (value > 5000) return 80;
+  if (value > 3000) return 50;
+  if (value > 1000) return 30;
+
+  return 10;
+}
+
+export function opportunityScore(project: Project): number {
+  return calculateOpportunityScore(project);
+}
+
+function parseBudget(budgetStr: string): number {
+  if (!budgetStr) return 0
+  // Extrait les nombres du string budget
+  const numbers = budgetStr.match(/\d+[\s\d]*/g)
+  if (!numbers) return 0
+  // Prend la valeur max de la fourchette
+  const values = numbers.map(n => parseInt(n.replace(/\s/g, ''), 10))
+    .filter(n => !isNaN(n) && n > 0)
+  return values.length > 0 ? Math.max(...values) : 0
+}
+
+export const formatAmount = (n: number) =>
+  n >= 1000
+    ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k €`
+    : `${n} €`
+
+export function timeAgo(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+
+  if (diffMins < 60) return `il y a ${diffMins}min`;
+  if (diffHours < 24) return `il y a ${diffHours}h`;
+  if (diffDays === 1) return 'hier';
+  if (diffDays < 7) return `il y a ${diffDays}j`;
+  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)}sem`;
+
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+function formatIsoDate(dateStr?: string): string {
+  if (!dateStr) return '—';
+  const iso = String(dateStr).slice(0, 10);
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '—';
+
+  const [, year, month, day] = match;
+  const monthIndex = Number(month) - 1;
+  const monthNames = ['janv.', 'fevr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'aout', 'sept.', 'oct.', 'nov.', 'dec.'];
+
+  return `${Number(day)} ${monthNames[monthIndex] ?? year}`;
+}
+
+function escapeCsvValue(value: unknown): string {
+  const str = String(value ?? '').replace(/"/g, '""');
+
+  return `"${str}"`;
+}
+
+function exportToCSV(projects: Project[], filename: string) {
+  const headers = [
+    'Référence',
+    'Date reçu',
+    'Nom client',
+    'Téléphone',
+    'Email',
+    'Adresse',
+    'Projet',
+    'Métier',
+    'Ville',
+    'Budget',
+    'Score IA',
+    'Statut',
+    'Source',
+    'Montant devis',
+    'Date clôture',
+  ];
+
+  const rows = projects.map((p) => [
+    p.projectNumber,
+    p.createdAt ? format(new Date(p.createdAt), 'dd/MM/yyyy', { locale: fr }) : '',
+    `${p.clientFirstName || ''} ${p.clientName || ''}`.trim(),
+    p.clientPhone,
+    p.clientEmail,
+    p.siteAddress,
+    p.projectType || p.trade,
+    p.trade,
+    p.city,
+    p.budget,
+    p.completenessScore != null ? `${p.completenessScore}%` : '',
+    p.status,
+    p.source,
+    p.devisAmount || '',
+    '',
+  ]);
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(';'))
+    .join('\r\n');
+
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+export const KANBAN_COLUMNS: { status: string; label: string; color: string }[] = [
+  { status: 'Nouveau', label: 'Nouveau', color: 'var(--status-new)' },
+  { status: 'À rappeler', label: 'À rappeler', color: '#d97706' },
+  { status: 'Qualifié', label: 'Qualifié', color: '#16a34a' },
+  { status: 'Devis envoyé', label: 'Devis envoyé', color: '#2563eb' },
+  { status: 'A relancer', label: 'A relancer', color: '#d97706' },
+  { status: 'En risque', label: 'En risque', color: '#ef4444' },
+  { status: 'Gagné', label: 'Gagné', color: '#15803d' },
+];
+
+const KANBAN_GROUPED_COLUMNS: { id: string; label: string; statuses: string[]; defaultStatus: string; color: string }[] = [
+  { id: 'new', label: 'Nouveau', statuses: ['Nouveau'], defaultStatus: 'Nouveau', color: '#60a5fa' },
+  { id: 'action', label: 'Action requise', statuses: ['\u00c0 rappeler', 'A relancer', 'En risque'], defaultStatus: '\u00c0 rappeler', color: '#f97316' },
+  { id: 'ready', label: 'Pr\u00eat \u00e0 chiffrer', statuses: ['Qualifi\u00e9'], defaultStatus: 'Qualifi\u00e9', color: '#16a34a' },
+  { id: 'quote', label: 'Devis en attente', statuses: ['Devis envoy\u00e9'], defaultStatus: 'Devis envoy\u00e9', color: '#2563eb' },
+  { id: 'closed', label: 'Cl\u00f4tur\u00e9', statuses: ['Gagn\u00e9', 'Perdu'], defaultStatus: 'Gagn\u00e9', color: 'var(--text-3)' },
+];
+
+const ACTION_REQUIRED_PRIORITY: Record<string, number> = {
+  'En risque': 0,
+  '\u00c0 rappeler': 1,
+  'A relancer': 2,
+};
+
+function resolveKanbanDropStatus(project: Project | undefined, column: (typeof KANBAN_GROUPED_COLUMNS)[number]) {
+  if (project?.status && column.statuses.includes(project.status)) return project.status;
+  return column.defaultStatus;
+}
+
+function sortKanbanProjects(projects: Project[], columnId: string) {
+  return [...projects].sort((a, b) => {
+    if (columnId === 'action') {
+      const priorityA = ACTION_REQUIRED_PRIORITY[a.status || ''] ?? 99;
+      const priorityB = ACTION_REQUIRED_PRIORITY[b.status || ''] ?? 99;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+    }
+
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
+}
+
+export const METIER_OPTIONS = [
+  'Plomberie',
+  'Électricité',
+  'Menuiserie',
+  'Couverture',
+  'Peinture',
+  'Maçonnerie',
+  'Paysagisme',
+  'Rénovation',
+  'Autre',
+];
+
+const BUDGET_RANGES: Record<string, [number, number]> = {
+  '0-1000': [0, 1000],
+  '1000-3000': [1000, 3000],
+  '3000-10000': [3000, 10000],
+  '10000-50000': [10000, 50000],
+  '50000+': [50000, Infinity],
+};
+
+export const BUDGET_OPTIONS = [
+  { value: '0-1000', label: 'Moins de 1 000€' },
+  { value: '1000-3000', label: '1 000 – 3 000€' },
+  { value: '3000-10000', label: '3 000 – 10 000€' },
+  { value: '10000-50000', label: '10 000 – 50 000€' },
+  { value: '50000+', label: 'Plus de 50 000€' },
+];
+
+export const SCORE_OPTIONS = [
+  { value: 'excellent', label: 'Excellent (>80%)', color: 'var(--accent)' },
+  { value: 'bon', label: 'Bon (60-80%)', color: '#f59e0b' },
+  { value: 'faible', label: 'Faible (<60%)', color: '#dc2626' },
+];
+
+export const PERIODE_OPTIONS = [
+  { value: 'today', label: "Aujourd'hui" },
+  { value: '7d', label: '7 derniers jours' },
+  { value: '30d', label: '30 derniers jours' },
+  { value: '90d', label: '3 derniers mois' },
+  { value: 'year', label: 'Cette année' },
+];
+
+export const SOURCE_OPTIONS = [
+  { value: 'chat', label: 'Via chat widget' },
+  { value: 'voice', label: 'Via appel vocal' },
+  { value: 'manual', label: 'Ajout manuel' },
+];
+
+export type FilterState = {
+  search: string;
+  statut: string;
+  metier: string;
+  budget: string;
+  score: string;
+  periode: string;
+  source: string;
+};
+
+export const DEFAULT_FILTERS: FilterState = {
+  search: '',
+  statut: '',
+  metier: '',
+  budget: '',
+  score: '',
+  periode: '',
+  source: '',
+};
+
+export function filterProjects(projects: Project[], filters: FilterState): Project[] {
+  return projects.filter((p) => {
+    if (filters.search) {
+      const term = filters.search.toLowerCase().trim();
+
+      const searchable = [p.clientName, p.clientFirstName, p.projectType, p.trade, p.city, p.projectNumber]
+        .join(' ')
+        .toLowerCase();
+
+      if (!searchable.includes(term)) return false;
+    }
+
+    if (filters.statut && p.status !== filters.statut) return false;
+
+    if (filters.metier) {
+      const trade = (p.trade || '').toLowerCase();
+
+      if (!trade.includes(filters.metier.toLowerCase())) return false;
+    }
+
+    if (filters.budget) {
+      const range = BUDGET_RANGES[filters.budget];
+      const value = parseBudget(p.budget || '');
+
+      if (range && (value < range[0] || value > range[1])) return false;
+    }
+
+    if (filters.score) {
+      const score = p.completenessScore || 0;
+
+      if (filters.score === 'excellent' && !(score > 80)) return false;
+      if (filters.score === 'bon' && !(score >= 60 && score <= 80)) return false;
+      if (filters.score === 'faible' && !(score < 60)) return false;
+    }
+
+    if (filters.periode) {
+      if (!p.createdAt) return false;
+
+      const created = new Date(p.createdAt).getTime();
+
+      if (Number.isNaN(created)) return false;
+
+      const dayMs = 24 * 60 * 60 * 1000;
+      const nowTime = Date.now();
+
+      if (filters.periode === 'today') {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        if (!p.createdAt.startsWith(todayKey)) return false;
+      } else if (filters.periode === '7d') {
+        if (nowTime - created > 7 * dayMs) return false;
+      } else if (filters.periode === '30d') {
+        if (nowTime - created > 30 * dayMs) return false;
+      } else if (filters.periode === '90d') {
+        if (nowTime - created > 90 * dayMs) return false;
+      } else if (filters.periode === 'year') {
+        if (new Date(created).getFullYear() !== new Date().getFullYear()) return false;
+      }
+    }
+
+    if (filters.source) {
+      const src = (p.source || '').toLowerCase();
+
+      if (filters.source === 'chat' && !src.includes('chat')) return false;
+      if (filters.source === 'voice' && !(src.includes('voice') || src.includes('vocal') || src.includes('call'))) return false;
+      if (filters.source === 'manual' && !(src.includes('manual') || src.includes('manuel'))) return false;
+    }
+
+    return true;
+  });
+}
+
+export type KpiPeriod = '7d' | '30d' | '90d' | '1y';
+
+const KPI_PERIOD_DAYS: Record<KpiPeriod, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+  '1y': 365,
+};
+
+export const KPI_PERIOD_OPTIONS: { value: KpiPeriod; label: string }[] = [
+  { value: '7d', label: '7 jours' },
+  { value: '30d', label: 'Ce mois' },
+  { value: '90d', label: '3 mois' },
+  { value: '1y', label: 'Cette année' },
+];
+
+export type KpiData = {
+  totalDossiers: number;
+  caPotentiel: number;
+  caGagne: number;
+  devisTotal: number;
+  tauxConversion: number;
+  panierMoyen: number;
+  dossiersARelancer: number;
+  scoreIAMoyen: number;
+  devisEnvoyes: number;
+};
+
+function filterByPeriod(projects: Project[], start: Date, end: Date): Project[] {
+  return projects.filter((p) => {
+    if (!p.createdAt) return false;
+
+    const d = new Date(p.createdAt);
+
+    return !Number.isNaN(d.getTime()) && d >= start && d <= end;
+  });
+}
+
+export function computeKpis(projects: Project[]): KpiData {
+  const total = projects.length;
+
+  const caPotentiel = projects
+    .filter((p) => p.status !== 'Perdu')
+    .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
+
+  const gagne = projects.filter((p) => p.status === 'Gagné');
+  const caGagne = gagne.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
+
+  const devisEnvoyesProjects = projects.filter((p) => p.status === 'Devis envoyé');
+  const devisTotal = devisEnvoyesProjects.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
+
+  return {
+    totalDossiers: total,
+    caPotentiel,
+    caGagne,
+    devisTotal,
+    tauxConversion: total ? (gagne.length / total) * 100 : 0,
+    panierMoyen: gagne.length ? caGagne / gagne.length : 0,
+    dossiersARelancer: projects.filter((p) => p.status === 'À rappeler').length,
+    scoreIAMoyen: total ? projects.reduce((sum, p) => sum + (p.completenessScore || 0), 0) / total : 0,
+    devisEnvoyes: devisEnvoyesProjects.length,
+  };
+}
+
+export function calcDelta(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+
+  return ((current - previous) / previous) * 100;
+}
+
+export function formatCurrency(value: number): string {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M €`;
+  if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k €`;
+
+  return `${Math.round(value)} €`;
+}
+
+export function buildSparklineData(projects: Project[], period: KpiPeriod): { label: string; value: number }[] {
+  const now = new Date();
+  const buckets: { start: Date; end: Date; label: string }[] = [];
+
+  const startOfDay = (d: Date) => {
+    const r = new Date(d);
+    r.setHours(0, 0, 0, 0);
+    return r;
+  };
+
+  const endOfDay = (d: Date) => {
+    const r = new Date(d);
+    r.setHours(23, 59, 59, 999);
+    return r;
+  };
+
+  if (period === '7d') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      buckets.push({ start: startOfDay(d), end: endOfDay(d), label: format(d, 'd MMM', { locale: fr }) });
+    }
+  } else if (period === '30d') {
+    for (let i = 3; i >= 0; i--) {
+      const end = new Date(now);
+      end.setDate(end.getDate() - i * 7);
+
+      const start = new Date(end);
+      start.setDate(start.getDate() - 6);
+
+      buckets.push({
+        start: startOfDay(start),
+        end: endOfDay(end),
+        label: `${format(start, 'd MMM', { locale: fr })} - ${format(end, 'd MMM', { locale: fr })}`,
+      });
+    }
+  } else {
+    const months = period === '90d' ? 3 : 12;
+
+    for (let i = months - 1; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+
+      buckets.push({ start: startOfDay(start), end: endOfDay(end), label: format(monthDate, 'MMM yyyy', { locale: fr }) });
+    }
+  }
+
+  return buckets.map((b) => ({
+    label: b.label,
+    value: projects
+      .filter((p) => {
+        if (!p.createdAt || p.status === 'Perdu') return false;
+
+        const d = new Date(p.createdAt);
+
+        return !Number.isNaN(d.getTime()) && d >= b.start && d <= b.end;
+      })
+      .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0),
+  }));
+}
+
+function useCountUp(target: number, durationMs = 800): number {
+  const [value, setValue] = useState(target);
+  const prevTarget = useRef(target);
+  const reduceMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  useEffect(() => {
+    if (reduceMotion) {
+      prevTarget.current = target;
+      return;
+    }
+
+    if (prevTarget.current === target) return;
+
+    const start = prevTarget.current;
+    const startTime = performance.now();
+    let frame: number;
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / durationMs, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      setValue(start + (target - start) * eased);
+
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      } else {
+        prevTarget.current = target;
+      }
+    };
+
+    frame = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frame);
+  }, [target, durationMs, reduceMotion]);
+
+  return reduceMotion ? target : value;
+}
+
+export function AnimatedKpiValue({ value, format }: { value: number; format: (v: number) => string }) {
+  const animated = useCountUp(value);
+
+  return <>{format(animated)}</>;
+}
+
+export function TrendIndicator({ delta, unit = '%' }: { delta: number; unit?: string }) {
+  if (delta > 0) {
+    return (
+      <div className="flex items-center gap-1 text-xs text-green-500">
+        <TrendingUp className="w-3 h-3" />
+        <span>+{delta.toFixed(1)}{unit} vs période précédente</span>
+      </div>
+    );
+  }
+
+  if (delta < 0) {
+    return (
+      <div className="flex items-center gap-1 text-xs" style={{ color: '#dc2626' }}>
+        <TrendingDown className="w-3 h-3" />
+        <span>{delta.toFixed(1)}{unit} vs période précédente</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-xs text-[var(--text-3)]">
+      <Minus className="w-3 h-3" />
+      <span>Stable vs période précédente</span>
+    </div>
+  );
+}
+
+export function Sparkline({ data, height = 60 }: { data: { label: string; value: number }[]; height?: number }) {
+  const [hover, setHover] = useState<{ index: number; x: number; y: number } | null>(null);
+
+  const width = 600;
+  const padding = 4;
+
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const min = Math.min(...data.map((d) => d.value), 0);
+  const range = max - min || 1;
+
+  const points = data.map((d, i) => {
+    const x = data.length > 1 ? (i / (data.length - 1)) * (width - padding * 2) + padding : width / 2;
+    const y = height - padding - ((d.value - min) / range) * (height - padding * 2);
+
+    return { x, y, ...d };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = `${linePath} L ${points[points.length - 1]?.x ?? 0} ${height} L ${points[0]?.x ?? 0} ${height} Z`;
+
+  return (
+    <div className="relative w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height: `${height}px` }}>
+        <defs>
+          <linearGradient id="sparklineGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(34,197,94,0.06)" />
+            <stop offset="100%" stopColor="rgba(34,197,94,0)" />
+          </linearGradient>
+        </defs>
+
+        {points.length > 1 && <path d={areaPath} fill="url(#sparklineGradient)" stroke="none" />}
+        {points.length > 1 && <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth={2} />}
+
+        {points.length > 0 && (
+          <circle cx={points[0].x} cy={points[0].y} r={3} fill="var(--accent)" />
+        )}
+        {points.length > 1 && (
+          <circle cx={points[points.length - 1].x} cy={points[points.length - 1].y} r={3} fill="var(--accent)" />
+        )}
+
+        {points.map((p, i) => (
+          <rect
+            key={i}
+            x={p.x - (width / Math.max(points.length, 1)) / 2}
+            y={0}
+            width={width / Math.max(points.length, 1)}
+            height={height}
+            fill="transparent"
+            onMouseEnter={() => setHover({ index: i, x: p.x, y: p.y })}
+            onMouseLeave={() => setHover(null)}
+          />
+        ))}
+      </svg>
+
+      {hover && (
+        <div
+          className="absolute pointer-events-none rounded-lg border bg-[var(--bg-elevated)] px-3 py-2 text-xs"
+          style={{
+            borderColor: 'var(--border)',
+            left: `${(hover.x / width) * 100}%`,
+            top: 0,
+            transform: 'translate(-50%, -100%)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <div className="text-[var(--text-2)]">{data[hover.index].label}</div>
+          <div className="font-semibold text-[var(--text-1)]">{formatCurrency(data[hover.index].value)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function navButtonStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '10px 16px',
+    borderRadius: '10px',
+    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    background: active ? 'var(--accent)' : 'var(--bg-elevated)',
+    color: active ? 'var(--bg)' : 'var(--text-1)',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    whiteSpace: 'nowrap',
+  };
+}
+
+function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
-  const { projects, events, artisan, theme, setTheme, createEvent, updateEvent, deleteEvent } = useDemoMode();
-  const [activeView, setActiveView] = useState<'commercial' | 'calendar'>('commercial');
+  const {
+    projects,
+    events,
+    theme,
+    setTheme,
+    updateProjectStatus,
+    createEvent,
+  } = useDemoMode();
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [setTheme, theme]);
+  const canExportPdf = hasFeature(plan, 'pdfExports');
+  const canExportMonthlyReport = hasFeature(plan, 'monthlyPdfReport');
+  const canUseKanban = hasFeature(plan, 'kanbanView');
+  const canUseAdvancedFilters = hasFeature(plan, 'advancedFilters');
+  const canViewKpiTrends = hasFeature(plan, 'kpiTrends');
+  const canViewPipeline = hasFeature(plan, 'commercialPipeline');
+  const canViewGeoProjects = hasFeature(plan, 'geoProjects');
+  const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
+  const canAccessFeature = (feature: PlanFeatureKey) => hasFeature(plan, feature);
+  const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
+
+  const user = {
+    email: 'demo@kadria.local',
+    name: 'Artisan Demo',
+    role: 'User',
+  };
+
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [todayLabel, setTodayLabel] = useState("Aujourd'hui");
+
+  useEffect(() => {
+    setTodayLabel(
+      new Date().toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    );
+  }, []);
+
+  const [kpiPeriod, setKpiPeriod] = useState<KpiPeriod>('30d');
+
+  const setPeriod = (period: KpiPeriod) => {
+    if (!canViewKpiTrends) return;
+    setKpiPeriod(period);
+  };
+
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | null>(null);
+  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
+  const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
+  const [todayEvents, setTodayEvents] = useState<any[]>([]);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
-  const kpis = useMemo(() => computeDemoKPIs(projects), [projects]);
-  const hotLead = useMemo(() => projects.find((project) => isHotLead(project as never)) ?? null, [projects]);
-  const riskProjects = useMemo(
-    () =>
-      projects.filter((project) => {
-        const risk = getProjectRiskStatus(project as never);
-        return risk.label === 'En risque' || risk.label === 'A relancer' || isAtRiskStatus(project.status);
-      }),
-    [projects],
-  );
-  const prioritized = useMemo(
-    () =>
-      [...projects]
-        .map((project) => ({
-          ...project,
-          opportunityScore: calculateOpportunityScore(project as never),
-        }))
-        .sort((left, right) => right.opportunityScore - left.opportunityScore)
-        .slice(0, 5),
-    [projects],
+  const setView = (mode: 'list' | 'kanban') => {
+    if (mode === 'kanban' && !canUseKanban) return;
+    setViewMode(mode);
+  };
+
+  useEffect(() => {
+    if (viewMode === 'kanban' && !canUseKanban) {
+      setViewMode('list');
+    }
+  }, [canUseKanban, viewMode]);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    setAllProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
+    updateProjectStatus(id, newStatus);
+  };
+
+  const [openPanel, setOpenPanel] = useState<'pipeline' | 'chantiers' | null>(null);
+
+  const togglePanel = (panel: 'pipeline' | 'chantiers') => {
+    if (panel === 'pipeline' && !canAccessFeature('commercialPipeline')) {
+      openUpgradeModal('commercialPipeline');
+      return;
+    }
+    if (panel === 'chantiers' && !canAccessFeature('geoProjects')) {
+      openUpgradeModal('geoProjects');
+      return;
+    }
+
+    setOpenPanel((prev) => (prev === panel ? null : panel));
+  };
+
+  useEffect(() => {
+    if ((openPanel === 'pipeline' && !canViewPipeline) || (openPanel === 'chantiers' && !canViewGeoProjects)) {
+      setOpenPanel(null);
+    }
+  }, [canViewGeoProjects, canViewPipeline, openPanel]);
+
+  const logout = async () => {
+    router.push('/demo');
+  };
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const normalizedProjects = projects.map((project) => normalizeDemoProject(project as Project));
+
+      setAllProjects(normalizedProjects);
+
+      {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
+        const overdue = events.filter((e: any) => {
+          if (e.status === 'Fait') return false; // Exclut les événements validés
+          const eventDate = new Date(e.date);
+          return eventDate < now && !e.date?.startsWith(todayStr);
+        });
+
+        const today = events.filter((e: any) => {
+          if (e.status === 'Fait') return false;
+          return e.date?.startsWith(todayStr);
+        });
+
+        setOverdueEvents(overdue);
+        setTodayEvents(today);
+      }
+    } catch (error) {
+      console.error('LOAD_DASHBOARD_ERROR', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [events, projects]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadData();
+    }, 150);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadData]);
+
+  const updateFilter = (key: keyof FilterState, value: string) => {
+    if (!canUseAdvancedFilters && (key === 'budget' || key === 'score' || key === 'periode' || key === 'source')) return;
+
+    setQuickFilter(null);
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const debouncedSearch = useDebouncedCallback((val: string) => {
+    updateFilter('search', val);
+  }, 400);
+
+  const hasActiveFilters = Object.values(filters).some((v) => v !== '');
+
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const now = today.getTime();
+
+  const todayCallbacks = allProjects.filter((project) => {
+    if (!project.callbackDate) return false;
+
+    const callbackKey = String(project.callbackDate).slice(0, 10);
+
+    return callbackKey === todayKey;
+  });
+
+  const overdueCallbacks = allProjects.filter((project) => {
+    if (!project.callbackDate) return false;
+    if (project.status === 'Gagné' || project.status === 'Perdu') return false;
+
+    const callbackTime = new Date(project.callbackDate).getTime();
+
+    return !Number.isNaN(callbackTime) && callbackTime < now;
+  });
+
+  const overdueCount = overdueEvents.length;
+  const todayCount = todayEvents.length;
+
+  const pipelineSteps = [
+    { label: 'Nouveau', value: allProjects.filter((p) => p.status === 'Nouveau').length },
+    { label: 'À rappeler', value: allProjects.filter((p) => p.status === 'À rappeler').length },
+    { label: 'Qualifié', value: allProjects.filter((p) => p.status === 'Qualifié').length },
+    { label: 'Devis envoyé', value: allProjects.filter((p) => p.status === 'Devis envoyé').length },
+    { label: 'A relancer', value: allProjects.filter((p) => p.status === 'A relancer').length },
+    { label: 'En risque', value: allProjects.filter((p) => p.status === 'En risque').length },
+    { label: 'Gagné', value: allProjects.filter((p) => p.status === 'Gagné').length },
+  ];
+
+  const topOpportunities = [...allProjects]
+    .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
+    .sort((a, b) => opportunityScore(b) - opportunityScore(a))
+    .slice(0, 5);
+
+  const hotLeads = allProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
+  const riskProjects = allProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
+  const todayTasks = buildAutomaticTasks(allProjects).filter((task) => {
+    const due = new Date(task.dueDate);
+    return !Number.isNaN(due.getTime()) && due <= new Date(Date.now() + 24 * 60 * 60 * 1000);
+  });
+
+  const filteredProjects = useMemo(
+    () => filterProjects(allProjects, filters),
+    [allProjects, filters],
   );
 
-  const kanbanColumns = [
-    { label: 'Nouveau', statuses: ['Nouveau'] },
-    { label: 'Action requise', statuses: ['A rappeler', 'En risque', 'A relancer'] },
-    { label: 'Pret a chiffrer', statuses: ['Qualifie'] },
-    { label: 'Devis en attente', statuses: ['Devis envoye'] },
-    { label: 'Cloture', statuses: ['Gagne', 'Perdu'] },
+  const sortedProjects = useMemo(
+    () =>
+      [...filteredProjects].sort((a, b) => {
+        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+        return db - da;
+      }),
+    [filteredProjects],
+  );
+
+  const priorityProjects = Array.from(
+    new Map(
+      [...topOpportunities, ...riskProjects, ...hotLeads]
+        .filter((project) => project.id)
+        .map((project) => [project.id, project]),
+    ).values(),
+  );
+
+  const displayedProjects =
+    quickFilter === 'today'
+      ? todayCallbacks
+      : quickFilter === 'overdue'
+        ? overdueCallbacks
+        : quickFilter === 'hot'
+          ? hotLeads
+          : quickFilter === 'risk'
+            ? riskProjects
+            : quickFilter === 'priority'
+              ? priorityProjects
+              : sortedProjects;
+
+  const resetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    setSearchInput('');
+    setQuickFilter(null);
+  };
+
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; error?: boolean }>({
+    visible: false,
+    message: '',
+  });
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
+
+  const showToast = (message: string, error = false) => {
+    setToast({ visible: true, message, error });
+    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+  };
+
+  const createFollowUpTask = async (project: { id: string; clientFirstName?: string; clientName?: string }) => {
+    try {
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      createEvent({
+        title: `Rappeler ${[project.clientFirstName, project.clientName].filter(Boolean).join(' ')}`.trim() || 'Rappeler le prospect',
+        date: `${today}T09:00:00`,
+        type: 'Rappel',
+        projectId: project.id,
+        notes: 'Tache creee depuis Dossiers a risque',
+        status: 'Prévu',
+      });
+      showToast('Tache ajoutee au calendrier pour aujourd\'hui');
+    } catch (error) {
+      console.error('CREATE_FOLLOW_UP_TASK_ERROR', error);
+      showToast('Impossible de creer la tache', true);
+    }
+  };
+
+  const activeFilterLabels = [
+    filters.search && `Recherche: ${filters.search}`,
+    filters.statut && `Statut: ${filters.statut}`,
+    filters.metier && `Métier: ${filters.metier}`,
+    filters.budget && `Budget: ${BUDGET_OPTIONS.find((b) => b.value === filters.budget)?.label ?? filters.budget}`,
+    filters.score && `Score: ${SCORE_OPTIONS.find((s) => s.value === filters.score)?.label ?? filters.score}`,
+    filters.periode && `Période: ${PERIODE_OPTIONS.find((p) => p.value === filters.periode)?.label ?? filters.periode}`,
+    filters.source && `Source: ${SOURCE_OPTIONS.find((s) => s.value === filters.source)?.label ?? filters.source}`,
+  ].filter(Boolean) as string[];
+
+  const handleExportCSV = () => {
+    setExportMenuOpen(false);
+
+    try {
+      const dateStr = format(new Date(), 'yyyy-MM-dd');
+
+      exportToCSV(filteredProjects, `kadria-dossiers-${dateStr}.csv`);
+      showToast(`✓ Export CSV téléchargé — ${filteredProjects.length} dossiers`);
+    } catch (error) {
+      console.error('EXPORT_CSV_ERROR', error);
+      showToast('✗ Erreur lors de l’export', true);
+    }
+  };
+
+  const handleExportPDF = async (type: 'list' | 'monthly') => {
+    const feature = type === 'monthly' ? 'monthlyPdfReport' : 'pdfExports';
+    if (!canAccessFeature(feature)) {
+      setExportMenuOpen(false);
+      openUpgradeModal(feature);
+      return;
+    }
+
+    setExportMenuOpen(false);
+    showToast(type === 'monthly' ? 'Mode demo : rapport PDF simule.' : 'Mode demo : export PDF simule.');
+
+    try {
+      const win = window.open('', '_blank');
+      if (!win) return;
+      const projectCount = type === 'monthly' ? allProjects.length : filteredProjects.length;
+      win.document.write(`
+        <html lang="fr">
+          <head>
+            <title>Export demo Kadria</title>
+            <style>
+              body { font-family: Inter, Arial, sans-serif; background: #09090b; color: #f4f4f5; padding: 32px; }
+              .card { max-width: 680px; margin: 40px auto; border: 1px solid #27272a; border-radius: 20px; padding: 28px; background: #111113; }
+              h1 { margin: 0 0 12px; font-size: 28px; }
+              p { color: #a1a1aa; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Export demo Kadria</h1>
+              <p>Cette prévisualisation simule l'export ${type === 'monthly' ? 'du rapport mensuel' : 'PDF'} sans appel réseau.</p>
+              <p>${projectCount} dossier(s) seraient inclus avec les filtres actuels.</p>
+            </div>
+          </body>
+        </html>
+      `);
+      win.document.close();
+    } catch (error) {
+      console.error('EXPORT_PDF_ERROR', error);
+      showToast('✗ Erreur lors de l’export', true);
+    }
+  };
+
+  const kpiPeriodData = useMemo(() => {
+    const days = KPI_PERIOD_DAYS[kpiPeriod];
+
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - days);
+
+    const prevEnd = new Date(start);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - days);
+
+    const periodProjects = filterByPeriod(allProjects, start, end);
+    const previousProjects = filterByPeriod(allProjects, prevStart, prevEnd);
+
+    return {
+      start,
+      end,
+      current: computeKpis(periodProjects),
+      previous: computeKpis(previousProjects),
+      sparkline: buildSparklineData(periodProjects, kpiPeriod),
+    };
+  }, [allProjects, kpiPeriod]);
+
+  const periodLabel = `Du ${format(kpiPeriodData.start, 'd MMMM', { locale: fr })} au ${format(kpiPeriodData.end, 'd MMMM yyyy', { locale: fr })}`;
+
+  const taskCounts = todayTasks.reduce(
+    (acc, task) => {
+      acc[task.type] = (acc[task.type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<Task['type'], number>,
+  );
+
+  const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
+  const primaryHotLead = hotLeads.find((project) => opportunityScore(project) >= 80 || Number(project.completenessScore || 0) >= 100);
+  const primaryHotLeadName = primaryHotLead
+    ? [primaryHotLead.clientFirstName, primaryHotLead.clientName].filter(Boolean).join(' ') || 'Dossier prioritaire'
+    : '';
+  const primaryHotLeadReason = primaryHotLead && Number(primaryHotLead.completenessScore || 0) >= 100
+    ? 'dossier pret a chiffrer'
+    : primaryHotLead
+      ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
+      : '';
+  const showBusinessOverview = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showTasksOverview = dashboardMode === 'all' || dashboardMode === 'tasks';
+  const showCommercialWorkspace = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showClientsWorkspace = dashboardMode === 'clients';
+  const showCalendarWorkspace = dashboardMode === 'calendar';
+
+
+  const kpiCards: {
+    label: string;
+    value: number;
+    delta: number | null;
+    icon: typeof Euro;
+    borderColor: string;
+    format: (v: number) => string;
+    alert?: boolean;
+  }[] = [
+    {
+      label: 'CA potentiel',
+      value: kpiPeriodData.current.caPotentiel,
+      delta: calcDelta(kpiPeriodData.current.caPotentiel, kpiPeriodData.previous.caPotentiel),
+      icon: Euro,
+      borderColor: 'var(--accent)',
+      format: formatCurrency,
+    },
+    {
+      label: 'Devis envoyés',
+      value: kpiPeriodData.current.devisTotal,
+      delta: calcDelta(kpiPeriodData.current.devisTotal, kpiPeriodData.previous.devisTotal),
+      icon: Send,
+      borderColor: '#2563eb',
+      format: formatCurrency,
+    },
+    {
+      label: 'Chantiers gagnés',
+      value: kpiPeriodData.current.caGagne,
+      delta: calcDelta(kpiPeriodData.current.caGagne, kpiPeriodData.previous.caGagne),
+      icon: Trophy,
+      borderColor: '#15803d',
+      format: formatCurrency,
+    },
+    {
+      label: 'Taux de conversion',
+      value: kpiPeriodData.current.tauxConversion,
+      delta: kpiPeriodData.current.tauxConversion - kpiPeriodData.previous.tauxConversion,
+      icon: Target,
+      borderColor: '#7c3aed',
+      format: (v: number) => `${v.toFixed(1)}%`,
+    },
+    {
+      label: 'À relancer',
+      value: kpiPeriodData.current.dossiersARelancer,
+      delta: null,
+      icon: Clock,
+      borderColor: '#d97706',
+      format: (v: number) => `${Math.round(v)} dossier(s)`,
+      alert: kpiPeriodData.current.dossiersARelancer > 0,
+    },
+    {
+      label: 'Opportunites prioritaires',
+      value: topOpportunities.length,
+      delta: null,
+      icon: Target,
+      borderColor: 'var(--accent)',
+      format: (v: number) => `${Math.round(v)} dossier(s)`,
+      alert: topOpportunities.length > 0,
+    },
+    {
+      label: 'Relances a effectuer',
+      value: relanceCount,
+      delta: null,
+      icon: Mail,
+      borderColor: '#f59e0b',
+      format: (v: number) => `${Math.round(v)} relance(s)`,
+      alert: relanceCount > 0,
+    },
+    {
+      label: 'Dossiers en risque',
+      value: riskProjects.length,
+      delta: null,
+      icon: AlertTriangle,
+      borderColor: '#ef4444',
+      format: (v: number) => `${Math.round(v)} dossier(s)`,
+      alert: riskProjects.length > 0,
+    },
+    {
+      label: 'Prospects chauds',
+      value: hotLeads.length,
+      delta: null,
+      icon: Bell,
+      borderColor: 'var(--accent)',
+      format: (v: number) => `${Math.round(v)} prospect(s)`,
+      alert: hotLeads.length > 0,
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text-1)]">
-      <div className="mx-auto flex max-w-[1480px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-green-500">Kadria Pro</p>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Tableau de bord</h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              {artisan.companyName} · {artisan.primaryTrade} · theme {theme === 'dark' ? 'sombre' : 'clair'}
-            </p>
-          </div>
+    <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
+      {/* Header */}
+      <div
+        style={{
+          padding: 0,
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          justifyContent: 'space-between',
+          alignItems: isMobile ? 'stretch' : 'flex-start',
+          marginBottom: '24px',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: 'var(--accent)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 6px' }}>
+            Kadria Pro
+          </p>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveView('commercial')}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeView === 'commercial' ? 'bg-green-500 text-zinc-950' : 'border border-zinc-800 bg-zinc-900 text-white'}`}
-            >
-              Suivi commercial
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('calendar')}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeView === 'calendar' ? 'bg-green-500 text-zinc-950' : 'border border-zinc-800 bg-zinc-900 text-white'}`}
-            >
-              Calendrier
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/demo-dashboard/onboarding')}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white"
-            >
-              Mon profil
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white"
-            >
-              {theme === 'dark' ? 'Theme clair' : 'Theme sombre'}
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-300"
-            >
-              Deconnexion
-            </button>
-          </div>
+          <h1 style={{ color: 'var(--text-1)', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
+            Tableau de bord
+          </h1>
+
+          <p style={{ color: 'var(--text-3)', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
+            {todayLabel}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: 'CA potentiel', value: formatCurrency(kpis.caTotal), icon: Euro },
-            { label: 'Devis envoyes', value: formatCurrency(kpis.devisTotal), icon: Send },
-            { label: 'Chantiers gagnes', value: formatCurrency(kpis.gagneTotal), icon: Trophy },
-            { label: 'Taux de conversion', value: `${kpis.tauxTransfo}%`, icon: Target },
-          ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm text-zinc-400">{item.label}</span>
-                <div className="rounded-lg bg-zinc-800 p-2 text-green-400">
-                  <item.icon className="h-4 w-4" />
-                </div>
+        {isMobile ? (
+          <div style={{ width: '100%', position: 'relative' }}>
+            <button
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                gap: '8px',
+              }}
+            >
+              <span>☰ Menu</span>
+              <span>{theme === 'dark' ? '🌙' : '☀️'}</span>
+            </button>
+
+            {mobileMenuOpen && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginTop: '8px',
+                  padding: '12px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                }}
+              >
+                {[
+                  { mode: 'all' as const, label: 'Vue complete' },
+                  { mode: 'commercial' as const, label: 'Suivi commercial' },
+                  { mode: 'calendar' as const, label: 'Calendrier' },
+                  { mode: 'clients' as const, label: 'Mes clients' },
+                  { mode: 'tasks' as const, label: 'Mes taches a faire' },
+                ].map((item) => (
+                  <button
+                    key={item.mode}
+                    type="button"
+                    onClick={() => {
+                      setDashboardMode(item.mode);
+                      setQuickFilter(null);
+                      setMobileMenuOpen(false);
+                    }}
+                    style={navButtonStyle(dashboardMode === item.mode)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+
+                <button
+                  onClick={toggleTheme}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-2)',
+                    borderRadius: '8px',
+                    padding: '9px 12px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    textAlign: 'left',
+                  }}
+                >
+                  {theme === 'dark' ? '☀️ Thème clair' : '🌙 Thème sombre'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push('/demo-dashboard/onboarding');
+                  }}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-2)',
+                    borderRadius: '8px',
+                    padding: '9px 14px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    textAlign: 'left',
+                  }}
+                >
+                  ⚙️ Mon profil
+                </button>
+
+                <button
+                  onClick={logout}
+                  className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
+                  style={{ padding: '9px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}
+                >
+                  <LogOut className="w-4 h-4" /> Déconnexion
+                </button>
               </div>
-              <p className="text-2xl font-bold text-white">{item.value}</p>
-            </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: 'auto' }}>
+            {[
+              { mode: 'all' as const, label: 'Vue complete' },
+              { mode: 'commercial' as const, label: 'Suivi commercial' },
+              { mode: 'calendar' as const, label: 'Calendrier' },
+              { mode: 'clients' as const, label: 'Mes clients' },
+              { mode: 'tasks' as const, label: 'Mes taches a faire' },
+            ].map((item) => (
+              <button
+                key={item.mode}
+                type="button"
+                onClick={() => {
+                  setDashboardMode(item.mode);
+                  setQuickFilter(null);
+                }}
+                style={navButtonStyle(dashboardMode === item.mode)}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
+                borderRadius: '8px',
+                padding: '9px 12px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
+            <button
+              onClick={() => router.push('/demo-dashboard/onboarding')}
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
+                borderRadius: '8px',
+                padding: '9px 14px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              ⚙️ Mon profil
+            </button>
+
+            <button
+              onClick={logout}
+              title="Déconnexion"
+              className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
+              style={{ padding: '9px 12px', cursor: 'pointer' }}
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Barre période */}
+      {showBusinessOverview && (
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <p className="text-sm text-[var(--text-2)]">Période analysée · {periodLabel}</p>
+
+        <FeatureGate feature="kpiTrends" requiredPlan="performance">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-row">
+          {KPI_PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={
+                opt.value === kpiPeriod
+                  ? 'rounded-full border px-4 py-2 text-sm font-semibold cursor-pointer'
+                  : 'rounded-full border px-4 py-2 text-sm cursor-pointer transition-[border-color,color] duration-150 hover:border-green-500/30 hover:text-[var(--text-1)]'
+              }
+              style={
+                opt.value === kpiPeriod
+                  ? { background: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.3)', color: 'var(--accent)' }
+                  : { background: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-2)' }
+              }
+            >
+              {opt.label}
+            </button>
           ))}
         </div>
+        </FeatureGate>
+      </div>
+      )}
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="font-semibold text-white">Centre d'actions</p>
-              <p className="mt-1 text-sm text-zinc-400">La vue la plus rapide pour savoir quoi traiter aujourd'hui.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveView('commercial')}
-              className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-400"
-            >
-              Voir mes priorites
-            </button>
+      {/* KPIs */}
+      {showBusinessOverview && (
+      <div style={{ padding: 0, marginBottom: '24px' }}>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-xl bg-[var(--bg-hover)]" />
+            ))}
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <MetricBox icon={Bell} label="Prospects chauds" value={kpis.prospectsChauds} />
-            <MetricBox icon={AlertTriangle} label="Dossiers en risque" value={kpis.dossiersEnRisque} />
-            <MetricBox icon={CalendarDays} label="Relances aujourd'hui" value={events.filter((event) => event.type === 'Relance').length} />
-            <MetricBox icon={Clock} label="Relances en retard" value={events.filter((event) => event.status === 'En retard').length} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
+            {kpiCards.slice(0, 4).map((card) => (
+              <div
+                key={card.label}
+                className={`flex min-h-[100px] flex-col gap-2 rounded-2xl border px-4 py-4 sm:px-[22px] sm:py-5 ${card.alert ? 'bg-orange-600/[0.04] border-orange-600/30' : 'bg-[var(--bg-elevated)] border-[var(--border)]'}`}
+                style={{ borderTopWidth: '2px', borderTopColor: card.borderColor }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-3)] text-[13px]">{card.label}</span>
+
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-500">
+                    <card.icon className="w-4 h-4" />
+                  </div>
+                </div>
+
+                  <span className="text-2xl font-bold tracking-tight text-[var(--text-1)] sm:text-[28px]">
+                  <AnimatedKpiValue value={card.value} format={card.format} />
+                </span>
+
+                {card.delta !== null && canViewKpiTrends && (
+                  <TrendIndicator delta={card.delta} unit={card.label === 'Taux de conversion' ? ' pts' : '%'} />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
+
+      {showBusinessOverview && !loading && (
+        <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
+              <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
+            </div>
+
+            <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
+              <PriorityMetric label="Opportunites prioritaires" value={topOpportunities.length} />
+              <PriorityMetric label="Relances a effectuer" value={relanceCount} />
+              <PriorityMetric label="Dossiers en risque" value={riskProjects.length} />
+              <PriorityMetric label="Prospects chauds" value={hotLeads.length} />
+            </div>
+
+            <button
+              onClick={() => {
+                setQuickFilter('priority');
+                setFilters(DEFAULT_FILTERS);
+                setSearchInput('');
+              }}
+              className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
+            >
+              Voir les priorites
+            </button>
           </div>
         </div>
+      )}
 
-        {hotLead ? (
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-green-500/25 bg-green-500/[0.06] px-5 py-4">
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-green-400" />
-              <p className="text-sm text-white">
-                <span className="font-semibold text-green-400">Prospect chaud :</span> {hotLead.clientFirstName} {hotLead.clientName} - dossier pret a chiffrer
+      {showBusinessOverview && !loading && primaryHotLead && (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Bell className="h-4 w-4 shrink-0 text-green-400" />
+            <p className="truncate text-sm text-[var(--text-1)]">
+              <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
+              {primaryHotLeadName} - {primaryHotLeadReason}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push(`/demo-dashboard/projet/${primaryHotLead.id}`)}
+            className="w-full rounded-lg border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-dim)] sm:w-auto"
+          >
+            Voir
+          </button>
+        </div>
+      )}
+
+      {showTasksOverview && !loading && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-bold text-[var(--text-1)]">Mes actions du jour</p>
+                <p className="text-sm text-[var(--text-2)]">Taches triees par priorite puis echeance.</p>
+              </div>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} />
+              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} />
+              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} />
+            </div>
+            <div className="mt-4 space-y-2">
+              {todayTasks.slice(0, 4).map((task) => {
+                const project = allProjects.find((p) => p.id === task.projectId);
+                return (
+                  <button
+                    key={task.id}
+                    onClick={() => router.push(`/demo-dashboard/projet/${task.projectId}`)}
+                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
+                      <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                      {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              <div>
+                <p className="font-bold text-[var(--text-1)]">Dossiers en risque</p>
+                <p className="text-sm text-[var(--text-2)]">Actions rapides recommandees.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {riskProjects.slice(0, 3).map((project) => {
+                const risk = getProjectRiskStatus(project);
+                return (
+                  <div key={project.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}</p>
+                        <p className="mt-1 text-xs text-red-300">Dossier en risque - {risk.reason}</p>
+                      </div>
+                      <StatusBadge status={risk.label} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
+                        style={{
+                          background: 'var(--accent-dim)',
+                          border: '1px solid var(--accent-border)',
+                          color: 'var(--accent)',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Relancer
+                      </button>
+                      <button
+                        onClick={() => createFollowUpTask(project)}
+                        style={{
+                          background: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-1)',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Creer une tache
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!confirm('Cloturer ce dossier comme perdu ?')) return;
+                          handleStatusChange(project.id, 'Perdu');
+                        }}
+                        style={{
+                          background: 'rgba(239,68,68,0.1)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          color: '#ef4444',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cloturer
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier en risque pour le moment.</p>}
+            </div>
+            {riskProjects.length > 0 && (
+              <button
+                onClick={() => { setQuickFilter('risk'); setFilters(DEFAULT_FILTERS); setSearchInput(''); }}
+                className="mt-4 w-full rounded-lg border border-red-500/25 bg-red-500/[0.04] px-4 py-2 text-sm font-semibold text-red-300"
+              >
+                Voir tous les dossiers en risque
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sparkline CA potentiel */}
+      {showBusinessOverview && !loading && (
+        <FeatureGate feature="kpiTrends" requiredPlan="performance">
+        <div className="mb-6 w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-bold text-[var(--text-1)]">Évolution du CA potentiel</p>
+              <p className="text-sm text-[var(--text-2)]">
+                {kpiPeriod === '7d'
+                  ? 'Sur les 7 derniers jours'
+                  : kpiPeriod === '30d'
+                    ? 'Sur les 30 derniers jours'
+                    : kpiPeriod === '90d'
+                      ? 'Sur les 3 derniers mois'
+                      : 'Sur les 12 derniers mois'}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => router.push(`/demo-dashboard/projet/${hotLead.id}`)}
-              className="rounded-lg border border-green-500/30 px-4 py-2 text-sm font-semibold text-green-400"
-            >
-              Voir
-            </button>
+
+            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-500 sm:text-sm">
+              {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
+            </span>
           </div>
-        ) : null}
 
-        {activeView === 'calendar' ? (
-          <DemoCalendar events={events} onCreateEvent={createEvent} onUpdateEvent={updateEvent} onDeleteEvent={deleteEvent} />
-        ) : (
-          <>
-            <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-white">Mes actions du jour</p>
-                    <p className="text-sm text-zinc-400">Appels, devis et relances prioritaires.</p>
-                  </div>
-                  <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300">5 actions</span>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <MetricBox icon={PhoneCall} label="Appels a effectuer" value={3} />
-                  <MetricBox icon={Send} label="Devis a envoyer" value={2} />
-                  <MetricBox icon={Mail} label="Relances a faire" value={1} />
-                </div>
-                <div className="mt-4 space-y-3">
-                  {prioritized.slice(0, 3).map((project) => (
-                    <button
-                      key={project.id}
-                      type="button"
-                      onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                      className="flex w-full items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-left transition-colors hover:border-green-500/20 hover:bg-zinc-900"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-white">{project.clientFirstName} {project.clientName}</p>
-                        <p className="text-xs text-zinc-400">{project.projectType}</p>
-                      </div>
-                      <span className="text-xs text-zinc-300">Voir le dossier</span>
-                    </button>
-                  ))}
-                </div>
+          <div className="mt-3">
+            <Sparkline data={kpiPeriodData.sparkline} height={isMobile ? 56 : 80} />
+          </div>
+        </div>
+        </FeatureGate>
+      )}
+
+      {/* Alertes */}
+      {showBusinessOverview && !loading && (overdueCount > 0 || todayCount > 0) && (
+        <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {overdueCount > 0 && (
+            <div
+              style={{
+                flex: 1,
+                minWidth: isMobile ? '100%' : '280px',
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                borderRadius: '12px',
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <p style={{ color: '#f87171', fontWeight: 600, fontSize: '14px', margin: '0 0 2px' }}>
+                  ⚠️ Relances en retard
+                </p>
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
+                  {overdueCount} relance(s) en retard
+                </p>
               </div>
 
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-                <div className="mb-4 flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-red-400" />
-                  <div>
-                    <p className="font-semibold text-white">Dossiers en risque</p>
-                    <p className="text-sm text-zinc-400">3 dossiers visibles maximum.</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {riskProjects.slice(0, 3).map((project) => (
-                    <div key={project.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                      <p className="text-sm font-semibold text-white">{project.clientFirstName} {project.clientName}</p>
-                      <p className="mt-1 text-xs text-zinc-400">{project.projectType} · {project.city}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                          className="rounded-md border border-zinc-700 px-2.5 py-1 text-xs text-zinc-200"
-                        >
-                          Relancer
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                          className="rounded-md border border-zinc-700 px-2.5 py-1 text-xs text-zinc-200"
-                        >
-                          Voir
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <button
+                onClick={() => {
+                  setQuickFilter('overdue');
+                  setFilters(DEFAULT_FILTERS);
+                  setSearchInput('');
+                }}
+                style={{
+                  background: 'rgba(239,68,68,0.12)',
+                  border: '1px solid rgba(239,68,68,0.4)',
+                  color: '#b91c1c',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                Voir les retards →
+              </button>
+            </div>
+          )}
+
+          {todayCount > 0 && (
+            <div
+              style={{
+                flex: 1,
+                minWidth: isMobile ? '100%' : '280px',
+                background: 'rgba(251,191,36,0.08)',
+                border: '1px solid rgba(251,191,36,0.25)',
+                borderRadius: '12px',
+                padding: '14px 18px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <p style={{ color: '#fbbf24', fontWeight: 600, fontSize: '14px', margin: '0 0 2px' }}>
+                  📅 Relances du jour
+                </p>
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
+                  {todayCount} relance(s) programmée(s) aujourd'hui
+                </p>
               </div>
+
+              <button
+                onClick={() => {
+                  setQuickFilter('today');
+                  setFilters(DEFAULT_FILTERS);
+                  setSearchInput('');
+                }}
+                style={{
+                  background: 'rgba(217,119,6,0.14)',
+                  border: '1px solid rgba(217,119,6,0.4)',
+                  color: '#92400e',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                Voir les relances →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showCalendarWorkspace && (
+        <FeatureGate feature="calendar" requiredPlan="performance">
+          <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-base font-bold text-[var(--text-1)]">Calendrier Kadria</p>
+                <p className="mt-1 text-sm text-[var(--text-2)]">
+                  Utilisez le calendrier integre de Kadria. La synchronisation Google Calendar reste optionnelle.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCalendarModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Synchroniser mon agenda
+              </button>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-white">Opportunites prioritaires</p>
-                  <p className="text-sm text-zinc-400">Les 5 dossiers a chiffrer ou relancer en premier.</p>
+            <DemoCalendarAdapter />
+          </div>
+        </FeatureGate>
+      )}
+
+      {(showCommercialWorkspace || showClientsWorkspace) && (
+      <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
+          {/* ZONE 1 — Top 3 opportunités */}
+          {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (
+            <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
+            <>
+              <div className="my-2 border-t border-[var(--border)]" />
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-[var(--text-1)]">Opportunites prioritaires</p>
+                  <p className="mt-1 text-xs text-[var(--text-2)]">
+                    Les dossiers a rappeler en premier selon completude, budget, urgence, delai, reactivite et distance.
+                  </p>
                 </div>
-                <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-400">Score IA</span>
+
+                <span className="inline-flex w-fit rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
+                  🤖 Score IA
+                </span>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                {prioritized.map((project) => (
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                {canAccessFeature('topAiOpportunities') ? topOpportunities.map((project, index) => (
                   <button
                     key={project.id}
-                    type="button"
                     onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-left transition-colors hover:border-green-500/20 hover:bg-zinc-900"
+                      className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
+                      index === 0
+                        ? 'border-green-500/25 bg-green-500/[0.02]'
+                        : 'border-[var(--border)] bg-[var(--bg-elevated)]'
+                    }`}
                   >
-                    <div className="mb-3 flex items-center justify-between">
-                      <StatusPill status={project.status} />
-                      <span className="text-sm font-bold text-green-400">{project.opportunityScore}/100</span>
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
+                        #{index + 1}
+                      </span>
+
+                      <span className="text-green-400 font-bold text-sm">
+                        {opportunityScore(project)}/100
+                      </span>
                     </div>
-                    <p className="font-semibold text-white">{project.clientFirstName} {project.clientName}</p>
-                    <p className="mt-1 text-sm text-zinc-400">{project.projectType}</p>
-                    <p className="mt-1 text-xs text-zinc-500">{project.city}</p>
-                    <p className="mt-3 text-xs text-zinc-300">{project.budget}</p>
-                    <p className="mt-2 text-xs text-zinc-500">{project.status === 'Devis envoye' ? 'Action recommandee: Relancer le devis' : 'Action recommandee: Voir le dossier'}</p>
+
+                    <div>
+                      <p className="font-bold text-[var(--text-1)] truncate">
+                        {project.clientFirstName} {project.clientName}
+                      </p>
+
+                      <p className="text-sm text-[var(--text-2)] truncate">
+                        {project.projectType || project.trade || 'Projet'} - {project.city || 'Ville non renseignee'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {(() => {
+                        const badge = getOpportunityBadge(opportunityScore(project));
+                        return (
+                          <span
+                            className="rounded-full border px-2.5 py-1 text-xs font-semibold"
+                            style={{ color: badge.color, background: badge.bg, borderColor: badge.border }}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
+
+                      <span className="text-[var(--text-2)] text-xs">
+                        {project.budget || 'Budget non renseigne'}
+                      </span>
+                    </div>
+
+                    <span className="mt-auto text-sm font-semibold text-green-400">Voir le dossier</span>
+                  </button>
+                )) : Array.from({ length: 3 }).map((_, index) => (
+                  <button
+                    key={`locked-top-${index}`}
+                    type="button"
+                    onClick={() => openUpgradeModal('topAiOpportunities')}
+                    className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 text-left transition-colors duration-200 hover:border-green-500/25"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="rounded bg-[var(--bg-hover)] px-2 py-0.5 text-xs font-bold text-[var(--text-3)]">
+                        #{index + 1}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-2)]">
+                        <Lock className="h-3 w-3 text-green-500" />
+                        Performance
+                      </span>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-4 w-2/3 rounded bg-[var(--bg-hover)]" />
+                      <div className="h-3 w-1/2 rounded bg-[var(--bg-hover)]/80" />
+                    </div>
+                    <p className="mt-4 text-xs leading-5 text-[var(--text-3)]">
+                      Classement IA des dossiers prioritaires disponible avec Performance.
+                    </p>
                   </button>
                 ))}
               </div>
+            </>
+            </FeatureGate>
+          )}
+
+          {showCommercialWorkspace && (
+          <>
+          {/* ZONE 2 — Toggles */}
+          <div>
+            <div className="relative my-2 border-t border-[var(--border)]">
+              <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg)] px-4 text-xs uppercase tracking-[0.08em] text-[var(--text-2)]">
+                Analyses détaillées
+              </span>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="font-semibold text-white">Tous les dossiers</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('list')}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold ${viewMode === 'list' ? 'bg-green-500 text-zinc-950' : 'border border-zinc-800 bg-zinc-950 text-zinc-300'}`}
-                  >
-                    Liste
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('kanban')}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold ${viewMode === 'kanban' ? 'bg-green-500 text-zinc-950' : 'border border-zinc-800 bg-zinc-950 text-zinc-300'}`}
-                  >
-                    Kanban
-                  </button>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="contents">
+              <button
+                onClick={() => togglePanel('pipeline')}
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
+                  openPanel === 'pipeline'
+                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <BarChart3
+                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'pipeline' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
+                  />
 
-              {viewMode === 'list' ? (
-                <div className="space-y-3">
-                  {projects.map((project) => (
-                    <button
-                      key={project.id}
-                      type="button"
-                      onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                      className="grid w-full gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-left transition-colors hover:border-green-500/20 hover:bg-zinc-900 md:grid-cols-[1.4fr_1.2fr_0.9fr_0.8fr_0.8fr]"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-white">{project.clientFirstName} {project.clientName}</p>
-                        <p className="text-xs text-zinc-400">{project.projectNumber} · {timeAgo(project.createdAt)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-white">{project.projectType}</p>
-                        <p className="text-xs text-zinc-400">{project.trade}</p>
-                      </div>
-                      <p className="text-sm text-zinc-300">{project.city}</p>
-                      <p className="text-sm text-zinc-300">{project.budget}</p>
-                      <div className="flex items-center justify-between gap-3 md:justify-end">
-                        <span className="text-sm font-semibold text-green-400">{project.completenessScore}%</span>
-                        <StatusPill status={project.status} />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="grid min-w-[980px] grid-cols-5 gap-4">
-                    {kanbanColumns.map((column) => (
-                      <div key={column.label} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                          <p className="text-sm font-semibold text-white">{column.label}</p>
-                          <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-300">
-                            {projects.filter((project) => column.statuses.includes(project.status)).length}
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          {projects
-                            .filter((project) => column.statuses.includes(project.status))
-                            .map((project) => (
-                              <button
-                                key={project.id}
-                                type="button"
-                                onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-left transition-colors hover:border-green-500/20"
-                              >
-                                <p className="text-sm font-semibold text-white">{project.clientFirstName} {project.clientName}</p>
-                                <p className="mt-1 text-xs text-zinc-400">{project.projectType}</p>
-                                <p className="mt-2 text-xs text-zinc-500">{project.budget}</p>
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex flex-col text-left">
+                    <span className="text-[15px] font-bold text-[var(--text-1)]">Pipeline commerciale</span>
+                    <span className="text-xs text-[var(--text-2)]">
+                      {pipelineSteps.length} étapes · {allProjects.length} dossiers
+                    </span>
                   </div>
                 </div>
+
+                {!canAccessFeature('commercialPipeline') ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
+                    <Lock className="h-3 w-3 text-green-500" />
+                    Performance
+                  </span>
+                ) : (
+                  <ChevronDown
+                    className={`h-[18px] w-[18px] shrink-0 text-[var(--text-2)] transition-transform duration-200 ${
+                      openPanel === 'pipeline' ? 'rotate-180' : 'animate-bounce'
+                    }`}
+                  />
+                )}
+              </button>
+              </div>
+
+              <div className="contents">
+              <button
+                onClick={() => togglePanel('chantiers')}
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
+                  openPanel === 'chantiers'
+                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin
+                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'chantiers' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
+                  />
+
+                  <div className="flex flex-col text-left">
+                    <span className="text-[15px] font-bold text-[var(--text-1)]">Chantiers géolocalisés</span>
+                    <span className="text-xs text-[var(--text-2)]">
+                      Vue géographique · {sortedProjects.slice(0, 8).length} points
+                    </span>
+                  </div>
+                </div>
+
+                {!canAccessFeature('geoProjects') ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
+                    <Lock className="h-3 w-3 text-green-500" />
+                    Performance
+                  </span>
+                ) : (
+                  <ChevronDown
+                    className={`h-[18px] w-[18px] shrink-0 text-[var(--text-2)] transition-transform duration-200 ${
+                      openPanel === 'chantiers' ? 'rotate-180' : 'animate-bounce'
+                    }`}
+                  />
+                )}
+              </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ZONE 3 — Panneau accordéon */}
+          <div
+            className="rounded-2xl border border-[var(--border)] overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              maxHeight: openPanel === 'pipeline' ? '600px' : '0px',
+              opacity: openPanel === 'pipeline' ? 1 : 0,
+            }}
+          >
+            {openPanel === 'pipeline' && !loading && (
+               <div className="p-4 sm:p-6">
+                <h3 className="text-[var(--text-1)] font-semibold mb-3">Pipeline</h3>
+
+                <div>
+                  {pipelineSteps.map((step) => {
+                    const style = BADGE_STYLES[step.label] || { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' };
+                    const total = allProjects.length || 1;
+                    const pct = step.value > 0 ? Math.max(Math.round((step.value / total) * 100), 4) : 0;
+
+                    return (
+                      <div
+                        key={step.label}
+                        style={{
+                          padding: '10px 14px',
+                          background: 'var(--bg-elevated)',
+                          borderRadius: '8px',
+                          marginBottom: '4px',
+                          fontSize: '13px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: style.color, fontSize: '13px' }}>{step.label}</span>
+
+                          <span
+                            style={{
+                              background: style.bg,
+                              color: style.color,
+                              borderRadius: '20px',
+                              padding: '2px 10px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {step.value}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            height: '3px',
+                            background: 'var(--border)',
+                            borderRadius: '2px',
+                            marginTop: '6px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              background: style.color,
+                              borderRadius: '2px',
+                              transition: 'width 0.5s ease',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            className="rounded-2xl border border-[var(--border)] overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              maxHeight: openPanel === 'chantiers' ? '600px' : '0px',
+              opacity: openPanel === 'chantiers' ? 1 : 0,
+            }}
+          >
+            {openPanel === 'chantiers' && !loading && (
+               <div className="p-4 sm:p-6">
+                <h3 className="text-[var(--text-1)] font-semibold mb-3">📍 Chantiers</h3>
+
+                 <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <ProspectsLeafletMap
+                    projects={sortedProjects.slice(0, 8)}
+                    onSelectProject={(projectId) => router.push(`/demo-dashboard/projet/${projectId}`)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          </>
+          )}
+
+          {/* ZONE 4 — Liste projets, pleine largeur */}
+          <div className="space-y-4 w-full">
+            {showClientsWorkspace && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+                <p className="text-base font-bold text-[var(--text-1)]">Mes clients</p>
+                <p className="mt-1 text-sm text-[var(--text-2)]">
+                  Base clients avec les informations utiles pour rappeler, suivre et retrouver un dossier.
+                </p>
+              </div>
+            )}
+
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <div className="relative w-full sm:min-w-[260px] sm:flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-3)]" />
+
+                <Input
+                  className="pl-9 rounded-[10px] py-2.5 focus:border-green-500"
+                  placeholder={showClientsWorkspace ? 'Nom, e-mail, telephone, ville...' : 'Nom, projet, ville, reference...'}
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    debouncedSearch(e.target.value);
+                  }}
+                />
+              </div>
+
+              {showCommercialWorkspace && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickFilter(quickFilter === 'hot' ? null : 'hot');
+                  setFilters(DEFAULT_FILTERS);
+                  setSearchInput('');
+                }}
+                className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold sm:w-auto ${
+                  quickFilter === 'hot'
+                    ? 'border-green-500/40 bg-green-500/[0.08] text-green-400'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:border-green-500/25'
+                }`}
+              >
+                <Bell className="h-4 w-4" />
+                Prospects chauds
+              </button>
+              )}
+
+              {showCommercialWorkspace && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuickFilter(quickFilter === 'risk' ? null : 'risk');
+                  setFilters(DEFAULT_FILTERS);
+                  setSearchInput('');
+                }}
+                className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-4 py-2 text-sm font-semibold sm:w-auto ${
+                  quickFilter === 'risk'
+                    ? 'border-red-500/40 bg-red-500/[0.08] text-red-300'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:border-red-500/25'
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                En risque
+              </button>
+              )}
+
+              <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Tous les statuts" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+
+                  {STATUS_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value} style={{ color: BADGE_STYLES[o.value]?.color }}>
+                      ● {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filters.metier} onValueChange={(v) => updateFilter('metier', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Tous les métiers" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les métiers</SelectItem>
+
+                  {METIER_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
+              <Select value={filters.budget} onValueChange={(v) => updateFilter('budget', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Tous les budgets" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les budgets</SelectItem>
+
+                  {BUDGET_OPTIONS.map((b) => (
+                    <SelectItem key={b.value} value={b.value}>
+                      {b.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              </FeatureGate>
+
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
+              <Select value={filters.score} onValueChange={(v) => updateFilter('score', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue placeholder="Tous les scores" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Tous les scores</SelectItem>
+
+                  {SCORE_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value} style={{ color: s.color }}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              </FeatureGate>
+
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
+              <Select value={filters.periode} onValueChange={(v) => updateFilter('periode', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Toutes les dates" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Toutes les dates</SelectItem>
+
+                  {PERIODE_OPTIONS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              </FeatureGate>
+
+              <FeatureGate feature="advancedFilters" requiredPlan="performance">
+              <Select value={filters.source} onValueChange={(v) => updateFilter('source', v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Toutes les sources" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="all">Toutes les sources</SelectItem>
+
+                  {SOURCE_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              </FeatureGate>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                    className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text-2)] transition-colors duration-150 hover:border-red-600 hover:text-red-600 sm:w-auto"
+                >
+                  ✕ Réinitialiser
+                </button>
               )}
             </div>
-          </>
-        )}
+
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {filters.search && (
+                  <FilterPill label={`Recherche: ${filters.search}`} onRemove={() => { setSearchInput(''); updateFilter('search', ''); }} />
+                )}
+                {filters.statut && (
+                  <FilterPill label={`Statut: ${filters.statut}`} onRemove={() => updateFilter('statut', '')} />
+                )}
+                {filters.metier && (
+                  <FilterPill label={`Métier: ${filters.metier}`} onRemove={() => updateFilter('metier', '')} />
+                )}
+                {filters.budget && (
+                  <FilterPill
+                    label={`Budget: ${BUDGET_OPTIONS.find((b) => b.value === filters.budget)?.label ?? filters.budget}`}
+                    onRemove={() => updateFilter('budget', '')}
+                  />
+                )}
+                {filters.score && (
+                  <FilterPill
+                    label={`Score: ${SCORE_OPTIONS.find((s) => s.value === filters.score)?.label ?? filters.score}`}
+                    onRemove={() => updateFilter('score', '')}
+                  />
+                )}
+                {filters.periode && (
+                  <FilterPill
+                    label={`Période: ${PERIODE_OPTIONS.find((p) => p.value === filters.periode)?.label ?? filters.periode}`}
+                    onRemove={() => updateFilter('periode', '')}
+                  />
+                )}
+                {filters.source && (
+                  <FilterPill
+                    label={`Source: ${SOURCE_OPTIONS.find((s) => s.value === filters.source)?.label ?? filters.source}`}
+                    onRemove={() => updateFilter('source', '')}
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-[var(--text-2)]">
+                {hasActiveFilters
+                  ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
+                  : `${displayedProjects.length} dossier(s) trouvé(s)`}
+              </p>
+
+              {showCommercialWorkspace && (
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                    className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm transition-colors duration-150 sm:flex-none ${
+                    viewMode === 'list'
+                      ? 'bg-green-500 font-semibold text-zinc-950'
+                      : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:text-[var(--text-1)]'
+                  }`}
+                >
+                  📋 Liste
+                </button>
+
+                <FeatureGate feature="kanbanView" requiredPlan="performance">
+                <button
+                  type="button"
+                  onClick={() => setView('kanban')}
+                    className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm transition-colors duration-150 sm:flex-none ${
+                    viewMode === 'kanban'
+                      ? 'bg-green-500 font-semibold text-zinc-950'
+                      : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:text-[var(--text-1)]'
+                  }`}
+                >
+                  🗂️ Kanban
+                </button>
+                </FeatureGate>
+
+                <div className="relative w-full sm:w-auto" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setExportMenuOpen((v) => !v)}
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--text-1)] transition-colors duration-150 hover:border-green-500/30 sm:w-auto sm:justify-start"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Exporter
+                  </button>
+
+                  {exportMenuOpen && (
+                    <div className="absolute left-0 right-0 z-50 mt-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-2 shadow-[0_8px_24px_rgba(0,0,0,0.4)] sm:left-auto sm:right-0 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                      >
+                        Export CSV
+                        <p className="text-xs text-[var(--text-2)]">Tous les dossiers filtrés sélectionnés</p>
+                      </button>
+
+                      {canExportPdf ? (
+                        <button
+                          type="button"
+                          onClick={() => handleExportPDF('list')}
+                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                        >
+                          Export PDF
+                          <p className="text-xs text-[var(--text-2)]">Version PDF de la liste en cours</p>
+                        </button>
+                      ) : (
+                        <FeatureGate feature="pdfExports" requiredPlan="performance" variant="menuItem">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-[var(--text-2)]"
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-medium text-[var(--text-1)]">Export PDF</span>
+                              <span className="block text-xs text-[var(--text-2)]">Version PDF de la liste en cours</span>
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)]/80 px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
+                              <Lock className="h-3 w-3 text-green-500" />
+                              Performance
+                            </span>
+                          </button>
+                        </FeatureGate>
+                      )}
+
+                      <div className="my-1 border-t border-[var(--border)]" />
+
+                      {canExportMonthlyReport ? (
+                        <button
+                          type="button"
+                          onClick={() => handleExportPDF('monthly')}
+                          className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                        >
+                          Rapport mensuel
+                          <p className="text-xs text-[var(--text-2)]">Synthèse PDF du mois en cours</p>
+                        </button>
+                      ) : (
+                        <FeatureGate feature="monthlyPdfReport" requiredPlan="performance" variant="menuItem">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left text-sm text-[var(--text-2)]"
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-medium text-[var(--text-1)]">Rapport mensuel</span>
+                              <span className="block text-xs text-[var(--text-2)]">Synthèse PDF du mois en cours</span>
+                            </span>
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)]/80 px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
+                              <Lock className="h-3 w-3 text-green-500" />
+                              Performance
+                            </span>
+                          </button>
+                        </FeatureGate>
+                      )}
+                    </div>
+                  )}
+
+                  {hasActiveFilters && (
+                    <p className="mt-1 text-right text-xs text-[var(--text-2)]">
+                      {filteredProjects.length} dossier(s) sélectionné(s)
+                    </p>
+                  )}
+                </div>
+              </div>
+              )}
+            </div>
+
+            {quickFilter && (
+              <div className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-[var(--text-2)]">
+                  Filtre actif :{' '}
+                  <span className="text-[var(--text-1)] font-medium">
+                    {quickFilter === 'today'
+                      ? 'Relances du jour'
+                      : quickFilter === 'overdue'
+                        ? 'Relances en retard'
+                        : quickFilter === 'hot'
+                          ? 'Prospects chauds'
+                          : quickFilter === 'risk'
+                            ? 'Dossiers en risque'
+                            : 'Priorites du jour'}
+                  </span>
+                </p>
+
+                  <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setQuickFilter(null)}>
+                  Afficher tous les dossiers
+                </Button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 rounded-xl bg-[var(--bg-hover)]" />
+                ))}
+              </div>
+            ) : displayedProjects.length === 0 ? (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-8 text-center sm:p-16">
+                <SearchX className="w-10 h-10 text-[var(--text-3)] mx-auto mb-3" />
+                <p className="font-bold text-[var(--text-1)]">Aucun dossier trouvé</p>
+
+                <p className="text-[var(--text-2)] mt-1">
+                  {filters.search
+                    ? `Aucun résultat pour '${filters.search}'`
+                    : filters.statut
+                      ? `Aucun dossier avec le statut '${filters.statut}'`
+                      : 'Essayez d’élargir vos critères de recherche'}
+                </p>
+
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-4 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950"
+                  >
+                    Réinitialiser les filtres
+                  </button>
+                )}
+              </div>
+            ) : showClientsWorkspace ? (
+              <ClientList projects={displayedProjects} router={router} />
+            ) : viewMode === 'kanban' ? (
+              <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
+            ) : (
+              <ProjectList projects={displayedProjects} router={router} />
+            )}
+          </div>
+      </div>
+      )}
+
+      <div
+        className={`fixed bottom-4 left-4 right-4 z-50 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 sm:bottom-6 sm:left-auto sm:right-6 sm:px-5 sm:py-3.5 ${
+          toast.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        } ${toast.error ? 'border-red-600 bg-[var(--bg-elevated)] text-red-400' : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'}`}
+      >
+        {toast.error ? <XCircle className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
+        {toast.message}
+      </div>
+
+      {calendarModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <CalendarDays className="h-5 w-5 text-green-400" />
+              <p className="font-bold text-[var(--text-1)]">Bientot disponible</p>
+            </div>
+            <p className="text-sm leading-6 text-[var(--text-2)]">
+              La synchronisation Google Calendar est preparee, mais l'authentification OAuth n'est pas encore activee.
+            </p>
+            <button
+              type="button"
+              onClick={() => setCalendarModalOpen(false)}
+              className="mt-5 w-full rounded-lg bg-green-500 px-4 py-2 text-sm font-bold text-zinc-950"
+            >
+              Compris
+            </button>
+          </div>
+        </div>
+      )}
+
+      {upgradeFeature && (
+        <UpgradeModal
+          feature={upgradeFeature}
+          requiredPlan="performance"
+          onClose={() => setUpgradeFeature(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+export function ProjectList({
+  projects,
+  router,
+}: {
+  projects: Project[];
+  router: ReturnType<typeof useRouter>;
+}) {
+  return (
+    <div>
+      <div
+        className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
+        style={{ fontSize: '11px', padding: '10px 16px' }}
+      >
+        <span className="col-span-1">Réf</span>
+        <span className="col-span-1">Reçu</span>
+        <span className="col-span-2">Client</span>
+        <span className="col-span-2">Projet</span>
+        <span className="col-span-2">Ville</span>
+        <span className="col-span-1">Budget</span>
+        <span className="col-span-1">Score</span>
+        <span className="col-span-1">Statut</span>
+        <span className="col-span-1"></span>
+      </div>
+
+      {projects.map((p) => (
+        <div
+          key={p.id}
+          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          onClick={() => router.push(`/demo-dashboard/projet/${p.id}`)}
+        >
+          <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
+            <span className="col-span-1 text-[var(--text-3)] font-mono">
+              {String(p.id).slice(0, 6)}
+            </span>
+
+            <span className="col-span-1 text-[var(--text-2)]">
+              {p.createdAt ? timeAgo(p.createdAt) : '—'}
+            </span>
+
+            <span className="col-span-2 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              </span>
+              {p.clientFirstName} {p.clientName}
+            </span>
+
+            <span
+              className="col-span-2 text-[var(--text-2)]"
+              style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {p.trade || '—'}
+            </span>
+
+            <span className="col-span-2 text-[var(--text-2)] truncate">
+              {p.city || '—'}
+            </span>
+
+            <span className="col-span-1 text-[var(--text-2)]">
+              {p.budget || '—'}
+            </span>
+
+            <span className="col-span-1">
+              <ScorePill score={p.completenessScore || 0} />
+            </span>
+
+            <span className="col-span-1">
+              <StatusBadge status={p.status} />
+            </span>
+
+            <span className="col-span-1 text-right">
+              <ChevronRight className="w-4 h-4 text-[var(--text-2)] inline" />
+            </span>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-[var(--text-1)]">
+                    {p.clientFirstName} {p.clientName}
+                  </span>
+                  <StatusBadge status={p.status} />
+                </div>
+
+                <p className="mt-1 text-sm text-[var(--text-2)]">
+                  {p.trade || p.projectType || 'Projet'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-[var(--text-2)]">
+              {p.city || 'Ville non renseignee'}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-2)]">
+              <span>{p.budget || 'Budget non renseigne'}</span>
+              <span className="text-[var(--text-3)]">•</span>
+              <ScorePill score={p.completenessScore || 0} />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-[var(--text-3)]">
+                {p.createdAt ? timeAgo(p.createdAt) : formatIsoDate(p.createdAt)}
+              </span>
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-400">
+                Voir le dossier
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function KanbanBoard({
+  projects,
+  router,
+  onStatusChange,
+}: {
+  projects: Project[];
+  router: ReturnType<typeof useRouter>;
+  onStatusChange: (id: string, status: string) => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overColumn, setOverColumn] = useState<string | null>(null);
+
+  return (
+    <div className="w-full overflow-hidden">
+      <div className="-mx-1 overflow-x-auto pb-2">
+        <div className="flex min-w-max gap-3 px-1 [scroll-snap-type:x_mandatory] md:grid md:min-w-0 md:grid-cols-3 md:[scroll-snap-type:none] xl:grid-cols-5">
+        {KANBAN_GROUPED_COLUMNS.map((col) => {
+          const colProjects = sortKanbanProjects(
+            projects.filter((p) => col.statuses.includes(p.status || '')),
+            col.id,
+          );
+          const total = colProjects.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
+          const isClosed = col.id === 'closed';
+          const headerColor = col.color;
+          const isOver = overColumn === col.id;
+
+          return (
+            <div
+              key={col.id}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setOverColumn(col.id);
+              }}
+              onDragLeave={() => setOverColumn((prev) => (prev === col.id ? null : prev))}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragId) {
+                  const draggedProject = projects.find((project) => project.id === dragId);
+                  onStatusChange(dragId, resolveKanbanDropStatus(draggedProject, col));
+                }
+                setDragId(null);
+                setOverColumn(null);
+              }}
+              style={{ borderTop: `3px solid ${col.color}` }}
+              className={`flex min-w-[280px] flex-col rounded-2xl border bg-[var(--bg-elevated)] transition-colors duration-200 [scroll-snap-align:start] sm:min-w-[320px] md:min-w-0 ${
+                isOver ? 'border-green-500 bg-green-500/[0.04]' : 'border-[var(--border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <span className="text-sm font-bold text-[var(--text-1)]">
+                  {col.label}
+                </span>
+
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs font-bold"
+                  style={{ background: `${headerColor}26`, color: headerColor }}
+                >
+                  {colProjects.length}
+                </span>
+              </div>
+
+              <div className="flex max-h-[calc(100vh-300px)] flex-col gap-3 overflow-y-auto p-3">
+                {colProjects.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-[var(--text-3)]">
+                    <FolderOpen className="mx-auto mb-2 h-6 w-6 text-[var(--text-3)]" />
+                    Aucun dossier
+                  </div>
+                ) : (
+                  colProjects.map((p) => (
+                    <KanbanCard
+                      key={p.id}
+                      project={p}
+                      router={router}
+                      isDragging={dragId === p.id}
+                      isClosed={isClosed}
+                      onDragStart={() => setDragId(p.id)}
+                      onDragEnd={() => setDragId(null)}
+                    />
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-[var(--border)] px-2 py-2 text-center text-xs text-[var(--text-2)]">
+                {colProjects.length} dossier{colProjects.length === 1 ? '' : 's'} · {formatAmount(total)} potentiel
+              </div>
+            </div>
+          );
+        })}
+        </div>
+      </div>
+
+      <p className="mt-2 text-center text-xs text-[var(--text-3)] md:hidden">← Faites défiler →</p>
+    </div>
+  );
+}
+
+function KanbanCard({
+  project,
+  router,
+  isDragging,
+  isClosed,
+  onDragStart,
+  onDragEnd,
+}: {
+  project: Project;
+  router: ReturnType<typeof useRouter>;
+  isDragging: boolean;
+  isClosed: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const score = project.completenessScore || 0;
+  const scoreColor = score >= 80 ? 'var(--accent)' : score >= 60 ? '#f59e0b' : score > 0 ? '#dc2626' : 'var(--text-2)';
+  const initials = `${project.clientFirstName?.[0] || ''}${project.clientName?.[0] || ''}`.toUpperCase() || '?';
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
+      className={`cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
+        isClosed ? 'bg-[var(--bg-hover)]/40' : ''
+      } ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+          {initials}
+        </span>
+
+        <span className="truncate text-sm font-semibold text-[var(--text-1)]">
+          {project.clientFirstName} {project.clientName}
+        </span>
+
+        <StatusBadge status={project.status} />
+      </div>
+
+      <p className="mt-1.5 truncate text-xs text-[var(--text-2)]">{project.trade || project.projectType || 'Projet'}</p>
+
+      <p className="truncate text-xs text-[var(--text-2)]">
+        {project.city || '—'} · {project.budget || '—'}
+      </p>
+
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs font-bold" style={{ color: scoreColor }}>
+          Score: {score}%
+        </span>
+
+        <span className="ml-auto text-xs text-[var(--text-3)]">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
       </div>
     </div>
   );
 }
 
-function MetricBox({
-  icon: Icon,
-  label,
-  value,
+export function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
+      {label}
+
+      <button type="button" onClick={onRemove} aria-label="Supprimer ce filtre">
+        <X className="w-3 h-3" />
+      </button>
+    </span>
+  );
+}
+
+function ClientList({
+  projects,
+  router,
 }: {
-  icon: typeof Bell;
-  label: string;
-  value: number;
+  projects: Project[];
+  router: ReturnType<typeof useRouter>;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs text-zinc-400">{label}</span>
-        <Icon className="h-4 w-4 text-green-400" />
+    <div>
+      <div
+        className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
+        style={{ fontSize: '11px', padding: '10px 16px' }}
+      >
+        <span className="col-span-3">Client</span>
+        <span className="col-span-3">Contact</span>
+        <span className="col-span-2">Ville</span>
+        <span className="col-span-2">Dernier projet</span>
+        <span className="col-span-1">Statut</span>
+        <span className="col-span-1"></span>
       </div>
-      <p className="text-xl font-bold text-white">{value}</p>
+
+      {projects.map((p) => (
+        <div
+          key={p.id}
+          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          onClick={() => router.push(`/demo-dashboard/projet/${p.id}`)}
+        >
+          <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
+            <span className="col-span-3 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              </span>
+              {p.clientFirstName} {p.clientName}
+            </span>
+
+            <span className="col-span-3 min-w-0 text-[var(--text-2)]">
+              <span className="block truncate">{p.clientEmail || 'Email non renseigne'}</span>
+              <span className="block truncate text-xs text-[var(--text-3)]">{p.clientPhone || 'Telephone non renseigne'}</span>
+            </span>
+
+            <span className="col-span-2 text-[var(--text-2)] truncate">{p.city || 'Ville non renseignee'}</span>
+            <span className="col-span-2 text-[var(--text-2)] truncate">{p.projectType || p.trade || 'Projet'}</span>
+            <span className="col-span-1"><StatusBadge status={p.status} /></span>
+            <span className="col-span-1 text-right"><ChevronRight className="w-4 h-4 text-[var(--text-2)] inline" /></span>
+          </div>
+
+          <div className="md:hidden flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+              {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+            </span>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm text-[var(--text-1)]">
+                  {p.clientFirstName} {p.clientName}
+                </span>
+                <StatusBadge status={p.status} />
+              </div>
+
+              <div className="mt-1 text-xs text-[var(--text-2)]">
+                <p className="truncate">{p.clientEmail || p.clientPhone || 'Contact non renseigne'}</p>
+                <p className="truncate">{p.city || 'Ville non renseignee'} - {p.projectType || p.trade || 'Projet'}</p>
+              </div>
+            </div>
+
+            <ChevronRight className="w-4 h-4 text-[var(--text-2)] shrink-0" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
+
+function StatusBadge({ status }: { status?: string }) {
+  const style = BADGE_STYLES[status || ''] || { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' };
+
+  return (
+    <span
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderRadius: '20px',
+        padding: '2px 10px',
+        fontSize: '11px',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {status || 'Inconnu'}
+    </span>
+  );
+}
+
+function PriorityMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+      <p className="text-2xl font-bold tracking-tight text-[var(--text-1)]">{value}</p>
+      <p className="mt-1 text-xs text-[var(--text-2)]">{label}</p>
+    </div>
+  );
+}
+
+function ActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+      <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-400">
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="text-2xl font-bold text-[var(--text-1)]">{value}</p>
+      <p className="text-xs text-[var(--text-2)]">{label}</p>
+    </div>
+  );
+}
+
+function ScorePill({ score }: { score: number }) {
+  const color = score >= 80 ? '#4ade80' : score >= 60 ? '#fbbf24' : '#f87171';
+
+  return (
+    <span className="text-xs font-bold" style={{ color }}>
+      {score}%
+    </span>
+  );
+}
+
+export { STATUS_OPTIONS, StatusBadge, ScorePill };
