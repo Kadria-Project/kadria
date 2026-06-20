@@ -1576,6 +1576,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 setQuickFilter('priority');
                 setFilters(DEFAULT_FILTERS);
                 setSearchInput('');
+                document.getElementById('project-list-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
               className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
             >
@@ -2169,7 +2170,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           )}
 
           {/* ZONE 4 — Liste projets, pleine largeur */}
-          <div className="space-y-4 w-full">
+          <div id="project-list-section" className="space-y-4 w-full">
             {showClientsWorkspace && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
                 <p className="text-base font-bold text-[var(--text-1)]">Mes clients</p>
