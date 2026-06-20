@@ -154,7 +154,15 @@ export default function Calendar({ artisanId }: Props) {
   }
 
   const saveEvent = async () => {
-    if (!form.title || !form.date) return
+    const missing: string[] = []
+    if (!form.title?.trim()) missing.push('le titre')
+    if (!form.date) missing.push('la date')
+
+    if (missing.length > 0) {
+      alert(`Merci de renseigner ${missing.join(' et ')} avant d'enregistrer.`)
+      return
+    }
+
     setSaving(true)
     try {
       const payload = {
@@ -335,7 +343,12 @@ export default function Calendar({ artisanId }: Props) {
                   key={i}
                   onClick={() => date && openNewEvent(formatDateStr(date))}
                   style={{
-                    minHeight: isMobile ? '60px' : '100px',
+                    height: isMobile ? '70px' : '100px',
+                    minWidth: 0,
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                    position: 'relative',
                     padding: isMobile ? '4px' : '8px',
                     borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--border)' : 'none',
                     borderBottom: '1px solid var(--border)',
@@ -356,6 +369,7 @@ export default function Calendar({ artisanId }: Props) {
                     <>
                       <div style={{
                         width: isMobile ? '20px' : '26px', height: isMobile ? '20px' : '26px',
+                        flexShrink: 0,
                         borderRadius: '50%',
                         background: today ? 'var(--accent)' : 'transparent',
                         color: today ? '#05130d' : 'var(--text-1)',
@@ -365,36 +379,78 @@ export default function Calendar({ artisanId }: Props) {
                       }}>
                         {date.getDate()}
                       </div>
-                      {dayEvents.slice(0, isMobile ? 2 : 3).map(event => {
-                        const color = EVENT_COLORS[event.type] || EVENT_COLORS.RDV
-                        return (
-                          <div
-                            key={event.id}
-                            onClick={e => openEditEvent(event, e)}
-                            style={{
-                              background: color.bg,
-                              border: `1px solid ${color.border}`,
-                              borderRadius: '4px',
-                              padding: isMobile ? '1px 3px' : '2px 6px',
-                              fontSize: isMobile ? '9px' : '11px',
-                              color: color.text,
-                              marginBottom: '2px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              cursor: 'pointer',
-                              opacity: event.status === 'Fait' ? 0.45 : 1,
-                              textDecoration: event.status === 'Fait' ? 'line-through' : 'none',
-                            }}
-                          >
-                            {event.status === 'Fait' ? `✓ ${event.title}` : event.title}
-                          </div>
-                        )
-                      })}
-                      {dayEvents.length > (isMobile ? 2 : 3) && (
-                        <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
-                          +{dayEvents.length - (isMobile ? 2 : 3)} autres
-                        </div>
+                      {isMobile ? (
+                        <>
+                          {dayEvents.slice(0, 1).map(event => {
+                            const color = EVENT_COLORS[event.type] || EVENT_COLORS.RDV
+                            return (
+                              <div
+                                key={event.id}
+                                onClick={e => openEditEvent(event, e)}
+                                style={{
+                                  background: color.bg,
+                                  border: `1px solid ${color.border}`,
+                                  borderRadius: '4px',
+                                  padding: '1px 3px',
+                                  fontSize: '8px',
+                                  color: color.text,
+                                  marginBottom: '1px',
+                                  maxWidth: '100%',
+                                  display: 'block',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  cursor: 'pointer',
+                                  opacity: event.status === 'Fait' ? 0.45 : 1,
+                                  textDecoration: event.status === 'Fait' ? 'line-through' : 'none',
+                                }}
+                              >
+                                {event.status === 'Fait' ? `✓ ${event.title}` : event.title}
+                              </div>
+                            )
+                          })}
+                          {dayEvents.length > 1 && (
+                            <div style={{ fontSize: '8px', color: 'var(--text-3)' }}>
+                              +{dayEvents.length - 1}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {dayEvents.slice(0, 3).map(event => {
+                            const color = EVENT_COLORS[event.type] || EVENT_COLORS.RDV
+                            return (
+                              <div
+                                key={event.id}
+                                onClick={e => openEditEvent(event, e)}
+                                style={{
+                                  background: color.bg,
+                                  border: `1px solid ${color.border}`,
+                                  borderRadius: '4px',
+                                  padding: '2px 6px',
+                                  fontSize: '11px',
+                                  color: color.text,
+                                  marginBottom: '2px',
+                                  maxWidth: '100%',
+                                  display: 'block',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  cursor: 'pointer',
+                                  opacity: event.status === 'Fait' ? 0.45 : 1,
+                                  textDecoration: event.status === 'Fait' ? 'line-through' : 'none',
+                                }}
+                              >
+                                {event.status === 'Fait' ? `✓ ${event.title}` : event.title}
+                              </div>
+                            )
+                          })}
+                          {dayEvents.length > 3 && (
+                            <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                              +{dayEvents.length - 3} autres
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -628,7 +684,7 @@ export default function Calendar({ artisanId }: Props) {
               {/* Titre */}
               <div>
                 <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
-                  TITRE
+                  TITRE<span style={{ color: '#ef4444' }}> *</span>
                 </label>
                 <input
                   value={form.title}
@@ -646,7 +702,7 @@ export default function Calendar({ artisanId }: Props) {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
-                    DATE
+                    DATE<span style={{ color: '#ef4444' }}> *</span>
                   </label>
                   <input
                     type="date"
@@ -722,7 +778,7 @@ export default function Calendar({ artisanId }: Props) {
               </button>
               <button
                 onClick={saveEvent}
-                disabled={saving || !form.title || !form.date}
+                disabled={saving}
                 style={{
                   flex: 2, background: saving ? 'var(--text-3)' : 'var(--accent)',
                   border: 'none', color: saving ? 'var(--text-1)' : '#05130d',
