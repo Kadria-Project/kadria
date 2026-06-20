@@ -65,7 +65,7 @@ function parseIncomingPayload(body: any) {
       assistantId: body?.assistantId,
       phoneNumberId: body?.phoneNumberId,
       calledNumber: body?.calledNumber,
-      callerNumber: body?.callerNumber,
+      callerNumber: body?.callerNumber ?? body?.customer?.number ?? body?.call?.customer?.number ?? body?.phoneNumber,
       params: body ?? {},
     }
   }
@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('[VAPI] FULL raw payload:', JSON.stringify(body, null, 2))
     parsed = parseIncomingPayload(body)
     const { isToolCallFormat, toolCallId, toolName, callId, assistantId, phoneNumberId, calledNumber, callerNumber, params } = parsed
 
@@ -145,7 +146,15 @@ export async function POST(request: NextRequest) {
     const desiredTimeline = String(params.desiredTimeline || '')
     const urgency = String(params.urgency || '')
     const clientName = String(params.clientName || '') || 'Prospect appel vocal'
-    const clientPhone = String(params.clientPhone || callerNumber || '')
+    const clientPhone = String(
+      params.clientPhone ||
+      callerNumber ||
+      body?.customer?.number ||
+      body?.call?.customer?.number ||
+      body?.phoneNumber ||
+      ''
+    )
+    console.log('[VAPI] Extracted phone:', maskPhone(clientPhone))
 
     let completenessScore = Number(params.completenessScore)
     if (isNaN(completenessScore)) completenessScore = 60
