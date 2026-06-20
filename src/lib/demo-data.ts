@@ -27,6 +27,10 @@ export interface DemoProject {
   devisAmount: number | null;
   photos: DemoPhoto[];
   createdAt: string;
+  updatedAt?: string;
+  lastInteractionAt?: string;
+  quoteSentAt?: string | null;
+  opensCount?: number;
   callbackDate: string | null;
   notes: string;
 }

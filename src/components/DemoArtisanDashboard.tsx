@@ -141,8 +141,15 @@ function DemoCalendarAdapter() {
   return (
     <DemoCalendar
       events={events}
-      onCreateEvent={createEvent}
-      onUpdateEvent={updateEvent}
+      onCreateEvent={(event) =>
+        createEvent({
+          ...event,
+          projectId: event.projectId || '',
+          notes: event.notes || '',
+          status: event.status || 'Prévu',
+        })
+      }
+      onUpdateEvent={(id, fields) => updateEvent(id, fields)}
       onDeleteEvent={deleteEvent}
     />
   );

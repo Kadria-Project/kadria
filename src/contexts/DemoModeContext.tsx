@@ -13,6 +13,7 @@ interface DemoModeContextValue {
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
   updateProjectStatus: (id: string, status: string) => void;
+  updateProjectFields: (id: string, fields: Partial<DemoProject>) => void;
   updateProjectNote: (id: string, note: string) => void;
   updateProjectCallback: (id: string, date: string | null) => void;
   createEvent: (event: Omit<DemoEvent, 'id'>) => void;
@@ -40,6 +41,10 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
 
   const updateProjectStatus = useCallback((id: string, status: string) => {
     setProjects((current) => current.map((project) => (project.id === id ? { ...project, status } : project)));
+  }, []);
+
+  const updateProjectFields = useCallback((id: string, fields: Partial<DemoProject>) => {
+    setProjects((current) => current.map((project) => (project.id === id ? { ...project, ...fields } : project)));
   }, []);
 
   const updateProjectNote = useCallback((id: string, notes: string) => {
@@ -80,6 +85,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       theme,
       setTheme,
       updateProjectStatus,
+      updateProjectFields,
       updateProjectNote,
       updateProjectCallback,
       createEvent,
@@ -87,7 +93,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       deleteEvent,
       updateArtisanConfig,
     }),
-    [artisan, createEvent, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectNote, updateProjectStatus],
+    [artisan, createEvent, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;
