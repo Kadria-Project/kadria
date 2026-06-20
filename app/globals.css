@@ -308,6 +308,35 @@ body {
   border-color: rgba(46,204,132,.32);
 }
 
+/* Tailwind utility colors below are tuned for dark backgrounds
+   (pale text on translucent dark chips). On the light theme they
+   need darker, more saturated counterparts to stay readable. */
+[data-theme="light"] .dashboard-shell .text-green-300,
+[data-theme="light"] .dashboard-shell .text-green-400,
+[data-theme="light"] .dashboard-shell .text-green-500 {
+  color: #15803d;
+}
+
+[data-theme="light"] .dashboard-shell .text-red-300,
+[data-theme="light"] .dashboard-shell .text-red-400,
+[data-theme="light"] .dashboard-shell .text-red-500,
+[data-theme="light"] .dashboard-shell .text-red-600 {
+  color: #b91c1c;
+}
+
+[data-theme="light"] .dashboard-shell .text-amber-300,
+[data-theme="light"] .dashboard-shell .text-amber-400 {
+  color: #92400e;
+}
+
+[data-theme="light"] .dashboard-shell .text-blue-400 {
+  color: #1d4ed8;
+}
+
+[data-theme="light"] .dashboard-shell .text-purple-400 {
+  color: #7e22ce;
+}
+
 /* =========================
    METRICS REVEAL
 ========================= */

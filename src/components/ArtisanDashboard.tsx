@@ -1572,7 +1572,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
           <button
             onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm font-semibold text-[var(--text-1)] hover:border-green-500/30 sm:w-auto"
+            className="w-full rounded-lg border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-dim)] sm:w-auto"
           >
             Voir
           </button>
@@ -1721,12 +1721,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   setSearchInput('');
                 }}
                 style={{
-                  background: 'var(--border)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-1)',
+                  background: 'rgba(239,68,68,0.12)',
+                  border: '1px solid rgba(239,68,68,0.4)',
+                  color: '#b91c1c',
                   borderRadius: '8px',
                   padding: '7px 14px',
                   fontSize: '13px',
+                  fontWeight: 600,
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
@@ -1767,12 +1768,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   setSearchInput('');
                 }}
                 style={{
-                  background: 'var(--border)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-1)',
+                  background: 'rgba(217,119,6,0.14)',
+                  border: '1px solid rgba(217,119,6,0.4)',
+                  color: '#92400e',
                   borderRadius: '8px',
                   padding: '7px 14px',
                   fontSize: '13px',
+                  fontWeight: 600,
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
@@ -2569,7 +2571,7 @@ export function ProjectList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
@@ -2855,7 +2857,7 @@ function ClientList({
       {projects.map((p) => (
         <div
           key={p.id}
-          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[#1f1f23] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
+          className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>

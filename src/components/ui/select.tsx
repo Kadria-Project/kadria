@@ -15,7 +15,7 @@ export function Select({
     <select
       value={value}
       onChange={(e) => onValueChange?.(e.target.value)}
-      className="h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm text-white"
+      className="h-10 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-1)]"
     >
       {children}
     </select>

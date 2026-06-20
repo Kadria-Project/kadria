@@ -232,51 +232,57 @@ export default function Calendar({ artisanId }: Props) {
 
   return (
     <div style={s.container}>
-      {/* Header */}
-      <div style={s.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
-          <button style={s.navBtn} onClick={prev}>‹</button>
-          <h2 style={{ margin: 0, fontSize: isMobile ? '14px' : '18px', fontWeight: 600, minWidth: isMobile ? 'auto' : '220px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-            {title}
-          </h2>
-          <button style={s.navBtn} onClick={next}>›</button>
-          {!isMobile && (
-            <button
-              style={{ ...s.navBtn, fontSize: '12px', color: 'var(--accent)', borderColor: 'var(--accent)' }}
-              onClick={() => setCurrentDate(new Date())}
-            >
-              Aujourd'hui
-            </button>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
-          <button style={s.viewBtn(view === 'month')} onClick={() => setView('month')}>Mois</button>
-          <button style={s.viewBtn(view === 'week')} onClick={() => setView('week')}>Semaine</button>
-          <button
-            onClick={() => openNewEvent(formatDateStr(new Date()))}
-            style={{
-              background: 'var(--accent)', border: 'none', color: '#05130d',
-              fontWeight: 700, borderRadius: '8px', padding: isMobile ? '7px 12px' : '8px 16px',
-              cursor: 'pointer', fontSize: '13px',
-            }}
-          >
-            + Événement
-          </button>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        {Object.entries(EVENT_COLORS).map(([type, color]) => (
-          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{
-              width: '10px', height: '10px', borderRadius: '50%',
-              background: color.border,
-            }} />
-            <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>{type}</span>
+      <div style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{ ...s.header, margin: 0, padding: isMobile ? '14px 16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
+            <button style={s.navBtn} onClick={prev}>‹</button>
+            <h2 style={{ margin: 0, fontSize: isMobile ? '14px' : '18px', fontWeight: 600, minWidth: isMobile ? 'auto' : '220px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+              {title}
+            </h2>
+            <button style={s.navBtn} onClick={next}>›</button>
+            {!isMobile && (
+              <button
+                style={{ ...s.navBtn, fontSize: '12px', color: 'var(--accent)', borderColor: 'var(--accent)' }}
+                onClick={() => setCurrentDate(new Date())}
+              >
+                Aujourd'hui
+              </button>
+            )}
           </div>
-        ))}
-      </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
+            <button style={s.viewBtn(view === 'month')} onClick={() => setView('month')}>Mois</button>
+            <button style={s.viewBtn(view === 'week')} onClick={() => setView('week')}>Semaine</button>
+            <button
+              onClick={() => openNewEvent(formatDateStr(new Date()))}
+              style={{
+                background: 'var(--accent)', border: 'none', color: '#05130d',
+                fontWeight: 700, borderRadius: '8px', padding: isMobile ? '7px 12px' : '8px 16px',
+                cursor: 'pointer', fontSize: '13px',
+              }}
+            >
+              + Événement
+            </button>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: isMobile ? '12px 16px' : '14px 20px', borderBottom: '1px solid var(--border)' }}>
+          {Object.entries(EVENT_COLORS).map(([type, color]) => (
+            <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '10px', height: '10px', borderRadius: '50%',
+                background: color.border,
+              }} />
+              <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>{type}</span>
+            </div>
+          ))}
+        </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-3)' }}>
@@ -286,10 +292,6 @@ export default function Calendar({ artisanId }: Props) {
         // ── MONTH VIEW ────────────────────────────────────────────────────
         <div style={{ overflowX: 'auto' }}>
         <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          overflow: 'hidden',
           minWidth: isMobile ? '700px' : 'auto',
         }}>
           {/* Day headers */}
@@ -388,10 +390,6 @@ export default function Calendar({ artisanId }: Props) {
         // ── WEEK VIEW ─────────────────────────────────────────────────────
         <div style={{ overflowX: 'auto' }}>
         <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          overflow: 'hidden',
           minWidth: isMobile ? '700px' : 'auto',
         }}>
           {/* Week header */}
@@ -501,6 +499,7 @@ export default function Calendar({ artisanId }: Props) {
         </div>
         </div>
       )}
+      </div>
 
       {/* ── Modal création/édition ── */}
       {showModal && (

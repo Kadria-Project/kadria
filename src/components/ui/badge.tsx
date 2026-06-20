@@ -5,7 +5,7 @@ export function Badge({
   variant,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement> & { variant?: string }) {
-  const variantClass = variant === 'secondary' ? 'bg-zinc-800 text-zinc-200' : '';
+  const variantClass = variant === 'secondary' ? 'bg-[var(--bg-hover)] text-[var(--text-2)]' : '';
 
   return (
     <span

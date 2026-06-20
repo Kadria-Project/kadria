@@ -726,7 +726,7 @@ function ProjectDetail() {
           <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
             <p style={{ margin: '0 0 4px' }}>
               Dernier échange :{' '}
-              <span style={{ color: '#e4e4e7' }}>
+              <span style={{ color: 'var(--text-1)' }}>
                 {followUpTime.lastInteractionDate
                   ? formatShortDate(followUpTime.lastInteractionDate)
                   : 'Non renseigné'}
@@ -734,7 +734,7 @@ function ProjectDetail() {
             </p>
             <p style={{ margin: 0 }}>
               Sans interaction :{' '}
-              <span style={{ color: '#e4e4e7' }}>
+              <span style={{ color: 'var(--text-1)' }}>
                 {followUpTime.daysWithoutInteraction === null
                   ? 'Non renseigné'
                   : `${followUpTime.daysWithoutInteraction} jour(s)`}
@@ -1125,13 +1125,13 @@ function ProjectDetail() {
                   style={{
                     flex: 1,
                     background: project.status === 'Gagné'
-                      ? 'rgba(20,83,45,0.7)' : 'rgba(20,83,45,0.2)',
+                      ? 'rgba(21,128,61,0.25)' : 'rgba(21,128,61,0.1)',
                     border: '1px solid #16a34a',
-                    color: '#86efac',
+                    color: '#15803d',
                     borderRadius: '8px',
                     padding: '8px 12px',
                     fontSize: '13px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1148,13 +1148,13 @@ function ProjectDetail() {
                   style={{
                     flex: 1,
                     background: project.status === 'Perdu'
-                      ? 'rgba(69,10,10,0.7)' : 'rgba(69,10,10,0.2)',
+                      ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.08)',
                     border: '1px solid #dc2626',
-                    color: '#f87171',
+                    color: '#b91c1c',
                     borderRadius: '8px',
                     padding: '8px 12px',
                     fontSize: '13px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1248,7 +1248,7 @@ function ProjectDetail() {
         </div>
 
         <div style={{
-          background: 'var(--bg)',
+          background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
@@ -1316,7 +1316,7 @@ function ProjectDetail() {
 
                 return (
                   <div key={i} style={{
-                    background: 'var(--bg)',
+                    background: 'var(--bg-elevated)',
                     padding: isMobile ? '12px' : '12px 16px',
                     display: 'flex',
                     flexDirection: 'column',
@@ -1324,7 +1324,7 @@ function ProjectDetail() {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
-                      <span style={{ color: '#e4e4e7', fontSize: '12px', fontWeight: 500 }}>
+                      <span style={{ color: 'var(--text-1)', fontSize: '12px', fontWeight: 500 }}>
                         Photos jointes
                       </span>
                     </div>
@@ -1380,7 +1380,7 @@ function ProjectDetail() {
 
               return (
                 <div key={i} style={{
-                  background: 'var(--bg)',
+                  background: 'var(--bg-elevated)',
                   padding: isMobile ? '12px' : '12px 16px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -1388,13 +1388,13 @@ function ProjectDetail() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{
-                      color: ind.ok ? 'var(--accent)' : '#f87171',
+                      color: ind.ok ? 'var(--accent)' : '#b91c1c',
                       fontSize: '14px'
                     }}>
                       {ind.ok ? '✓' : '✗'}
                     </span>
                     <span style={{
-                      color: ind.ok ? '#e4e4e7' : 'var(--text-2)',
+                      color: ind.ok ? 'var(--text-1)' : 'var(--text-2)',
                       fontSize: '12px',
                       fontWeight: 500,
                     }}>
@@ -1467,7 +1467,7 @@ function ProjectDetail() {
                 Synthèse IA
               </p>
               <p style={{
-                color: '#d4d4d8',
+                color: 'var(--text-2)',
                 fontSize: '13px',
                 lineHeight: '1.7',
                 margin: 0,
@@ -1499,7 +1499,7 @@ function ProjectDetail() {
                 Recommandation Kadria
               </p>
               <p style={{
-                color: '#d4d4d8',
+                color: 'var(--text-2)',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 margin: 0,
@@ -1556,7 +1556,7 @@ function ProjectDetail() {
             </button>
             {note && (
               <p style={{
-                color: '#d4d4d8', fontSize: '13px',
+                color: 'var(--text-2)', fontSize: '13px',
                 margin: '10px 0 0', fontStyle: 'italic', lineHeight: 1.6,
               }}>
                 {note.slice(0, 120)}{note.length > 120 ? '...' : ''}
@@ -1953,7 +1953,7 @@ function getVerdict(project: any) {
   };
   if (isCold) return {
     label: 'Prospect froid',
-    color: '#f87171',
+    color: '#b91c1c',
     bg: 'rgba(220,38,38,0.10)',
     border: 'rgba(220,38,38,0.2)',
     icon: '❄️',

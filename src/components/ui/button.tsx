@@ -11,8 +11,8 @@ export function Button({
 }) {
   const variantClass =
     variant === 'outline' || variant === 'secondary' || variant === 'ghost'
-      ? 'border border-zinc-700 text-white bg-transparent hover:bg-zinc-800'
-      : 'border border-transparent bg-green-500 text-black font-semibold hover:bg-green-400';
+      ? 'border border-[var(--border)] text-[var(--text-1)] bg-transparent hover:bg-[var(--bg-hover)]'
+      : 'border border-transparent bg-[var(--accent)] text-[#05130d] font-semibold hover:opacity-90';
 
   return (
     <button
