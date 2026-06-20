@@ -3541,7 +3541,7 @@ export function LandingRoutePage() {
                 </div>
 
                 <Link
-                  href="/demo"
+                  href="/demo-dashboard"
                   className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-green-500 transition-colors hover:bg-green-500/10"
                 >
                   Voir un exemple de conversation →
@@ -4328,7 +4328,7 @@ export function PricingRoutePage() {
                 Réserver une démonstration
               </Link>
             </div>
-            <Link href="/demo" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+            <Link href="/demo-dashboard" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
               👁 Voir un exemple de dossier
             </Link>
           </div>
