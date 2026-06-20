@@ -116,12 +116,15 @@ export default function Calendar({ artisanId }: Props) {
     })
   }
 
+  const toLocalDateStr = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
-    return events.filter(e => e.date?.startsWith(dateStr))
+    const dateStr = toLocalDateStr(date)
+    return events.filter(e => e.date && toLocalDateStr(new Date(e.date)) === dateStr)
   }
 
-  const formatDateStr = (date: Date) => date.toISOString().split('T')[0]
+  const formatDateStr = (date: Date) => toLocalDateStr(date)
 
   const isToday = (date: Date) => {
     const today = new Date()
@@ -156,7 +159,7 @@ export default function Calendar({ artisanId }: Props) {
     try {
       const payload = {
         title: form.title,
-        date: `${form.date}T${form.time}:00.000Z`,
+        date: `${form.date}T${form.time}:00`,
         type: form.type,
         notes: form.notes,
         projectId: form.projectId,

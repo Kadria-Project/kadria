@@ -391,7 +391,7 @@ function ProjectDetail() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: rdvData.title || `RDV ${project.clientFirstName} ${project.clientName}`,
-          date: `${rdvData.date}T${rdvData.time || '09:00'}:00.000Z`,
+          date: `${rdvData.date}T${rdvData.time || '09:00'}:00`,
           type: rdvData.type || 'RDV',
           projectId: project.id,
           notes: rdvData.notes || '',
@@ -413,7 +413,7 @@ function ProjectDetail() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: `${eventType} — ${project.clientFirstName} ${project.clientName}`,
-          date: eventDate.includes('T') ? eventDate : `${eventDate}T09:00:00.000Z`,
+          date: eventDate.includes('T') ? eventDate : `${eventDate}T09:00:00`,
           type: eventType,
           projectId: project.id,
           notes: 'Planifié depuis le dossier projet',

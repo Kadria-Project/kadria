@@ -1064,13 +1064,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const createFollowUpTask = async (project: { id: string; clientFirstName?: string; clientName?: string }) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: `Rappeler ${[project.clientFirstName, project.clientName].filter(Boolean).join(' ')}`.trim() || 'Rappeler le prospect',
-          date: `${today}T09:00:00.000Z`,
+          date: `${today}T09:00:00`,
           type: 'Rappel',
           projectId: project.id,
           notes: 'Tache creee depuis Dossiers a risque',
