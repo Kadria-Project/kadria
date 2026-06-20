@@ -1062,6 +1062,29 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
   };
 
+  const createFollowUpTask = async (project: { id: string; clientFirstName?: string; clientName?: string }) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `Rappeler ${[project.clientFirstName, project.clientName].filter(Boolean).join(' ')}`.trim() || 'Rappeler le prospect',
+          date: `${today}T09:00:00.000Z`,
+          type: 'Rappel',
+          projectId: project.id,
+          notes: 'Tache creee depuis Dossiers a risque',
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Erreur inconnue');
+      showToast('Tache ajoutee au calendrier pour aujourd\'hui');
+    } catch (error) {
+      console.error('CREATE_FOLLOW_UP_TASK_ERROR', error);
+      showToast('Impossible de creer la tache', true);
+    }
+  };
+
   const activeFilterLabels = [
     filters.search && `Recherche: ${filters.search}`,
     filters.statut && `Statut: ${filters.statut}`,
@@ -1637,9 +1660,54 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       <StatusBadge status={risk.label} />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)} className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-1)]">Relancer</button>
-                      <button onClick={() => showToast('Tache ajoutee a vos actions du jour')} className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-1)]">Creer une tache</button>
-                      <button onClick={() => handleStatusChange(project.id, 'Perdu')} className="rounded-md border border-red-500/30 px-2 py-1 text-xs text-red-300">Cloturer</button>
+                      <button
+                        onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                        style={{
+                          background: 'var(--accent-dim)',
+                          border: '1px solid var(--accent-border)',
+                          color: 'var(--accent)',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Relancer
+                      </button>
+                      <button
+                        onClick={() => createFollowUpTask(project)}
+                        style={{
+                          background: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-1)',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Creer une tache
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!confirm('Cloturer ce dossier comme perdu ?')) return;
+                          handleStatusChange(project.id, 'Perdu');
+                        }}
+                        style={{
+                          background: 'rgba(239,68,68,0.1)',
+                          border: '1px solid rgba(239,68,68,0.3)',
+                          color: '#ef4444',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cloturer
+                      </button>
                     </div>
                   </div>
                 );

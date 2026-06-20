@@ -62,11 +62,15 @@ export default function Calendar({ artisanId }: Props) {
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640)
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  useEffect(() => {
+    if (isMobile && view === 'week') setView('month')
+  }, [isMobile, view])
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const prev = () => {
@@ -157,21 +161,30 @@ export default function Calendar({ artisanId }: Props) {
         notes: form.notes,
         projectId: form.projectId,
       }
-      if (selectedEvent) {
-        await fetch(`/api/events/${selectedEvent.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-      } else {
-        await fetch('/api/events', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
+      const res = selectedEvent
+        ? await fetch(`/api/events/${selectedEvent.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        : await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        console.error('[CALENDAR] Failed to save event:', data.error)
+        alert('Erreur lors de la creation de l\'evenement : ' + (data.error || 'inconnue'))
+        return
       }
+
       await fetchEvents()
       setShowModal(false)
+    } catch (err) {
+      console.error('[CALENDAR] Network error:', err)
+      alert('Erreur reseau lors de la creation de l\'evenement')
     } finally {
       setSaving(false)
     }
@@ -206,9 +219,9 @@ export default function Calendar({ artisanId }: Props) {
       border: '1px solid var(--border)',
       color: 'var(--text-1)',
       borderRadius: '8px',
-      padding: isMobile ? '7px 12px' : '8px 14px',
+      padding: isMobile ? '5px 9px' : '8px 14px',
       cursor: 'pointer',
-      fontSize: isMobile ? '13px' : '14px',
+      fontSize: isMobile ? '12px' : '14px',
     } as React.CSSProperties,
     viewBtn: (active: boolean) => ({
       background: active ? 'var(--accent)' : 'var(--bg-elevated)',
@@ -242,7 +255,7 @@ export default function Calendar({ artisanId }: Props) {
         <div style={{ ...s.header, margin: 0, padding: isMobile ? '14px 16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
             <button style={s.navBtn} onClick={prev}>‹</button>
-            <h2 style={{ margin: 0, fontSize: isMobile ? '14px' : '18px', fontWeight: 600, minWidth: isMobile ? 'auto' : '220px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+            <h2 style={{ margin: 0, fontSize: isMobile ? '13px' : '18px', fontWeight: 600, minWidth: isMobile ? '0' : '220px', maxWidth: isMobile ? '140px' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center', whiteSpace: 'nowrap' }}>
               {title}
             </h2>
             <button style={s.navBtn} onClick={next}>›</button>
@@ -255,9 +268,11 @@ export default function Calendar({ artisanId }: Props) {
               </button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
             <button style={s.viewBtn(view === 'month')} onClick={() => setView('month')}>Mois</button>
-            <button style={s.viewBtn(view === 'week')} onClick={() => setView('week')}>Semaine</button>
+            {!isMobile && (
+              <button style={s.viewBtn(view === 'week')} onClick={() => setView('week')}>Semaine</button>
+            )}
             <button
               onClick={() => openNewEvent(formatDateStr(new Date()))}
               style={{
@@ -290,20 +305,20 @@ export default function Calendar({ artisanId }: Props) {
         </div>
       ) : view === 'month' ? (
         // ── MONTH VIEW ────────────────────────────────────────────────────
-        <div style={{ overflowX: 'auto' }}>
         <div style={{
-          minWidth: isMobile ? '700px' : 'auto',
+          height: isMobile ? 'calc(100dvh - 200px)' : 'auto',
+          overflowY: isMobile ? 'auto' : 'visible',
         }}>
           {/* Day headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border)' }}>
             {DAYS_FR.map(d => (
               <div key={d} style={{
-                padding: '10px', textAlign: 'center',
-                color: 'var(--text-3)', fontSize: '12px',
+                padding: isMobile ? '6px 2px' : '10px', textAlign: 'center',
+                color: 'var(--text-3)', fontSize: isMobile ? '10px' : '12px',
                 fontWeight: 600, letterSpacing: '0.05em',
                 textTransform: 'uppercase',
               }}>
-                {d}
+                {isMobile ? d.slice(0, 2) : d}
               </div>
             ))}
           </div>
@@ -317,8 +332,8 @@ export default function Calendar({ artisanId }: Props) {
                   key={i}
                   onClick={() => date && openNewEvent(formatDateStr(date))}
                   style={{
-                    minHeight: '100px',
-                    padding: '8px',
+                    minHeight: isMobile ? '60px' : '100px',
+                    padding: isMobile ? '4px' : '8px',
                     borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--border)' : 'none',
                     borderBottom: '1px solid var(--border)',
                     cursor: date ? 'pointer' : 'default',
@@ -337,17 +352,17 @@ export default function Calendar({ artisanId }: Props) {
                   {date && (
                     <>
                       <div style={{
-                        width: '26px', height: '26px',
+                        width: isMobile ? '20px' : '26px', height: isMobile ? '20px' : '26px',
                         borderRadius: '50%',
                         background: today ? 'var(--accent)' : 'transparent',
                         color: today ? '#05130d' : 'var(--text-1)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '13px', fontWeight: today ? 700 : 400,
+                        fontSize: isMobile ? '11px' : '13px', fontWeight: today ? 700 : 400,
                         marginBottom: '4px',
                       }}>
                         {date.getDate()}
                       </div>
-                      {dayEvents.slice(0, 3).map(event => {
+                      {dayEvents.slice(0, isMobile ? 2 : 3).map(event => {
                         const color = EVENT_COLORS[event.type] || EVENT_COLORS.RDV
                         return (
                           <div
@@ -357,8 +372,8 @@ export default function Calendar({ artisanId }: Props) {
                               background: color.bg,
                               border: `1px solid ${color.border}`,
                               borderRadius: '4px',
-                              padding: '2px 6px',
-                              fontSize: '11px',
+                              padding: isMobile ? '1px 3px' : '2px 6px',
+                              fontSize: isMobile ? '9px' : '11px',
                               color: color.text,
                               marginBottom: '2px',
                               overflow: 'hidden',
@@ -373,9 +388,9 @@ export default function Calendar({ artisanId }: Props) {
                           </div>
                         )
                       })}
-                      {dayEvents.length > 3 && (
+                      {dayEvents.length > (isMobile ? 2 : 3) && (
                         <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
-                          +{dayEvents.length - 3} autres
+                          +{dayEvents.length - (isMobile ? 2 : 3)} autres
                         </div>
                       )}
                     </>
@@ -384,7 +399,6 @@ export default function Calendar({ artisanId }: Props) {
               )
             })}
           </div>
-        </div>
         </div>
       ) : (
         // ── WEEK VIEW ─────────────────────────────────────────────────────

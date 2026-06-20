@@ -148,6 +148,10 @@ export function getHotLeadMessage(project: ProjectLike): string {
 }
 
 export function getProjectRiskStatus(project: ProjectLike): ProjectRiskStatus {
+  if (project.status === 'Gagné' || project.status === 'Perdu') {
+    return { status: 'none', label: 'OK', reason: '', daysWithoutAction: null }
+  }
+
   const lastAction = project.lastInteractionAt || project.updatedAt || project.callbackDate || project.createdAt
   const daysWithoutAction = daysSince(lastAction)
   const quoteAge = project.status?.startsWith('Devis') ? daysSince(project.quoteSentAt || project.updatedAt || project.createdAt) : null
