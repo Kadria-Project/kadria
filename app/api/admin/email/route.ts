@@ -3,7 +3,13 @@ import { Resend } from 'resend'
 import { airtableBase, TABLES } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error('Missing RESEND_API_KEY')
+  }
+  return new Resend(apiKey)
+}
 
 async function logEmail(params: {
   to: string
@@ -39,6 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const resend = getResendClient()
     const { to, subject, body, client_name } = await request.json()
 
     if (!to || !subject || !body) {

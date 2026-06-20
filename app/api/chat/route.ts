@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('Missing OPENAI_API_KEY')
+  }
+  return new OpenAI({ apiKey })
+}
 
 const SYSTEM_PROMPT = `Tu es l'assistant de qualification de Kadria.
 
@@ -458,6 +464,7 @@ quand readyToSave = true. Vide sinon.`
 
 export async function POST(request: Request) {
   try {
+    const client = getOpenAIClient()
     const body = await request.json()
     const { messages = [], currentDossier = {}, artisanId = '' } = body
 
