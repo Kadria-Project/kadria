@@ -825,7 +825,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
@@ -1020,7 +1020,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const displayedProjects =
     quickFilter === 'today'
       ? todayCallbacks
-      : quickFilter === 'overdue'
+      : quickFilter === 'overdue' || quickFilter === 'relance'
         ? overdueCallbacks
         : quickFilter === 'hot'
           ? hotLeads
@@ -1034,6 +1034,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     setFilters(DEFAULT_FILTERS);
     setSearchInput('');
     setQuickFilter(null);
+  };
+
+  const applyQuickFilter = (value: typeof quickFilter) => {
+    setQuickFilter(value);
+    setFilters(DEFAULT_FILTERS);
+    setSearchInput('');
+    document.getElementById('project-list-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -1565,19 +1572,34 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
-              <PriorityMetric label="Opportunites prioritaires" value={topOpportunities.length} />
-              <PriorityMetric label="Relances a effectuer" value={relanceCount} />
-              <PriorityMetric label="Dossiers en risque" value={riskProjects.length} />
-              <PriorityMetric label="Prospects chauds" value={hotLeads.length} />
+              <PriorityMetric
+                label="Opportunites prioritaires"
+                value={topOpportunities.length}
+                active={quickFilter === 'priority'}
+                onClick={() => applyQuickFilter('priority')}
+              />
+              <PriorityMetric
+                label="Relances a effectuer"
+                value={relanceCount}
+                active={quickFilter === 'relance'}
+                onClick={() => applyQuickFilter('relance')}
+              />
+              <PriorityMetric
+                label="Dossiers en risque"
+                value={riskProjects.length}
+                active={quickFilter === 'risk'}
+                onClick={() => applyQuickFilter('risk')}
+              />
+              <PriorityMetric
+                label="Prospects chauds"
+                value={hotLeads.length}
+                active={quickFilter === 'hot'}
+                onClick={() => applyQuickFilter('hot')}
+              />
             </div>
 
             <button
-              onClick={() => {
-                setQuickFilter('priority');
-                setFilters(DEFAULT_FILTERS);
-                setSearchInput('');
-                document.getElementById('project-list-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              onClick={() => applyQuickFilter('priority')}
               className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
             >
               Voir les priorites
@@ -2517,8 +2539,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <span className="text-[var(--text-1)] font-medium">
                     {quickFilter === 'today'
                       ? 'Relances du jour'
-                      : quickFilter === 'overdue'
-                        ? 'Relances en retard'
+                      : quickFilter === 'overdue' || quickFilter === 'relance'
+                        ? 'Relances a effectuer'
                         : quickFilter === 'hot'
                           ? 'Prospects chauds'
                           : quickFilter === 'risk'
@@ -2996,12 +3018,20 @@ function StatusBadge({ status }: { status?: string }) {
   );
 }
 
-function PriorityMetric({ label, value }: { label: string; value: number }) {
+function PriorityMetric({ label, value, onClick, active }: { label: string; value: number; onClick?: () => void; active?: boolean }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+        active
+          ? 'border-green-500/40 bg-green-500/[0.06]'
+          : 'border-[var(--border)] bg-[var(--bg)] hover:border-green-500/30'
+      } ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
+    >
       <p className="text-2xl font-bold tracking-tight text-[var(--text-1)]">{value}</p>
       <p className="mt-1 text-xs text-[var(--text-2)]">{label}</p>
-    </div>
+    </button>
   );
 }
 
