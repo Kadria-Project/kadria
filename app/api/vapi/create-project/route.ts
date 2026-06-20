@@ -71,7 +71,11 @@ function parseIncomingPayload(body: any) {
   }
 
   const call = message?.call ?? {}
-  const toolCall = Array.isArray(message?.toolCallList) ? message.toolCallList[0] : undefined
+  const toolCall = Array.isArray(message?.toolCalls)
+    ? message.toolCalls[0]
+    : Array.isArray(message?.toolCallList)
+      ? message.toolCallList[0]
+      : undefined
   const toolName = toolCall?.function?.name ?? toolCall?.name
   let params: Record<string, unknown> = {}
   const rawArgs = toolCall?.function?.arguments ?? toolCall?.arguments ?? toolCall?.parameters
@@ -113,9 +117,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('[VAPI] FULL raw payload:', JSON.stringify(body, null, 2))
+    console.log('[VAPI] RAW BODY STRUCTURE:', JSON.stringify(body, null, 2))
+    console.log('[VAPI] BODY KEYS:', Object.keys(body || {}))
     parsed = parseIncomingPayload(body)
     const { isToolCallFormat, toolCallId, toolName, callId, assistantId, phoneNumberId, calledNumber, callerNumber, params } = parsed
+    console.log('[VAPI] Detected args source:', isToolCallFormat ? 'message.toolCalls[0].function.arguments' : 'root body')
+    console.log('[VAPI] Parsed args:', JSON.stringify(params, null, 2))
 
     console.log(
       '[VAPI] Incoming payload —',
@@ -141,7 +148,7 @@ export async function POST(request: NextRequest) {
     // ── Validation légère + valeurs par défaut ──
     const trade = String(params.trade || '') || 'Non précisé'
     const city = String(params.city || '')
-    const projectType = String(params.projectType || '')
+    const projectType = String(params.projectType || params.projectDetails || '')
     const budget = String(params.budget || '')
     const desiredTimeline = String(params.desiredTimeline || '')
     const urgency = String(params.urgency || '')
