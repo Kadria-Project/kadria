@@ -955,7 +955,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const todayKey = today.toISOString().slice(0, 10);
   const now = today.getTime();
 
-  const todayCallbacks = allProjects.filter((project) => {
+  const todayCallbacksOnly = allProjects.filter((project) => {
     if (!project.callbackDate) return false;
 
     const callbackKey = String(project.callbackDate).slice(0, 10);
@@ -963,7 +963,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     return callbackKey === todayKey;
   });
 
-  const overdueCallbacks = allProjects.filter((project) => {
+  const overdueCallbacksOnly = allProjects.filter((project) => {
     if (!project.callbackDate) return false;
     if (project.status === 'Gagné' || project.status === 'Perdu') return false;
 
@@ -971,6 +971,26 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
     return !Number.isNaN(callbackTime) && callbackTime < now;
   });
+
+  // Inclut aussi les projets liés à un événement calendrier en retard / du jour,
+  // pour rester cohérent avec les compteurs overdueCount / todayCount (basés sur les événements).
+  const overdueEventProjectIds = new Set(overdueEvents.map((e: any) => e.projectId).filter(Boolean));
+  const todayEventProjectIds = new Set(todayEvents.map((e: any) => e.projectId).filter(Boolean));
+
+  const overdueCallbacks = Array.from(
+    new Map(
+      [...overdueCallbacksOnly, ...allProjects.filter((p) => p.id && overdueEventProjectIds.has(p.id))]
+        .map((project) => [project.id, project]),
+    ).values(),
+  );
+
+  const todayCallbacksFromEvents = allProjects.filter((p) => p.id && todayEventProjectIds.has(p.id));
+
+  const todayCallbacks = Array.from(
+    new Map(
+      [...todayCallbacksOnly, ...todayCallbacksFromEvents].map((project) => [project.id, project]),
+    ).values(),
+  );
 
   const overdueCount = overdueEvents.length;
   const todayCount = todayEvents.length;

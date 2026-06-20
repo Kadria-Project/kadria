@@ -524,11 +524,51 @@ function ProjectDetail() {
               }
               const preview = devisList[0] || buildDemoDevisList({ ...project, devisAmount: Number(devisAmount || project.devisAmount || 8600) })[0];
               if (!preview) return;
-              const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${preview.numero}</title><style>body{font-family:Inter,Arial,sans-serif;background:#0b0f0d;color:#f4f4f5;padding:40px;line-height:1.5}.card{max-width:760px;margin:0 auto;border:1px solid rgba(63,63,70,.8);border-radius:24px;background:#111315;padding:32px}.muted{color:#a1a1aa}.accent{color:#22c55e}.row{display:flex;justify-content:space-between;gap:24px;margin:12px 0}</style></head><body><div class="card"><p class="accent" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">Kadria Demo</p><h1 style="margin:8px 0 0;font-size:32px">${preview.numero}</h1><p class="muted">Prévisualisation PDF de démonstration</p><div class="row"><span>Client</span><strong>${project.clientFirstName || ''} ${project.clientName || ''}</strong></div><div class="row"><span>Projet</span><strong>${project.projectType || 'Projet'}</strong></div><div class="row"><span>Montant</span><strong>${formatMoney(preview.amount)} €</strong></div><div class="row"><span>Émis le</span><strong>${formatDevisDate(preview.date_emission)}</strong></div></div></body></html>`;
+              const raisonSociale = artisanConfig?.raisonSociale || 'Kadria Démo';
+              const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${preview.numero}</title><style>
+                body{font-family:Inter,Arial,sans-serif;background:#fff;color:#18181b;padding:40px;line-height:1.5}
+                .card{max-width:760px;margin:0 auto;border:1px solid #e4e4e7;border-radius:16px;padding:32px}
+                .muted{color:#71717a}
+                .accent{color:#16a34a}
+                .row{display:flex;justify-content:space-between;gap:24px;margin:10px 0;border-bottom:1px solid #f4f4f5;padding-bottom:8px}
+                .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+                table{width:100%;border-collapse:collapse;margin-top:16px}
+                th,td{text-align:left;padding:8px;border-bottom:1px solid #f4f4f5;font-size:14px}
+                .total{font-size:18px;font-weight:700;margin-top:16px;text-align:right}
+                .watermark{position:fixed;top:40%;left:10%;font-size:64px;color:rgba(22,163,74,.08);transform:rotate(-25deg);font-weight:800;letter-spacing:.1em}
+                @media print { .watermark{display:none} }
+              </style></head><body>
+                <div class="watermark">APERÇU DÉMO</div>
+                <div class="card">
+                  <div class="header">
+                    <div>
+                      <p class="accent" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0">${raisonSociale}</p>
+                      <p class="muted" style="margin:4px 0 0;font-size:13px">${artisanConfig?.adressePro || ''}</p>
+                    </div>
+                    <div style="text-align:right">
+                      <h1 style="margin:0;font-size:28px">${preview.numero}</h1>
+                      <p class="muted" style="margin:4px 0 0">Émis le ${formatDevisDate(preview.date_emission)}</p>
+                    </div>
+                  </div>
+                  <div class="row"><span>Client</span><strong>${project.clientFirstName || ''} ${project.clientName || ''}</strong></div>
+                  <div class="row"><span>Adresse chantier</span><strong>${project.siteAddress || ''} ${project.city || ''}</strong></div>
+                  <div class="row"><span>Téléphone</span><strong>${project.clientPhone || ''}</strong></div>
+                  <div class="row"><span>Projet</span><strong>${project.projectType || 'Projet'}</strong></div>
+                  <table>
+                    <thead><tr><th>Désignation</th><th>Détail</th><th style="text-align:right">Montant</th></tr></thead>
+                    <tbody>
+                      <tr><td>${project.trade || 'Prestation'}</td><td class="muted">${project.projectType || ''}</td><td style="text-align:right">${formatMoney(preview.amount)} €</td></tr>
+                    </tbody>
+                  </table>
+                  <p class="total">Total TTC : ${formatMoney(preview.amount)} €</p>
+                  <p class="muted" style="margin-top:24px;font-size:12px">Document de démonstration généré par Kadria — non valable comme devis officiel.</p>
+                </div>
+              </body></html>`;
               const win = window.open('', '_blank');
               if (win) {
                 win.document.write(html);
                 win.document.close();
+                setTimeout(() => win.print(), 500);
               }
             }}
             style={{
