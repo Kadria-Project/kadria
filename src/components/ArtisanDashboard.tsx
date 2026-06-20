@@ -825,7 +825,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
@@ -1026,9 +1026,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           ? hotLeads
           : quickFilter === 'risk'
             ? riskProjects
-            : quickFilter === 'priority'
-              ? priorityProjects
-              : sortedProjects;
+            : quickFilter === 'opportunities'
+              ? topOpportunities
+              : quickFilter === 'priority'
+                ? priorityProjects
+                : sortedProjects;
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -1575,8 +1577,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <PriorityMetric
                 label="Opportunites prioritaires"
                 value={topOpportunities.length}
-                active={quickFilter === 'priority'}
-                onClick={() => applyQuickFilter('priority')}
+                active={quickFilter === 'opportunities'}
+                onClick={() => applyQuickFilter('opportunities')}
               />
               <PriorityMetric
                 label="Relances a effectuer"
@@ -2545,7 +2547,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           ? 'Prospects chauds'
                           : quickFilter === 'risk'
                             ? 'Dossiers en risque'
-                            : 'Priorites du jour'}
+                            : quickFilter === 'opportunities'
+                              ? 'Opportunites prioritaires'
+                              : 'Priorites du jour'}
                   </span>
                 </p>
 
