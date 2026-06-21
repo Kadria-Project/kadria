@@ -17,7 +17,46 @@ const SECTIONS = [
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
   { id: 'legal', label: 'Infos légales', icon: '📋' },
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
+  { id: 'offre', label: 'Offre & quotas', icon: '💳' },
 ]
+
+type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded'
+
+interface MonthlyUsageSummary {
+  periodMonth: string
+  plan: string
+  projects: { used: number; limit: number | null; unlimited: boolean; status: UsageStatus }
+  vapi: { callsUsed: number; callsLimit: number | null; callsUnlimited: boolean; minutesUsed: number; minutesLimit: number | null; status: UsageStatus }
+}
+
+interface AccountStatusSummary {
+  plan: string
+  status: string | null
+  billingStatus: string | null
+  trialEndDate: string | null
+  nextBilling: string | null
+}
+
+const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
+  ok: 'OK',
+  warning: 'Proche limite',
+  limit_reached: 'Limite atteinte',
+  exceeded: 'Dépassé',
+}
+
+const ACCOUNT_STATUS_LABELS: Record<string, string> = {
+  essai: 'Essai',
+  trial: 'Essai',
+  actif: 'Actif',
+  active: 'Actif',
+  en_cours: 'Actif',
+  suspendu: 'Suspendu',
+  suspended: 'Suspendu',
+  annule: 'Annulé',
+  annulé: 'Annulé',
+  cancelled: 'Annulé',
+  canceled: 'Annulé',
+}
 
 const FORMES_JURIDIQUES = [
   'Auto-entrepreneur', 'EI', 'EURL', 'SARL', 'SAS', 'SASU', 'Autre',
@@ -166,6 +205,34 @@ export default function OnboardingPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null)
+  const [accountStatus, setAccountStatus] = useState<AccountStatusSummary | null>(null)
+  const [usageLoading, setUsageLoading] = useState(true)
+  const [usageError, setUsageError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/usage/monthly')
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return
+        if (data.success && data.usage) {
+          setMonthlyUsage(data.usage)
+          setAccountStatus(data.account || null)
+        } else {
+          setUsageError(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUsageError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setUsageLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const save = async () => {
     const errors = validateLegalConfig(config)
@@ -1080,6 +1147,122 @@ export default function OnboardingPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Section Offre & quotas */}
+          {activeSection === 'offre' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                💳 Offre & quotas
+              </h2>
+
+              {usageLoading ? (
+                <div style={sectionCard}>
+                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Chargement…</p>
+                </div>
+              ) : usageError || !monthlyUsage ? (
+                <div style={sectionCard}>
+                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                    Informations d&apos;utilisation indisponibles pour le moment.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div style={sectionCard}>
+                    <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                      Votre offre
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Plan actuel</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700, textTransform: 'capitalize' }}>
+                          {accountStatus?.plan || monthlyUsage.plan}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Statut</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
+                          {accountStatus?.status
+                            ? (ACCOUNT_STATUS_LABELS[accountStatus.status.toLowerCase()] || accountStatus.status)
+                            : 'Statut non disponible'}
+                        </p>
+                      </div>
+                      {accountStatus?.trialEndDate && (
+                        <div>
+                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Fin d&apos;essai</p>
+                          <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.trialEndDate}</p>
+                        </div>
+                      )}
+                      {accountStatus?.billingStatus && (
+                        <div>
+                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Facturation</p>
+                          <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.billingStatus}</p>
+                        </div>
+                      )}
+                      {accountStatus?.nextBilling && (
+                        <div>
+                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Prochaine échéance</p>
+                          <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.nextBilling}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={sectionCard}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--accent)' }}>
+                        Utilisation du mois
+                      </h3>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '2px 10px',
+                        background: 'rgba(34,197,94,0.1)', color: 'var(--accent)',
+                      }}>
+                        {USAGE_STATUS_LABELS[
+                          ([monthlyUsage.projects.status, monthlyUsage.vapi.status].includes('exceeded') && 'exceeded')
+                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status].includes('limit_reached') && 'limit_reached')
+                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status].includes('warning') && 'warning')
+                          || 'ok'
+                        ]}
+                      </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '14px' }}>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Dossiers</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
+                          {monthlyUsage.projects.unlimited
+                            ? `${monthlyUsage.projects.used} / Illimité`
+                            : `${monthlyUsage.projects.used} / ${monthlyUsage.projects.limit ?? 0}`}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Appels vocaux</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
+                          {monthlyUsage.vapi.callsUnlimited
+                            ? `${monthlyUsage.vapi.callsUsed} / Illimité`
+                            : monthlyUsage.vapi.callsLimit === 0
+                              ? 'Non inclus'
+                              : `${monthlyUsage.vapi.callsUsed} / ${monthlyUsage.vapi.callsLimit}`}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Minutes vocales</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
+                          {monthlyUsage.vapi.minutesLimit === null
+                            ? `${monthlyUsage.vapi.minutesUsed} min / Non limité`
+                            : `${monthlyUsage.vapi.minutesUsed} / ${monthlyUsage.vapi.minutesLimit} min`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={sectionCard}>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                      Ces compteurs se réinitialisent automatiquement chaque mois. Aucune action n&apos;est requise de votre part.
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

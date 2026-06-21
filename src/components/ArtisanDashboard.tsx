@@ -1626,51 +1626,51 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {showBusinessOverview && (
         <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
           {!loading && (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5 lg:flex-[65] lg:basis-[65%]">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5 lg:flex-[70] lg:basis-[70%]">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
                   <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
                 </div>
 
-                <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
-                  <PriorityMetric
-                    label="Opportunites prioritaires"
-                    value={topOpportunities.length}
-                    active={quickFilter === 'opportunities'}
-                    onClick={() => applyQuickFilter('opportunities')}
-                  />
-                  <PriorityMetric
-                    label="Relances a effectuer"
-                    value={relanceCount}
-                    active={quickFilter === 'relance'}
-                    onClick={() => applyQuickFilter('relance')}
-                  />
-                  <PriorityMetric
-                    label="Dossiers en risque"
-                    value={riskProjects.length}
-                    active={quickFilter === 'risk'}
-                    onClick={() => applyQuickFilter('risk')}
-                  />
-                  <PriorityMetric
-                    label="Prospects chauds"
-                    value={hotLeads.length}
-                    active={quickFilter === 'hot'}
-                    onClick={() => applyQuickFilter('hot')}
-                  />
-                </div>
-
                 <button
                   onClick={() => applyQuickFilter('priority')}
-                  className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
+                  className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
                 >
                   Voir les priorites
                 </button>
               </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <PriorityMetric
+                  label="Opportunites prioritaires"
+                  value={topOpportunities.length}
+                  active={quickFilter === 'opportunities'}
+                  onClick={() => applyQuickFilter('opportunities')}
+                />
+                <PriorityMetric
+                  label="Relances a effectuer"
+                  value={relanceCount}
+                  active={quickFilter === 'relance'}
+                  onClick={() => applyQuickFilter('relance')}
+                />
+                <PriorityMetric
+                  label="Dossiers en risque"
+                  value={riskProjects.length}
+                  active={quickFilter === 'risk'}
+                  onClick={() => applyQuickFilter('risk')}
+                />
+                <PriorityMetric
+                  label="Prospects chauds"
+                  value={hotLeads.length}
+                  active={quickFilter === 'hot'}
+                  onClick={() => applyQuickFilter('hot')}
+                />
+              </div>
             </div>
           )}
 
-          <div className="lg:flex-[35] lg:basis-[35%]" ref={monthlyUsageSectionRef}>
+          <div className="lg:flex-[30] lg:basis-[30%]" ref={monthlyUsageSectionRef}>
             <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
           </div>
         </div>

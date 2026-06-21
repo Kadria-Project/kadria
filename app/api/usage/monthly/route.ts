@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
-import { getMonthlyUsageSummary } from '@/src/lib/usage/quotas'
+import { getMonthlyUsageSummary, getAccountStatusForArtisan } from '@/src/lib/usage/quotas'
 
 export async function GET() {
   try {
@@ -17,7 +17,13 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json({ success: true, usage: result.data })
+    const accountResult = await getAccountStatusForArtisan(session.artisanId)
+
+    return NextResponse.json({
+      success: true,
+      usage: result.data,
+      ...(accountResult.success && accountResult.data ? { account: accountResult.data } : {}),
+    })
   } catch (error) {
     console.error('[USAGE MONTHLY]', error)
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })

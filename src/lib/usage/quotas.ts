@@ -1722,4 +1722,52 @@ export async function getMonthlyUsageSummary(artisanId: string): Promise<QuotaRe
   }
 }
 
+export interface AccountStatusSummary {
+  plan: PlanKey
+  status: string | null
+  billingStatus: string | null
+  trialEndDate: string | null
+  nextBilling: string | null
+}
+
+export async function getAccountStatusForArtisan(artisanId: string): Promise<QuotaResult<AccountStatusSummary>> {
+  try {
+    const supabase = getSupabaseAdmin()
+    const usersTable = await resolveAccessibleTable('users')
+
+    if (!usersTable) {
+      return { success: false, error: 'Table Users introuvable' }
+    }
+
+    const { data, error } = await supabase
+      .from(usersTable)
+      .select('*')
+      .eq('artisan_id', artisanId)
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    const row = (data || {}) as JsonObject
+
+    return {
+      success: true,
+      data: {
+        plan: normalizeQuotaPlan((row.plan as string) || 'performance'),
+        status: (row.statut as string) || (row.status as string) || null,
+        billingStatus: (row.billing_status as string) || null,
+        trialEndDate: (row.trial_end_date as string) || null,
+        nextBilling: (row.next_billing as string) || null,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger le statut du compte',
+    }
+  }
+}
+
 export { TABLE_CANDIDATES as QUOTA_TABLES }
