@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
     }
 
     const devis = await getDevisByProjet(project.id)
+    if (devis.length === 0) {
+      console.warn('[DEVIS GET] Aucun devis trouvé pour projet', { requestedProjetId: projetId, resolvedProjectId: project.id })
+    }
     const list = devis
       .filter((d) => d.artisanId === session.artisanId)
       .map((d) => ({

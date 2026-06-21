@@ -265,9 +265,15 @@ function ProjectDetail() {
     fetch(`/api/devis?projet_id=${id}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setDevisList(data.devis);
+        if (data.success) {
+          setDevisList(data.devis);
+        } else {
+          console.error('[DEVIS LIST] Erreur chargement devis du projet:', data.error);
+        }
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('[DEVIS LIST] Erreur réseau chargement devis du projet:', error);
+      });
   }, [id]);
   async function followUpQuote(devis: DevisListItem) {
     if (!canQuote) {
