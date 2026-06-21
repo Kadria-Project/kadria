@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
@@ -156,7 +156,7 @@ export default function OnboardingPage() {
   const [copied, setCopied] = useState(false)
 
   const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
@@ -308,8 +308,9 @@ export default function OnboardingPage() {
     background: 'var(--bg-elevated)',
     border: '1px solid var(--border)',
     borderRadius: '16px',
-    padding: '24px',
+    padding: isMobile ? '16px' : '24px',
     marginBottom: '16px',
+    minWidth: 0,
   }
 
   if (loading) return (
@@ -323,27 +324,24 @@ export default function OnboardingPage() {
   )
 
   return (
-    <main className="dashboard-shell" style={{
+    <main className="dashboard-shell w-full max-w-full overflow-x-hidden" style={{
       minHeight: '100vh',
       background: 'var(--bg)',
       fontFamily: 'system-ui, sans-serif',
       color: 'var(--text-1)',
     }}>
       {/* Header */}
-      <div style={{
+      <div className="flex items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4" style={{
         background: 'var(--bg-elevated)',
         borderBottom: '1px solid var(--border)',
-        padding: isMobile ? '12px 16px' : '16px 32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         position: 'sticky',
         top: 0,
         zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '16px' }}>
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <button
             onClick={() => router.push('/dashboard-v2')}
+            className="shrink-0"
             style={{
               background: 'transparent', border: 'none',
               color: 'var(--text-2)', cursor: 'pointer', fontSize: '14px',
@@ -352,7 +350,7 @@ export default function OnboardingPage() {
           >
             ← Retour
           </button>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+          <div className="flex min-w-0 items-baseline gap-2">
             <KadriaLogo size="sm" theme="dark" noLink />
             {!isMobile && (
               <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
@@ -364,14 +362,16 @@ export default function OnboardingPage() {
         <button
           onClick={save}
           disabled={saving}
+          className="shrink-0"
           style={{
             background: saved ? 'rgba(34,197,94,0.2)' : saving ? 'var(--bg-hover)' : 'var(--accent)',
             border: saved ? '1px solid var(--accent)' : 'none',
             color: saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
             fontWeight: 700, borderRadius: '10px',
-            padding: isMobile ? '9px 16px' : '10px 24px', fontSize: '14px',
+            padding: isMobile ? '9px 12px' : '10px 24px', fontSize: '14px',
             cursor: saving ? 'default' : 'pointer',
             transition: 'all 0.2s',
+            whiteSpace: 'nowrap',
           }}
         >
           {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
@@ -379,12 +379,11 @@ export default function OnboardingPage() {
       </div>
 
       {saveError && (
-        <div style={{
+        <div className="mx-3 mt-4 sm:mx-8" style={{
           background: 'rgba(220,38,38,0.08)',
           border: '1px solid rgba(220,38,38,0.3)',
           borderRadius: '10px',
           padding: '12px 16px',
-          margin: '16px 32px 0',
           color: '#f87171',
           fontSize: '13px',
         }}>
@@ -392,17 +391,9 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      <div style={{
-        maxWidth: '900px',
-        margin: '0 auto',
-        padding: isMobile ? '16px 12px' : '32px 24px',
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '220px 1fr',
-        gap: '24px',
-        alignItems: 'start',
-      }}>
+      <div className="mx-auto grid w-full max-w-full grid-cols-1 gap-4 px-3 py-4 sm:px-6 sm:py-8 md:max-w-[900px] md:grid-cols-[220px_1fr] md:gap-6" style={{ alignItems: 'start' }}>
         {/* Sidebar navigation */}
-        <div style={isMobile ? {} : { position: 'sticky', top: '80px' }}>
+        <div className="min-w-0" style={isMobile ? {} : { position: 'sticky', top: '80px' }}>
           <div style={{
             ...sectionCard,
             ...(isMobile ? {
@@ -509,7 +500,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Main content */}
-        <div>
+        <div className="min-w-0 w-full">
           {/* Section Entreprise */}
           {activeSection === 'entreprise' && (
             <div>
