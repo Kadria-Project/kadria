@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { Resend } from 'resend'
-import { airtableBase, TABLES, createActivityLog, getArtisanConfig, getDevisById, updateDevis } from '@/src/lib/airtable'
+import { TABLES, getArtisanConfig, getDevisById, resolveProjectId, updateDevis } from '@/src/lib/airtable'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowUpEmail } from '@/src/lib/commercial-actions'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function toHtml(text: string) {
   return text
@@ -15,6 +16,19 @@ function toHtml(text: string) {
 
 function isValidDevisToken(token: string | undefined): token is string {
   return !!token && !token.includes('undefined') && /^[0-9a-f-]{36}$/i.test(token)
+}
+
+async function createActivityLogSupabase(projectId: string, action: string, description: string) {
+  const { error } = await supabaseAdmin.from(TABLES.activity).insert({
+    project_id: projectId,
+    action,
+    description,
+    created_at: new Date().toISOString(),
+  })
+
+  if (error) {
+    console.error('[DEVIS FOLLOW-UP ACTIVITY] Insert error:', JSON.stringify(error, null, 2))
+  }
 }
 
 export async function POST(
@@ -49,14 +63,14 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Configuration e-mail manquante' }, { status: 500 })
     }
 
-    const project = await airtableBase(TABLES.projects).find(devis.projetId)
-    if (project.fields['Artisan ID'] !== access.session.artisanId) {
+    const project = await resolveProjectId(devis.projectId)
+    if (!project || project.artisanId !== access.session.artisanId) {
       return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
 
     if (!isValidDevisToken(devis.token)) {
       try {
-        devis = await updateDevis(devis.id, { Token: randomUUID() })
+        devis = await updateDevis(devis.id, { token: randomUUID() })
       } catch (error) {
         console.error('[DEVIS FOLLOW-UP] Token update failed:', error instanceof Error ? error.message : String(error))
         return NextResponse.json({ success: false, error: 'Invalid devis token' }, { status: 400 })
@@ -67,15 +81,26 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Invalid devis token' }, { status: 400 })
     }
 
+    const { data: projectRow, error: projectError } = await supabaseAdmin
+      .from(TABLES.projects)
+      .select('client_first_name, project_type, trade')
+      .eq('id', project.id)
+      .limit(1)
+      .maybeSingle()
+
+    if (projectError) {
+      throw projectError
+    }
+
     const config = await getArtisanConfig(access.session.artisanId)
     const artisanName = config?.raisonSociale || config?.companyName || access.session.companyName || 'Votre artisan'
     const firstName =
-      (project.fields['Client First Name'] as string) ||
+      (projectRow?.client_first_name as string) ||
       devis.clientName.split(' ')[0] ||
       ''
     const projectType =
-      (project.fields['Project Type'] as string) ||
-      (project.fields['Trade'] as string) ||
+      (projectRow?.project_type as string) ||
+      (projectRow?.trade as string) ||
       devis.objet ||
       'votre projet'
 
@@ -119,8 +144,14 @@ export async function POST(
     }
 
     const now = new Date().toISOString()
-    await createActivityLog(
-      devis.projetId,
+
+    await updateDevis(id, {
+      lastFollowUpAt: now,
+      followUpCount: (devis.followUpCount || 0) + 1,
+    })
+
+    await createActivityLogSupabase(
+      project.id,
       'DEVIS_FOLLOW_UP_SENT',
       `Relance du devis ${devis.devisNumber} envoyee a ${devis.clientEmail}`
     )

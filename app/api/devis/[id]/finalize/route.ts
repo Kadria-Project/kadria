@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
-import Airtable from 'airtable'
 import { Resend } from 'resend'
-import { airtableBase, TABLES, getArtisanConfig, getDevisById } from '@/src/lib/airtable'
+import { TABLES, getArtisanConfig, getDevisById, updateDevis } from '@/src/lib/airtable'
 import { generateDevisPdf } from '@/src/lib/devis-pdf'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -265,23 +265,29 @@ export async function POST(
   }
 
   const newStatut = mode === 'send' ? 'Envoyé' : 'Brouillon'
+  const now = new Date().toISOString()
 
   try {
-    await airtableBase(TABLES.devis).update(id, {
-      'PDF File': [{ url: pdfUrl }],
-      'Sent': mode === 'send',
-      'Statut': newStatut,
-    } as unknown as Partial<Airtable.FieldSet>)
-
-    await airtableBase(TABLES.projects).update(devis.projetId, {
-      Status: 'Devis envoyé',
-      Devis_amount: devis.totalTTC,
+    await updateDevis(id, {
+      pdfUrl,
+      sent: mode === 'send',
+      statut: newStatut,
+      ...(mode === 'send' && !devis.quoteSentAt ? { quoteSentAt: now } : {}),
     })
+
+    const { error: projectUpdateError } = await supabaseAdmin
+      .from(TABLES.projects)
+      .update({ status: 'Devis envoyé', devis_amount: devis.totalTTC })
+      .eq('id', devis.projectId)
+
+    if (projectUpdateError) {
+      throw projectUpdateError
+    }
   } catch (error) {
-    console.error('[DEVIS FINALIZE] Erreur mise à jour Airtable', error)
+    console.error('[DEVIS FINALIZE] Erreur mise à jour Supabase', error)
     return NextResponse.json({
       success: false,
-      error: 'PDF généré mais la mise à jour Airtable a échoué',
+      error: 'PDF généré mais la mise à jour de la base a échoué',
       pdf_url: pdfUrl,
     }, { status: 207 })
   }

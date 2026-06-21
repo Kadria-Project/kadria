@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { airtableBase, TABLES, getDevisByToken } from '@/src/lib/airtable'
+import { getDevisByToken, updateDevis } from '@/src/lib/airtable'
 
 const MAX_REQUESTS_PER_IP = 5
 const requestCounts = new Map<string, number>()
@@ -34,10 +34,11 @@ export async function POST(
 
     const now = new Date().toISOString()
 
-    await airtableBase(TABLES.devis).update(devis.id, {
-      'Accepted': true,
-      'Accepted_at': now,
-      'Accepted_ip': ip,
+    await updateDevis(devis.id, {
+      accepted: true,
+      acceptedAt: now,
+      acceptedIp: ip,
+      statut: 'Accepté',
     })
 
     return NextResponse.json({ success: true, accepted_at: now })

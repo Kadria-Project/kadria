@@ -1,8 +1,12 @@
 import Airtable from 'airtable';
 import {
   mapSupabaseArtisanConfig,
+  mapSupabaseDevis,
   mapSupabaseProjectSummary,
   mapSupabaseUserLookup,
+  toSupabaseDevisInsert,
+  toSupabaseDevisUpdate,
+  type SupabaseDevis,
 } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
@@ -326,134 +330,119 @@ export async function createCommercialLead(data: {
   return result
 }
 
-export interface DevisRecord {
-  id: string
-  devisNumber: string
-  projetId: string
-  artisanId: string
-  dateEmission: string
-  dateValidite: string
-  objet: string
-  lignesJson: string
-  totalHT: number
-  totalTVA: number
-  tvaBreakdownJson: string
-  totalTTC: number
-  conditionsPaiement: string
-  delaiExecution: string
-  mentionsLegales: string
-  noteInterne: string
-  statut: string
-  clientName: string
-  clientAddress: string
-  clientEmail: string
-  clientPhone: string
-  createdAt: string
-  sent: boolean
-  pdfUrl: string | null
-  token: string
-  opensCount: number
-  lastOpenedDate: string | null
-  firstOpenedAt: string | null
-  accepted: boolean
-  acceptedAt: string | null
-  acceptedIp: string | null
-  quoteSentAt: string
-  lastFollowUpAt: string | null
-  followUpCount: number
-}
+export type DevisRecord = SupabaseDevis
 
-function mapDevisRecord(record: { id: string; fields: Record<string, unknown> }): DevisRecord {
-  const fields = record.fields
-  const pdfFile = fields['PDF File'] as Array<{ url?: string }> | undefined
-  return {
-    id: record.id,
-    devisNumber: fields['Devis Number'] as string || '',
-    projetId: fields['Projet ID'] as string || '',
-    artisanId: fields['Artisan ID'] as string || '',
-    dateEmission: fields['Date Emission'] as string || '',
-    dateValidite: fields['Date Validite'] as string || '',
-    objet: fields['Objet'] as string || '',
-    lignesJson: fields['Lignes JSON'] as string || '',
-    totalHT: Number(fields['Total HT']) || 0,
-    totalTVA: Number(fields['Total TVA']) || 0,
-    tvaBreakdownJson: fields['TVA Breakdown JSON'] as string || '',
-    totalTTC: Number(fields['Total TTC']) || 0,
-    conditionsPaiement: fields['Conditions Paiement'] as string || '',
-    delaiExecution: fields['Delai Execution'] as string || '',
-    mentionsLegales: fields['Mentions Legales'] as string || '',
-    noteInterne: fields['Note Interne'] as string || '',
-    statut: fields['Statut'] as string || 'Brouillon',
-    clientName: fields['Client Name'] as string || '',
-    clientAddress: fields['Client Address'] as string || '',
-    clientEmail: fields['Client Email'] as string || '',
-    clientPhone: fields['Client Phone'] as string || '',
-    createdAt: fields['Created At'] as string || '',
-    sent: fields['Sent'] === true,
-    pdfUrl: pdfFile?.[0]?.url || null,
-    token: fields['Token'] as string || '',
-    opensCount: Number(fields['Opens_count']) || 0,
-    lastOpenedDate: fields['Last_opened_date'] as string || null,
-    firstOpenedAt: fields['First_opened_at'] as string || null,
-    accepted: fields['Accepted'] === true,
-    acceptedAt: fields['Accepted_at'] as string || null,
-    acceptedIp: fields['Accepted_ip'] as string || null,
-    quoteSentAt: fields['Quote Sent At'] as string || fields['Date Emission'] as string || '',
-    lastFollowUpAt: fields['Last Follow Up At'] as string || null,
-    followUpCount: Number(fields['Follow Up Count']) || 0,
+export async function resolveProjectId(projectIdOrRecordId: string): Promise<{ id: string; artisanId: string } | null> {
+  if (!projectIdOrRecordId) return null
+
+  const direct = await supabaseAdmin
+    .from(TABLES.projects)
+    .select('id, artisan_id')
+    .eq('id', projectIdOrRecordId)
+    .limit(1)
+    .maybeSingle()
+
+  if (direct.error) throw direct.error
+  if (direct.data) {
+    return { id: direct.data.id as string, artisanId: direct.data.artisan_id as string }
   }
+
+  const legacy = await supabaseAdmin
+    .from(TABLES.projects)
+    .select('id, artisan_id')
+    .eq('record_id', projectIdOrRecordId)
+    .limit(1)
+    .maybeSingle()
+
+  if (legacy.error) throw legacy.error
+  if (!legacy.data) return null
+
+  return { id: legacy.data.id as string, artisanId: legacy.data.artisan_id as string }
 }
 
-export async function createDevis(fields: Record<string, unknown>): Promise<DevisRecord> {
-  const record = await airtableBase(TABLES.devis).create(fields as Partial<Airtable.FieldSet>)
-  return mapDevisRecord({ id: record.id, fields: record.fields })
+export async function createDevis(input: Record<string, unknown> & { artisanId: string }): Promise<DevisRecord> {
+  const row = toSupabaseDevisInsert(input)
+  row.artisan_id = input.artisanId
+
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .insert(row)
+    .select()
+    .single()
+
+  if (error) throw error
+  return mapSupabaseDevis(data)
 }
 
 export async function getDevisById(id: string): Promise<DevisRecord | null> {
-  try {
-    const record = await airtableBase(TABLES.devis).find(id)
-    return mapDevisRecord({ id: record.id, fields: record.fields })
-  } catch {
-    return null
-  }
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .select('*')
+    .eq('id', id)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+  return mapSupabaseDevis(data)
 }
 
 export async function getDevisByToken(token: string): Promise<DevisRecord | null> {
-  const safeToken = escapeFormulaValue(token)
-  const url = airtableApiUrl(TABLES.devis, `?filterByFormula=${encodeURIComponent(`{Token}="${safeToken}"`)}&maxRecords=1`)
+  if (!token) return null
 
-  const res = await airtableFetch(url)
-  const data = await res.json()
-  const record = data.records?.[0]
-  if (!record) return null
-  return mapDevisRecord({ id: record.id, fields: record.fields })
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .select('*')
+    .eq('token', token)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+  return mapSupabaseDevis(data)
 }
 
-export async function getDevisByProjet(projetId: string): Promise<DevisRecord[]> {
-  const safeProjetId = escapeFormulaValue(projetId)
-  const url = airtableApiUrl(TABLES.devis, `?filterByFormula=${encodeURIComponent(`{Projet ID}="${safeProjetId}"`)}&sort[0][field]=Created At&sort[0][direction]=desc`)
+export async function getDevisByProjet(projectIdOrRecordId: string): Promise<DevisRecord[]> {
+  const resolved = await resolveProjectId(projectIdOrRecordId)
+  const projectId = resolved?.id || projectIdOrRecordId
 
-  const res = await airtableFetch(url)
-  const data = await res.json()
-  return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return (data || []).map(mapSupabaseDevis)
 }
 
 export async function getDevisByArtisan(artisanId: string): Promise<DevisRecord[]> {
-  const safeArtisanId = escapeFormulaValue(artisanId)
-  const url = airtableApiUrl(TABLES.devis, `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}`)
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .select('*')
+    .eq('artisan_id', artisanId)
 
-  const res = await airtableFetch(url)
-  const data = await res.json()
-  return (data.records || []).map((r: { id: string; fields: Record<string, unknown> }) => mapDevisRecord(r))
+  if (error) throw error
+  return (data || []).map(mapSupabaseDevis)
 }
 
 export async function updateDevis(id: string, fields: Record<string, unknown>): Promise<DevisRecord> {
-  const record = await airtableBase(TABLES.devis).update(id, fields as Partial<Airtable.FieldSet>)
-  return mapDevisRecord({ id: record.id, fields: record.fields })
+  const row = toSupabaseDevisUpdate(fields)
+
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .update(row)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return mapSupabaseDevis(data)
 }
 
 export async function deleteDevis(id: string): Promise<void> {
-  await airtableBase(TABLES.devis).destroy(id)
+  const { error } = await supabaseAdmin.from(TABLES.devis).delete().eq('id', id)
+  if (error) throw error
 }
 
 export interface ProjectSummary {

@@ -82,23 +82,26 @@ export async function PATCH(
     }
 
     const fields: Record<string, unknown> = {}
-    if (body.objet !== undefined) fields['Objet'] = body.objet
-    if (body.dateEmission !== undefined) fields['Date Emission'] = body.dateEmission
-    if (body.dateValidite !== undefined) fields['Date Validite'] = body.dateValidite
-    if (body.lines !== undefined) fields['Lignes JSON'] = JSON.stringify(body.lines)
-    if (body.totalHT !== undefined) fields['Total HT'] = Number(body.totalHT) || 0
-    if (body.totalTVA !== undefined) fields['Total TVA'] = Number(body.totalTVA) || 0
-    if (body.tvaBreakdown !== undefined) fields['TVA Breakdown JSON'] = JSON.stringify(body.tvaBreakdown)
-    if (body.totalTTC !== undefined) fields['Total TTC'] = Number(body.totalTTC) || 0
-    if (body.conditionsPaiement !== undefined) fields['Conditions Paiement'] = body.conditionsPaiement
-    if (body.delaiExecution !== undefined) fields['Delai Execution'] = body.delaiExecution
-    if (body.mentionsLegales !== undefined) fields['Mentions Legales'] = body.mentionsLegales
-    if (body.noteInterne !== undefined) fields['Note Interne'] = body.noteInterne
-    if (body.statut !== undefined) fields['Statut'] = body.statut
-    if (body.clientName !== undefined) fields['Client Name'] = body.clientName
-    if (body.clientAddress !== undefined) fields['Client Address'] = body.clientAddress
-    if (body.clientEmail !== undefined) fields['Client Email'] = body.clientEmail
-    if (body.clientPhone !== undefined) fields['Client Phone'] = body.clientPhone
+    if (body.objet !== undefined) fields.objet = body.objet
+    if (body.dateEmission !== undefined) fields.dateEmission = body.dateEmission
+    if (body.dateValidite !== undefined) fields.dateValidite = body.dateValidite
+    if (body.lines !== undefined) fields.lignesJson = JSON.stringify(body.lines)
+    if (body.totalHT !== undefined) fields.totalHT = Number(body.totalHT) || 0
+    if (body.totalTVA !== undefined) fields.totalTVA = Number(body.totalTVA) || 0
+    if (body.tvaBreakdown !== undefined) fields.tvaBreakdownJson = JSON.stringify(body.tvaBreakdown)
+    if (body.totalTTC !== undefined) fields.totalTTC = Number(body.totalTTC) || 0
+    if (body.conditionsPaiement !== undefined) fields.conditionsPaiement = body.conditionsPaiement
+    if (body.delaiExecution !== undefined) fields.delaiExecution = body.delaiExecution
+    if (body.mentionsLegales !== undefined) fields.mentionsLegales = body.mentionsLegales
+    if (body.noteInterne !== undefined) fields.noteInterne = body.noteInterne
+    if (body.statut !== undefined) fields.statut = body.statut
+    if (body.clientName !== undefined) fields.clientName = body.clientName
+    if (body.clientAddress !== undefined) fields.clientAddress = body.clientAddress
+    if (body.clientEmail !== undefined) fields.clientEmail = body.clientEmail
+    if (body.clientPhone !== undefined) fields.clientPhone = body.clientPhone
+
+    delete fields.artisanId
+    delete fields.artisan_id
 
     const devis = await updateDevis(id, fields)
     return NextResponse.json({ success: true, devis })

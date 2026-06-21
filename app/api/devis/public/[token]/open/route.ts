@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { airtableBase, TABLES, getDevisByToken } from '@/src/lib/airtable'
+import { getDevisByToken, updateDevis } from '@/src/lib/airtable'
 
 export async function POST(
   _request: NextRequest,
@@ -20,10 +20,10 @@ export async function POST(
     const now = new Date().toISOString()
     const newCount = devis.opensCount + 1
 
-    await airtableBase(TABLES.devis).update(devis.id, {
-      'Opens_count': newCount,
-      'Last_opened_date': now,
-      'First_opened_at': devis.opensCount === 0 ? now : (devis.firstOpenedAt || now),
+    await updateDevis(devis.id, {
+      opensCount: newCount,
+      lastOpenedDate: now,
+      firstOpenedAt: devis.opensCount === 0 ? now : (devis.firstOpenedAt || now),
     })
 
     return NextResponse.json({

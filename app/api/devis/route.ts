@@ -1,30 +1,27 @@
 import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  airtableBase,
   TABLES,
-  createActivityLog,
   createDevis,
   getArtisanConfig,
   getDevisByProjet,
+  resolveProjectId,
   updateArtisanConfig,
 } from '@/src/lib/airtable'
 import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
-async function getAuthorizedProject(id: string, artisanId: string) {
-  let record
+async function createActivityLogSupabase(projectId: string, action: string, description: string) {
+  const { error } = await supabaseAdmin.from(TABLES.activity).insert({
+    project_id: projectId,
+    action,
+    description,
+    created_at: new Date().toISOString(),
+  })
 
-  try {
-    record = await airtableBase(TABLES.projects).find(id)
-  } catch {
-    return { status: 404 as const }
+  if (error) {
+    console.error('[DEVIS ACTIVITY] Insert error:', JSON.stringify(error, null, 2))
   }
-
-  if (record.fields['Artisan ID'] !== artisanId) {
-    return { status: 403 as const }
-  }
-
-  return { status: 200 as const, record }
 }
 
 export async function GET(request: NextRequest) {
@@ -47,15 +44,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const project = await getAuthorizedProject(projetId, session.artisanId)
-    if (project.status === 404) {
+    const project = await resolveProjectId(projetId)
+    if (!project) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
-    if (project.status === 403) {
+    if (project.artisanId !== session.artisanId) {
       return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
     }
 
-    const devis = await getDevisByProjet(projetId)
+    const devis = await getDevisByProjet(project.id)
     const list = devis
       .filter((d) => d.artisanId === session.artisanId)
       .map((d) => ({
@@ -132,11 +129,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const project = await getAuthorizedProject(body.projetId, session.artisanId)
-    if (project.status === 404) {
+    const project = await resolveProjectId(body.projetId)
+    if (!project) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
-    if (project.status === 403) {
+    if (project.artisanId !== session.artisanId) {
       return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
     }
 
@@ -149,28 +146,28 @@ export async function POST(request: NextRequest) {
     let devis
     try {
       devis = await createDevis({
-        'Devis Number': devisNumber,
-        'Token': token,
-        'Projet ID': body.projetId,
-        'Artisan ID': session.artisanId,
-        'Date Emission': body.dateEmission || '',
-        'Date Validite': body.dateValidite || '',
-        'Objet': body.objet,
-        'Lignes JSON': JSON.stringify(body.lines || []),
-        'Total HT': Number(body.totalHT) || 0,
-        'Total TVA': Number(body.totalTVA) || 0,
-        'TVA Breakdown JSON': JSON.stringify(body.tvaBreakdown || {}),
-        'Total TTC': Number(body.totalTTC) || 0,
-        'Conditions Paiement': body.conditionsPaiement || '',
-        'Delai Execution': body.delaiExecution || '',
-        'Mentions Legales': body.mentionsLegales || '',
-        'Note Interne': body.noteInterne || '',
-        'Statut': 'Brouillon',
-        'Client Name': body.clientName || '',
-        'Client Address': body.clientAddress || '',
-        'Client Email': body.clientEmail || '',
-        'Client Phone': body.clientPhone || '',
-        'Created At': new Date().toISOString(),
+        devisNumber,
+        token,
+        projectId: project.id,
+        artisanId: session.artisanId,
+        dateEmission: body.dateEmission || '',
+        dateValidite: body.dateValidite || '',
+        objet: body.objet,
+        lignesJson: JSON.stringify(body.lines || []),
+        totalHT: Number(body.totalHT) || 0,
+        totalTVA: Number(body.totalTVA) || 0,
+        tvaBreakdownJson: JSON.stringify(body.tvaBreakdown || {}),
+        totalTTC: Number(body.totalTTC) || 0,
+        conditionsPaiement: body.conditionsPaiement || '',
+        delaiExecution: body.delaiExecution || '',
+        mentionsLegales: body.mentionsLegales || '',
+        noteInterne: body.noteInterne || '',
+        statut: 'Brouillon',
+        clientName: body.clientName || '',
+        clientAddress: body.clientAddress || '',
+        clientEmail: body.clientEmail || '',
+        clientPhone: body.clientPhone || '',
+        createdAt: new Date().toISOString(),
       })
     } catch (error) {
       console.error('[DEVIS POST] Création du devis échouée', error instanceof Error ? error.message : String(error))
@@ -183,13 +180,17 @@ export async function POST(request: NextRequest) {
     await updateArtisanConfig(session.artisanId, { devis_compteur: numero })
 
     try {
-      await airtableBase(TABLES.projects).update(body.projetId, {
-        Devis_amount: Number(body.totalTTC) || 0,
-        Status: 'Devis envoyé',
-      })
+      const { error: projectUpdateError } = await supabaseAdmin
+        .from(TABLES.projects)
+        .update({ devis_amount: Number(body.totalTTC) || 0, status: 'Devis envoyé' })
+        .eq('id', project.id)
 
-      await createActivityLog(
-        body.projetId,
+      if (projectUpdateError) {
+        throw projectUpdateError
+      }
+
+      await createActivityLogSupabase(
+        project.id,
         'DEVIS_CREATED',
         `Devis ${devisNumber} généré — ${(Number(body.totalTTC) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC`
       )

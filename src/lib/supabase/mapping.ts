@@ -428,3 +428,146 @@ export function mapSupabaseActivity(row: RawRow, index: number): SupabaseActivit
     createdAt: getString(row, 'created_at', 'Created At'),
   }
 }
+
+export interface SupabaseDevis {
+  id: string
+  devisNumber: string
+  projectId: string
+  artisanId: string
+  dateEmission: string
+  dateValidite: string
+  objet: string
+  lignesJson: string
+  totalHT: number
+  totalTVA: number
+  tvaBreakdownJson: string
+  totalTTC: number
+  conditionsPaiement: string
+  delaiExecution: string
+  mentionsLegales: string
+  noteInterne: string
+  statut: string
+  clientName: string
+  clientAddress: string
+  clientEmail: string
+  clientPhone: string
+  createdAt: string
+  sent: boolean
+  pdfUrl: string | null
+  token: string
+  opensCount: number
+  lastOpenedDate: string | null
+  firstOpenedAt: string | null
+  accepted: boolean
+  acceptedAt: string | null
+  acceptedIp: string | null
+  quoteSentAt: string
+  lastFollowUpAt: string | null
+  followUpCount: number
+}
+
+export function mapSupabaseDevis(row: RawRow): SupabaseDevis {
+  return {
+    id: getString(row, 'id'),
+    devisNumber: getString(row, 'devis_number'),
+    projectId: getString(row, 'project_id'),
+    artisanId: getString(row, 'artisan_id'),
+    dateEmission: getString(row, 'date_emission'),
+    dateValidite: getString(row, 'date_validite'),
+    objet: getString(row, 'objet'),
+    lignesJson: getString(row, 'lignes_json'),
+    totalHT: getNumber(row, 'total_ht'),
+    totalTVA: getNumber(row, 'total_tva'),
+    tvaBreakdownJson: getString(row, 'tva_breakdown_json'),
+    totalTTC: getNumber(row, 'total_ttc'),
+    conditionsPaiement: getString(row, 'conditions_paiement'),
+    delaiExecution: getString(row, 'delai_execution'),
+    mentionsLegales: getString(row, 'mentions_legales'),
+    noteInterne: getString(row, 'note_interne'),
+    statut: getString(row, 'statut') || 'Brouillon',
+    clientName: getString(row, 'client_name'),
+    clientAddress: getString(row, 'client_address'),
+    clientEmail: getString(row, 'client_email'),
+    clientPhone: getString(row, 'client_phone'),
+    createdAt: getString(row, 'created_at'),
+    sent: getBoolean(row, 'sent'),
+    pdfUrl: getValue<string | null>(row, ['pdf_url'], null),
+    token: getString(row, 'token'),
+    opensCount: getNumber(row, 'opens_count'),
+    lastOpenedDate: getValue<string | null>(row, ['last_opened_date'], null),
+    firstOpenedAt: getValue<string | null>(row, ['first_opened_at'], null),
+    accepted: getBoolean(row, 'accepted'),
+    acceptedAt: getValue<string | null>(row, ['accepted_at'], null),
+    acceptedIp: getValue<string | null>(row, ['accepted_ip'], null),
+    quoteSentAt: getString(row, 'quote_sent_at') || getString(row, 'date_emission'),
+    lastFollowUpAt: getValue<string | null>(row, ['last_follow_up_at'], null),
+    followUpCount: getNumber(row, 'follow_up_count'),
+  }
+}
+
+export function toSupabaseDevisInsert(input: Record<string, unknown>) {
+  return {
+    devis_number: String(input.devisNumber || ''),
+    project_id: String(input.projectId || ''),
+    artisan_id: String(input.artisanId || ''),
+    date_emission: input.dateEmission ? String(input.dateEmission) : null,
+    date_validite: input.dateValidite ? String(input.dateValidite) : null,
+    objet: String(input.objet || ''),
+    lignes_json: typeof input.lignesJson === 'string' ? input.lignesJson : JSON.stringify(input.lignes || []),
+    total_ht: Number(input.totalHT) || 0,
+    total_tva: Number(input.totalTVA) || 0,
+    tva_breakdown_json:
+      typeof input.tvaBreakdownJson === 'string' ? input.tvaBreakdownJson : JSON.stringify(input.tvaBreakdown || {}),
+    total_ttc: Number(input.totalTTC) || 0,
+    conditions_paiement: String(input.conditionsPaiement || ''),
+    delai_execution: String(input.delaiExecution || ''),
+    mentions_legales: String(input.mentionsLegales || ''),
+    note_interne: String(input.noteInterne || ''),
+    statut: String(input.statut || 'Brouillon'),
+    client_name: String(input.clientName || ''),
+    client_address: String(input.clientAddress || ''),
+    client_email: String(input.clientEmail || ''),
+    client_phone: String(input.clientPhone || ''),
+    created_at: String(input.createdAt || new Date().toISOString()),
+    sent: Boolean(input.sent) || false,
+    token: String(input.token || ''),
+  }
+}
+
+export function toSupabaseDevisUpdate(input: Record<string, unknown>) {
+  const row: Record<string, unknown> = {}
+
+  if (input.objet !== undefined) row.objet = input.objet
+  if (input.dateEmission !== undefined) row.date_emission = input.dateEmission || null
+  if (input.dateValidite !== undefined) row.date_validite = input.dateValidite || null
+  if (input.lignesJson !== undefined) row.lignes_json = input.lignesJson
+  if (input.totalHT !== undefined) row.total_ht = Number(input.totalHT) || 0
+  if (input.totalTVA !== undefined) row.total_tva = Number(input.totalTVA) || 0
+  if (input.tvaBreakdownJson !== undefined) row.tva_breakdown_json = input.tvaBreakdownJson
+  if (input.totalTTC !== undefined) row.total_ttc = Number(input.totalTTC) || 0
+  if (input.conditionsPaiement !== undefined) row.conditions_paiement = input.conditionsPaiement
+  if (input.delaiExecution !== undefined) row.delai_execution = input.delaiExecution
+  if (input.mentionsLegales !== undefined) row.mentions_legales = input.mentionsLegales
+  if (input.noteInterne !== undefined) row.note_interne = input.noteInterne
+  if (input.statut !== undefined) row.statut = input.statut
+  if (input.clientName !== undefined) row.client_name = input.clientName
+  if (input.clientAddress !== undefined) row.client_address = input.clientAddress
+  if (input.clientEmail !== undefined) row.client_email = input.clientEmail
+  if (input.clientPhone !== undefined) row.client_phone = input.clientPhone
+  if (input.sent !== undefined) row.sent = input.sent
+  if (input.pdfUrl !== undefined) row.pdf_url = input.pdfUrl
+  if (input.token !== undefined) row.token = input.token
+  if (input.opensCount !== undefined) row.opens_count = input.opensCount
+  if (input.lastOpenedDate !== undefined) row.last_opened_date = input.lastOpenedDate
+  if (input.firstOpenedAt !== undefined) row.first_opened_at = input.firstOpenedAt
+  if (input.accepted !== undefined) row.accepted = input.accepted
+  if (input.acceptedAt !== undefined) row.accepted_at = input.acceptedAt
+  if (input.acceptedIp !== undefined) row.accepted_ip = input.acceptedIp
+  if (input.quoteSentAt !== undefined) row.quote_sent_at = input.quoteSentAt
+  if (input.lastFollowUpAt !== undefined) row.last_follow_up_at = input.lastFollowUpAt
+  if (input.followUpCount !== undefined) row.follow_up_count = input.followUpCount
+
+  delete row.artisan_id
+
+  return row
+}
