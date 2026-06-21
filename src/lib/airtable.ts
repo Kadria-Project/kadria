@@ -82,22 +82,58 @@ export async function getArtisanByEmail(email: string) {
   }
 }
 
-export async function getEvents(artisanId: string) {
-  const safeArtisanId = escapeFormulaValue(artisanId)
-  const url = airtableApiUrl('Events', `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}&sort[0][field]=Date&sort[0][direction]=asc`)
+export interface EventRecord {
+  id: string
+  title: string
+  date: string
+  type: string
+  projectId: string
+  artisanId: string
+  status: string
+  notes: string
+}
 
-  const res = await airtableFetch(url)
-  const data = await res.json()
-  return (data.records || []).map((r: any) => ({
-    id: r.id,
-    title: r.fields.Title as string,
-    date: r.fields.Date as string,
-    type: r.fields.Type as string,
-    projectId: r.fields.ProjectId as string,
-    artisanId: r.fields['Artisan ID'] as string,
-    status: r.fields.Status as string,
-    notes: r.fields.Notes as string,
-  }))
+function mapEventRow(row: Record<string, unknown>): EventRecord {
+  return {
+    id: String(row.id || ''),
+    title: String(row.title || ''),
+    date: String(row.event_date || ''),
+    type: String(row.type || ''),
+    projectId: String(row.project_id || ''),
+    artisanId: String(row.artisan_id || ''),
+    status: String(row.status || ''),
+    notes: String(row.notes || ''),
+  }
+}
+
+export async function getEvents(artisanId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('Events')
+    .select('*')
+    .eq('artisan_id', artisanId)
+    .order('event_date', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return (data || []).map(mapEventRow)
+}
+
+export async function getEventById(id: string) {
+  const { data, error } = await supabaseAdmin
+    .from('Events')
+    .select('*')
+    .eq('id', id)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) return null
+  return mapEventRow(data)
 }
 
 export async function createEvent(data: {
@@ -108,36 +144,58 @@ export async function createEvent(data: {
   artisanId: string
   notes?: string
 }) {
-  const res = await airtableFetch(airtableApiUrl('Events'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fields: {
-        Title: data.title,
-        Date: data.date,
-        Type: data.type,
-        ProjectId: data.projectId || '',
-        'Artisan ID': data.artisanId,
-        Status: 'Prévu',
-        Notes: data.notes || '',
-      },
-    }),
-  })
-  return res.json()
+  const { data: row, error } = await supabaseAdmin
+    .from('Events')
+    .insert({
+      title: data.title,
+      event_date: data.date,
+      type: data.type,
+      project_id: data.projectId || null,
+      artisan_id: data.artisanId,
+      status: 'Prévu',
+      notes: data.notes || '',
+    })
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return mapEventRow(row)
 }
 
 export async function updateEvent(id: string, fields: Record<string, unknown>) {
-  const res = await airtableFetch(airtableApiUrl(`Events/${id}`), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  })
-  return res.json()
+  const row: Record<string, unknown> = {}
+  if (fields.title !== undefined || fields.Title !== undefined) row.title = fields.title ?? fields.Title
+  if (fields.date !== undefined || fields.Date !== undefined) row.event_date = fields.date ?? fields.Date
+  if (fields.type !== undefined || fields.Type !== undefined) row.type = fields.type ?? fields.Type
+  if (fields.projectId !== undefined || fields.ProjectId !== undefined) row.project_id = fields.projectId ?? fields.ProjectId
+  if (fields.status !== undefined || fields.Status !== undefined) row.status = fields.status ?? fields.Status
+  if (fields.notes !== undefined || fields.Notes !== undefined) row.notes = fields.notes ?? fields.Notes
+
+  const { data, error } = await supabaseAdmin
+    .from('Events')
+    .update(row)
+    .eq('id', id)
+    .select()
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data ? mapEventRow(data) : null
 }
 
 export async function deleteEvent(id: string) {
-  const res = await airtableFetch(airtableApiUrl(`Events/${id}`), { method: 'DELETE' })
-  return res.json()
+  const { error } = await supabaseAdmin.from('Events').delete().eq('id', id)
+
+  if (error) {
+    throw error
+  }
+
+  return { success: true }
 }
 
 export async function getUserByArtisanIdentifier(artisanId: string) {
