@@ -402,10 +402,7 @@ export async function getDevisByToken(token: string): Promise<DevisRecord | null
   return mapSupabaseDevis(data)
 }
 
-export async function getDevisByProjet(projectIdOrRecordId: string): Promise<DevisRecord[]> {
-  const resolved = await resolveProjectId(projectIdOrRecordId)
-  const projectId = resolved?.id || projectIdOrRecordId
-
+export async function getDevisByProjet(projectId: string): Promise<DevisRecord[]> {
   const { data, error } = await supabaseAdmin
     .from(TABLES.devis)
     .select('*')
