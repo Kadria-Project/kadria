@@ -152,7 +152,7 @@ export async function PATCH(
 
     if (input.callbackDate !== undefined) {
       await createActivityLog(
-        id,
+        targetId,
         'CALLBACK_DATE_UPDATED',
         input.callbackDate
           ? `Date de rappel définie : ${input.callbackDate}`
@@ -164,7 +164,7 @@ export async function PATCH(
       try {
         const existingEvents = await getEvents(session.artisanId);
         const existingRelance = existingEvents.find(
-          (e: { projectId: string; type: string }) => e.projectId === id && e.type === 'Relance',
+          (e: { projectId: string; type: string }) => e.projectId === targetId && e.type === 'Relance',
         );
 
         const clientName = record.client_name || 'Prospect';
@@ -179,7 +179,7 @@ export async function PATCH(
             title: `Relance — ${clientName}`,
             date: input.callbackDate,
             type: 'Relance',
-            projectId: id,
+            projectId: targetId,
             artisanId: session.artisanId,
             notes: 'Relance programmée depuis le dossier projet',
           });
@@ -191,7 +191,7 @@ export async function PATCH(
 
     if (input.status) {
       await createActivityLog(
-        id,
+        targetId,
         'STATUS_UPDATED',
         `Statut modifié : ${input.status}`,
       );
@@ -199,7 +199,7 @@ export async function PATCH(
 
     if (input.internalNotes !== undefined) {
       await createActivityLog(
-        id,
+        targetId,
         'NOTE_UPDATED',
         'Note interne mise à jour',
       );

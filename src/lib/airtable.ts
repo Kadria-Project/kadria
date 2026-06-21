@@ -25,9 +25,9 @@ export const airtableBase = ((...args: Parameters<ReturnType<typeof getAirtableB
   getAirtableBaseClient()(...args)) as ReturnType<typeof getAirtableBaseClient>;
 
 export const TABLES = {
-  projects: process.env.AIRTABLE_PROJECTS_TABLE || 'Projects',
-  users: process.env.AIRTABLE_USERS_TABLE || 'Users',
-  artisanConfig: process.env.AIRTABLE_ARTISAN_CONFIG_TABLE || 'Artisan_config',
+  projects: 'Projects',
+  users: 'Users',
+  artisanConfig: 'Artisan_config',
   activity: 'Activity',
   devis: process.env.AIRTABLE_DEVIS_TABLE || 'Devis',
   emailLogs: process.env.AIRTABLE_EMAIL_LOGS_TABLE || 'Email_logs',

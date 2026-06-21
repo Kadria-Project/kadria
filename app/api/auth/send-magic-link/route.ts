@@ -16,26 +16,27 @@ export async function POST(request: Request) {
   try {
     const resend = getResendClient()
     const { email } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
 
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json(
         { success: false, error: 'Email requis' },
         { status: 400 },
       )
     }
 
-    const artisan = await getArtisanByEmail(email)
+    const artisan = await getArtisanByEmail(normalizedEmail)
     if (!artisan || !artisan.active) {
       return NextResponse.json({ success: true })
     }
 
-    const magicToken = await createMagicToken(email)
+    const magicToken = await createMagicToken(normalizedEmail)
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
     const magicUrl = `${baseUrl}/api/auth/verify?token=${magicToken}`
 
     const { error } = await resend.emails.send({
       from: 'Kadria <contact@kadria.fr>',
-      to: email,
+      to: normalizedEmail,
       subject: 'Votre lien de connexion Kadria',
       html: `
         <div style="font-family:system-ui;max-width:500px;margin:0 auto;padding:40px 20px;background:#09090b;color:white;">

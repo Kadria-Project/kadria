@@ -22,6 +22,7 @@ function buildArtisanId() {
 
 export async function POST(request: NextRequest) {
   let createdUserId: string | null = null
+  let createdConfigId: string | null = null
 
   try {
     const resend = getResendClient()
@@ -117,6 +118,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    createdConfigId = configData.id
+
     const magicToken = await createMagicToken(normalizedEmail)
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
     const magicUrl = `${baseUrl}/api/auth/verify?token=${magicToken}`
@@ -172,6 +175,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[REGISTER] Error:', error instanceof Error ? error.message : String(error))
+
+    if (createdConfigId) {
+      await supabaseAdmin
+        .from(TABLES.artisanConfig)
+        .delete()
+        .eq('id', createdConfigId)
+    }
 
     if (createdUserId) {
       await supabaseAdmin
