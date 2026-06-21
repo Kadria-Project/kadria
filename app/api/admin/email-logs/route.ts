@@ -22,7 +22,7 @@ export async function GET() {
 
     const logs = (data || []).map((record) => ({
       id: String(record.id || ''),
-      to: String(record.to || ''),
+      to: String(record.to_email || ''),
       subject: String(record.subject || ''),
       sent_at: String(record.sent_at || ''),
       status: String(record.status || ''),

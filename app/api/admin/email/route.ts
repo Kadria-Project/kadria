@@ -21,7 +21,7 @@ async function logEmail(params: {
   adminEmail: string
 }) {
   const { error } = await supabaseAdmin.from(TABLES.emailLogs).insert({
-    to: params.to,
+    to_email: params.to,
     subject: params.subject,
     body: params.body,
     sent_at: new Date().toISOString(),
