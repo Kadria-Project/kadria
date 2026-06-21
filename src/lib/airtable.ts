@@ -158,36 +158,17 @@ export async function getUserByArtisanIdentifier(artisanId: string) {
 }
 
 export async function getArtisanConfig(artisanId: string) {
-  let data: Record<string, unknown> | null = null
+  if (!artisanId) return null
 
-  if (artisanId) {
-    const byTenant = await supabaseAdmin
-      .from(TABLES.artisanConfig)
-      .select('*')
-      .eq('artisan_id', artisanId)
-      .limit(1)
-      .maybeSingle()
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.artisanConfig)
+    .select('*')
+    .eq('artisan_id', artisanId)
+    .limit(1)
+    .maybeSingle()
 
-    if (byTenant.error) {
-      throw byTenant.error
-    }
-
-    data = byTenant.data
-  }
-
-  if (!data && artisanId) {
-    const byId = await supabaseAdmin
-      .from(TABLES.artisanConfig)
-      .select('*')
-      .eq('id', artisanId)
-      .limit(1)
-      .maybeSingle()
-
-    if (byId.error) {
-      throw byId.error
-    }
-
-    data = byId.data
+  if (error) {
+    throw error
   }
 
   if (!data) return null
@@ -196,24 +177,56 @@ export async function getArtisanConfig(artisanId: string) {
 }
 
 export async function updateArtisanConfig(
-  recordId: string,
+  artisanId: string,
   fields: Record<string, unknown>
 ) {
-  console.info('[ARTISAN_CONFIG] Updating record:', recordId, 'fields:', Object.keys(fields))
+  if (!artisanId) {
+    throw new Error('artisan_id requis pour mettre à jour Artisan_config')
+  }
+
+  console.info('[ARTISAN_CONFIG] Updating artisan_id:', artisanId, 'fields:', Object.keys(fields))
+
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from(TABLES.artisanConfig)
+    .select('artisan_id')
+    .eq('artisan_id', artisanId)
+    .limit(1)
+    .maybeSingle()
+
+  if (selectError) {
+    console.error('[ARTISAN_CONFIG] Lookup FULL error:', JSON.stringify(selectError, null, 2))
+    throw selectError
+  }
+
+  if (existing) {
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.artisanConfig)
+      .update(fields)
+      .eq('artisan_id', artisanId)
+      .select()
+      .maybeSingle()
+
+    if (error) {
+      console.error('[ARTISAN_CONFIG] Update FULL error:', JSON.stringify(error, null, 2))
+      throw error
+    }
+
+    console.info('[ARTISAN_CONFIG] Update status: success')
+    return data
+  }
 
   const { data, error } = await supabaseAdmin
     .from(TABLES.artisanConfig)
-    .update(fields)
-    .eq('id', recordId)
+    .insert({ artisan_id: artisanId, ...fields })
     .select()
     .maybeSingle()
 
   if (error) {
-    console.error('[ARTISAN_CONFIG] Update FULL error:', JSON.stringify(error, null, 2))
+    console.error('[ARTISAN_CONFIG] Insert FULL error:', JSON.stringify(error, null, 2))
     throw error
   }
 
-  console.info('[ARTISAN_CONFIG] Update status: success')
+  console.info('[ARTISAN_CONFIG] Insert status: success')
   return data
 }
 

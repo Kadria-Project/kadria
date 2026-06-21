@@ -48,15 +48,6 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const config = await getArtisanConfig(session.artisanId)
-
-    if (!config) {
-      return NextResponse.json(
-        { success: false, error: 'Configuration non trouvée pour cet Artisan ID' },
-        { status: 404 }
-      )
-    }
-
     // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config
     const fields: Record<string, unknown> = {}
     if (body.companyName  !== undefined) fields['company_name']     = body.companyName
@@ -99,7 +90,7 @@ export async function PATCH(request: NextRequest) {
     console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
     console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
 
-    await updateArtisanConfig(config.id, fields)
+    await updateArtisanConfig(session.artisanId, fields)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CONFIG PATCH]', error)

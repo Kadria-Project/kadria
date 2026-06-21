@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await updateArtisanConfig(config.id, { 'Devis Compteur': numero })
+    await updateArtisanConfig(session.artisanId, { 'Devis Compteur': numero })
 
     try {
       await airtableBase(TABLES.projects).update(body.projetId, {
