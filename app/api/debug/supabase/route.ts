@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
-import { QUOTA_TABLES } from '@/src/lib/usage/quotas'
+import { QUOTA_SCHEMA_SUPPORT, QUOTA_TABLES } from '@/src/lib/usage/quotas'
 
 type DebugCheckKey = keyof typeof QUOTA_TABLES
 
@@ -63,9 +63,8 @@ const TABLE_SPECS: Record<
     candidates: QUOTA_TABLES.planLimits,
     expectedColumns: [
       'plan',
-      'projects_unlimited',
-      'max_projects_per_month',
-      'projects_limit',
+      ...QUOTA_SCHEMA_SUPPORT.planLimits.unlimitedColumns,
+      ...QUOTA_SCHEMA_SUPPORT.planLimits.projectLimitColumns,
       'vapi_calls_limit',
       'vapi_calls_unlimited',
       'vapi_minutes_limit',
@@ -76,20 +75,16 @@ const TABLE_SPECS: Record<
     label: 'UsageMonthly',
     candidates: QUOTA_TABLES.usageMonthly,
     expectedColumns: [
+      'usage_id',
       'id',
-      'artisan_id',
-      'plan',
-      'period_month',
-      'projects_count',
-      'projects_created',
-      'vapi_calls_count',
-      'vapi_calls',
-      'vapi_minutes',
-      'updated_at',
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.baseColumns,
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
     ],
     alternativeColumns: {
-      projects_count: ['projects_created'],
-      vapi_calls_count: ['vapi_calls'],
+      id: ['usage_id'],
+      projects_created: ['projects_count'],
+      vapi_calls: ['vapi_calls_count'],
     },
   },
   usageEvents: {
@@ -97,19 +92,16 @@ const TABLE_SPECS: Record<
     candidates: QUOTA_TABLES.usageEvents,
     expectedColumns: [
       'artisan_id',
-      'plan',
       'period_month',
       'event_type',
       'quantity',
       'dedup_key',
-      'metadata',
       'raw_payload',
+      'metadata',
       'created_at',
       'status',
     ],
-    alternativeColumns: {
-      duration_seconds: [],
-    },
+    alternativeColumns: {},
   },
   vapiCalls: {
     label: 'VapiCalls',
@@ -119,11 +111,18 @@ const TABLE_SPECS: Record<
       'artisan_id',
       'project_id',
       'duration_seconds',
+      'duration_minutes',
+      'estimated_cost',
       'cost',
+      'call_status',
       'status',
       'started_at',
       'ended_at',
     ],
+    alternativeColumns: {
+      estimated_cost: ['cost'],
+      call_status: ['status'],
+    },
   },
 }
 
@@ -316,12 +315,13 @@ function buildQuotaReadiness(tables: Record<string, TableDiagnostic>) {
     ['Projects.created_at', hasConfirmedColumn(projects, 'created_at')],
     ['UsageMonthly.artisan_id', hasConfirmedColumn(usageMonthly, 'artisan_id')],
     ['UsageMonthly.period_month', hasConfirmedColumn(usageMonthly, 'period_month')],
-    ['UsageMonthly.projects_count|projects_created', hasConfirmedColumn(usageMonthly, 'projects_count', ['projects_created'])],
+    ['UsageMonthly.projects_created|projects_count', hasConfirmedColumn(usageMonthly, 'projects_created', ['projects_count'])],
     ['UsageEvents.dedup_key', hasConfirmedColumn(usageEvents, 'dedup_key')],
+    ['UsageEvents.raw_payload|metadata', hasConfirmedColumn(usageEvents, 'raw_payload', ['metadata'])],
   ] as const
 
   const vapiChecks = [
-    ['UsageMonthly.vapi_calls_count|vapi_calls', hasConfirmedColumn(usageMonthly, 'vapi_calls_count', ['vapi_calls'])],
+    ['UsageMonthly.vapi_calls|vapi_calls_count', hasConfirmedColumn(usageMonthly, 'vapi_calls', ['vapi_calls_count'])],
     ['UsageMonthly.vapi_minutes', hasConfirmedColumn(usageMonthly, 'vapi_minutes')],
     ['UsageEvents.event_type', hasConfirmedColumn(usageEvents, 'event_type')],
     ['UsageEvents.quantity', hasConfirmedColumn(usageEvents, 'quantity')],
@@ -329,6 +329,9 @@ function buildQuotaReadiness(tables: Record<string, TableDiagnostic>) {
     ['VapiCalls.call_id', hasConfirmedColumn(vapiCalls, 'call_id')],
     ['VapiCalls.artisan_id', hasConfirmedColumn(vapiCalls, 'artisan_id')],
     ['VapiCalls.duration_seconds', hasConfirmedColumn(vapiCalls, 'duration_seconds')],
+    ['VapiCalls.duration_minutes', hasConfirmedColumn(vapiCalls, 'duration_minutes')],
+    ['VapiCalls.call_status|status', hasConfirmedColumn(vapiCalls, 'call_status', ['status'])],
+    ['VapiCalls.estimated_cost|cost', hasConfirmedColumn(vapiCalls, 'estimated_cost', ['cost'])],
     ['VapiCalls.started_at', hasConfirmedColumn(vapiCalls, 'started_at')],
   ] as const
 

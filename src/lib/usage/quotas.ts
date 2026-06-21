@@ -11,6 +11,7 @@ const TABLE_CANDIDATES = {
 } as const
 
 const tableResolutionCache = new Map<string, string | null>()
+const tableColumnsCache = new Map<string, string[]>()
 
 type JsonObject = Record<string, unknown>
 type PlanKey = 'essentiel' | 'performance' | 'agence'
@@ -36,7 +37,7 @@ export interface ProjectUsageSnapshot {
   plan: PlanKey
   periodMonth: string
   used: number
-  source: 'usage_monthly' | 'projects_count'
+  source: 'usage_monthly' | 'projects_table_count'
   usageMonthlyTable?: string | null
   projectTable?: string | null
 }
@@ -51,7 +52,7 @@ export interface ProjectQuotaCheck {
   used: number
   remaining: number | null
   source: 'plan_limits' | 'fallback'
-  usageSource: 'usage_monthly' | 'projects_count'
+  usageSource: 'usage_monthly' | 'projects_table_count'
   error?: string
 }
 
@@ -63,13 +64,50 @@ export interface ProjectCreatedUsageParams {
 
 export interface UsageEventRow {
   artisan_id: string
-  plan: string
   period_month: string
   event_type: string
   quantity: number
   dedup_key: string
+  plan?: string
   metadata?: JsonObject
+  raw_payload?: JsonObject
+  created_at?: string
+  status?: string
 }
+
+export const QUOTA_SCHEMA_SUPPORT = {
+  planLimits: {
+    projectLimitColumns: ['projects_limit', 'max_projects_per_month'],
+    unlimitedColumns: ['projects_unlimited'],
+  },
+  usageMonthly: {
+    identityColumns: ['usage_id', 'id'],
+    projectCountColumns: ['projects_created', 'projects_count'],
+    vapiCallColumns: ['vapi_calls', 'vapi_calls_count'],
+    baseColumns: [
+      'artisan_id',
+      'period_month',
+      'plan',
+      'projects_limit',
+      'projects_unlimited',
+      'vapi_calls_limit',
+      'vapi_minutes_limit',
+      'vapi_minutes',
+      'updated_at',
+      'period_start',
+      'period_end',
+    ],
+  },
+  usageEvents: {
+    payloadColumns: ['raw_payload', 'metadata'],
+    optionalColumns: ['plan', 'created_at', 'status'],
+  },
+  vapiCalls: {
+    statusColumns: ['call_status', 'status'],
+    costColumns: ['estimated_cost', 'cost'],
+    durationColumns: ['duration_seconds', 'duration_minutes'],
+  },
+} as const
 
 function getDefaultProjectLimit(plan: PlanKey) {
   if (plan === 'agence') {
@@ -121,6 +159,24 @@ export function getCurrentPeriodMonth(date = new Date()): string {
   return `${year}-${month}`
 }
 
+function buildStableUsageId(artisanId: string, periodMonth: string) {
+  return `${artisanId}:${periodMonth}`
+}
+
+async function queryTable(table: string, columns: string) {
+  const supabase = getSupabaseAdmin()
+
+  return supabase
+    .from(table)
+    .select(columns)
+    .limit(1)
+}
+
+async function confirmColumn(table: string, column: string) {
+  const { error } = await queryTable(table, column)
+  return !error
+}
+
 async function resolveAccessibleTable(key: keyof typeof TABLE_CANDIDATES) {
   if (tableResolutionCache.has(key)) {
     return tableResolutionCache.get(key) || null
@@ -141,6 +197,115 @@ async function resolveAccessibleTable(key: keyof typeof TABLE_CANDIDATES) {
 
   tableResolutionCache.set(key, null)
   return null
+}
+
+async function resolveTableColumns(
+  key: keyof typeof TABLE_CANDIDATES,
+  probeColumns: readonly string[] = [],
+): Promise<string[]> {
+  const cacheKey = `${key}:${probeColumns.join(',')}`
+  if (tableColumnsCache.has(cacheKey)) {
+    return tableColumnsCache.get(cacheKey) || []
+  }
+
+  const tableName = await resolveAccessibleTable(key)
+  if (!tableName) {
+    tableColumnsCache.set(cacheKey, [])
+    return []
+  }
+
+  const { data, error } = await queryTable(tableName, '*')
+  if (!error && Array.isArray(data) && data[0] && typeof data[0] === 'object') {
+    const columns = Object.keys(data[0]).sort()
+    tableColumnsCache.set(cacheKey, columns)
+    return columns
+  }
+
+  const confirmedColumns: string[] = []
+  for (const column of probeColumns) {
+    if (await confirmColumn(tableName, column)) {
+      confirmedColumns.push(column)
+    }
+  }
+
+  tableColumnsCache.set(cacheKey, confirmedColumns)
+  return confirmedColumns
+}
+
+function pickAvailableColumn(availableColumns: string[], candidates: readonly string[]) {
+  return candidates.find((column) => availableColumns.includes(column)) || null
+}
+
+function buildMonthlyUsagePayload(params: {
+  availableColumns: string[]
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  projectsCount: number
+  limit: number | null
+  unlimited: boolean
+}) {
+  const payload: Record<string, unknown> = {
+    artisan_id: params.artisanId,
+    period_month: params.periodMonth,
+  }
+
+  const projectCountColumn = pickAvailableColumn(
+    params.availableColumns,
+    QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+  )
+  const vapiCallsColumn = pickAvailableColumn(
+    params.availableColumns,
+    QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+  )
+
+  if (params.availableColumns.includes('usage_id')) {
+    payload.usage_id = buildStableUsageId(params.artisanId, params.periodMonth)
+  }
+
+  if (params.availableColumns.includes('plan')) {
+    payload.plan = params.plan
+  }
+
+  if (params.availableColumns.includes('updated_at')) {
+    payload.updated_at = new Date().toISOString()
+  }
+
+  if (projectCountColumn) {
+    payload[projectCountColumn] = params.projectsCount
+  }
+
+  if (vapiCallsColumn) {
+    payload[vapiCallsColumn] = 0
+  }
+
+  if (params.availableColumns.includes('vapi_minutes')) {
+    payload.vapi_minutes = 0
+  }
+
+  if (params.availableColumns.includes('projects_limit')) {
+    payload.projects_limit = params.limit
+  }
+
+  if (params.availableColumns.includes('projects_unlimited')) {
+    payload.projects_unlimited = params.unlimited
+  }
+
+  if (params.availableColumns.includes('period_start') || params.availableColumns.includes('period_end')) {
+    const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds(
+      new Date(`${params.periodMonth}-01T00:00:00.000Z`),
+    )
+
+    if (params.availableColumns.includes('period_start')) {
+      payload.period_start = monthStartIso
+    }
+
+    if (params.availableColumns.includes('period_end')) {
+      payload.period_end = nextMonthStartIso
+    }
+  }
+
+  return payload
 }
 
 async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey>> {
@@ -180,6 +345,10 @@ async function upsertMonthlyUsageRow(
   plan: PlanKey,
   periodMonth: string,
   projectsCount: number,
+  options?: {
+    limit: number | null
+    unlimited: boolean
+  },
 ) {
   const supabase = getSupabaseAdmin()
   const usageMonthlyTable = await resolveAccessibleTable('usageMonthly')
@@ -188,9 +357,40 @@ async function upsertMonthlyUsageRow(
     return { success: false as const, error: 'Table UsageMonthly introuvable' }
   }
 
+  const usageMonthlyColumns = await resolveTableColumns('usageMonthly', [
+    ...QUOTA_SCHEMA_SUPPORT.usageMonthly.identityColumns,
+    ...QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+    ...QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+    ...QUOTA_SCHEMA_SUPPORT.usageMonthly.baseColumns,
+  ])
+  const identityColumn = pickAvailableColumn(
+    usageMonthlyColumns,
+    QUOTA_SCHEMA_SUPPORT.usageMonthly.identityColumns,
+  )
+  const projectCountColumn = pickAvailableColumn(
+    usageMonthlyColumns,
+    QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+  )
+  const limit = options?.limit ?? getDefaultProjectLimit(plan)
+  const unlimited = options?.unlimited ?? plan === 'agence'
+
+  if (!projectCountColumn) {
+    return { success: false as const, error: 'Aucune colonne compteur projet compatible dans UsageMonthly' }
+  }
+
+  const payload = buildMonthlyUsagePayload({
+    availableColumns: usageMonthlyColumns,
+    artisanId,
+    plan,
+    periodMonth,
+    projectsCount,
+    limit,
+    unlimited,
+  })
+
   const { data: existing, error: existingError } = await supabase
     .from(usageMonthlyTable)
-    .select('id, projects_count')
+    .select('*')
     .eq('artisan_id', artisanId)
     .eq('period_month', periodMonth)
     .limit(1)
@@ -200,15 +400,21 @@ async function upsertMonthlyUsageRow(
     return { success: false as const, error: existingError.message }
   }
 
-  if (existing?.id) {
-    const { error: updateError } = await supabase
+  if (existing) {
+    let updateQuery = supabase
       .from(usageMonthlyTable)
-      .update({
-        plan,
-        projects_count: projectsCount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
+      .update(payload)
+      .eq('artisan_id', artisanId)
+      .eq('period_month', periodMonth)
+
+    if (identityColumn && existing[identityColumn]) {
+      updateQuery = supabase
+        .from(usageMonthlyTable)
+        .update(payload)
+        .eq(identityColumn, existing[identityColumn])
+    }
+
+    const { error: updateError } = await updateQuery
 
     if (updateError) {
       return { success: false as const, error: updateError.message }
@@ -219,13 +425,7 @@ async function upsertMonthlyUsageRow(
 
   const { error: insertError } = await supabase
     .from(usageMonthlyTable)
-    .insert({
-      artisan_id: artisanId,
-      plan,
-      period_month: periodMonth,
-      projects_count: projectsCount,
-      vapi_calls_count: 0,
-    })
+    .insert(payload)
 
   if (insertError) {
     return { success: false as const, error: insertError.message }
@@ -303,8 +503,10 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
           (plan === 'agence' && matchingRow.projects_unlimited !== false)
         const limit = unlimited
           ? null
-          : isFiniteNumber(matchingRow.max_projects_per_month)
-            ? Number(matchingRow.max_projects_per_month)
+          : isFiniteNumber(matchingRow.projects_limit)
+            ? Number(matchingRow.projects_limit)
+            : isFiniteNumber(matchingRow.max_projects_per_month)
+              ? Number(matchingRow.max_projects_per_month)
             : getDefaultProjectLimit(plan)
 
         return {
@@ -358,25 +560,39 @@ export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaRe
     const usageMonthlyTable = await resolveAccessibleTable('usageMonthly')
 
     if (usageMonthlyTable) {
-      const { data, error } = await supabase
-        .from(usageMonthlyTable)
-        .select('projects_count')
-        .eq('artisan_id', artisanId)
-        .eq('period_month', periodMonth)
-        .limit(1)
-        .maybeSingle()
+      const usageMonthlyColumns = await resolveTableColumns('usageMonthly', [
+        ...QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+        ...QUOTA_SCHEMA_SUPPORT.usageMonthly.baseColumns,
+      ])
+      const projectCountColumn = pickAvailableColumn(
+        usageMonthlyColumns,
+        QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+      )
 
-      if (!error && data && isFiniteNumber(data.projects_count)) {
-        return {
-          success: true,
-          data: {
-            artisanId,
-            plan,
-            periodMonth,
-            used: Number(data.projects_count),
-            source: 'usage_monthly',
-            usageMonthlyTable,
-          },
+      if (projectCountColumn) {
+        const { data, error } = await supabase
+          .from(usageMonthlyTable)
+          .select(projectCountColumn)
+          .eq('artisan_id', artisanId)
+          .eq('period_month', periodMonth)
+          .limit(1)
+          .maybeSingle()
+
+        const usageRow = data as Record<string, unknown> | null
+        const rawCount = usageRow?.[projectCountColumn]
+
+        if (!error && data && isFiniteNumber(rawCount)) {
+          return {
+            success: true,
+            data: {
+              artisanId,
+              plan,
+              periodMonth,
+              used: Number(rawCount),
+              source: 'usage_monthly',
+              usageMonthlyTable,
+            },
+          }
         }
       }
     }
@@ -394,6 +610,10 @@ export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaRe
       plan,
       periodMonth,
       projectCountResult.count,
+      {
+        limit: quotaResult.data.limit,
+        unlimited: quotaResult.data.unlimited,
+      },
     )
 
     if (!syncResult.success) {
@@ -407,7 +627,7 @@ export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaRe
         plan,
         periodMonth,
         used: projectCountResult.count,
-        source: 'projects_count',
+        source: 'projects_table_count',
         usageMonthlyTable: syncResult.success ? syncResult.tableName : usageMonthlyTable,
         projectTable: projectCountResult.tableName,
       },
@@ -433,7 +653,7 @@ export async function canCreateProject(artisanId: string): Promise<ProjectQuotaC
       used: 0,
       remaining: null,
       source: 'fallback',
-      usageSource: 'projects_count',
+      usageSource: 'projects_table_count',
       error: quotaResult.error || 'Impossible de charger le quota projet',
     }
   }
@@ -450,7 +670,7 @@ export async function canCreateProject(artisanId: string): Promise<ProjectQuotaC
       used: 0,
       remaining: null,
       source: quotaResult.data.source,
-      usageSource: 'projects_count',
+      usageSource: 'projects_table_count',
       error: usageResult.error || 'Impossible de charger l’usage projet',
     }
   }
@@ -499,9 +719,51 @@ export async function recordUsageEvent(params: UsageEventRow): Promise<QuotaResu
       }
     }
 
+    const usageEventsColumns = await resolveTableColumns('usageEvents', [
+      'artisan_id',
+      'plan',
+      'period_month',
+      'event_type',
+      'quantity',
+      'dedup_key',
+      'metadata',
+      'raw_payload',
+      'created_at',
+      'status',
+    ])
+    const payloadColumn = pickAvailableColumn(
+      usageEventsColumns,
+      QUOTA_SCHEMA_SUPPORT.usageEvents.payloadColumns,
+    )
+    const insertPayload: Record<string, unknown> = {
+      artisan_id: params.artisan_id,
+      period_month: params.period_month,
+      event_type: params.event_type,
+      quantity: params.quantity,
+      dedup_key: params.dedup_key,
+    }
+
+    if (usageEventsColumns.includes('plan') && params.plan) {
+      insertPayload.plan = params.plan
+    }
+
+    if (usageEventsColumns.includes('created_at')) {
+      insertPayload.created_at = params.created_at || new Date().toISOString()
+    }
+
+    if (usageEventsColumns.includes('status')) {
+      insertPayload.status = params.status || 'recorded'
+    }
+
+    if (payloadColumn === 'raw_payload') {
+      insertPayload.raw_payload = params.raw_payload || params.metadata || null
+    } else if (payloadColumn === 'metadata') {
+      insertPayload.metadata = params.metadata || params.raw_payload || null
+    }
+
     const { error } = await supabase
       .from(usageEventsTable)
-      .insert(params)
+      .insert(insertPayload)
 
     if (error) {
       return { success: false, error: error.message }
@@ -521,6 +783,8 @@ export async function incrementMonthlyUsage(params: {
   plan: PlanKey
   periodMonth?: string
   projectsCount: number
+  limit?: number | null
+  unlimited?: boolean
 }): Promise<QuotaResult<{ periodMonth: string; projectsCount: number }>> {
   const periodMonth = params.periodMonth || getCurrentPeriodMonth()
   const syncResult = await upsertMonthlyUsageRow(
@@ -528,6 +792,10 @@ export async function incrementMonthlyUsage(params: {
     params.plan,
     periodMonth,
     params.projectsCount,
+    {
+      limit: params.limit ?? getDefaultProjectLimit(params.plan),
+      unlimited: params.unlimited ?? params.plan === 'agence',
+    },
   )
 
   if (!syncResult.success) {
@@ -572,10 +840,14 @@ export async function recordProjectCreatedUsage(
     event_type: 'project_created',
     quantity: 1,
     dedup_key: `project_created:${params.projectId}`,
-    metadata: {
+    raw_payload: {
       project_id: params.projectId,
       source: params.source || 'web',
+      artisan_id: params.artisanId,
+      period_month: quotaResult.data.periodMonth,
     },
+    created_at: new Date().toISOString(),
+    status: 'recorded',
   })
 
   if (!eventResult.success) {
@@ -590,6 +862,8 @@ export async function recordProjectCreatedUsage(
     plan: quotaResult.data.plan,
     periodMonth: quotaResult.data.periodMonth,
     projectsCount: countResult.count,
+    limit: quotaResult.data.limit,
+    unlimited: quotaResult.data.unlimited,
   })
 }
 
