@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const projetId = searchParams.get('projet_id') || searchParams.get('projetId')
+    const projetId =
+      searchParams.get('projectId') ||
+      searchParams.get('projetId') ||
+      searchParams.get('projet_id')
 
     if (!projetId) {
       return NextResponse.json(
