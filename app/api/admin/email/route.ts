@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { airtableBase, TABLES } from '@/src/lib/airtable'
+import { TABLES } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY
@@ -19,22 +20,18 @@ async function logEmail(params: {
   resendId: string
   adminEmail: string
 }) {
-  try {
-    await airtableBase(TABLES.emailLogs).create([
-      {
-        fields: {
-          'To': params.to,
-          'Subject': params.subject,
-          'Body': params.body,
-          'Sent_at': new Date().toISOString(),
-          'Status': params.status,
-          'Resend_id': params.resendId,
-          'Admin_email': params.adminEmail,
-        },
-      },
-    ])
-  } catch (err) {
-    console.error('[ADMIN EMAIL] Failed to log email:', err)
+  const { error } = await supabaseAdmin.from(TABLES.emailLogs).insert({
+    to: params.to,
+    subject: params.subject,
+    body: params.body,
+    sent_at: new Date().toISOString(),
+    status: params.status,
+    resend_id: params.resendId,
+    admin_email: params.adminEmail,
+  })
+
+  if (error) {
+    console.error('[ADMIN EMAIL] Failed to log email:', JSON.stringify(error, null, 2))
   }
 }
 

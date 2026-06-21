@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { airtableBase, TABLES } from '@/src/lib/airtable'
+import { TABLES } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 export async function GET() {
   const session = await requireAdminSession()
@@ -9,26 +10,29 @@ export async function GET() {
   }
 
   try {
-    const records = await airtableBase(TABLES.emailLogs)
-      .select({
-        maxRecords: 20,
-        sort: [{ field: 'Sent_at', direction: 'desc' }],
-      })
-      .firstPage()
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.emailLogs)
+      .select('*')
+      .order('sent_at', { ascending: false })
+      .limit(20)
 
-    const logs = records.map((record) => ({
-      id: record.id,
-      to: record.fields['To'] as string || '',
-      subject: record.fields['Subject'] as string || '',
-      sent_at: record.fields['Sent_at'] as string || '',
-      status: record.fields['Status'] as string || '',
-      resend_id: record.fields['Resend_id'] as string || '',
-      admin_email: record.fields['Admin_email'] as string || '',
+    if (error) {
+      throw error
+    }
+
+    const logs = (data || []).map((record) => ({
+      id: String(record.id || ''),
+      to: String(record.to || ''),
+      subject: String(record.subject || ''),
+      sent_at: String(record.sent_at || ''),
+      status: String(record.status || ''),
+      resend_id: String(record.resend_id || ''),
+      admin_email: String(record.admin_email || ''),
     }))
 
     return NextResponse.json(logs)
   } catch (error) {
-    console.error('[ADMIN EMAIL LOGS]', error)
+    console.error('[ADMIN EMAIL LOGS]', error instanceof Error ? error.message : String(error))
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }
