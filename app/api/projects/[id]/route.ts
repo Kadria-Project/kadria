@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { airtableBase, TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable';
+import { TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
 import { mapSupabaseProject, toSupabaseProjectUpdate } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
@@ -9,11 +9,16 @@ async function createActivityLog(
   action: string,
   description: string,
 ) {
-  await airtableBase(TABLES.activity).create({
-    'Project ID': projectId,
-    Action: action,
-    Description: description,
+  const { error } = await supabaseAdmin.from(TABLES.activity).insert({
+    project_id: projectId,
+    action,
+    description,
+    created_at: new Date().toISOString(),
   });
+
+  if (error) {
+    console.error('[ACTIVITY] Insert FULL error:', JSON.stringify(error, null, 2));
+  }
 }
 
 async function getAuthorizedProject(id: string, artisanId: string) {

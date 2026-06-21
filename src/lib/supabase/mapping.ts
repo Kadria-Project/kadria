@@ -410,3 +410,21 @@ export function mapSupabaseProjectSummary(row: RawRow): SupabaseProjectSummary {
     devisAmount: getNumber(row, 'devis_amount', 'Devis_amount'),
   }
 }
+
+export interface SupabaseActivity {
+  id: string
+  projectId: string
+  action: string
+  description: string
+  createdAt: string
+}
+
+export function mapSupabaseActivity(row: RawRow, index: number): SupabaseActivity {
+  return {
+    id: `activity-${index}`,
+    projectId: getString(row, 'project_id', 'Project ID'),
+    action: getString(row, 'action', 'Action'),
+    description: getString(row, 'description', 'Description'),
+    createdAt: getString(row, 'created_at', 'Created At'),
+  }
+}
