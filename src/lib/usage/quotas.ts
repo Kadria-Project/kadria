@@ -62,6 +62,58 @@ export interface ProjectCreatedUsageParams {
   source?: string
 }
 
+export interface VapiQuotaConfig {
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  callsLimit: number | null
+  callsUnlimited: boolean
+  minutesLimit: number | null
+  source: 'plan_limits' | 'fallback'
+  tableName?: string | null
+}
+
+export interface VapiUsageSnapshot {
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  callsUsed: number
+  minutesUsed: number
+  source: 'usage_monthly' | 'vapi_calls_table'
+  usageMonthlyTable?: string | null
+  vapiCallsTable?: string | null
+}
+
+export interface VapiQuotaCheck {
+  success: boolean
+  allowed: boolean
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  callsUsed: number
+  callsLimit: number | null
+  callsRemaining: number | null
+  callsUnlimited: boolean
+  minutesUsed: number
+  minutesLimit: number | null
+  minutesRemaining: number | null
+  source: 'plan_limits' | 'fallback'
+  usageSource: 'usage_monthly' | 'vapi_calls_table'
+  exceededReason: 'calls_limit' | 'minutes_limit' | 'plan_not_included' | null
+  error?: string
+}
+
+export interface RecordVapiCallUsageParams {
+  artisanId: string
+  callId?: string
+  projectId?: string
+  durationSeconds?: number
+  durationMinutes?: number
+  estimatedCost?: number
+  status?: string
+  rawPayload?: unknown
+}
+
 export interface UsageEventRow {
   artisan_id: string
   period_month: string
@@ -92,6 +144,9 @@ export const QUOTA_SCHEMA_SUPPORT = {
       'projects_unlimited',
       'vapi_calls_limit',
       'vapi_minutes_limit',
+      'quota_vapi_exceeded',
+      'vapi_usage_percent',
+      'last_event_at',
       'vapi_minutes',
       'updated_at',
       'period_start',
@@ -106,6 +161,7 @@ export const QUOTA_SCHEMA_SUPPORT = {
     statusColumns: ['call_status', 'status'],
     costColumns: ['estimated_cost', 'cost'],
     durationColumns: ['duration_seconds', 'duration_minutes'],
+    payloadColumns: ['raw_payload'],
   },
 } as const
 
@@ -115,6 +171,18 @@ function getDefaultProjectLimit(plan: PlanKey) {
   }
 
   return 50
+}
+
+function getDefaultVapiCallsLimit(plan: PlanKey) {
+  if (plan === 'agence') {
+    return 400
+  }
+
+  if (plan === 'performance') {
+    return 150
+  }
+
+  return 0
 }
 
 function normalizeQuotaPlan(plan: unknown): PlanKey {
@@ -308,6 +376,42 @@ function buildMonthlyUsagePayload(params: {
   return payload
 }
 
+function normalizeFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return undefined
+}
+
+function roundMinutes(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+function getVapiPayloadMetrics(params: {
+  durationSeconds?: number
+  durationMinutes?: number
+  estimatedCost?: number
+}) {
+  const durationSeconds = normalizeFiniteNumber(params.durationSeconds) ?? 0
+  const explicitMinutes = normalizeFiniteNumber(params.durationMinutes)
+  const durationMinutes = explicitMinutes ?? roundMinutes(durationSeconds / 60)
+  const estimatedCost = normalizeFiniteNumber(params.estimatedCost) ?? 0
+
+  return {
+    durationSeconds,
+    durationMinutes,
+    estimatedCost,
+  }
+}
+
 async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey>> {
   try {
     const supabase = getSupabaseAdmin()
@@ -337,6 +441,55 @@ async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey
       success: false,
       error: error instanceof Error ? error.message : 'Impossible de charger le plan artisan',
     }
+  }
+}
+
+async function getPlanLimitsRow(plan: PlanKey) {
+  const supabase = getSupabaseAdmin()
+  const planLimitsTable = await resolveAccessibleTable('planLimits')
+
+  if (!planLimitsTable) {
+    return {
+      success: true as const,
+      tableName: null,
+      row: null,
+    }
+  }
+
+  const planCandidates = getPlanLookupCandidates(plan)
+  const { data, error } = await supabase
+    .from(planLimitsTable)
+    .select('*')
+    .in('plan', planCandidates)
+    .limit(planCandidates.length)
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message,
+      tableName: planLimitsTable,
+      row: null,
+    }
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return {
+      success: true as const,
+      tableName: planLimitsTable,
+      row: null,
+    }
+  }
+
+  const row =
+    data.find((candidate) => String(candidate.plan || '').trim().toLowerCase() === plan) ||
+    data.find((candidate) => String(candidate.plan || '').trim().toLowerCase() === 'agence') ||
+    data.find((candidate) => String(candidate.plan || '').trim().toLowerCase() === 'entreprise') ||
+    data[0]
+
+  return {
+    success: true as const,
+    tableName: planLimitsTable,
+    row,
   }
 }
 
@@ -480,24 +633,16 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
   const periodMonth = getCurrentPeriodMonth()
 
   try {
-    const supabase = getSupabaseAdmin()
-    const planLimitsTable = await resolveAccessibleTable('planLimits')
+    const planLimitsResult = await getPlanLimitsRow(plan)
+    if (!planLimitsResult.success) {
+      return {
+        success: false,
+        error: planLimitsResult.error,
+      }
+    }
 
-    if (planLimitsTable) {
-      const planCandidates = getPlanLookupCandidates(plan)
-      const { data, error } = await supabase
-        .from(planLimitsTable)
-        .select('*')
-        .in('plan', planCandidates)
-        .limit(planCandidates.length)
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const matchingRow =
-          data.find((row) => String(row.plan || '').trim().toLowerCase() === plan) ||
-          data.find((row) => String(row.plan || '').trim().toLowerCase() === 'agence') ||
-          data.find((row) => String(row.plan || '').trim().toLowerCase() === 'entreprise') ||
-          data[0]
-
+    if (planLimitsResult.row) {
+      const matchingRow = planLimitsResult.row
         const unlimited =
           matchingRow.projects_unlimited === true ||
           (plan === 'agence' && matchingRow.projects_unlimited !== false)
@@ -518,10 +663,9 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
             limit,
             unlimited,
             source: 'plan_limits',
-            tableName: planLimitsTable,
+            tableName: planLimitsResult.tableName,
           },
         }
-      }
     }
 
     return {
@@ -533,7 +677,7 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
         limit: getDefaultProjectLimit(plan),
         unlimited: plan === 'agence',
         source: 'fallback',
-        tableName: planLimitsTable,
+        tableName: planLimitsResult.tableName,
       },
     }
   } catch (error) {
@@ -637,6 +781,299 @@ export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaRe
       success: false,
       error: error instanceof Error ? error.message : 'Impossible de charger l’usage projets',
     }
+  }
+}
+
+export async function getVapiQuotaForArtisan(artisanId: string): Promise<QuotaResult<VapiQuotaConfig>> {
+  const planResult = await getPlanForArtisan(artisanId)
+  const plan = planResult.success && planResult.data ? planResult.data : 'performance'
+  const periodMonth = getCurrentPeriodMonth()
+
+  try {
+    const planLimitsResult = await getPlanLimitsRow(plan)
+    if (!planLimitsResult.success) {
+      return {
+        success: false,
+        error: planLimitsResult.error,
+      }
+    }
+
+    if (planLimitsResult.row) {
+      const row = planLimitsResult.row
+      const callsUnlimited =
+        row.vapi_calls_unlimited === true ||
+        (plan === 'agence' && row.vapi_calls_unlimited !== false && !isFiniteNumber(row.vapi_calls_limit))
+      const callsLimit = callsUnlimited
+        ? null
+        : isFiniteNumber(row.vapi_calls_limit)
+          ? Number(row.vapi_calls_limit)
+          : getDefaultVapiCallsLimit(plan)
+      const minutesLimit = isFiniteNumber(row.vapi_minutes_limit)
+        ? Number(row.vapi_minutes_limit)
+        : null
+
+      return {
+        success: true,
+        data: {
+          artisanId,
+          plan,
+          periodMonth,
+          callsLimit,
+          callsUnlimited,
+          minutesLimit,
+          source: 'plan_limits',
+          tableName: planLimitsResult.tableName,
+        },
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        artisanId,
+        plan,
+        periodMonth,
+        callsLimit: getDefaultVapiCallsLimit(plan),
+        callsUnlimited: false,
+        minutesLimit: null,
+        source: 'fallback',
+        tableName: planLimitsResult.tableName,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger le quota Vapi',
+    }
+  }
+}
+
+export async function getCurrentVapiUsage(artisanId: string): Promise<QuotaResult<VapiUsageSnapshot>> {
+  const quotaResult = await getVapiQuotaForArtisan(artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      error: quotaResult.error || 'Impossible de charger le quota Vapi',
+    }
+  }
+
+  const { plan, periodMonth } = quotaResult.data
+
+  try {
+    const supabase = getSupabaseAdmin()
+    const usageMonthlyTable = await resolveAccessibleTable('usageMonthly')
+
+    if (usageMonthlyTable) {
+      const usageMonthlyColumns = await resolveTableColumns('usageMonthly', [
+        ...QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+        ...QUOTA_SCHEMA_SUPPORT.usageMonthly.baseColumns,
+      ])
+      const vapiCallsColumn = pickAvailableColumn(
+        usageMonthlyColumns,
+        QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+      )
+
+      if (vapiCallsColumn && usageMonthlyColumns.includes('vapi_minutes')) {
+        const { data, error } = await supabase
+          .from(usageMonthlyTable)
+          .select(`${vapiCallsColumn}, vapi_minutes`)
+          .eq('artisan_id', artisanId)
+          .eq('period_month', periodMonth)
+          .limit(1)
+          .maybeSingle()
+
+        const usageRow = data as Record<string, unknown> | null
+        const callsUsed = normalizeFiniteNumber(usageRow?.[vapiCallsColumn]) ?? 0
+        const minutesUsed = normalizeFiniteNumber(usageRow?.vapi_minutes) ?? 0
+
+        if (!error && data) {
+          return {
+            success: true,
+            data: {
+              artisanId,
+              plan,
+              periodMonth,
+              callsUsed,
+              minutesUsed,
+              source: 'usage_monthly',
+              usageMonthlyTable,
+            },
+          }
+        }
+      }
+    }
+
+    const vapiCallsTable = await resolveAccessibleTable('vapiCalls')
+    if (!vapiCallsTable) {
+      return {
+        success: true,
+        data: {
+          artisanId,
+          plan,
+          periodMonth,
+          callsUsed: 0,
+          minutesUsed: 0,
+          source: 'vapi_calls_table',
+          usageMonthlyTable,
+          vapiCallsTable: null,
+        },
+      }
+    }
+
+    const vapiCallsColumns = await resolveTableColumns('vapiCalls', [
+      ...QUOTA_SCHEMA_SUPPORT.vapiCalls.durationColumns,
+      'started_at',
+      'ended_at',
+    ])
+    const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds(
+      new Date(`${periodMonth}-01T00:00:00.000Z`),
+    )
+
+    const selectedColumns = ['call_id']
+    if (vapiCallsColumns.includes('duration_seconds')) {
+      selectedColumns.push('duration_seconds')
+    }
+    if (vapiCallsColumns.includes('duration_minutes')) {
+      selectedColumns.push('duration_minutes')
+    }
+    if (vapiCallsColumns.includes('started_at')) {
+      selectedColumns.push('started_at')
+    } else if (vapiCallsColumns.includes('ended_at')) {
+      selectedColumns.push('ended_at')
+    }
+
+    const dateColumn = vapiCallsColumns.includes('started_at')
+      ? 'started_at'
+      : vapiCallsColumns.includes('ended_at')
+        ? 'ended_at'
+        : null
+
+    let query = supabase
+      .from(vapiCallsTable)
+      .select(selectedColumns.join(','))
+      .eq('artisan_id', artisanId)
+
+    if (dateColumn) {
+      query = query
+        .gte(dateColumn, monthStartIso)
+        .lt(dateColumn, nextMonthStartIso)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      }
+    }
+
+    const rows = Array.isArray(data) ? data as unknown as Array<Record<string, unknown>> : []
+    const callsUsed = rows.length
+    const minutesUsed = roundMinutes(rows.reduce((total, row) => {
+      const minutes = normalizeFiniteNumber(row.duration_minutes)
+      if (typeof minutes === 'number') {
+        return total + minutes
+      }
+
+      const seconds = normalizeFiniteNumber(row.duration_seconds) ?? 0
+      return total + (seconds / 60)
+    }, 0))
+
+    return {
+      success: true,
+      data: {
+        artisanId,
+        plan,
+        periodMonth,
+        callsUsed,
+        minutesUsed,
+        source: 'vapi_calls_table',
+        usageMonthlyTable,
+        vapiCallsTable,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger l’usage Vapi',
+    }
+  }
+}
+
+export async function canUseVapi(artisanId: string): Promise<VapiQuotaCheck> {
+  const quotaResult = await getVapiQuotaForArtisan(artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      allowed: false,
+      artisanId,
+      plan: 'performance',
+      periodMonth: getCurrentPeriodMonth(),
+      callsUsed: 0,
+      callsLimit: getDefaultVapiCallsLimit('performance'),
+      callsRemaining: null,
+      callsUnlimited: false,
+      minutesUsed: 0,
+      minutesLimit: null,
+      minutesRemaining: null,
+      source: 'fallback',
+      usageSource: 'vapi_calls_table',
+      exceededReason: null,
+      error: quotaResult.error || 'Impossible de charger le quota Vapi',
+    }
+  }
+
+  const usageResult = await getCurrentVapiUsage(artisanId)
+  if (!usageResult.success || !usageResult.data) {
+    return {
+      success: false,
+      allowed: false,
+      artisanId,
+      plan: quotaResult.data.plan,
+      periodMonth: quotaResult.data.periodMonth,
+      callsUsed: 0,
+      callsLimit: quotaResult.data.callsLimit,
+      callsRemaining: null,
+      callsUnlimited: quotaResult.data.callsUnlimited,
+      minutesUsed: 0,
+      minutesLimit: quotaResult.data.minutesLimit,
+      minutesRemaining: null,
+      source: quotaResult.data.source,
+      usageSource: 'vapi_calls_table',
+      exceededReason: null,
+      error: usageResult.error || 'Impossible de charger l’usage Vapi',
+    }
+  }
+
+  const callsUsed = usageResult.data.callsUsed
+  const minutesUsed = usageResult.data.minutesUsed
+  const callsLimit = quotaResult.data.callsLimit
+  const minutesLimit = quotaResult.data.minutesLimit
+  const callsExceeded = !quotaResult.data.callsUnlimited && callsLimit !== null && callsUsed >= callsLimit
+  const minutesExceeded = minutesLimit !== null && minutesUsed >= minutesLimit
+  const planNotIncluded = !quotaResult.data.callsUnlimited && callsLimit === 0
+  const exceededReason =
+    planNotIncluded ? 'plan_not_included'
+      : callsExceeded ? 'calls_limit'
+      : minutesExceeded ? 'minutes_limit'
+      : null
+
+  return {
+    success: true,
+    allowed: exceededReason === null,
+    artisanId,
+    plan: quotaResult.data.plan,
+    periodMonth: quotaResult.data.periodMonth,
+    callsUsed,
+    callsLimit,
+    callsRemaining: quotaResult.data.callsUnlimited || callsLimit === null ? null : Math.max(callsLimit - callsUsed, 0),
+    callsUnlimited: quotaResult.data.callsUnlimited,
+    minutesUsed,
+    minutesLimit,
+    minutesRemaining: minutesLimit === null ? null : Math.max(minutesLimit - minutesUsed, 0),
+    source: quotaResult.data.source,
+    usageSource: usageResult.data.source,
+    exceededReason,
   }
 }
 
@@ -865,6 +1302,307 @@ export async function recordProjectCreatedUsage(
     limit: quotaResult.data.limit,
     unlimited: quotaResult.data.unlimited,
   })
+}
+
+export async function recordVapiCallUsage(
+  params: RecordVapiCallUsageParams,
+): Promise<QuotaResult<{ periodMonth: string; callsUsed: number; minutesUsed: number; exceeded: boolean }>> {
+  const quotaResult = await getVapiQuotaForArtisan(params.artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      error: quotaResult.error || 'Impossible de résoudre le quota Vapi',
+    }
+  }
+
+  const periodMonth = quotaResult.data.periodMonth
+  const metrics = getVapiPayloadMetrics({
+    durationSeconds: params.durationSeconds,
+    durationMinutes: params.durationMinutes,
+    estimatedCost: params.estimatedCost,
+  })
+
+  try {
+    const supabase = getSupabaseAdmin()
+    const vapiCallsTable = await resolveAccessibleTable('vapiCalls')
+
+    if (vapiCallsTable) {
+      const vapiCallsColumns = await resolveTableColumns('vapiCalls', [
+        'call_id',
+        'artisan_id',
+        'project_id',
+        'duration_seconds',
+        'duration_minutes',
+        'estimated_cost',
+        'cost',
+        'call_status',
+        'status',
+        'started_at',
+        'ended_at',
+        'raw_payload',
+      ])
+      const statusColumn = pickAvailableColumn(
+        vapiCallsColumns,
+        QUOTA_SCHEMA_SUPPORT.vapiCalls.statusColumns,
+      )
+      const costColumn = pickAvailableColumn(
+        vapiCallsColumns,
+        QUOTA_SCHEMA_SUPPORT.vapiCalls.costColumns,
+      )
+      const insertPayload: Record<string, unknown> = {
+        artisan_id: params.artisanId,
+      }
+
+      if (vapiCallsColumns.includes('call_id') && params.callId) {
+        insertPayload.call_id = params.callId
+      }
+      if (vapiCallsColumns.includes('project_id') && params.projectId) {
+        insertPayload.project_id = params.projectId
+      }
+      if (vapiCallsColumns.includes('duration_seconds')) {
+        insertPayload.duration_seconds = metrics.durationSeconds
+      }
+      if (vapiCallsColumns.includes('duration_minutes')) {
+        insertPayload.duration_minutes = metrics.durationMinutes
+      }
+      if (statusColumn) {
+        insertPayload[statusColumn] = params.status || 'completed'
+      }
+      if (costColumn) {
+        insertPayload[costColumn] = metrics.estimatedCost
+      }
+      if (vapiCallsColumns.includes('raw_payload')) {
+        insertPayload.raw_payload = params.rawPayload ?? null
+      }
+
+      const nowIso = new Date().toISOString()
+      if (vapiCallsColumns.includes('started_at')) {
+        insertPayload.started_at = nowIso
+      }
+      if (vapiCallsColumns.includes('ended_at')) {
+        insertPayload.ended_at = nowIso
+      }
+
+      if (params.callId && vapiCallsColumns.includes('call_id')) {
+        const { data: existing, error: existingError } = await supabase
+          .from(vapiCallsTable)
+          .select('call_id')
+          .eq('call_id', params.callId)
+          .limit(1)
+          .maybeSingle()
+
+        if (existingError) {
+          return { success: false, error: existingError.message }
+        }
+
+        if (existing) {
+          const { error: updateError } = await supabase
+            .from(vapiCallsTable)
+            .update(insertPayload)
+            .eq('call_id', params.callId)
+
+          if (updateError) {
+            return { success: false, error: updateError.message }
+          }
+        } else {
+          const { error: insertError } = await supabase
+            .from(vapiCallsTable)
+            .insert(insertPayload)
+
+          if (insertError) {
+            return { success: false, error: insertError.message }
+          }
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from(vapiCallsTable)
+          .insert(insertPayload)
+
+        if (insertError) {
+          return { success: false, error: insertError.message }
+        }
+      }
+    }
+
+    const dedupKey = params.callId
+      ? `vapi_call:${params.callId}`
+      : `vapi_call:${params.artisanId}:${params.projectId || 'no-project'}:${periodMonth}:${metrics.durationSeconds}:${metrics.durationMinutes}`
+
+    const usageEventResult = await recordUsageEvent({
+      artisan_id: params.artisanId,
+      period_month: periodMonth,
+      event_type: 'vapi_call',
+      quantity: 1,
+      dedup_key: dedupKey,
+      raw_payload: {
+        call_id: params.callId || null,
+        project_id: params.projectId || null,
+        artisan_id: params.artisanId,
+        duration_seconds: metrics.durationSeconds,
+        duration_minutes: metrics.durationMinutes,
+        estimated_cost: metrics.estimatedCost,
+        source: 'vapi',
+      },
+      created_at: new Date().toISOString(),
+      status: 'recorded',
+    })
+
+    if (!usageEventResult.success) {
+      return {
+        success: false,
+        error: usageEventResult.error,
+      }
+    }
+
+    const usageResult = await getCurrentVapiUsage(params.artisanId)
+    if (!usageResult.success || !usageResult.data) {
+      return {
+        success: false,
+        error: usageResult.error || 'Impossible de synchroniser l’usage Vapi',
+      }
+    }
+
+    const usageMonthlyTable = await resolveAccessibleTable('usageMonthly')
+    if (!usageMonthlyTable) {
+      return {
+        success: true,
+        data: {
+          periodMonth,
+          callsUsed: usageResult.data.callsUsed,
+          minutesUsed: usageResult.data.minutesUsed,
+          exceeded: false,
+        },
+      }
+    }
+
+    const usageMonthlyColumns = await resolveTableColumns('usageMonthly', [
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.identityColumns,
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+      ...QUOTA_SCHEMA_SUPPORT.usageMonthly.baseColumns,
+      'quota_vapi_exceeded',
+      'vapi_usage_percent',
+      'last_event_at',
+    ])
+    const identityColumn = pickAvailableColumn(
+      usageMonthlyColumns,
+      QUOTA_SCHEMA_SUPPORT.usageMonthly.identityColumns,
+    )
+    const projectCountColumn = pickAvailableColumn(
+      usageMonthlyColumns,
+      QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
+    )
+    const vapiCallsColumn = pickAvailableColumn(
+      usageMonthlyColumns,
+      QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+    )
+    const currentProjectUsage = await getCurrentProjectUsage(params.artisanId)
+    const projectCount = currentProjectUsage.success && currentProjectUsage.data
+      ? currentProjectUsage.data.used
+      : 0
+    const postCheck = await canUseVapi(params.artisanId)
+    const exceeded = postCheck.success ? !postCheck.allowed : false
+    const nowIso = new Date().toISOString()
+    const monthlyPayload = buildMonthlyUsagePayload({
+      availableColumns: usageMonthlyColumns,
+      artisanId: params.artisanId,
+      plan: quotaResult.data.plan,
+      periodMonth,
+      projectsCount: projectCount,
+      limit: postCheck.success ? postCheck.callsLimit : quotaResult.data.callsLimit,
+      unlimited: postCheck.success ? postCheck.callsUnlimited : quotaResult.data.callsUnlimited,
+    })
+
+    if (vapiCallsColumn) {
+      monthlyPayload[vapiCallsColumn] = usageResult.data.callsUsed
+    }
+    if (usageMonthlyColumns.includes('vapi_minutes')) {
+      monthlyPayload.vapi_minutes = usageResult.data.minutesUsed
+    }
+    if (usageMonthlyColumns.includes('vapi_calls_limit')) {
+      monthlyPayload.vapi_calls_limit = quotaResult.data.callsLimit
+    }
+    if (usageMonthlyColumns.includes('vapi_minutes_limit')) {
+      monthlyPayload.vapi_minutes_limit = quotaResult.data.minutesLimit
+    }
+    if (usageMonthlyColumns.includes('quota_vapi_exceeded')) {
+      monthlyPayload.quota_vapi_exceeded = exceeded
+    }
+    if (usageMonthlyColumns.includes('vapi_usage_percent')) {
+      const percent = quotaResult.data.callsUnlimited || !quotaResult.data.callsLimit
+        ? 0
+        : Math.min(100, Math.round((usageResult.data.callsUsed / quotaResult.data.callsLimit) * 100))
+      monthlyPayload.vapi_usage_percent = percent
+    }
+    if (usageMonthlyColumns.includes('last_event_at')) {
+      monthlyPayload.last_event_at = nowIso
+    }
+    if (usageMonthlyColumns.includes('updated_at')) {
+      monthlyPayload.updated_at = nowIso
+    }
+    if (projectCountColumn && monthlyPayload[projectCountColumn] === undefined) {
+      monthlyPayload[projectCountColumn] = projectCount
+    }
+
+    const { data: existingMonthly, error: existingMonthlyError } = await supabase
+      .from(usageMonthlyTable)
+      .select('*')
+      .eq('artisan_id', params.artisanId)
+      .eq('period_month', periodMonth)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingMonthlyError) {
+      return { success: false, error: existingMonthlyError.message }
+    }
+
+    if (existingMonthly) {
+      let updateQuery = supabase
+        .from(usageMonthlyTable)
+        .update(monthlyPayload)
+        .eq('artisan_id', params.artisanId)
+        .eq('period_month', periodMonth)
+
+      if (identityColumn && existingMonthly[identityColumn]) {
+        updateQuery = supabase
+          .from(usageMonthlyTable)
+          .update(monthlyPayload)
+          .eq(identityColumn, existingMonthly[identityColumn])
+      }
+
+      const { error: updateError } = await updateQuery
+      if (updateError) {
+        return { success: false, error: updateError.message }
+      }
+    } else {
+      if (usageMonthlyColumns.includes('usage_id')) {
+        monthlyPayload.usage_id = buildStableUsageId(params.artisanId, periodMonth)
+      }
+
+      const { error: insertError } = await supabase
+        .from(usageMonthlyTable)
+        .insert(monthlyPayload)
+
+      if (insertError) {
+        return { success: false, error: insertError.message }
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        periodMonth,
+        callsUsed: usageResult.data.callsUsed,
+        minutesUsed: usageResult.data.minutesUsed,
+        exceeded,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible d’enregistrer l’usage Vapi',
+    }
+  }
 }
 
 export { TABLE_CANDIDATES as QUOTA_TABLES }

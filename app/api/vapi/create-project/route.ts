@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TABLES } from '@/src/lib/airtable'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { recordProjectCreatedUsage } from '@/src/lib/usage/quotas'
+import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/src/lib/usage/quotas'
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo'
 
@@ -108,6 +108,23 @@ function parseIncomingPayload(body: any) {
   }
 }
 
+function parseOptionalNumber(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return undefined
+}
+
 export async function POST(request: NextRequest) {
   let parsed: ReturnType<typeof parseIncomingPayload> | undefined
 
@@ -156,6 +173,7 @@ export async function POST(request: NextRequest) {
       assistantId,
       explicitArtisanId,
     })
+    const quotaBefore = await canUseVapi(artisanId)
 
     const trade = String(params.trade || '') || 'Non précisé'
     const city = String(params.city || '')
@@ -207,6 +225,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     const creationOk = !error
+    let usageWarning: string | undefined
 
     if (error) {
       console.error('[VAPI] Supabase error:', error.message)
@@ -220,6 +239,67 @@ export async function POST(request: NextRequest) {
 
       if (!usageResult.success) {
         console.error('[VAPI] Project created but usage tracking failed:', usageResult.error || 'unknown error')
+      }
+
+      const durationSeconds = parseOptionalNumber(
+        params.durationSeconds,
+        params.duration_seconds,
+        body?.durationSeconds,
+        body?.duration_seconds,
+        body?.call?.durationSeconds,
+        body?.call?.duration_seconds,
+      )
+      const durationMinutes = parseOptionalNumber(
+        params.durationMinutes,
+        params.duration_minutes,
+        body?.durationMinutes,
+        body?.duration_minutes,
+        body?.call?.durationMinutes,
+        body?.call?.duration_minutes,
+      )
+      const estimatedCost = parseOptionalNumber(
+        params.estimatedCost,
+        params.estimated_cost,
+        body?.estimatedCost,
+        body?.estimated_cost,
+        body?.call?.estimatedCost,
+        body?.call?.estimated_cost,
+      )
+      const status =
+        typeof params.status === 'string' ? params.status
+          : typeof body?.status === 'string' ? body.status
+          : typeof body?.call?.status === 'string' ? body.call.status
+          : 'completed'
+
+      const vapiUsageResult = await recordVapiCallUsage({
+        artisanId,
+        callId: callId || undefined,
+        projectId: result.id,
+        durationSeconds,
+        durationMinutes,
+        estimatedCost,
+        status,
+        rawPayload: body,
+      })
+
+      if (!vapiUsageResult.success) {
+        console.error('[VAPI] Vapi call usage tracking failed:', vapiUsageResult.error || 'unknown error')
+      }
+
+      const quotaAfter = await canUseVapi(artisanId)
+      if (quotaAfter.success && !quotaAfter.allowed) {
+        console.warn('[VAPI] Vapi quota exceeded after call tracking', {
+          artisan_id: artisanId,
+          plan: quotaAfter.plan,
+          used: quotaAfter.callsUsed,
+          limit: quotaAfter.callsLimit,
+          minutesUsed: quotaAfter.minutesUsed,
+          minutesLimit: quotaAfter.minutesLimit,
+          exceededReason: quotaAfter.exceededReason,
+        })
+        usageWarning = 'Quota Vapi dépassé'
+      } else if (quotaBefore.success && !quotaBefore.allowed) {
+        usageWarning = 'Quota Vapi déjà dépassé'
       }
     }
 
@@ -248,6 +328,7 @@ export async function POST(request: NextRequest) {
       projectId: result.id,
       message: 'Dossier projet créé',
       callId,
+      ...(usageWarning ? { usageWarning } : {}),
     })
   } catch (error) {
     console.error('[VAPI] Unexpected error:', error)

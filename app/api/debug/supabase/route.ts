@@ -80,6 +80,9 @@ const TABLE_SPECS: Record<
       ...QUOTA_SCHEMA_SUPPORT.usageMonthly.baseColumns,
       ...QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
       ...QUOTA_SCHEMA_SUPPORT.usageMonthly.vapiCallColumns,
+      'quota_vapi_exceeded',
+      'vapi_usage_percent',
+      'last_event_at',
     ],
     alternativeColumns: {
       id: ['usage_id'],
@@ -118,6 +121,7 @@ const TABLE_SPECS: Record<
       'status',
       'started_at',
       'ended_at',
+      'raw_payload',
     ],
     alternativeColumns: {
       estimated_cost: ['cost'],
