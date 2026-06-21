@@ -16,10 +16,7 @@ export async function GET() {
   try {
     const session = await getSession()
     if (!session?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+      return NextResponse.json({ success: true, theme: 'dark' })
     }
 
     const user = await getUserById(session.id)
