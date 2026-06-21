@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TABLES } from '@/src/lib/airtable'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { recordProjectCreatedUsage } from '@/src/lib/usage/quotas'
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo'
 
@@ -211,6 +212,15 @@ export async function POST(request: NextRequest) {
       console.error('[VAPI] Supabase error:', error.message)
     } else {
       console.log('[VAPI] Project created - recordId:', result.id)
+      const usageResult = await recordProjectCreatedUsage({
+        artisanId,
+        projectId: result.id,
+        source: 'vapi',
+      })
+
+      if (!usageResult.success) {
+        console.error('[VAPI] Project created but usage tracking failed:', usageResult.error || 'unknown error')
+      }
     }
 
     if (isToolCallFormat && toolCallId) {

@@ -1,5 +1,4 @@
 import 'server-only'
-import { normalizePlan } from '@/src/lib/plans'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 
 const TABLE_CANDIDATES = {
@@ -14,7 +13,7 @@ const TABLE_CANDIDATES = {
 const tableResolutionCache = new Map<string, string | null>()
 
 type JsonObject = Record<string, unknown>
-type PlanKey = 'essentiel' | 'performance' | 'entreprise'
+type PlanKey = 'essentiel' | 'performance' | 'agence'
 
 export interface QuotaResult<T> {
   success: boolean
@@ -73,11 +72,33 @@ export interface UsageEventRow {
 }
 
 function getDefaultProjectLimit(plan: PlanKey) {
-  if (plan === 'entreprise') {
+  if (plan === 'agence') {
     return null
   }
 
   return 50
+}
+
+function normalizeQuotaPlan(plan: unknown): PlanKey {
+  const value = String(plan || '').trim().toLowerCase()
+
+  if (value === 'agence' || value === 'entreprise') {
+    return 'agence'
+  }
+
+  if (value === 'performance' || value === 'pro') {
+    return 'performance'
+  }
+
+  return 'essentiel'
+}
+
+function getPlanLookupCandidates(plan: PlanKey) {
+  if (plan === 'agence') {
+    return ['agence', 'entreprise']
+  }
+
+  return [plan]
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -144,7 +165,7 @@ async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey
 
     return {
       success: true,
-      data: normalizePlan(String(data?.plan || 'performance')),
+      data: normalizeQuotaPlan(data?.plan || 'performance'),
     }
   } catch (error) {
     return {
@@ -263,19 +284,27 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
     const planLimitsTable = await resolveAccessibleTable('planLimits')
 
     if (planLimitsTable) {
+      const planCandidates = getPlanLookupCandidates(plan)
       const { data, error } = await supabase
         .from(planLimitsTable)
         .select('*')
-        .eq('plan', plan)
-        .limit(1)
-        .maybeSingle()
+        .in('plan', planCandidates)
+        .limit(planCandidates.length)
 
-      if (!error && data) {
-        const unlimited = data.projects_unlimited === true
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const matchingRow =
+          data.find((row) => String(row.plan || '').trim().toLowerCase() === plan) ||
+          data.find((row) => String(row.plan || '').trim().toLowerCase() === 'agence') ||
+          data.find((row) => String(row.plan || '').trim().toLowerCase() === 'entreprise') ||
+          data[0]
+
+        const unlimited =
+          matchingRow.projects_unlimited === true ||
+          (plan === 'agence' && matchingRow.projects_unlimited !== false)
         const limit = unlimited
           ? null
-          : isFiniteNumber(data.max_projects_per_month)
-            ? Number(data.max_projects_per_month)
+          : isFiniteNumber(matchingRow.max_projects_per_month)
+            ? Number(matchingRow.max_projects_per_month)
             : getDefaultProjectLimit(plan)
 
         return {
@@ -300,7 +329,7 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
         plan,
         periodMonth,
         limit: getDefaultProjectLimit(plan),
-        unlimited: plan === 'entreprise',
+        unlimited: plan === 'agence',
         source: 'fallback',
         tableName: planLimitsTable,
       },
