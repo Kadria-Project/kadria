@@ -59,6 +59,32 @@ import {
   type Task,
 } from '@/src/lib/commercial-actions';
 
+type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
+
+interface MonthlyUsageSummary {
+  artisanId: string;
+  periodMonth: string;
+  plan: string;
+  projects: {
+    used: number;
+    limit: number | null;
+    unlimited: boolean;
+    percent: number | null;
+    status: UsageStatus;
+  };
+  vapi: {
+    callsUsed: number;
+    callsLimit: number | null;
+    callsUnlimited: boolean;
+    callsPercent: number | null;
+    minutesUsed: number;
+    minutesLimit: number | null;
+    minutesPercent: number | null;
+    status: UsageStatus;
+  };
+  updatedAt?: string;
+}
+
 const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
 const ProspectsLeafletMap = dynamic(
@@ -829,6 +855,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
+  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null);
+  const [monthlyUsageLoading, setMonthlyUsageLoading] = useState(true);
+  const [monthlyUsageError, setMonthlyUsageError] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
@@ -928,6 +957,34 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setMonthlyUsageLoading(true);
+    setMonthlyUsageError(false);
+
+    fetch('/api/usage/monthly')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.success && data.usage) {
+          setMonthlyUsage(data.usage);
+        } else {
+          setMonthlyUsageError(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMonthlyUsageError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setMonthlyUsageLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1608,6 +1665,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
           </div>
         </div>
+      )}
+
+      {showBusinessOverview && (
+        <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
       )}
 
       {showBusinessOverview && !loading && primaryHotLead && (
@@ -3036,6 +3097,108 @@ function PriorityMetric({ label, value, onClick, active }: { label: string; valu
       <p className="text-2xl font-bold tracking-tight text-[var(--text-1)]">{value}</p>
       <p className="mt-1 text-xs text-[var(--text-2)]">{label}</p>
     </button>
+  );
+}
+
+const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
+  ok: 'OK',
+  warning: 'Proche limite',
+  limit_reached: 'Limite atteinte',
+  exceeded: 'Dépassé',
+};
+
+const USAGE_STATUS_STYLES: Record<UsageStatus, { background: string; border: string; color: string }> = {
+  ok: { background: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', color: 'var(--accent)' },
+  warning: { background: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', color: '#f59e0b' },
+  limit_reached: { background: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.3)', color: '#f97316' },
+  exceeded: { background: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', color: '#ef4444' },
+};
+
+function combineUsageStatusUi(a: UsageStatus, b: UsageStatus): UsageStatus {
+  const order: UsageStatus[] = ['ok', 'warning', 'limit_reached', 'exceeded'];
+  return order[Math.max(order.indexOf(a), order.indexOf(b))];
+}
+
+function UsageStatusBadge({ status }: { status: UsageStatus }) {
+  const style = USAGE_STATUS_STYLES[status];
+  return (
+    <span
+      className="rounded-full border px-3 py-1 text-xs font-semibold"
+      style={{ background: style.background, borderColor: style.border, color: style.color }}
+    >
+      {USAGE_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function MonthlyUsageCard({
+  usage,
+  loading,
+  error,
+  isMobile,
+}: {
+  usage: MonthlyUsageSummary | null;
+  loading: boolean;
+  error: boolean;
+  isMobile: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+        <Skeleton className="h-20 rounded-xl bg-[var(--bg-hover)]" />
+      </div>
+    );
+  }
+
+  if (error || !usage) {
+    return (
+      <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+        <p className="text-sm text-[var(--text-3)]">Utilisation du mois indisponible pour le moment.</p>
+      </div>
+    );
+  }
+
+  const globalStatus = combineUsageStatusUi(usage.projects.status, usage.vapi.status);
+
+  const projectsLabel = usage.projects.unlimited
+    ? `${usage.projects.used} / Illimité`
+    : `${usage.projects.used} / ${usage.projects.limit ?? 0}`;
+
+  const callsLabel = usage.vapi.callsUnlimited
+    ? `${usage.vapi.callsUsed} / Illimité`
+    : usage.vapi.callsLimit === 0
+      ? 'Non inclus'
+      : `${usage.vapi.callsUsed} / ${usage.vapi.callsLimit}`;
+
+  const minutesLabel = usage.vapi.minutesLimit === null
+    ? `${usage.vapi.minutesUsed} min / Non limité`
+    : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
+
+  return (
+    <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-base font-bold text-[var(--text-1)]">Utilisation du mois</p>
+          <p className="mt-1 text-sm text-[var(--text-2)]">Dossiers et appels vocaux consommés sur la période en cours.</p>
+        </div>
+        <UsageStatusBadge status={globalStatus} />
+      </div>
+
+      <div className={`mt-4 grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-3'}`}>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+          <p className="text-xs text-[var(--text-3)]">Dossiers créés</p>
+          <p className="mt-1 text-xl font-bold text-[var(--text-1)]">{projectsLabel}</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+          <p className="text-xs text-[var(--text-3)]">Appels vocaux</p>
+          <p className="mt-1 text-xl font-bold text-[var(--text-1)]">{callsLabel}</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+          <p className="text-xs text-[var(--text-3)]">Minutes vocales</p>
+          <p className="mt-1 text-xl font-bold text-[var(--text-1)]">{minutesLabel}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 

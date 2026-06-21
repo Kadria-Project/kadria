@@ -1605,4 +1605,121 @@ export async function recordVapiCallUsage(
   }
 }
 
+export type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded'
+
+export interface MonthlyUsageSummary {
+  artisanId: string
+  periodMonth: string
+  plan: PlanKey
+  projects: {
+    used: number
+    limit: number | null
+    unlimited: boolean
+    percent: number | null
+    status: UsageStatus
+  }
+  vapi: {
+    callsUsed: number
+    callsLimit: number | null
+    callsUnlimited: boolean
+    callsPercent: number | null
+    minutesUsed: number
+    minutesLimit: number | null
+    minutesPercent: number | null
+    status: UsageStatus
+  }
+  updatedAt?: string
+}
+
+function computeUsagePercent(used: number, limit: number | null): number | null {
+  if (limit === null || limit <= 0) return null
+  return Math.round((used / limit) * 1000) / 10
+}
+
+function computeUsageStatus(percent: number | null): UsageStatus {
+  if (percent === null) return 'ok'
+  if (percent > 100) return 'exceeded'
+  if (percent === 100) return 'limit_reached'
+  if (percent >= 80) return 'warning'
+  return 'ok'
+}
+
+function combineUsageStatus(a: UsageStatus, b: UsageStatus): UsageStatus {
+  const order: UsageStatus[] = ['ok', 'warning', 'limit_reached', 'exceeded']
+  return order[Math.max(order.indexOf(a), order.indexOf(b))]
+}
+
+export async function getMonthlyUsageSummary(artisanId: string): Promise<QuotaResult<MonthlyUsageSummary>> {
+  try {
+    const [projectQuota, projectUsage, vapiQuota, vapiUsage] = await Promise.all([
+      getProjectQuotaForArtisan(artisanId),
+      getCurrentProjectUsage(artisanId),
+      getVapiQuotaForArtisan(artisanId),
+      getCurrentVapiUsage(artisanId),
+    ])
+
+    if (!projectQuota.success || !projectQuota.data) {
+      return { success: false, error: projectQuota.error || 'Impossible de charger le quota projets' }
+    }
+    if (!projectUsage.success || !projectUsage.data) {
+      return { success: false, error: projectUsage.error || 'Impossible de charger l’usage projets' }
+    }
+    if (!vapiQuota.success || !vapiQuota.data) {
+      return { success: false, error: vapiQuota.error || 'Impossible de charger le quota Vapi' }
+    }
+    if (!vapiUsage.success || !vapiUsage.data) {
+      return { success: false, error: vapiUsage.error || 'Impossible de charger l’usage Vapi' }
+    }
+
+    const periodMonth = projectQuota.data.periodMonth
+    const plan = projectQuota.data.plan
+
+    const projectsUsed = projectUsage.data.used
+    const projectsLimit = projectQuota.data.unlimited ? null : projectQuota.data.limit
+    const projectsPercent = projectQuota.data.unlimited ? null : computeUsagePercent(projectsUsed, projectsLimit)
+    const projectsStatus = computeUsageStatus(projectsPercent)
+
+    const callsUsed = vapiUsage.data.callsUsed
+    const callsLimit = vapiQuota.data.callsUnlimited ? null : vapiQuota.data.callsLimit
+    const callsPercent = vapiQuota.data.callsUnlimited ? null : computeUsagePercent(callsUsed, callsLimit)
+    const callsStatus = computeUsageStatus(callsPercent)
+
+    const minutesUsed = vapiUsage.data.minutesUsed
+    const minutesLimit = vapiQuota.data.minutesLimit
+    const minutesPercent = computeUsagePercent(minutesUsed, minutesLimit)
+    const minutesStatus = computeUsageStatus(minutesPercent)
+
+    return {
+      success: true,
+      data: {
+        artisanId,
+        periodMonth,
+        plan,
+        projects: {
+          used: projectsUsed,
+          limit: projectsLimit,
+          unlimited: projectQuota.data.unlimited,
+          percent: projectsPercent,
+          status: projectsStatus,
+        },
+        vapi: {
+          callsUsed,
+          callsLimit,
+          callsUnlimited: vapiQuota.data.callsUnlimited,
+          callsPercent,
+          minutesUsed,
+          minutesLimit,
+          minutesPercent,
+          status: combineUsageStatus(callsStatus, minutesStatus),
+        },
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger l’utilisation mensuelle',
+    }
+  }
+}
+
 export { TABLE_CANDIDATES as QUOTA_TABLES }
