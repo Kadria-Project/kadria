@@ -1,5 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { TABLES } from '@/src/lib/airtable'
 import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
+import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
+
+async function getAuthorizedProject(id: string, artisanId: string) {
+  const direct = await supabaseAdmin
+    .from(TABLES.projects)
+    .select('*')
+    .eq('id', id)
+    .limit(1)
+    .maybeSingle()
+
+  if (direct.error) {
+    throw direct.error
+  }
+
+  let record = direct.data
+
+  if (!record) {
+    const legacy = await supabaseAdmin
+      .from(TABLES.projects)
+      .select('*')
+      .eq('record_id', id)
+      .limit(1)
+      .maybeSingle()
+
+    if (legacy.error) {
+      throw legacy.error
+    }
+
+    record = legacy.data
+  }
+
+  if (!record) {
+    return { status: 404 as const }
+  }
+
+  if (record.artisan_id !== artisanId) {
+    return { status: 403 as const }
+  }
+
+  return { status: 200 as const, record }
+}
 
 export async function GET(
   request: NextRequest,
@@ -17,26 +60,25 @@ export async function GET(
 
   const { id } = await params
 
-  const apiKey = process.env.AIRTABLE_API_KEY
-  const baseId = process.env.AIRTABLE_BASE_ID
+  let result
+  try {
+    result = await getAuthorizedProject(id, session.artisanId)
+  } catch (error) {
+    console.error('[PROJECT PDF] Supabase lookup error:', error instanceof Error ? error.message : String(error))
+    return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
+  }
 
-  const res = await fetch(`https://api.airtable.com/v0/${baseId}/Projects/${id}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    cache: 'no-store',
-  })
-  if (res.status === 404) {
+  if (result.status === 404) {
     return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
   }
-  if (!res.ok) {
-    return NextResponse.json({ success: false, error: 'Erreur Airtable' }, { status: 500 })
-  }
-  const record = await res.json()
-  const f = record.fields || {}
-  if (f['Artisan ID'] !== session.artisanId) {
+
+  if (result.status === 403) {
     return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
   }
 
-  const score = Number(f['Completeness Score'] || 0)
+  const project = mapSupabaseProject(result.record)
+
+  const score = project.completenessScore || 0
   let verdictLabel = 'À qualifier'
   let verdictColor = '#71717a'
   if (score >= 80) {
@@ -50,12 +92,12 @@ export async function GET(
     verdictColor = '#f87171'
   }
 
-  const createdDate = f['Created'] ? new Date(f['Created']) : new Date()
+  const createdDate = project.createdAt ? new Date(project.createdAt) : new Date()
   const formattedDate = createdDate.toLocaleDateString('fr-FR', {
     day: '2-digit', month: 'long', year: 'numeric',
   })
 
-  const clientName = `${f['Client First Name'] || ''} ${f['Client Name'] || ''}`.trim() || 'Client'
+  const clientName = `${project.clientFirstName || ''} ${project.clientName || ''}`.trim() || 'Client'
 
   const html = `
 <!DOCTYPE html>
@@ -184,25 +226,25 @@ export async function GET(
   </div>
 
   <h1>${clientName}</h1>
-  <div style="color:#71717a;font-size:14px;">${f['Primary Trade'] || f['Trade'] || 'Métier non précisé'} ${f['City'] ? '· ' + f['City'] : ''}</div>
+  <div style="color:#71717a;font-size:14px;">${project.trade || 'Métier non précisé'} ${project.city ? '· ' + project.city : ''}</div>
 
   <h2>Informations de contact</h2>
   <div class="grid">
     <div class="field">
       <div class="field-label">Téléphone</div>
-      <div class="field-value">${f['Client Phone'] || '—'}</div>
+      <div class="field-value">${project.clientPhone || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Email</div>
-      <div class="field-value">${f['Client Email'] || '—'}</div>
+      <div class="field-value">${project.clientEmail || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Adresse du chantier</div>
-      <div class="field-value">${f['Site Address'] || '—'}</div>
+      <div class="field-value">${project.siteAddress || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Ville</div>
-      <div class="field-value">${f['City'] || '—'}</div>
+      <div class="field-value">${project.city || '—'}</div>
     </div>
   </div>
 
@@ -210,23 +252,23 @@ export async function GET(
   <div class="grid">
     <div class="field">
       <div class="field-label">Type de projet</div>
-      <div class="field-value">${f['Project Type'] || '—'}</div>
+      <div class="field-value">${project.projectType || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Budget</div>
-      <div class="field-value">${f['Budget'] || '—'}</div>
+      <div class="field-value">${project.budget || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Délai souhaité</div>
-      <div class="field-value">${f['Desired Timeline'] || '—'}</div>
+      <div class="field-value">${project.desiredTimeline || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Maturité</div>
-      <div class="field-value">${f['Maturity'] || '—'}</div>
+      <div class="field-value">${project.maturity || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Montant du devis</div>
-      <div class="field-value">${f['Devis_amount'] ? f['Devis_amount'] + ' €' : '—'}</div>
+      <div class="field-value">${project.devisAmount ? project.devisAmount + ' €' : '—'}</div>
     </div>
   </div>
 
@@ -237,29 +279,29 @@ export async function GET(
       <span class="verdict-badge">${verdictLabel}</span>
     </div>
   </div>
-  ${f['AI Summary'] ? `<div class="quote">${f['AI Summary']}</div>` : ''}
+  ${project.aiSummary ? `<div class="quote">${project.aiSummary}</div>` : ''}
   <div class="indicators">
     <div class="indicator">
       <div>Budget</div>
-      <div style="font-weight:700;margin-top:4px;">${f['Budget'] ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${project.budget ? '✓' : '—'}</div>
     </div>
     <div class="indicator">
       <div>Délai</div>
-      <div style="font-weight:700;margin-top:4px;">${f['Desired Timeline'] ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${project.desiredTimeline ? '✓' : '—'}</div>
     </div>
     <div class="indicator">
       <div>Contact</div>
-      <div style="font-weight:700;margin-top:4px;">${(f['Client Phone'] || f['Client Email']) ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${(project.clientPhone || project.clientEmail) ? '✓' : '—'}</div>
     </div>
     <div class="indicator">
       <div>Adresse</div>
-      <div style="font-weight:700;margin-top:4px;">${f['Site Address'] ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${project.siteAddress ? '✓' : '—'}</div>
     </div>
   </div>
 
   <div class="footer">
-    <span>Source : ${f['Source'] || '—'}</span>
-    <span>Statut : ${f['Status'] || '—'}</span>
+    <span>Source : ${project.source || '—'}</span>
+    <span>Statut : ${project.status || '—'}</span>
   </div>
 </body>
 </html>
