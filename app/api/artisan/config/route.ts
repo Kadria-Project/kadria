@@ -57,49 +57,47 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Mapping vers les noms de champs EXACTS d'Airtable Artisan_config
+    // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config
     const fields: Record<string, unknown> = {}
-    if (body.companyName  !== undefined) fields['Company Name']     = body.companyName
-    if (body.primaryTrade !== undefined) fields['Primary Trade']    = body.primaryTrade
-    if (body.phone        !== undefined) fields['Phone']            = body.phone
-    if (body.address      !== undefined) fields['Address']          = body.address
-    if (body.hours        !== undefined) fields['Hours']            = body.hours
-    if (body.logoUrl      !== undefined) fields['Logo URL']         = body.logoUrl
-    if (body.welcomeName  !== undefined) fields['Welcome Name']     = body.welcomeName
-    if (body.welcomeMessage !== undefined) fields['Welcome Message'] = body.welcomeMessage
-    if (body.primaryColor !== undefined) fields['Primary Color']    = body.primaryColor
-    if (body.secondaryColor !== undefined) fields['Secondary Color'] = body.secondaryColor
-    if (body.websiteUrl   !== undefined) fields['Website URL']      = body.websiteUrl
-    if (body.trades       !== undefined) fields['Trades']           = body.trades
+    if (body.companyName  !== undefined) fields['company_name']     = body.companyName
+    if (body.primaryTrade !== undefined) fields['primary_trade']    = body.primaryTrade
+    if (body.phone        !== undefined) fields['phone']            = body.phone
+    if (body.address      !== undefined) fields['address']          = body.address
+    if (body.hours        !== undefined) fields['hours']            = body.hours
+    if (body.logoUrl      !== undefined) fields['logo_url']         = body.logoUrl
+    if (body.welcomeName  !== undefined) fields['welcome_name']     = body.welcomeName
+    if (body.welcomeMessage !== undefined) fields['welcome_message'] = body.welcomeMessage
+    if (body.primaryColor !== undefined) fields['primary_color']    = body.primaryColor
+    if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
+    if (body.websiteUrl   !== undefined) fields['website_url']      = body.websiteUrl
+    if (body.trades       !== undefined) fields['trades']           = body.trades
 
     // Informations légales
-if (body.raisonSociale !== undefined) fields['raison_sociale'] = body.raisonSociale
-if (body.formeJuridique !== undefined) fields['forme_juridique'] = body.formeJuridique
-if (body.siret !== undefined) fields['siret'] = body.siret
-if (body.adressePro !== undefined) fields['adresse_pro'] = body.adressePro
-if (body.cpPro !== undefined) fields['cp_pro'] = body.cpPro
+    if (body.raisonSociale !== undefined) fields['raison_sociale'] = body.raisonSociale
+    if (body.formeJuridique !== undefined) fields['forme_juridique'] = body.formeJuridique
+    if (body.siret !== undefined) fields['siret'] = body.siret
+    if (body.adressePro !== undefined) fields['adresse_pro'] = body.adressePro
+    if (body.cpPro !== undefined) fields['cp_pro'] = body.cpPro
+    if (body.tvaNumber !== undefined) fields['tva_number'] = body.tvaNumber
+    if (body.tvaAssujetti !== undefined) fields['tva_assujetti'] = body.tvaAssujetti
+    if (body.villePro !== undefined) fields['ville_pro'] = body.villePro
 
-// À activer seulement si ces champs existent dans Airtable
-if (body.tvaNumber !== undefined) fields['tva_number'] = body.tvaNumber
-if (body.tvaAssujetti !== undefined) fields['tva_assujetti'] = body.tvaAssujetti
-if (body.villePro !== undefined) fields['ville_pro'] = body.villePro
+    // Assurance
+    if (body.assureur !== undefined) fields['assureur'] = body.assureur
+    if (body.numAssurance !== undefined) fields['num_assurance'] = body.numAssurance
+    if (body.assuranceNonRequise !== undefined) fields['assurance_non_requise'] = body.assuranceNonRequise
 
-// Assurance
-if (body.assureur !== undefined) fields['assureur'] = body.assureur
-if (body.numAssurance !== undefined) fields['num_assurance'] = body.numAssurance
-if (body.assuranceNonRequise !== undefined) fields['assurance_non_requise'] = body.assuranceNonRequise
-
-// Préférences devis
-if (body.devisPrefixe !== undefined) fields['devis_prefixe'] = body.devisPrefixe
-if (body.devisValidite !== undefined) fields['devis_validite'] = body.devisValidite
-if (body.devisTvaDefaut !== undefined) fields['devis_tva_defaut'] = body.devisTvaDefaut
-if (body.devisConditionsPaiement !== undefined) fields['devis_conditions_paiement'] = body.devisConditionsPaiement
-if (body.devisMentionLegale !== undefined) fields['devis_mention_legale'] = body.devisMentionLegale
-if (body.devisCompteur !== undefined) fields['devis_compteur'] = body.devisCompteur
-if (body.prestationsJson !== undefined) fields['prestations_json'] = body.prestationsJson
+    // Préférences devis
+    if (body.devisPrefixe !== undefined) fields['devis_prefixe'] = body.devisPrefixe
+    if (body.devisValidite !== undefined) fields['devis_validite'] = body.devisValidite
+    if (body.devisTvaDefaut !== undefined) fields['devis_tva_defaut'] = body.devisTvaDefaut
+    if (body.devisConditionsPaiement !== undefined) fields['devis_conditions_paiement'] = body.devisConditionsPaiement
+    if (body.devisMentionLegale !== undefined) fields['devis_mention_legale'] = body.devisMentionLegale
+    if (body.devisCompteur !== undefined) fields['devis_compteur'] = body.devisCompteur
+    if (body.prestationsJson !== undefined) fields['prestations_json'] = body.prestationsJson
 
     console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
-    console.log('[CONFIG PATCH] Champs écrits Airtable:', Object.keys(fields))
+    console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
 
     await updateArtisanConfig(config.id, fields)
     return NextResponse.json({ success: true })

@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     prestations.push(newPrestation)
-    await updateArtisanConfig(config.id, { 'Prestations JSON': JSON.stringify(prestations) })
+    await updateArtisanConfig(config.id, { prestations_json: JSON.stringify(prestations) })
 
     return NextResponse.json({ success: true, prestation: newPrestation, prestations })
   } catch (error) {
@@ -137,7 +137,7 @@ export async function PATCH(request: NextRequest) {
     if (body.unitPrice !== undefined) prestations[index].unitPrice = Number(body.unitPrice) || 0
     if (body.tvaRate !== undefined) prestations[index].tvaRate = Number(body.tvaRate) || 0
 
-    await updateArtisanConfig(config.id, { 'Prestations JSON': JSON.stringify(prestations) })
+    await updateArtisanConfig(config.id, { prestations_json: JSON.stringify(prestations) })
 
     return NextResponse.json({ success: true, prestations })
   } catch (error) {
@@ -175,7 +175,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const prestations = parsePrestations(config.prestationsJson).filter((p) => p.id !== id)
-    await updateArtisanConfig(config.id, { 'Prestations JSON': JSON.stringify(prestations) })
+    await updateArtisanConfig(config.id, { prestations_json: JSON.stringify(prestations) })
 
     return NextResponse.json({ success: true, prestations })
   } catch (error) {

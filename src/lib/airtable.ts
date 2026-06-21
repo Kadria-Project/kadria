@@ -201,18 +201,20 @@ export async function updateArtisanConfig(
 ) {
   console.info('[ARTISAN_CONFIG] Updating record:', recordId, 'fields:', Object.keys(fields))
 
-  const res = await airtableFetch(airtableApiUrl(`Artisan_config/${recordId}`), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  })
-  const result = await res.json()
-  if (!res.ok) {
-    console.error('[ARTISAN_CONFIG] Update FULL error:', JSON.stringify(result, null, 2))
-  } else {
-    console.info('[ARTISAN_CONFIG] Update status: success')
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.artisanConfig)
+    .update(fields)
+    .eq('id', recordId)
+    .select()
+    .maybeSingle()
+
+  if (error) {
+    console.error('[ARTISAN_CONFIG] Update FULL error:', JSON.stringify(error, null, 2))
+    throw error
   }
-  return result
+
+  console.info('[ARTISAN_CONFIG] Update status: success')
+  return data
 }
 
 export async function createCommercialLead(data: {
