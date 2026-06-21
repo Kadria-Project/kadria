@@ -462,18 +462,6 @@ export async function getProjectsByArtisan(artisanId: string): Promise<ProjectSu
   return (data || []).map(mapSupabaseProjectSummary)
 }
 
-export async function createActivityLog(
-  projectId: string,
-  action: string,
-  description: string,
-): Promise<void> {
-  await airtableBase(TABLES.activity).create({
-    'Project ID': projectId,
-    Action: action,
-    Description: description,
-  })
-}
-
 export interface UserRecord {
   id: string
   email: string
