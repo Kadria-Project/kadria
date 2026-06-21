@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createMagicToken } from '@/src/lib/auth-utils'
+import { TABLES } from '@/src/lib/airtable'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY
@@ -10,7 +12,17 @@ function getResendClient() {
   return new Resend(apiKey)
 }
 
+function formatDateOnly(date: Date) {
+  return date.toISOString().split('T')[0]
+}
+
+function buildArtisanId() {
+  return `Artisan_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+}
+
 export async function POST(request: NextRequest) {
+  let createdUserId: string | null = null
+
   try {
     const resend = getResendClient()
     const { email, firstName, lastName, phone, company, trade } = await request.json()
@@ -18,127 +30,101 @@ export async function POST(request: NextRequest) {
     if (!email || !firstName || !lastName || !company || !trade) {
       return NextResponse.json(
         { success: false, error: 'Champs requis manquants' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    const apiKey = process.env.AIRTABLE_API_KEY
-    const baseId = process.env.AIRTABLE_BASE_ID
+    const normalizedEmail = String(email).trim().toLowerCase()
 
-    // Vérifie si l'email existe déjà
-    const checkUrl = `https://api.airtable.com/v0/${baseId}/Users?filterByFormula=${encodeURIComponent(`{Email}="${email}"`)}`
-    const checkRes = await fetch(checkUrl, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      cache: 'no-store',
-    })
-    const checkData = await checkRes.json()
+    const { data: existingUser, error: existingUserError } = await supabaseAdmin
+      .from(TABLES.users)
+      .select('id')
+      .ilike('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle()
 
-    if (checkData.records?.length > 0) {
+    if (existingUserError) {
+      throw existingUserError
+    }
+
+    if (existingUser) {
       return NextResponse.json(
         { success: false, error: 'Un compte existe déjà avec cet email' },
-        { status: 409 }
+        { status: 409 },
       )
     }
 
-    const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const subscriptionStart = new Date().toISOString().split('T')[0]
+    const trialEndDate = formatDateOnly(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))
+    const subscriptionStart = formatDateOnly(new Date())
+    const artisanId = buildArtisanId()
 
-    // Crée l'utilisateur dans Users
-    const userRes = await fetch(`https://api.airtable.com/v0/${baseId}/Users`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          'Email': email,
-          'First Name': firstName || '',
-          'Last Name': lastName || '',
-          'Company Name': company || '',
-          'Role': 'Artisan',
-          'Plan': 'Performance',
-          'Statut': 'Trial',
-          'Trial_end_date': trialEndDate,
-          'Subscription_start': subscriptionStart,
-        },
-      }),
-    })
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from(TABLES.users)
+      .insert({
+        email: normalizedEmail,
+        first_name: firstName,
+        last_name: lastName,
+        company_name: company,
+        role: 'Artisan',
+        plan: 'Performance',
+        statut: 'Trial',
+        trial_end_date: trialEndDate,
+        subscription_start: subscriptionStart,
+        artisan_id: artisanId,
+        phone: phone || '',
+        active: true,
+      })
+      .select('id')
+      .single()
 
-    const userData = await userRes.json()
-
-    if (!userRes.ok) {
-      console.error('[REGISTER] Airtable user error:', userData?.error || userRes.status)
+    if (userError) {
+      console.error('[REGISTER] Supabase user error:', userError.message)
       return NextResponse.json(
         { error: 'Erreur création compte' },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
-    console.info('[REGISTER] User créé:', userData?.id)
+    createdUserId = userData.id
 
-    // Crée la configuration artisan
-    const configRes = await fetch(`https://api.airtable.com/v0/${baseId}/Artisan_config`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          'devis_prefixe': 'DEV',
-          'devis_validite': 90,
-          'devis_tva_defaut': 10,
-        },
-      }),
-    })
+    const { data: configData, error: configError } = await supabaseAdmin
+      .from(TABLES.artisanConfig)
+      .insert({
+        artisan_id: artisanId,
+        company_name: company,
+        primary_trade: trade,
+        email: normalizedEmail,
+        phone: phone || '',
+        active: true,
+        devis_prefixe: 'DEV',
+        devis_validite: 90,
+        devis_tva_defaut: 10,
+      })
+      .select('id')
+      .single()
 
-    const configData = await configRes.json()
+    if (configError) {
+      console.error('[REGISTER] Supabase config error:', configError.message)
 
-    if (!configRes.ok) {
-      console.error('[REGISTER] Airtable config error:', configData?.error || configRes.status)
+      await supabaseAdmin
+        .from(TABLES.users)
+        .delete()
+        .eq('id', createdUserId)
+
       return NextResponse.json(
         { error: 'Erreur création compte' },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
-    console.info('[REGISTER] Config créée:', configData?.id)
-
-    // Lie la configuration au compte utilisateur
-    const linkRes = await fetch(`https://api.airtable.com/v0/${baseId}/Users/${userData.id}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          'Artisan ID': configData.id,
-        },
-      }),
-    })
-
-    const linkData = await linkRes.json()
-
-    if (!linkRes.ok) {
-      console.error('[REGISTER] Airtable link error:', linkData?.error || linkRes.status)
-      return NextResponse.json(
-        { error: 'Erreur création compte' },
-        { status: 500 }
-      )
-    }
-
-    // Génère le lien magique
-    const magicToken = await createMagicToken(email)
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
+    const magicToken = await createMagicToken(normalizedEmail)
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
     const magicUrl = `${baseUrl}/api/auth/verify?token=${magicToken}`
 
-    // Email de bienvenue
     await resend.emails.send({
       from: 'Kadria <connexion@kadria.fr>',
-      to: email,
-      subject: 'Bienvenue sur Kadria — Accédez à votre espace',
+      to: normalizedEmail,
+      subject: 'Bienvenue sur Kadria - Accédez à votre espace',
       html: `
         <div style="font-family:system-ui;max-width:500px;margin:0 auto;padding:40px 20px;background:#09090b;color:white;">
           <h1 style="margin:0 0 24px;">
@@ -164,7 +150,6 @@ export async function POST(request: NextRequest) {
       `,
     })
 
-    // Email de notification interne
     await resend.emails.send({
       from: 'Kadria <notifications@kadria.fr>',
       to: 'contact@kadria.fr',
@@ -174,11 +159,12 @@ export async function POST(request: NextRequest) {
           <h2>Nouvelle inscription Kadria</h2>
           <p><strong>Entreprise :</strong> ${company}</p>
           <p><strong>Nom :</strong> ${firstName} ${lastName}</p>
-          <p><strong>Email :</strong> ${email}</p>
+          <p><strong>Email :</strong> ${normalizedEmail}</p>
           <p><strong>Téléphone :</strong> ${phone || '-'}</p>
           <p><strong>Métier :</strong> ${trade}</p>
           <p><strong>User record :</strong> ${userData.id}</p>
           <p><strong>Artisan_config record :</strong> ${configData.id}</p>
+          <p><strong>Artisan ID :</strong> ${artisanId}</p>
         </div>
       `,
     })
@@ -186,9 +172,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[REGISTER] Error:', error instanceof Error ? error.message : String(error))
+
+    if (createdUserId) {
+      await supabaseAdmin
+        .from(TABLES.users)
+        .delete()
+        .eq('id', createdUserId)
+    }
+
     return NextResponse.json(
       { success: false, error: 'Erreur serveur' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

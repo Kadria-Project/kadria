@@ -1,17 +1,28 @@
 import Airtable from 'airtable';
+import {
+  mapSupabaseArtisanConfig,
+  mapSupabaseProjectSummary,
+  mapSupabaseUserLookup,
+} from '@/src/lib/supabase/mapping'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 const apiKey = process.env.AIRTABLE_API_KEY;
 const baseId = process.env.AIRTABLE_BASE_ID;
 
-if (!apiKey) {
-  throw new Error('Missing AIRTABLE_API_KEY');
+function createAirtableFallbackError() {
+  return new Error('Missing Airtable environment variables for legacy routes')
 }
 
-if (!baseId) {
-  throw new Error('Missing AIRTABLE_BASE_ID');
+function getAirtableBaseClient() {
+  if (!apiKey || !baseId) {
+    throw createAirtableFallbackError()
+  }
+
+  return new Airtable({ apiKey }).base(baseId)
 }
 
-export const airtableBase = new Airtable({ apiKey }).base(baseId);
+export const airtableBase = ((...args: Parameters<ReturnType<typeof getAirtableBaseClient>>) =>
+  getAirtableBaseClient()(...args)) as ReturnType<typeof getAirtableBaseClient>;
 
 export const TABLES = {
   projects: process.env.AIRTABLE_PROJECTS_TABLE || 'Projects',
@@ -27,10 +38,16 @@ function escapeFormulaValue(value: string) {
 }
 
 function airtableApiUrl(table: string, query = '') {
+  if (!baseId) {
+    throw createAirtableFallbackError()
+  }
   return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}${query}`
 }
 
 async function airtableFetch(url: string, init: RequestInit = {}) {
+  if (!apiKey) {
+    throw createAirtableFallbackError()
+  }
   return fetch(url, {
     ...init,
     headers: {
@@ -42,41 +59,27 @@ async function airtableFetch(url: string, init: RequestInit = {}) {
 }
 
 export async function getArtisanByEmail(email: string) {
-  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
-  const safeEmail = escapeFormulaValue(email)
+  const normalizedEmail = email.trim().toLowerCase()
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.users)
+    .select('*')
+    .ilike('email', normalizedEmail)
+    .limit(1)
+    .maybeSingle()
 
-  const filters = [
-    `{Email}="${safeEmail}"`,
-    `{email}="${safeEmail}"`,
-    `{E-mail}="${safeEmail}"`,
-    `{Mail}="${safeEmail}"`,
-  ]
-
-  for (const filter of filters) {
-    const url = airtableApiUrl(table, `?filterByFormula=${encodeURIComponent(filter)}&maxRecords=1`)
-    const res = await airtableFetch(url)
-    const data = await res.json()
-
-    if (data.records?.length > 0) {
-      const record = data.records[0]
-
-      return {
-        id: record.id,
-        artisanId: (record.fields['Artisan ID'] || '') as string,
-        companyName: (record.fields['Company Name'] || record.fields['companyName'] || '') as string,
-        email: email,
-        firstName: (record.fields['First Name'] || '') as string,
-        lastName: (record.fields['Last Name'] || '') as string,
-        primaryColor: (record.fields['Primary Color'] || record.fields['primaryColor'] || '#22c55e') as string,
-        plan: (record.fields['Plan'] || '') as string,
-        statut: (record.fields['Statut'] || '') as string,
-        active: record.fields['Active'] !== false,
-        role: (record.fields['Role'] || '') as string,
-      }
-    }
+  if (error) {
+    throw error
   }
 
-  return null
+  if (!data) {
+    return null
+  }
+
+  const user = mapSupabaseUserLookup(data)
+  return {
+    ...user,
+    email: user.email || email,
+  }
 }
 
 export async function getEvents(artisanId: string) {
@@ -138,88 +141,58 @@ export async function deleteEvent(id: string) {
 }
 
 export async function getUserByArtisanIdentifier(artisanId: string) {
-  const table = process.env.AIRTABLE_USERS_TABLE || 'Users'
-  const safeArtisanId = escapeFormulaValue(artisanId)
-  const url = airtableApiUrl(table, `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}&maxRecords=1`)
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.users)
+    .select('*')
+    .eq('artisan_id', artisanId)
+    .limit(1)
+    .maybeSingle()
 
-  const res = await airtableFetch(url)
-  const data = await res.json()
-  const record = data.records?.[0]
-  if (!record) return null
-
-  return {
-    id: record.id,
-    artisanId: (record.fields['Artisan ID'] || '') as string,
-    companyName: (record.fields['Company Name'] || '') as string,
-    primaryColor: (record.fields['Primary Color'] || '#22c55e') as string,
-    plan: (record.fields['Plan'] || '') as string,
-    active: record.fields['Active'] !== false,
+  if (error) {
+    throw error
   }
+
+  if (!data) return null
+
+  return mapSupabaseUserLookup(data)
 }
 
 export async function getArtisanConfig(artisanId: string) {
-  let record: { id: string; fields: Record<string, unknown> } | undefined
+  let data: Record<string, unknown> | null = null
 
-  if (artisanId?.startsWith('rec')) {
-    const res = await airtableFetch(airtableApiUrl(`Artisan_config/${artisanId}`))
-    if (res.ok) {
-      record = await res.json()
+  if (artisanId) {
+    const byTenant = await supabaseAdmin
+      .from(TABLES.artisanConfig)
+      .select('*')
+      .eq('artisan_id', artisanId)
+      .limit(1)
+      .maybeSingle()
+
+    if (byTenant.error) {
+      throw byTenant.error
     }
+
+    data = byTenant.data
   }
 
-  if (!record) {
-    const safeArtisanId = escapeFormulaValue(artisanId)
-    const url = airtableApiUrl('Artisan_config', `?filterByFormula=${encodeURIComponent(`{Artisan ID}="${safeArtisanId}"`)}&maxRecords=1`)
-    const res = await airtableFetch(url)
-    const data = await res.json()
-    record = data.records?.[0]
+  if (!data && artisanId) {
+    const byId = await supabaseAdmin
+      .from(TABLES.artisanConfig)
+      .select('*')
+      .eq('id', artisanId)
+      .limit(1)
+      .maybeSingle()
+
+    if (byId.error) {
+      throw byId.error
+    }
+
+    data = byId.data
   }
 
-  if (!record) return null
+  if (!data) return null
 
-  return {
-    id: record.id,
-    artisanId: record.fields['Artisan ID'] as string || '',
-    companyName: record.fields['Company Name'] as string || '',
-    primaryTrade: record.fields['Primary Trade'] as string || '',
-    phone: record.fields['Phone'] as string || '',
-    email: record.fields['Email'] as string || '',
-    address: record.fields['Address'] as string || '',
-    hours: record.fields['Hours'] as string || '',
-    logoUrl: record.fields['Logo URL'] as string || '',
-    welcomeName: record.fields['Welcome Name'] as string || '',
-    welcomeMessage: record.fields['Welcome Message'] as string || '',
-    primaryColor: record.fields['Primary Color'] as string || '#22c55e',
-    secondaryColor: record.fields['Secondary Color'] as string || '#18181b',
-    qualificationFlow: record.fields['Qualification Flow'] as string || '',
-    websiteUrl: record.fields['Website URL'] as string || '',
-    active: record.fields['Active'] === true || record.fields['Active'] === 'True' || record.fields['Active'] === 'true',
-    aiInstructions: record.fields['AI Instructions'] as string || '',
-    trades: record.fields['Trades'] as string || '',
-
-    raisonSociale: record.fields['raison_sociale'] as string || record.fields['Raison Sociale'] as string || '',
-    formeJuridique: record.fields['forme_juridique'] as string || record.fields['Forme Juridique'] as string || '',
-    siret: record.fields['siret'] as string || record.fields['SIRET'] as string || '',
-    tvaNumber: record.fields['tva_number'] as string || record.fields['TVA Number'] as string || '',
-    tvaAssujetti: record.fields['tva_assujetti'] !== undefined
-      ? record.fields['tva_assujetti'] !== false
-      : record.fields['TVA Assujetti'] !== false,
-    adressePro: record.fields['adresse_pro'] as string || record.fields['Adresse Pro'] as string || '',
-    cpPro: record.fields['cp_pro'] as string || record.fields['CP Pro'] as string || '',
-    villePro: record.fields['ville_pro'] as string || record.fields['Ville Pro'] as string || '',
-
-    assureur: record.fields['assureur'] as string || record.fields['Assureur'] as string || '',
-    numAssurance: record.fields['num_assurance'] as string || record.fields['Num Assurance'] as string || '',
-    assuranceNonRequise: record.fields['assurance_non_requise'] === true || record.fields['Assurance Non Requise'] === true,
-
-    devisPrefixe: record.fields['devis_prefixe'] as string || record.fields['Devis Prefixe'] as string || 'DEV',
-    devisValidite: Number(record.fields['devis_validite'] ?? record.fields['Devis Validite']) || 90,
-    devisTvaDefaut: Number(record.fields['devis_tva_defaut'] ?? record.fields['Devis TVA Defaut']) || 10,
-    devisConditionsPaiement: record.fields['devis_conditions_paiement'] as string || record.fields['Devis Conditions Paiement'] as string || '',
-    devisMentionLegale: record.fields['devis_mention_legale'] as string || record.fields['Devis Mention Legale'] as string || '',
-    devisCompteur: Number(record.fields['devis_compteur'] ?? record.fields['Devis Compteur']) || 0,
-    prestationsJson: record.fields['prestations_json'] as string || record.fields['Prestations JSON'] as string || '',
-  }
+  return mapSupabaseArtisanConfig(data)
 }
 
 export async function updateArtisanConfig(
@@ -418,18 +391,16 @@ export interface ProjectSummary {
 }
 
 export async function getProjectsByArtisan(artisanId: string): Promise<ProjectSummary[]> {
-  const records = await airtableBase(TABLES.projects)
-    .select({
-      filterByFormula: `{Artisan ID}="${escapeFormulaValue(artisanId)}"`,
-    })
-    .firstPage()
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.projects)
+    .select('id, record_id, status, created_at, devis_amount')
+    .eq('artisan_id', artisanId)
 
-  return records.map((record) => ({
-    id: record.id,
-    status: record.fields['Status'] as string || '',
-    createdAt: record.fields['Created At'] as string || '',
-    devisAmount: (record.fields['Devis_amount'] as number) || 0,
-  }))
+  if (error) {
+    throw error
+  }
+
+  return (data || []).map(mapSupabaseProjectSummary)
 }
 
 export async function createActivityLog(

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { TABLES } from '@/src/lib/airtable'
+import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo'
 
@@ -12,6 +15,7 @@ function maskPhone(value: string | undefined | null): string {
 function readArtisanMapping(): Record<string, string> {
   const raw = process.env.VAPI_ARTISAN_MAPPING_JSON
   if (!raw) return {}
+
   try {
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -19,7 +23,7 @@ function readArtisanMapping(): Record<string, string> {
     }
     return {}
   } catch {
-    console.warn('[VAPI] VAPI_ARTISAN_MAPPING_JSON invalide — ignorée')
+    console.warn('[VAPI] VAPI_ARTISAN_MAPPING_JSON invalide - ignorée')
     return {}
   }
 }
@@ -47,11 +51,10 @@ function resolveArtisanId(params: {
   if (params.explicitArtisanId) {
     return params.explicitArtisanId
   }
+
   return FALLBACK_ARTISAN_ID
 }
 
-// Extrait les infos pertinentes, qu'il s'agisse du format plat de test
-// ou du format Vapi Tool ({ message: { type: 'tool-calls', call, toolCallList } })
 function parseIncomingPayload(body: any) {
   const message = body?.message
   const isToolCallFormat = message?.type === 'tool-calls'
@@ -65,7 +68,8 @@ function parseIncomingPayload(body: any) {
       assistantId: body?.assistantId,
       phoneNumberId: body?.phoneNumberId,
       calledNumber: body?.calledNumber,
-      callerNumber: body?.callerNumber ?? body?.customer?.number ?? body?.call?.customer?.number ?? body?.phoneNumber,
+      callerNumber:
+        body?.callerNumber ?? body?.customer?.number ?? body?.call?.customer?.number ?? body?.phoneNumber,
       params: body ?? {},
     }
   }
@@ -79,6 +83,7 @@ function parseIncomingPayload(body: any) {
   const toolName = toolCall?.function?.name ?? toolCall?.name
   let params: Record<string, unknown> = {}
   const rawArgs = toolCall?.function?.arguments ?? toolCall?.arguments ?? toolCall?.parameters
+
   if (rawArgs && typeof rawArgs === 'object') {
     params = rawArgs as Record<string, unknown>
   } else if (typeof rawArgs === 'string') {
@@ -106,36 +111,43 @@ export async function POST(request: NextRequest) {
   let parsed: ReturnType<typeof parseIncomingPayload> | undefined
 
   try {
-    // ── Sécurité : clé secrète partagée ──
     const secret = request.headers.get('x-vapi-secret')
     if (secret !== process.env.VAPI_SHARED_SECRET) {
-      console.warn('[VAPI] Unauthorized attempt — invalid or missing secret')
+      console.warn('[VAPI] Unauthorized attempt - invalid or missing secret')
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { status: 401 },
       )
     }
 
     const body = await request.json()
-    console.log('[VAPI] RAW BODY STRUCTURE:', JSON.stringify(body, null, 2))
-    console.log('[VAPI] BODY KEYS:', Object.keys(body || {}))
     parsed = parseIncomingPayload(body)
-    const { isToolCallFormat, toolCallId, toolName, callId, assistantId, phoneNumberId, calledNumber, callerNumber, params } = parsed
+
+    const {
+      isToolCallFormat,
+      toolCallId,
+      toolName,
+      callId,
+      assistantId,
+      phoneNumberId,
+      calledNumber,
+      callerNumber,
+      params,
+    } = parsed
+
     console.log('[VAPI] Detected args source:', isToolCallFormat ? 'message.toolCalls[0].function.arguments' : 'root body')
     console.log('[VAPI] Parsed args:', JSON.stringify(params, null, 2))
-
     console.log(
-      '[VAPI] Incoming payload —',
+      '[VAPI] Incoming payload -',
       'type:', isToolCallFormat ? 'tool-calls' : 'flat',
-      'toolName:', toolName || '—',
-      'callId:', callId || '—',
-      'assistantId:', assistantId || '—',
-      'phoneNumberId:', phoneNumberId || '—',
-      'calledNumber:', maskPhone(calledNumber) || '—',
-      'callerNumber:', maskPhone(callerNumber) || '—'
+      'toolName:', toolName || '-',
+      'callId:', callId || '-',
+      'assistantId:', assistantId || '-',
+      'phoneNumberId:', phoneNumberId || '-',
+      'calledNumber:', maskPhone(calledNumber) || '-',
+      'callerNumber:', maskPhone(callerNumber) || '-',
     )
 
-    // ── Résolution de l'artisan : jamais décidée par l'IA vocale seule ──
     const explicitArtisanId = typeof params.artisanId === 'string' ? params.artisanId : undefined
     const artisanId = resolveArtisanId({
       phoneNumberId,
@@ -143,9 +155,7 @@ export async function POST(request: NextRequest) {
       assistantId,
       explicitArtisanId,
     })
-    console.log('[VAPI] artisanId résolu:', artisanId)
 
-    // ── Validation légère + valeurs par défaut ──
     const trade = String(params.trade || '') || 'Non précisé'
     const city = String(params.city || '')
     const projectType = String(params.projectType || params.projectDetails || '')
@@ -159,72 +169,49 @@ export async function POST(request: NextRequest) {
       body?.customer?.number ||
       body?.call?.customer?.number ||
       body?.phoneNumber ||
-      ''
+      '',
     )
-    console.log('[VAPI] Extracted phone:', maskPhone(clientPhone))
 
     let completenessScore = Number(params.completenessScore)
-    if (isNaN(completenessScore)) completenessScore = 60
+    if (Number.isNaN(completenessScore)) completenessScore = 60
     completenessScore = Math.max(0, Math.min(100, completenessScore))
 
     const aiSummary = String(params.aiSummary || '') || [
-      `Appel vocal — ${trade}`,
+      `Appel vocal - ${trade}`,
       city ? `à ${city}` : '',
       budget ? `budget ${budget}` : '',
       desiredTimeline ? `délai souhaité ${desiredTimeline}` : '',
       urgency ? `urgence: ${urgency}` : '',
     ].filter(Boolean).join(', ')
 
-    // ── Création Airtable ──
-    const apiKey = process.env.AIRTABLE_API_KEY
-    const baseId = process.env.AIRTABLE_BASE_ID
+    const payload = toSupabaseProjectInsert({
+      artisanId,
+      clientName,
+      clientPhone,
+      city,
+      trade,
+      projectType,
+      budget,
+      desiredTimeline,
+      aiSummary,
+      completenessScore,
+      source: 'vapi',
+      callId: callId || '',
+    })
 
-    const fields: Record<string, unknown> = {
-      'Client Name': clientName,
-      'Client Phone': clientPhone,
-      'City': city,
-      'Trade': trade,
-      'Project Type': projectType,
-      'Budget': budget,
-      'Desired Timeline': desiredTimeline,
-      'AI Summary': aiSummary,
-      'Completeness Score': completenessScore,
-      'Artisan ID': artisanId,
-      'Call ID': callId || '',
-      'Status': 'Nouveau',
-      'Source': 'vapi',
+    const { data: result, error } = await supabaseAdmin
+      .from(TABLES.projects)
+      .insert(payload)
+      .select('id')
+      .single()
+
+    const creationOk = !error
+
+    if (error) {
+      console.error('[VAPI] Supabase error:', error.message)
+    } else {
+      console.log('[VAPI] Project created - recordId:', result.id)
     }
-
-    const createRecord = async (fieldsToSend: Record<string, unknown>) =>
-      fetch(`https://api.airtable.com/v0/${baseId}/Projects`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fields: fieldsToSend }),
-      })
-
-    const res = await createRecord(fields)
-    let result = await res.json()
-    let creationOk = res.ok
-
-    if (!res.ok) {
-      console.error('[VAPI] Airtable error:', res.status, JSON.stringify(result))
-      // Retry sans le champ Source si Airtable le rejette (champ inexistant)
-      if (JSON.stringify(result).includes('Source')) {
-        delete fields['Source']
-        const retryRes = await createRecord(fields)
-        const retryResult = await retryRes.json()
-        if (retryRes.ok) {
-          result = retryResult
-          creationOk = true
-          console.log('[VAPI] Project created (retry without Source) — recordId:', retryResult.id)
-        }
-      }
-    }
-
-    console.log('[VAPI] Statut création Airtable:', creationOk ? 'success' : 'failed')
 
     if (isToolCallFormat && toolCallId) {
       return NextResponse.json({
@@ -241,8 +228,8 @@ export async function POST(request: NextRequest) {
 
     if (!creationOk) {
       return NextResponse.json(
-        { success: false, error: 'Airtable creation failed', details: result },
-        { status: 500 }
+        { success: false, error: 'Supabase creation failed', details: error?.message || null },
+        { status: 500 },
       )
     }
 
@@ -267,8 +254,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
+      { success: false, error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
     )
   }
 }

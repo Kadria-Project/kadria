@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { getArtisanByEmail } from '@/src/lib/airtable'
+import { getArtisanByEmail, TABLES } from '@/src/lib/airtable'
 import { createMagicToken } from '@/src/lib/auth-utils'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY
@@ -15,30 +16,23 @@ export async function POST(request: Request) {
   try {
     const resend = getResendClient()
     const { email } = await request.json()
+
     if (!email) {
       return NextResponse.json(
         { success: false, error: 'Email requis' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    // Vérifie que l'email existe dans Airtable
     const artisan = await getArtisanByEmail(email)
-    if (!artisan) {
-      // On renvoie success pour ne pas révéler si l'email existe
+    if (!artisan || !artisan.active) {
       return NextResponse.json({ success: true })
     }
 
-    if (!artisan.active) {
-      return NextResponse.json({ success: true })
-    }
-
-    // Génère le token magique
     const magicToken = await createMagicToken(email)
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
     const magicUrl = `${baseUrl}/api/auth/verify?token=${magicToken}`
 
-    // Envoie l'email
     const { error } = await resend.emails.send({
       from: 'Kadria <contact@kadria.fr>',
       to: email,
@@ -72,23 +66,18 @@ export async function POST(request: Request) {
       console.error('[AUTH] Resend error:', error)
       return NextResponse.json(
         { success: false, error: 'Erreur envoi email' },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
-    // Met à jour la date de dernière connexion
-    const apiKey = process.env.AIRTABLE_API_KEY
-    const baseId = process.env.AIRTABLE_BASE_ID
-    await fetch(`https://api.airtable.com/v0/${baseId}/Users/${artisan.id}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: { 'Last_login': new Date().toISOString() },
-      }),
-    })
+    const { error: updateError } = await supabaseAdmin
+      .from(TABLES.users)
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', artisan.id)
+
+    if (updateError) {
+      console.error('[AUTH] Failed to update last_login:', updateError.message)
+    }
 
     console.info('[AUTH] Magic link sent')
     return NextResponse.json({ success: true })
@@ -96,7 +85,7 @@ export async function POST(request: Request) {
     console.error('[AUTH] Error:', err instanceof Error ? err.message : String(err))
     return NextResponse.json(
       { success: false, error: 'Erreur serveur' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

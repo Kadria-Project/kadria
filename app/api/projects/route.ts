@@ -1,56 +1,11 @@
 import { NextResponse } from 'next/server';
-import { airtableBase, TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable';
+import { TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
 import { getMonthlyProjectLimit } from '@/src/lib/plans';
+import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
+import { supabaseAdmin } from '@/src/lib/supabase/server';
 
-function escapeFormulaValue(value: string) {
-  return value.replace(/"/g, '\\"');
-}
-
-function mapProject(record: any) {
-  const fields = record.fields;
-
-  return {
-    id: record.id,
-    projectNumber: record.id.slice(-6),
-
-    status: fields.Status ?? 'Inconnu',
-    leadStatus: fields['Lead Status'] ?? '',
-
-    clientName: fields['Client Name'] ?? '',
-    clientFirstName: fields['Client First Name'] ?? '',
-    clientEmail: fields['Client Email'] ?? '',
-    clientPhone: fields['Client Phone'] ?? '',
-
-    siteAddress: fields['Site Address'] ?? '',
-    city: fields.City ?? '',
-    postalCode: fields['Postal Code'] ?? '',
-
-    trade: fields.Trade ?? '',
-    projectType: fields['Project Type'] ?? '',
-    budget: fields.Budget ?? '',
-    desiredTimeline: fields['Desired Timeline'] ?? '',
-    maturity: fields.Maturity ?? '',
-
-    aiSummary: fields['AI Summary'] ?? '',
-    chatHistory: fields['Chat History'] ?? '',
-    tradeAnswers: fields['Trade Answers'] ?? '',
-
-    createdAt: fields['Created At'] ?? '',
-    completenessScore: fields['Completeness Score'] ?? 0,
-
-    contacted: fields.Contacted ?? false,
-    assignedTo: fields['Assigned To'] ?? '',
-    artisanId: fields['Artisan ID'] ?? '',
-    source: fields.Source ?? '',
-
-    latitude: fields.Latitude ?? null,
-    longitude: fields.Longitude ?? null,
-
-    callbackDate: fields['Callback Date'] ?? '',
-    devisAmount: (fields['Devis_amount'] as number) || 0,
-  };
-}
+const FALLBACK_ARTISAN_ID = 'Artisan_demo';
 
 export async function GET(request: Request) {
   try {
@@ -70,15 +25,18 @@ export async function GET(request: Request) {
     const trade = searchParams.get('trade');
     const search = searchParams.get('search')?.toLowerCase();
 
-    const records = await airtableBase(TABLES.projects)
-      .select({
-        maxRecords: 100,
-        sort: [{ field: 'Created At', direction: 'desc' }],
-        filterByFormula: `{Artisan ID}="${artisanId}"`,
-      })
-      .firstPage();
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.projects)
+      .select('*')
+      .eq('artisan_id', artisanId)
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-    let projects = records.map(mapProject);
+    if (error) {
+      throw error;
+    }
+
+    let projects = (data || []).map(mapSupabaseProject);
 
     if (status) {
       projects = projects.filter((project) => project.status === status);
@@ -131,7 +89,11 @@ export async function POST(request: Request) {
   try {
     const input = await request.json();
 
-    const artisanId = typeof input.artisanId === 'string' ? input.artisanId.trim() : '';
+    const artisanId =
+      typeof input.artisanId === 'string' && input.artisanId.trim()
+        ? input.artisanId.trim()
+        : FALLBACK_ARTISAN_ID;
+
     if (!artisanId || artisanId.length > 100) {
       return NextResponse.json(
         { success: false, error: 'artisanId invalide' },
@@ -173,16 +135,22 @@ export async function POST(request: Request) {
     const artisanUser = await getUserByArtisanIdentifier(artisanId);
     const monthlyLimit = getMonthlyProjectLimit(artisanUser?.plan);
     if (monthlyLimit !== null) {
-      const monthKey = new Date().toISOString().slice(0, 7);
-      const safeArtisanId = escapeFormulaValue(artisanId);
-      const recordsThisMonth = await airtableBase(TABLES.projects)
-        .select({
-          maxRecords: monthlyLimit + 1,
-          filterByFormula: `AND({Artisan ID}="${safeArtisanId}", DATETIME_FORMAT({Created At}, 'YYYY-MM')="${monthKey}")`,
-        })
-        .firstPage();
+      const now = new Date();
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+      const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
 
-      if (recordsThisMonth.length >= monthlyLimit) {
+      const { count, error } = await supabaseAdmin
+        .from(TABLES.projects)
+        .select('id', { count: 'exact', head: true })
+        .eq('artisan_id', artisanId)
+        .gte('created_at', monthStart)
+        .lt('created_at', nextMonthStart);
+
+      if (error) {
+        throw error;
+      }
+
+      if ((count || 0) >= monthlyLimit) {
         return NextResponse.json(
           {
             success: false,
@@ -194,50 +162,20 @@ export async function POST(request: Request) {
       }
     }
 
-    const postalNum = input.postalCode
-      ? Number.parseInt(input.postalCode, 10)
-      : undefined;
-
-    const latNum = input.latitude
-      ? Number.parseFloat(input.latitude)
-      : undefined;
-
-    const lonNum = input.longitude
-      ? Number.parseFloat(input.longitude)
-      : undefined;
-
-    const record = await airtableBase(TABLES.projects).create({
-      'Client Name': input.clientName ?? '',
-      'Client First Name': input.clientFirstName ?? '',
-      'Client Phone': input.clientPhone ?? '',
-      'Client Email': input.clientEmail ?? '',
-      'Site Address': input.siteAddress ?? '',
-      City: input.city ?? '',
-      'Postal Code': Number.isNaN(postalNum) ? undefined : postalNum,
-      Latitude: Number.isNaN(latNum) ? undefined : latNum,
-      Longitude: Number.isNaN(lonNum) ? undefined : lonNum,
-      Trade: input.trade ?? 'Autre',
-      'Project Type': input.projectType ?? '',
-      Budget: input.budget ?? '',
-      'Desired Timeline': input.desiredTimeline ?? '',
-      Maturity: input.maturity ?? '',
-      'AI Summary': input.aiSummary ?? '',
-      'Chat History': input.chatHistory ?? input.projectDetails ?? '',
-      'Trade Answers': input.tradeAnswers
-        ? JSON.stringify(input.tradeAnswers)
-        : '',
-      'Completeness Score': input.completenessScore ?? 0,
-      Status: 'Nouveau',
-      'Lead Status': 'Nouveau',
-      Contacted: false,
-      'Artisan ID': artisanId,
-      Source: input.source ?? 'web',
-      'Call ID': input.callId ?? '',
-      'Assigned To': input.assignedTo ?? '',
-      Photos: (input.photos || []).map((p: { url: string } | string) => ({
-        url: typeof p === 'string' ? p : p.url
-      })),
+    const payload = toSupabaseProjectInsert({
+      ...input,
+      artisanId,
     });
+
+    const { data: record, error } = await supabaseAdmin
+      .from(TABLES.projects)
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
       success: true,

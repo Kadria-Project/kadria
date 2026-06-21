@@ -1,66 +1,8 @@
 import { NextResponse } from 'next/server';
 import { airtableBase, TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
-
-function mapProject(record: any) {
-  const fields = record.fields;
-
-  return {
-    id: record.id,
-    projectNumber: record.id.slice(-6),
-
-    status: fields.Status ?? 'Inconnu',
-    leadStatus: fields['Lead Status'] ?? '',
-
-    clientName: fields['Client Name'] ?? '',
-    clientFirstName: fields['Client First Name'] ?? '',
-    clientEmail: fields['Client Email'] ?? '',
-    clientPhone: fields['Client Phone'] ?? '',
-
-    siteAddress: fields['Site Address'] ?? '',
-    city: fields.City ?? '',
-    postalCode: fields['Postal Code'] ?? '',
-
-    trade: fields.Trade ?? '',
-    projectType: fields['Project Type'] ?? '',
-    budget: fields.Budget ?? '',
-    desiredTimeline: fields['Desired Timeline'] ?? '',
-    maturity: fields.Maturity ?? '',
-
-    aiSummary: fields['AI Summary'] ?? '',
-    chatHistory: fields['Chat History'] ?? '',
-    tradeAnswers: fields['Trade Answers'] ?? '',
-
-    internalNotes: fields['Artisan Notes'] ?? '',
-
-    createdAt: fields['Created At'] ?? '',
-    completenessScore: fields['Completeness Score'] ?? 0,
-
-    contacted: fields.Contacted ?? false,
-    assignedTo: fields['Assigned To'] ?? '',
-    artisanId: fields['Artisan ID'] ?? '',
-    source: fields.Source ?? '',
-
-    latitude: fields.Latitude ?? null,
-    longitude: fields.Longitude ?? null,
-
-    callbackDate: fields['Callback Date'] ?? '',
-    devisAmount: (fields['Devis_amount'] as number) || 0,
-
-    photos: (() => {
-      const raw = fields.Photos;
-      if (!raw || !Array.isArray(raw)) return [];
-      return (raw as any[]).map(attachment => ({
-        url: attachment.url || '',
-        thumbnailUrl: attachment.thumbnails?.large?.url ||
-                      attachment.thumbnails?.small?.url ||
-                      attachment.url || '',
-        filename: attachment.filename || '',
-        size: attachment.size || 0,
-      }));
-    })(),
-  };
-}
+import { mapSupabaseProject, toSupabaseProjectUpdate } from '@/src/lib/supabase/mapping';
+import { supabaseAdmin } from '@/src/lib/supabase/server';
 
 async function createActivityLog(
   projectId: string,
@@ -75,15 +17,39 @@ async function createActivityLog(
 }
 
 async function getAuthorizedProject(id: string, artisanId: string) {
-  let record;
+  const direct = await supabaseAdmin
+    .from(TABLES.projects)
+    .select('*')
+    .eq('id', id)
+    .limit(1)
+    .maybeSingle();
 
-  try {
-    record = await airtableBase(TABLES.projects).find(id);
-  } catch {
+  if (direct.error) {
+    throw direct.error;
+  }
+
+  let record = direct.data;
+
+  if (!record) {
+    const legacy = await supabaseAdmin
+      .from(TABLES.projects)
+      .select('*')
+      .eq('record_id', id)
+      .limit(1)
+      .maybeSingle();
+
+    if (legacy.error) {
+      throw legacy.error;
+    }
+
+    record = legacy.data;
+  }
+
+  if (!record) {
     return { status: 404 as const };
   }
 
-  if (record.fields['Artisan ID'] !== artisanId) {
+  if (record.artisan_id !== artisanId) {
     return { status: 403 as const };
   }
 
@@ -113,7 +79,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      project: mapProject(result.record),
+      project: mapSupabaseProject(result.record),
     });
   } catch (error) {
     console.error('GET_PROJECT_DETAIL_ERROR', error instanceof Error ? error.message : String(error));
@@ -147,31 +113,42 @@ export async function PATCH(
     }
 
     const input = await request.json();
-    const fieldsToUpdate: Record<string, string | number | boolean | undefined> = {};
+    const fieldsToUpdate: Record<string, unknown> = {};
 
     if (input.status) {
-      fieldsToUpdate.Status = input.status;
+      fieldsToUpdate.status = input.status;
     }
 
     if (input.contacted !== undefined) {
-      fieldsToUpdate.Contacted = input.contacted;
+      fieldsToUpdate.contacted = input.contacted;
     }
 
     if (input.internalNotes !== undefined) {
-      fieldsToUpdate['Artisan Notes'] = input.internalNotes;
+      fieldsToUpdate.artisan_notes = input.internalNotes;
     }
 
     if (input.callbackDate !== undefined) {
-      fieldsToUpdate['Callback Date'] = input.callbackDate || undefined;
+      fieldsToUpdate.callback_date = input.callbackDate || null;
     }
 
     if (input.fields && typeof input.fields === 'object') {
-      const safeFields = { ...input.fields };
+      const safeFields = { ...input.fields } as Record<string, unknown>;
       delete safeFields['Artisan ID'];
-      Object.assign(fieldsToUpdate, safeFields);
+      Object.assign(fieldsToUpdate, toSupabaseProjectUpdate(safeFields));
     }
 
-    const record = await airtableBase(TABLES.projects).update(id, fieldsToUpdate);
+    const targetId = authResult.record.id as string;
+    const { data: record, error } = await supabaseAdmin
+      .from(TABLES.projects)
+      .update(fieldsToUpdate)
+      .eq('id', targetId)
+      .eq('artisan_id', session.artisanId)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     if (input.callbackDate !== undefined) {
       await createActivityLog(
@@ -190,7 +167,7 @@ export async function PATCH(
           (e: { projectId: string; type: string }) => e.projectId === id && e.type === 'Relance',
         );
 
-        const clientName = record.fields['Client Name'] || 'Prospect';
+        const clientName = record.client_name || 'Prospect';
 
         if (existingRelance) {
           await updateEvent(existingRelance.id, {
@@ -230,7 +207,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      project: mapProject(record),
+      project: mapSupabaseProject(record),
     });
   } catch (error) {
     console.error('UPDATE_PROJECT_ERROR', error instanceof Error ? error.message : String(error));
