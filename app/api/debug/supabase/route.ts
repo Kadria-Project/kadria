@@ -11,17 +11,24 @@ type DebugCheckKey =
 
 type DebugChecks = Record<DebugCheckKey, boolean>
 
-const TABLE_CHECKS: Record<DebugCheckKey, string> = {
-  users: 'Users',
-  projects: 'Projects',
-  planLimits: 'plan_limits',
-  usageMonthly: 'usage_monthly',
-  usageEvents: 'usage_events',
-  vapiCalls: 'vapi_calls',
+const TABLE_CHECKS: Record<DebugCheckKey, string[]> = {
+  users: ['Users'],
+  projects: ['Projects'],
+  planLimits: ['PlanLimits', 'plan_limits'],
+  usageMonthly: ['UsageMonthly', 'usage_monthly'],
+  usageEvents: ['UsageEvents', 'usage_events'],
+  vapiCalls: ['VapiCalls', 'vapi_calls'],
 }
 
 function isAuthorized(request: NextRequest) {
   const expectedSecret = process.env.DEBUG_API_SECRET
+
+  if (process.env.NODE_ENV === 'production') {
+    if (!expectedSecret) {
+      return false
+    }
+  }
+
   if (!expectedSecret) {
     return true
   }
@@ -42,25 +49,38 @@ async function checkTable(table: string) {
   return !error
 }
 
+async function checkAnyTable(candidates: string[]) {
+  for (const table of candidates) {
+    if (await checkTable(table)) {
+      return true
+    }
+  }
+
+  return false
+}
+
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Unauthorized debug access',
+        error:
+          process.env.NODE_ENV === 'production' && !process.env.DEBUG_API_SECRET
+            ? 'DEBUG_API_SECRET requis en production'
+            : 'Unauthorized debug access',
         checks: {
           users: false,
         },
       },
-      { status: 401 },
+      { status: 403 },
     )
   }
 
   const checks = {} as DebugChecks
 
   try {
-    for (const [key, table] of Object.entries(TABLE_CHECKS) as Array<[DebugCheckKey, string]>) {
-      checks[key] = await checkTable(table)
+    for (const [key, tables] of Object.entries(TABLE_CHECKS) as Array<[DebugCheckKey, string[]]>) {
+      checks[key] = await checkAnyTable(tables)
     }
 
     const failingChecks = Object.entries(checks)

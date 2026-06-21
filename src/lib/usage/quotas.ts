@@ -2,14 +2,19 @@ import 'server-only'
 import { normalizePlan } from '@/src/lib/plans'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 
-const QUOTA_TABLES = {
-  planLimits: 'plan_limits',
-  usageMonthly: 'usage_monthly',
-  usageEvents: 'usage_events',
-  vapiCalls: 'vapi_calls',
+const TABLE_CANDIDATES = {
+  users: ['Users'],
+  projects: ['Projects'],
+  planLimits: ['PlanLimits', 'plan_limits'],
+  usageMonthly: ['UsageMonthly', 'usage_monthly'],
+  usageEvents: ['UsageEvents', 'usage_events'],
+  vapiCalls: ['VapiCalls', 'vapi_calls'],
 } as const
 
+const tableResolutionCache = new Map<string, string | null>()
+
 type JsonObject = Record<string, unknown>
+type PlanKey = 'essentiel' | 'performance' | 'entreprise'
 
 export interface QuotaResult<T> {
   success: boolean
@@ -17,26 +22,47 @@ export interface QuotaResult<T> {
   error?: string
 }
 
-export interface PlanLimitsRow {
-  id?: string
-  plan: string
-  max_projects_per_month: number | null
-  max_vapi_calls_per_month: number | null
+export interface ProjectQuotaConfig {
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  limit: number | null
+  unlimited: boolean
+  source: 'plan_limits' | 'fallback'
+  tableName?: string | null
 }
 
-export interface UsageMonthlyRow {
-  id?: string
-  artisan_id: string
-  plan: string
-  period_month: string
-  projects_count: number
-  vapi_calls_count: number
-  created_at?: string
-  updated_at?: string
+export interface ProjectUsageSnapshot {
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  used: number
+  source: 'usage_monthly' | 'projects_count'
+  usageMonthlyTable?: string | null
+  projectTable?: string | null
+}
+
+export interface ProjectQuotaCheck {
+  success: boolean
+  allowed: boolean
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  limit: number | null
+  used: number
+  remaining: number | null
+  source: 'plan_limits' | 'fallback'
+  usageSource: 'usage_monthly' | 'projects_count'
+  error?: string
+}
+
+export interface ProjectCreatedUsageParams {
+  artisanId: string
+  projectId: string
+  source?: string
 }
 
 export interface UsageEventRow {
-  id?: string
   artisan_id: string
   plan: string
   period_month: string
@@ -44,379 +70,73 @@ export interface UsageEventRow {
   quantity: number
   dedup_key: string
   metadata?: JsonObject
-  created_at?: string
 }
 
-export interface UsageEventParams {
-  artisanId: string
-  plan: string
-  eventType: string
-  dedupKey: string
-  quantity?: number
-  periodMonth?: string
-  metadata?: JsonObject
+function getDefaultProjectLimit(plan: PlanKey) {
+  if (plan === 'entreprise') {
+    return null
+  }
+
+  return 50
 }
 
-export interface IncrementMonthlyUsageParams {
-  artisanId: string
-  plan: string
-  metric: 'projects_count' | 'vapi_calls_count'
-  amount?: number
-  periodMonth?: string
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
 }
 
-export interface QuotaCheckResult {
-  success: boolean
-  allowed: boolean
-  artisanId: string
-  plan: string
-  periodMonth: string
-  limit: number | null
-  used: number
-  remaining: number | null
-  error?: string
+function getCurrentMonthBounds(date = new Date()) {
+  const monthStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+  const nextMonthStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1))
+
+  return {
+    monthStartIso: monthStart.toISOString(),
+    nextMonthStartIso: nextMonthStart.toISOString(),
+  }
 }
 
-function getPeriodMonthFromDate(date: Date) {
+export function getCurrentPeriodMonth(date = new Date()): string {
   const year = date.getUTCFullYear()
   const month = String(date.getUTCMonth() + 1).padStart(2, '0')
   return `${year}-${month}`
 }
 
-export function getCurrentPeriodMonth(date = new Date()): string {
-  return getPeriodMonthFromDate(date)
-}
-
-function buildUsageMonthlySeed(artisanId: string, plan: string, periodMonth: string): UsageMonthlyRow {
-  return {
-    artisan_id: artisanId,
-    plan: normalizePlan(plan),
-    period_month: periodMonth,
-    projects_count: 0,
-    vapi_calls_count: 0,
+async function resolveAccessibleTable(key: keyof typeof TABLE_CANDIDATES) {
+  if (tableResolutionCache.has(key)) {
+    return tableResolutionCache.get(key) || null
   }
+
+  const supabase = getSupabaseAdmin()
+
+  for (const tableName of TABLE_CANDIDATES[key]) {
+    const { error } = await supabase
+      .from(tableName)
+      .select('*', { count: 'exact', head: true })
+
+    if (!error) {
+      tableResolutionCache.set(key, tableName)
+      return tableName
+    }
+  }
+
+  tableResolutionCache.set(key, null)
+  return null
 }
 
-export async function getPlanLimits(plan: string): Promise<QuotaResult<PlanLimitsRow>> {
+async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey>> {
   try {
     const supabase = getSupabaseAdmin()
-    const normalizedPlan = normalizePlan(plan)
+    const usersTable = await resolveAccessibleTable('users')
+
+    if (!usersTable) {
+      return { success: false, error: 'Table Users introuvable' }
+    }
 
     const { data, error } = await supabase
-      .from(QUOTA_TABLES.planLimits)
-      .select('*')
-      .eq('plan', normalizedPlan)
-      .limit(1)
-      .maybeSingle()
-
-    if (error) {
-      return { success: false, error: error.message }
-    }
-
-    if (!data) {
-      return {
-        success: false,
-        error: `Aucune limite trouvée pour le plan ${normalizedPlan}`,
-      }
-    }
-
-    return {
-      success: true,
-      data: {
-        id: typeof data.id === 'string' ? data.id : undefined,
-        plan: String(data.plan || normalizedPlan),
-        max_projects_per_month:
-          data.max_projects_per_month === null || data.max_projects_per_month === undefined
-            ? null
-            : Number(data.max_projects_per_month),
-        max_vapi_calls_per_month:
-          data.max_vapi_calls_per_month === null || data.max_vapi_calls_per_month === undefined
-            ? null
-            : Number(data.max_vapi_calls_per_month),
-      },
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue getPlanLimits',
-    }
-  }
-}
-
-export async function getOrCreateMonthlyUsage(artisanId: string, plan: string): Promise<QuotaResult<UsageMonthlyRow>> {
-  try {
-    const supabase = getSupabaseAdmin()
-    const normalizedPlan = normalizePlan(plan)
-    const periodMonth = getCurrentPeriodMonth()
-
-    const { data: existing, error: existingError } = await supabase
-      .from(QUOTA_TABLES.usageMonthly)
-      .select('*')
+      .from(usersTable)
+      .select('plan')
       .eq('artisan_id', artisanId)
-      .eq('period_month', periodMonth)
       .limit(1)
       .maybeSingle()
-
-    if (existingError) {
-      return { success: false, error: existingError.message }
-    }
-
-    if (existing) {
-      return {
-        success: true,
-        data: {
-          id: typeof existing.id === 'string' ? existing.id : undefined,
-          artisan_id: String(existing.artisan_id || artisanId),
-          plan: String(existing.plan || normalizedPlan),
-          period_month: String(existing.period_month || periodMonth),
-          projects_count: Number(existing.projects_count || 0),
-          vapi_calls_count: Number(existing.vapi_calls_count || 0),
-          created_at: typeof existing.created_at === 'string' ? existing.created_at : undefined,
-          updated_at: typeof existing.updated_at === 'string' ? existing.updated_at : undefined,
-        },
-      }
-    }
-
-    const seed = buildUsageMonthlySeed(artisanId, normalizedPlan, periodMonth)
-    const { data: created, error: createError } = await supabase
-      .from(QUOTA_TABLES.usageMonthly)
-      .insert(seed)
-      .select('*')
-      .single()
-
-    if (createError) {
-      return { success: false, error: createError.message }
-    }
-
-    return {
-      success: true,
-      data: {
-        id: typeof created.id === 'string' ? created.id : undefined,
-        artisan_id: String(created.artisan_id || artisanId),
-        plan: String(created.plan || normalizedPlan),
-        period_month: String(created.period_month || periodMonth),
-        projects_count: Number(created.projects_count || 0),
-        vapi_calls_count: Number(created.vapi_calls_count || 0),
-        created_at: typeof created.created_at === 'string' ? created.created_at : undefined,
-        updated_at: typeof created.updated_at === 'string' ? created.updated_at : undefined,
-      },
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue getOrCreateMonthlyUsage',
-    }
-  }
-}
-
-export async function checkProjectQuota(artisanId: string, plan: string): Promise<QuotaCheckResult> {
-  const periodMonth = getCurrentPeriodMonth()
-  const limitsResult = await getPlanLimits(plan)
-  const usageResult = await getOrCreateMonthlyUsage(artisanId, plan)
-
-  if (!limitsResult.success || !limitsResult.data) {
-    return {
-      success: false,
-      allowed: false,
-      artisanId,
-      plan: normalizePlan(plan),
-      periodMonth,
-      limit: null,
-      used: 0,
-      remaining: null,
-      error: limitsResult.error || 'Impossible de charger les limites projets',
-    }
-  }
-
-  if (!usageResult.success || !usageResult.data) {
-    return {
-      success: false,
-      allowed: false,
-      artisanId,
-      plan: normalizePlan(plan),
-      periodMonth,
-      limit: limitsResult.data.max_projects_per_month,
-      used: 0,
-      remaining: null,
-      error: usageResult.error || 'Impossible de charger l’usage mensuel projets',
-    }
-  }
-
-  const limit = limitsResult.data.max_projects_per_month
-  const used = usageResult.data.projects_count
-
-  return {
-    success: true,
-    allowed: limit === null ? true : used < limit,
-    artisanId,
-    plan: normalizePlan(plan),
-    periodMonth,
-    limit,
-    used,
-    remaining: limit === null ? null : Math.max(limit - used, 0),
-  }
-}
-
-export async function checkVapiQuota(artisanId: string, plan: string): Promise<QuotaCheckResult> {
-  const periodMonth = getCurrentPeriodMonth()
-  const limitsResult = await getPlanLimits(plan)
-  const usageResult = await getOrCreateMonthlyUsage(artisanId, plan)
-
-  if (!limitsResult.success || !limitsResult.data) {
-    return {
-      success: false,
-      allowed: false,
-      artisanId,
-      plan: normalizePlan(plan),
-      periodMonth,
-      limit: null,
-      used: 0,
-      remaining: null,
-      error: limitsResult.error || 'Impossible de charger les limites VAPI',
-    }
-  }
-
-  if (!usageResult.success || !usageResult.data) {
-    return {
-      success: false,
-      allowed: false,
-      artisanId,
-      plan: normalizePlan(plan),
-      periodMonth,
-      limit: limitsResult.data.max_vapi_calls_per_month,
-      used: 0,
-      remaining: null,
-      error: usageResult.error || 'Impossible de charger l’usage mensuel VAPI',
-    }
-  }
-
-  const limit = limitsResult.data.max_vapi_calls_per_month
-  const used = usageResult.data.vapi_calls_count
-
-  return {
-    success: true,
-    allowed: limit === null ? true : used < limit,
-    artisanId,
-    plan: normalizePlan(plan),
-    periodMonth,
-    limit,
-    used,
-    remaining: limit === null ? null : Math.max(limit - used, 0),
-  }
-}
-
-export async function recordUsageEvent(params: UsageEventParams): Promise<QuotaResult<UsageEventRow>> {
-  try {
-    const supabase = getSupabaseAdmin()
-    const periodMonth = params.periodMonth || getCurrentPeriodMonth()
-
-    const { data: existing, error: existingError } = await supabase
-      .from(QUOTA_TABLES.usageEvents)
-      .select('*')
-      .eq('dedup_key', params.dedupKey)
-      .limit(1)
-      .maybeSingle()
-
-    if (existingError) {
-      return { success: false, error: existingError.message }
-    }
-
-    if (existing) {
-      return {
-        success: true,
-        data: {
-          id: typeof existing.id === 'string' ? existing.id : undefined,
-          artisan_id: String(existing.artisan_id || params.artisanId),
-          plan: String(existing.plan || normalizePlan(params.plan)),
-          period_month: String(existing.period_month || periodMonth),
-          event_type: String(existing.event_type || params.eventType),
-          quantity: Number(existing.quantity || params.quantity || 1),
-          dedup_key: String(existing.dedup_key || params.dedupKey),
-          metadata:
-            existing.metadata && typeof existing.metadata === 'object'
-              ? existing.metadata as JsonObject
-              : params.metadata,
-          created_at: typeof existing.created_at === 'string' ? existing.created_at : undefined,
-        },
-      }
-    }
-
-    const payload: UsageEventRow = {
-      artisan_id: params.artisanId,
-      plan: normalizePlan(params.plan),
-      period_month: periodMonth,
-      event_type: params.eventType,
-      quantity: params.quantity || 1,
-      dedup_key: params.dedupKey,
-      metadata: params.metadata,
-    }
-
-    const { data: created, error: createError } = await supabase
-      .from(QUOTA_TABLES.usageEvents)
-      .insert(payload)
-      .select('*')
-      .single()
-
-    if (createError) {
-      return { success: false, error: createError.message }
-    }
-
-    return {
-      success: true,
-      data: {
-        id: typeof created.id === 'string' ? created.id : undefined,
-        artisan_id: String(created.artisan_id || params.artisanId),
-        plan: String(created.plan || normalizePlan(params.plan)),
-        period_month: String(created.period_month || periodMonth),
-        event_type: String(created.event_type || params.eventType),
-        quantity: Number(created.quantity || params.quantity || 1),
-        dedup_key: String(created.dedup_key || params.dedupKey),
-        metadata:
-          created.metadata && typeof created.metadata === 'object'
-            ? created.metadata as JsonObject
-            : params.metadata,
-        created_at: typeof created.created_at === 'string' ? created.created_at : undefined,
-      },
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue recordUsageEvent',
-    }
-  }
-}
-
-export async function incrementMonthlyUsage(
-  params: IncrementMonthlyUsageParams,
-): Promise<QuotaResult<UsageMonthlyRow>> {
-  try {
-    const supabase = getSupabaseAdmin()
-    const normalizedPlan = normalizePlan(params.plan)
-    const periodMonth = params.periodMonth || getCurrentPeriodMonth()
-    const usageResult = await getOrCreateMonthlyUsage(params.artisanId, normalizedPlan)
-
-    if (!usageResult.success || !usageResult.data) {
-      return {
-        success: false,
-        error: usageResult.error || 'Impossible de charger l’usage mensuel',
-      }
-    }
-
-    const amount = params.amount || 1
-    const current = usageResult.data
-    const updatedPayload = {
-      [params.metric]: Math.max(Number(current[params.metric]) + amount, 0),
-      plan: normalizedPlan,
-      updated_at: new Date().toISOString(),
-    }
-
-    const { data: updated, error } = await supabase
-      .from(QUOTA_TABLES.usageMonthly)
-      .update(updatedPayload)
-      .eq('artisan_id', params.artisanId)
-      .eq('period_month', periodMonth)
-      .select('*')
-      .single()
 
     if (error) {
       return { success: false, error: error.message }
@@ -424,23 +144,424 @@ export async function incrementMonthlyUsage(
 
     return {
       success: true,
+      data: normalizePlan(String(data?.plan || 'performance')),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger le plan artisan',
+    }
+  }
+}
+
+async function upsertMonthlyUsageRow(
+  artisanId: string,
+  plan: PlanKey,
+  periodMonth: string,
+  projectsCount: number,
+) {
+  const supabase = getSupabaseAdmin()
+  const usageMonthlyTable = await resolveAccessibleTable('usageMonthly')
+
+  if (!usageMonthlyTable) {
+    return { success: false as const, error: 'Table UsageMonthly introuvable' }
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from(usageMonthlyTable)
+    .select('id, projects_count')
+    .eq('artisan_id', artisanId)
+    .eq('period_month', periodMonth)
+    .limit(1)
+    .maybeSingle()
+
+  if (existingError) {
+    return { success: false as const, error: existingError.message }
+  }
+
+  if (existing?.id) {
+    const { error: updateError } = await supabase
+      .from(usageMonthlyTable)
+      .update({
+        plan,
+        projects_count: projectsCount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+
+    if (updateError) {
+      return { success: false as const, error: updateError.message }
+    }
+
+    return { success: true as const, tableName: usageMonthlyTable }
+  }
+
+  const { error: insertError } = await supabase
+    .from(usageMonthlyTable)
+    .insert({
+      artisan_id: artisanId,
+      plan,
+      period_month: periodMonth,
+      projects_count: projectsCount,
+      vapi_calls_count: 0,
+    })
+
+  if (insertError) {
+    return { success: false as const, error: insertError.message }
+  }
+
+  return { success: true as const, tableName: usageMonthlyTable }
+}
+
+async function countProjectsForPeriod(artisanId: string, periodMonth: string) {
+  const supabase = getSupabaseAdmin()
+  const projectsTable = await resolveAccessibleTable('projects')
+
+  if (!projectsTable) {
+    return {
+      success: false as const,
+      error: 'Table Projects introuvable',
+      count: 0,
+      tableName: null,
+    }
+  }
+
+  const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds(
+    new Date(`${periodMonth}-01T00:00:00.000Z`),
+  )
+
+  const { count, error } = await supabase
+    .from(projectsTable)
+    .select('id', { count: 'exact', head: true })
+    .eq('artisan_id', artisanId)
+    .gte('created_at', monthStartIso)
+    .lt('created_at', nextMonthStartIso)
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message,
+      count: 0,
+      tableName: projectsTable,
+    }
+  }
+
+  return {
+    success: true as const,
+    count: count || 0,
+    tableName: projectsTable,
+  }
+}
+
+export async function getProjectQuotaForArtisan(artisanId: string): Promise<QuotaResult<ProjectQuotaConfig>> {
+  const planResult = await getPlanForArtisan(artisanId)
+  const plan = planResult.success && planResult.data ? planResult.data : 'performance'
+  const periodMonth = getCurrentPeriodMonth()
+
+  try {
+    const supabase = getSupabaseAdmin()
+    const planLimitsTable = await resolveAccessibleTable('planLimits')
+
+    if (planLimitsTable) {
+      const { data, error } = await supabase
+        .from(planLimitsTable)
+        .select('*')
+        .eq('plan', plan)
+        .limit(1)
+        .maybeSingle()
+
+      if (!error && data) {
+        const unlimited = data.projects_unlimited === true
+        const limit = unlimited
+          ? null
+          : isFiniteNumber(data.max_projects_per_month)
+            ? Number(data.max_projects_per_month)
+            : getDefaultProjectLimit(plan)
+
+        return {
+          success: true,
+          data: {
+            artisanId,
+            plan,
+            periodMonth,
+            limit,
+            unlimited,
+            source: 'plan_limits',
+            tableName: planLimitsTable,
+          },
+        }
+      }
+    }
+
+    return {
+      success: true,
       data: {
-        id: typeof updated.id === 'string' ? updated.id : undefined,
-        artisan_id: String(updated.artisan_id || params.artisanId),
-        plan: String(updated.plan || normalizedPlan),
-        period_month: String(updated.period_month || periodMonth),
-        projects_count: Number(updated.projects_count || 0),
-        vapi_calls_count: Number(updated.vapi_calls_count || 0),
-        created_at: typeof updated.created_at === 'string' ? updated.created_at : undefined,
-        updated_at: typeof updated.updated_at === 'string' ? updated.updated_at : undefined,
+        artisanId,
+        plan,
+        periodMonth,
+        limit: getDefaultProjectLimit(plan),
+        unlimited: plan === 'entreprise',
+        source: 'fallback',
+        tableName: planLimitsTable,
       },
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Erreur inconnue incrementMonthlyUsage',
+      error: error instanceof Error ? error.message : 'Impossible de charger le quota projet',
     }
   }
 }
 
-export { QUOTA_TABLES }
+export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaResult<ProjectUsageSnapshot>> {
+  const quotaResult = await getProjectQuotaForArtisan(artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      error: quotaResult.error || 'Impossible de charger le quota artisan',
+    }
+  }
+
+  const { plan, periodMonth } = quotaResult.data
+
+  try {
+    const supabase = getSupabaseAdmin()
+    const usageMonthlyTable = await resolveAccessibleTable('usageMonthly')
+
+    if (usageMonthlyTable) {
+      const { data, error } = await supabase
+        .from(usageMonthlyTable)
+        .select('projects_count')
+        .eq('artisan_id', artisanId)
+        .eq('period_month', periodMonth)
+        .limit(1)
+        .maybeSingle()
+
+      if (!error && data && isFiniteNumber(data.projects_count)) {
+        return {
+          success: true,
+          data: {
+            artisanId,
+            plan,
+            periodMonth,
+            used: Number(data.projects_count),
+            source: 'usage_monthly',
+            usageMonthlyTable,
+          },
+        }
+      }
+    }
+
+    const projectCountResult = await countProjectsForPeriod(artisanId, periodMonth)
+    if (!projectCountResult.success) {
+      return {
+        success: false,
+        error: projectCountResult.error,
+      }
+    }
+
+    const syncResult = await upsertMonthlyUsageRow(
+      artisanId,
+      plan,
+      periodMonth,
+      projectCountResult.count,
+    )
+
+    if (!syncResult.success) {
+      console.error('[QUOTAS] Failed to sync UsageMonthly from Projects count:', syncResult.error)
+    }
+
+    return {
+      success: true,
+      data: {
+        artisanId,
+        plan,
+        periodMonth,
+        used: projectCountResult.count,
+        source: 'projects_count',
+        usageMonthlyTable: syncResult.success ? syncResult.tableName : usageMonthlyTable,
+        projectTable: projectCountResult.tableName,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger l’usage projets',
+    }
+  }
+}
+
+export async function canCreateProject(artisanId: string): Promise<ProjectQuotaCheck> {
+  const quotaResult = await getProjectQuotaForArtisan(artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      allowed: false,
+      artisanId,
+      plan: 'performance',
+      periodMonth: getCurrentPeriodMonth(),
+      limit: 50,
+      used: 0,
+      remaining: null,
+      source: 'fallback',
+      usageSource: 'projects_count',
+      error: quotaResult.error || 'Impossible de charger le quota projet',
+    }
+  }
+
+  const usageResult = await getCurrentProjectUsage(artisanId)
+  if (!usageResult.success || !usageResult.data) {
+    return {
+      success: false,
+      allowed: false,
+      artisanId,
+      plan: quotaResult.data.plan,
+      periodMonth: quotaResult.data.periodMonth,
+      limit: quotaResult.data.limit,
+      used: 0,
+      remaining: null,
+      source: quotaResult.data.source,
+      usageSource: 'projects_count',
+      error: usageResult.error || 'Impossible de charger l’usage projet',
+    }
+  }
+
+  const limit = quotaResult.data.unlimited ? null : quotaResult.data.limit
+  const used = usageResult.data.used
+
+  return {
+    success: true,
+    allowed: limit === null ? true : used < limit,
+    artisanId,
+    plan: quotaResult.data.plan,
+    periodMonth: quotaResult.data.periodMonth,
+    limit,
+    used,
+    remaining: limit === null ? null : Math.max(limit - used, 0),
+    source: quotaResult.data.source,
+    usageSource: usageResult.data.source,
+  }
+}
+
+export async function recordUsageEvent(params: UsageEventRow): Promise<QuotaResult<UsageEventRow>> {
+  try {
+    const supabase = getSupabaseAdmin()
+    const usageEventsTable = await resolveAccessibleTable('usageEvents')
+
+    if (!usageEventsTable) {
+      return { success: false, error: 'Table UsageEvents introuvable' }
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from(usageEventsTable)
+      .select('*')
+      .eq('dedup_key', params.dedup_key)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingError) {
+      return { success: false, error: existingError.message }
+    }
+
+    if (existing) {
+      return {
+        success: true,
+        data: params,
+      }
+    }
+
+    const { error } = await supabase
+      .from(usageEventsTable)
+      .insert(params)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: params }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible d’enregistrer l’événement d’usage',
+    }
+  }
+}
+
+export async function incrementMonthlyUsage(params: {
+  artisanId: string
+  plan: PlanKey
+  periodMonth?: string
+  projectsCount: number
+}): Promise<QuotaResult<{ periodMonth: string; projectsCount: number }>> {
+  const periodMonth = params.periodMonth || getCurrentPeriodMonth()
+  const syncResult = await upsertMonthlyUsageRow(
+    params.artisanId,
+    params.plan,
+    periodMonth,
+    params.projectsCount,
+  )
+
+  if (!syncResult.success) {
+    return {
+      success: false,
+      error: syncResult.error,
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      periodMonth,
+      projectsCount: params.projectsCount,
+    },
+  }
+}
+
+export async function recordProjectCreatedUsage(
+  params: ProjectCreatedUsageParams,
+): Promise<QuotaResult<{ periodMonth: string; projectsCount: number }>> {
+  const quotaResult = await getProjectQuotaForArtisan(params.artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      error: quotaResult.error || 'Impossible de résoudre le plan artisan',
+    }
+  }
+
+  const countResult = await countProjectsForPeriod(params.artisanId, quotaResult.data.periodMonth)
+  if (!countResult.success) {
+    return {
+      success: false,
+      error: countResult.error,
+    }
+  }
+
+  const eventResult = await recordUsageEvent({
+    artisan_id: params.artisanId,
+    plan: quotaResult.data.plan,
+    period_month: quotaResult.data.periodMonth,
+    event_type: 'project_created',
+    quantity: 1,
+    dedup_key: `project_created:${params.projectId}`,
+    metadata: {
+      project_id: params.projectId,
+      source: params.source || 'web',
+    },
+  })
+
+  if (!eventResult.success) {
+    return {
+      success: false,
+      error: eventResult.error,
+    }
+  }
+
+  return incrementMonthlyUsage({
+    artisanId: params.artisanId,
+    plan: quotaResult.data.plan,
+    periodMonth: quotaResult.data.periodMonth,
+    projectsCount: countResult.count,
+  })
+}
+
+export { TABLE_CANDIDATES as QUOTA_TABLES }

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable';
+import { TABLES, getArtisanConfig } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
-import { getMonthlyProjectLimit } from '@/src/lib/plans';
 import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
+import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo';
 
@@ -132,34 +132,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const artisanUser = await getUserByArtisanIdentifier(artisanId);
-    const monthlyLimit = getMonthlyProjectLimit(artisanUser?.plan);
-    if (monthlyLimit !== null) {
-      const now = new Date();
-      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
-      const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
+    const quotaCheck = await canCreateProject(artisanId);
+    if (!quotaCheck.success) {
+      console.error('[PROJECT_QUOTA] Unable to verify quota:', quotaCheck.error || 'unknown error');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Vérification quota impossible',
+          code: 'PROJECT_QUOTA_CHECK_FAILED',
+        },
+        { status: 503 },
+      );
+    }
 
-      const { count, error } = await supabaseAdmin
-        .from(TABLES.projects)
-        .select('id', { count: 'exact', head: true })
-        .eq('artisan_id', artisanId)
-        .gte('created_at', monthStart)
-        .lt('created_at', nextMonthStart);
-
-      if (error) {
-        throw error;
-      }
-
-      if ((count || 0) >= monthlyLimit) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Limite mensuelle atteinte',
-            requiredPlan: 'performance',
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Quota projets mensuel atteint',
+          code: 'PROJECT_QUOTA_EXCEEDED',
+          quota: {
+            plan: quotaCheck.plan,
+            periodMonth: quotaCheck.periodMonth,
+            limit: quotaCheck.limit,
+            used: quotaCheck.used,
+            remaining: quotaCheck.remaining,
           },
-          { status: 403 },
-        );
-      }
+        },
+        { status: 403 },
+      );
     }
 
     const payload = toSupabaseProjectInsert({
@@ -175,6 +176,16 @@ export async function POST(request: Request) {
 
     if (error) {
       throw error;
+    }
+
+    const usageResult = await recordProjectCreatedUsage({
+      artisanId,
+      projectId: record.id,
+      source: typeof input.source === 'string' ? input.source : 'web',
+    });
+
+    if (!usageResult.success) {
+      console.error('[PROJECT_QUOTA] Project created but usage tracking failed:', usageResult.error || 'unknown error');
     }
 
     return NextResponse.json({
