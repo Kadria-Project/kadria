@@ -858,6 +858,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null);
   const [monthlyUsageLoading, setMonthlyUsageLoading] = useState(true);
   const [monthlyUsageError, setMonthlyUsageError] = useState(false);
+  const monthlyUsageSectionRef = useRef<HTMLDivElement>(null);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
@@ -1622,53 +1623,57 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {showBusinessOverview && !loading && (
-        <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
-              <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
-            </div>
+      {showBusinessOverview && (
+        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
+          {!loading && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5 lg:flex-[65] lg:basis-[65%]">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
+                  <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
+                </div>
 
-            <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
-              <PriorityMetric
-                label="Opportunites prioritaires"
-                value={topOpportunities.length}
-                active={quickFilter === 'opportunities'}
-                onClick={() => applyQuickFilter('opportunities')}
-              />
-              <PriorityMetric
-                label="Relances a effectuer"
-                value={relanceCount}
-                active={quickFilter === 'relance'}
-                onClick={() => applyQuickFilter('relance')}
-              />
-              <PriorityMetric
-                label="Dossiers en risque"
-                value={riskProjects.length}
-                active={quickFilter === 'risk'}
-                onClick={() => applyQuickFilter('risk')}
-              />
-              <PriorityMetric
-                label="Prospects chauds"
-                value={hotLeads.length}
-                active={quickFilter === 'hot'}
-                onClick={() => applyQuickFilter('hot')}
-              />
-            </div>
+                <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
+                  <PriorityMetric
+                    label="Opportunites prioritaires"
+                    value={topOpportunities.length}
+                    active={quickFilter === 'opportunities'}
+                    onClick={() => applyQuickFilter('opportunities')}
+                  />
+                  <PriorityMetric
+                    label="Relances a effectuer"
+                    value={relanceCount}
+                    active={quickFilter === 'relance'}
+                    onClick={() => applyQuickFilter('relance')}
+                  />
+                  <PriorityMetric
+                    label="Dossiers en risque"
+                    value={riskProjects.length}
+                    active={quickFilter === 'risk'}
+                    onClick={() => applyQuickFilter('risk')}
+                  />
+                  <PriorityMetric
+                    label="Prospects chauds"
+                    value={hotLeads.length}
+                    active={quickFilter === 'hot'}
+                    onClick={() => applyQuickFilter('hot')}
+                  />
+                </div>
 
-            <button
-              onClick={() => applyQuickFilter('priority')}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
-            >
-              Voir les priorites
-            </button>
+                <button
+                  onClick={() => applyQuickFilter('priority')}
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
+                >
+                  Voir les priorites
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="lg:flex-[35] lg:basis-[35%]" ref={monthlyUsageSectionRef}>
+            <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
           </div>
         </div>
-      )}
-
-      {showBusinessOverview && (
-        <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
       )}
 
       {showBusinessOverview && !loading && primaryHotLead && (
@@ -3131,6 +3136,30 @@ function UsageStatusBadge({ status }: { status: UsageStatus }) {
   );
 }
 
+function UsageMiniBar({ percent, status }: { percent: number | null; status: UsageStatus }) {
+  const style = USAGE_STATUS_STYLES[status];
+  const width = percent === null ? 0 : Math.min(100, Math.max(0, percent));
+  return (
+    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-[var(--bg-hover)]">
+      {percent !== null && (
+        <div className="h-full rounded-full" style={{ width: `${width}%`, background: style.color }} />
+      )}
+    </div>
+  );
+}
+
+function UsageRow({ label, value, percent, status }: { label: string; value: string; percent: number | null; status: UsageStatus }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-[var(--text-3)]">{label}</p>
+        <p className="text-xs font-semibold text-[var(--text-1)]">{value}</p>
+      </div>
+      <UsageMiniBar percent={percent} status={status} />
+    </div>
+  );
+}
+
 function MonthlyUsageCard({
   usage,
   loading,
@@ -3142,9 +3171,11 @@ function MonthlyUsageCard({
   error: boolean;
   isMobile: boolean;
 }) {
+  const [detailOpen, setDetailOpen] = useState(false);
+
   if (loading) {
     return (
-      <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+      <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
         <Skeleton className="h-20 rounded-xl bg-[var(--bg-hover)]" />
       </div>
     );
@@ -3152,8 +3183,9 @@ function MonthlyUsageCard({
 
   if (error || !usage) {
     return (
-      <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-        <p className="text-sm text-[var(--text-3)]">Utilisation du mois indisponible pour le moment.</p>
+      <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+        <p className="text-xs font-semibold text-[var(--text-2)]">Utilisation</p>
+        <p className="mt-2 text-sm text-[var(--text-3)]">Indisponible pour le moment.</p>
       </div>
     );
   }
@@ -3175,27 +3207,97 @@ function MonthlyUsageCard({
     : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
 
   return (
-    <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-base font-bold text-[var(--text-1)]">Utilisation du mois</p>
-          <p className="mt-1 text-sm text-[var(--text-2)]">Dossiers et appels vocaux consommés sur la période en cours.</p>
-        </div>
+    <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-[var(--text-1)]">Utilisation du mois</p>
         <UsageStatusBadge status={globalStatus} />
       </div>
 
-      <div className={`mt-4 grid gap-3 ${isMobile ? 'grid-cols-1' : 'grid-cols-3'}`}>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-          <p className="text-xs text-[var(--text-3)]">Dossiers créés</p>
-          <p className="mt-1 text-xl font-bold text-[var(--text-1)]">{projectsLabel}</p>
+      <div className="mt-4 flex flex-col gap-3">
+        <UsageRow label="Dossiers" value={projectsLabel} percent={usage.projects.unlimited ? null : usage.projects.percent} status={usage.projects.status} />
+        <UsageRow label="Appels vocaux" value={callsLabel} percent={usage.vapi.callsUnlimited ? null : usage.vapi.callsPercent} status={usage.vapi.status} />
+        <UsageRow label="Minutes" value={minutesLabel} percent={usage.vapi.minutesPercent} status={usage.vapi.status} />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setDetailOpen(true)}
+        className="mt-4 text-xs font-semibold text-[var(--accent)] hover:underline"
+      >
+        Voir le détail
+      </button>
+
+      {detailOpen && (
+        <MonthlyUsageDetailModal usage={usage} onClose={() => setDetailOpen(false)} isMobile={isMobile} />
+      )}
+    </div>
+  );
+}
+
+function MonthlyUsageDetailModal({
+  usage,
+  onClose,
+  isMobile,
+}: {
+  usage: MonthlyUsageSummary;
+  onClose: () => void;
+  isMobile: boolean;
+}) {
+  const projectsLabel = usage.projects.unlimited
+    ? `${usage.projects.used} / Illimité`
+    : `${usage.projects.used} / ${usage.projects.limit ?? 0}`;
+
+  const callsLabel = usage.vapi.callsUnlimited
+    ? `${usage.vapi.callsUsed} / Illimité`
+    : usage.vapi.callsLimit === 0
+      ? 'Non inclus'
+      : `${usage.vapi.callsUsed} / ${usage.vapi.callsLimit}`;
+
+  const minutesLabel = usage.vapi.minutesLimit === null
+    ? `${usage.vapi.minutesUsed} min / Non limité`
+    : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full rounded-t-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:max-w-md sm:rounded-2xl ${isMobile ? '' : ''}`}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-base font-bold text-[var(--text-1)]">Utilisation du mois</p>
+          <button type="button" onClick={onClose} className="text-sm text-[var(--text-3)] hover:text-[var(--text-1)]">
+            Fermer
+          </button>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-          <p className="text-xs text-[var(--text-3)]">Appels vocaux</p>
-          <p className="mt-1 text-xl font-bold text-[var(--text-1)]">{callsLabel}</p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-3)]">
+          <span>Période : {usage.periodMonth}</span>
+          <span>·</span>
+          <span>Plan : {usage.plan}</span>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-          <p className="text-xs text-[var(--text-3)]">Minutes vocales</p>
-          <p className="mt-1 text-xl font-bold text-[var(--text-1)]">{minutesLabel}</p>
+
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--text-3)]">Dossiers</p>
+              <UsageStatusBadge status={usage.projects.status} />
+            </div>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{projectsLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--text-3)]">Appels vocaux</p>
+              <UsageStatusBadge status={usage.vapi.status} />
+            </div>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{callsLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <p className="text-xs text-[var(--text-3)]">Minutes vocales</p>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{minutesLabel}</p>
+          </div>
         </div>
       </div>
     </div>
