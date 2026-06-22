@@ -42,13 +42,14 @@ import {
   CheckCircle,
   XCircle,
   Lock,
+  Sparkles,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useTheme } from '@/src/hooks/useTheme';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
-import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { hasFeature, normalizePlan, PLAN_DEFINITIONS, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import {
   buildAutomaticTasks,
   calculateOpportunityScore,
@@ -781,6 +782,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const canAccessFeature = (feature: PlanFeatureKey) => hasFeature(plan, feature);
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
+  const planChangeCtaLabel = plan === 'essentiel' ? 'Mettre à niveau' : plan === 'performance' ? 'Changer d\'offre' : 'Gérer mon offre';
 
   const user = {
     email: 'demo@kadria.local',
@@ -863,6 +865,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
@@ -1443,6 +1446,29 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 ))}
 
                 <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setPlanModalOpen(true);
+                  }}
+                  style={{
+                    background: 'var(--accent-dim)',
+                    border: '1px solid var(--accent-border)',
+                    color: 'var(--accent)',
+                    borderRadius: '8px',
+                    padding: '9px 14px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    textAlign: 'left',
+                  }}
+                >
+                  <Sparkles className="w-4 h-4" /> {planChangeCtaLabel}
+                </button>
+
+                <button
                   onClick={toggleTheme}
                   style={{
                     background: 'var(--bg-hover)',
@@ -1508,6 +1534,25 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 {item.label}
               </button>
             ))}
+            <button
+              onClick={() => setPlanModalOpen(true)}
+              style={{
+                background: 'var(--accent-dim)',
+                border: '1px solid var(--accent-border)',
+                color: 'var(--accent)',
+                borderRadius: '8px',
+                padding: '9px 14px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Sparkles className="w-4 h-4" /> {planChangeCtaLabel}
+            </button>
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
@@ -2838,6 +2883,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           onClose={() => setUpgradeFeature(null)}
         />
       )}
+
+      {planModalOpen && (
+        <PlanChangeModal currentPlan={plan} onClose={() => setPlanModalOpen(false)} />
+      )}
     </div>
   );
 }
@@ -3448,6 +3497,183 @@ function ActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; l
       </div>
       <p className="text-2xl font-bold text-[var(--text-1)]">{value}</p>
       <p className="text-xs text-[var(--text-2)]">{label}</p>
+    </div>
+  );
+}
+
+const PLAN_FEATURE_HIGHLIGHTS: Record<PlanKey, string[]> = {
+  essentiel: [
+    '50 dossiers / mois',
+    'Qualification web automatique',
+    'Dashboard de base, vue liste',
+    'Relances manuelles',
+    'Export CSV',
+  ],
+  performance: [
+    'Dossiers illimités',
+    'Export PDF des dossiers',
+    'Pipeline commercial avancé + vue Kanban',
+    'Chantiers géolocalisés',
+    'Relances automatiques',
+    'Calendrier et rappels',
+    'Génération de devis',
+    'Assistant vocal',
+    'Support prioritaire',
+  ],
+  entreprise: [
+    'Tout Performance, plus :',
+    'Fonctionnalités équipe / multi-utilisateurs',
+    'Marque blanche',
+    'Accès API',
+    'Account manager dédié',
+  ],
+};
+
+function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClose: () => void }) {
+  const [requestState, setRequestState] = useState<Record<string, 'idle' | 'loading' | 'sent' | 'error'>>({});
+
+  const candidatePlans: PlanKey[] = currentPlan === 'essentiel'
+    ? ['performance', 'entreprise']
+    : currentPlan === 'performance'
+      ? ['essentiel', 'entreprise']
+      : ['performance'];
+
+  const losingEssentiel = currentPlan === 'performance';
+
+  const requestChange = async (targetPlan: PlanKey) => {
+    setRequestState((prev) => ({ ...prev, [targetPlan]: 'loading' }));
+    try {
+      const res = await fetch('/api/billing/upgrade-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetPlan }),
+      });
+      if (!res.ok) throw new Error('failed');
+      setRequestState((prev) => ({ ...prev, [targetPlan]: 'sent' }));
+    } catch {
+      setRequestState((prev) => ({ ...prev, [targetPlan]: 'error' }));
+    }
+  };
+
+  const ctaLabel = (targetPlan: PlanKey): string => {
+    if (currentPlan === 'essentiel' && targetPlan === 'performance') return 'Passer à Performance';
+    if (currentPlan === 'essentiel' && targetPlan === 'entreprise') return 'Demander l\'offre Agence';
+    if (currentPlan === 'performance' && targetPlan === 'essentiel') return 'Demander le passage à Essentiel';
+    if (currentPlan === 'performance' && targetPlan === 'entreprise') return 'Demander l\'offre Agence';
+    return 'Demander le changement';
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto">
+      <div className="w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">Changer d&apos;offre</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">Comparer les offres Kadria</h3>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-lg p-1 text-zinc-500 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {losingEssentiel && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+            Certaines fonctionnalités seront verrouillées immédiatement après changement d&apos;offre si vous repassez à Essentiel.
+          </p>
+        )}
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {(['essentiel', 'performance', 'entreprise'] as PlanKey[]).map((planKey) => {
+            const isCurrent = planKey === currentPlan;
+            const def = PLAN_DEFINITIONS[planKey];
+            const isCandidate = candidatePlans.includes(planKey);
+            const state = requestState[planKey] || 'idle';
+
+            return (
+              <div
+                key={planKey}
+                className={`flex flex-col gap-3 rounded-2xl border p-4 ${isCurrent ? 'border-green-500/40 bg-green-500/[0.04]' : 'border-zinc-800 bg-zinc-900/40'}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-base font-bold text-white">{def.label}</p>
+                  {isCurrent ? (
+                    <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
+                      Votre offre actuelle
+                    </span>
+                  ) : isCandidate ? (
+                    <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300">
+                      Disponible
+                    </span>
+                  ) : null}
+                </div>
+
+                <p className="text-xs text-zinc-400">
+                  {def.monthlyProjectLimit ? `${def.monthlyProjectLimit} dossiers / mois` : 'Dossiers illimités'}
+                </p>
+
+                <ul className="flex flex-col gap-1.5 text-sm text-zinc-300">
+                  {PLAN_FEATURE_HIGHLIGHTS[planKey].map((line) => (
+                    <li key={line} className="flex items-start gap-2">
+                      <span className="mt-0.5 text-green-500">•</span>
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {!isCurrent && isCandidate && (
+                  <button
+                    type="button"
+                    disabled={state === 'loading' || state === 'sent'}
+                    onClick={() => requestChange(planKey)}
+                    className="mt-auto inline-flex min-h-10 items-center justify-center rounded-md bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] disabled:opacity-60"
+                  >
+                    {state === 'loading'
+                      ? 'Envoi...'
+                      : state === 'sent'
+                        ? 'Demande envoyée'
+                        : ctaLabel(planKey)}
+                  </button>
+                )}
+
+                {!isCurrent && isCandidate && state === 'error' && (
+                  <p className="text-xs text-red-400">Erreur lors de l&apos;envoi, réessayez.</p>
+                )}
+
+                {!isCurrent && !isCandidate && currentPlan === 'entreprise' && (
+                  <a
+                    href="mailto:contact@kadria.fr"
+                    className="mt-auto inline-flex min-h-10 items-center justify-center rounded-md border border-zinc-700 px-4 py-2 text-sm font-semibold text-white hover:border-zinc-500"
+                  >
+                    Contacter Kadria
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {currentPlan === 'entreprise' && (
+          <p className="mt-4 text-sm text-zinc-400">
+            Vous êtes déjà sur l&apos;offre la plus complète. Pour toute question sur votre offre actuelle, contactez l&apos;équipe Kadria.
+          </p>
+        )}
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <a
+            href="/pricing"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-zinc-500"
+          >
+            Voir la page tarifs
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-4 py-3 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
