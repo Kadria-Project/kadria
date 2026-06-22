@@ -94,8 +94,11 @@ export async function GET() {
           }
         }
 
+        const detailId = u.id || u.artisanId
+
         return {
           id: u.id,
+          detailId,
           email: u.email,
           first_name: u.firstName,
           last_name: u.lastName,

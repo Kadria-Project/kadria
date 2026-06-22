@@ -494,27 +494,44 @@ export async function getAllUsers(): Promise<UserRecord[]> {
   return (data || []).map(mapSupabaseAdminUser)
 }
 
-export async function getUserById(id: string): Promise<UserRecord | null> {
-  const { data, error } = await supabaseAdmin
-    .from(TABLES.users)
-    .select('*')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle()
+const USER_ID_LOOKUP_COLUMNS = ['id', 'record_id', 'airtable_id', 'artisan_id'] as const
 
-  if (error) {
-    throw error
+async function findUserRow(
+  idOrArtisanId: string
+): Promise<{ row: Record<string, unknown>; matchedColumn: string } | null> {
+  for (const column of USER_ID_LOOKUP_COLUMNS) {
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.users)
+      .select('*')
+      .eq(column, idOrArtisanId)
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      // Column may not exist on this table (legacy/optional identifier) — try the next one.
+      continue
+    }
+    if (data) return { row: data, matchedColumn: column }
   }
+  return null
+}
 
-  if (!data) return null
-  return mapSupabaseAdminUser(data)
+export async function getUserById(id: string): Promise<UserRecord | null> {
+  const found = await findUserRow(id)
+  if (!found) return null
+  return mapSupabaseAdminUser(found.row)
 }
 
 export async function updateUser(id: string, fields: Record<string, unknown>): Promise<UserRecord> {
+  const found = await findUserRow(id)
+  if (!found) {
+    throw new Error('User not found')
+  }
+
   const { data, error } = await supabaseAdmin
     .from(TABLES.users)
     .update(fields)
-    .eq('id', id)
+    .eq(found.matchedColumn, id)
     .select('*')
     .single()
 

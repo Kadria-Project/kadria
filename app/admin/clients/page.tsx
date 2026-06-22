@@ -49,6 +49,7 @@ interface ClientRecord {
   created_at: string;
   artisan_id: string;
   artisanId?: string;
+  detailId?: string;
   planLabel?: string;
   status?: string;
   usage?: ClientUsage;
@@ -245,8 +246,8 @@ export default function AdminClientsPage() {
         }
         console.log('[ADMIN CLIENTS] API payload', data[0]);
         (data as ClientRecord[]).forEach((c) => {
-          if (!c.id) {
-            console.warn('[ADMIN CLIENTS] Client sans id Supabase, navigation impossible :', c);
+          if (!c.detailId) {
+            console.warn('[ADMIN CLIENTS] Client sans identifiant de navigation (id et artisanId vides) :', c);
           }
         });
         setClients(data);
@@ -352,12 +353,12 @@ export default function AdminClientsPage() {
                   )}
                   {filtered.map((c, i) => (
                     <tr
-                      key={c.id}
-                      onClick={() => router.push(`/admin/clients/${c.id}`)}
+                      key={c.id || c.detailId || i}
+                      onClick={() => c.detailId && router.push(`/admin/clients/${c.detailId}`)}
                       style={{
                         borderTop: '1px solid #27272a',
                         background: i % 2 === 0 ? '#18181b' : '#09090b',
-                        cursor: 'pointer',
+                        cursor: c.detailId ? 'pointer' : 'default',
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = '#27272a')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? '#18181b' : '#09090b')}
@@ -405,9 +406,9 @@ export default function AdminClientsPage() {
                         </div>
                       </td>
                       <td style={{ padding: '12px 20px' }}>
-                        {c.id ? (
+                        {c.detailId ? (
                           <Link
-                            href={`/admin/clients/${c.id}`}
+                            href={`/admin/clients/${c.detailId}`}
                             onClick={(e) => e.stopPropagation()}
                             style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
                           >
@@ -431,15 +432,15 @@ export default function AdminClientsPage() {
             )}
             {filtered.map((c) => (
               <div
-                key={c.id}
-                onClick={() => router.push(`/admin/clients/${c.id}`)}
+                key={c.id || c.detailId}
+                onClick={() => c.detailId && router.push(`/admin/clients/${c.detailId}`)}
                 style={{
                   background: '#18181b',
                   border: '1px solid #27272a',
                   borderRadius: '14px',
                   padding: '16px',
                   marginBottom: '12px',
-                  cursor: 'pointer',
+                  cursor: c.detailId ? 'pointer' : 'default',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
@@ -507,9 +508,9 @@ export default function AdminClientsPage() {
                 </div>
 
                 <div style={{ marginTop: '12px', textAlign: 'right' }}>
-                  {c.id ? (
+                  {c.detailId ? (
                     <Link
-                      href={`/admin/clients/${c.id}`}
+                      href={`/admin/clients/${c.detailId}`}
                       onClick={(e) => e.stopPropagation()}
                       style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
                     >
