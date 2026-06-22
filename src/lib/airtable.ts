@@ -298,36 +298,46 @@ export async function createCommercialLead(data: {
   societe: string
   trade: string
   offer: string
-  answers: string
+  answers: string | Record<string, unknown> | unknown[]
   email?: string
   phone?: string
   preferredSlot?: string
   demand?: string
   teamSize?: string
   website?: string
+  source?: string
+  status?: string
 }) {
   console.info('[COMMERCIAL] Creating lead')
 
-  const res = await airtableFetch(airtableApiUrl('Commercial'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fields: {
-        'Nom': data.nom,
-        'Prenom': data.prenom,
-        'Societe': data.societe,
-        'Trade': data.trade,
-        'Offer': data.offer,
-        'Answers': data.answers,
-        'Email': data.email || '',
-        'Phone': data.phone || '',
-        'Preferred Slot': data.preferredSlot || '',
-      },
-    }),
-  })
-  const result = await res.json()
-  console.info('[COMMERCIAL] Response status:', res.status, 'record:', result.id || 'none')
-  return result
+  const answers = typeof data.answers === 'string' ? data.answers : JSON.stringify(data.answers)
+
+  const { data: row, error } = await supabaseAdmin
+    .from('Commercial')
+    .insert({
+      first_name: data.prenom,
+      last_name: data.nom,
+      company_name: data.societe,
+      email: data.email || '',
+      phone: data.phone || '',
+      trade: data.trade,
+      offer: data.offer,
+      answers,
+      preferred_slot: data.preferredSlot || '',
+      source: data.source || 'demo_request',
+      status: data.status || 'Nouveau',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('[COMMERCIAL] Supabase insert error:', error.message)
+    throw error
+  }
+
+  console.info('[COMMERCIAL] Response status: success, record:', row.id)
+  return row
 }
 
 export type DevisRecord = SupabaseDevis
