@@ -1,4 +1,3 @@
-import Airtable from 'airtable';
 import {
   mapSupabaseArtisanConfig,
   mapSupabaseDevis,
@@ -10,24 +9,6 @@ import {
 } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
-const apiKey = process.env.AIRTABLE_API_KEY;
-const baseId = process.env.AIRTABLE_BASE_ID;
-
-function createAirtableFallbackError() {
-  return new Error('Missing Airtable environment variables for legacy routes')
-}
-
-function getAirtableBaseClient() {
-  if (!apiKey || !baseId) {
-    throw createAirtableFallbackError()
-  }
-
-  return new Airtable({ apiKey }).base(baseId)
-}
-
-export const airtableBase = ((...args: Parameters<ReturnType<typeof getAirtableBaseClient>>) =>
-  getAirtableBaseClient()(...args)) as ReturnType<typeof getAirtableBaseClient>;
-
 export const TABLES = {
   projects: 'Projects',
   users: 'Users',
@@ -36,31 +17,6 @@ export const TABLES = {
   devis: process.env.AIRTABLE_DEVIS_TABLE || 'Devis',
   emailLogs: process.env.AIRTABLE_EMAIL_LOGS_TABLE || 'Email_logs',
 } as const;
-
-function escapeFormulaValue(value: string) {
-  return value.replace(/"/g, '\\"')
-}
-
-function airtableApiUrl(table: string, query = '') {
-  if (!baseId) {
-    throw createAirtableFallbackError()
-  }
-  return `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}${query}`
-}
-
-async function airtableFetch(url: string, init: RequestInit = {}) {
-  if (!apiKey) {
-    throw createAirtableFallbackError()
-  }
-  return fetch(url, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      ...(init.headers || {}),
-    },
-    cache: 'no-store',
-  })
-}
 
 export async function getArtisanByEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase()
