@@ -418,7 +418,7 @@ export interface ProjectSummary {
 export async function getProjectsByArtisan(artisanId: string): Promise<ProjectSummary[]> {
   const { data, error } = await supabaseAdmin
     .from(TABLES.projects)
-    .select('id, record_id, status, created_at, devis_amount')
+    .select('id, status, created_at, devis_amount')
     .eq('artisan_id', artisanId)
 
   if (error) {

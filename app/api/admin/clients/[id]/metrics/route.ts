@@ -49,6 +49,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('[ADMIN CLIENT METRICS]', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ total: 0, ceMois: 0, devisGeneres: 0, statutFrequent: '' })
   }
 }
