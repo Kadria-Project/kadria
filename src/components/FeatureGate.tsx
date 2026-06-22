@@ -158,8 +158,8 @@ export function FeatureGate({
 
   return (
     <>
-      <div className={`relative ${className}`}>
-        <div aria-hidden className="pointer-events-none opacity-60">
+      <div className={`relative overflow-hidden rounded-[inherit] ${className}`}>
+        <div aria-hidden className="pointer-events-none opacity-70 blur-[1.5px] saturate-[0.85]">
           {lockedChildren}
         </div>
 
@@ -168,8 +168,12 @@ export function FeatureGate({
           aria-label={`Découvrir le plan ${getPlanLabel(upgradePlan)}`}
           title={`Disponible avec ${getPlanLabel(upgradePlan)}`}
           onClick={() => setIsOpen(true)}
-          className="absolute inset-0 z-10 rounded-[inherit] bg-zinc-950/5 transition-colors hover:bg-zinc-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] border border-[var(--border)] bg-[var(--bg-elevated)]/55 backdrop-blur-[2px] transition-colors hover:bg-[var(--bg-elevated)]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/60"
         >
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-500 shadow-sm">
+            <Lock className="h-3.5 w-3.5" />
+            Disponible avec {getPlanLabel(upgradePlan)}
+          </span>
           <span className="sr-only">Disponible avec {getPlanLabel(upgradePlan)}</span>
         </button>
       </div>

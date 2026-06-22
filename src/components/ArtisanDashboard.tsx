@@ -2338,28 +2338,41 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <div className="contents">
               <button
                 onClick={() => togglePanel('pipeline')}
-                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
-                  openPanel === 'pipeline'
-                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
-                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                aria-label={!canAccessFeature('commercialPipeline') ? 'Pipeline commerciale — disponible avec Performance' : undefined}
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 backdrop-blur-[1px] transition-colors duration-200 sm:px-5 ${
+                  !canAccessFeature('commercialPipeline')
+                    ? 'cursor-pointer border-dashed border-[var(--border)] bg-[var(--bg-elevated)]/55 opacity-80 hover:bg-[var(--bg-elevated)]/70'
+                    : openPanel === 'pipeline'
+                      ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                      : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <BarChart3
-                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'pipeline' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
+                    className={`h-[22px] w-[22px] shrink-0 ${
+                      !canAccessFeature('commercialPipeline')
+                        ? 'text-[var(--text-3)]'
+                        : openPanel === 'pipeline'
+                          ? 'text-green-400'
+                          : 'text-[var(--text-2)]'
+                    }`}
                   />
 
                   <div className="flex flex-col text-left">
-                    <span className="text-[15px] font-bold text-[var(--text-1)]">Pipeline commerciale</span>
+                    <span className={`text-[15px] font-bold ${!canAccessFeature('commercialPipeline') ? 'text-[var(--text-2)]' : 'text-[var(--text-1)]'}`}>
+                      Pipeline commerciale
+                    </span>
                     <span className="text-xs text-[var(--text-2)]">
-                      {pipelineSteps.length} étapes · {allProjects.length} dossiers
+                      {!canAccessFeature('commercialPipeline')
+                        ? 'Vue Kanban complète'
+                        : `${pipelineSteps.length} étapes · ${allProjects.length} dossiers`}
                     </span>
                   </div>
                 </div>
 
                 {!canAccessFeature('commercialPipeline') ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
-                    <Lock className="h-3 w-3 text-green-500" />
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[11px] font-semibold text-green-500">
+                    <Lock className="h-3 w-3" />
                     Performance
                   </span>
                 ) : (
@@ -2375,28 +2388,41 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <div className="contents">
               <button
                 onClick={() => togglePanel('chantiers')}
-                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
-                  openPanel === 'chantiers'
-                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
-                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                aria-label={!canAccessFeature('geoProjects') ? 'Chantiers géolocalisés — disponible avec Performance' : undefined}
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 backdrop-blur-[1px] transition-colors duration-200 sm:px-5 ${
+                  !canAccessFeature('geoProjects')
+                    ? 'cursor-pointer border-dashed border-[var(--border)] bg-[var(--bg-elevated)]/55 opacity-80 hover:bg-[var(--bg-elevated)]/70'
+                    : openPanel === 'chantiers'
+                      ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                      : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <MapPin
-                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'chantiers' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
+                    className={`h-[22px] w-[22px] shrink-0 ${
+                      !canAccessFeature('geoProjects')
+                        ? 'text-[var(--text-3)]'
+                        : openPanel === 'chantiers'
+                          ? 'text-green-400'
+                          : 'text-[var(--text-2)]'
+                    }`}
                   />
 
                   <div className="flex flex-col text-left">
-                    <span className="text-[15px] font-bold text-[var(--text-1)]">Chantiers géolocalisés</span>
+                    <span className={`text-[15px] font-bold ${!canAccessFeature('geoProjects') ? 'text-[var(--text-2)]' : 'text-[var(--text-1)]'}`}>
+                      Chantiers géolocalisés
+                    </span>
                     <span className="text-xs text-[var(--text-2)]">
-                      Vue géographique · {sortedProjects.slice(0, 8).length} points
+                      {!canAccessFeature('geoProjects')
+                        ? 'Vue géographique des chantiers'
+                        : `Vue géographique · ${sortedProjects.slice(0, 8).length} points`}
                     </span>
                   </div>
                 </div>
 
                 {!canAccessFeature('geoProjects') ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
-                    <Lock className="h-3 w-3 text-green-500" />
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[11px] font-semibold text-green-500">
+                    <Lock className="h-3 w-3" />
                     Performance
                   </span>
                 ) : (
