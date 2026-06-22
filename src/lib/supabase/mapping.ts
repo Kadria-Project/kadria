@@ -464,6 +464,8 @@ export interface SupabaseDevis {
   quoteSentAt: string
   lastFollowUpAt: string | null
   followUpCount: number
+  declinedAt: string | null
+  declineReason: string
 }
 
 export function mapSupabaseDevis(row: RawRow): SupabaseDevis {
@@ -502,6 +504,8 @@ export function mapSupabaseDevis(row: RawRow): SupabaseDevis {
     quoteSentAt: getString(row, 'quote_sent_at') || getString(row, 'date_emission'),
     lastFollowUpAt: getValue<string | null>(row, ['last_follow_up_at'], null),
     followUpCount: getNumber(row, 'follow_up_count'),
+    declinedAt: getValue<string | null>(row, ['declined_at', 'declinedAt'], null),
+    declineReason: getString(row, 'decline_reason', 'declineReason'),
   }
 }
 
@@ -566,6 +570,8 @@ export function toSupabaseDevisUpdate(input: Record<string, unknown>) {
   if (input.quoteSentAt !== undefined) row.quote_sent_at = input.quoteSentAt
   if (input.lastFollowUpAt !== undefined) row.last_follow_up_at = input.lastFollowUpAt
   if (input.followUpCount !== undefined) row.follow_up_count = input.followUpCount
+  if (input.declinedAt !== undefined) row.declined_at = input.declinedAt
+  if (input.declineReason !== undefined) row.decline_reason = input.declineReason
 
   delete row.artisan_id
 

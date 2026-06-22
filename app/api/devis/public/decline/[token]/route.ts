@@ -7,11 +7,24 @@ import { supabaseAdmin } from '@/src/lib/supabase/server'
 const MAX_REQUESTS_PER_IP = 5
 const requestCounts = new Map<string, number>()
 
-async function logDevisDeclinedActivity(projectId: string, devisNumber: string, reason: string) {
+async function logDevisDeclinedActivity(projectId: string, declineReason: string) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
     project_id: projectId,
     action: 'Devis refusé',
-    description: `Devis ${devisNumber} refusé par le client — motif : ${reason}`,
+    description: `Devis refusé — motif : ${declineReason}`,
+    created_at: new Date().toISOString(),
+  })
+
+  if (error) {
+    console.error('[DEVIS PUBLIC DECLINE] Activity insert error:', JSON.stringify(error, null, 2))
+  }
+}
+
+async function logProjectLostActivity(projectId: string) {
+  const { error } = await supabaseAdmin.from(TABLES.activity).insert({
+    project_id: projectId,
+    action: 'Dossier perdu',
+    description: 'Dossier passé en Perdu automatiquement suite au refus du devis.',
     created_at: new Date().toISOString(),
   })
 
@@ -26,8 +39,8 @@ async function notifyArtisanDevisDeclined(params: {
   clientName: string
   projectType: string
   city: string
-  reason: string
-  reasonCategory: string
+  totalTTC: number
+  declineReason: string
   projectId: string
 }) {
   try {
@@ -45,19 +58,21 @@ async function notifyArtisanDevisDeclined(params: {
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.kadria.fr'
     const projectUrl = `${baseUrl}/dashboard-v2/projet/${params.projectId}`
+    const amount = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.totalTTC || 0)
 
     const resend = new Resend(apiKey)
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
       to: artisan.email,
-      subject: 'Devis refusé par le client',
+      subject: 'Devis refusé — retour prospect disponible',
       html: `
-        <p>Le client a refusé le devis ${params.devisNumber}.</p>
+        <p>Le prospect a refusé le devis ${params.devisNumber}. Le dossier a été mis à jour automatiquement.</p>
         <ul>
           <li><strong>Client :</strong> ${params.clientName || 'Non renseigné'}</li>
           <li><strong>Type de projet :</strong> ${params.projectType || 'Non renseigné'}</li>
           <li><strong>Commune :</strong> ${params.city || 'Non renseignée'}</li>
-          <li><strong>Motif :</strong> ${params.reasonCategory || 'Autre'} — ${params.reason}</li>
+          <li><strong>Montant du devis :</strong> ${amount}</li>
+          <li><strong>Motif du refus :</strong> ${params.declineReason}</li>
         </ul>
         <p><a href="${projectUrl}">Voir la fiche projet</a></p>
       `,
@@ -103,16 +118,19 @@ export async function POST(
       return NextResponse.json({ error: 'Ce devis a déjà été accepté' }, { status: 400 })
     }
 
-    if (devis.statut === 'Refusé') {
+    if (devis.statut === 'Refusé' || devis.declinedAt) {
       return NextResponse.json({ error: 'Devis déjà refusé' }, { status: 400 })
     }
 
     const now = new Date().toISOString()
+    const declineReason = `${reasonCategory || 'Autre'} — ${reason}`
     const noteEntry = `[${now}] Refus prospect (${reasonCategory || 'Autre'}) : ${reason}`
     const existingNote = devis.noteInterne || ''
 
     await updateDevis(devis.id, {
       statut: 'Refusé',
+      declinedAt: now,
+      declineReason,
       noteInterne: existingNote ? `${existingNote}\n${noteEntry}` : noteEntry,
     })
 
@@ -127,7 +145,9 @@ export async function POST(
       console.error('[DEVIS PUBLIC DECLINE] Project fetch error:', JSON.stringify(projectFetchError, null, 2))
     }
 
+    let projectWasAlreadyLost = false
     if (projectRow) {
+      projectWasAlreadyLost = projectRow.status === 'Perdu'
       const { error: projectUpdateError } = await supabaseAdmin
         .from(TABLES.projects)
         .update({ status: 'Perdu' })
@@ -138,7 +158,10 @@ export async function POST(
       }
     }
 
-    await logDevisDeclinedActivity(devis.projectId, devis.devisNumber, reason)
+    await logDevisDeclinedActivity(devis.projectId, declineReason)
+    if (projectRow && !projectWasAlreadyLost) {
+      await logProjectLostActivity(devis.projectId)
+    }
 
     if (projectRow) {
       const project = mapSupabaseProject(projectRow)
@@ -148,13 +171,13 @@ export async function POST(
         clientName: devis.clientName || project.clientName,
         projectType: project.projectType || project.trade,
         city: project.city,
-        reason,
-        reasonCategory,
+        totalTTC: devis.totalTTC,
+        declineReason,
         projectId: devis.projectId,
       })
     }
 
-    return NextResponse.json({ success: true, declined_at: now, status: 'Perdu' })
+    return NextResponse.json({ success: true, declined_at: now, decline_reason: declineReason, status: 'Perdu' })
   } catch (error) {
     console.error('[DEVIS PUBLIC DECLINE]', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

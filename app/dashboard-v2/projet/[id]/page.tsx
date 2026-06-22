@@ -51,6 +51,9 @@ interface DevisListItem {
   quote_sent_at?: string;
   last_follow_up_at?: string | null;
   follow_up_count?: number;
+  declined?: boolean;
+  declined_at?: string | null;
+  decline_reason?: string | null;
 }
 
 function formatDevisDate(value: string) {
@@ -1293,7 +1296,19 @@ function ProjectDetail() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
-                          {devis.accepted && (
+                          {devis.declined ? (
+                            <span style={{
+                              background: 'rgba(220,38,38,0.1)',
+                              color: '#dc2626',
+                              border: '1px solid rgba(220,38,38,0.3)',
+                              borderRadius: '999px',
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                            }}>
+                              ✕ Refusé
+                            </span>
+                          ) : devis.accepted ? (
                             <span style={{
                               background: 'rgba(34,197,94,0.1)',
                               color: 'var(--accent)',
@@ -1305,8 +1320,7 @@ function ProjectDetail() {
                             }}>
                               ✓ Accepté le {formatDevisDate(devis.accepted_at || '')}
                             </span>
-                          )}
-                          {devis.sent || devis.statut?.startsWith('Envoy') ? (
+                          ) : devis.sent || devis.statut?.startsWith('Envoy') ? (
                             <span style={{
                               background: 'rgba(34,197,94,0.1)',
                               color: 'var(--accent)',
@@ -1335,7 +1349,50 @@ function ProjectDetail() {
                         </div>
                       </div>
 
-                          {(devis.sent || devis.statut?.startsWith('Envoy')) && (
+                          {devis.declined && (
+                            <div style={{
+                              background: 'rgba(220,38,38,0.06)',
+                              border: '1px solid rgba(220,38,38,0.25)',
+                              borderRadius: '10px',
+                              padding: '10px 12px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '2px',
+                            }}>
+                              <span style={{ color: '#dc2626', fontSize: '12px', fontWeight: 600 }}>
+                                Refusé le {formatDevisDate(devis.declined_at || '')}
+                              </span>
+                              {devis.decline_reason && (
+                                <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>
+                                  Motif : {devis.decline_reason}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {devis.declined ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                              }}
+                              style={{
+                                alignSelf: 'flex-start',
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--text-1)',
+                                borderRadius: '9px',
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                width: isMobile ? '100%' : undefined,
+                              }}
+                            >
+                              Créer un nouveau devis
+                            </button>
+                          ) : (devis.sent || devis.statut?.startsWith('Envoy')) && (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1361,7 +1418,7 @@ function ProjectDetail() {
                             </button>
                           )}
 
-                          {(devis.sent || devis.statut?.startsWith('Envoy')) && (
+                          {!devis.declined && (devis.sent || devis.statut?.startsWith('Envoy')) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? 'var(--text-2)' : 'var(--text-3)', flexWrap: 'wrap' }}>
                               {devis.opens_count > 0 ? (
                                 <>

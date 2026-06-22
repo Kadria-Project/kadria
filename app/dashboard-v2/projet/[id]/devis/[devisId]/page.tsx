@@ -47,6 +47,8 @@ interface DevisData {
   accepted: boolean;
   acceptedAt: string | null;
   acceptedIp: string | null;
+  declinedAt: string | null;
+  declineReason: string;
 }
 
 function formatDate(value: string) {
@@ -235,6 +237,7 @@ function DevisView() {
   }
 
   const isSent = devis.sent || devis.statut === 'Envoyé';
+  const isDeclined = devis.statut === 'Refusé' || Boolean(devis.declinedAt) || Boolean(devis.declineReason);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -248,7 +251,19 @@ function DevisView() {
             </Button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '12px 0 4px' }}>
               <h1 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Devis {devis.devisNumber}</h1>
-              {isSent ? (
+              {isDeclined ? (
+                <span style={{
+                  background: 'rgba(220,38,38,0.1)',
+                  color: '#dc2626',
+                  border: '1px solid rgba(220,38,38,0.3)',
+                  borderRadius: '999px',
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}>
+                  ✕ Refusé
+                </span>
+              ) : isSent ? (
                 <span style={{
                   background: 'rgba(34,197,94,0.1)',
                   color: '#22c55e',
@@ -366,7 +381,9 @@ function DevisView() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {devis.accepted ? (
+              {isDeclined ? (
+                <XCircle size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
+              ) : devis.accepted ? (
                 <CheckCircle size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
               ) : devis.opensCount > 0 ? (
                 <Eye size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
@@ -375,14 +392,34 @@ function DevisView() {
               )}
               <div>
                 <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Statut</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
-                  {devis.accepted ? 'Accepté' : devis.opensCount > 0 ? 'En attente' : 'Non ouvert'}
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: isDeclined ? '#dc2626' : undefined }}>
+                  {isDeclined ? 'Refusé' : devis.accepted ? 'Accepté' : devis.opensCount > 0 ? 'En attente' : 'Non ouvert'}
                 </p>
               </div>
             </div>
           </div>
 
-          {devis.accepted && (
+          {isDeclined && (
+            <div style={{
+              background: 'rgba(220,38,38,0.06)',
+              border: '1px solid rgba(220,38,38,0.3)',
+              borderRadius: '10px',
+              padding: '16px',
+              marginBottom: '16px',
+            }}>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#dc2626' }}>
+                ✕ Devis refusé le {formatDate(devis.declinedAt || '')}
+              </p>
+              <p style={{ margin: '10px 0 0', fontSize: '12px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+                Motif du refus
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#d4d4d8' }}>
+                {devis.declineReason || 'Non renseigné'}
+              </p>
+            </div>
+          )}
+
+          {devis.accepted && !isDeclined && (
             <div style={{
               background: 'rgba(34,197,94,0.06)',
               border: '1px solid rgba(34,197,94,0.3)',

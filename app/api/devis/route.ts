@@ -79,6 +79,9 @@ export async function GET(request: NextRequest) {
         quote_sent_at: d.quoteSentAt,
         last_follow_up_at: d.lastFollowUpAt,
         follow_up_count: d.followUpCount,
+        declined: d.statut === 'Refusé' || Boolean(d.declinedAt) || Boolean(d.declineReason),
+        declined_at: d.declinedAt,
+        decline_reason: d.declineReason,
       }))
       .sort((a, b) => (b.date_emission || '').localeCompare(a.date_emission || ''))
 
