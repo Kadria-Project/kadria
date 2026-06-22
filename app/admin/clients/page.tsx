@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Search, Download } from 'lucide-react';
 
 interface ClientUsage {
@@ -398,7 +399,17 @@ export default function AdminClientsPage() {
                         </div>
                       </td>
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600 }}>Voir →</span>
+                        {c.id ? (
+                          <Link
+                            href={`/admin/clients/${c.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                          >
+                            Voir le détail →
+                          </Link>
+                        ) : (
+                          <span style={{ color: '#52525b', fontSize: '13px', fontWeight: 600 }}>ID manquant</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -490,7 +501,17 @@ export default function AdminClientsPage() {
                 </div>
 
                 <div style={{ marginTop: '12px', textAlign: 'right' }}>
-                  <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600 }}>Voir le détail →</span>
+                  {c.id ? (
+                    <Link
+                      href={`/admin/clients/${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                    >
+                      Voir le détail →
+                    </Link>
+                  ) : (
+                    <span style={{ color: '#52525b', fontSize: '13px', fontWeight: 600 }}>ID manquant</span>
+                  )}
                 </div>
               </div>
             ))}
