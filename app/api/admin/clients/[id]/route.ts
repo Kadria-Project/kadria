@@ -88,6 +88,9 @@ export async function PATCH(
     return NextResponse.json(updated)
   } catch (error) {
     console.error('[ADMIN CLIENT PATCH]', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Erreur serveur', detail: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    )
   }
 }

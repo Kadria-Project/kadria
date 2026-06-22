@@ -223,7 +223,7 @@ export default function AdminClientDetailPage() {
     });
     const data = await res.json();
     if (data.error) {
-      throw new Error(data.error);
+      throw new Error(data.detail || data.error);
     }
     setClient(data);
     return data;
@@ -241,8 +241,8 @@ export default function AdminClientDetailPage() {
         siret: form.siret,
         address: form.address,
       });
-    } catch {
-      alert("Erreur lors de l'enregistrement");
+    } catch (err) {
+      alert(`Erreur lors de l'enregistrement : ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSaving(false);
     }
@@ -252,8 +252,8 @@ export default function AdminClientDetailPage() {
     setSaving(true);
     try {
       await patch({ notes_admin: notes });
-    } catch {
-      alert("Erreur lors de l'enregistrement de la note");
+    } catch (err) {
+      alert(`Erreur lors de l'enregistrement de la note : ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSaving(false);
     }
@@ -267,8 +267,8 @@ export default function AdminClientDetailPage() {
         plan: newPlan,
         history_entry: `Plan changé : ${client.plan || 'Aucun'} → ${newPlan}`,
       });
-    } catch {
-      alert('Erreur lors du changement de plan');
+    } catch (err) {
+      alert(`Erreur lors du changement de plan : ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -280,16 +280,16 @@ export default function AdminClientDetailPage() {
         statut: newStatut,
         history_entry: `Statut changé : ${client.statut || 'Aucun'} → ${newStatut}`,
       });
-    } catch {
-      alert('Erreur lors du changement de statut');
+    } catch (err) {
+      alert(`Erreur lors du changement de statut : ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   async function handleDateChange(field: 'trial_end_date' | 'subscription_start' | 'next_billing', value: string) {
     try {
       await patch({ [field]: value });
-    } catch {
-      alert('Erreur lors de la mise à jour de la date');
+    } catch (err) {
+      alert(`Erreur lors de la mise à jour de la date : ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -310,8 +310,8 @@ export default function AdminClientDetailPage() {
         fields.suspended_at = new Date().toISOString();
       }
       await patch(fields);
-    } catch {
-      alert('Erreur lors de la mise à jour du statut');
+    } catch (err) {
+      alert(`Erreur lors de la mise à jour du statut : ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -339,8 +339,8 @@ export default function AdminClientDetailPage() {
       }
 
       setCancelOpen(false);
-    } catch {
-      alert('Erreur lors de la résiliation');
+    } catch (err) {
+      alert(`Erreur lors de la résiliation : ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
