@@ -100,12 +100,16 @@ export function FeatureGate({
   requiredPlan,
   className = '',
   variant = 'default',
+  title,
+  message,
 }: {
   children: ReactNode;
   feature: PlanFeatureKey;
   requiredPlan?: PlanKey;
   className?: string;
   variant?: 'default' | 'menuItem';
+  title?: string;
+  message?: string;
 }) {
   const currentPlan = useCurrentPlan();
   const [isOpen, setIsOpen] = useState(false);
@@ -177,11 +181,10 @@ export function FeatureGate({
               Plan {getPlanLabel(upgradePlan)}
             </p>
             <h3 className="mt-3 text-2xl font-semibold text-white">
-              Débloquez le suivi avancé
+              {title ?? 'Débloquez le suivi avancé'}
             </h3>
             <p className="mt-3 text-sm leading-6 text-zinc-400">
-              Cette fonctionnalité est incluse dans le plan {getPlanLabel(upgradePlan)}. Passez au
-              niveau supérieur pour automatiser davantage votre suivi commercial.
+              {message ?? `Cette fonctionnalité est incluse dans le plan ${getPlanLabel(upgradePlan)}. Passez au niveau supérieur pour automatiser davantage votre suivi commercial.`}
             </p>
 
             <div className="mt-6 flex flex-col gap-3">
