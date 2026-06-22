@@ -159,6 +159,7 @@ export default function AdminClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [form, setForm] = useState({
     firstName: '',
@@ -215,6 +216,11 @@ export default function AdminClientDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  function showToast(type: 'success' | 'error', message: string) {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  }
+
   async function patch(fields: Record<string, unknown>) {
     const res = await fetch(`/api/admin/clients/${id}`, {
       method: 'PATCH',
@@ -241,8 +247,9 @@ export default function AdminClientDetailPage() {
         siret: form.siret,
         address: form.address,
       });
+      showToast('success', 'Modifications enregistrées');
     } catch (err) {
-      alert(`Erreur lors de l'enregistrement : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
       setSaving(false);
     }
@@ -252,8 +259,9 @@ export default function AdminClientDetailPage() {
     setSaving(true);
     try {
       await patch({ notes_admin: notes });
+      showToast('success', 'Modifications enregistrées');
     } catch (err) {
-      alert(`Erreur lors de l'enregistrement de la note : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
       setSaving(false);
     }
@@ -262,26 +270,34 @@ export default function AdminClientDetailPage() {
   async function handlePlanChange(newPlan: string) {
     if (!client) return;
     if (!confirm(`Changer le plan de ce client vers "${newPlan}" ?`)) return;
+    setSaving(true);
     try {
       await patch({
         plan: newPlan,
         history_entry: `Plan changé : ${client.plan || 'Aucun'} → ${newPlan}`,
       });
+      showToast('success', 'Modifications enregistrées');
     } catch (err) {
-      alert(`Erreur lors du changement de plan : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleStatutChange(newStatut: string) {
     if (!client) return;
     if (!confirm(`Changer le statut de ce compte vers "${newStatut}" ?`)) return;
+    setSaving(true);
     try {
       await patch({
         statut: newStatut,
         history_entry: `Statut changé : ${client.statut || 'Aucun'} → ${newStatut}`,
       });
+      showToast('success', 'Modifications enregistrées');
     } catch (err) {
-      alert(`Erreur lors du changement de statut : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -394,6 +410,27 @@ export default function AdminClientDetailPage() {
 
   return (
     <div>
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 1000,
+            padding: '14px 20px',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#fff',
+            background: toast.type === 'success' ? 'rgba(34,197,94,0.95)' : 'rgba(220,38,38,0.95)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            maxWidth: '360px',
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
+
       <Link href="/admin/clients" style={{ fontSize: '13px', color: '#a1a1aa', textDecoration: 'none' }}>
         ← Retour aux clients
       </Link>
@@ -463,7 +500,7 @@ export default function AdminClientDetailPage() {
               <input style={inputStyle} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <button style={primaryButton} onClick={handleSaveInfo} disabled={saving}>
-              Enregistrer les modifications
+              {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
             </button>
           </div>
 
@@ -479,7 +516,7 @@ export default function AdminClientDetailPage() {
               Ces notes sont visibles uniquement par l&apos;admin
             </p>
             <button style={secondaryButton} onClick={handleSaveNotes} disabled={saving}>
-              Sauvegarder la note
+              {saving ? 'Enregistrement...' : 'Sauvegarder la note'}
             </button>
           </div>
 
@@ -509,6 +546,7 @@ export default function AdminClientDetailPage() {
               style={{ ...inputStyle, marginBottom: '16px' }}
               value={client.plan || ''}
               onChange={(e) => handlePlanChange(e.target.value)}
+              disabled={saving}
             >
               <option value="">Aucun</option>
               <option value="Essentiel">Essentiel (149€)</option>
@@ -521,6 +559,7 @@ export default function AdminClientDetailPage() {
               style={{ ...inputStyle, marginBottom: '16px' }}
               value={client.statut || ''}
               onChange={(e) => handleStatutChange(e.target.value)}
+              disabled={saving}
             >
               <option value="Trial">Trial</option>
               <option value="Actif">Actif</option>
