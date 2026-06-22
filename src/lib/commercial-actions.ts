@@ -311,6 +311,36 @@ export function getBestFollowUpTime(project: FollowUpProjectLike) {
   }
 }
 
+type QuoteLike = {
+  statut?: string
+  accepted?: boolean
+  accepted_at?: string | null
+  declined?: boolean
+  declined_at?: string | null
+  decline_reason?: string | null
+  date_validite?: string | null
+  sent?: boolean
+}
+
+const NON_FOLLOW_UP_STATUTS = ['accepté', 'accepte', 'refusé', 'refuse', 'annulé', 'annule', 'expiré', 'expire', 'cancelled', 'declined', 'refused', 'accepted', 'expired']
+
+export function isQuoteExpired(quote: QuoteLike): boolean {
+  if (!quote.date_validite) return false
+  const time = new Date(quote.date_validite).getTime()
+  if (!Number.isFinite(time)) return false
+  return time < Date.now()
+}
+
+export function canFollowUpQuote(quote: QuoteLike): boolean {
+  if (quote.accepted || quote.accepted_at) return false
+  if (quote.declined || quote.declined_at || quote.decline_reason) return false
+  const statut = (quote.statut || '').toLowerCase().trim()
+  if (NON_FOLLOW_UP_STATUTS.includes(statut)) return false
+  if (isQuoteExpired(quote)) return false
+
+  return Boolean(quote.sent || quote.statut?.startsWith('Envoy'))
+}
+
 export function generateQuoteFollowUpEmail(params: {
   firstName?: string
   quoteSentAt?: string

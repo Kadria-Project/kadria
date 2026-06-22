@@ -19,7 +19,7 @@ import {
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
+import { getBestFollowUpTime, shouldShowIdealFollowUp, canFollowUpQuote, isQuoteExpired } from '@/src/lib/commercial-actions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -1395,7 +1395,33 @@ function ProjectDetail() {
                             >
                               Créer un nouveau devis
                             </button>
-                          ) : (devis.sent || devis.statut?.startsWith('Envoy')) && (
+                          ) : devis.accepted ? (
+                            <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                              Devis accepté — aucune relance nécessaire
+                            </span>
+                          ) : isQuoteExpired(devis) ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                              }}
+                              style={{
+                                alignSelf: 'flex-start',
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--text-1)',
+                                borderRadius: '9px',
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                width: isMobile ? '100%' : undefined,
+                              }}
+                            >
+                              Créer un nouveau devis
+                            </button>
+                          ) : canFollowUpQuote(devis) && (
                             <button
                               type="button"
                               onClick={(event) => {
