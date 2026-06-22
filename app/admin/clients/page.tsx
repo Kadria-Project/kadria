@@ -243,6 +243,11 @@ export default function AdminClientsPage() {
           setError(data.error);
           return;
         }
+        (data as ClientRecord[]).forEach((c) => {
+          if (!c.id) {
+            console.warn('[ADMIN CLIENTS] Client sans id Supabase, navigation impossible :', c);
+          }
+        });
         setClients(data);
       })
       .catch(() => setError('Erreur de chargement'))
