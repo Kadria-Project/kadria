@@ -1,5 +1,6 @@
 import 'server-only'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
+import { normalizePlan as normalizePlanCanonical } from '@/src/lib/plans'
 
 const TABLE_CANDIDATES = {
   users: ['Users'],
@@ -166,7 +167,7 @@ export const QUOTA_SCHEMA_SUPPORT = {
 } as const
 
 function getDefaultProjectLimit(plan: PlanKey) {
-  if (plan === 'agence') {
+  if (plan === 'agence' || plan === 'performance') {
     return null
   }
 
@@ -186,17 +187,8 @@ function getDefaultVapiCallsLimit(plan: PlanKey) {
 }
 
 function normalizeQuotaPlan(plan: unknown): PlanKey {
-  const value = String(plan || '').trim().toLowerCase()
-
-  if (value === 'agence' || value === 'entreprise') {
-    return 'agence'
-  }
-
-  if (value === 'performance' || value === 'pro') {
-    return 'performance'
-  }
-
-  return 'essentiel'
+  const canonical = normalizePlanCanonical(typeof plan === 'string' ? plan : undefined)
+  return canonical === 'entreprise' ? 'agence' : canonical
 }
 
 function getPlanLookupCandidates(plan: PlanKey) {
@@ -412,7 +404,7 @@ function getVapiPayloadMetrics(params: {
   }
 }
 
-async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey>> {
+export async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey>> {
   try {
     const supabase = getSupabaseAdmin()
     const usersTable = await resolveAccessibleTable('users')
@@ -525,7 +517,7 @@ async function upsertMonthlyUsageRow(
     QUOTA_SCHEMA_SUPPORT.usageMonthly.projectCountColumns,
   )
   const limit = options?.limit ?? getDefaultProjectLimit(plan)
-  const unlimited = options?.unlimited ?? plan === 'agence'
+  const unlimited = options?.unlimited ?? (plan === 'agence' || plan === 'performance')
 
   if (!projectCountColumn) {
     return { success: false as const, error: 'Aucune colonne compteur projet compatible dans UsageMonthly' }
@@ -629,7 +621,7 @@ async function countProjectsForPeriod(artisanId: string, periodMonth: string) {
 
 export async function getProjectQuotaForArtisan(artisanId: string): Promise<QuotaResult<ProjectQuotaConfig>> {
   const planResult = await getPlanForArtisan(artisanId)
-  const plan = planResult.success && planResult.data ? planResult.data : 'performance'
+  const plan = planResult.success && planResult.data ? planResult.data : 'essentiel'
   const periodMonth = getCurrentPeriodMonth()
 
   try {
@@ -675,7 +667,7 @@ export async function getProjectQuotaForArtisan(artisanId: string): Promise<Quot
         plan,
         periodMonth,
         limit: getDefaultProjectLimit(plan),
-        unlimited: plan === 'agence',
+        unlimited: plan === 'agence' || plan === 'performance',
         source: 'fallback',
         tableName: planLimitsResult.tableName,
       },
@@ -786,7 +778,7 @@ export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaRe
 
 export async function getVapiQuotaForArtisan(artisanId: string): Promise<QuotaResult<VapiQuotaConfig>> {
   const planResult = await getPlanForArtisan(artisanId)
-  const plan = planResult.success && planResult.data ? planResult.data : 'performance'
+  const plan = planResult.success && planResult.data ? planResult.data : 'essentiel'
   const periodMonth = getCurrentPeriodMonth()
 
   try {
@@ -1007,10 +999,10 @@ export async function canUseVapi(artisanId: string): Promise<VapiQuotaCheck> {
       success: false,
       allowed: false,
       artisanId,
-      plan: 'performance',
+      plan: 'essentiel',
       periodMonth: getCurrentPeriodMonth(),
       callsUsed: 0,
-      callsLimit: getDefaultVapiCallsLimit('performance'),
+      callsLimit: getDefaultVapiCallsLimit('essentiel'),
       callsRemaining: null,
       callsUnlimited: false,
       minutesUsed: 0,
@@ -1084,9 +1076,9 @@ export async function canCreateProject(artisanId: string): Promise<ProjectQuotaC
       success: false,
       allowed: false,
       artisanId,
-      plan: 'performance',
+      plan: 'essentiel',
       periodMonth: getCurrentPeriodMonth(),
-      limit: 50,
+      limit: getDefaultProjectLimit('essentiel'),
       used: 0,
       remaining: null,
       source: 'fallback',
@@ -1231,7 +1223,7 @@ export async function incrementMonthlyUsage(params: {
     params.projectsCount,
     {
       limit: params.limit ?? getDefaultProjectLimit(params.plan),
-      unlimited: params.unlimited ?? params.plan === 'agence',
+      unlimited: params.unlimited ?? (params.plan === 'agence' || params.plan === 'performance'),
     },
   )
 

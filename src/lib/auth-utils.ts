@@ -7,6 +7,7 @@ import {
   type PlanFeatureKey,
   type PlanKey,
 } from '@/src/lib/plans'
+import { getPlanForArtisan } from '@/src/lib/usage/quotas'
 
 function getAuthSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
@@ -54,9 +55,18 @@ export async function getSession(): Promise<AuthPayload | null> {
   if (!token) return null
   const session = await verifyToken(token)
   if (!session) return null
+
+  let plan = normalizePlan(session.plan)
+  if (session.artisanId) {
+    const livePlan = await getPlanForArtisan(session.artisanId)
+    if (livePlan.success && livePlan.data) {
+      plan = normalizePlan(livePlan.data)
+    }
+  }
+
   return {
     ...session,
-    plan: normalizePlan(session.plan),
+    plan,
   }
 }
 
