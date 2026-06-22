@@ -860,7 +860,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
@@ -1085,6 +1085,16 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     ).values(),
   );
 
+  const callsProjects = allProjects.filter((project) =>
+    todayTasks.some((task) => task.type === 'call' && task.projectId === project.id),
+  );
+  const quotesProjects = allProjects.filter((project) =>
+    todayTasks.some((task) => task.type === 'quote' && task.projectId === project.id),
+  );
+  const followupsProjects = allProjects.filter((project) =>
+    todayTasks.some((task) => (task.type === 'followUp' || task.type === 'email') && task.projectId === project.id),
+  );
+
   const displayedProjects =
     quickFilter === 'today'
       ? todayCallbacks
@@ -1098,7 +1108,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               ? topOpportunities
               : quickFilter === 'priority'
                 ? priorityProjects
-                : sortedProjects;
+                : quickFilter === 'calls'
+                  ? callsProjects
+                  : quickFilter === 'quotes'
+                    ? quotesProjects
+                    : quickFilter === 'followups'
+                      ? followupsProjects
+                      : sortedProjects;
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -1111,6 +1127,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     setFilters(DEFAULT_FILTERS);
     setSearchInput('');
     document.getElementById('project-list-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const goToCommercialFilter = (value: 'calls' | 'quotes' | 'followups') => {
+    setDashboardMode('commercial');
+    applyQuickFilter(value);
   };
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -1695,9 +1716,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <ActionSummary icon={PhoneCall} label="appels à effectuer" value={taskCounts.call || 0} />
-              <ActionSummary icon={FolderOpen} label="devis à envoyer" value={taskCounts.quote || 0} />
-              <ActionSummary icon={Mail} label="relances à faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} />
+              <ActionSummary
+                icon={PhoneCall}
+                label="appels à effectuer"
+                value={taskCounts.call || 0}
+                onClick={() => goToCommercialFilter('calls')}
+              />
+              <ActionSummary
+                icon={FolderOpen}
+                label="devis à envoyer"
+                value={taskCounts.quote || 0}
+                onClick={() => goToCommercialFilter('quotes')}
+              />
+              <ActionSummary
+                icon={Mail}
+                label="relances à faire"
+                value={(taskCounts.followUp || 0) + (taskCounts.email || 0)}
+                onClick={() => goToCommercialFilter('followups')}
+              />
             </div>
 
             <div className="mt-4 space-y-2">
@@ -2803,7 +2839,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                             ? 'Dossiers en risque'
                             : quickFilter === 'opportunities'
                               ? 'Opportunites prioritaires'
-                              : 'Priorites du jour'}
+                              : quickFilter === 'calls'
+                                ? 'Appels à effectuer'
+                                : quickFilter === 'quotes'
+                                  ? 'Devis à envoyer'
+                                  : quickFilter === 'followups'
+                                    ? 'Relances à faire'
+                                    : 'Priorites du jour'}
                   </span>
                 </p>
 
@@ -2825,11 +2867,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <p className="font-bold text-[var(--text-1)]">Aucun dossier trouvé</p>
 
                 <p className="text-[var(--text-2)] mt-1">
-                  {filters.search
-                    ? `Aucun résultat pour '${filters.search}'`
-                    : filters.statut
-                      ? `Aucun dossier avec le statut '${filters.statut}'`
-                      : 'Essayez d’élargir vos critères de recherche'}
+                  {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups'
+                    ? 'Aucun dossier dans cette catégorie.'
+                    : filters.search
+                      ? `Aucun résultat pour '${filters.search}'`
+                      : filters.statut
+                        ? `Aucun dossier avec le statut '${filters.statut}'`
+                        : 'Essayez d’élargir vos critères de recherche'}
                 </p>
 
                 {hasActiveFilters && (
@@ -3512,16 +3556,40 @@ function MonthlyUsageDetailModal({
   );
 }
 
-function ActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+function ActionSummary({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: typeof PhoneCall;
+  label: string;
+  value: number;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
       <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-400">
         <Icon className="h-4 w-4" />
       </div>
       <p className="text-2xl font-bold text-[var(--text-1)]">{value}</p>
       <p className="text-xs text-[var(--text-2)]">{label}</p>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 text-left transition-colors hover:border-green-500/40 hover:bg-green-500/[0.04] active:scale-[0.98]"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">{content}</div>;
 }
 
 const PLAN_FEATURE_HIGHLIGHTS: Record<PlanKey, string[]> = {
