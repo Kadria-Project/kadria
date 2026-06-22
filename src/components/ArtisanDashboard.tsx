@@ -1260,9 +1260,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     : primaryHotLead
       ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
       : '';
+  const isOverviewTab = dashboardMode === 'all';
   const showBusinessOverview = dashboardMode === 'all' || dashboardMode === 'commercial';
-  const showTasksOverview = dashboardMode === 'all' || dashboardMode === 'tasks';
-  const showCommercialWorkspace = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showTasksOverview = dashboardMode === 'tasks';
+  const showCommercialWorkspace = dashboardMode === 'commercial';
   const showClientsWorkspace = dashboardMode === 'clients';
   const showCalendarWorkspace = dashboardMode === 'calendar';
 
@@ -1623,7 +1624,142 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {showBusinessOverview && (
+      {/* Bloc unique "À traiter maintenant" — vue complète uniquement */}
+      {isOverviewTab && !loading && (
+        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5 lg:flex-[70] lg:basis-[70%]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
+                <p className="mt-1 text-sm text-[var(--text-2)]">Vos priorités du jour, condensées.</p>
+              </div>
+
+              <button
+                onClick={() => setDashboardMode('tasks')}
+                className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
+              >
+                Voir toutes les tâches
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <ActionSummary icon={PhoneCall} label="appels à effectuer" value={taskCounts.call || 0} />
+              <ActionSummary icon={FolderOpen} label="devis à envoyer" value={taskCounts.quote || 0} />
+              <ActionSummary icon={Mail} label="relances à faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} />
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {todayTasks.slice(0, 3).map((task) => {
+                const project = allProjects.find((p) => p.id === task.projectId);
+                return (
+                  <button
+                    key={task.id}
+                    onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
+                      <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                      {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
+                    </span>
+                  </button>
+                );
+              })}
+              {todayTasks.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucune action urgente pour le moment.</p>}
+            </div>
+          </div>
+
+          <div className="lg:flex-[30] lg:basis-[30%]" ref={monthlyUsageSectionRef}>
+            <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
+          </div>
+        </div>
+      )}
+
+      {/* Signal prioritaire — vue complète uniquement, masqué si rien de fort */}
+      {isOverviewTab && !loading && primaryHotLead && (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Bell className="h-4 w-4 shrink-0 text-green-400" />
+            <p className="truncate text-sm text-[var(--text-1)]">
+              <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
+              {primaryHotLeadName} - {primaryHotLeadReason}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
+            className="w-full rounded-lg border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-dim)] sm:w-auto"
+          >
+            Voir
+          </button>
+        </div>
+      )}
+
+      {/* Opportunités prioritaires compactes — vue complète uniquement */}
+      {isOverviewTab && !loading && topOpportunities.length > 0 && (
+        <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
+          <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-bold text-[var(--text-1)]">Opportunités prioritaires</p>
+                <p className="mt-1 text-xs text-[var(--text-2)]">Top 3 dossiers à rappeler en premier.</p>
+              </div>
+              <button
+                onClick={() => setDashboardMode('commercial')}
+                className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] hover:border-green-500/25 sm:w-auto"
+              >
+                Voir le suivi commercial
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {canAccessFeature('topAiOpportunities') ? topOpportunities.slice(0, 3).map((project, index) => {
+                const score = opportunityScore(project);
+                const badge = getOpportunityBadge(score);
+                return (
+                  <button
+                    key={project.id}
+                    onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                    className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold shrink-0">#{index + 1}</span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Dossier'}</p>
+                        <p className="truncate text-xs text-[var(--text-2)]">{project.projectType || project.trade || 'Projet'} - {project.city || 'Ville non renseignee'}</p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className="rounded-full border px-2.5 py-1 text-xs font-semibold"
+                        style={{ color: badge.color, background: badge.bg, borderColor: badge.border }}
+                      >
+                        {badge.label}
+                      </span>
+                      <span className="text-green-400 font-bold text-sm">{score}/100</span>
+                    </div>
+                  </button>
+                );
+              }) : (
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('topAiOpportunities')}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left"
+                >
+                  <span className="text-sm text-[var(--text-2)]">Opportunités prioritaires verrouillées</span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-2)]">
+                    <Lock className="h-3 w-3 text-green-500" />
+                    Performance
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        </FeatureGate>
+      )}
+
+      {!isOverviewTab && showBusinessOverview && (
         <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
           {!loading && (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5 lg:flex-[70] lg:basis-[70%]">
@@ -1676,7 +1812,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showBusinessOverview && !loading && primaryHotLead && (
+      {!isOverviewTab && showBusinessOverview && !loading && primaryHotLead && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Bell className="h-4 w-4 shrink-0 text-green-400" />
