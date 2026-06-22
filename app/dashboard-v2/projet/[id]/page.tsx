@@ -709,6 +709,269 @@ function ProjectDetail() {
         </div>
 
         <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          overflow: 'hidden',
+        }}>
+          {/* Header avec badge verdict */}
+          <div style={{
+            padding: isMobile ? '16px' : '16px 20px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '10px' : 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '16px' }}>✦</span>
+              <span style={{
+                color: 'var(--accent)',
+                fontWeight: 700,
+                fontSize: '14px',
+                letterSpacing: '0.02em'
+              }}>
+                Analyse Kadria
+              </span>
+            </div>
+            {/* Badge verdict */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: verdict.bg,
+              border: `1px solid ${verdict.border}`,
+              borderRadius: '20px',
+              padding: '4px 12px',
+            }}>
+              <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+              <span style={{
+                color: verdict.color,
+                fontSize: '12px',
+                fontWeight: 700
+              }}>
+                {verdict.label}
+              </span>
+              <span style={{
+                color: verdict.color,
+                fontSize: '11px',
+                opacity: 0.8,
+              }}>
+                — {verdict.description}
+              </span>
+            </div>
+          </div>
+
+          {/* Indicateurs qualité */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: '1px',
+            background: 'var(--border)',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            {indicators.map((ind, i) => {
+              if (i === 3 && project.photos && project.photos.length > 0) {
+                const photos = project.photos;
+
+                return (
+                  <div key={i} style={{
+                    background: 'var(--bg-elevated)',
+                    padding: isMobile ? '12px' : '12px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
+                      <span style={{ color: 'var(--text-1)', fontSize: '12px', fontWeight: 500 }}>
+                        Photos jointes
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', paddingLeft: isMobile ? '0' : '20px', flexWrap: 'wrap' }}>
+                      {photos.slice(0, 4).map((photo: any, idx: number) => {
+                        const url = photo.url || (typeof photo === 'string' ? photo : '#');
+                        const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
+
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid var(--border)',
+                              display: 'block',
+                            }}
+                          >
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </a>
+                        );
+                      })}
+                      {photos.length > 4 && (
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-elevated)',
+                          color: 'var(--text-2)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          +{photos.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={i} style={{
+                  background: 'var(--bg-elevated)',
+                  padding: isMobile ? '12px' : '12px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      color: ind.ok ? 'var(--accent)' : '#b91c1c',
+                      fontSize: '14px'
+                    }}>
+                      {ind.ok ? '✓' : '✗'}
+                    </span>
+                    <span style={{
+                      color: ind.ok ? 'var(--text-1)' : 'var(--text-2)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                    }}>
+                      {ind.label}
+                    </span>
+                  </div>
+                  <span style={{
+                    color: 'var(--text-3)',
+                    fontSize: '11px',
+                    paddingLeft: '20px',
+                  }}>
+                    {ind.detail}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Résumé structuré */}
+          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
+            <p style={{
+              color: 'var(--accent)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Résumé du projet
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { icon: '🏗️', label: 'Le projet', value: summary.projet },
+                { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
+                { icon: '🎯', label: 'Priorité', value: summary.priorite },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                }}>
+                  <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
+                  <span style={{
+                    color: 'var(--text-3)',
+                    fontSize: '12px',
+                      minWidth: isMobile ? '72px' : '80px',
+                    flexShrink: 0,
+                  }}>
+                    {item.label} :
+                  </span>
+                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 500 }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Synthèse IA longue */}
+          {project.aiSummary && (
+            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <p style={{
+                color: 'var(--accent)',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                margin: '0 0 8px',
+              }}>
+                Synthèse IA
+              </p>
+              <p style={{
+                color: 'var(--text-2)',
+                fontSize: '13px',
+                lineHeight: '1.7',
+                margin: 0,
+                fontStyle: 'italic',
+              }}>
+                {project.aiSummary}
+              </p>
+            </div>
+          )}
+
+          {/* Recommandation IA */}
+          <div style={{
+            padding: isMobile ? '14px 16px' : '14px 20px',
+            background: 'rgba(34, 197, 94, 0.05)',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
+            <div>
+              <p style={{
+                color: 'var(--accent)',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                margin: '0 0 4px',
+              }}>
+                Recommandation Kadria
+              </p>
+              <p style={{
+                color: 'var(--text-2)',
+                fontSize: '13px',
+                lineHeight: '1.6',
+                margin: 0,
+              }}>
+                {recommendation}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
           background: 'rgba(34,197,94,0.06)',
           border: '1px solid rgba(34,197,94,0.22)',
           borderRadius: '14px',
@@ -1123,6 +1386,7 @@ function ProjectDetail() {
                   borderTop: '1px solid var(--border)',
                   marginTop: '12px',
                   paddingTop: '12px',
+                  opacity: (project.status === 'Gagné' || project.status === 'Perdu') ? 1 : 0.7,
                 }}>
                   <p style={{
                     color: 'var(--text-3)',
@@ -1132,7 +1396,7 @@ function ProjectDetail() {
                     textTransform: 'uppercase',
                     margin: '0 0 8px',
                   }}>
-                    Cloture du dossier
+                    Clôture du dossier
                   </p>
               <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px' }}>
                 <button
@@ -1140,8 +1404,8 @@ function ProjectDetail() {
                   style={{
                     flex: 1,
                     background: project.status === 'Gagné'
-                      ? 'rgba(21,128,61,0.25)' : 'rgba(21,128,61,0.1)',
-                    border: '1px solid #16a34a',
+                      ? 'rgba(21,128,61,0.25)' : 'rgba(21,128,61,0.06)',
+                    border: project.status === 'Gagné' ? '1px solid #16a34a' : '1px solid rgba(22,163,74,0.4)',
                     color: '#15803d',
                     borderRadius: '8px',
                     padding: '8px 12px',
@@ -1163,8 +1427,8 @@ function ProjectDetail() {
                   style={{
                     flex: 1,
                     background: project.status === 'Perdu'
-                      ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.08)',
-                    border: '1px solid #dc2626',
+                      ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.05)',
+                    border: project.status === 'Perdu' ? '1px solid #dc2626' : '1px solid rgba(220,38,38,0.35)',
                     color: '#b91c1c',
                     borderRadius: '8px',
                     padding: '8px 12px',
@@ -1262,268 +1526,6 @@ function ProjectDetail() {
           </div>
         </div>
 
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          overflow: 'hidden',
-        }}>
-          {/* Header avec badge verdict */}
-          <div style={{
-            padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: isMobile ? 'flex-start' : 'center',
-            justifyContent: 'space-between',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '10px' : 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '16px' }}>✦</span>
-              <span style={{
-                color: 'var(--accent)',
-                fontWeight: 700,
-                fontSize: '14px',
-                letterSpacing: '0.02em'
-              }}>
-                Analyse Kadria
-              </span>
-            </div>
-            {/* Badge verdict */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: verdict.bg,
-              border: `1px solid ${verdict.border}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-            }}>
-              <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
-              <span style={{
-                color: verdict.color,
-                fontSize: '12px',
-                fontWeight: 700
-              }}>
-                {verdict.label}
-              </span>
-              <span style={{
-                color: verdict.color,
-                fontSize: '11px',
-                opacity: 0.8,
-              }}>
-                — {verdict.description}
-              </span>
-            </div>
-          </div>
-
-          {/* Indicateurs qualité */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            gap: '1px',
-            background: 'var(--border)',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            {indicators.map((ind, i) => {
-              if (i === 3 && project.photos && project.photos.length > 0) {
-                const photos = project.photos;
-
-                return (
-                  <div key={i} style={{
-                    background: 'var(--bg-elevated)',
-                    padding: isMobile ? '12px' : '12px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
-                      <span style={{ color: 'var(--text-1)', fontSize: '12px', fontWeight: 500 }}>
-                        Photos jointes
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', paddingLeft: isMobile ? '0' : '20px', flexWrap: 'wrap' }}>
-                      {photos.slice(0, 4).map((photo: any, idx: number) => {
-                        const url = photo.url || (typeof photo === 'string' ? photo : '#');
-                        const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
-
-                        return (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '6px',
-                              overflow: 'hidden',
-                              border: '1px solid var(--border)',
-                              display: 'block',
-                            }}
-                          >
-                            <img
-                              src={thumbUrl}
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          </a>
-                        );
-                      })}
-                      {photos.length > 4 && (
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-elevated)',
-                          color: 'var(--text-2)',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                          +{photos.length - 4}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={i} style={{
-                  background: 'var(--bg-elevated)',
-                  padding: isMobile ? '12px' : '12px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{
-                      color: ind.ok ? 'var(--accent)' : '#b91c1c',
-                      fontSize: '14px'
-                    }}>
-                      {ind.ok ? '✓' : '✗'}
-                    </span>
-                    <span style={{
-                      color: ind.ok ? 'var(--text-1)' : 'var(--text-2)',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                    }}>
-                      {ind.label}
-                    </span>
-                  </div>
-                  <span style={{
-                    color: 'var(--text-3)',
-                    fontSize: '11px',
-                    paddingLeft: '20px',
-                  }}>
-                    {ind.detail}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Résumé structuré */}
-          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <p style={{
-              color: 'var(--accent)',
-              fontSize: '10px',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Résumé du projet
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {[
-                { icon: '🏗️', label: 'Le projet', value: summary.projet },
-                { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
-                { icon: '🎯', label: 'Priorité', value: summary.priorite },
-              ].map((item, i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                }}>
-                  <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
-                  <span style={{
-                    color: 'var(--text-3)',
-                    fontSize: '12px',
-                      minWidth: isMobile ? '72px' : '80px',
-                    flexShrink: 0,
-                  }}>
-                    {item.label} :
-                  </span>
-                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 500 }}>
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Synthèse IA longue */}
-          {project.aiSummary && (
-            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <p style={{
-                color: 'var(--accent)',
-                fontSize: '10px',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                margin: '0 0 8px',
-              }}>
-                Synthèse IA
-              </p>
-              <p style={{
-                color: 'var(--text-2)',
-                fontSize: '13px',
-                lineHeight: '1.7',
-                margin: 0,
-                fontStyle: 'italic',
-              }}>
-                {project.aiSummary}
-              </p>
-            </div>
-          )}
-
-          {/* Recommandation IA */}
-          <div style={{
-            padding: isMobile ? '14px 16px' : '14px 20px',
-            background: 'rgba(34, 197, 94, 0.05)',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'flex-start',
-          }}>
-            <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
-            <div>
-              <p style={{
-                color: 'var(--accent)',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                margin: '0 0 4px',
-              }}>
-                Recommandation Kadria
-              </p>
-              <p style={{
-                color: 'var(--text-2)',
-                fontSize: '13px',
-                lineHeight: '1.6',
-                margin: 0,
-              }}>
-                {recommendation}
-              </p>
-            </div>
-          </div>
-        </div>
 
         {!showNotes ? (
           <div style={{
