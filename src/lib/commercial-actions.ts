@@ -287,6 +287,12 @@ export function getOpportunityBadge(score: number): OpportunityBadge {
   }
 }
 
+export function shouldShowIdealFollowUp(project: ProjectLike): boolean {
+  if (!project.id) return false
+  const tasks = buildAutomaticTasks([project])
+  return tasks.some((task) => task.projectId === project.id && (task.type === 'call' || task.type === 'followUp'))
+}
+
 export function getBestFollowUpTime(project: FollowUpProjectLike) {
   const lastInteractionDate = project.lastOpenedDate || project.firstOpenedAt || project.callbackDate || project.createdAt || ''
   const lastInteraction = lastInteractionDate ? new Date(lastInteractionDate) : null

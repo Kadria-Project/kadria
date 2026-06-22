@@ -19,7 +19,7 @@ import {
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
+import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -479,6 +479,7 @@ function ProjectDetail() {
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
+  const showIdealFollowUp = shouldShowIdealFollowUp(project);
 
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
@@ -974,55 +975,57 @@ function ProjectDetail() {
           </div>
         </div>
 
-        <div style={{
-          background: 'rgba(34,197,94,0.06)',
-          border: '1px solid rgba(34,197,94,0.22)',
-          borderRadius: '14px',
-          padding: isMobile ? '16px' : '16px 20px',
-          marginBottom: '16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: '16px',
-          flexWrap: 'wrap',
-        }}>
-          <div>
-            <p style={{
-              color: 'var(--accent)',
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              margin: '0 0 8px',
-            }}>
-              Moment idéal de relance
-            </p>
-            <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
-              {followUpTime.primarySlot}
-            </p>
-            <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
-              {followUpTime.secondarySlot}
-            </p>
-          </div>
+        {showIdealFollowUp && (
+          <div style={{
+            background: 'rgba(34,197,94,0.06)',
+            border: '1px solid rgba(34,197,94,0.22)',
+            borderRadius: '14px',
+            padding: isMobile ? '16px' : '16px 20px',
+            marginBottom: '16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '16px',
+            flexWrap: 'wrap',
+          }}>
+            <div>
+              <p style={{
+                color: 'var(--accent)',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                margin: '0 0 8px',
+              }}>
+                Moment idéal de relance
+              </p>
+              <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
+                {followUpTime.primarySlot}
+              </p>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
+                {followUpTime.secondarySlot}
+              </p>
+            </div>
 
-          <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
-            <p style={{ margin: '0 0 4px' }}>
-              Dernier échange :{' '}
-              <span style={{ color: 'var(--text-1)' }}>
-                {followUpTime.lastInteractionDate
-                  ? formatShortDate(followUpTime.lastInteractionDate)
-                  : 'Non renseigné'}
-              </span>
-            </p>
-            <p style={{ margin: 0 }}>
-              Sans interaction :{' '}
-              <span style={{ color: 'var(--text-1)' }}>
-                {followUpTime.daysWithoutInteraction === null
-                  ? 'Non renseigné'
-                  : `${followUpTime.daysWithoutInteraction} jour(s)`}
-              </span>
-            </p>
+            <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
+              <p style={{ margin: '0 0 4px' }}>
+                Dernier échange :{' '}
+                <span style={{ color: 'var(--text-1)' }}>
+                  {followUpTime.lastInteractionDate
+                    ? formatShortDate(followUpTime.lastInteractionDate)
+                    : 'Non renseigné'}
+                </span>
+              </p>
+              <p style={{ margin: 0 }}>
+                Sans interaction :{' '}
+                <span style={{ color: 'var(--text-1)' }}>
+                  {followUpTime.daysWithoutInteraction === null
+                    ? 'Non renseigné'
+                    : `${followUpTime.daysWithoutInteraction} jour(s)`}
+                </span>
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div style={{
           background: 'var(--bg-elevated)',
