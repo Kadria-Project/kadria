@@ -455,6 +455,9 @@ export interface UserRecord {
 
 function mapSupabaseAdminUser(row: Record<string, unknown>): UserRecord {
   const s = (value: unknown) => (value === null || value === undefined ? '' : String(value))
+  if (!row.id) {
+    console.error('[ADMIN CLIENTS] User without Supabase id', row)
+  }
   return {
     id: s(row.id),
     email: s(row.email),
