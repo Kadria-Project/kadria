@@ -3584,7 +3584,7 @@ export function LandingRoutePage() {
                 12 artisans déjà partenaires · 8 places restantes
               </p>
               <Link
-                href="/onboarding"
+                href="/parametres"
                 className="kr-reveal kr-reveal-delay-3 mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-green-500 px-5 py-2.5 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
               >
                 Rejoindre les premiers artisans Kadria <ArrowRight className="h-4 w-4" />

@@ -1015,6 +1015,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     };
   }, []);
 
+  const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/artisan/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.success && data.config) {
+          setOnboardingIncomplete(!data.config.onboardingCompleted);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -1406,6 +1424,42 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   return (
     <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
+      {onboardingIncomplete && (
+        <div
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.3)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+          }}
+        >
+          <span style={{ color: 'var(--text-2)', fontSize: '13px' }}>
+            Finalisez votre configuration pour mieux qualifier vos prospects.
+          </span>
+          <button
+            onClick={() => router.push('/onboarding')}
+            style={{
+              background: 'var(--accent)',
+              border: 'none',
+              color: 'black',
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '7px 14px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Reprendre l&apos;onboarding
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div
         style={{
@@ -1532,7 +1586,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    router.push('/onboarding');
+                    router.push('/parametres');
                   }}
                   style={{
                     background: 'var(--bg-hover)',
@@ -1615,7 +1669,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
 
             <button
-              onClick={() => router.push('/onboarding')}
+              onClick={() => router.push('/parametres')}
               style={{
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',

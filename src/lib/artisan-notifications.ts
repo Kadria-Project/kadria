@@ -6,7 +6,7 @@
 // des devis.
 
 import { Resend } from 'resend'
-import { TABLES, getUserByArtisanIdentifier } from '@/src/lib/airtable'
+import { TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable'
 import { getBaseUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
@@ -49,8 +49,12 @@ async function sendArtisanEmail(params: SendArtisanEmailParams): Promise<boolean
   const { artisanId, projectId, subject, html, eventLabel } = params
 
   try {
-    const artisan = await getUserByArtisanIdentifier(artisanId)
-    if (!artisan?.email) {
+    const [artisan, config] = await Promise.all([
+      getUserByArtisanIdentifier(artisanId),
+      getArtisanConfig(artisanId),
+    ])
+    const recipientEmail = config?.notificationEmail || artisan?.email
+    if (!recipientEmail) {
       console.error(`[ARTISAN NOTIFICATIONS] Email artisan manquant pour artisan_id=${artisanId} (${eventLabel})`)
       await logArtisanNotificationActivity(projectId, `Notification artisan non envoyée — email artisan manquant (${eventLabel}).`)
       return false
@@ -65,7 +69,7 @@ async function sendArtisanEmail(params: SendArtisanEmailParams): Promise<boolean
     const resend = new Resend(apiKey)
     const result = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
-      to: artisan.email,
+      to: recipientEmail,
       subject,
       html,
     })

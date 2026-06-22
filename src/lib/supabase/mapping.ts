@@ -141,6 +141,13 @@ export interface SupabaseArtisanConfig {
   devisMentionLegale: string
   devisCompteur: number
   prestationsJson: string
+  serviceArea: string
+  interventionRadius: number
+  notificationEmail: string
+  vapiEnabled: boolean
+  vapiGreeting: string
+  onboardingCompleted: boolean
+  onboardingCompletedAt: string
 }
 
 export interface SupabaseProject {
@@ -237,6 +244,13 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     devisMentionLegale: getString(row, 'devis_mention_legale', 'Devis Mention Legale'),
     devisCompteur: getNumber(row, 'devis_compteur', 'Devis Compteur'),
     prestationsJson: getString(row, 'prestations_json', 'Prestations JSON'),
+    serviceArea: getString(row, 'service_area'),
+    interventionRadius: getNumber(row, 'intervention_radius'),
+    notificationEmail: getString(row, 'notification_email'),
+    vapiEnabled: getBoolean(row, 'vapi_enabled'),
+    vapiGreeting: getString(row, 'vapi_greeting'),
+    onboardingCompleted: getBoolean(row, 'onboarding_completed'),
+    onboardingCompletedAt: getString(row, 'onboarding_completed_at'),
   }
 }
 

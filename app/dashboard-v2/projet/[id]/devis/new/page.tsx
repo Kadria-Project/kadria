@@ -508,7 +508,7 @@ function NewDevis() {
                 ))}
               </ul>
             )}
-            <a href="/onboarding" style={{ color: '#22c55e', fontWeight: 600, fontSize: '14px' }}>
+            <a href="/parametres" style={{ color: '#22c55e', fontWeight: 600, fontSize: '14px' }}>
               Compléter mon profil →
             </a>
           </div>

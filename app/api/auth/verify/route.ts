@@ -38,12 +38,12 @@ export async function GET(request: NextRequest) {
       lastName: artisan.lastName || '',
     })
 
-    // Détermine si c'est un nouveau compte (pas encore configuré)
+    // Détermine si l'onboarding a déjà été finalisé
     const config = await getArtisanConfig(artisan.artisanId)
-    const isNewAccount = !config?.welcomeName && !config?.primaryColor
+    const onboardingDone = !!config?.onboardingCompleted
 
     const response = NextResponse.redirect(
-      new URL(isNewAccount ? '/onboarding' : '/dashboard-v2', request.url)
+      new URL(onboardingDone ? '/dashboard-v2' : '/onboarding', request.url)
     )
     response.cookies.set('kadria-auth', sessionToken, {
       httpOnly: true,

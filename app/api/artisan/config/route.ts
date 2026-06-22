@@ -87,6 +87,13 @@ export async function PATCH(request: NextRequest) {
     if (body.devisCompteur !== undefined) fields['devis_compteur'] = body.devisCompteur
     if (body.prestationsJson !== undefined) fields['prestations_json'] = body.prestationsJson
 
+    // Onboarding : zone d'intervention, notifications, assistant vocal
+    if (body.serviceArea !== undefined) fields['service_area'] = body.serviceArea
+    if (body.interventionRadius !== undefined) fields['intervention_radius'] = body.interventionRadius
+    if (body.notificationEmail !== undefined) fields['notification_email'] = body.notificationEmail
+    if (body.vapiEnabled !== undefined) fields['vapi_enabled'] = body.vapiEnabled
+    if (body.vapiGreeting !== undefined) fields['vapi_greeting'] = body.vapiGreeting
+
     console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
     console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
 

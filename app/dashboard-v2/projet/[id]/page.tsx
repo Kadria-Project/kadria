@@ -687,7 +687,7 @@ function ProjectDetail() {
             <p className="text-sm text-[var(--text-2)] flex-1 m-0">
               Complétez vos informations légales pour générer des devis professionnels.
             </p>
-            <a href="/onboarding" className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--accent)' }}>
+            <a href="/parametres" className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--accent)' }}>
               Compléter mon profil →
             </a>
           </div>
