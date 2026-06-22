@@ -62,6 +62,14 @@ import {
 import { KadriaLogo } from '@/src/components/KadriaLogo';
 import { DarkNav } from '@/src/components/DarkNav';
 import ChatWidget from '@/src/components/ChatWidget';
+import {
+  BILLING_MODES,
+  WEBSITE_ADDON,
+  getAnnualOneShotPrice,
+  getMonthlyPriceForMode,
+  type BillingModeKey,
+  type PricingPlanKey,
+} from '@/src/config/pricing';
 
 const DottedSurface = dynamic(
   () => import('@/components/ui/dotted-surface').then((mod) => mod.DottedSurface),
@@ -3638,7 +3646,7 @@ export function LandingRoutePage() {
             </div>
             <p className="kr-reveal kr-reveal-delay-2 mt-8 text-center text-sm text-green-500">
               <Link href="/tarifs#addon" className="hover:underline">
-                ➕ Site vitrine clé en main — +50€/mois avec Performance
+                ➕ Site vitrine clé en main — 300 € une fois ou 50 €/mois — Essentiel et Performance
               </Link>
             </p>
             <p className="kr-reveal kr-reveal-delay-2 mt-4 text-center text-sm text-zinc-400">
@@ -3843,89 +3851,102 @@ interface PricingPlanCard {
   cta: { label: string; href: string; primary: boolean; disabled?: boolean };
 }
 
-const pricingPlanCards: PricingPlanCard[] = [
-  {
-    slug: 'essentiel',
-    name: 'Essentiel',
-    price: '149€',
-    priceSize: 'text-5xl',
-    period: '/mois',
-    description: 'Pour démarrer et ne plus manquer de demandes web',
-    features: [
-      { text: 'Assistant chat web 24h/24' },
-      { text: 'Qualification IA + score dossier' },
-      { text: 'Résumé IA + recommandation par dossier' },
-      { text: 'CRM vue liste' },
-      { text: 'Filtres simples (statut, métier)' },
-      { text: '50 dossiers / mois' },
-      { text: 'Devis inclus — 10 devis/mois' },
-      { text: 'Assistant vocal inclus — 10 appels/mois' },
-      { text: 'KPI essentiels' },
-      { text: 'Export CSV' },
-      { text: 'Support email' },
-      { text: '1 utilisateur' },
-    ],
-    highlighted: false,
-    cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
-  },
-  {
-    slug: 'performance',
-    name: 'Performance',
-    price: '249€',
-    priceSize: 'text-5xl',
-    period: '/mois',
-    description: 'Pour ne plus perdre aucune opportunité',
-    features: [
-      { text: 'Tout Essentiel inclus' },
-      { text: 'Dossiers illimités' },
-      { text: 'Vue Kanban' },
-      { text: 'Filtres avancés (budget, score IA, période, source)' },
-      { text: 'KPI avancés avec tendances et sparkline' },
-      { text: 'Top 3 opportunités scorées par IA' },
-      { text: 'Pipeline commercial' },
-      { text: 'Chantiers géolocalisés' },
-      { text: 'Calendrier + rappels' },
-      { text: 'Export PDF dossiers' },
-      { text: 'Devis illimités' },
-      { text: 'Relances planifiables' },
-      { text: 'Assistant vocal étendu selon quota' },
-      { text: 'Relances automatiques' },
-      { text: 'Support prioritaire' },
-      { text: '1 utilisateur' },
-    ],
-    highlighted: true,
-    cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
-  },
-  {
-    slug: 'agence',
-    name: 'Agence',
-    price: 'Sur devis',
-    priceSize: 'text-[28px]',
-    period: '',
-    description: "Pour les groupements d'artisans et réseaux",
-    priceNote: "Offre réservée aux réseaux et groupements d’artisans - disponibilité prochaine.",
-    features: [
-      { text: 'Tout Performance inclus' },
-      { text: "Jusqu'à 10 artisans" },
-      { text: 'Dashboard multi-comptes' },
-      { text: 'Marque blanche complète' },
-      { text: 'API access' },
-      { text: 'Account manager dédié' },
-      { text: 'Onboarding personnalisé' },
-      { text: 'Rapports consolidés multi-sites' },
-      { text: 'Support téléphonique dédié' },
-    ],
-    highlighted: false,
-    availabilityBadge: 'BIENTÔT DISPONIBLE',
-    cta: { label: 'Bientôt disponible', href: '/contact', primary: false, disabled: true },
-  },
-];
+function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
+  const priceNoteFor = (plan: PricingPlanKey) =>
+    billingMode === 'monthly' ? undefined : BILLING_MODES[billingMode].label;
+
+  const priceFor = (plan: PricingPlanKey) =>
+    billingMode === 'annualOneShot'
+      ? `${getAnnualOneShotPrice(plan, billingMode)}€`
+      : `${getMonthlyPriceForMode(plan, billingMode)}€`;
+
+  const periodFor = () => (billingMode === 'annualOneShot' ? '/an' : '/mois');
+
+  return [
+    {
+      slug: 'essentiel',
+      name: 'Essentiel',
+      price: priceFor('essentiel'),
+      priceSize: 'text-5xl',
+      period: periodFor(),
+      priceNote: priceNoteFor('essentiel'),
+      description: 'Pour démarrer et ne plus manquer de demandes web',
+      features: [
+        { text: 'Assistant chat web 24h/24' },
+        { text: 'Qualification IA + score dossier' },
+        { text: 'Résumé IA + recommandation par dossier' },
+        { text: 'CRM vue liste' },
+        { text: 'Filtres simples (statut, métier)' },
+        { text: '50 dossiers / mois' },
+        { text: 'Devis inclus — 10 devis/mois' },
+        { text: 'Assistant vocal inclus — 10 appels/mois' },
+        { text: 'KPI essentiels' },
+        { text: 'Export CSV' },
+        { text: 'Support email' },
+        { text: '1 utilisateur' },
+      ],
+      highlighted: false,
+      cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
+    },
+    {
+      slug: 'performance',
+      name: 'Performance',
+      price: priceFor('performance'),
+      priceSize: 'text-5xl',
+      period: periodFor(),
+      priceNote: priceNoteFor('performance'),
+      description: 'Pour ne plus perdre aucune opportunité',
+      features: [
+        { text: 'Tout Essentiel inclus' },
+        { text: 'Dossiers illimités' },
+        { text: 'Vue Kanban' },
+        { text: 'Filtres avancés (budget, score IA, période, source)' },
+        { text: 'KPI avancés avec tendances et sparkline' },
+        { text: 'Top 3 opportunités scorées par IA' },
+        { text: 'Pipeline commercial' },
+        { text: 'Chantiers géolocalisés' },
+        { text: 'Calendrier + rappels' },
+        { text: 'Export PDF dossiers' },
+        { text: 'Devis illimités' },
+        { text: 'Relances planifiables' },
+        { text: 'Assistant vocal étendu selon quota' },
+        { text: 'Relances automatiques' },
+        { text: 'Support prioritaire' },
+        { text: '1 utilisateur' },
+      ],
+      highlighted: true,
+      cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
+    },
+    {
+      slug: 'agence',
+      name: 'Agence',
+      price: 'Sur devis',
+      priceSize: 'text-[28px]',
+      period: '',
+      description: "Pour les groupements d'artisans et réseaux",
+      priceNote: "Offre réservée aux réseaux et groupements d’artisans - disponibilité prochaine.",
+      features: [
+        { text: 'Tout Performance inclus' },
+        { text: "Jusqu'à 10 artisans" },
+        { text: 'Dashboard multi-comptes' },
+        { text: 'Marque blanche complète' },
+        { text: 'API access' },
+        { text: 'Account manager dédié' },
+        { text: 'Onboarding personnalisé' },
+        { text: 'Rapports consolidés multi-sites' },
+        { text: 'Support téléphonique dédié' },
+      ],
+      highlighted: false,
+      availabilityBadge: 'BIENTÔT DISPONIBLE',
+      cta: { label: 'Bientôt disponible', href: '/contact', primary: false, disabled: true },
+    },
+  ];
+}
 
 const addonSiteVitrine = {
   title: '➕ Site vitrine clé en main',
   description: 'Votre site professionnel créé et intégré avec votre assistant Kadria',
-  price: '+50€/mois',
-  priceSub: 'avec le plan Performance',
+  availabilityText: 'Disponible avec les offres Essentiel et Performance',
   features: [
     'Site vitrine professionnel (template métier)',
     'Intégration automatique du widget Kadria',
@@ -3933,7 +3954,7 @@ const addonSiteVitrine = {
     'Support technique site inclus',
   ],
   mention: '⚠️ Hébergement et nom de domaine non inclus (~15€/mois chez votre hébergeur)',
-  cta: { label: 'Ajouter au plan Performance', href: '/contact?sujet=addon-site' },
+  cta: { label: 'Ajouter le site vitrine', href: '/contact?sujet=addon-site' },
 };
 
 const pricingGuarantees = [
@@ -4033,7 +4054,7 @@ const comparatifCategories: { category: string; rows: [string, ComparatifValue, 
   {
     category: 'Add-on',
     rows: [
-      ['Site vitrine clé en main', '✗', '+50€/mois', '✓'],
+      ['Site vitrine clé en main', '300€ ou 50€/mois', '300€ ou 50€/mois', '✓'],
     ],
   },
 ];
@@ -4062,6 +4083,11 @@ function SwipeHint({ label, className = '' }: { label: string; className?: strin
 }
 
 export function PricingRoutePage() {
+  const [billingMode, setBillingMode] = useState<BillingModeKey>('monthly');
+  const [addonMode, setAddonMode] = useState<'oneShot' | 'monthly'>('oneShot');
+  const pricingPlanCards = buildPricingPlanCards(billingMode);
+  const selectedAddon = addonMode === 'oneShot' ? WEBSITE_ADDON.oneShot : WEBSITE_ADDON.monthly;
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <DarkNav />
@@ -4075,8 +4101,28 @@ export function PricingRoutePage() {
               Un tarif simple, <span className="text-green-500">adapté</span> à votre activité.
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-sm text-zinc-400 sm:text-base">
-              Sans engagement. Résiliation à tout moment. Support inclus dès le premier jour.
+              Sans engagement sur l’offre mensuelle. Résiliation à tout moment. Support inclus dès le premier jour.
             </p>
+
+            <div className="mx-auto mt-6 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 p-1.5">
+              {(Object.keys(BILLING_MODES) as BillingModeKey[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setBillingMode(mode)}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+                    billingMode === mode
+                      ? 'bg-green-500 text-black'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {BILLING_MODES[mode].shortLabel}
+                  {BILLING_MODES[mode].discount > 0 && (
+                    <span className="ml-1.5 text-[11px] font-bold text-current opacity-80">-15%</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* GRILLE 3 PLANS */}
@@ -4168,10 +4214,39 @@ export function PricingRoutePage() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Add-on</p>
                 <h3 className="mt-2 text-xl font-extrabold">{addonSiteVitrine.title.replace('➕ ', '')}</h3>
                 <p className="mt-2 text-sm text-zinc-400">{addonSiteVitrine.description}</p>
+                <p className="mt-3 text-xs font-semibold text-green-500">{addonSiteVitrine.availabilityText}</p>
+
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAddonMode('oneShot')}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      addonMode === 'oneShot' ? 'bg-green-500 text-black' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Achat one shot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAddonMode('monthly')}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      addonMode === 'monthly' ? 'bg-green-500 text-black' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Mensualité
+                  </button>
+                </div>
+
                 <p className="mt-4">
-                  <span className="text-3xl font-black text-green-500">{addonSiteVitrine.price}</span>
+                  <span className="text-3xl font-black text-green-500">{selectedAddon.label}</span>
                 </p>
-                <p className="text-sm text-zinc-400">{addonSiteVitrine.priceSub}</p>
+                {addonMode === 'monthly' && (
+                  <p className="text-sm font-semibold text-amber-400">
+                    Engagement {WEBSITE_ADDON.monthly.commitmentMonths} mois
+                  </p>
+                )}
+                <p className="mt-2 text-sm text-zinc-400">{selectedAddon.description}</p>
+
                 <ul className="mt-4 flex flex-col gap-2">
                   {addonSiteVitrine.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2 text-sm">
@@ -4181,6 +4256,7 @@ export function PricingRoutePage() {
                   ))}
                 </ul>
                 <p className="mt-3 text-xs text-zinc-500">{addonSiteVitrine.mention}</p>
+                <p className="mt-1 text-xs text-zinc-500">{WEBSITE_ADDON.agencyNote}</p>
               </div>
 
               <div className="w-full md:min-w-[200px] md:w-auto">
@@ -4191,7 +4267,7 @@ export function PricingRoutePage() {
                   {addonSiteVitrine.cta.label}
                 </Link>
                 <p className="mt-2 text-center text-xs text-zinc-400">
-                  Disponible uniquement avec Performance
+                  Abonnement Kadria facturé séparément
                 </p>
               </div>
             </div>
