@@ -487,57 +487,71 @@ export interface UserRecord {
   theme: string
 }
 
-function mapUserRecord(record: { id: string; fields: Record<string, unknown> }): UserRecord {
-  const fields = record.fields
+function mapSupabaseAdminUser(row: Record<string, unknown>): UserRecord {
+  const s = (value: unknown) => (value === null || value === undefined ? '' : String(value))
   return {
-    id: record.id,
-    email: fields['Email'] as string || '',
-    firstName: fields['First Name'] as string || '',
-    lastName: fields['Last Name'] as string || '',
-    company: fields['Company Name'] as string || '',
-    role: fields['Role'] as string || '',
-    plan: fields['Plan'] as string || '',
-    statut: fields['Statut'] as string || '',
-    artisanId: fields['Artisan ID'] as string || '',
-    phone: fields['Phone'] as string || '',
-    siret: fields['SIRET'] as string || '',
-    address: fields['Address'] as string || '',
-    trialEndDate: fields['Trial_end_date'] as string || '',
-    subscriptionStart: fields['Subscription_start'] as string || '',
-    nextBilling: fields['Next_billing'] as string || '',
-    lastLogin: fields['Last_login'] as string || '',
-    createdAt: fields['Created At'] as string || fields['Created_at'] as string || '',
-    notesAdmin: fields['Notes_admin'] as string || '',
-    suspendedAt: fields['Suspended_at'] as string || '',
-    cancelledAt: fields['Cancelled_at'] as string || '',
-    cancellationReason: fields['Cancellation_reason'] as string || '',
-    theme: fields['Theme'] as string || '',
+    id: s(row.id),
+    email: s(row.email),
+    firstName: s(row.first_name),
+    lastName: s(row.last_name),
+    company: s(row.company_name),
+    role: s(row.role),
+    plan: s(row.plan),
+    statut: s(row.statut),
+    artisanId: s(row.artisan_id),
+    phone: s(row.phone),
+    siret: s(row.siret),
+    address: s(row.address),
+    trialEndDate: s(row.trial_end_date),
+    subscriptionStart: s(row.subscription_start),
+    nextBilling: s(row.next_billing),
+    lastLogin: s(row.last_login),
+    createdAt: s(row.created_at),
+    notesAdmin: s(row.notes_admin),
+    suspendedAt: s(row.suspended_at),
+    cancelledAt: s(row.cancelled_at),
+    cancellationReason: s(row.cancellation_reason),
+    theme: s(row.theme),
   }
 }
 
 export async function getAllUsers(): Promise<UserRecord[]> {
-  const records: UserRecord[] = []
-  await airtableBase(TABLES.users)
-    .select({ pageSize: 100 })
-    .eachPage((pageRecords, fetchNextPage) => {
-      for (const record of pageRecords) {
-        records.push(mapUserRecord({ id: record.id, fields: record.fields }))
-      }
-      fetchNextPage()
-    })
-  return records
+  const { data, error } = await supabaseAdmin.from(TABLES.users).select('*')
+
+  if (error) {
+    throw error
+  }
+
+  return (data || []).map(mapSupabaseAdminUser)
 }
 
 export async function getUserById(id: string): Promise<UserRecord | null> {
-  try {
-    const record = await airtableBase(TABLES.users).find(id)
-    return mapUserRecord({ id: record.id, fields: record.fields })
-  } catch {
-    return null
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.users)
+    .select('*')
+    .eq('id', id)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw error
   }
+
+  if (!data) return null
+  return mapSupabaseAdminUser(data)
 }
 
 export async function updateUser(id: string, fields: Record<string, unknown>): Promise<UserRecord> {
-  const record = await airtableBase(TABLES.users).update(id, fields as Partial<Airtable.FieldSet>)
-  return mapUserRecord({ id: record.id, fields: record.fields })
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.users)
+    .update(fields)
+    .eq('id', id)
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return mapSupabaseAdminUser(data)
 }

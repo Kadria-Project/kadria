@@ -31,22 +31,22 @@ export async function GET(
 }
 
 const ALLOWED_FIELDS: Record<string, string> = {
-  plan: 'Plan',
-  statut: 'Statut',
-  phone: 'Phone',
-  company: 'Company Name',
-  first_name: 'First Name',
-  last_name: 'Last Name',
-  email: 'Email',
-  siret: 'SIRET',
-  address: 'Address',
-  trial_end_date: 'Trial_end_date',
-  subscription_start: 'Subscription_start',
-  next_billing: 'Next_billing',
-  notes_admin: 'Notes_admin',
-  suspended_at: 'Suspended_at',
-  cancelled_at: 'Cancelled_at',
-  cancellation_reason: 'Cancellation_reason',
+  plan: 'plan',
+  statut: 'statut',
+  phone: 'phone',
+  company: 'company_name',
+  first_name: 'first_name',
+  last_name: 'last_name',
+  email: 'email',
+  siret: 'siret',
+  address: 'address',
+  trial_end_date: 'trial_end_date',
+  subscription_start: 'subscription_start',
+  next_billing: 'next_billing',
+  notes_admin: 'notes_admin',
+  suspended_at: 'suspended_at',
+  cancelled_at: 'cancelled_at',
+  cancellation_reason: 'cancellation_reason',
 }
 
 export async function PATCH(
@@ -68,16 +68,16 @@ export async function PATCH(
     }
 
     const fields: Record<string, unknown> = {}
-    for (const [key, airtableField] of Object.entries(ALLOWED_FIELDS)) {
+    for (const [key, supabaseColumn] of Object.entries(ALLOWED_FIELDS)) {
       if (key in body) {
-        fields[airtableField] = body[key]
+        fields[supabaseColumn] = body[key]
       }
     }
 
     if (body.history_entry) {
       const existing = current.notesAdmin || ''
       const entry = timestampEntry(session.email, body.history_entry)
-      fields['Notes_admin'] = existing ? `${existing}\n${entry}` : entry
+      fields['notes_admin'] = existing ? `${existing}\n${entry}` : entry
     }
 
     if (Object.keys(fields).length === 0) {
