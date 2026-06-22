@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { TABLES, getAllSentDevis, getArtisanConfig, resolveProjectId, updateDevis } from '@/src/lib/airtable'
+import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
@@ -161,6 +162,13 @@ export async function POST(request: NextRequest) {
         const now = new Date().toISOString()
         await updateDevis(devis.id, { lastFollowUpAt: now, followUpCount: (devis.followUpCount || 0) + 1 })
         await createActivityLogSupabase(project.id, 'DEVIS_FOLLOW_UP_SENT', stageDescription(state.stage, devis.devisNumber))
+        await notifyArtisanQuoteFollowedUp({
+          artisanId: devis.artisanId,
+          projectId: project.id,
+          devisNumber: devis.devisNumber,
+          clientName: devis.clientName,
+          stage: state.stage as 'j2_unopened' | 'j5_opened_no_decision' | 'j10_final' | 'none',
+        })
 
         results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'sent', detail: 'OK' })
       } catch (innerError) {

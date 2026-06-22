@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TABLES } from '@/src/lib/airtable'
+import { notifyArtisanQuotaReached } from '@/src/lib/artisan-notifications'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/src/lib/usage/quotas'
@@ -298,6 +299,14 @@ export async function POST(request: NextRequest) {
           exceededReason: quotaAfter.exceededReason,
         })
         usageWarning = 'Quota Vapi dépassé'
+        if (quotaBefore.success && quotaBefore.allowed) {
+          await notifyArtisanQuotaReached({
+            artisanId,
+            quotaType: 'appels vocaux',
+            used: quotaAfter.callsUsed,
+            limit: quotaAfter.callsLimit ?? 0,
+          })
+        }
       } else if (quotaBefore.success && !quotaBefore.allowed) {
         usageWarning = 'Quota Vapi déjà dépassé'
       }

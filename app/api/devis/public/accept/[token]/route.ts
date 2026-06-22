@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
-import { TABLES, getDevisByToken, getUserByArtisanIdentifier, updateDevis } from '@/src/lib/airtable'
+import { TABLES, getDevisByToken, updateDevis } from '@/src/lib/airtable'
+import { notifyArtisanQuoteAccepted } from '@/src/lib/artisan-notifications'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
@@ -17,53 +17,6 @@ async function logDevisAcceptedActivity(projectId: string, devisNumber: string) 
 
   if (error) {
     console.error('[DEVIS PUBLIC ACCEPT] Activity insert error:', JSON.stringify(error, null, 2))
-  }
-}
-
-async function notifyArtisanDevisAccepted(params: {
-  artisanId: string
-  devisNumber: string
-  clientName: string
-  projectType: string
-  city: string
-  totalTTC: number
-  projectId: string
-}) {
-  try {
-    const artisan = await getUserByArtisanIdentifier(params.artisanId)
-    if (!artisan?.email) {
-      console.error('[DEVIS PUBLIC ACCEPT] Pas d\'email artisan disponible pour artisan_id:', params.artisanId)
-      return
-    }
-
-    const apiKey = process.env.RESEND_API_KEY
-    if (!apiKey) {
-      console.error('[DEVIS PUBLIC ACCEPT] RESEND_API_KEY manquante, notification non envoyée')
-      return
-    }
-
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.kadria.fr'
-    const projectUrl = `${baseUrl}/dashboard-v2/projet/${params.projectId}`
-    const amount = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(params.totalTTC || 0)
-
-    const resend = new Resend(apiKey)
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
-      to: artisan.email,
-      subject: 'Devis accepté — nouveau chantier gagné',
-      html: `
-        <p>Le devis a été accepté. Le dossier est passé automatiquement en <strong>Gagné</strong>.</p>
-        <ul>
-          <li><strong>Client :</strong> ${params.clientName || 'Non renseigné'}</li>
-          <li><strong>Type de projet :</strong> ${params.projectType || 'Non renseigné'}</li>
-          <li><strong>Commune :</strong> ${params.city || 'Non renseignée'}</li>
-          <li><strong>Montant du devis :</strong> ${amount}</li>
-        </ul>
-        <p><a href="${projectUrl}">Voir la fiche projet</a></p>
-      `,
-    })
-  } catch (error) {
-    console.error('[DEVIS PUBLIC ACCEPT] Échec envoi notification artisan:', error)
   }
 }
 
@@ -130,7 +83,7 @@ export async function POST(
 
     if (projectRow) {
       const project = mapSupabaseProject(projectRow)
-      await notifyArtisanDevisAccepted({
+      await notifyArtisanQuoteAccepted({
         artisanId: project.artisanId,
         devisNumber: devis.devisNumber,
         clientName: devis.clientName || project.clientName,

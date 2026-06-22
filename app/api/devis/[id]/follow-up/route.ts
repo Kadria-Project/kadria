@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { Resend } from 'resend'
 import { TABLES, getArtisanConfig, getDevisById, resolveProjectId, updateDevis } from '@/src/lib/airtable'
+import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
@@ -161,6 +162,14 @@ export async function POST(
             : `Relance devis envoyee — ${devis.devisNumber}`
 
     await createActivityLogSupabase(project.id, 'DEVIS_FOLLOW_UP_SENT', stageDescription)
+
+    await notifyArtisanQuoteFollowedUp({
+      artisanId: access.session.artisanId,
+      projectId: project.id,
+      devisNumber: devis.devisNumber,
+      clientName: devis.clientName,
+      stage: followupState.stage as 'j2_unopened' | 'j5_opened_no_decision' | 'j10_final' | 'none',
+    })
 
     return NextResponse.json({
       success: true,
