@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAllUsers } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
+import { getPlanLabel } from '@/src/lib/plans'
 
 const PLAN_PRICES: Record<string, number> = {
   'Essentiel': 149,
@@ -22,7 +23,9 @@ export async function GET() {
 
   try {
     const users = await getAllUsers()
-    const artisans = users.filter((u) => u.role === 'Artisan')
+    const artisans = users
+      .filter((u) => u.role !== 'Admin')
+      .map((u) => ({ ...u, plan: getPlanLabel(u.plan), statut: u.statut || 'Actif' }))
 
     const now = new Date()
 
@@ -68,6 +71,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('[ADMIN STATS]', error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: 'Erreur serveur', detail: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }

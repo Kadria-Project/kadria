@@ -434,7 +434,7 @@ async function getPlanForArtisan(artisanId: string): Promise<QuotaResult<PlanKey
 
     return {
       success: true,
-      data: normalizeQuotaPlan(data?.plan || 'performance'),
+      data: normalizeQuotaPlan(data?.plan),
     }
   } catch (error) {
     return {
@@ -1755,7 +1755,7 @@ export async function getAccountStatusForArtisan(artisanId: string): Promise<Quo
     return {
       success: true,
       data: {
-        plan: normalizeQuotaPlan((row.plan as string) || 'performance'),
+        plan: normalizeQuotaPlan(row.plan as string),
         status: (row.statut as string) || (row.status as string) || null,
         billingStatus: (row.billing_status as string) || null,
         trialEndDate: (row.trial_end_date as string) || null,
