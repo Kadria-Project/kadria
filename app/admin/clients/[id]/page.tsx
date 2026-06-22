@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 
 interface UserRecord {
   id: string;
@@ -497,7 +498,13 @@ export default function AdminClientDetailPage() {
             </div>
             <div style={{ marginBottom: '16px' }}>
               <span style={label}>Adresse</span>
-              <input style={inputStyle} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <AddressAutocomplete
+                value={form.address}
+                onChange={(value) => setForm({ ...form, address: value })}
+                onSelect={(selection) => setForm({ ...form, address: selection.address })}
+                placeholder="12 rue de la Paix, 75001 Paris"
+                style={inputStyle}
+              />
             </div>
             <button style={primaryButton} onClick={handleSaveInfo} disabled={saving}>
               {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}

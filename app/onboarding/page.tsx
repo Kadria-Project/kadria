@@ -4,6 +4,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
+import AddressAutocomplete from '@/components/AddressAutocomplete'
 
 const TRADES = [
   'Plombier', 'Électricien', 'Maçon', 'Peintre', 'Menuisier',
@@ -813,9 +814,10 @@ export default function OnboardingPage() {
                   </div>
                   <div>
                     <label style={labelStyle}>Adresse professionnelle</label>
-                    <input
+                    <AddressAutocomplete
                       value={config.address}
-                      onChange={e => setConfig(c => ({ ...c, address: e.target.value }))}
+                      onChange={value => setConfig(c => ({ ...c, address: value }))}
+                      onSelect={selection => setConfig(c => ({ ...c, address: selection.address }))}
                       placeholder="12 rue de la Paix, 75001 Paris"
                       style={inputStyle}
                     />
@@ -915,9 +917,15 @@ export default function OnboardingPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
                     <label style={labelStyle}>Adresse *</label>
-                    <input
+                    <AddressAutocomplete
                       value={config.adressePro}
-                      onChange={e => setConfig(c => ({ ...c, adressePro: e.target.value }))}
+                      onChange={value => setConfig(c => ({ ...c, adressePro: value }))}
+                      onSelect={selection => setConfig(c => ({
+                        ...c,
+                        adressePro: selection.address,
+                        cpPro: selection.postalCode || c.cpPro,
+                        villePro: selection.city || c.villePro,
+                      }))}
                       placeholder="12 rue de la Paix"
                       style={inputStyle}
                     />
