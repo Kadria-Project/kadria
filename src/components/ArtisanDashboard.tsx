@@ -52,13 +52,13 @@ import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/Featur
 import { hasFeature, normalizePlan, PLAN_DEFINITIONS, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import {
   buildAutomaticTasks,
-  calculateOpportunityScore,
   getHotLeadMessage,
   getOpportunityBadge,
   getProjectRiskStatus,
   isHotLead,
   type Task,
 } from '@/src/lib/commercial-actions';
+import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -185,7 +185,24 @@ function budgetScore(budget?: string): number {
 }
 
 export function opportunityScore(project: Project): number {
-  return calculateOpportunityScore(project);
+  return getProjectCommercialAnalysis({
+    status: project.status,
+    clientName: project.clientName,
+    clientFirstName: project.clientFirstName,
+    clientPhone: project.clientPhone,
+    clientEmail: project.clientEmail,
+    trade: project.trade,
+    projectType: project.projectType,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+    maturity: project.maturity,
+    city: project.city,
+    siteAddress: project.siteAddress,
+    aiSummary: project.aiSummary,
+    completenessScore: project.completenessScore,
+    photos: project.photos,
+    source: project.source,
+  }).score;
 }
 
 function parseBudget(budgetStr: string): number {

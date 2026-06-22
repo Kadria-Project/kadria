@@ -21,6 +21,7 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
+import { getProjectCommercialAnalysis, type NextActionType } from '@/src/lib/project-scoring';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -512,12 +513,118 @@ function ProjectDetail() {
   }
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
-  const verdict = getVerdict(project);
-  const recommendation = getRecommendation(project);
-  const indicators = getIndicators(project);
+  const latestDevis = devisList[0];
+  const analysis = getProjectCommercialAnalysis({
+    status: project.status,
+    clientName: project.clientName,
+    clientFirstName: project.clientFirstName,
+    clientPhone: project.clientPhone,
+    clientEmail: project.clientEmail,
+    trade: project.trade,
+    projectType: project.projectType,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+    maturity: project.maturity,
+    city: project.city,
+    siteAddress: project.siteAddress,
+    aiSummary: project.aiSummary,
+    completenessScore: project.completenessScore,
+    photos: project.photos,
+    source: project.source,
+    latestDevis: latestDevis
+      ? {
+          sent: latestDevis.sent,
+          accepted: latestDevis.accepted,
+          declined: latestDevis.declined,
+          declineReason: latestDevis.decline_reason,
+          opensCount: latestDevis.opens_count,
+          lastFollowUpAt: latestDevis.last_follow_up_at,
+        }
+      : null,
+  });
+  const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
   const showIdealFollowUp = shouldShowIdealFollowUp(project);
+
+  function getNextActionCtaLabel(type: NextActionType): string {
+    switch (type) {
+      case 'call': return 'Appeler le prospect';
+      case 'quote': return 'Préparer un devis';
+      case 'followup': return 'Relancer';
+      case 'ask_info': return 'Demander des précisions';
+      case 'archive': return 'Classer';
+      case 'wait': return 'Attendre';
+      default: return 'Voir';
+    }
+  }
+
+  function handleNextBestAction(type: NextActionType) {
+    switch (type) {
+      case 'call': {
+        if (project.clientPhone) {
+          window.location.href = `tel:${project.clientPhone}`;
+        } else {
+          setContactForm({
+            clientFirstName: project.clientFirstName || '',
+            clientName: project.clientName || '',
+            clientPhone: project.clientPhone || '',
+            clientEmail: project.clientEmail || '',
+            siteAddress: project.siteAddress || '',
+            city: project.city || '',
+            postalCode: project.postalCode || '',
+            latitude: project.latitude ?? null,
+            longitude: project.longitude ?? null,
+          });
+          setEditingContact(true);
+        }
+        break;
+      }
+      case 'quote': {
+        if (!canQuote) {
+          openUpgradeModal('quoteGeneration');
+          break;
+        }
+        router.push(`/dashboard-v2/projet/${id}/devis/new`);
+        break;
+      }
+      case 'followup': {
+        if (latestDevis) {
+          followUpQuote(latestDevis);
+        }
+        break;
+      }
+      case 'ask_info': {
+        setContactForm({
+          clientFirstName: project.clientFirstName || '',
+          clientName: project.clientName || '',
+          clientPhone: project.clientPhone || '',
+          clientEmail: project.clientEmail || '',
+          siteAddress: project.siteAddress || '',
+          city: project.city || '',
+          postalCode: project.postalCode || '',
+          latitude: project.latitude ?? null,
+          longitude: project.longitude ?? null,
+        });
+        setEditingContact(true);
+        break;
+      }
+      case 'archive':
+      case 'wait':
+      default:
+        break;
+    }
+  }
+
+  function getVerdictDisplay(temperature: 'hot' | 'warm' | 'cold', temperatureLabel: string) {
+    if (temperature === 'hot') {
+      return { icon: '🔥', color: '#22c55e', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.3)', label: temperatureLabel };
+    }
+    if (temperature === 'warm') {
+      return { icon: '🌤️', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', label: temperatureLabel };
+    }
+    return { icon: '❄️', color: '#9ca3af', bg: 'rgba(156,163,175,0.12)', border: 'rgba(156,163,175,0.3)', label: temperatureLabel };
+  }
 
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
@@ -756,7 +863,7 @@ function ProjectDetail() {
           borderRadius: '16px',
           overflow: 'hidden',
         }}>
-          {/* Header avec badge verdict */}
+          {/* Header avec badge température + score */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
             borderBottom: '1px solid var(--border)',
@@ -777,143 +884,146 @@ function ProjectDetail() {
                 Analyse Kadria
               </span>
             </div>
-            {/* Badge verdict */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: verdict.bg,
-              border: `1px solid ${verdict.border}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-            }}>
-              <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{
-                color: verdict.color,
+                color: 'var(--text-2)',
                 fontSize: '12px',
-                fontWeight: 700
+                fontWeight: 600,
               }}>
-                {verdict.label}
+                {analysis.score}/100
               </span>
-              <span style={{
-                color: verdict.color,
-                fontSize: '11px',
-                opacity: 0.8,
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: verdict.bg,
+                border: `1px solid ${verdict.border}`,
+                borderRadius: '20px',
+                padding: '4px 12px',
               }}>
-                — {verdict.description}
-              </span>
+                <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+                <span style={{
+                  color: verdict.color,
+                  fontSize: '12px',
+                  fontWeight: 700
+                }}>
+                  {verdict.label}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Indicateurs qualité */}
+          {/* Recommandation principale + CTA */}
+          <div style={{
+            padding: isMobile ? '14px 16px' : '14px 20px',
+            background: 'rgba(34, 197, 94, 0.05)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            gap: '12px',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
+              <div>
+                <p style={{
+                  color: 'var(--accent)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  margin: '0 0 4px',
+                }}>
+                  {analysis.nextBestAction.label}
+                </p>
+                <p style={{
+                  color: 'var(--text-2)',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                  margin: 0,
+                }}>
+                  {analysis.recommendation}
+                </p>
+              </div>
+            </div>
+            {analysis.nextBestAction.type !== 'wait' && (
+              <button
+                onClick={() => handleNextBestAction(analysis.nextBestAction.type)}
+                style={{
+                  background: 'var(--accent)',
+                  color: 'black',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {getNextActionCtaLabel(analysis.nextBestAction.type)}
+              </button>
+            )}
+          </div>
+
+          {/* Forces / points faibles / risques */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
             gap: '1px',
             background: 'var(--border)',
             borderBottom: '1px solid var(--border)',
           }}>
-            {indicators.map((ind, i) => {
-              if (i === 3 && project.photos && project.photos.length > 0) {
-                const photos = project.photos;
-
-                return (
-                  <div key={i} style={{
-                    background: 'var(--bg-elevated)',
-                    padding: isMobile ? '12px' : '12px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
-                      <span style={{ color: 'var(--text-1)', fontSize: '12px', fontWeight: 500 }}>
-                        Photos jointes
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', paddingLeft: isMobile ? '0' : '20px', flexWrap: 'wrap' }}>
-                      {photos.slice(0, 4).map((photo: any, idx: number) => {
-                        const url = photo.url || (typeof photo === 'string' ? photo : '#');
-                        const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
-
-                        return (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '6px',
-                              overflow: 'hidden',
-                              border: '1px solid var(--border)',
-                              display: 'block',
-                            }}
-                          >
-                            <img
-                              src={thumbUrl}
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          </a>
-                        );
-                      })}
-                      {photos.length > 4 && (
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-elevated)',
-                          color: 'var(--text-2)',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                          +{photos.length - 4}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={i} style={{
-                  background: 'var(--bg-elevated)',
-                  padding: isMobile ? '12px' : '12px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{
-                      color: ind.ok ? 'var(--accent)' : '#b91c1c',
-                      fontSize: '14px'
-                    }}>
-                      {ind.ok ? '✓' : '✗'}
-                    </span>
-                    <span style={{
-                      color: ind.ok ? 'var(--text-1)' : 'var(--text-2)',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                    }}>
-                      {ind.label}
-                    </span>
-                  </div>
-                  <span style={{
-                    color: 'var(--text-3)',
-                    fontSize: '11px',
-                    paddingLeft: '20px',
-                  }}>
-                    {ind.detail}
-                  </span>
-                </div>
-              );
-            })}
+            <div style={{ background: 'var(--bg-elevated)', padding: isMobile ? '12px 16px' : '12px 16px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                Forces
+              </p>
+              {analysis.strengths.length > 0 ? (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {analysis.strengths.map((item, i) => (
+                    <li key={i} style={{ color: 'var(--text-1)', fontSize: '12px', display: 'flex', gap: '6px' }}>
+                      <span style={{ color: 'var(--accent)' }}>✓</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Aucune pour le moment</p>
+              )}
+            </div>
+            <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                Infos manquantes
+              </p>
+              {analysis.missingInfo.length > 0 ? (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {analysis.missingInfo.map((item, i) => (
+                    <li key={i} style={{ color: 'var(--text-2)', fontSize: '12px', display: 'flex', gap: '6px' }}>
+                      <span style={{ color: '#f59e0b' }}>•</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Dossier complet</p>
+              )}
+            </div>
+            <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+                Risques
+              </p>
+              {analysis.riskFlags.length > 0 ? (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {analysis.riskFlags.map((item, i) => (
+                    <li key={i} style={{ color: '#dc2626', fontSize: '12px', display: 'flex', gap: '6px' }}>
+                      <span>⚠</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Aucun risque identifié</p>
+              )}
+            </div>
           </div>
 
           {/* Résumé structuré */}
@@ -980,37 +1090,6 @@ function ProjectDetail() {
               </p>
             </div>
           )}
-
-          {/* Recommandation IA */}
-          <div style={{
-            padding: isMobile ? '14px 16px' : '14px 20px',
-            background: 'rgba(34, 197, 94, 0.05)',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'flex-start',
-          }}>
-            <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
-            <div>
-              <p style={{
-                color: 'var(--accent)',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                margin: '0 0 4px',
-              }}>
-                Recommandation Kadria
-              </p>
-              <p style={{
-                color: 'var(--text-2)',
-                fontSize: '13px',
-                lineHeight: '1.6',
-                margin: 0,
-              }}>
-                {recommendation}
-              </p>
-            </div>
-          </div>
         </div>
 
         {showIdealFollowUp && (
@@ -2141,94 +2220,6 @@ function TimelineIcon({ action }: { action?: string }) {
       <ArrowRight className="w-3 h-3 text-[var(--text-1)]" />
     </span>
   );
-}
-
-function getVerdict(project: any) {
-  const score = project.completenessScore || 0;
-  const maturity = project.maturity || '';
-  const budget = project.budget || '';
-  const timeline = project.desiredTimeline || '';
-
-  const isHot = score >= 80 &&
-    (maturity.includes('Prêt') || maturity.includes('urgent')) &&
-    !budget.includes('sais pas') &&
-    (timeline.includes('possible') || timeline.includes('1 mois'));
-
-  const isCold = score < 60 ||
-    budget.includes('sais pas') ||
-    maturity.includes('renseigne');
-
-  if (isHot) return {
-    label: 'Prospect chaud',
-    color: 'var(--accent)',
-    bg: 'rgba(34,197,94,0.15)',
-    border: 'rgba(34,197,94,0.25)',
-    icon: '🔥',
-    description: 'Budget défini, délai court, prêt à démarrer'
-  };
-  if (isCold) return {
-    label: 'Prospect froid',
-    color: '#b91c1c',
-    bg: 'rgba(220,38,38,0.10)',
-    border: 'rgba(220,38,38,0.2)',
-    icon: '❄️',
-    description: 'Budget flou ou projet peu défini'
-  };
-  return {
-    label: 'Prospect tiède',
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.15)',
-    border: 'rgba(245,158,11,0.3)',
-    icon: '⚡',
-    description: 'Quelques informations manquantes'
-  };
-}
-
-function getRecommendation(project: any) {
-  const maturity = project.maturity || '';
-  const timeline = project.desiredTimeline || '';
-  const budget = project.budget || '';
-
-  if (maturity.includes('Prêt') || maturity.includes('urgent')) {
-    return "Ce prospect est prêt à démarrer. Rappel recommandé dans les 24h pour maximiser vos chances de conversion.";
-  }
-  if (timeline.includes('possible') || timeline.includes('1 mois')) {
-    return "Le délai est court. Prenez contact rapidement pour proposer une visite technique avant qu'il ne contacte un concurrent.";
-  }
-  if (budget.includes('sais pas')) {
-    return "Le budget n'est pas défini. Proposez une fourchette lors du premier contact pour qualifier davantage.";
-  }
-  if (maturity.includes('renseigne') || maturity.includes('compare')) {
-    return "Ce prospect est en phase de comparaison. Envoyez un devis rapide et différenciez-vous par la réactivité.";
-  }
-  return "Prenez contact pour affiner les besoins et proposer une visite technique.";
-}
-
-function getIndicators(project: any) {
-  return [
-    {
-      label: 'Budget cohérent',
-      ok: !!(project.budget && !project.budget.includes('sais pas')),
-      detail: project.budget || 'Non renseigné'
-    },
-    {
-      label: 'Délai réaliste',
-      ok: !!(project.desiredTimeline && !project.desiredTimeline.includes('urgence')),
-      detail: project.desiredTimeline || 'Non renseigné'
-    },
-    {
-      label: 'Contact vérifié',
-      ok: !!(project.clientPhone && project.clientEmail),
-      detail: project.clientPhone ? 'Téléphone + email' : 'Incomplet'
-    },
-    {
-      label: 'Photos jointes',
-      ok: !!(project.photos && project.photos.length > 0),
-      detail: project.photos?.length > 0
-        ? `${project.photos.length} photo(s)`
-        : 'Aucune photo'
-    },
-  ];
 }
 
 function getStructuredSummary(project: any) {
