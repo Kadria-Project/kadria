@@ -44,7 +44,7 @@ const ALLOWED_FIELDS: Record<string, string> = {
   subscription_start: 'subscription_start',
   next_billing: 'next_billing',
   notes_admin: 'notes_admin',
-  suspended_at: 'suspended_at',
+  suspended_at: 'suspended_date',
   cancelled_at: 'cancelled_at',
   cancellation_reason: 'cancellation_reason',
 }

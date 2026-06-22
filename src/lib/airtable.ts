@@ -508,7 +508,7 @@ function mapSupabaseAdminUser(row: Record<string, unknown>): UserRecord {
     lastLogin: s(row.last_login),
     createdAt: s(row.created_at),
     notesAdmin: s(row.notes_admin),
-    suspendedAt: s(row.suspended_at),
+    suspendedAt: s(row.suspended_date),
     cancelledAt: s(row.cancelled_at),
     cancellationReason: s(row.cancellation_reason),
     theme: s(row.theme),
