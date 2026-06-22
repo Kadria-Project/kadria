@@ -124,6 +124,15 @@ export async function GET() {
       })
     )
 
+    if (clients[0]) {
+      console.log('[ADMIN CLIENTS] API payload sample (debug)', {
+        id: clients[0].id,
+        artisanId: clients[0].artisanId,
+        artisan_id: clients[0].artisan_id,
+        keys: Object.keys(clients[0]),
+      })
+    }
+
     return NextResponse.json(clients)
   } catch (error) {
     console.error('[ADMIN CLIENTS]', error)

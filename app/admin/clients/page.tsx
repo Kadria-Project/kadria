@@ -243,6 +243,7 @@ export default function AdminClientsPage() {
           setError(data.error);
           return;
         }
+        console.log('[ADMIN CLIENTS] API payload', data[0]);
         (data as ClientRecord[]).forEach((c) => {
           if (!c.id) {
             console.warn('[ADMIN CLIENTS] Client sans id Supabase, navigation impossible :', c);
