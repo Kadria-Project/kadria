@@ -40,8 +40,18 @@ interface PublicDevis {
   pdf_url: string | null;
   accepted: boolean;
   accepted_at: string | null;
+  declined: boolean;
   opens_count: number;
 }
+
+const DECLINE_REASONS = [
+  'Prix trop élevé',
+  'Délai trop long',
+  "J'ai choisi un autre artisan",
+  'Projet reporté',
+  'Projet annulé',
+  'Autre',
+];
 
 function formatDate(value: string | null) {
   if (!value) return '—';
@@ -64,6 +74,13 @@ export default function PublicDevisPage() {
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState('');
+
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineCategory, setDeclineCategory] = useState('');
+  const [declineReason, setDeclineReason] = useState('');
+  const [declining, setDeclining] = useState(false);
+  const [declineError, setDeclineError] = useState('');
+  const [declinedConfirmed, setDeclinedConfirmed] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -124,6 +141,43 @@ export default function PublicDevisPage() {
       setAcceptError('Erreur lors de l\'acceptation');
     } finally {
       setAccepting(false);
+    }
+  };
+
+  const handleDeclineConfirm = async () => {
+    const freeText = declineReason.trim();
+    const requiresFreeText = !declineCategory || declineCategory === 'Autre';
+    const finalReason = freeText || (requiresFreeText ? '' : declineCategory);
+
+    if (requiresFreeText && !freeText) {
+      setDeclineError('Merci de préciser le motif du refus.');
+      return;
+    }
+    if (!finalReason) {
+      setDeclineError('Merci de préciser le motif du refus.');
+      return;
+    }
+
+    setDeclining(true);
+    setDeclineError('');
+    try {
+      const res = await fetch(`/api/devis/public/decline/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: finalReason, reasonCategory: declineCategory }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeclineError(data.error || 'Erreur lors du refus');
+        return;
+      }
+      setDevis((prev) => prev ? { ...prev, declined: true } : prev);
+      setDeclineOpen(false);
+      setDeclinedConfirmed(true);
+    } catch {
+      setDeclineError('Erreur lors du refus');
+    } finally {
+      setDeclining(false);
     }
   };
 
@@ -300,6 +354,19 @@ export default function PublicDevisPage() {
           }}>
             ✓ Vous avez accepté ce devis le {formatDate(devis.accepted_at)}
           </div>
+        ) : devis.declined || declinedConfirmed ? (
+          <div style={{
+            background: '#f9fafb',
+            color: '#374151',
+            fontWeight: 600,
+            border: '2px solid #e5e7eb',
+            borderRadius: '16px',
+            padding: '32px',
+            textAlign: 'center',
+            marginBottom: '32px',
+          }}>
+            Votre refus a bien été transmis à l&apos;artisan.
+          </div>
         ) : (
           <div style={{
             background: '#f0fdf4',
@@ -338,6 +405,153 @@ export default function PublicDevisPage() {
             <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>
               🔒 Acceptation horodatée et sécurisée
             </p>
+
+            <button
+              onClick={() => setDeclineOpen(true)}
+              style={{
+                marginTop: '16px',
+                background: 'transparent',
+                color: '#6b7280',
+                fontWeight: 600,
+                fontSize: '14px',
+                padding: '10px 24px',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb',
+                width: '100%',
+                cursor: 'pointer',
+              }}
+            >
+              Refuser le devis
+            </button>
+          </div>
+        )}
+
+        {/* Decline modal */}
+        {declineOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(17,24,39,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              zIndex: 1000,
+            }}
+            onClick={() => !declining && setDeclineOpen(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                padding: '28px',
+                width: '100%',
+                maxWidth: '440px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+              }}
+            >
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px', color: '#111827' }}>
+                Refuser ce devis
+              </h2>
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 20px' }}>
+                Votre retour aide l&apos;artisan à mieux comprendre votre décision. Aucune justification détaillée n&apos;est attendue, un motif court suffit.
+              </p>
+
+              <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: '8px' }}>
+                Motif
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                {DECLINE_REASONS.map((option) => (
+                  <label
+                    key={option}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px',
+                      color: '#374151',
+                      border: '1px solid ' + (declineCategory === option ? '#22c55e' : '#e5e7eb'),
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="decline-reason"
+                      value={option}
+                      checked={declineCategory === option}
+                      onChange={() => setDeclineCategory(option)}
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+
+              <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: '8px' }}>
+                Précisez {declineCategory && declineCategory !== 'Autre' ? '(optionnel)' : ''}
+              </p>
+              <textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Quelques mots sur votre décision..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  resize: 'vertical',
+                  marginBottom: '16px',
+                  color: '#111827',
+                }}
+              />
+
+              {declineError && (
+                <p style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px' }}>{declineError}</p>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  onClick={handleDeclineConfirm}
+                  disabled={declining}
+                  style={{
+                    background: '#111827',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '15px',
+                    padding: '14px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    cursor: declining ? 'default' : 'pointer',
+                    opacity: declining ? 0.7 : 1,
+                  }}
+                >
+                  {declining ? 'Envoi...' : 'Confirmer le refus'}
+                </button>
+                <button
+                  onClick={() => setDeclineOpen(false)}
+                  disabled={declining}
+                  style={{
+                    background: 'transparent',
+                    color: '#6b7280',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

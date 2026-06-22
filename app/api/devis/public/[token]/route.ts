@@ -55,6 +55,7 @@ export async function GET(
       pdf_url: devis.pdfUrl,
       accepted: devis.accepted,
       accepted_at: devis.acceptedAt,
+      declined: devis.statut === 'Refusé',
       opens_count: devis.opensCount,
     })
   } catch (error) {
