@@ -17,6 +17,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
 
@@ -163,6 +164,10 @@ function ProjectDetail() {
     clientPhone: project?.clientPhone || '',
     clientEmail: project?.clientEmail || '',
     siteAddress: project?.siteAddress || '',
+    city: project?.city || '',
+    postalCode: project?.postalCode || '',
+    latitude: project?.latitude ?? null as number | null,
+    longitude: project?.longitude ?? null as number | null,
   });
   const [savingContact, setSavingContact] = useState(false);
 
@@ -675,6 +680,10 @@ function ProjectDetail() {
                   clientPhone: project.clientPhone || '',
                   clientEmail: project.clientEmail || '',
                   siteAddress: project.siteAddress || '',
+                  city: project.city || '',
+                  postalCode: project.postalCode || '',
+                  latitude: project.latitude ?? null,
+                  longitude: project.longitude ?? null,
                 });
                 setEditingContact(true);
               }}
@@ -1808,11 +1817,26 @@ function ProjectDetail() {
 
               <div>
                 <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Adresse du chantier</label>
-                <input
-                  type="text"
+                <AddressAutocomplete
                   value={contactForm.siteAddress}
-                  onChange={(e) => setContactForm({ ...contactForm, siteAddress: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
+                  onChange={(value) => setContactForm({ ...contactForm, siteAddress: value })}
+                  onSelect={(selection) => setContactForm({
+                    ...contactForm,
+                    siteAddress: selection.address,
+                    city: selection.city || contactForm.city,
+                    postalCode: selection.postalCode || contactForm.postalCode,
+                    latitude: selection.latitude,
+                    longitude: selection.longitude,
+                  })}
+                  style={{
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-hover)',
+                    color: 'var(--text-1)',
+                    fontSize: '14px',
+                    padding: '8px',
+                    marginTop: '4px',
+                  }}
                 />
               </div>
             </div>
@@ -1838,6 +1862,10 @@ function ProjectDetail() {
                           'Client Phone': contactForm.clientPhone,
                           'Client Email': contactForm.clientEmail,
                           'Site Address': contactForm.siteAddress,
+                          City: contactForm.city,
+                          'Postal Code': contactForm.postalCode,
+                          ...(contactForm.latitude !== null ? { Latitude: contactForm.latitude } : {}),
+                          ...(contactForm.longitude !== null ? { Longitude: contactForm.longitude } : {}),
                         },
                       }),
                     });
@@ -1851,6 +1879,10 @@ function ProjectDetail() {
                       clientPhone: contactForm.clientPhone,
                       clientEmail: contactForm.clientEmail,
                       siteAddress: contactForm.siteAddress,
+                      city: contactForm.city,
+                      postalCode: contactForm.postalCode,
+                      latitude: contactForm.latitude,
+                      longitude: contactForm.longitude,
                     });
                     setEditingContact(false);
                     window.location.reload();
