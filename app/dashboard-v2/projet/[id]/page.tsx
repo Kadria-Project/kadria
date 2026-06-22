@@ -19,7 +19,8 @@ import {
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getBestFollowUpTime, shouldShowIdealFollowUp, canFollowUpQuote, isQuoteExpired } from '@/src/lib/commercial-actions';
+import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
+import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -54,6 +55,9 @@ interface DevisListItem {
   declined?: boolean;
   declined_at?: string | null;
   decline_reason?: string | null;
+  first_opened_at?: string | null;
+  follow_up_disabled?: boolean;
+  follow_up_disabled_at?: string | null;
 }
 
 function formatDevisDate(value: string) {
@@ -335,6 +339,40 @@ function ProjectDetail() {
       });
     } finally {
       setFollowingUpDevisId(null);
+    }
+  }
+
+  async function toggleFollowUpDisabled(devis: DevisListItem) {
+    const nextDisabled = !devis.follow_up_disabled;
+    try {
+      const response = await fetch(`/api/devis/${devis.id}/follow-up-toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disabled: nextDisabled }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Impossible de mettre a jour les relances');
+      }
+
+      setDevisList((prev) =>
+        prev.map((item) =>
+          item.id === devis.id
+            ? { ...item, follow_up_disabled: nextDisabled, follow_up_disabled_at: nextDisabled ? new Date().toISOString() : null }
+            : item
+        )
+      );
+      await loadActivities();
+      setFollowUpToast({
+        type: 'success',
+        message: nextDisabled ? 'Relances desactivees pour ce devis' : 'Relances reactivees pour ce devis',
+      });
+    } catch (error) {
+      setFollowUpToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Impossible de mettre a jour les relances',
+      });
     }
   }
 
@@ -1373,79 +1411,130 @@ function ProjectDetail() {
                             </div>
                           )}
 
-                          {devis.declined ? (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                router.push(`/dashboard-v2/projet/${id}/devis/new`);
-                              }}
-                              style={{
-                                alignSelf: 'flex-start',
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border)',
-                                color: 'var(--text-1)',
-                                borderRadius: '9px',
-                                padding: '8px 14px',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                width: isMobile ? '100%' : undefined,
-                              }}
-                            >
-                              Créer un nouveau devis
-                            </button>
-                          ) : devis.accepted ? (
-                            <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                              Devis accepté — aucune relance nécessaire
-                            </span>
-                          ) : isQuoteExpired(devis) ? (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                router.push(`/dashboard-v2/projet/${id}/devis/new`);
-                              }}
-                              style={{
-                                alignSelf: 'flex-start',
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border)',
-                                color: 'var(--text-1)',
-                                borderRadius: '9px',
-                                padding: '8px 14px',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                width: isMobile ? '100%' : undefined,
-                              }}
-                            >
-                              Créer un nouveau devis
-                            </button>
-                          ) : canFollowUpQuote(devis) && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                followUpQuote(devis);
-                              }}
-                              disabled={followingUpDevisId === devis.id}
-                              style={{
-                                alignSelf: 'flex-start',
-                                background: 'var(--accent)',
-                                border: 'none',
-                                color: 'var(--bg)',
-                                borderRadius: '9px',
-                                padding: '8px 14px',
-                                fontSize: '13px',
-                                fontWeight: 700,
-                                cursor: followingUpDevisId === devis.id ? 'default' : 'pointer',
-                                opacity: followingUpDevisId === devis.id ? 0.7 : 1,
-                                width: isMobile ? '100%' : undefined,
-                              }}
-                            >
-                              {followingUpDevisId === devis.id ? 'Envoi...' : isMobile ? 'Relancer' : 'Relancer le devis'}
-                            </button>
-                          )}
+                          {(() => {
+                            const followupState = getQuoteFollowupState(devis);
+                            return devis.declined ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                                }}
+                                style={{
+                                  alignSelf: 'flex-start',
+                                  background: 'var(--bg-elevated)',
+                                  border: '1px solid var(--border)',
+                                  color: 'var(--text-1)',
+                                  borderRadius: '9px',
+                                  padding: '8px 14px',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  width: isMobile ? '100%' : undefined,
+                                }}
+                              >
+                                Créer un nouveau devis
+                              </button>
+                            ) : devis.accepted ? (
+                              <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                                Devis accepté — aucune relance nécessaire
+                              </span>
+                            ) : followupState.stage === 'expired' ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                                }}
+                                style={{
+                                  alignSelf: 'flex-start',
+                                  background: 'var(--bg-elevated)',
+                                  border: '1px solid var(--border)',
+                                  color: 'var(--text-1)',
+                                  borderRadius: '9px',
+                                  padding: '8px 14px',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  width: isMobile ? '100%' : undefined,
+                                }}
+                              >
+                                Créer un nouveau devis
+                              </button>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {followupState.canFollowUp && (
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        followUpQuote(devis);
+                                      }}
+                                      disabled={followingUpDevisId === devis.id}
+                                      style={{
+                                        alignSelf: 'flex-start',
+                                        background: 'var(--accent)',
+                                        border: 'none',
+                                        color: 'var(--bg)',
+                                        borderRadius: '9px',
+                                        padding: '8px 14px',
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        cursor: followingUpDevisId === devis.id ? 'default' : 'pointer',
+                                        opacity: followingUpDevisId === devis.id ? 0.7 : 1,
+                                        width: isMobile ? '100%' : undefined,
+                                      }}
+                                    >
+                                      {followingUpDevisId === devis.id ? 'Envoi...' : isMobile ? 'Relancer' : 'Relancer le devis'}
+                                    </button>
+                                  )}
+
+                                  {(devis.sent || devis.statut?.startsWith('Envoy')) && (
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        toggleFollowUpDisabled(devis);
+                                      }}
+                                      style={{
+                                        alignSelf: 'flex-start',
+                                        background: 'transparent',
+                                        border: '1px solid var(--border)',
+                                        color: 'var(--text-2)',
+                                        borderRadius: '9px',
+                                        padding: '8px 14px',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        width: isMobile ? '100%' : undefined,
+                                      }}
+                                    >
+                                      {devis.follow_up_disabled ? 'Relances désactivées' : 'Désactiver les relances'}
+                                    </button>
+                                  )}
+                                </div>
+
+                                {(devis.sent || devis.statut?.startsWith('Envoy')) && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px', color: 'var(--text-3)' }}>
+                                    <span>
+                                      {devis.follow_up_count ? `${devis.follow_up_count} relance(s) envoyée(s)` : 'Aucune relance envoyée'}
+                                      {devis.last_follow_up_at ? ` · Dernière le ${formatDevisDate(devis.last_follow_up_at)}` : ''}
+                                    </span>
+                                    <span>
+                                      {devis.follow_up_disabled
+                                        ? 'Relances désactivées'
+                                        : followupState.canFollowUp && followupState.nextFollowupAt
+                                          ? followupState.shouldAutoFollowUp
+                                            ? `Relance prévue : ${followupState.reason}`
+                                            : `Prochaine relance prévue le ${formatDevisDate(followupState.nextFollowupAt)}`
+                                          : 'Aucune relance nécessaire pour le moment'}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {!devis.declined && (devis.sent || devis.statut?.startsWith('Envoy')) && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: devis.opens_count > 0 ? 'var(--text-2)' : 'var(--text-3)', flexWrap: 'wrap' }}>

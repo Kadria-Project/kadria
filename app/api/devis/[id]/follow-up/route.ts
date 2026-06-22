@@ -4,7 +4,7 @@ import { Resend } from 'resend'
 import { TABLES, getArtisanConfig, getDevisById, resolveProjectId, updateDevis } from '@/src/lib/airtable'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
-import { generateQuoteFollowUpEmail } from '@/src/lib/commercial-actions'
+import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function toHtml(text: string) {
@@ -51,8 +51,9 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
 
-    if (!devis.sent && !devis.statut?.startsWith('Envoy')) {
-      return NextResponse.json({ success: false, error: 'Le devis doit etre envoye avant relance' }, { status: 400 })
+    const followupState = getQuoteFollowupState(devis)
+    if (!followupState.canFollowUp) {
+      return NextResponse.json({ success: false, error: followupState.reason }, { status: 400 })
     }
 
     if (!devis.clientEmail) {
@@ -104,7 +105,7 @@ export async function POST(
       devis.objet ||
       'votre projet'
 
-    const email = generateQuoteFollowUpEmail({
+    const email = generateQuoteFollowupEmailForStage(followupState.stage, {
       firstName,
       quoteSentAt: devis.quoteSentAt || devis.dateEmission,
       projectType,
@@ -150,11 +151,16 @@ export async function POST(
       followUpCount: (devis.followUpCount || 0) + 1,
     })
 
-    await createActivityLogSupabase(
-      project.id,
-      'DEVIS_FOLLOW_UP_SENT',
-      `Relance du devis ${devis.devisNumber} envoyee a ${devis.clientEmail}`
-    )
+    const stageDescription =
+      followupState.stage === 'j2_unopened'
+        ? `Relance J+2 envoyee — devis ${devis.devisNumber} non ouvert`
+        : followupState.stage === 'j5_opened_no_decision'
+          ? `Relance J+5 envoyee — devis ${devis.devisNumber} ouvert sans reponse`
+          : followupState.stage === 'j10_final'
+            ? `Relance finale J+10 envoyee — devis ${devis.devisNumber}`
+            : `Relance devis envoyee — ${devis.devisNumber}`
+
+    await createActivityLogSupabase(project.id, 'DEVIS_FOLLOW_UP_SENT', stageDescription)
 
     return NextResponse.json({
       success: true,

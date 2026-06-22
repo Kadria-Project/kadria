@@ -311,62 +311,12 @@ export function getBestFollowUpTime(project: FollowUpProjectLike) {
   }
 }
 
-type QuoteLike = {
-  statut?: string
-  accepted?: boolean
-  accepted_at?: string | null
-  declined?: boolean
-  declined_at?: string | null
-  decline_reason?: string | null
-  date_validite?: string | null
-  sent?: boolean
-}
-
-const NON_FOLLOW_UP_STATUTS = ['accepté', 'accepte', 'refusé', 'refuse', 'annulé', 'annule', 'expiré', 'expire', 'cancelled', 'declined', 'refused', 'accepted', 'expired']
-
-export function isQuoteExpired(quote: QuoteLike): boolean {
-  if (!quote.date_validite) return false
-  const time = new Date(quote.date_validite).getTime()
-  if (!Number.isFinite(time)) return false
-  return time < Date.now()
-}
-
-export function canFollowUpQuote(quote: QuoteLike): boolean {
-  if (quote.accepted || quote.accepted_at) return false
-  if (quote.declined || quote.declined_at || quote.decline_reason) return false
-  const statut = (quote.statut || '').toLowerCase().trim()
-  if (NON_FOLLOW_UP_STATUTS.includes(statut)) return false
-  if (isQuoteExpired(quote)) return false
-
-  return Boolean(quote.sent || quote.statut?.startsWith('Envoy'))
-}
-
-export function generateQuoteFollowUpEmail(params: {
-  firstName?: string
-  quoteSentAt?: string
-  projectType?: string
-  artisanName?: string
-}) {
-  const sentDate = params.quoteSentAt
-    ? new Date(params.quoteSentAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
-    : 'pr\u00e9c\u00e9demment'
-  const firstName = params.firstName?.trim() || ''
-  const greeting = firstName ? `Bonjour ${firstName},` : 'Bonjour,'
-  const projectType = params.projectType?.trim() || 'votre projet'
-  const artisanName = params.artisanName?.trim() || 'Votre artisan'
-
-  return {
-    subject: 'Suite \u00e0 votre demande de devis',
-    text: `${greeting}
-
-Je me permets de revenir vers vous concernant le devis transmis le ${sentDate} pour votre projet de ${projectType}.
-
-Je reste disponible pour r\u00e9pondre \u00e0 vos questions ou \u00e9changer sur certains points si n\u00e9cessaire.
-
-N'h\u00e9sitez pas \u00e0 me faire un retour afin que nous puissions avancer ensemble.
-
-Bien cordialement,
-
-${artisanName}`,
-  }
-}
+// Logique d'eligibilite et de contenu des relances de devis centralisee dans
+// src/lib/quote-followup.ts -- ces exports ne font que re-exposer cette source
+// unique pour les appelants existants qui importent depuis ce module.
+export {
+  isQuoteExpired,
+  canFollowUpQuote,
+  generateQuoteFollowUpEmail,
+  type QuoteFollowupInput as QuoteLike,
+} from './quote-followup'

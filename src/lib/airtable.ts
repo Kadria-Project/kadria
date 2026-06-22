@@ -389,6 +389,16 @@ export async function getDevisByArtisan(artisanId: string): Promise<DevisRecord[
   return (data || []).map(mapSupabaseDevis)
 }
 
+export async function getAllSentDevis(): Promise<DevisRecord[]> {
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.devis)
+    .select('*')
+    .eq('sent', true)
+
+  if (error) throw error
+  return (data || []).map(mapSupabaseDevis)
+}
+
 export async function updateDevis(id: string, fields: Record<string, unknown>): Promise<DevisRecord> {
   const row = toSupabaseDevisUpdate(fields)
 
