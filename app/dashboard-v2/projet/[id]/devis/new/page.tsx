@@ -95,6 +95,7 @@ function NewDevis() {
   const [nextDevisNumber, setNextDevisNumber] = useState('');
   const [plan, setPlan] = useState<PlanKey>('essentiel');
   const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
+  const [quotaExceededMessage, setQuotaExceededMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
   const canQuote = hasFeature(plan, 'quoteGeneration');
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
@@ -375,6 +376,12 @@ function NewDevis() {
       });
       const data = await res.json();
       if (!data.success) {
+        if (data.quotaExceeded) {
+          setQuotaExceededMessage(data.error);
+          setIsSubmitting(false);
+          setSubmitMode(null);
+          return;
+        }
         setError(data.error || 'Erreur lors de l\'enregistrement du devis.');
         setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
         console.error('[DEVIS NEW] Erreur enregistrement:', data.error);
@@ -1123,6 +1130,16 @@ function NewDevis() {
           feature={upgradeFeature}
           requiredPlan="performance"
           onClose={() => setUpgradeFeature(null)}
+        />
+      )}
+
+      {quotaExceededMessage && (
+        <UpgradeModal
+          feature="quoteGeneration"
+          requiredPlan="performance"
+          title="Quota de devis atteint"
+          message={quotaExceededMessage}
+          onClose={() => setQuotaExceededMessage(null)}
         />
       )}
     </div>

@@ -116,7 +116,7 @@ export const FEATURE_DEFINITIONS = {
   quoteGeneration: {
     label: 'Generation de devis',
     description: 'Creation, generation PDF et envoi des devis.',
-    requiredPlan: 'performance',
+    requiredPlan: 'essentiel',
   },
   pdfExports: {
     label: 'Export PDF des dossiers',
@@ -136,7 +136,7 @@ export const FEATURE_DEFINITIONS = {
   voiceAssistant: {
     label: 'Assistant vocal',
     description: 'Qualification par assistant vocal.',
-    requiredPlan: 'performance',
+    requiredPlan: 'essentiel',
   },
   prioritySupport: {
     label: 'Support prioritaire',
@@ -191,6 +191,8 @@ export const PLAN_FEATURES = {
     'manualFollowups',
     'csvExport',
     'essentialKpis',
+    'voiceAssistant',
+    'quoteGeneration',
   ],
   performance: [
     'assistantWeb',

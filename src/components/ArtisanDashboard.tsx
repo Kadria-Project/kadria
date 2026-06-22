@@ -83,6 +83,13 @@ interface MonthlyUsageSummary {
     minutesPercent: number | null;
     status: UsageStatus;
   };
+  devis: {
+    used: number;
+    limit: number | null;
+    unlimited: boolean;
+    percent: number | null;
+    status: UsageStatus;
+  };
   updatedAt?: string;
 }
 
@@ -3391,6 +3398,10 @@ function MonthlyUsageCard({
     ? `${usage.vapi.minutesUsed} min / Non limité`
     : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
 
+  const devisLabel = usage.devis.unlimited
+    ? `${usage.devis.used} / Illimité`
+    : `${usage.devis.used} / ${usage.devis.limit ?? 0}`;
+
   return (
     <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
       <div className="flex items-center justify-between gap-2">
@@ -3400,6 +3411,7 @@ function MonthlyUsageCard({
 
       <div className="mt-4 flex flex-col gap-3">
         <UsageRow label="Dossiers" value={projectsLabel} percent={usage.projects.unlimited ? null : usage.projects.percent} status={usage.projects.status} />
+        <UsageRow label="Devis" value={devisLabel} percent={usage.devis.unlimited ? null : usage.devis.percent} status={usage.devis.status} />
         <UsageRow label="Appels vocaux" value={callsLabel} percent={usage.vapi.callsUnlimited ? null : usage.vapi.callsPercent} status={usage.vapi.status} />
         <UsageRow label="Minutes" value={minutesLabel} percent={usage.vapi.minutesPercent} status={usage.vapi.status} />
       </div>
@@ -3442,6 +3454,10 @@ function MonthlyUsageDetailModal({
     ? `${usage.vapi.minutesUsed} min / Non limité`
     : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
 
+  const devisLabel = usage.devis.unlimited
+    ? `${usage.devis.used} / Illimité`
+    : `${usage.devis.used} / ${usage.devis.limit ?? 0}`;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
@@ -3471,6 +3487,13 @@ function MonthlyUsageDetailModal({
               <UsageStatusBadge status={usage.projects.status} />
             </div>
             <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{projectsLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--text-3)]">Devis</p>
+              <UsageStatusBadge status={usage.devis.status} />
+            </div>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{devisLabel}</p>
           </div>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
             <div className="flex items-center justify-between">
@@ -3506,18 +3529,20 @@ const PLAN_FEATURE_HIGHLIGHTS: Record<PlanKey, string[]> = {
     '50 dossiers / mois',
     'Qualification web automatique',
     'Dashboard de base, vue liste',
+    'Devis inclus — 10 devis/mois',
+    'Assistant vocal inclus — 10 appels/mois',
     'Relances manuelles',
     'Export CSV',
   ],
   performance: [
     'Dossiers illimités',
+    'Devis illimités',
     'Export PDF des dossiers',
     'Pipeline commercial avancé + vue Kanban',
     'Chantiers géolocalisés',
     'Relances automatiques',
     'Calendrier et rappels',
-    'Génération de devis',
-    'Assistant vocal',
+    'Assistant vocal étendu selon quota',
     'Support prioritaire',
   ],
   entreprise: [

@@ -128,6 +128,11 @@ const TABLE_SPECS: Record<
       call_status: ['status'],
     },
   },
+  devis: {
+    label: 'Devis',
+    candidates: QUOTA_TABLES.devis,
+    expectedColumns: ['id', 'artisan_id', 'created_at'],
+  },
 }
 
 function isAuthorized(request: NextRequest) {

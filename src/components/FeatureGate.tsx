@@ -44,10 +44,14 @@ export function UpgradeModal({
   feature,
   requiredPlan,
   onClose,
+  title,
+  message,
 }: {
   feature: PlanFeatureKey;
   requiredPlan?: PlanKey;
   onClose: () => void;
+  title?: string;
+  message?: string;
 }) {
   const upgradePlan = requiredPlan ?? getRequiredPlanForFeature(feature);
 
@@ -58,11 +62,10 @@ export function UpgradeModal({
           Plan {getPlanLabel(upgradePlan)}
         </p>
         <h3 className="mt-3 text-2xl font-semibold text-white">
-          Débloquez le suivi avancé
+          {title ?? 'Débloquez le suivi avancé'}
         </h3>
         <p className="mt-3 text-sm leading-6 text-zinc-400">
-          Cette fonctionnalité est incluse dans le plan {getPlanLabel(upgradePlan)}. Passez au
-          niveau supérieur pour automatiser davantage votre suivi commercial.
+          {message ?? `Cette fonctionnalité est incluse dans le plan ${getPlanLabel(upgradePlan)}. Passez au niveau supérieur pour automatiser davantage votre suivi commercial.`}
         </p>
 
         <div className="mt-6 flex flex-col gap-3">

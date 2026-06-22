@@ -9,6 +9,7 @@ const TABLE_CANDIDATES = {
   usageMonthly: ['UsageMonthly', 'usage_monthly'],
   usageEvents: ['UsageEvents', 'usage_events'],
   vapiCalls: ['VapiCalls', 'vapi_calls'],
+  devis: ['Devis', 'devis'],
 } as const
 
 const tableResolutionCache = new Map<string, string | null>()
@@ -104,6 +105,41 @@ export interface VapiQuotaCheck {
   error?: string
 }
 
+export interface DevisQuotaConfig {
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  limit: number | null
+  unlimited: boolean
+  source: 'plan_limits' | 'fallback'
+  tableName?: string | null
+}
+
+export interface DevisUsageSnapshot {
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  used: number
+  source: 'devis_table_count'
+  devisTable?: string | null
+}
+
+export interface DevisQuotaCheck {
+  success: boolean
+  allowed: boolean
+  artisanId: string
+  plan: PlanKey
+  periodMonth: string
+  limit: number | null
+  used: number
+  remaining: number | null
+  unlimited: boolean
+  source: 'plan_limits' | 'fallback'
+  usageSource: 'devis_table_count'
+  exceededReason: 'devis_limit' | null
+  error?: string
+}
+
 export interface RecordVapiCallUsageParams {
   artisanId: string
   callId?: string
@@ -172,6 +208,14 @@ function getDefaultProjectLimit(plan: PlanKey) {
   }
 
   return 50
+}
+
+function getDefaultDevisLimit(plan: PlanKey) {
+  if (plan === 'agence' || plan === 'performance') {
+    return null
+  }
+
+  return 10
 }
 
 function getDefaultVapiCallsLimit(plan: PlanKey) {
@@ -773,6 +817,203 @@ export async function getCurrentProjectUsage(artisanId: string): Promise<QuotaRe
       success: false,
       error: error instanceof Error ? error.message : 'Impossible de charger l’usage projets',
     }
+  }
+}
+
+async function countDevisForPeriod(artisanId: string, periodMonth: string) {
+  const supabase = getSupabaseAdmin()
+  const devisTable = await resolveAccessibleTable('devis')
+
+  if (!devisTable) {
+    return {
+      success: false as const,
+      error: 'Table Devis introuvable',
+      count: 0,
+      tableName: null,
+    }
+  }
+
+  const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds(
+    new Date(`${periodMonth}-01T00:00:00.000Z`),
+  )
+
+  const { count, error } = await supabase
+    .from(devisTable)
+    .select('id', { count: 'exact', head: true })
+    .eq('artisan_id', artisanId)
+    .gte('created_at', monthStartIso)
+    .lt('created_at', nextMonthStartIso)
+
+  if (error) {
+    return {
+      success: false as const,
+      error: error.message,
+      count: 0,
+      tableName: devisTable,
+    }
+  }
+
+  return {
+    success: true as const,
+    count: count || 0,
+    tableName: devisTable,
+  }
+}
+
+export async function getDevisQuotaForArtisan(artisanId: string): Promise<QuotaResult<DevisQuotaConfig>> {
+  const planResult = await getPlanForArtisan(artisanId)
+  const plan = planResult.success && planResult.data ? planResult.data : 'essentiel'
+  const periodMonth = getCurrentPeriodMonth()
+
+  try {
+    const planLimitsResult = await getPlanLimitsRow(plan)
+    if (!planLimitsResult.success) {
+      return {
+        success: false,
+        error: planLimitsResult.error,
+      }
+    }
+
+    if (planLimitsResult.row) {
+      const row = planLimitsResult.row
+      const unlimited =
+        row.devis_unlimited === true ||
+        (plan !== 'essentiel' && row.devis_unlimited !== false && !isFiniteNumber(row.devis_limit))
+      const limit = unlimited
+        ? null
+        : isFiniteNumber(row.devis_limit)
+          ? Number(row.devis_limit)
+          : getDefaultDevisLimit(plan)
+
+      return {
+        success: true,
+        data: {
+          artisanId,
+          plan,
+          periodMonth,
+          limit,
+          unlimited,
+          source: 'plan_limits',
+          tableName: planLimitsResult.tableName,
+        },
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        artisanId,
+        plan,
+        periodMonth,
+        limit: getDefaultDevisLimit(plan),
+        unlimited: plan === 'agence' || plan === 'performance',
+        source: 'fallback',
+        tableName: planLimitsResult.tableName,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger le quota devis',
+    }
+  }
+}
+
+export async function getCurrentDevisUsage(artisanId: string): Promise<QuotaResult<DevisUsageSnapshot>> {
+  const quotaResult = await getDevisQuotaForArtisan(artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      error: quotaResult.error || 'Impossible de charger le quota devis',
+    }
+  }
+
+  const { plan, periodMonth } = quotaResult.data
+
+  try {
+    const devisCountResult = await countDevisForPeriod(artisanId, periodMonth)
+    if (!devisCountResult.success) {
+      return {
+        success: false,
+        error: devisCountResult.error,
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        artisanId,
+        plan,
+        periodMonth,
+        used: devisCountResult.count,
+        source: 'devis_table_count',
+        devisTable: devisCountResult.tableName,
+      },
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Impossible de charger l’usage devis',
+    }
+  }
+}
+
+export async function canCreateDevis(artisanId: string): Promise<DevisQuotaCheck> {
+  const quotaResult = await getDevisQuotaForArtisan(artisanId)
+  if (!quotaResult.success || !quotaResult.data) {
+    return {
+      success: false,
+      allowed: false,
+      artisanId,
+      plan: 'essentiel',
+      periodMonth: getCurrentPeriodMonth(),
+      limit: getDefaultDevisLimit('essentiel'),
+      used: 0,
+      remaining: null,
+      unlimited: false,
+      source: 'fallback',
+      usageSource: 'devis_table_count',
+      exceededReason: null,
+      error: quotaResult.error || 'Impossible de charger le quota devis',
+    }
+  }
+
+  const usageResult = await getCurrentDevisUsage(artisanId)
+  if (!usageResult.success || !usageResult.data) {
+    return {
+      success: false,
+      allowed: false,
+      artisanId,
+      plan: quotaResult.data.plan,
+      periodMonth: quotaResult.data.periodMonth,
+      limit: quotaResult.data.limit,
+      used: 0,
+      remaining: null,
+      unlimited: quotaResult.data.unlimited,
+      source: quotaResult.data.source,
+      usageSource: 'devis_table_count',
+      exceededReason: null,
+      error: usageResult.error || 'Impossible de charger l’usage devis',
+    }
+  }
+
+  const limit = quotaResult.data.unlimited ? null : quotaResult.data.limit
+  const used = usageResult.data.used
+  const exceeded = limit !== null && used >= limit
+
+  return {
+    success: true,
+    allowed: !exceeded,
+    artisanId,
+    plan: quotaResult.data.plan,
+    periodMonth: quotaResult.data.periodMonth,
+    limit,
+    used,
+    remaining: limit === null ? null : Math.max(limit - used, 0),
+    unlimited: quotaResult.data.unlimited,
+    source: quotaResult.data.source,
+    usageSource: usageResult.data.source,
+    exceededReason: exceeded ? 'devis_limit' : null,
   }
 }
 
@@ -1620,6 +1861,13 @@ export interface MonthlyUsageSummary {
     minutesPercent: number | null
     status: UsageStatus
   }
+  devis: {
+    used: number
+    limit: number | null
+    unlimited: boolean
+    percent: number | null
+    status: UsageStatus
+  }
   updatedAt?: string
 }
 
@@ -1643,11 +1891,13 @@ function combineUsageStatus(a: UsageStatus, b: UsageStatus): UsageStatus {
 
 export async function getMonthlyUsageSummary(artisanId: string): Promise<QuotaResult<MonthlyUsageSummary>> {
   try {
-    const [projectQuota, projectUsage, vapiQuota, vapiUsage] = await Promise.all([
+    const [projectQuota, projectUsage, vapiQuota, vapiUsage, devisQuota, devisUsage] = await Promise.all([
       getProjectQuotaForArtisan(artisanId),
       getCurrentProjectUsage(artisanId),
       getVapiQuotaForArtisan(artisanId),
       getCurrentVapiUsage(artisanId),
+      getDevisQuotaForArtisan(artisanId),
+      getCurrentDevisUsage(artisanId),
     ])
 
     if (!projectQuota.success || !projectQuota.data) {
@@ -1661,6 +1911,12 @@ export async function getMonthlyUsageSummary(artisanId: string): Promise<QuotaRe
     }
     if (!vapiUsage.success || !vapiUsage.data) {
       return { success: false, error: vapiUsage.error || 'Impossible de charger l’usage Vapi' }
+    }
+    if (!devisQuota.success || !devisQuota.data) {
+      return { success: false, error: devisQuota.error || 'Impossible de charger le quota devis' }
+    }
+    if (!devisUsage.success || !devisUsage.data) {
+      return { success: false, error: devisUsage.error || 'Impossible de charger l’usage devis' }
     }
 
     const periodMonth = projectQuota.data.periodMonth
@@ -1680,6 +1936,11 @@ export async function getMonthlyUsageSummary(artisanId: string): Promise<QuotaRe
     const minutesLimit = vapiQuota.data.minutesLimit
     const minutesPercent = computeUsagePercent(minutesUsed, minutesLimit)
     const minutesStatus = computeUsageStatus(minutesPercent)
+
+    const devisUsed = devisUsage.data.used
+    const devisLimit = devisQuota.data.unlimited ? null : devisQuota.data.limit
+    const devisPercent = devisQuota.data.unlimited ? null : computeUsagePercent(devisUsed, devisLimit)
+    const devisStatus = computeUsageStatus(devisPercent)
 
     return {
       success: true,
@@ -1703,6 +1964,13 @@ export async function getMonthlyUsageSummary(artisanId: string): Promise<QuotaRe
           minutesLimit,
           minutesPercent,
           status: combineUsageStatus(callsStatus, minutesStatus),
+        },
+        devis: {
+          used: devisUsed,
+          limit: devisLimit,
+          unlimited: devisQuota.data.unlimited,
+          percent: devisPercent,
+          status: devisStatus,
         },
       },
     }

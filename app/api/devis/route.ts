@@ -10,6 +10,8 @@ import {
 } from '@/src/lib/airtable'
 import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { canCreateDevis } from '@/src/lib/usage/quotas'
+import { getPlanLabel } from '@/src/lib/plans'
 
 async function createActivityLogSupabase(projectId: string, action: string, description: string) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
@@ -102,6 +104,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(access.body, { status: access.status })
     }
     const session = access.session
+
+    const devisQuota = await canCreateDevis(session.artisanId)
+    if (devisQuota.success && !devisQuota.allowed && devisQuota.exceededReason === 'devis_limit') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Vous avez atteint les ${devisQuota.limit} devis inclus dans l'offre ${getPlanLabel(devisQuota.plan)}.`,
+          quotaExceeded: true,
+          feature: 'quoteGeneration',
+          currentPlan: devisQuota.plan,
+          requiredPlan: 'performance',
+        },
+        { status: 403 }
+      )
+    }
 
     const body = await request.json()
 
