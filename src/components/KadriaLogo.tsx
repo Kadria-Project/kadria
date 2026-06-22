@@ -3,17 +3,31 @@ import Link from 'next/link';
 type LogoSize = 'sm' | 'md' | 'lg';
 type LogoTheme = 'dark' | 'light';
 
-const SIZE_MAP: Record<LogoSize, { fontSize: number; barWidth: number; barHeight: number; dotSize: number }> = {
-  sm: { fontSize: 18, barWidth: 14, barHeight: 2, dotSize: 6 },
-  md: { fontSize: 28, barWidth: 22, barHeight: 3, dotSize: 8 },
-  lg: { fontSize: 48, barWidth: 36, barHeight: 3, dotSize: 12 },
+const SIZE_MAP: Record<LogoSize, { fontSize: number }> = {
+  sm: { fontSize: 18 },
+  md: { fontSize: 28 },
+  lg: { fontSize: 48 },
 };
 
 const GREEN = '#22c55e';
 
+const MARK_PATH =
+  'M26 14 L26 86 L18 94 M26 50 L70 14 M26 50 L48 68 L58 78 L78 50 L78 86 L64 94';
+
+function KadriaMark({ size, outline }: { size: number; outline: string }) {
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden style={{ flexShrink: 0 }}>
+      <g fill="none" strokeLinecap="square" strokeLinejoin="miter">
+        <path d={MARK_PATH} stroke={outline} strokeWidth={14} />
+        <path d={MARK_PATH} stroke={GREEN} strokeWidth={9} />
+      </g>
+    </svg>
+  );
+}
+
 /**
- * Kadria wordmark — "KADRIA" with a green dot replacing the dot of the "i"
- * and a green bar under the final "A".
+ * Kadria wordmark — a green "K" monogram (with an integrated checkmark)
+ * followed by "ADRIA".
  */
 export function KadriaLogo({
   size = 'md',
@@ -26,15 +40,17 @@ export function KadriaLogo({
   className?: string;
   noLink?: boolean;
 }) {
-  const { fontSize, barWidth, barHeight, dotSize } = SIZE_MAP[size];
+  const { fontSize } = SIZE_MAP[size];
   const color = theme === 'light' ? '#09090b' : '#f4f4f5';
+  const markSize = fontSize * 0.9;
 
   const content = (
     <span
       className={className}
       style={{
         display: 'inline-flex',
-        alignItems: 'baseline',
+        alignItems: 'center',
+        gap: fontSize * 0.08,
         fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
         fontWeight: 900,
         letterSpacing: '-0.05em',
@@ -43,42 +59,10 @@ export function KadriaLogo({
         fontSize,
         lineHeight: 1,
         whiteSpace: 'nowrap',
-        paddingBottom: fontSize * 0.3,
       }}
     >
-      <span>KADR</span>
-      <span style={{ position: 'relative', display: 'inline-block' }}>
-        I
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            top: -fontSize * 0.32,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: dotSize,
-            height: dotSize,
-            borderRadius: '50%',
-            background: GREEN,
-          }}
-        />
-      </span>
-      <span style={{ position: 'relative', display: 'inline-block' }}>
-        A
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            bottom: -fontSize * 0.22,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: barWidth,
-            height: barHeight,
-            borderRadius: 2,
-            background: GREEN,
-          }}
-        />
-      </span>
+      <KadriaMark size={markSize} outline={color} />
+      <span>ADRIA</span>
     </span>
   );
 
