@@ -4,6 +4,34 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Download } from 'lucide-react';
 
+interface ClientUsage {
+  projectsThisMonth: number;
+  projectLimit: number | null;
+  projectUsageLabel: string;
+  voiceCallsThisMonth: number;
+  voiceCallLimit: number | null;
+  voiceCallUsageLabel: string;
+  voiceMinutesThisMonth: number;
+  voiceMinuteLimit: number | null;
+  voiceMinuteUsageLabel: string;
+}
+
+interface ClientFeatures {
+  pdfExports: boolean;
+  advancedPipeline: boolean;
+  autoFollowups: boolean;
+  voiceAssistant: boolean;
+  quoteAssistant: boolean;
+  multiUsers: boolean;
+}
+
+type AlertLevel = 'ok' | 'warning' | 'danger';
+
+interface ClientAlerts {
+  level: AlertLevel;
+  messages: string[];
+}
+
 interface ClientRecord {
   id: string;
   email: string;
@@ -19,6 +47,12 @@ interface ClientRecord {
   last_login: string;
   created_at: string;
   artisan_id: string;
+  artisanId?: string;
+  planLabel?: string;
+  status?: string;
+  usage?: ClientUsage;
+  features?: ClientFeatures;
+  alerts?: ClientAlerts;
 }
 
 const PLAN_BADGE: Record<string, { bg: string; color: string }> = {
@@ -32,6 +66,21 @@ const STATUT_BADGE: Record<string, { bg: string; color: string }> = {
   'Actif': { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
   'Suspendu': { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
   'Résilié': { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+};
+
+const ALERT_BADGE: Record<AlertLevel, { bg: string; color: string; label: string }> = {
+  ok: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e', label: 'OK' },
+  warning: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b', label: 'Attention' },
+  danger: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626', label: 'Danger' },
+};
+
+const FEATURE_LABELS: Record<keyof ClientFeatures, string> = {
+  pdfExports: 'Export PDF',
+  advancedPipeline: 'Pipeline avancé',
+  autoFollowups: 'Relances auto',
+  voiceAssistant: 'Assistant vocal',
+  quoteAssistant: 'Devis IA',
+  multiUsers: 'Multi-utilisateurs',
 };
 
 function Badge({ label, palette }: { label: string; palette?: { bg: string; color: string } }) {
@@ -52,6 +101,69 @@ function Badge({ label, palette }: { label: string; palette?: { bg: string; colo
     >
       {label}
     </span>
+  );
+}
+
+function AlertBadge({ alerts }: { alerts?: ClientAlerts }) {
+  const level = alerts?.level ?? 'ok';
+  const palette = ALERT_BADGE[level];
+  return (
+    <span
+      style={{
+        background: palette.bg,
+        color: palette.color,
+        borderRadius: '999px',
+        padding: '4px 10px',
+        fontSize: '12px',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {palette.label}
+    </span>
+  );
+}
+
+function FeatureBadges({ features }: { features?: ClientFeatures }) {
+  if (!features) {
+    return <span style={{ color: '#52525b', fontSize: '12px' }}>Non renseigné</span>;
+  }
+  const active = (Object.keys(FEATURE_LABELS) as (keyof ClientFeatures)[]).filter((key) => features[key]);
+  if (active.length === 0) {
+    return <span style={{ color: '#52525b', fontSize: '12px' }}>Aucune</span>;
+  }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+      {active.map((key) => (
+        <span
+          key={key}
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            color: '#22c55e',
+            borderRadius: '999px',
+            padding: '3px 9px',
+            fontSize: '11px',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {FEATURE_LABELS[key]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function AlertMessages({ alerts }: { alerts?: ClientAlerts }) {
+  if (!alerts || alerts.messages.length === 0) {
+    return <span style={{ color: '#52525b', fontSize: '12px' }}>Aucune alerte</span>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      {alerts.messages.map((message, i) => (
+        <span key={i} style={{ fontSize: '12px', color: '#a1a1aa' }}>{message}</span>
+      ))}
+    </div>
   );
 }
 
@@ -206,23 +318,29 @@ export default function AdminClientsPage() {
             {filtered.length} client{filtered.length === 1 ? '' : 's'} trouvé{filtered.length === 1 ? '' : 's'}
           </p>
 
-          <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', overflow: 'hidden' }}>
+          {/* Desktop : tableau cockpit */}
+          <div className="admin-clients-table-wrap" style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#27272a' }}>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Client</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Artisan ID</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Plan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Inscrit le</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Dernière connexion</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Dossiers</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Appels vocaux</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Minutes vocales</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Coût VAPI</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Fonctionnalités</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Alertes</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
+                      <td colSpan={11} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
                     </tr>
                   )}
                   {filtered.map((c, i) => (
@@ -259,13 +377,26 @@ export default function AdminClientsPage() {
                           <div>
                             <p style={{ margin: 0, fontWeight: 600 }}>{`${c.first_name} ${c.last_name}`.trim() || '—'}</p>
                             <p style={{ margin: 0, fontSize: '12px', color: '#a1a1aa' }}>{c.email}</p>
+                            {c.company && <p style={{ margin: 0, fontSize: '12px', color: '#52525b' }}>{c.company}</p>}
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 20px' }}><Badge label={c.plan} palette={PLAN_BADGE[c.plan]} /></td>
-                      <td style={{ padding: '12px 20px' }}><Badge label={c.statut} palette={STATUT_BADGE[c.statut]} /></td>
-                      <td style={{ padding: '12px 20px', color: '#a1a1aa' }}>{formatDate(c.created_at)}</td>
-                      <td style={{ padding: '12px 20px', color: '#a1a1aa' }}>{formatLastLogin(c.last_login)}</td>
+                      <td style={{ padding: '12px 20px', color: '#a1a1aa', fontFamily: 'monospace', fontSize: '12px' }}>
+                        {c.artisanId || c.artisan_id || 'Non renseigné'}
+                      </td>
+                      <td style={{ padding: '12px 20px' }}><Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} /></td>
+                      <td style={{ padding: '12px 20px' }}><Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} /></td>
+                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.projectUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: '#52525b' }}>Non disponible</td>
+                      <td style={{ padding: '12px 20px', minWidth: '180px' }}><FeatureBadges features={c.features} /></td>
+                      <td style={{ padding: '12px 20px', minWidth: '160px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <AlertBadge alerts={c.alerts} />
+                          <AlertMessages alerts={c.alerts} />
+                        </div>
+                      </td>
                       <td style={{ padding: '12px 20px' }}>
                         <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600 }}>Voir →</span>
                       </td>
@@ -275,8 +406,105 @@ export default function AdminClientsPage() {
               </table>
             </div>
           </div>
+
+          {/* Mobile : cards empilées */}
+          <div className="admin-clients-cards">
+            {filtered.length === 0 && (
+              <p style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</p>
+            )}
+            {filtered.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => router.push(`/admin/clients/${c.id}`)}
+                style={{
+                  background: '#18181b',
+                  border: '1px solid #27272a',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  marginBottom: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: '#27272a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#22c55e',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {initials(c.first_name, c.last_name, c.email)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>{`${c.first_name} ${c.last_name}`.trim() || '—'}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}</p>
+                    {c.company && <p style={{ margin: 0, fontSize: '12px', color: '#52525b' }}>{c.company}</p>}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                  <Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} />
+                  <Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} />
+                  <AlertBadge alerts={c.alerts} />
+                </div>
+
+                <div style={{ fontSize: '12px', color: '#71717a', marginBottom: '8px', fontFamily: 'monospace' }}>
+                  ID artisan : {c.artisanId || c.artisan_id || 'Non renseigné'}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px', fontSize: '13px' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Dossiers</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.projectUsageLabel || 'Non disponible'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Appels vocaux</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Minutes vocales</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Coût VAPI</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: '#52525b' }}>Non disponible</p>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Fonctionnalités</p>
+                  <FeatureBadges features={c.features} />
+                </div>
+
+                <div style={{ marginBottom: '4px' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Alertes</p>
+                  <AlertMessages alerts={c.alerts} />
+                </div>
+
+                <div style={{ marginTop: '12px', textAlign: 'right' }}>
+                  <span style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600 }}>Voir le détail →</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </>
       )}
+
+      <style>{`
+        .admin-clients-cards { display: none; }
+        @media (max-width: 1023px) {
+          .admin-clients-table-wrap { display: none; }
+          .admin-clients-cards { display: block; }
+        }
+      `}</style>
     </div>
   );
 }
