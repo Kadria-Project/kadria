@@ -447,19 +447,23 @@ export const DEFAULT_FILTERS: FilterState = {
   source: '',
 };
 
-export function filterProjects(projects: Project[], filters: FilterState): Project[] {
+export function filterProjects(
+  projects: Project[],
+  filters: FilterState,
+  opts: { skipStatusFilter?: boolean } = {},
+): Project[] {
   return projects.filter((p) => {
     if (filters.search) {
       const term = filters.search.toLowerCase().trim();
 
-      const searchable = [p.clientName, p.clientFirstName, p.projectType, p.trade, p.city, p.projectNumber]
+      const searchable = [p.clientName, p.clientFirstName, p.clientEmail, p.clientPhone, p.projectType, p.trade, p.city, p.projectNumber]
         .join(' ')
         .toLowerCase();
 
       if (!searchable.includes(term)) return false;
     }
 
-    if (filters.statut && p.status !== filters.statut) return false;
+    if (!opts.skipStatusFilter && filters.statut && p.status !== filters.statut) return false;
 
     if (filters.metier) {
       const trade = (p.trade || '').toLowerCase();
@@ -517,6 +521,205 @@ export function filterProjects(projects: Project[], filters: FilterState): Proje
     return true;
   });
 }
+
+export type ClientRelationshipStatus = 'prospect' | 'active_client' | 'to_follow_up' | 'inactive' | 'lost';
+
+export type ClientSummary = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  latestProject?: Project;
+  projects: Project[];
+  projectsCount: number;
+  quotesSentCount: number;
+  quotesAcceptedCount: number;
+  wonProjectsCount: number;
+  potentialRevenue: number;
+  wonRevenue: number;
+  relationshipStatus: ClientRelationshipStatus;
+  nextActionLabel?: string;
+  nextActionProject?: Project;
+};
+
+function normalizeKeyPart(value?: string): string {
+  return (value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function normalizePhone(value?: string): string {
+  return (value || '').replace(/[^\d]/g, '');
+}
+
+export function getClientGroupKey(p: Project): string {
+  const email = normalizeKeyPart(p.clientEmail);
+  if (email) return `email:${email}`;
+
+  const phone = normalizePhone(p.clientPhone);
+  if (phone) return `phone:${phone}`;
+
+  const name = normalizeKeyPart(`${p.clientFirstName || ''} ${p.clientName || ''}`);
+  const city = normalizeKeyPart(p.city);
+  if (name && city) return `namecity:${name}|${city}`;
+
+  if (name) return `name:${name}`;
+
+  return `id:${p.id}`;
+}
+
+function projectValueAmount(p: Project): number {
+  return p.devisAmount || parseBudget(p.budget || '');
+}
+
+function isWonProject(p: Project): boolean {
+  return p.status === 'Gagné' || Boolean(p.acceptedAt);
+}
+
+function isLostProject(p: Project): boolean {
+  return p.status === 'Perdu';
+}
+
+function isQuoteSentProject(p: Project): boolean {
+  return p.status === 'Devis envoyé' || Boolean(p.quoteSentAt) || Boolean(p.devisAmount);
+}
+
+function computeRelationshipStatus(projects: Project[]): ClientRelationshipStatus {
+  if (projects.some((p) => isWonProject(p))) return 'active_client';
+
+  if (
+    projects.some((p) => {
+      if (isWonProject(p) || isLostProject(p)) return false;
+      const risk = getProjectRiskStatus(p);
+      return risk.status === 'followUp' || risk.status === 'atRisk' || (isQuoteSentProject(p) && !p.acceptedAt);
+    })
+  ) {
+    return 'to_follow_up';
+  }
+
+  if (projects.length > 0 && projects.every((p) => isLostProject(p))) return 'lost';
+
+  if (projects.some((p) => !isWonProject(p) && !isLostProject(p))) return 'prospect';
+
+  return 'inactive';
+}
+
+function computeNextAction(projects: Project[]): { label: string; project?: Project } {
+  const active = [...projects]
+    .filter((p) => !isWonProject(p) && !isLostProject(p))
+    .sort((a, b) => getReceivedSortTimestamp(b.createdAt) - getReceivedSortTimestamp(a.createdAt));
+
+  const needsFollowUp = active.find((p) => {
+    const risk = getProjectRiskStatus(p);
+    return (risk.status === 'followUp' || risk.status === 'atRisk') && isQuoteSentProject(p);
+  });
+  if (needsFollowUp) return { label: 'Relancer devis', project: needsFollowUp };
+
+  const needsQuote = active.find((p) => !isQuoteSentProject(p) && Number(p.completenessScore || 0) >= 80);
+  if (needsQuote) return { label: 'Envoyer devis', project: needsQuote };
+
+  const needsCallback = active.find((p) => p.status === 'À rappeler' || p.callbackDate);
+  if (needsCallback) return { label: 'Rappeler', project: needsCallback };
+
+  const hotUncontacted = active.find((p) => isHotLead(p));
+  if (hotUncontacted) return { label: 'Rappeler', project: hotUncontacted };
+
+  const incomplete = active.find((p) => Number(p.completenessScore || 0) < 80);
+  if (incomplete) return { label: 'Compléter dossier', project: incomplete };
+
+  return { label: 'Aucune action' };
+}
+
+export function groupProjectsByClient(projects: Project[]): ClientSummary[] {
+  const groups = new Map<string, Project[]>();
+
+  for (const p of projects) {
+    const key = getClientGroupKey(p);
+    const list = groups.get(key);
+    if (list) list.push(p);
+    else groups.set(key, [p]);
+  }
+
+  const summaries: ClientSummary[] = [];
+
+  for (const [key, groupProjects] of groups.entries()) {
+    const sorted = [...groupProjects].sort(
+      (a, b) => getReceivedSortTimestamp(b.createdAt) - getReceivedSortTimestamp(a.createdAt),
+    );
+    const latestProject = sorted[0];
+
+    const quotesSent = groupProjects.filter((p) => isQuoteSentProject(p));
+    const quotesAccepted = groupProjects.filter((p) => isWonProject(p));
+    const wonProjects = groupProjects.filter((p) => p.status === 'Gagné' || isWonProject(p));
+
+    const potentialRevenue = groupProjects
+      .filter((p) => !isWonProject(p) && !isLostProject(p))
+      .reduce((sum, p) => sum + projectValueAmount(p), 0);
+    const wonRevenue = groupProjects
+      .filter((p) => isWonProject(p))
+      .reduce((sum, p) => sum + projectValueAmount(p), 0);
+
+    const nextAction = computeNextAction(groupProjects);
+
+    summaries.push({
+      id: key,
+      name: `${latestProject.clientFirstName || ''} ${latestProject.clientName || ''}`.trim() || 'Client',
+      email: latestProject.clientEmail || undefined,
+      phone: latestProject.clientPhone || undefined,
+      city: latestProject.city || undefined,
+      latestProject,
+      projects: sorted,
+      projectsCount: groupProjects.length,
+      quotesSentCount: quotesSent.length,
+      quotesAcceptedCount: quotesAccepted.length,
+      wonProjectsCount: wonProjects.length,
+      potentialRevenue,
+      wonRevenue,
+      relationshipStatus: computeRelationshipStatus(groupProjects),
+      nextActionLabel: nextAction.label,
+      nextActionProject: nextAction.project,
+    });
+  }
+
+  return summaries;
+}
+
+export function sortClientSummaries(clients: ClientSummary[]): ClientSummary[] {
+  return [...clients].sort((a, b) => {
+    const aHasAction = a.nextActionLabel && a.nextActionLabel !== 'Aucune action' ? 1 : 0;
+    const bHasAction = b.nextActionLabel && b.nextActionLabel !== 'Aucune action' ? 1 : 0;
+    if (aHasAction !== bHasAction) return bHasAction - aHasAction;
+
+    const aDate = getReceivedSortTimestamp(a.latestProject?.createdAt);
+    const bDate = getReceivedSortTimestamp(b.latestProject?.createdAt);
+    if (aDate !== bDate) return bDate - aDate;
+
+    return b.potentialRevenue - a.potentialRevenue;
+  });
+}
+
+export const RELATION_STATUS_LABELS: Record<ClientRelationshipStatus, string> = {
+  active_client: 'Client actif',
+  to_follow_up: 'À relancer',
+  prospect: 'Prospect',
+  lost: 'Perdu',
+  inactive: 'Inactif',
+};
+
+export const RELATION_STATUS_STYLES: Record<ClientRelationshipStatus, { bg: string; color: string }> = {
+  active_client: { bg: 'var(--badge-won-bg)', color: 'var(--badge-won-text)' },
+  to_follow_up: { bg: 'var(--badge-callback-bg)', color: 'var(--badge-callback-text)' },
+  prospect: { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' },
+  lost: { bg: 'var(--badge-lost-bg)', color: 'var(--badge-lost-text)' },
+  inactive: { bg: 'var(--bg-hover)', color: 'var(--text-3)' },
+};
+
+export const RELATION_STATUS_OPTIONS: { value: ClientRelationshipStatus; label: string }[] = [
+  { value: 'active_client', label: 'Client actif' },
+  { value: 'to_follow_up', label: 'À relancer' },
+  { value: 'prospect', label: 'Prospect' },
+  { value: 'lost', label: 'Perdu' },
+  { value: 'inactive', label: 'Inactif' },
+];
 
 export type ValuePeriod = 'week' | 'month' | '30d' | 'all';
 
@@ -1223,8 +1426,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   });
 
   const filteredProjects = useMemo(
-    () => filterProjects(allProjects, filters),
-    [allProjects, filters],
+    () => filterProjects(allProjects, filters, { skipStatusFilter: dashboardMode === 'clients' }),
+    [allProjects, filters, dashboardMode],
+  );
+
+  const clientSummaries = useMemo(
+    () => groupProjectsByClient(filteredProjects),
+    [filteredProjects],
+  );
+
+  const displayedClients = useMemo(
+    () =>
+      sortClientSummaries(
+        filters.statut ? clientSummaries.filter((c) => c.relationshipStatus === filters.statut) : clientSummaries,
+      ),
+    [clientSummaries, filters.statut],
   );
 
   const sortedProjects = useMemo(
@@ -3113,7 +3329,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
                 <p className="text-base font-bold text-[var(--text-1)]">Mes clients</p>
                 <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Base clients avec les informations utiles pour rappeler, suivre et retrouver un dossier.
+                  Suivez vos clients, leur historique, leur valeur et les prochaines actions à réaliser.
                 </p>
               </div>
             )}
@@ -3173,17 +3389,23 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Tous les statuts" />
+                  <SelectValue placeholder={showClientsWorkspace ? 'Toutes les relations' : 'Tous les statuts'} />
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="all">{showClientsWorkspace ? 'Toutes les relations' : 'Tous les statuts'}</SelectItem>
 
-                  {STATUS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} style={{ color: BADGE_STYLES[o.value]?.color }}>
-                      ● {o.label}
-                    </SelectItem>
-                  ))}
+                  {showClientsWorkspace
+                    ? RELATION_STATUS_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ color: RELATION_STATUS_STYLES[o.value]?.color }}>
+                          ● {o.label}
+                        </SelectItem>
+                      ))
+                    : STATUS_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ color: BADGE_STYLES[o.value]?.color }}>
+                          ● {o.label}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
 
@@ -3292,7 +3514,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <FilterPill label={`Recherche: ${filters.search}`} onRemove={() => { setSearchInput(''); updateFilter('search', ''); }} />
                 )}
                 {filters.statut && (
-                  <FilterPill label={`Statut: ${filters.statut}`} onRemove={() => updateFilter('statut', '')} />
+                  <FilterPill
+                    label={`Statut: ${showClientsWorkspace ? RELATION_STATUS_LABELS[filters.statut as ClientRelationshipStatus] ?? filters.statut : filters.statut}`}
+                    onRemove={() => updateFilter('statut', '')}
+                  />
                 )}
                 {filters.metier && (
                   <FilterPill label={`Métier: ${filters.metier}`} onRemove={() => updateFilter('metier', '')} />
@@ -3326,9 +3551,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-[var(--text-2)]">
-                {hasActiveFilters
-                  ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
-                  : `${displayedProjects.length} dossier(s) trouvé(s)`}
+                {showClientsWorkspace
+                  ? `${displayedClients.length} client(s) trouvé(s)`
+                  : hasActiveFilters
+                    ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
+                    : `${displayedProjects.length} dossier(s) trouvé(s)`}
               </p>
 
               {showCommercialWorkspace && (
@@ -3485,10 +3712,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <Skeleton key={i} className="h-20 rounded-xl bg-[var(--bg-hover)]" />
                 ))}
               </div>
-            ) : displayedProjects.length === 0 ? (
+            ) : (showClientsWorkspace ? displayedClients.length === 0 : displayedProjects.length === 0) ? (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-8 text-center sm:p-16">
                 <SearchX className="w-10 h-10 text-[var(--text-3)] mx-auto mb-3" />
-                <p className="font-bold text-[var(--text-1)]">Aucun dossier trouvé</p>
+                <p className="font-bold text-[var(--text-1)]">{showClientsWorkspace ? 'Aucun client trouvé' : 'Aucun dossier trouvé'}</p>
 
                 <p className="text-[var(--text-2)] mt-1">
                   {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups'
@@ -3496,7 +3723,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     : filters.search
                       ? `Aucun résultat pour '${filters.search}'`
                       : filters.statut
-                        ? `Aucun dossier avec le statut '${filters.statut}'`
+                        ? showClientsWorkspace
+                          ? `Aucun client avec le statut '${RELATION_STATUS_LABELS[filters.statut as ClientRelationshipStatus] ?? filters.statut}'`
+                          : `Aucun dossier avec le statut '${filters.statut}'`
                         : 'Essayez d’élargir vos critères de recherche'}
                 </p>
 
@@ -3511,7 +3740,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 )}
               </div>
             ) : showClientsWorkspace ? (
-              <ClientList projects={displayedProjects} router={router} />
+              <ClientPortfolioList clients={displayedClients} router={router} />
             ) : viewMode === 'kanban' ? (
               <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
             ) : (
@@ -3851,68 +4080,118 @@ export function FilterPill({ label, onRemove }: { label: string; onRemove: () =>
   );
 }
 
-function ClientList({
-  projects,
+function formatShortDate(dateLike?: string): string {
+  if (!dateLike) return '—';
+  const d = new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function ClientPortfolioList({
+  clients,
   router,
 }: {
-  projects: Project[];
+  clients: ClientSummary[];
   router: ReturnType<typeof useRouter>;
 }) {
+  const openClient = (c: ClientSummary) => {
+    const target = c.nextActionProject?.id || c.latestProject?.id || c.projects[0]?.id;
+    if (target) router.push(`/dashboard-v2/projet/${target}`);
+  };
+
   return (
     <div>
       <div
         className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
         style={{ fontSize: '11px', padding: '10px 16px' }}
       >
-        <span className="col-span-3">Client</span>
-        <span className="col-span-3">Contact</span>
-        <span className="col-span-2">Ville</span>
-        <span className="col-span-2">Dernier projet</span>
-        <span className="col-span-1">Statut</span>
+        <span className="col-span-2">Client</span>
+        <span className="col-span-2">Contact</span>
+        <span className="col-span-2">Dernière demande</span>
+        <span className="col-span-2">Historique</span>
+        <span className="col-span-2">Valeur client</span>
+        <span className="col-span-1">Prochaine action</span>
         <span className="col-span-1"></span>
       </div>
 
-      {projects.map((p) => (
+      {clients.map((c) => (
         <div
-          key={p.id}
+          key={c.id}
           className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
-          onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
+          onClick={() => openClient(c)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
-            <span className="col-span-3 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
-                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+            <span className="col-span-2 min-w-0">
+              <span className="flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+                  {c.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                </span>
+                <span className="truncate">{c.name}</span>
               </span>
-              {p.clientFirstName} {p.clientName}
+              <span className="mt-1 block text-xs text-[var(--text-3)] truncate">{c.city || 'Ville non renseignée'}</span>
+              <span className="mt-1 inline-block"><RelationBadge status={c.relationshipStatus} /></span>
             </span>
 
-            <span className="col-span-3 min-w-0 text-[var(--text-2)]">
-              <span className="block truncate">{p.clientEmail || 'Email non renseigne'}</span>
-              <span className="block truncate text-xs text-[var(--text-3)]">{p.clientPhone || 'Telephone non renseigne'}</span>
+            <span className="col-span-2 min-w-0 text-[var(--text-2)]">
+              <span className="block truncate">{c.email || 'Email non renseigné'}</span>
+              <span className="block truncate text-xs text-[var(--text-3)]">{c.phone || 'Téléphone non renseigné'}</span>
             </span>
 
-            <span className="col-span-2 text-[var(--text-2)] truncate">{p.city || 'Ville non renseignee'}</span>
-            <span className="col-span-2 text-[var(--text-2)] truncate">{p.projectType || p.trade || 'Projet'}</span>
-            <span className="col-span-1"><StatusBadge status={p.status} /></span>
+            <span className="col-span-2 min-w-0 text-[var(--text-2)]">
+              <span className="block truncate">{c.latestProject?.projectType || c.latestProject?.trade || 'Projet'}</span>
+              <span className="block text-xs text-[var(--text-3)]">{formatShortDate(c.latestProject?.createdAt)}</span>
+              <span className="mt-1 inline-block"><StatusBadge status={c.latestProject?.status} /></span>
+            </span>
+
+            <span className="col-span-2 text-[var(--text-2)] truncate">
+              {c.projectsCount} dossier(s) / {c.quotesSentCount} devis envoyé(s) / {c.quotesAcceptedCount} gagné(s)
+            </span>
+
+            <span className="col-span-2 text-[var(--text-2)] truncate">
+              {c.wonRevenue > 0 || c.potentialRevenue > 0
+                ? [
+                    c.wonRevenue > 0 ? `Gagné : ${formatCurrency(c.wonRevenue)}` : null,
+                    c.potentialRevenue > 0 ? `Potentiel : ${formatCurrency(c.potentialRevenue)}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' / ')
+                : '—'}
+            </span>
+
+            <span className="col-span-1 text-[var(--text-2)] truncate">{c.nextActionLabel || 'Aucune action'}</span>
             <span className="col-span-1 text-right"><ChevronRight className="w-4 h-4 text-[var(--text-2)] inline" /></span>
           </div>
 
-          <div className="md:hidden flex items-center gap-3">
+          <div className="md:hidden flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
-              {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              {c.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?'}
             </span>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm text-[var(--text-1)]">
-                  {p.clientFirstName} {p.clientName}
-                </span>
-                <StatusBadge status={p.status} />
+                <span className="font-medium text-sm text-[var(--text-1)]">{c.name}</span>
+                <RelationBadge status={c.relationshipStatus} />
               </div>
 
               <div className="mt-1 text-xs text-[var(--text-2)]">
-                <p className="truncate">{p.clientEmail || p.clientPhone || 'Contact non renseigne'}</p>
-                <p className="truncate">{p.city || 'Ville non renseignee'} - {p.projectType || p.trade || 'Projet'}</p>
+                <p className="truncate">{c.email || c.phone || 'Contact non renseigné'}</p>
+                <p className="truncate">
+                  {c.latestProject?.projectType || c.latestProject?.trade || 'Projet'} · {formatShortDate(c.latestProject?.createdAt)}
+                </p>
+                <p className="truncate">
+                  {c.projectsCount} dossier(s) / {c.quotesSentCount} devis envoyé(s) / {c.quotesAcceptedCount} gagné(s)
+                </p>
+                <p className="truncate">
+                  {c.wonRevenue > 0 || c.potentialRevenue > 0
+                    ? [
+                        c.wonRevenue > 0 ? `Gagné : ${formatCurrency(c.wonRevenue)}` : null,
+                        c.potentialRevenue > 0 ? `Potentiel : ${formatCurrency(c.potentialRevenue)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' / ')
+                    : '—'}
+                </p>
+                <p className="mt-1 font-medium text-[var(--text-1)]">{c.nextActionLabel || 'Aucune action'}</p>
               </div>
             </div>
 
@@ -3921,6 +4200,26 @@ function ClientList({
         </div>
       ))}
     </div>
+  );
+}
+
+function RelationBadge({ status }: { status: ClientRelationshipStatus }) {
+  const style = RELATION_STATUS_STYLES[status];
+
+  return (
+    <span
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderRadius: '20px',
+        padding: '2px 10px',
+        fontSize: '11px',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {RELATION_STATUS_LABELS[status]}
+    </span>
   );
 }
 
