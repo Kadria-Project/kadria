@@ -574,8 +574,20 @@ pas les questions budget/délai/maturité/contact.
 2. reply contient exactement "Votre dossier est prêt 📋"
 Sinon false.
 
-"aiSummary" : résumé professionnel complet en 2-3 phrases
-quand readyToSave = true. Vide sinon.`
+"aiSummary" : résumé professionnel court (1-3 phrases) du dossier,
+à mettre à jour DÈS QUE la conversation contient des éléments exploitables
+(besoin, équipement, budget, délai, adresse...). N'attends jamais que le
+dossier soit parfait ou que readyToSave soit true : régénère ce résumé à
+chaque message dès qu'il y a au moins un élément concret à synthétiser.
+Ne jamais inventer d'information absente. Si certains points restent à
+confirmer, le mentionner sobrement (ex: "modèle à confirmer").
+Reste factuel, professionnel et utile pour l'artisan : synthétise le
+besoin, l'équipement, le budget, le délai, l'adresse, les photos/documents
+si ces informations sont connues.
+Exemple : "Demande d'entretien annuel d'une pompe à chaleur air/air, à
+réaliser dès que possible. Budget estimé entre 150 et 200 €. Le prospect
+n'a pas de photos pour le moment. Adresse chantier renseignée."
+Vide uniquement si aucune information exploitable n'a encore été donnée.`
 
 export async function POST(request: Request) {
   try {

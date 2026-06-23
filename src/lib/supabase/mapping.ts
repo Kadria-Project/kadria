@@ -306,6 +306,48 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
   }
 }
 
+// Construit un resume court et factuel a partir des champs du dossier quand
+// le modele n'a pas rempli aiSummary. Ne sert qu'a eviter un resume vide
+// quand des informations exploitables existent deja — n'invente rien.
+function buildFallbackAiSummary(input: Record<string, unknown>): string {
+  const parts: string[] = []
+
+  const projectType = typeof input.projectType === 'string' ? input.projectType.trim() : ''
+  const trade = typeof input.trade === 'string' ? input.trade.trim() : ''
+  if (projectType || trade) {
+    parts.push(`Demande concernant : ${[projectType, trade].filter(Boolean).join(' - ')}.`)
+  }
+
+  let tradeAnswersText = ''
+  const tradeAnswersRaw = input.tradeAnswers
+  try {
+    const tradeAnswers = typeof tradeAnswersRaw === 'string' ? JSON.parse(tradeAnswersRaw) : tradeAnswersRaw
+    if (Array.isArray(tradeAnswers) && tradeAnswers.length > 0) {
+      tradeAnswersText = tradeAnswers
+        .map((qa) => (qa && typeof qa === 'object' ? `${(qa as { question?: string }).question || ''} : ${(qa as { answer?: string }).answer || ''}` : ''))
+        .filter(Boolean)
+        .join('. ')
+    }
+  } catch {
+    // tradeAnswers non parsable, ignore sans bloquer le fallback
+  }
+  if (tradeAnswersText) parts.push(`${tradeAnswersText}.`)
+
+  const budget = typeof input.budget === 'string' ? input.budget.trim() : ''
+  if (budget) parts.push(`Budget : ${budget}.`)
+
+  const timeline = typeof input.desiredTimeline === 'string' ? input.desiredTimeline.trim() : ''
+  if (timeline) parts.push(`Délai : ${timeline}.`)
+
+  const siteAddress = typeof input.siteAddress === 'string' ? input.siteAddress.trim() : ''
+  if (siteAddress) parts.push('Adresse chantier renseignée.')
+
+  const hasPhotos = Array.isArray(input.photos) && input.photos.length > 0
+  parts.push(hasPhotos ? 'Photos disponibles.' : 'Photos non disponibles pour le moment.')
+
+  return parts.join(' ')
+}
+
 export function toSupabaseProjectInsert(input: Record<string, unknown>) {
   const postalCodeRaw = input.postalCode
   const latitudeRaw = input.latitude
@@ -341,7 +383,7 @@ export function toSupabaseProjectInsert(input: Record<string, unknown>) {
     budget: String(input.budget || ''),
     desired_timeline: String(input.desiredTimeline || ''),
     maturity: String(input.maturity || ''),
-    ai_summary: String(input.aiSummary || ''),
+    ai_summary: String(input.aiSummary || '').trim() || buildFallbackAiSummary(input),
     chat_history: String(input.chatHistory || input.projectDetails || ''),
     trade_answers:
       input.tradeAnswers === undefined || input.tradeAnswers === null || input.tradeAnswers === ''

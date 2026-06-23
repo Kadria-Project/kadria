@@ -549,6 +549,7 @@ function ProjectDetail() {
     city: project.city,
     siteAddress: project.siteAddress,
     aiSummary: project.aiSummary,
+    tradeAnswers: project.tradeAnswers,
     completenessScore: project.completenessScore,
     photos: project.photos,
     source: project.source,

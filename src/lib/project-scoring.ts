@@ -58,6 +58,9 @@ export interface ProjectAnalysisInput {
   city?: string
   siteAddress?: string
   aiSummary?: string
+  description?: string
+  details?: string
+  tradeAnswers?: unknown
   completenessScore?: number
   photos?: unknown[]
   source?: string
@@ -124,6 +127,16 @@ function isLowMaturity(maturity?: string): boolean {
 
 function clampScore(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function hasTradeAnswers(tradeAnswers: unknown): boolean {
+  if (!tradeAnswers) return false
+  if (Array.isArray(tradeAnswers)) return tradeAnswers.length > 0
+  if (typeof tradeAnswers === 'string') {
+    const trimmed = tradeAnswers.trim()
+    return trimmed.length > 0 && trimmed !== '[]'
+  }
+  return false
 }
 
 function isClosedStatus(status?: string): boolean {
@@ -270,11 +283,21 @@ export function getProjectCommercialAnalysis(
   const hasEmail = hasText(project.clientEmail)
   const hasCity = hasText(project.city) || hasText(project.siteAddress)
   const hasProjectType = hasText(project.projectType) || hasText(project.trade)
-  const hasDescription = hasText(project.aiSummary) && project.aiSummary!.trim().length >= 25
   const budgetValue = parseBudgetValue(project.budget)
   const budgetKnown = hasText(project.budget) && !isVague(project.budget)
   const timelineKnown = hasText(project.desiredTimeline) && !isVague(project.desiredTimeline)
   const hasPhotos = !!(project.photos && project.photos.length > 0)
+  // Le dossier est considere comme documente si au moins un signal
+  // exploitable est present : resume IA, description/details bruts,
+  // reponses metier, type de projet/metier, ou la combinaison
+  // besoin+budget+delai+adresse meme sans resume redige.
+  const hasDescription =
+    hasText(project.aiSummary) ||
+    hasText(project.description) ||
+    hasText(project.details) ||
+    hasTradeAnswers(project.tradeAnswers) ||
+    hasProjectType ||
+    (budgetKnown && timelineKnown && hasCity)
   const ready = isReadyMaturity(project.maturity)
   const lowMaturity = isLowMaturity(project.maturity)
   const completeness = Number(project.completenessScore) || 0
@@ -285,7 +308,7 @@ export function getProjectCommercialAnalysis(
   if (hasEmail) { score += 6 } else { missingInfo.push('Email') }
   if (hasCity) { score += 8 } else { missingInfo.push('Commune / adresse') }
   if (hasProjectType) { score += 12; strengths.push('Type de projet clair') } else { weaknesses.push('Type de projet non précisé') }
-  if (hasDescription) { score += 12; strengths.push('Description détaillée') } else { weaknesses.push('Description trop vague'); missingInfo.push('Détails du projet') }
+  if (hasDescription) { score += 12; strengths.push('Description détaillée') } else { weaknesses.push('Détails techniques à confirmer'); missingInfo.push('Détails techniques à confirmer') }
   if (budgetKnown) {
     score += 14
     strengths.push('Budget renseigné')
