@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/button';
 import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Lock, Plus, Trash2, X, XCircle } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getQuoteDraftStorageKey, templateToQuoteDraftLines, type QuoteDraftLine, type QuoteDraftPayload, type ArtisanQuoteTemplate, type ArtisanServiceCatalogItem } from '@/src/lib/quote-suggestions';
+import { getQuoteDraftStorageKey, templateToQuoteDraftLines, type QuoteDraftLine, type QuoteDraftPayload, type ArtisanQuoteTemplate, type ArtisanServiceCatalogItem, type QuoteCommercialSettings } from '@/src/lib/quote-suggestions';
 
 interface ArtisanConfig {
   companyName: string;
@@ -33,6 +33,7 @@ interface ArtisanConfig {
   businessConfig?: {
     serviceCatalog?: ArtisanServiceCatalogItem[];
     quoteTemplates?: ArtisanQuoteTemplate[];
+    quoteSettings?: QuoteCommercialSettings;
   };
 }
 
@@ -113,6 +114,11 @@ function NewDevis() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
 
+  // ── Paramètres commerciaux par défaut (Mission "quote commercial
+  // settings") : appliqués une seule fois au chargement initial, jamais
+  // utilisés pour générer un devis automatiquement.
+  const [quoteSettingsApplied, setQuoteSettingsApplied] = useState(false);
+
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 5000);
@@ -172,9 +178,17 @@ function NewDevis() {
         if (configData.success) {
           const config = configData.config as ArtisanConfig;
           setArtisanConfig(config);
-          setDateValidite(addDays(new Date().toISOString().slice(0, 10), config.devisValidite || 90));
-          setConditionsPaiement(config.devisConditionsPaiement || '');
-          setMentionsLegales(config.devisMentionLegale || '');
+          const quoteSettings = config.businessConfig?.quoteSettings;
+          const defaultVatRate = quoteSettings?.defaultVatRate ?? config.devisTvaDefaut ?? 20;
+          setDateValidite(addDays(new Date().toISOString().slice(0, 10), quoteSettings?.defaultValidityDays ?? config.devisValidite ?? 90));
+          setConditionsPaiement(config.devisConditionsPaiement || quoteSettings?.defaultPaymentTerms || '');
+          setMentionsLegales(config.devisMentionLegale || quoteSettings?.defaultNotes || '');
+          if (quoteSettings?.defaultEstimatedDelay) {
+            setDelaiExecution(quoteSettings.defaultEstimatedDelay);
+          }
+          if (quoteSettings && Object.keys(quoteSettings).length > 0) {
+            setQuoteSettingsApplied(true);
+          }
 
           // Brouillon prerempli depuis les suggestions Kadria (fiche projet) :
           // simple aide front, jamais persistee tant que l'artisan n'a pas
@@ -196,7 +210,7 @@ function NewDevis() {
                     quantity: d.quantity ?? 1,
                     unit: d.unit || 'u',
                     unitPrice: d.unitPrice ?? 0,
-                    tvaRate: d.vatRate ?? (config.devisTvaDefaut || 10),
+                    tvaRate: d.vatRate ?? defaultVatRate,
                     fromCatalog: d.fromCatalog,
                   }))
                 );
@@ -212,7 +226,7 @@ function NewDevis() {
 
           if (!appliedDraft) {
             setLines((prev) =>
-              prev.map((l) => ({ ...l, tvaRate: config.devisTvaDefaut || 10 }))
+              prev.map((l) => ({ ...l, tvaRate: defaultVatRate }))
             );
           }
         } else {
@@ -245,10 +259,13 @@ function NewDevis() {
   }, [projetId]);
 
   // ── Gestion des lignes ─────────────────────────────────────────────────
+  const getDefaultVatRate = () =>
+    artisanConfig?.businessConfig?.quoteSettings?.defaultVatRate ?? artisanConfig?.devisTvaDefaut ?? 20;
+
   const addItemLine = () => {
     setLines((prev) => [
       ...prev,
-      { id: makeLineId(), type: 'item', description: '', quantity: 1, unit: 'u', unitPrice: 0, tvaRate: artisanConfig?.devisTvaDefaut || 10 },
+      { id: makeLineId(), type: 'item', description: '', quantity: 1, unit: 'u', unitPrice: 0, tvaRate: getDefaultVatRate() },
     ]);
   };
 
@@ -292,7 +309,7 @@ function NewDevis() {
         quantity: d.quantity ?? 1,
         unit: d.unit || 'u',
         unitPrice: d.unitPrice ?? 0,
-        tvaRate: d.vatRate ?? (artisanConfig?.devisTvaDefaut || 10),
+        tvaRate: d.vatRate ?? getDefaultVatRate(),
         fromCatalog: d.fromCatalog,
       }))
     );
@@ -787,6 +804,11 @@ function NewDevis() {
           {appliedTemplateName && (
             <p style={{ fontSize: '12px', color: '#22c55e', margin: '10px 0 0' }}>
               Modèle appliqué : {appliedTemplateName}. Vérifiez et adaptez les lignes avant envoi.
+            </p>
+          )}
+          {quoteSettingsApplied && (
+            <p style={{ fontSize: '11px', color: '#71717a', margin: '10px 0 0' }}>
+              Paramètres de devis appliqués depuis vos préférences.
             </p>
           )}
         </div>

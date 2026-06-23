@@ -7,7 +7,7 @@ import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { getSuggestedWorkTypesForTrades, getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
-import type { ArtisanServiceCatalogItem, ArtisanQuoteTemplate, ArtisanQuoteTemplateLine } from '@/src/lib/quote-suggestions'
+import type { ArtisanServiceCatalogItem, ArtisanQuoteTemplate, ArtisanQuoteTemplateLine, QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 import {
   VehicleType,
   ChargingType,
@@ -178,6 +178,7 @@ export default function ParametresPage() {
       customRefusedWork: '' as string,
       serviceCatalog: [] as ArtisanServiceCatalogItem[],
       quoteTemplates: [] as ArtisanQuoteTemplate[],
+      quoteSettings: {} as QuoteCommercialSettings,
     },
   })
 
@@ -256,6 +257,9 @@ export default function ParametresPage() {
               customRefusedWork: data.config.businessConfig?.customRefusedWork || '',
               serviceCatalog: Array.isArray(data.config.businessConfig?.serviceCatalog) ? data.config.businessConfig.serviceCatalog : [],
               quoteTemplates: Array.isArray(data.config.businessConfig?.quoteTemplates) ? data.config.businessConfig.quoteTemplates : [],
+              quoteSettings: (data.config.businessConfig?.quoteSettings && typeof data.config.businessConfig.quoteSettings === 'object')
+                ? data.config.businessConfig.quoteSettings
+                : {},
             },
           })
           if (data.config.artisanId) {
@@ -1400,6 +1404,99 @@ export default function ParametresPage() {
                 >
                   + Ajouter un modèle
                 </button>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Paramètres de devis
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Définissez les valeurs utilisées par défaut lorsque vous créez un devis.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>TVA par défaut (%)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      value={config.businessConfig.quoteSettings.defaultVatRate ?? ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, defaultVatRate: e.target.value === '' ? undefined : Number(e.target.value) } },
+                      }))}
+                      placeholder="20"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Validité du devis (jours)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={config.businessConfig.quoteSettings.defaultValidityDays ?? ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, defaultValidityDays: e.target.value === '' ? undefined : Number(e.target.value) } },
+                      }))}
+                      placeholder="30 jours"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Acompte demandé (%)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="any"
+                      value={config.businessConfig.quoteSettings.defaultDepositPercent ?? ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, defaultDepositPercent: e.target.value === '' ? null : Number(e.target.value) } },
+                      }))}
+                      placeholder="30 %"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Délai estimatif par défaut</label>
+                    <input
+                      value={config.businessConfig.quoteSettings.defaultEstimatedDelay || ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, defaultEstimatedDelay: e.target.value } },
+                      }))}
+                      placeholder="Sous réserve de disponibilité des fournitures."
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={labelStyle}>Conditions de paiement par défaut</label>
+                  <input
+                    value={config.businessConfig.quoteSettings.defaultPaymentTerms || ''}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, defaultPaymentTerms: e.target.value } },
+                    }))}
+                    placeholder="Paiement à réception de facture."
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Notes / mentions par défaut</label>
+                  <input
+                    value={config.businessConfig.quoteSettings.defaultNotes || ''}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, defaultNotes: e.target.value } },
+                    }))}
+                    placeholder="Prix valable selon les informations transmises."
+                    style={inputStyle}
+                  />
+                </div>
               </div>
 
               <div style={sectionCard}>

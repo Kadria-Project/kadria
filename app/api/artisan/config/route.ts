@@ -133,6 +133,26 @@ export async function PATCH(request: NextRequest) {
           )
         }
       }
+
+      if (bc.quoteSettings !== undefined) {
+        const qs = bc.quoteSettings
+        const isValidString = (v: unknown) => v === undefined || (typeof v === 'string' && v.length <= 1000)
+        if (
+          typeof qs !== 'object' || qs === null ||
+          (qs.defaultVatRate !== undefined && typeof qs.defaultVatRate !== 'number') ||
+          (qs.defaultValidityDays !== undefined && typeof qs.defaultValidityDays !== 'number') ||
+          (qs.defaultDepositPercent !== undefined && qs.defaultDepositPercent !== null &&
+            (typeof qs.defaultDepositPercent !== 'number' || qs.defaultDepositPercent < 0 || qs.defaultDepositPercent > 100)) ||
+          !isValidString(qs.defaultPaymentTerms) ||
+          !isValidString(qs.defaultNotes) ||
+          !isValidString(qs.defaultEstimatedDelay)
+        ) {
+          return NextResponse.json(
+            { success: false, error: 'businessConfig invalide : quoteSettings doit contenir des valeurs numériques pour la TVA/validité/acompte (0-100) et des chaînes raisonnables pour les textes' },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config

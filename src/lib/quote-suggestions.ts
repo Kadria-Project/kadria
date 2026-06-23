@@ -70,6 +70,18 @@ export interface QuoteSuggestionProjectLike {
   tradeAnswers?: unknown
 }
 
+// Parametres commerciaux par defaut (Mission "quote commercial settings") :
+// stockes dans businessConfig.quoteSettings, utilises uniquement pour
+// preremplir /devis/new — jamais pour generer un devis automatiquement.
+export type QuoteCommercialSettings = {
+  defaultVatRate?: number
+  defaultValidityDays?: number
+  defaultPaymentTerms?: string
+  defaultDepositPercent?: number | null
+  defaultNotes?: string
+  defaultEstimatedDelay?: string
+}
+
 export interface QuoteSuggestionBusinessConfig {
   acceptedWorkTypes?: string[]
   refusedWorkTypes?: string[]
@@ -77,6 +89,7 @@ export interface QuoteSuggestionBusinessConfig {
   customRefusedWork?: string
   serviceCatalog?: ArtisanServiceCatalogItem[]
   quoteTemplates?: ArtisanQuoteTemplate[]
+  quoteSettings?: QuoteCommercialSettings
 }
 
 export interface QuoteSuggestionTravel {
