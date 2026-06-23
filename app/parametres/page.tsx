@@ -166,6 +166,8 @@ export default function ParametresPage() {
       originAddress: undefined as string | undefined,
       originLat: undefined as number | undefined,
       originLng: undefined as number | undefined,
+      minimumTravelFee: undefined as number | undefined,
+      freeTravelRadiusKm: undefined as number | undefined,
     },
   })
 
@@ -234,6 +236,8 @@ export default function ParametresPage() {
               originAddress: data.config.travelConfig?.originAddress || data.config.address || undefined,
               originLat: data.config.travelConfig?.originLat,
               originLng: data.config.travelConfig?.originLng,
+              minimumTravelFee: data.config.travelConfig?.minimumTravelFee,
+              freeTravelRadiusKm: data.config.travelConfig?.freeTravelRadiusKm,
             },
           })
           if (data.config.artisanId) {
@@ -1324,6 +1328,63 @@ export default function ParametresPage() {
                       L&apos;adresse professionnelle (section Infos légales) doit être renseignée pour calculer une distance.
                     </p>
                   )}
+                </div>
+              </div>
+
+              <div style={{ ...sectionCard, marginTop: '16px' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Recommandation de frais de déplacement
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Frais minimum de déplacement</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="25"
+                        value={config.travelConfig.minimumTravelFee ?? ''}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: {
+                            ...c.travelConfig,
+                            minimumTravelFee: e.target.value === '' ? undefined : Number(e.target.value),
+                          },
+                        }))}
+                        style={{ ...inputStyle, paddingRight: '32px' }}
+                      />
+                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>€</span>
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Montant minimum conseillé à intégrer lorsque vous vous déplacez chez un prospect ou client.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Zone sans frais de déplacement</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="10"
+                        value={config.travelConfig.freeTravelRadiusKm ?? ''}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: {
+                            ...c.travelConfig,
+                            freeTravelRadiusKm: e.target.value === '' ? undefined : Number(e.target.value),
+                          },
+                        }))}
+                        style={{ ...inputStyle, paddingRight: '36px' }}
+                      />
+                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>km</span>
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Dans ce rayon autour de votre adresse professionnelle, Kadria ne recommandera pas forcément de frais supplémentaires.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

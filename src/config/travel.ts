@@ -50,6 +50,8 @@ export interface TravelConfig {
   originAddress?: string
   originLat?: number
   originLng?: number
+  minimumTravelFee?: number
+  freeTravelRadiusKm?: number
 }
 
 export interface TravelCostResult {
@@ -124,6 +126,51 @@ export function calculateTravelCost(
   const fuelPricePerLiter = DEFAULT_FUEL_PRICE_PER_LITER[vehicleType]
   const cost = (distanceKmAR * consumption) / 100 * fuelPricePerLiter
   return { distanceKm, distanceKmAR, cost, energyLabel: VEHICLE_TYPE_LABELS[vehicleType] }
+}
+
+export type TravelFeeRecommendation = {
+  suggestedFee: number
+  label: string
+  reason: string
+  isFreeZone: boolean
+}
+
+const DEFAULT_MINIMUM_TRAVEL_FEE = 20
+const TRAVEL_FEE_ROUNDING_STEP = 5
+
+function roundUpToStep(value: number, step: number): number {
+  return Math.ceil(value / step) * step
+}
+
+export function calculateTravelFeeRecommendation(params: {
+  oneWayDistanceKm: number
+  estimatedCost: number
+  minimumTravelFee?: number
+  freeTravelRadiusKm?: number
+}): TravelFeeRecommendation {
+  const { oneWayDistanceKm, estimatedCost, minimumTravelFee, freeTravelRadiusKm } = params
+
+  if (freeTravelRadiusKm !== undefined && Number.isFinite(freeTravelRadiusKm) && oneWayDistanceKm <= freeTravelRadiusKm) {
+    return {
+      suggestedFee: 0,
+      label: 'Dans votre zone proche',
+      reason: 'Le chantier est dans votre rayon sans frais de déplacement.',
+      isFreeZone: true,
+    }
+  }
+
+  const baseMinimum = minimumTravelFee !== undefined && Number.isFinite(minimumTravelFee)
+    ? minimumTravelFee
+    : DEFAULT_MINIMUM_TRAVEL_FEE
+  const candidate = Math.max(baseMinimum, DEFAULT_MINIMUM_TRAVEL_FEE, estimatedCost)
+  const suggestedFee = roundUpToStep(candidate, TRAVEL_FEE_ROUNDING_STEP)
+
+  return {
+    suggestedFee,
+    label: 'Suggestion Kadria',
+    reason: `Kadria suggère de prévoir au moins ${suggestedFee} € de frais de déplacement pour couvrir le trajet et le temps associé.`,
+    isFreeZone: false,
+  }
 }
 
 // Mission 6 prep: lightweight signals for future scoring integration.

@@ -19,7 +19,7 @@ import {
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { haversineDistanceKm, calculateTravelCost, type VehicleType, type ChargingType } from '@/src/config/travel';
+import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendation, type VehicleType, type ChargingType } from '@/src/config/travel';
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, type NextActionType } from '@/src/lib/project-scoring';
@@ -210,6 +210,8 @@ function ProjectDetail() {
       originAddress?: string;
       originLat?: number;
       originLng?: number;
+      minimumTravelFee?: number;
+      freeTravelRadiusKm?: number;
     };
   } | null>(null);
 
@@ -1222,6 +1224,12 @@ function ProjectDetail() {
                 </p>
               );
             }
+            const recommendation = calculateTravelFeeRecommendation({
+              oneWayDistanceKm: result.distanceKm,
+              estimatedCost: result.cost,
+              minimumTravelFee: travelConfig.minimumTravelFee,
+              freeTravelRadiusKm: travelConfig.freeTravelRadiusKm,
+            });
             return (
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
@@ -1241,6 +1249,23 @@ function ProjectDetail() {
                 <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
                   Distance géographique majorée de 10 %.
                 </p>
+                <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--bg-elevated)', borderRadius: '8px' }}>
+                  <p style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700, margin: '0 0 2px' }}>
+                    {recommendation.label}
+                  </p>
+                  <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
+                    {recommendation.isFreeZone
+                      ? 'Le chantier est dans votre zone proche. Aucun frais de déplacement spécifique n’est suggéré.'
+                      : recommendation.reason}
+                  </p>
+                  {(travelConfig.minimumTravelFee !== undefined || travelConfig.freeTravelRadiusKm !== undefined) && (
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
+                      {travelConfig.minimumTravelFee !== undefined && `Frais minimum : ${travelConfig.minimumTravelFee} €`}
+                      {travelConfig.minimumTravelFee !== undefined && travelConfig.freeTravelRadiusKm !== undefined && ' · '}
+                      {travelConfig.freeTravelRadiusKm !== undefined && `Zone sans frais : ${travelConfig.freeTravelRadiusKm} km`}
+                    </p>
+                  )}
+                </div>
               </>
             );
           })()}

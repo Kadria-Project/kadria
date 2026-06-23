@@ -68,6 +68,8 @@ interface OnboardingConfig {
     originAddress: string | undefined
     originLat: number | undefined
     originLng: number | undefined
+    minimumTravelFee: number | undefined
+    freeTravelRadiusKm: number | undefined
   }
 }
 
@@ -104,6 +106,8 @@ const EMPTY_CONFIG: OnboardingConfig = {
     originAddress: undefined,
     originLat: undefined,
     originLng: undefined,
+    minimumTravelFee: 25,
+    freeTravelRadiusKm: 10,
   },
 }
 
@@ -168,6 +172,8 @@ export default function OnboardingPage() {
               originAddress: c.travelConfig?.originAddress || c.address || undefined,
               originLat: c.travelConfig?.originLat,
               originLng: c.travelConfig?.originLng,
+              minimumTravelFee: c.travelConfig?.minimumTravelFee ?? 25,
+              freeTravelRadiusKm: c.travelConfig?.freeTravelRadiusKm ?? 10,
             },
           })
           if (c.artisanId) setArtisanIdDisplay(c.artisanId)
@@ -657,6 +663,42 @@ export default function OnboardingPage() {
                   </select>
                 </div>
               )}
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={labelStyle}>Frais minimum (€)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="25"
+                    value={config.travelConfig.minimumTravelFee ?? ''}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      travelConfig: { ...c.travelConfig, minimumTravelFee: e.target.value === '' ? undefined : Number(e.target.value) },
+                    }))}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={labelStyle}>Zone sans frais (km)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="10"
+                    value={config.travelConfig.freeTravelRadiusKm ?? ''}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      travelConfig: { ...c.travelConfig, freeTravelRadiusKm: e.target.value === '' ? undefined : Number(e.target.value) },
+                    }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: 0 }}>
+                Vous pourrez modifier ces valeurs plus tard dans Paramètres.
+              </p>
             </div>
           </div>
         )}
