@@ -4,12 +4,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
-
-const TRADES = [
-  'Plombier', 'Électricien', 'Maçon', 'Peintre', 'Menuisier',
-  'Couvreur', 'Carreleur', 'Chauffagiste', 'Paysagiste',
-  'Pisciniste', 'Rénovation globale', 'Autre',
-]
+import { TRADES } from '@/src/config/trades'
 
 const FORMES_JURIDIQUES = [
   'Auto-entrepreneur', 'EI', 'EURL', 'SARL', 'SAS', 'SASU', 'Autre',
@@ -35,6 +30,8 @@ const SERVICE_AREA_FLEXIBLE = 'SELON_OPPORTUNITE'
 interface OnboardingConfig {
   companyName: string
   primaryTrade: string
+  trades: string[]
+  otherTrade: string
   phone: string
   address: string
   hours: string
@@ -61,6 +58,8 @@ interface OnboardingConfig {
 const EMPTY_CONFIG: OnboardingConfig = {
   companyName: '',
   primaryTrade: '',
+  trades: [],
+  otherTrade: '',
   phone: '',
   address: '',
   hours: '',
@@ -109,9 +108,14 @@ export default function OnboardingPage() {
       .then(data => {
         if (data.success && data.config) {
           const c = data.config
+          const knownValues = new Set(TRADES.map(t => t.value))
+          const rawTrades: string[] = Array.isArray(c.trades) ? c.trades : []
+          const customTrade = rawTrades.find(t => !knownValues.has(t)) || ''
           setConfig({
             companyName: c.companyName || '',
             primaryTrade: c.primaryTrade || '',
+            trades: rawTrades,
+            otherTrade: customTrade,
             phone: c.phone || '',
             address: c.address || '',
             hours: c.hours || '',
@@ -194,7 +198,10 @@ export default function OnboardingPage() {
       if (!config.companyName.trim()) return "Le nom de l'entreprise est requis pour continuer."
     }
     if (id === 'metier') {
-      if (!config.primaryTrade.trim()) return 'Le métier principal est requis pour continuer.'
+      if (config.trades.length === 0) return 'Sélectionnez au moins un métier pour continuer.'
+      if (config.trades.includes('autre') && !config.otherTrade.trim()) {
+        return 'Précisez votre métier dans le champ "Autre".'
+      }
     }
     return ''
   }
@@ -203,11 +210,15 @@ export default function OnboardingPage() {
     setSaving(true)
     setSaveError('')
     try {
+      const effectiveTrades = config.trades.map(t =>
+        t === 'autre' && config.otherTrade.trim() ? config.otherTrade.trim() : t
+      )
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...config,
+          trades: effectiveTrades,
           interventionRadius: config.interventionRadius === '' ? undefined : Number(config.interventionRadius),
         }),
       })
@@ -435,21 +446,70 @@ export default function OnboardingPage() {
 
         {step.id === 'metier' && (
           <div style={sectionCard}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>🛠️ Métier & zone d&apos;intervention</h3>
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🛠️ Quels métiers couvrez-vous ?</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 4px' }}>
+              Sélectionnez un ou plusieurs métiers. Kadria s&apos;en servira pour mieux qualifier vos prospects.
+            </p>
+            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px', fontStyle: 'italic' }}>
+              Exemple : Plombier + Chauffagiste, ou Paysagiste + Terrassier.
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={labelStyle}>Métier principal *</label>
-                <select
-                  value={config.primaryTrade}
-                  onChange={e => setConfig(c => ({ ...c, primaryTrade: e.target.value }))}
-                  style={{ ...inputStyle, cursor: 'pointer' }}
-                >
-                  <option value="">Sélectionner un métier</option>
-                  {TRADES.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <label style={labelStyle}>Métiers *</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {TRADES.map(t => {
+                    const selected = config.trades.includes(t.value)
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setConfig(c => {
+                          const trades = selected
+                            ? c.trades.filter(v => v !== t.value)
+                            : [...c.trades, t.value]
+                          return {
+                            ...c,
+                            trades,
+                            primaryTrade: trades[0]
+                              ? (TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
+                              : '',
+                            otherTrade: t.value === 'autre' && selected ? '' : c.otherTrade,
+                          }
+                        })}
+                        style={{
+                          background: selected ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
+                          border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
+                          color: selected ? 'var(--accent)' : 'var(--text-2)',
+                          borderRadius: '20px',
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          fontWeight: selected ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {selected ? '✓ ' : ''}{t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {config.trades.length === 0 && (
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
+                    Sélectionnez au moins un métier.
+                  </p>
+                )}
               </div>
+              {config.trades.includes('autre') && (
+                <div>
+                  <label style={labelStyle}>Précisez votre métier</label>
+                  <input
+                    value={config.otherTrade}
+                    onChange={e => setConfig(c => ({ ...c, otherTrade: e.target.value }))}
+                    placeholder="Ex : Ramoneur"
+                    style={inputStyle}
+                  />
+                </div>
+              )}
               <div>
                 <label style={checkboxRowStyle}>
                   <input
@@ -621,7 +681,7 @@ export default function OnboardingPage() {
             <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 { label: 'Entreprise', done: !!config.companyName },
-                { label: 'Métier & zone d\'intervention', done: !!config.primaryTrade },
+                { label: 'Métier & zone d\'intervention', done: config.trades.length > 0 },
                 { label: 'Notifications', done: !!config.notificationEmail },
                 { label: 'Préférences devis', done: !!config.devisPrefixe },
                 { label: 'Widget', done: true },

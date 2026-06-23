@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
-
-const TRADES = [
-  'Plombier', 'Électricien', 'Maçon', 'Peintre', 'Menuisier',
-  'Couvreur', 'Carreleur', 'Chauffagiste', 'Paysagiste',
-  'Pisciniste', 'Rénovation globale', 'Autre',
-]
+import { TRADES } from '@/src/config/trades'
 
 const SECTIONS = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
@@ -126,6 +121,8 @@ export default function ParametresPage() {
     lastName: '',
     email: '',
     primaryTrade: '',
+    trades: [] as string[],
+    otherTrade: '',
     serviceArea: '',
     interventionRadius: 0,
     notificationEmail: '',
@@ -175,12 +172,17 @@ export default function ParametresPage() {
       .then(r => r.json())
       .then(data => {
         if (data.success && data.config) {
+          const knownValues = new Set(TRADES.map(t => t.value))
+          const rawTrades: string[] = Array.isArray(data.config.trades) ? data.config.trades : []
+          const customTrade = rawTrades.find((t: string) => !knownValues.has(t)) || ''
           setConfig({
             companyName: data.config.companyName || '',
             firstName: data.config.firstName || '',
             lastName: data.config.lastName || '',
             email: data.config.email || '',
             primaryTrade: data.config.primaryTrade || '',
+            trades: rawTrades,
+            otherTrade: customTrade,
             serviceArea: data.config.serviceArea || '',
             interventionRadius: data.config.interventionRadius || 0,
             notificationEmail: data.config.notificationEmail || '',
@@ -260,10 +262,13 @@ export default function ParametresPage() {
     setSaved(false)
     setSaveError('')
     try {
+      const effectiveTrades = config.trades.map(t =>
+        t === 'autre' && config.otherTrade.trim() ? config.otherTrade.trim() : t
+      )
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify({ ...config, trades: effectiveTrades }),
       })
       const data = await res.json()
       if (!data.success) {
@@ -536,19 +541,6 @@ export default function ParametresPage() {
                         style={inputStyle}
                       />
                     </div>
-                    <div>
-                      <label style={labelStyle}>Métier principal</label>
-                      <select
-                        value={config.primaryTrade}
-                        onChange={e => setConfig(c => ({ ...c, primaryTrade: e.target.value }))}
-                        style={{ ...inputStyle, cursor: 'pointer' }}
-                      >
-                        <option value="">Sélectionner un métier</option>
-                        {TRADES.map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                     <div>
@@ -611,6 +603,63 @@ export default function ParametresPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Métiers couverts
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Sélectionnez un ou plusieurs métiers. Kadria s&apos;en sert pour mieux qualifier vos prospects.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {TRADES.map(t => {
+                    const selected = config.trades.includes(t.value)
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setConfig(c => {
+                          const trades = selected
+                            ? c.trades.filter(v => v !== t.value)
+                            : [...c.trades, t.value]
+                          return {
+                            ...c,
+                            trades,
+                            primaryTrade: trades[0]
+                              ? (TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
+                              : '',
+                            otherTrade: t.value === 'autre' && selected ? '' : c.otherTrade,
+                          }
+                        })}
+                        style={{
+                          background: selected ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
+                          border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
+                          color: selected ? 'var(--accent)' : 'var(--text-2)',
+                          borderRadius: '20px',
+                          padding: '8px 16px',
+                          fontSize: '13px',
+                          fontWeight: selected ? 600 : 400,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {selected ? '✓ ' : ''}{t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {config.trades.includes('autre') && (
+                  <div style={{ marginTop: '14px' }}>
+                    <label style={labelStyle}>Précisez votre métier</label>
+                    <input
+                      value={config.otherTrade}
+                      onChange={e => setConfig(c => ({ ...c, otherTrade: e.target.value }))}
+                      placeholder="Ex : Ramoneur"
+                      style={inputStyle}
+                    />
+                  </div>
+                )}
               </div>
 
               <div style={sectionCard}>

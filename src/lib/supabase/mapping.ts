@@ -34,6 +34,20 @@ function getBoolean(row: RawRow | null | undefined, ...keys: string[]) {
   return false
 }
 
+function getStringArray(row: RawRow | null | undefined, ...keys: string[]): string[] {
+  const value = getValue<unknown>(row, keys, [])
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string')
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === 'string')
+    } catch {
+      return value.split(',').map(v => v.trim()).filter(Boolean)
+    }
+  }
+  return []
+}
+
 function getNullableNumber(row: RawRow | null | undefined, ...keys: string[]) {
   const value = getValue<unknown>(row, keys, null)
   if (value === null || value === undefined || value === '') return null
@@ -122,7 +136,7 @@ export interface SupabaseArtisanConfig {
   websiteUrl: string
   active: boolean
   aiInstructions: string
-  trades: string
+  trades: string[]
   raisonSociale: string
   formeJuridique: string
   siret: string
@@ -225,7 +239,7 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     websiteUrl: getString(row, 'website_url', 'Website URL'),
     active: getBoolean(row, 'active', 'Active'),
     aiInstructions: getString(row, 'ai_instructions', 'AI Instructions'),
-    trades: getString(row, 'trades', 'Trades'),
+    trades: getStringArray(row, 'trades', 'Trades'),
     raisonSociale: getString(row, 'raison_sociale', 'Raison Sociale'),
     formeJuridique: getString(row, 'forme_juridique', 'Forme Juridique'),
     siret: getString(row, 'siret', 'SIRET'),

@@ -59,6 +59,13 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    if (body.trades !== undefined && !Array.isArray(body.trades)) {
+      return NextResponse.json(
+        { success: false, error: 'trades doit être un tableau de métiers' },
+        { status: 400 }
+      )
+    }
+
     // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config
     const fields: Record<string, unknown> = {}
     if (body.companyName  !== undefined) fields['company_name']     = body.companyName
@@ -72,7 +79,17 @@ export async function PATCH(request: NextRequest) {
     if (body.primaryColor !== undefined) fields['primary_color']    = body.primaryColor
     if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
     if (body.websiteUrl   !== undefined) fields['website_url']      = body.websiteUrl
-    if (body.trades       !== undefined) fields['trades']           = body.trades
+
+    // Métiers : liste multi-sélection, avec compatibilité de l'ancien champ primary_trade (mono-métier)
+    if (body.trades !== undefined) {
+      const cleanedTrades = (body.trades as unknown[])
+        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+        .map(v => v.trim())
+      fields['trades'] = cleanedTrades
+      if (cleanedTrades.length > 0 && body.primaryTrade === undefined) {
+        fields['primary_trade'] = cleanedTrades[0]
+      }
+    }
 
     // Informations légales
     if (body.raisonSociale !== undefined) fields['raison_sociale'] = body.raisonSociale
