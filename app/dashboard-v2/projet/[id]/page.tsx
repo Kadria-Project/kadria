@@ -737,10 +737,11 @@ function ProjectDetail() {
 
   function impactCardStyle(extra: Record<string, string | number> = {}): Record<string, string | number> {
     return {
-      background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1) 50%, rgba(34,197,94,0.04))',
-      border: '2px solid #4ade80',
+      background: 'var(--impact-bg)',
+      border: '1px solid var(--impact-border)',
       borderRadius: '16px',
-      boxShadow: '0 0 0 1px rgba(34,197,94,0.35), 0 8px 24px -8px rgba(34,197,94,0.45)',
+      boxShadow: 'var(--impact-glow)',
+      color: 'var(--impact-text)',
       ...extra,
     };
   }
@@ -989,7 +990,7 @@ function ProjectDetail() {
           {/* Header avec badge température + score */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: analysis.temperature === 'hot' ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
+            borderBottom: analysis.temperature === 'hot' ? '1px solid var(--impact-border)' : '1px solid var(--border)',
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
@@ -999,7 +1000,7 @@ function ProjectDetail() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '16px' }}>✦</span>
               <span style={{
-                color: analysis.temperature === 'hot' ? '#ffffff' : 'var(--accent)',
+                color: analysis.temperature === 'hot' ? 'var(--impact-text)' : 'var(--accent)',
                 fontWeight: 700,
                 fontSize: '14px',
                 letterSpacing: '0.02em'
@@ -1009,7 +1010,7 @@ function ProjectDetail() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{
-                color: analysis.temperature === 'hot' ? '#ffffff' : 'var(--text-2)',
+                color: analysis.temperature === 'hot' ? 'var(--impact-text-soft)' : 'var(--text-2)',
                 fontSize: '12px',
                 fontWeight: 600,
               }}>

@@ -2102,26 +2102,26 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
           {canSeeAdvancedValueDashboard && totalPendingValue > 0 ? (
             <ImpactCard variant="money">
-              <p className="text-base font-bold text-white">Valeur en attente</p>
-              <p className="mt-2 text-2xl font-bold text-white">
+              <p className="text-base font-bold text-[var(--impact-text)]">Valeur en attente</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--impact-text)]">
                 {formatCurrency(totalPendingValue)} en attente
               </p>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
-                  <p className="text-xs text-green-100/80">Devis à relancer</p>
-                  <p className="mt-1 text-base font-bold text-white">
+                <div className="rounded-xl border border-[var(--impact-subcard-border)] bg-[var(--impact-subcard-bg)] px-4 py-3">
+                  <p className="text-xs text-[var(--impact-text-soft)]">Devis à relancer</p>
+                  <p className="mt-1 text-base font-bold text-[var(--impact-text)]">
                     {staleQuoteProjects.length} devis{staleQuoteValue > 0 ? ` · ${formatCurrency(staleQuoteValue)}` : ''}
                   </p>
                 </div>
-                <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
-                  <p className="text-xs text-green-100/80">Opportunités chaudes non traitées</p>
-                  <p className="mt-1 text-base font-bold text-white">
+                <div className="rounded-xl border border-[var(--impact-subcard-border)] bg-[var(--impact-subcard-bg)] px-4 py-3">
+                  <p className="text-xs text-[var(--impact-text-soft)]">Opportunités chaudes non traitées</p>
+                  <p className="mt-1 text-base font-bold text-[var(--impact-text)]">
                     {uncontactedHotLeads.length} dossier(s){hotLeadPendingValue > 0 ? ` · ${formatCurrency(hotLeadPendingValue)}` : ''}
                   </p>
                 </div>
-                <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
-                  <p className="text-xs text-green-100/80">Devis à envoyer</p>
-                  <p className="mt-1 text-base font-bold text-white">
+                <div className="rounded-xl border border-[var(--impact-subcard-border)] bg-[var(--impact-subcard-bg)] px-4 py-3">
+                  <p className="text-xs text-[var(--impact-text-soft)]">Devis à envoyer</p>
+                  <p className="mt-1 text-base font-bold text-[var(--impact-text)]">
                     {valueQuotesProjects.length} dossier(s){quotesToSendValue > 0 ? ` · ${formatCurrency(quotesToSendValue)}` : ''}
                   </p>
                 </div>
@@ -2173,11 +2173,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-green-100/80">Action prioritaire</p>
-                      <p className="text-sm font-semibold text-white">{action.title} — {action.client}</p>
-                      <p className="text-xs text-green-100/80">{action.context}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{action.title} — {action.client}</p>
+                      <p className="text-xs text-[var(--impact-text-soft)]">{action.context}</p>
                     </div>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
+                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
                       Voir le dossier <ChevronRight className="h-4 w-4" />
                     </span>
                   </ImpactCard>
@@ -2447,15 +2447,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             className="flex w-full flex-col items-start gap-3 text-left sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <Bell className="h-4 w-4 shrink-0 text-white" />
+              <Bell className="h-4 w-4 shrink-0 text-[var(--impact-cta)]" />
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-green-100/80">Action prioritaire du moment</p>
-                <p className="truncate text-sm font-semibold text-white">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire du moment</p>
+                <p className="mt-1 truncate text-sm font-semibold text-[var(--impact-text)]">
                   {priorityActionTitle} {priorityAction.context ? `— ${priorityAction.context}` : ''}
                 </p>
               </div>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
+            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
               Voir le dossier <ChevronRight className="h-4 w-4" />
             </span>
           </ImpactCard>
@@ -2504,11 +2504,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-green-100/80">Action prioritaire</p>
-                        <p className="text-sm font-semibold text-white">{task.title} — {clientLabel}</p>
-                        {amountLabel && <p className="text-xs text-green-100/80">{amountLabel}</p>}
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{task.title} — {clientLabel}</p>
+                        {amountLabel && <p className="text-xs text-[var(--impact-text-soft)]">{amountLabel}</p>}
                       </div>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
+                      <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
                         Voir le dossier <ChevronRight className="h-4 w-4" />
                       </span>
                     </ImpactCard>
@@ -2825,12 +2825,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-xs rounded px-2 py-0.5 font-bold ${
-                        index === 0 ? 'bg-green-400 text-zinc-950' : 'bg-green-500/20 text-green-400'
+                        index === 0 ? 'bg-[var(--impact-badge-bg)] text-[var(--impact-badge-text)]' : 'bg-green-500/20 text-green-400'
                       }`}>
                         #{index + 1}
                       </span>
 
-                      <span className={`font-bold text-sm ${index === 0 ? 'text-white' : 'text-green-400'}`}>
+                      <span className={`font-bold text-sm ${index === 0 ? 'text-[var(--impact-cta)]' : 'text-green-400'}`}>
                         {opportunityScore(project, artisanTrades)}/100
                       </span>
                     </div>
@@ -2864,7 +2864,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     </div>
 
                     <span className={`mt-auto text-sm font-semibold ${
-                      index === 0 ? 'text-white' : 'text-green-400'
+                      index === 0 ? 'text-[var(--impact-cta)]' : 'text-green-400'
                     }`}>Voir le dossier</span>
                   </button>
                 )) : Array.from({ length: 3 }).map((_, index) => (
@@ -4213,7 +4213,7 @@ function ActionSummary({
 }
 
 export const IMPACT_CARD_BASE_CLASSES =
-  'border-2 border-green-400 bg-gradient-to-br from-green-500/20 via-green-500/10 to-green-500/[0.04] shadow-[0_0_0_1px_rgba(34,197,94,0.35),0_8px_24px_-8px_rgba(34,197,94,0.45)]';
+  'border border-[var(--impact-border)] bg-[image:var(--impact-bg)] shadow-[var(--impact-glow)]';
 
 function ImpactCard({
   variant = 'priority',
