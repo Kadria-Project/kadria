@@ -1579,6 +1579,18 @@ export default function ParametresPage() {
                               style={inputStyle}
                             />
                           </div>
+                          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                            <label style={labelStyle}>Adresse de l&apos;assureur (optionnel)</label>
+                            <input
+                              value={config.businessConfig?.quoteSettings?.insuranceProviderAddress || ''}
+                              onChange={e => setConfig(c => ({
+                                ...c,
+                                businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig?.quoteSettings, insuranceProviderAddress: e.target.value } },
+                              }))}
+                              placeholder="Adresse de la compagnie d'assurance"
+                              style={inputStyle}
+                            />
+                          </div>
                         </div>
                       )}
                     </>
@@ -2335,6 +2347,40 @@ export default function ParametresPage() {
                       </div>
                     </>
                   )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Main-d&apos;œuvre</label>
+                    <select
+                      value={config.businessConfig.quoteSettings.laborMentionMode || 'not_applicable'}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, laborMentionMode: e.target.value as 'included' | 'detailed' | 'not_applicable' } },
+                      }))}
+                      style={inputStyle}
+                    >
+                      <option value="not_applicable">Non applicable</option>
+                      <option value="included">Incluse dans les prestations</option>
+                      <option value="detailed">Détaillée dans les lignes du devis</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Frais de déplacement</label>
+                    <select
+                      value={config.businessConfig.quoteSettings.travelFeeMentionMode || 'not_applicable'}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, travelFeeMentionMode: e.target.value as 'included' | 'detailed' | 'not_charged' | 'not_applicable' } },
+                      }))}
+                      style={inputStyle}
+                    >
+                      <option value="not_applicable">Non applicable</option>
+                      <option value="included">Inclus dans les prestations</option>
+                      <option value="detailed">Détaillés dans les lignes du devis</option>
+                      <option value="not_charged">Non facturés</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

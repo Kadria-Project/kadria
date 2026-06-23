@@ -1,6 +1,6 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, RGB } from 'pdf-lib'
 import type { DevisRecord, getArtisanConfig } from '@/src/lib/airtable'
-import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceMention } from '@/src/lib/devis-legal'
+import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceLines, getDelayMention, getLaborMention, getTravelFeeMention } from '@/src/lib/devis-legal'
 import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 
 type ArtisanConfig = Awaited<ReturnType<typeof getArtisanConfig>>
@@ -185,13 +185,17 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   const quoteSettings = (config?.businessConfig as { quoteSettings?: QuoteCommercialSettings } | undefined)?.quoteSettings
   const pricingMention = getPricingMention(quoteSettings)
   const vatExemptionMention = getVatExemptionMention(quoteSettings?.vatMode)
-  const insuranceMention = getInsuranceMention({
+  const insuranceLines = getInsuranceLines({
     ...quoteSettings,
     insuranceCompany: quoteSettings?.insuranceCompany || config?.assureur,
     insurancePolicyNumber: quoteSettings?.insurancePolicyNumber || config?.numAssurance,
-  }) || (!config?.assuranceNonRequise && config?.assureur
+  })
+  const fallbackInsuranceMention = !insuranceLines && !config?.assuranceNonRequise && config?.assureur
     ? `Assurance : ${config.assureur}${config.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
-    : null)
+    : null
+  const delayMention = getDelayMention(devis.delaiExecution, quoteSettings?.defaultEstimatedDelay)
+  const laborMention = getLaborMention(quoteSettings?.laborMentionMode, lines)
+  const travelFeeMention = getTravelFeeMention(quoteSettings?.travelFeeMentionMode, lines)
 
   const leftStartY = w.y
   w.drawAt('ARTISAN', MARGIN, leftStartY - 14, CONTENT_WIDTH, 8, fontBold, TEXT_MUTED)
@@ -348,15 +352,30 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
     const h = w.drawAt(devis.conditionsPaiement, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
     w.y += Math.max(h, 9 * 1.3) + 4
   }
-  if (devis.delaiExecution) {
-    const label = "Délai d'exécution : "
+  {
+    const label = "Délai d'intervention : "
     const labelWidth = fontBold.widthOfTextAtSize(label, 9)
     w.drawAt(label, MARGIN, w.y, labelWidth, 9, fontBold, TEXT_DARK)
-    const h = w.drawAt(devis.delaiExecution, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
+    const h = w.drawAt(delayMention, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
     w.y += Math.max(h, 9 * 1.3) + 4
   }
-  if (insuranceMention) {
-    const h = w.drawAt(insuranceMention, MARGIN, w.y, CONTENT_WIDTH, 9, fontRegular, TEXT_DARK)
+  if (laborMention) {
+    const h = w.drawAt(laborMention, MARGIN, w.y, CONTENT_WIDTH, 9, fontRegular, TEXT_DARK)
+    w.y += Math.max(h, 9 * 1.3) + 4
+  }
+  if (travelFeeMention) {
+    const h = w.drawAt(travelFeeMention, MARGIN, w.y, CONTENT_WIDTH, 9, fontRegular, TEXT_DARK)
+    w.y += Math.max(h, 9 * 1.3) + 4
+  }
+  if (insuranceLines) {
+    w.ensureSpace(insuranceLines.length * 9 * 1.3 + 8)
+    insuranceLines.forEach((line, i) => {
+      const h = w.drawAt(line, MARGIN, w.y, CONTENT_WIDTH, 9, i === 0 ? fontBold : fontRegular, TEXT_DARK)
+      w.y += Math.max(h, 9 * 1.3)
+    })
+    w.y += 4
+  } else if (fallbackInsuranceMention) {
+    const h = w.drawAt(fallbackInsuranceMention, MARGIN, w.y, CONTENT_WIDTH, 9, fontRegular, TEXT_DARK)
     w.y += Math.max(h, 9 * 1.3) + 4
   }
 

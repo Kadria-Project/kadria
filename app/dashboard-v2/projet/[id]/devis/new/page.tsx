@@ -455,6 +455,24 @@ function NewDevis() {
   if (artisanConfig?.businessConfig?.quoteSettings?.vatMode === 'vat_exempt_293b' && totalTVA > 0) {
     recapAlerts.push('Incohérence : franchise en base de TVA (art. 293 B) activée mais des lignes de TVA sont présentes.');
   }
+  if (!artisanConfig?.businessConfig?.quoteSettings?.vatMode) {
+    recapAlerts.push('Régime de TVA non précisé (TVA applicable ou franchise en base) — à compléter dans les paramètres.');
+  }
+  if (!delaiExecution.trim() && !artisanConfig?.businessConfig?.quoteSettings?.defaultEstimatedDelay?.trim()) {
+    recapAlerts.push('Aucun délai d\'intervention renseigné — une mention générique sera affichée sur le devis.');
+  }
+  const insuranceSettings = artisanConfig?.businessConfig?.quoteSettings;
+  if (insuranceSettings?.insuranceEnabled && !(insuranceSettings.insuranceCompany || artisanConfig?.assureur)) {
+    recapAlerts.push('Assurance activée mais aucun assureur renseigné dans les paramètres.');
+  }
+  const hasLaborLineText = itemLinesWithText.some((l) => /main-d.œuvre|main d.œuvre|main.d.oeuvre/i.test(l.description));
+  const hasTravelLineText = itemLinesWithText.some((l) => /d.placement/i.test(l.description));
+  if (insuranceSettings?.laborMentionMode === 'detailed' && !hasLaborLineText) {
+    recapAlerts.push('Mode "main-d\'œuvre détaillée" activé mais aucune ligne de main-d\'œuvre dans le devis.');
+  }
+  if (insuranceSettings?.travelFeeMentionMode === 'detailed' && !hasTravelLineText) {
+    recapAlerts.push('Mode "frais de déplacement détaillés" activé mais aucune ligne de déplacement dans le devis.');
+  }
 
   const devisNumberPreview = nextDevisNumber || (artisanConfig
     ? `${artisanConfig.devisPrefixe || 'DEV'}-${new Date().getFullYear()}-${String((artisanConfig.devisCompteur || 0) + 1).padStart(3, '0')}`

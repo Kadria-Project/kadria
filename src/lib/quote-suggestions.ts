@@ -93,6 +93,10 @@ export type QuoteCommercialSettings = {
   insurancePolicyNumber?: string
   insuranceCoveredActivities?: string
   insuranceGeographicCoverage?: string
+  insuranceProviderAddress?: string
+  // Mentions main-d'oeuvre / frais de deplacement.
+  laborMentionMode?: 'included' | 'detailed' | 'not_applicable'
+  travelFeeMentionMode?: 'included' | 'detailed' | 'not_charged' | 'not_applicable'
 }
 
 export interface QuoteSuggestionBusinessConfig {

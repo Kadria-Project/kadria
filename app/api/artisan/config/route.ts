@@ -137,6 +137,7 @@ export async function PATCH(request: NextRequest) {
       if (bc.quoteSettings !== undefined) {
         const qs = bc.quoteSettings
         const isValidString = (v: unknown) => v === undefined || (typeof v === 'string' && v.length <= 1000)
+        const isOneOf = (v: unknown, values: string[]) => v === undefined || (typeof v === 'string' && values.includes(v))
         if (
           typeof qs !== 'object' || qs === null ||
           (qs.defaultVatRate !== undefined && typeof qs.defaultVatRate !== 'number') ||
@@ -145,10 +146,24 @@ export async function PATCH(request: NextRequest) {
             (typeof qs.defaultDepositPercent !== 'number' || qs.defaultDepositPercent < 0 || qs.defaultDepositPercent > 100)) ||
           !isValidString(qs.defaultPaymentTerms) ||
           !isValidString(qs.defaultNotes) ||
-          !isValidString(qs.defaultEstimatedDelay)
+          !isValidString(qs.defaultEstimatedDelay) ||
+          !isOneOf(qs.quotePricingType, ['free', 'paid']) ||
+          (qs.quoteFeeAmountTTC !== undefined && qs.quoteFeeAmountTTC !== null &&
+            (typeof qs.quoteFeeAmountTTC !== 'number' || qs.quoteFeeAmountTTC < 0)) ||
+          (qs.quoteFeeDeductible !== undefined && typeof qs.quoteFeeDeductible !== 'boolean') ||
+          !isOneOf(qs.vatMode, ['vat_applicable', 'vat_exempt_293b']) ||
+          (qs.insuranceEnabled !== undefined && typeof qs.insuranceEnabled !== 'boolean') ||
+          !isOneOf(qs.insuranceType, ['rc_pro', 'decennale', 'rc_pro_decennale']) ||
+          !isValidString(qs.insuranceCompany) ||
+          !isValidString(qs.insurancePolicyNumber) ||
+          !isValidString(qs.insuranceCoveredActivities) ||
+          !isValidString(qs.insuranceGeographicCoverage) ||
+          !isValidString(qs.insuranceProviderAddress) ||
+          !isOneOf(qs.laborMentionMode, ['included', 'detailed', 'not_applicable']) ||
+          !isOneOf(qs.travelFeeMentionMode, ['included', 'detailed', 'not_charged', 'not_applicable'])
         ) {
           return NextResponse.json(
-            { success: false, error: 'businessConfig invalide : quoteSettings doit contenir des valeurs numériques pour la TVA/validité/acompte (0-100) et des chaînes raisonnables pour les textes' },
+            { success: false, error: 'businessConfig invalide : quoteSettings contient une valeur incorrecte (type, énumération ou longueur de texte)' },
             { status: 400 }
           )
         }

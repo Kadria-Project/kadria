@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, getDevisById } from '@/src/lib/airtable'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
-import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceMention } from '@/src/lib/devis-legal'
+import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceLines, getDelayMention, getLaborMention, getTravelFeeMention } from '@/src/lib/devis-legal'
 import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 
 interface DevisLine {
@@ -69,13 +69,17 @@ export async function GET(
   const quoteSettings = (config?.businessConfig as { quoteSettings?: QuoteCommercialSettings } | undefined)?.quoteSettings
   const pricingMention = getPricingMention(quoteSettings)
   const vatExemptionMention = getVatExemptionMention(quoteSettings?.vatMode)
-  const insuranceMention = getInsuranceMention({
+  const insuranceLines = getInsuranceLines({
     ...quoteSettings,
     insuranceCompany: quoteSettings?.insuranceCompany || config?.assureur,
     insurancePolicyNumber: quoteSettings?.insurancePolicyNumber || config?.numAssurance,
-  }) || (config?.assuranceNonRequise === false && config?.assureur
+  })
+  const fallbackInsuranceMention = !insuranceLines && config?.assuranceNonRequise === false && config?.assureur
     ? `Assurance : ${config.assureur}${config?.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
-    : null)
+    : null
+  const delayMention = getDelayMention(devis.delaiExecution, quoteSettings?.defaultEstimatedDelay)
+  const laborMention = getLaborMention(quoteSettings?.laborMentionMode, lines)
+  const travelFeeMention = getTravelFeeMention(quoteSettings?.travelFeeMentionMode, lines)
   const sameAsClient = !!devis.clientAddress
 
   const linesHtml = lines
@@ -266,8 +270,11 @@ export async function GET(
   <h2>Conditions</h2>
   <div class="conditions">
     ${devis.conditionsPaiement ? `<p><strong>Conditions de paiement :</strong> ${devis.conditionsPaiement}</p>` : ''}
-    ${devis.delaiExecution ? `<p><strong>Délai d'exécution :</strong> ${devis.delaiExecution}</p>` : ''}
-    ${insuranceMention ? `<p><strong>${insuranceMention}</strong></p>` : ''}
+    <p><strong>Délai d'intervention :</strong> ${delayMention}</p>
+    ${laborMention ? `<p>${laborMention}</p>` : ''}
+    ${travelFeeMention ? `<p>${travelFeeMention}</p>` : ''}
+    ${insuranceLines ? `<p>${insuranceLines.map((l, i) => i === 0 ? `<strong>${l}</strong>` : l).join('<br/>')}</p>` : ''}
+    ${fallbackInsuranceMention ? `<p><strong>${fallbackInsuranceMention}</strong></p>` : ''}
   </div>
 
   ${devis.mentionsLegales ? `<div class="footer">${devis.mentionsLegales}</div>` : ''}

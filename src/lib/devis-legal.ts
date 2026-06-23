@@ -26,17 +26,19 @@ export function formatFullAddress(parts: {
 export type VatMode = 'vat_applicable' | 'vat_exempt_293b'
 export type QuotePricingType = 'free' | 'paid'
 
+// Mission "complete quote compliance mentions" — par defaut (rien configure),
+// on affiche "Devis gratuit" plutot que de ne rien afficher.
 export function getPricingMention(quoteSettings?: {
   quotePricingType?: QuotePricingType
   quoteFeeAmountTTC?: number | null
   quoteFeeDeductible?: boolean
-} | null): string | null {
-  if (!quoteSettings?.quotePricingType) return null
-  if (quoteSettings.quotePricingType === 'free') return 'Devis gratuit'
-  const amount = quoteSettings.quoteFeeAmountTTC
+} | null): string {
+  const pricingType = quoteSettings?.quotePricingType || 'free'
+  if (pricingType === 'free') return 'Devis gratuit'
+  const amount = quoteSettings?.quoteFeeAmountTTC
   if (!amount || amount <= 0) return 'Devis payant'
-  const deductible = quoteSettings.quoteFeeDeductible
-    ? ' (déductible du montant des travaux en cas d\'acceptation)'
+  const deductible = quoteSettings?.quoteFeeDeductible
+    ? ' Coût du devis déductible en cas d\'acceptation.'
     : ''
   return `Devis payant : ${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC${deductible}`
 }
@@ -46,26 +48,87 @@ export function getVatExemptionMention(vatMode?: VatMode): string | null {
   return null
 }
 
-export function getInsuranceMention(quoteSettings?: {
+// Delai d'intervention, distinct de la date de validite du devis.
+// Priorite : champ specifique du devis > valeur par defaut artisan > fallback generique.
+export function getDelayMention(devisDelay?: string | null, defaultEstimatedDelay?: string | null): string {
+  const value = (devisDelay || '').trim() || (defaultEstimatedDelay || '').trim()
+  return value || 'Délai d\'intervention : à convenir avec le client.'
+}
+
+export type InsuranceQuoteSettings = {
   insuranceEnabled?: boolean
   insuranceType?: 'rc_pro' | 'decennale' | 'rc_pro_decennale'
   insuranceCompany?: string
   insurancePolicyNumber?: string
   insuranceCoveredActivities?: string
   insuranceGeographicCoverage?: string
-} | null): string | null {
-  if (!quoteSettings?.insuranceEnabled || !quoteSettings.insuranceCompany) return null
+  insuranceProviderAddress?: string
+}
+
+// Bloc assurance detaille, en lignes distinctes (mission "PDF : assurance detaillee").
+// Retourne null si l'assurance n'est pas activee ou si aucune information n'est renseignee.
+export function getInsuranceLines(quoteSettings?: InsuranceQuoteSettings | null): string[] | null {
+  if (!quoteSettings?.insuranceEnabled) return null
+  const hasAnyDetail =
+    quoteSettings.insuranceCompany ||
+    quoteSettings.insurancePolicyNumber ||
+    quoteSettings.insuranceCoveredActivities ||
+    quoteSettings.insuranceGeographicCoverage
+  if (!hasAnyDetail) return null
 
   const typeLabel =
     quoteSettings.insuranceType === 'decennale'
-      ? 'Assurance décennale'
+      ? 'Garantie décennale'
       : quoteSettings.insuranceType === 'rc_pro_decennale'
-        ? 'Assurance RC professionnelle et décennale'
-        : 'Assurance responsabilité civile professionnelle'
+        ? 'RC Pro + Garantie décennale'
+        : 'RC Pro'
 
-  const parts = [`${typeLabel} : ${quoteSettings.insuranceCompany}`]
-  if (quoteSettings.insurancePolicyNumber) parts.push(`N° ${quoteSettings.insurancePolicyNumber}`)
-  if (quoteSettings.insuranceCoveredActivities) parts.push(`Activités couvertes : ${quoteSettings.insuranceCoveredActivities}`)
-  if (quoteSettings.insuranceGeographicCoverage) parts.push(`Couverture géographique : ${quoteSettings.insuranceGeographicCoverage}`)
-  return parts.join(' — ')
+  const lines = ['Assurance professionnelle', `Type : ${typeLabel}`]
+  if (quoteSettings.insuranceCompany) lines.push(`Assureur : ${quoteSettings.insuranceCompany}`)
+  if (quoteSettings.insurancePolicyNumber) lines.push(`N° de police : ${quoteSettings.insurancePolicyNumber}`)
+  if (quoteSettings.insuranceCoveredActivities) lines.push(`Activités couvertes : ${quoteSettings.insuranceCoveredActivities}`)
+  if (quoteSettings.insuranceGeographicCoverage) lines.push(`Zone géographique couverte : ${quoteSettings.insuranceGeographicCoverage}`)
+  if (quoteSettings.insuranceProviderAddress) lines.push(`Adresse assureur : ${quoteSettings.insuranceProviderAddress}`)
+  return lines
+}
+
+// Conservee pour les appelants qui veulent une mention assurance sur une seule ligne.
+export function getInsuranceMention(quoteSettings?: InsuranceQuoteSettings | null): string | null {
+  const lines = getInsuranceLines(quoteSettings)
+  return lines ? lines.join(' — ') : null
+}
+
+type LineLike = { description?: string }
+
+function linesMatch(lines: LineLike[] | undefined, keywords: string[]): boolean {
+  if (!lines?.length) return false
+  return lines.some((line) => {
+    const text = (line.description || '').toLowerCase()
+    return keywords.some((keyword) => text.includes(keyword))
+  })
+}
+
+export function hasLaborLine(lines?: LineLike[]): boolean {
+  return linesMatch(lines, ['main-d\'œuvre', 'main d\'œuvre', "main-d'oeuvre", "main d'oeuvre", 'main d\'oeuvre'])
+}
+
+export function hasTravelLine(lines?: LineLike[]): boolean {
+  return linesMatch(lines, ['déplacement', 'deplacement'])
+}
+
+export type LaborMentionMode = 'included' | 'detailed' | 'not_applicable'
+export type TravelFeeMentionMode = 'included' | 'detailed' | 'not_charged' | 'not_applicable'
+
+export function getLaborMention(mode: LaborMentionMode | undefined, lines: LineLike[] | undefined): string | null {
+  if (mode === 'included' && !hasLaborLine(lines)) {
+    return 'Main-d\'œuvre incluse dans les prestations forfaitaires sauf mention contraire.'
+  }
+  return null
+}
+
+export function getTravelFeeMention(mode: TravelFeeMentionMode | undefined, lines: LineLike[] | undefined): string | null {
+  if (hasTravelLine(lines)) return null
+  if (mode === 'included') return 'Frais de déplacement inclus dans les prestations sauf mention contraire.'
+  if (mode === 'not_charged') return 'Frais de déplacement non facturés.'
+  return null
 }
