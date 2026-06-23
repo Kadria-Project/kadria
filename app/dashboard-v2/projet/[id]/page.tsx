@@ -198,6 +198,7 @@ function ProjectDetail() {
     assuranceNonRequise?: boolean;
     assureur?: string;
     numAssurance?: string;
+    trades?: string[];
   } | null>(null);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
@@ -541,7 +542,7 @@ function ProjectDetail() {
           lastFollowUpAt: latestDevis.last_follow_up_at,
         }
       : null,
-  });
+  }, { artisanTrades: artisanConfig?.trades ?? [] });
   const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);

@@ -184,7 +184,7 @@ function budgetScore(budget?: string): number {
   return 10;
 }
 
-export function opportunityScore(project: Project): number {
+export function opportunityScore(project: Project, artisanTrades?: string[]): number {
   return getProjectCommercialAnalysis({
     status: project.status,
     clientName: project.clientName,
@@ -202,7 +202,7 @@ export function opportunityScore(project: Project): number {
     completenessScore: project.completenessScore,
     photos: project.photos,
     source: project.source,
-  }).score;
+  }, { artisanTrades: artisanTrades ?? [] }).score;
 }
 
 function parseBudget(budgetStr: string): number {
@@ -1016,6 +1016,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   }, []);
 
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
+  const [artisanTrades, setArtisanTrades] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1025,6 +1026,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         if (cancelled) return;
         if (data.success && data.config) {
           setOnboardingIncomplete(!data.config.onboardingCompleted);
+          setArtisanTrades(Array.isArray(data.config.trades) ? data.config.trades : []);
         }
       })
       .catch(() => {});
@@ -1086,7 +1088,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const topOpportunities = [...allProjects]
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
-    .sort((a, b) => opportunityScore(b) - opportunityScore(a))
+    .sort((a, b) => opportunityScore(b, artisanTrades) - opportunityScore(a, artisanTrades))
     .slice(0, 5);
 
   const hotLeads = allProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
@@ -1317,7 +1319,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   );
 
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
-  const primaryHotLead = hotLeads.find((project) => opportunityScore(project) >= 80 || Number(project.completenessScore || 0) >= 100);
+  const primaryHotLead = hotLeads.find((project) => opportunityScore(project, artisanTrades) >= 80 || Number(project.completenessScore || 0) >= 100);
   const primaryHotLeadName = primaryHotLead
     ? [primaryHotLead.clientFirstName, primaryHotLead.clientName].filter(Boolean).join(' ') || 'Dossier prioritaire'
     : '';
@@ -1874,7 +1876,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
             <div className="mt-3 space-y-2">
               {canAccessFeature('topAiOpportunities') ? topOpportunities.slice(0, 3).map((project, index) => {
-                const score = opportunityScore(project);
+                const score = opportunityScore(project, artisanTrades);
                 const badge = getOpportunityBadge(score);
                 return (
                   <button
@@ -2331,7 +2333,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       </span>
 
                       <span className="text-green-400 font-bold text-sm">
-                        {opportunityScore(project)}/100
+                        {opportunityScore(project, artisanTrades)}/100
                       </span>
                     </div>
 
@@ -2347,7 +2349,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                     <div className="flex flex-col gap-2">
                       {(() => {
-                        const badge = getOpportunityBadge(opportunityScore(project));
+                        const badge = getOpportunityBadge(opportunityScore(project, artisanTrades));
                         return (
                           <span
                             className="rounded-full border px-2.5 py-1 text-xs font-semibold"
