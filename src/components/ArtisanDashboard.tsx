@@ -43,6 +43,8 @@ import {
   XCircle,
   Lock,
   Sparkles,
+  Globe,
+  Timer,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useTheme } from '@/src/hooks/useTheme';
@@ -112,7 +114,7 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
-type DashboardMode = 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
+type DashboardMode = 'value' | 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -912,7 +914,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
-  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
+  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null);
@@ -1363,6 +1365,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
       : '';
   const isOverviewTab = dashboardMode === 'all';
+  const showValueOverview = dashboardMode === 'value';
   const showBusinessOverview = dashboardMode === 'all' || dashboardMode === 'commercial';
   const showTasksOverview = dashboardMode === 'tasks';
   const showCommercialWorkspace = dashboardMode === 'commercial';
@@ -1457,6 +1460,74 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       alert: hotLeads.length > 0,
     },
   ];
+
+  // --- Vue "Valeur générée par Kadria" — calculs V1 sans nouvelle API ---
+  const projectValue = (p: Project) => p.devisAmount || parseBudget(p.budget || '');
+  const wonProjects = allProjects.filter((p) => p.status === 'Gagné');
+  const openValueProjects = allProjects.filter((p) => p.status !== 'Gagné' && p.status !== 'Perdu');
+  const valueCaEnCours = openValueProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const valueCaGagne = wonProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const valueDevisEnvoyesCount = allProjects.filter((p) => p.status === 'Devis envoyé').length;
+  const valueDevisAcceptesCount = wonProjects.length;
+  const valueDevisTotalForConversion = valueDevisEnvoyesCount + valueDevisAcceptesCount;
+  const valueTauxConversion = valueDevisTotalForConversion > 0
+    ? (valueDevisAcceptesCount / valueDevisTotalForConversion) * 100
+    : null;
+  const valueNouveauxCount = pipelineSteps.find((s) => s.label === 'Nouveau')?.value || 0;
+  const valueARappelerCount = pipelineSteps.find((s) => s.label === 'À rappeler')?.value || 0;
+  const valueARelancerCount = pipelineSteps.find((s) => s.label === 'A relancer')?.value || 0;
+
+  const staleQuoteProjects = allProjects.filter((p) => {
+    const risk = getProjectRiskStatus(p);
+    return risk.status === 'followUp' && risk.reason.startsWith('Devis envoye');
+  });
+  const incompleteValueProjects = allProjects.filter((p) => {
+    const risk = getProjectRiskStatus(p);
+    return risk.status === 'followUp' && risk.reason.startsWith('Dossier incomplet');
+  });
+  const uncontactedHotLeads = hotLeads.filter((p) => !p.lastFollowUpAt);
+
+  type ValueAction = { key: string; title: string; client: string; context: string; projectId: string };
+  const valueActions: ValueAction[] = [];
+  const seenValueActionProjects = new Set<string>();
+  const pushValueAction = (project: Project, title: string, context: string) => {
+    if (!project?.id || seenValueActionProjects.has(project.id)) return;
+    seenValueActionProjects.add(project.id);
+    valueActions.push({
+      key: `${project.id}-${title}`,
+      title,
+      client: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier',
+      context,
+      projectId: project.id,
+    });
+  };
+  staleQuoteProjects.forEach((p) => pushValueAction(
+    p,
+    'Devis sans réponse',
+    `Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
+  ));
+  quotesProjects.forEach((p) => pushValueAction(p, 'Devis à envoyer', 'Dossier prêt à être chiffré'));
+  todayCallbacks.forEach((p) => pushValueAction(p, "Rappel prévu aujourd'hui", 'Rappel programmé ce jour'));
+  uncontactedHotLeads.forEach((p) => pushValueAction(p, 'Opportunité chaude', getHotLeadMessage(p)));
+  incompleteValueProjects.forEach((p) => pushValueAction(p, 'Dossier incomplet', 'Informations manquantes à compléter'));
+  const topValueActions = valueActions.slice(0, 5);
+
+  const qualifiedValueCount = allProjects.filter((p) => Number(p.completenessScore || 0) >= 100).length;
+  const handledFollowUpsValueCount = allProjects.filter((p) => p.lastFollowUpAt).length;
+  const estimatedMinutesSaved = qualifiedValueCount * 8 + handledFollowUpsValueCount * 5;
+  const estimatedHoursSaved = Math.floor(estimatedMinutesSaved / 60);
+  const estimatedRemMinutesSaved = estimatedMinutesSaved % 60;
+
+  const valueSourceCounts = SOURCE_OPTIONS.map((opt) => ({
+    label: opt.label,
+    count: allProjects.filter((p) => {
+      const src = (p.source || '').toLowerCase();
+      if (opt.value === 'chat') return src.includes('chat');
+      if (opt.value === 'voice') return src.includes('voice') || src.includes('vocal') || src.includes('call');
+      if (opt.value === 'manual') return src.includes('manual') || src.includes('manuel');
+      return false;
+    }).length,
+  })).filter((s) => s.count > 0);
 
   return (
     <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
@@ -1560,6 +1631,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 }}
               >
                 {[
+                  { mode: 'value' as const, label: 'Valeur generee' },
                   { mode: 'all' as const, label: 'Vue complete' },
                   { mode: 'commercial' as const, label: 'Suivi commercial' },
                   { mode: 'calendar' as const, label: 'Calendrier' },
@@ -1651,6 +1723,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: 'auto' }}>
             {[
+              { mode: 'value' as const, label: 'Valeur generee' },
               { mode: 'all' as const, label: 'Vue complete' },
               { mode: 'commercial' as const, label: 'Suivi commercial' },
               { mode: 'calendar' as const, label: 'Calendrier' },
@@ -1734,6 +1807,123 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
         )}
       </div>
+
+      {/* Vue "Valeur générée par Kadria" — vue par défaut */}
+      {showValueOverview && !loading && (
+        <div className="flex flex-col gap-5">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6">
+            <h2 className="text-2xl font-bold text-[var(--text-1)]">Valeur générée par Kadria</h2>
+            <p className="mt-1 text-sm text-[var(--text-2)]">
+              Suivez les demandes captées, les opportunités en cours et le chiffre d&apos;affaires généré grâce à Kadria.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[
+              { label: 'CA potentiel en cours', value: formatCurrency(valueCaEnCours), icon: Euro, borderColor: 'var(--accent)' },
+              { label: 'CA gagné', value: formatCurrency(valueCaGagne), icon: Trophy, borderColor: '#15803d' },
+              { label: 'Dossiers captés', value: String(allProjects.length), icon: FolderOpen, borderColor: '#2563eb' },
+              { label: 'Devis envoyés', value: String(valueDevisEnvoyesCount), icon: Send, borderColor: '#7c3aed' },
+              { label: 'Devis acceptés', value: String(valueDevisAcceptesCount), icon: CheckCircle, borderColor: '#22c55e' },
+              { label: 'Taux de conversion', value: valueTauxConversion !== null ? `${valueTauxConversion.toFixed(1)}%` : '—', icon: Target, borderColor: '#d97706' },
+            ].map((card) => (
+              <div
+                key={card.label}
+                className="flex min-h-[100px] flex-col gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-4 sm:px-5 sm:py-5"
+                style={{ borderTopWidth: '2px', borderTopColor: card.borderColor }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-3)] text-[13px]">{card.label}</span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-500">
+                    <card.icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <span className="text-2xl font-bold tracking-tight text-[var(--text-1)] sm:text-[28px]">{card.value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+              <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={Send} label="devis à envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
+              <ActionSummary icon={Bell} label="opportunités chaudes" value={hotLeads.length} onClick={() => setDashboardMode('commercial')} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
+              <button
+                onClick={() => setDashboardMode('tasks')}
+                className="text-sm font-semibold text-[var(--accent)] hover:underline"
+              >
+                Voir toutes les tâches
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {topValueActions.map((action) => (
+                <button
+                  key={action.key}
+                  onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                  className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                  title={action.title === 'Devis sans réponse' ? 'Devis envoyé sans réponse du client.' : undefined}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
+                    <p className="text-xs text-[var(--text-2)]">{action.context}</p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-green-400">
+                    Voir le dossier <ChevronRight className="h-4 w-4" />
+                  </span>
+                </button>
+              ))}
+              {topValueActions.length === 0 && (
+                <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour le moment.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 lg:flex-row">
+            <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <div className="flex items-center gap-2">
+                <Timer className="h-4 w-4 text-green-400" />
+                <p className="text-base font-bold text-[var(--text-1)]">Temps estimé économisé</p>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">
+                {estimatedHoursSaved > 0 ? `${estimatedHoursSaved} h ${estimatedRemMinutesSaved} min` : `${estimatedRemMinutesSaved} min`}
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-3)]">
+                8 min économisées par dossier qualifié automatiquement, 5 min par relance/devis préparé.
+              </p>
+              <p className="mt-2 text-xs text-[var(--text-3)]">
+                Estimation indicative basée sur les actions traitées par Kadria.
+              </p>
+            </div>
+
+            {valueSourceCounts.length > 0 && (
+              <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-green-400" />
+                  <p className="text-base font-bold text-[var(--text-1)]">Sources des demandes</p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {valueSourceCounts.map((s) => (
+                    <div key={s.label} className="flex items-center justify-between text-sm">
+                      <span className="text-[var(--text-2)]">{s.label}</span>
+                      <span className="font-semibold text-[var(--text-1)]">{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Barre période */}
       {showBusinessOverview && (
