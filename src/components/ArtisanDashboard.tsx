@@ -1441,15 +1441,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   );
 
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
-  const primaryHotLead = hotLeads.find((project) => opportunityScore(project, artisanTrades) >= 80 || Number(project.completenessScore || 0) >= 100);
-  const primaryHotLeadName = primaryHotLead
-    ? [primaryHotLead.clientFirstName, primaryHotLead.clientName].filter(Boolean).join(' ') || 'Dossier prioritaire'
-    : '';
-  const primaryHotLeadReason = primaryHotLead && Number(primaryHotLead.completenessScore || 0) >= 100
-    ? 'dossier pret a chiffrer'
-    : primaryHotLead
-      ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
-      : '';
   const showValueOverview = dashboardMode === 'value';
   const showBusinessOverview = dashboardMode === 'commercial';
   const showTasksOverview = dashboardMode === 'tasks';
@@ -1684,6 +1675,19 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     );
   });
   const topValueActions = valueActions.slice(0, canSeeAdvancedValueDashboard ? 5 : 3);
+
+  const priorityAction = valueActions[0] || null;
+  const priorityActionTitle = priorityAction
+    ? priorityAction.title === 'Devis sans réponse'
+      ? `Relancer le devis de ${priorityAction.client}`
+      : priorityAction.title === 'Devis à envoyer'
+        ? `Envoyer le devis à ${priorityAction.client}`
+        : priorityAction.title === "Rappel prévu aujourd'hui"
+          ? `Rappeler ${priorityAction.client}`
+          : priorityAction.title === 'Opportunité chaude'
+            ? `Relancer ${priorityAction.client} — opportunité chaude`
+            : `Compléter le dossier de ${priorityAction.client}`
+    : 'Tout est à jour pour le moment';
 
   // "Valeur en attente" V1 : argent potentiellement récupérable à court terme,
   // sans double comptage (devis envoyés en attente englobe les devis sans réponse).
@@ -2423,21 +2427,32 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showBusinessOverview && !loading && primaryHotLead && (
-        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <Bell className="h-4 w-4 shrink-0 text-green-400" />
-            <p className="truncate text-sm text-[var(--text-1)]">
-              <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
-              {primaryHotLeadName} - {primaryHotLeadReason}
-            </p>
-          </div>
-          <button
-            onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
-            className="w-full rounded-lg border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-dim)] sm:w-auto"
+      {showBusinessOverview && !loading && priorityAction && (
+        <div className="mb-4">
+          <ImpactCard
+            variant="priority"
+            as="button"
+            onClick={() => router.push(`/dashboard-v2/projet/${priorityAction.projectId}`)}
+            className="flex w-full flex-col items-start gap-3 text-left sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
           >
-            Voir
-          </button>
+            <div className="flex min-w-0 items-center gap-3">
+              <Bell className="h-4 w-4 shrink-0 text-white" />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-green-100/80">Action prioritaire du moment</p>
+                <p className="truncate text-sm font-semibold text-white">
+                  {priorityActionTitle} {priorityAction.context ? `— ${priorityAction.context}` : ''}
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
+              Voir le dossier <ChevronRight className="h-4 w-4" />
+            </span>
+          </ImpactCard>
+        </div>
+      )}
+      {showBusinessOverview && !loading && !priorityAction && (
+        <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
+          <p className="text-sm text-[var(--text-2)]">Tout est à jour pour le moment.</p>
         </div>
       )}
 
@@ -2452,22 +2467,30 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} />
-              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} />
-              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} />
+              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} onClick={() => goToCommercialFilter('calls')} />
+              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} onClick={() => goToCommercialFilter('followups')} />
             </div>
+            <p className="mt-2 text-xs text-[var(--text-3)]">Cliquer pour filtrer le suivi commercial</p>
             <div className="mt-4 space-y-2">
-              {todayTasks.slice(0, 4).map((task) => {
+              {todayTasks.slice(0, 5).map((task) => {
                 const project = allProjects.find((p) => p.id === task.projectId);
+                const amount = project ? projectValue(project) : 0;
+                const amountLabel = amount > 0
+                  ? task.type === 'followUp' || task.type === 'email'
+                    ? `${formatCurrency(amount)} en attente`
+                    : `Budget estime ${formatCurrency(amount)}`
+                  : null;
                 return (
                   <button
                     key={task.id}
                     onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
                     className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
                       <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                      {amountLabel && <p className="text-xs text-green-400">{amountLabel}</p>}
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
                       {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
@@ -2475,7 +2498,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </button>
                 );
               })}
+              {todayTasks.length === 0 && (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--text-1)]">Aucune action urgente pour le moment.</p>
+                  <p className="mt-1 text-xs text-[var(--text-2)]">Les prochains dossiers a traiter apparaitront ici.</p>
+                </div>
+              )}
             </div>
+            {todayTasks.length > 0 && (
+              <button
+                onClick={() => setDashboardMode('commercial')}
+                className="mt-3 text-sm font-semibold text-[var(--accent)] hover:underline"
+              >
+                Voir toutes les actions
+              </button>
+            )}
           </div>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
