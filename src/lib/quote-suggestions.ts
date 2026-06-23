@@ -195,3 +195,36 @@ export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggest
 
   return lines.slice(0, MAX_SUGGESTIONS)
 }
+
+// Structure de brouillon cote front (Mission "prefill quote draft") : permet
+// de transformer des suggestions en lignes exploitables par le formulaire de
+// devis existant, sans jamais inventer de prix metier. Seul le deplacement
+// peut porter un montant suggere. Tout reste modifiable/supprimable par
+// l'artisan avant tout enregistrement.
+export type QuoteDraftLine = {
+  label: string
+  description?: string
+  quantity?: number
+  unit?: string
+  unitPrice?: number | null
+  amount?: number | null
+  source?: 'trade' | 'project' | 'travel' | 'generic'
+  optional?: boolean
+}
+
+export function getQuoteDraftStorageKey(projectId: string): string {
+  return `kadria:quoteDraft:${projectId}`
+}
+
+export function toQuoteDraftLines(lines: QuoteSuggestionLine[]): QuoteDraftLine[] {
+  return lines.map((line) => ({
+    label: line.label,
+    description: line.label,
+    quantity: 1,
+    unit: 'u',
+    unitPrice: line.suggestedAmount ?? null,
+    amount: line.suggestedAmount ?? null,
+    source: line.source,
+    optional: line.optional,
+  }))
+}

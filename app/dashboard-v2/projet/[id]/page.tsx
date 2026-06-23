@@ -23,7 +23,7 @@ import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendat
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
-import { getQuoteSuggestions } from '@/src/lib/quote-suggestions';
+import { getQuoteSuggestions, toQuoteDraftLines, getQuoteDraftStorageKey } from '@/src/lib/quote-suggestions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -1978,6 +1978,42 @@ function ProjectDetail() {
                         </div>
                       ))}
                     </div>
+                    <button
+                      onClick={() => {
+                        if (!canQuote) {
+                          openUpgradeModal('quoteGeneration');
+                          return;
+                        }
+                        if (!legalComplete) return;
+                        try {
+                          sessionStorage.setItem(
+                            getQuoteDraftStorageKey(id as string),
+                            JSON.stringify(toQuoteDraftLines(quoteSuggestions)),
+                          );
+                        } catch {
+                          // sessionStorage indisponible : pas bloquant, le formulaire s'ouvrira vide.
+                        }
+                        router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                      }}
+                      disabled={!legalComplete && canQuote}
+                      title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
+                      style={{
+                        marginTop: '10px',
+                        width: '100%',
+                        background: 'transparent',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '8px 14px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: 'var(--text-2)',
+                        cursor: !canQuote || legalComplete ? 'pointer' : 'not-allowed',
+                        opacity: !canQuote || legalComplete ? 1 : 0.4,
+                      }}
+                    >
+                      {!canQuote && <Lock size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
+                      Utiliser ces suggestions dans un devis
+                    </button>
                   </div>
                 )}
 

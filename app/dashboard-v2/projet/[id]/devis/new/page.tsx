@@ -7,6 +7,7 @@ import { Button } from '@/src/components/ui/button';
 import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Lock, Plus, Trash2, X, XCircle } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { getQuoteDraftStorageKey, type QuoteDraftLine } from '@/src/lib/quote-suggestions';
 
 interface ArtisanConfig {
   companyName: string;
@@ -99,6 +100,7 @@ function NewDevis() {
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
   const canQuote = hasFeature(plan, 'quoteGeneration');
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
+  const [prefilledFromSuggestions, setPrefilledFromSuggestions] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -162,9 +164,42 @@ function NewDevis() {
           setDateValidite(addDays(new Date().toISOString().slice(0, 10), config.devisValidite || 90));
           setConditionsPaiement(config.devisConditionsPaiement || '');
           setMentionsLegales(config.devisMentionLegale || '');
-          setLines((prev) =>
-            prev.map((l) => ({ ...l, tvaRate: config.devisTvaDefaut || 10 }))
-          );
+
+          // Brouillon prerempli depuis les suggestions Kadria (fiche projet) :
+          // simple aide front, jamais persistee tant que l'artisan n'a pas
+          // valide le devis. Lu une seule fois puis supprime du storage.
+          let appliedDraft = false;
+          try {
+            const draftKey = getQuoteDraftStorageKey(projetId);
+            const rawDraft = sessionStorage.getItem(draftKey);
+            if (rawDraft) {
+              const draftLines = JSON.parse(rawDraft) as QuoteDraftLine[];
+              if (Array.isArray(draftLines) && draftLines.length > 0) {
+                setLines(
+                  draftLines.map((d) => ({
+                    id: makeLineId(),
+                    type: 'item',
+                    description: d.label,
+                    quantity: d.quantity ?? 1,
+                    unit: d.unit || 'u',
+                    unitPrice: d.unitPrice ?? 0,
+                    tvaRate: config.devisTvaDefaut || 10,
+                  }))
+                );
+                appliedDraft = true;
+                setPrefilledFromSuggestions(true);
+              }
+              sessionStorage.removeItem(draftKey);
+            }
+          } catch {
+            // sessionStorage indisponible : pas bloquant, formulaire reste vide/par defaut.
+          }
+
+          if (!appliedDraft) {
+            setLines((prev) =>
+              prev.map((l) => ({ ...l, tvaRate: config.devisTvaDefaut || 10 }))
+            );
+          }
         } else {
           setConfigError(configData.error || 'Erreur lors du chargement de la configuration.');
           console.error('[DEVIS NEW] Config error:', configData.error);
@@ -694,6 +729,20 @@ function NewDevis() {
             </div>
           </div>
 
+          {prefilledFromSuggestions && (
+            <div style={{
+              background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(34,197,94,0.25)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              marginBottom: '12px',
+              color: '#a1a1aa',
+              fontSize: '12px',
+            }}>
+              Suggestions Kadria à vérifier et adapter avant envoi.
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {lines.map((line, index) => (
               <div
@@ -780,6 +829,11 @@ function NewDevis() {
                           value={line.unitPrice}
                           onChange={(e) => updateLine(line.id, { unitPrice: Number(e.target.value) })}
                         />
+                        {prefilledFromSuggestions && (
+                          <p style={{ color: line.unitPrice > 0 ? '#22c55e' : '#71717a', fontSize: '11px', margin: '4px 0 0' }}>
+                            {line.unitPrice > 0 ? 'Montant suggéré' : 'Prix à compléter'}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label style={labelStyle}>TVA %</label>
