@@ -114,7 +114,7 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
-type DashboardMode = 'value' | 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
+type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks';
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -209,15 +209,6 @@ function getProjectAnalysisFor(project: Project, artisanTrades?: string[]) {
 
 export function opportunityScore(project: Project, artisanTrades?: string[]): number {
   return getProjectAnalysisFor(project, artisanTrades).score;
-}
-
-// Mention courte du fit metier pour les cartes d'opportunites — null si
-// aucun metier configure ou si la correspondance n'est pas determinable
-// (pour ne pas surcharger l'affichage avec un signal peu informatif).
-function getOpportunityTradeFitLabel(project: Project, artisanTrades?: string[]): string | null {
-  const tradeFit = getProjectAnalysisFor(project, artisanTrades).tradeFit;
-  if (!tradeFit || tradeFit.status === 'uncertain') return null;
-  return tradeFit.status === 'good' ? 'Bon fit métier' : 'Hors métier possible';
 }
 
 function parseBudget(budgetStr: string): number {
@@ -1364,9 +1355,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     : primaryHotLead
       ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
       : '';
-  const isOverviewTab = dashboardMode === 'all';
   const showValueOverview = dashboardMode === 'value';
-  const showBusinessOverview = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showBusinessOverview = dashboardMode === 'commercial';
   const showTasksOverview = dashboardMode === 'tasks';
   const showCommercialWorkspace = dashboardMode === 'commercial';
   const showClientsWorkspace = dashboardMode === 'clients';
@@ -1462,21 +1452,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   ];
 
   // --- Vue "Valeur générée par Kadria" — calculs V1 sans nouvelle API ---
+  // Règles métriques figées : CA potentiel = tous les projets sauf Gagné/Perdu ;
+  // CA gagné = projets Gagné + devis acceptés (acceptedAt), sans double comptage ;
+  // devis acceptés = acceptedAt renseigné (avec fallback statut Gagné, seul signal
+  // disponible sur les projets tant que le détail des devis n'est pas chargé ici).
   const projectValue = (p: Project) => p.devisAmount || parseBudget(p.budget || '');
-  const wonProjects = allProjects.filter((p) => p.status === 'Gagné');
-  const openValueProjects = allProjects.filter((p) => p.status !== 'Gagné' && p.status !== 'Perdu');
+  const isAcceptedValueProject = (p: Project) => p.status === 'Gagné' || Boolean(p.acceptedAt);
+  const wonProjects = allProjects.filter(isAcceptedValueProject);
+  const openValueProjects = allProjects.filter((p) => !isAcceptedValueProject(p) && p.status !== 'Perdu');
   const valueCaEnCours = openValueProjects.reduce((sum, p) => sum + projectValue(p), 0);
   const valueCaGagne = wonProjects.reduce((sum, p) => sum + projectValue(p), 0);
   const valueDevisEnvoyesCount = allProjects.filter((p) => p.status === 'Devis envoyé').length;
   const valueDevisAcceptesCount = wonProjects.length;
-  const valueDevisTotalForConversion = valueDevisEnvoyesCount + valueDevisAcceptesCount;
-  const valueTauxConversion = valueDevisTotalForConversion > 0
-    ? (valueDevisAcceptesCount / valueDevisTotalForConversion) * 100
+  const valueTauxConversion = valueDevisEnvoyesCount > 0
+    ? (valueDevisAcceptesCount / valueDevisEnvoyesCount) * 100
     : null;
   const valueNouveauxCount = pipelineSteps.find((s) => s.label === 'Nouveau')?.value || 0;
   const valueARappelerCount = pipelineSteps.find((s) => s.label === 'À rappeler')?.value || 0;
   const valueARelancerCount = pipelineSteps.find((s) => s.label === 'A relancer')?.value || 0;
 
+  // Alerte "devis sans réponse" V1 : seuil fixe (10 jours) défini dans
+  // getProjectRiskStatus. À terme, ce seuil devra être configurable par artisan.
   const staleQuoteProjects = allProjects.filter((p) => {
     const risk = getProjectRiskStatus(p);
     return risk.status === 'followUp' && risk.reason.startsWith('Devis envoye');
@@ -1631,8 +1627,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 }}
               >
                 {[
-                  { mode: 'value' as const, label: 'Valeur generee' },
-                  { mode: 'all' as const, label: 'Vue complete' },
+                  { mode: 'value' as const, label: 'Valeur générée' },
                   { mode: 'commercial' as const, label: 'Suivi commercial' },
                   { mode: 'calendar' as const, label: 'Calendrier' },
                   { mode: 'clients' as const, label: 'Mes clients' },
@@ -1723,8 +1718,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: 'auto' }}>
             {[
-              { mode: 'value' as const, label: 'Valeur generee' },
-              { mode: 'all' as const, label: 'Vue complete' },
+              { mode: 'value' as const, label: 'Valeur générée' },
               { mode: 'commercial' as const, label: 'Suivi commercial' },
               { mode: 'calendar' as const, label: 'Calendrier' },
               { mode: 'clients' as const, label: 'Mes clients' },
@@ -1994,161 +1988,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {/* Bloc unique "À traiter maintenant" — vue complète uniquement */}
-      {isOverviewTab && !loading && (
-        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5 lg:flex-[70] lg:basis-[70%]">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
-                <p className="mt-1 text-sm text-[var(--text-2)]">Vos priorités du jour, condensées.</p>
-              </div>
-
-              <button
-                onClick={() => setDashboardMode('tasks')}
-                className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
-              >
-                Voir toutes les tâches
-              </button>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <ActionSummary
-                icon={PhoneCall}
-                label="appels à effectuer"
-                value={taskCounts.call || 0}
-                onClick={() => goToCommercialFilter('calls')}
-              />
-              <ActionSummary
-                icon={FolderOpen}
-                label="devis à envoyer"
-                value={taskCounts.quote || 0}
-                onClick={() => goToCommercialFilter('quotes')}
-              />
-              <ActionSummary
-                icon={Mail}
-                label="relances à faire"
-                value={(taskCounts.followUp || 0) + (taskCounts.email || 0)}
-                onClick={() => goToCommercialFilter('followups')}
-              />
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {todayTasks.slice(0, 3).map((task) => {
-                const project = allProjects.find((p) => p.id === task.projectId);
-                return (
-                  <button
-                    key={task.id}
-                    onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
-                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
-                      <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
-                    </div>
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
-                      {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
-                    </span>
-                  </button>
-                );
-              })}
-              {todayTasks.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucune action urgente pour le moment.</p>}
-            </div>
-          </div>
-
-          <div className="lg:flex-[30] lg:basis-[30%]" ref={monthlyUsageSectionRef}>
-            <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
-          </div>
-        </div>
-      )}
-
-      {/* Signal prioritaire — vue complète uniquement, masqué si rien de fort */}
-      {isOverviewTab && !loading && primaryHotLead && (
-        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <Bell className="h-4 w-4 shrink-0 text-green-400" />
-            <p className="truncate text-sm text-[var(--text-1)]">
-              <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
-              {primaryHotLeadName} - {primaryHotLeadReason}
-            </p>
-          </div>
-          <button
-            onClick={() => router.push(`/dashboard-v2/projet/${primaryHotLead.id}`)}
-            className="w-full rounded-lg border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-dim)] sm:w-auto"
-          >
-            Voir
-          </button>
-        </div>
-      )}
-
-      {/* Opportunités prioritaires compactes — vue complète uniquement */}
-      {isOverviewTab && !loading && topOpportunities.length > 0 && (
-        <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
-          <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-bold text-[var(--text-1)]">Opportunités prioritaires</p>
-                <p className="mt-1 text-xs text-[var(--text-2)]">Top 3 dossiers à rappeler en premier.</p>
-              </div>
-              <button
-                onClick={() => setDashboardMode('commercial')}
-                className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] hover:border-green-500/25 sm:w-auto"
-              >
-                Voir le suivi commercial
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {canAccessFeature('topAiOpportunities') ? topOpportunities.slice(0, 3).map((project, index) => {
-                const score = opportunityScore(project, artisanTrades);
-                const badge = getOpportunityBadge(score);
-                const tradeFitLabel = getOpportunityTradeFitLabel(project, artisanTrades);
-                return (
-                  <button
-                    key={project.id}
-                    onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-                    className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold shrink-0">#{index + 1}</span>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Dossier'}</p>
-                        <p className="truncate text-xs text-[var(--text-2)]">{project.projectType || project.trade || 'Projet'} - {project.city || 'Ville non renseignee'}</p>
-                        {tradeFitLabel && (
-                          <p className="truncate text-[11px] text-[var(--text-3)]">{tradeFitLabel}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className="rounded-full border px-2.5 py-1 text-xs font-semibold"
-                        style={{ color: badge.color, background: badge.bg, borderColor: badge.border }}
-                      >
-                        {badge.label}
-                      </span>
-                      <span className="text-green-400 font-bold text-sm">{score}/100</span>
-                    </div>
-                  </button>
-                );
-              }) : (
-                <button
-                  type="button"
-                  onClick={() => openUpgradeModal('topAiOpportunities')}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left"
-                >
-                  <span className="text-sm text-[var(--text-2)]">Opportunités prioritaires verrouillées</span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-2)]">
-                    <Lock className="h-3 w-3 text-green-500" />
-                    Performance
-                  </span>
-                </button>
-              )}
-            </div>
-          </div>
-        </FeatureGate>
-      )}
-
-      {!isOverviewTab && showBusinessOverview && (
+      {showBusinessOverview && (
         <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
           {!loading && (
             <FeatureGate
@@ -2226,7 +2066,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {!isOverviewTab && showBusinessOverview && !loading && primaryHotLead && (
+      {showBusinessOverview && !loading && primaryHotLead && (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Bell className="h-4 w-4 shrink-0 text-green-400" />
