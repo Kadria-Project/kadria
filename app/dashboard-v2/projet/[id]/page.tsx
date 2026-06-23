@@ -977,20 +977,16 @@ function ProjectDetail() {
           </div>
         </div>
 
-        <div style={
-          analysis.temperature === 'hot'
-            ? impactCardStyle({ overflow: 'hidden' })
-            : {
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '16px',
-                overflow: 'hidden',
-              }
-        }>
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: analysis.temperature === 'hot' ? '1px solid rgba(34,197,94,0.18)' : '1px solid var(--border)',
+          borderRadius: '16px',
+          overflow: 'hidden',
+        }}>
           {/* Header avec badge température + score */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: analysis.temperature === 'hot' ? '1px solid var(--impact-border)' : '1px solid var(--border)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
@@ -998,9 +994,9 @@ function ProjectDetail() {
             gap: isMobile ? '10px' : 0,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '16px' }}>✦</span>
+              <span style={{ fontSize: '16px', color: 'var(--accent)' }}>✦</span>
               <span style={{
-                color: analysis.temperature === 'hot' ? 'var(--impact-text)' : 'var(--accent)',
+                color: 'var(--text-1)',
                 fontWeight: 700,
                 fontSize: '14px',
                 letterSpacing: '0.02em'
@@ -1010,7 +1006,7 @@ function ProjectDetail() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{
-                color: analysis.temperature === 'hot' ? 'var(--impact-text-soft)' : 'var(--text-2)',
+                color: 'var(--text-2)',
                 fontSize: '12px',
                 fontWeight: 600,
               }}>
@@ -1074,7 +1070,8 @@ function ProjectDetail() {
           {/* Recommandation principale + CTA */}
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
-            background: 'rgba(34, 197, 94, 0.05)',
+            background: 'var(--bg-hover)',
+            borderLeft: '2px solid var(--accent)',
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             gap: '12px',
@@ -1187,7 +1184,7 @@ function ProjectDetail() {
           {/* Résumé structuré */}
           <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <p style={{
-              color: 'var(--accent)',
+              color: 'var(--text-3)',
               fontSize: '10px',
               fontWeight: 700,
               letterSpacing: '0.1em',
