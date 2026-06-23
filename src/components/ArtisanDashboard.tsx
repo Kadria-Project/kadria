@@ -1497,16 +1497,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       projectId: project.id,
     });
   };
-  staleQuoteProjects.forEach((p) => pushValueAction(
-    p,
-    'Devis sans réponse',
-    `Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
-  ));
+  const canSeeAdvancedValueDashboard = canAccessFeature('advancedValueDashboard');
+  // Alertes/opportunités avancées (devis sans réponse, opportunités chaudes) réservées Performance+.
+  if (canSeeAdvancedValueDashboard) {
+    staleQuoteProjects.forEach((p) => pushValueAction(
+      p,
+      'Devis sans réponse',
+      `Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
+    ));
+  }
   quotesProjects.forEach((p) => pushValueAction(p, 'Devis à envoyer', 'Dossier prêt à être chiffré'));
   todayCallbacks.forEach((p) => pushValueAction(p, "Rappel prévu aujourd'hui", 'Rappel programmé ce jour'));
-  uncontactedHotLeads.forEach((p) => pushValueAction(p, 'Opportunité chaude', getHotLeadMessage(p)));
+  if (canSeeAdvancedValueDashboard) {
+    uncontactedHotLeads.forEach((p) => pushValueAction(p, 'Opportunité chaude', getHotLeadMessage(p)));
+  }
   incompleteValueProjects.forEach((p) => pushValueAction(p, 'Dossier incomplet', 'Informations manquantes à compléter'));
-  const topValueActions = valueActions.slice(0, 5);
+  const topValueActions = valueActions.slice(0, canSeeAdvancedValueDashboard ? 5 : 3);
 
   const qualifiedValueCount = allProjects.filter((p) => Number(p.completenessScore || 0) >= 100).length;
   const handledFollowUpsValueCount = allProjects.filter((p) => p.lastFollowUpAt).length;
@@ -1819,7 +1825,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               { label: 'Dossiers captés', value: String(allProjects.length), icon: FolderOpen, borderColor: '#2563eb' },
               { label: 'Devis envoyés', value: String(valueDevisEnvoyesCount), icon: Send, borderColor: '#7c3aed' },
               { label: 'Devis acceptés', value: String(valueDevisAcceptesCount), icon: CheckCircle, borderColor: '#22c55e' },
-              { label: 'Taux de conversion', value: valueTauxConversion !== null ? `${valueTauxConversion.toFixed(1)}%` : '—', icon: Target, borderColor: '#d97706' },
+              ...(canSeeAdvancedValueDashboard
+                ? [{ label: 'Taux de conversion', value: valueTauxConversion !== null ? `${valueTauxConversion.toFixed(1)}%` : '—', icon: Target, borderColor: '#d97706' }]
+                : []),
             ].map((card) => (
               <div
                 key={card.label}
@@ -1844,8 +1852,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
               <ActionSummary icon={Send} label="devis à envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
               <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
-              <ActionSummary icon={Bell} label="opportunités chaudes" value={hotLeads.length} onClick={() => setDashboardMode('commercial')} />
+              {canSeeAdvancedValueDashboard && (
+                <>
+                  <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
+                  <ActionSummary icon={Bell} label="opportunités chaudes" value={hotLeads.length} onClick={() => setDashboardMode('commercial')} />
+                </>
+              )}
             </div>
           </div>
 
@@ -1899,20 +1911,39 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </p>
             </div>
 
-            {valueSourceCounts.length > 0 && (
+            {canSeeAdvancedValueDashboard ? (
+              valueSourceCounts.length > 0 && (
+                <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-green-400" />
+                    <p className="text-base font-bold text-[var(--text-1)]">Sources des demandes</p>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {valueSourceCounts.map((s) => (
+                      <div key={s.label} className="flex items-center justify-between text-sm">
+                        <span className="text-[var(--text-2)]">{s.label}</span>
+                        <span className="font-semibold text-[var(--text-1)]">{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : (
               <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
                 <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-green-400" />
-                  <p className="text-base font-bold text-[var(--text-1)]">Sources des demandes</p>
+                  <Lock className="h-4 w-4 text-green-400" />
+                  <p className="text-base font-bold text-[var(--text-1)]">Analyse avancée disponible avec Performance</p>
                 </div>
-                <div className="mt-3 space-y-2">
-                  {valueSourceCounts.map((s) => (
-                    <div key={s.label} className="flex items-center justify-between text-sm">
-                      <span className="text-[var(--text-2)]">{s.label}</span>
-                      <span className="font-semibold text-[var(--text-1)]">{s.count}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="mt-2 text-sm text-[var(--text-2)]">
+                  Kadria suit déjà les principaux indicateurs de votre activité. Identifiez vos sources les plus rentables, vos devis sans réponse et les opportunités à plus fort potentiel en passant à Performance.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('advancedValueDashboard')}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
+                >
+                  Passer à Performance
+                </button>
               </div>
             )}
           </div>

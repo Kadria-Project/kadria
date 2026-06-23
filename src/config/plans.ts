@@ -153,6 +153,11 @@ export const FEATURE_DEFINITIONS = {
     description: 'Catalogue reutilisable de prestations pour accelerer les devis.',
     requiredPlan: 'performance',
   },
+  advancedValueDashboard: {
+    label: 'Analyse avancee de la valeur generee',
+    description: 'Sources detaillees, opportunites avancees, alertes intelligentes et temps gagne detaille.',
+    requiredPlan: 'performance',
+  },
   teamWorkspace: {
     label: 'Fonctionnalites equipe',
     description: 'Usage avance pour structures multi-collaborateurs.',
@@ -230,6 +235,7 @@ export const PLAN_FEATURES = {
     'voiceAssistant',
     'prioritySupport',
     'pricingCatalog',
+    'advancedValueDashboard',
   ],
   agency: [
     'assistantWeb',
@@ -262,6 +268,7 @@ export const PLAN_FEATURES = {
     'voiceAssistant',
     'prioritySupport',
     'pricingCatalog',
+    'advancedValueDashboard',
     'teamWorkspace',
     'whiteLabel',
     'apiAccess',
