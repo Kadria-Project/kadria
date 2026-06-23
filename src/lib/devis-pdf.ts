@@ -1,5 +1,7 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, RGB } from 'pdf-lib'
 import type { DevisRecord, getArtisanConfig } from '@/src/lib/airtable'
+import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceMention } from '@/src/lib/devis-legal'
+import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 
 type ArtisanConfig = Awaited<ReturnType<typeof getArtisanConfig>>
 
@@ -178,17 +180,32 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   w.y = headerTop + 20 * 1.3 + 20
 
   const emetteurNom = config?.raisonSociale || config?.companyName || ''
-  const emetteurAdresse = [config?.adressePro, [config?.cpPro, config?.villePro].filter(Boolean).join(' ')]
-    .filter(Boolean)
-    .join(', ')
+  const emetteurAdresse = formatFullAddress({ address: config?.adressePro, postalCode: config?.cpPro, city: config?.villePro })
+
+  const quoteSettings = (config?.businessConfig as { quoteSettings?: QuoteCommercialSettings } | undefined)?.quoteSettings
+  const pricingMention = getPricingMention(quoteSettings)
+  const vatExemptionMention = getVatExemptionMention(quoteSettings?.vatMode)
+  const insuranceMention = getInsuranceMention({
+    ...quoteSettings,
+    insuranceCompany: quoteSettings?.insuranceCompany || config?.assureur,
+    insurancePolicyNumber: quoteSettings?.insurancePolicyNumber || config?.numAssurance,
+  }) || (!config?.assuranceNonRequise && config?.assureur
+    ? `Assurance : ${config.assureur}${config.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
+    : null)
 
   const leftStartY = w.y
   w.drawAt('ARTISAN', MARGIN, leftStartY - 14, CONTENT_WIDTH, 8, fontBold, TEXT_MUTED)
   w.text(emetteurNom, fontBold, 10, TEXT_DARK)
+  if (config?.formeJuridique) w.text(config.formeJuridique, fontRegular, 9, TEXT_MUTED)
   if (emetteurAdresse) w.text(emetteurAdresse, fontRegular, 9, TEXT_MUTED)
   if (config?.siret) w.text(`SIRET : ${config.siret}`, fontRegular, 9, TEXT_MUTED)
-  if (config?.tvaAssujetti && config?.tvaNumber) w.text(`TVA : ${config.tvaNumber}`, fontRegular, 9, TEXT_MUTED)
+  if (vatExemptionMention) {
+    w.text(vatExemptionMention, fontRegular, 9, TEXT_MUTED)
+  } else if (config?.tvaAssujetti && config?.tvaNumber) {
+    w.text(`TVA : ${config.tvaNumber}`, fontRegular, 9, TEXT_MUTED)
+  }
   if (config?.phone) w.text(`Tél : ${config.phone}`, fontRegular, 9, TEXT_MUTED)
+  if (config?.email) w.text(`Email : ${config.email}`, fontRegular, 9, TEXT_MUTED)
   const leftHeight = w.y - leftStartY
 
   // Devis meta — top right
@@ -196,6 +213,9 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   rightHeight += w.drawAt(`Devis ${devis.devisNumber}`, MARGIN, headerTop, CONTENT_WIDTH, 16, fontBold, TEXT_DARK, 'right')
   rightHeight += w.drawAt(`Date d'émission : ${formatDate(devis.dateEmission)}`, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
   rightHeight += w.drawAt(`Valide jusqu'au : ${formatDate(devis.dateValidite)}`, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
+  if (pricingMention) {
+    rightHeight += w.drawAt(pricingMention, MARGIN, headerTop + rightHeight, CONTENT_WIDTH, 9, fontRegular, TEXT_MUTED, 'right')
+  }
 
   w.y = Math.max(leftStartY + leftHeight, headerTop + rightHeight) + 16
 
@@ -210,6 +230,12 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   if (devis.clientAddress) w.text(devis.clientAddress, fontRegular, 9, TEXT_MUTED)
   if (devis.clientEmail) w.text(`Email : ${devis.clientEmail}`, fontRegular, 9, TEXT_MUTED)
   if (devis.clientPhone) w.text(`Téléphone : ${devis.clientPhone}`, fontRegular, 9, TEXT_MUTED)
+
+  if (devis.clientAddress) {
+    w.y += 14
+    w.text('LIEU D\'EXÉCUTION', fontBold, 8, TEXT_MUTED)
+    w.text(devis.clientAddress, fontRegular, 9, TEXT_DARK)
+  }
 
   if (devis.objet) {
     w.y += 20
@@ -288,11 +314,16 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   w.drawAt(formatEuro(devis.totalHT), totalsX + totalsWidth - 80, w.y, 80, 10, fontRegular, TEXT_MUTED, 'right')
   w.y += 10 * 1.3
 
-  for (const [rate, amount] of Object.entries(tvaBreakdown)) {
-    if (!amount || amount <= 0) continue
-    w.drawAt(`TVA (${rate}%)`, totalsX, w.y, totalsWidth - 80, 10, fontRegular, TEXT_MUTED)
-    w.drawAt(formatEuro(amount), totalsX + totalsWidth - 80, w.y, 80, 10, fontRegular, TEXT_MUTED, 'right')
-    w.y += 10 * 1.3
+  if (vatExemptionMention) {
+    w.drawAt(vatExemptionMention, totalsX, w.y, totalsWidth, 9, fontRegular, TEXT_MUTED)
+    w.y += 9 * 1.3
+  } else {
+    for (const [rate, amount] of Object.entries(tvaBreakdown)) {
+      if (!amount || amount <= 0) continue
+      w.drawAt(`TVA (${rate}%)`, totalsX, w.y, totalsWidth - 80, 10, fontRegular, TEXT_MUTED)
+      w.drawAt(formatEuro(amount), totalsX + totalsWidth - 80, w.y, 80, 10, fontRegular, TEXT_MUTED, 'right')
+      w.y += 10 * 1.3
+    }
   }
 
   w.y += 4
@@ -324,12 +355,8 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
     const h = w.drawAt(devis.delaiExecution, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
     w.y += Math.max(h, 9 * 1.3) + 4
   }
-  if (!config?.assuranceNonRequise && config?.assureur) {
-    const label = 'Assurance : '
-    const labelWidth = fontBold.widthOfTextAtSize(label, 9)
-    const value = `${config.assureur}${config.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
-    w.drawAt(label, MARGIN, w.y, labelWidth, 9, fontBold, TEXT_DARK)
-    const h = w.drawAt(value, MARGIN + labelWidth, w.y, CONTENT_WIDTH - labelWidth, 9, fontRegular, TEXT_DARK)
+  if (insuranceMention) {
+    const h = w.drawAt(insuranceMention, MARGIN, w.y, CONTENT_WIDTH, 9, fontRegular, TEXT_DARK)
     w.y += Math.max(h, 9 * 1.3) + 4
   }
 

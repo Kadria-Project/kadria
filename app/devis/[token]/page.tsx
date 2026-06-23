@@ -380,6 +380,7 @@ export default function PublicDevisPage() {
             <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>
               En cliquant sur &quot;J&apos;accepte ce devis&quot;, vous confirmez avoir lu et accepté les conditions ci-dessus.
               Cette acceptation a valeur contractuelle conformément à l&apos;article 1366 du Code civil.
+              En acceptant ce devis, vous confirmez votre accord sur le montant, les conditions et les prestations décrites.
             </p>
             <button
               onClick={handleAccept}

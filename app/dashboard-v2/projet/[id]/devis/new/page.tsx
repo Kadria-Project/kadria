@@ -8,6 +8,7 @@ import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Loc
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { getQuoteDraftStorageKey, templateToQuoteDraftLines, type QuoteDraftLine, type QuoteDraftPayload, type ArtisanQuoteTemplate, type ArtisanServiceCatalogItem, type QuoteCommercialSettings } from '@/src/lib/quote-suggestions';
+import { formatFullAddress } from '@/src/lib/devis-legal';
 
 interface ArtisanConfig {
   companyName: string;
@@ -237,7 +238,7 @@ function NewDevis() {
         if (projectData.success) {
           const p = projectData.project as ProjectData;
           setClientName(`${p.clientFirstName || ''} ${p.clientName || ''}`.trim());
-          setClientAddress(`${p.siteAddress || ''}${p.postalCode ? ', ' + p.postalCode : ''}${p.city ? ' ' + p.city : ''}`.trim());
+          setClientAddress(formatFullAddress({ address: p.siteAddress, postalCode: p.postalCode, city: p.city }));
           setClientEmail(p.clientEmail || '');
           setClientPhone(p.clientPhone || '');
           setObjet(p.projectType ? `Travaux de ${p.projectType}` : '');
@@ -432,6 +433,27 @@ function NewDevis() {
   }
   if (!clientEmail.trim()) {
     recapAlerts.push('Le client n\'a pas d\'email — l\'envoi par email ne sera pas possible.');
+  }
+  if (itemLinesWithText.length === 0) {
+    recapAlerts.push('Le devis ne contient aucune ligne de prestation.');
+  }
+  if (!clientAddress.trim()) {
+    recapAlerts.push('Aucune adresse client / lieu d\'exécution renseignée.');
+  }
+  if (!artisanConfig?.siret) {
+    recapAlerts.push('SIRET de l\'entreprise manquant.');
+  }
+  if (!artisanConfig?.adressePro) {
+    recapAlerts.push('Adresse de l\'entreprise manquante.');
+  }
+  if (!artisanConfig?.businessConfig?.quoteSettings?.quotePricingType) {
+    recapAlerts.push('Mention "devis gratuit / payant" non renseignée (à compléter dans les paramètres).');
+  }
+  if (!artisanConfig?.assuranceNonRequise && !artisanConfig?.businessConfig?.quoteSettings?.insuranceEnabled && !(artisanConfig?.assureur && artisanConfig?.numAssurance)) {
+    recapAlerts.push('Informations d\'assurance non renseignées.');
+  }
+  if (artisanConfig?.businessConfig?.quoteSettings?.vatMode === 'vat_exempt_293b' && totalTVA > 0) {
+    recapAlerts.push('Incohérence : franchise en base de TVA (art. 293 B) activée mais des lignes de TVA sont présentes.');
   }
 
   const devisNumberPreview = nextDevisNumber || (artisanConfig

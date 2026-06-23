@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, getDevisById } from '@/src/lib/airtable'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
+import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceMention } from '@/src/lib/devis-legal'
+import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 
 interface DevisLine {
   type: 'item' | 'section'
@@ -62,9 +64,19 @@ export async function GET(
   }
 
   const emetteurNom = config?.raisonSociale || config?.companyName || ''
-  const emetteurAdresse = [config?.adressePro, [config?.cpPro, config?.villePro].filter(Boolean).join(' ')]
-    .filter(Boolean)
-    .join(', ')
+  const emetteurAdresse = formatFullAddress({ address: config?.adressePro, postalCode: config?.cpPro, city: config?.villePro })
+
+  const quoteSettings = (config?.businessConfig as { quoteSettings?: QuoteCommercialSettings } | undefined)?.quoteSettings
+  const pricingMention = getPricingMention(quoteSettings)
+  const vatExemptionMention = getVatExemptionMention(quoteSettings?.vatMode)
+  const insuranceMention = getInsuranceMention({
+    ...quoteSettings,
+    insuranceCompany: quoteSettings?.insuranceCompany || config?.assureur,
+    insurancePolicyNumber: quoteSettings?.insurancePolicyNumber || config?.numAssurance,
+  }) || (config?.assuranceNonRequise === false && config?.assureur
+    ? `Assurance : ${config.assureur}${config?.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
+    : null)
+  const sameAsClient = !!devis.clientAddress
 
   const linesHtml = lines
     .map((line) => {
@@ -177,10 +189,12 @@ export async function GET(
       <div class="logo"><span class="k">K</span>adria</div>
       <div class="company">
         <strong>${emetteurNom}</strong><br/>
+        ${config?.formeJuridique ? `${config.formeJuridique}<br/>` : ''}
         ${emetteurAdresse}<br/>
         ${config?.siret ? `SIRET : ${config.siret}<br/>` : ''}
-        ${config?.tvaAssujetti && config?.tvaNumber ? `TVA : ${config.tvaNumber}<br/>` : ''}
-        ${config?.phone ? `Tél : ${config.phone}` : ''}
+        ${vatExemptionMention ? `${vatExemptionMention}<br/>` : (config?.tvaAssujetti && config?.tvaNumber ? `TVA : ${config.tvaNumber}<br/>` : '')}
+        ${config?.phone ? `Tél : ${config.phone}<br/>` : ''}
+        ${config?.email ? `Email : ${config.email}` : ''}
       </div>
     </div>
     <div class="devis-meta">
@@ -189,6 +203,7 @@ export async function GET(
       <div class="field-value">${formatDate(devis.dateEmission)}</div>
       <div class="field-label">Valide jusqu'au</div>
       <div class="field-value">${formatDate(devis.dateValidite)}</div>
+      ${pricingMention ? `<div class="field-label">${pricingMention}</div>` : ''}
     </div>
   </div>
 
@@ -199,16 +214,20 @@ export async function GET(
       <div class="field-value">${devis.clientName || '—'}</div>
     </div>
     <div class="field">
-      <div class="field-label">Adresse du chantier</div>
-      <div class="field-value">${devis.clientAddress || '—'}</div>
-    </div>
-    <div class="field">
       <div class="field-label">Email</div>
       <div class="field-value">${devis.clientEmail || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Téléphone</div>
       <div class="field-value">${devis.clientPhone || '—'}</div>
+    </div>
+  </div>
+
+  <h2>Lieu d'exécution</h2>
+  <div class="grid">
+    <div class="field">
+      <div class="field-label">Adresse du chantier</div>
+      <div class="field-value">${sameAsClient ? devis.clientAddress : '—'}</div>
     </div>
   </div>
 
@@ -236,7 +255,7 @@ export async function GET(
         <span>Total HT</span>
         <span>${formatEuro(devis.totalHT)}</span>
       </div>
-      ${tvaBreakdownHtml}
+      ${vatExemptionMention ? `<div class="total-row"><span>${vatExemptionMention}</span></div>` : tvaBreakdownHtml}
       <div class="total-row ttc">
         <span>Total TTC</span>
         <span>${formatEuro(devis.totalTTC)}</span>
@@ -248,7 +267,7 @@ export async function GET(
   <div class="conditions">
     ${devis.conditionsPaiement ? `<p><strong>Conditions de paiement :</strong> ${devis.conditionsPaiement}</p>` : ''}
     ${devis.delaiExecution ? `<p><strong>Délai d'exécution :</strong> ${devis.delaiExecution}</p>` : ''}
-    ${config?.assuranceNonRequise === false && config?.assureur ? `<p><strong>Assurance :</strong> ${config.assureur}${config?.numAssurance ? ` — N° ${config.numAssurance}` : ''}</p>` : ''}
+    ${insuranceMention ? `<p><strong>${insuranceMention}</strong></p>` : ''}
   </div>
 
   ${devis.mentionsLegales ? `<div class="footer">${devis.mentionsLegales}</div>` : ''}

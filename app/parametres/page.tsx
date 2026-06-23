@@ -1523,6 +1523,66 @@ export default function ParametresPage() {
                       </div>
                     </div>
                   )}
+
+                  {!config.assuranceNonRequise && (
+                    <>
+                      <label style={checkboxRowStyle}>
+                        <input
+                          type="checkbox"
+                          checked={!!config.businessConfig?.quoteSettings?.insuranceEnabled}
+                          onChange={e => setConfig(c => ({
+                            ...c,
+                            businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig?.quoteSettings, insuranceEnabled: e.target.checked } },
+                          }))}
+                        />
+                        Afficher le détail de l&apos;assurance (type, activités couvertes, zone) sur les devis
+                      </label>
+
+                      {config.businessConfig?.quoteSettings?.insuranceEnabled && (
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                          <div>
+                            <label style={labelStyle}>Type d&apos;assurance</label>
+                            <select
+                              value={config.businessConfig?.quoteSettings?.insuranceType || 'decennale'}
+                              onChange={e => setConfig(c => ({
+                                ...c,
+                                businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig?.quoteSettings, insuranceType: e.target.value as 'rc_pro' | 'decennale' | 'rc_pro_decennale' } },
+                              }))}
+                              style={inputStyle}
+                            >
+                              <option value="decennale">Assurance décennale</option>
+                              <option value="rc_pro">Responsabilité civile professionnelle</option>
+                              <option value="rc_pro_decennale">RC professionnelle et décennale</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={labelStyle}>Zone géographique couverte</label>
+                            <input
+                              value={config.businessConfig?.quoteSettings?.insuranceGeographicCoverage || ''}
+                              onChange={e => setConfig(c => ({
+                                ...c,
+                                businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig?.quoteSettings, insuranceGeographicCoverage: e.target.value } },
+                              }))}
+                              placeholder="France métropolitaine"
+                              style={inputStyle}
+                            />
+                          </div>
+                          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                            <label style={labelStyle}>Activités couvertes</label>
+                            <input
+                              value={config.businessConfig?.quoteSettings?.insuranceCoveredActivities || ''}
+                              onChange={e => setConfig(c => ({
+                                ...c,
+                                businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig?.quoteSettings, insuranceCoveredActivities: e.target.value } },
+                              }))}
+                              placeholder="Plomberie, chauffage, ..."
+                              style={inputStyle}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -2201,7 +2261,7 @@ export default function ParametresPage() {
                     style={inputStyle}
                   />
                 </div>
-                <div>
+                <div style={{ marginBottom: '14px' }}>
                   <label style={labelStyle}>Notes / mentions par défaut</label>
                   <input
                     value={config.businessConfig.quoteSettings.defaultNotes || ''}
@@ -2212,6 +2272,69 @@ export default function ParametresPage() {
                     placeholder="Prix valable selon les informations transmises."
                     style={inputStyle}
                   />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Régime de TVA des devis</label>
+                    <select
+                      value={config.businessConfig.quoteSettings.vatMode || 'vat_applicable'}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, vatMode: e.target.value as 'vat_applicable' | 'vat_exempt_293b' } },
+                      }))}
+                      style={inputStyle}
+                    >
+                      <option value="vat_applicable">TVA applicable</option>
+                      <option value="vat_exempt_293b">Franchise en base de TVA (art. 293 B du CGI)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Le devis est-il facturé ?</label>
+                    <select
+                      value={config.businessConfig.quoteSettings.quotePricingType || 'free'}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, quotePricingType: e.target.value as 'free' | 'paid' } },
+                      }))}
+                      style={inputStyle}
+                    >
+                      <option value="free">Devis gratuit</option>
+                      <option value="paid">Devis payant</option>
+                    </select>
+                  </div>
+                  {config.businessConfig.quoteSettings.quotePricingType === 'paid' && (
+                    <>
+                      <div>
+                        <label style={labelStyle}>Montant du devis (€ TTC)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={config.businessConfig.quoteSettings.quoteFeeAmountTTC ?? ''}
+                          onChange={e => setConfig(c => ({
+                            ...c,
+                            businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, quoteFeeAmountTTC: e.target.value === '' ? null : Number(e.target.value) } },
+                          }))}
+                          placeholder="50"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <label style={checkboxRowStyle}>
+                          <input
+                            type="checkbox"
+                            checked={!!config.businessConfig.quoteSettings.quoteFeeDeductible}
+                            onChange={e => setConfig(c => ({
+                              ...c,
+                              businessConfig: { ...c.businessConfig, quoteSettings: { ...c.businessConfig.quoteSettings, quoteFeeDeductible: e.target.checked } },
+                            }))}
+                          />
+                          Déductible du montant des travaux si accepté
+                        </label>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

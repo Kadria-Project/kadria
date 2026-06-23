@@ -80,6 +80,19 @@ export type QuoteCommercialSettings = {
   defaultDepositPercent?: number | null
   defaultNotes?: string
   defaultEstimatedDelay?: string
+  // Mission "quote legal compliance for France" — mention gratuit/payant.
+  quotePricingType?: 'free' | 'paid'
+  quoteFeeAmountTTC?: number | null
+  quoteFeeDeductible?: boolean
+  // Regime de TVA applicable par defaut aux devis de l'artisan.
+  vatMode?: 'vat_applicable' | 'vat_exempt_293b'
+  // Assurance professionnelle / decennale a afficher sur le devis.
+  insuranceEnabled?: boolean
+  insuranceType?: 'rc_pro' | 'decennale' | 'rc_pro_decennale'
+  insuranceCompany?: string
+  insurancePolicyNumber?: string
+  insuranceCoveredActivities?: string
+  insuranceGeographicCoverage?: string
 }
 
 export interface QuoteSuggestionBusinessConfig {
