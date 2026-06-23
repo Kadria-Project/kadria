@@ -63,6 +63,14 @@ export function getDefaultConsumption(vehicleType: VehicleType): number {
   return DEFAULT_CONSUMPTION_PER_100KM[vehicleType]
 }
 
+// V1 has no routing API, so the straight-line (Haversine) distance is
+// majored by a flat factor to better approximate a real road trip.
+export const ROAD_DISTANCE_CORRECTION_FACTOR = 1.1
+
+export function estimateRoadDistanceKm(haversineKm: number): number {
+  return haversineKm * ROAD_DISTANCE_CORRECTION_FACTOR
+}
+
 // Haversine distance (km) — straight-line estimate, not a routed distance.
 export function haversineDistanceKm(
   lat1: number,
@@ -82,14 +90,16 @@ export function haversineDistanceKm(
 }
 
 export function calculateTravelCost(
-  distanceKm: number,
+  rawHaversineDistanceKm: number,
   travelConfig: TravelConfig
 ): TravelCostResult | null {
-  if (!Number.isFinite(distanceKm) || distanceKm < 0) return null
+  if (!Number.isFinite(rawHaversineDistanceKm) || rawHaversineDistanceKm < 0) return null
 
   const vehicleType = travelConfig.vehicleType
   if (!vehicleType) return null
 
+  // Majorée pour se rapprocher d'un trajet réel (pas de routing API en V1).
+  const distanceKm = estimateRoadDistanceKm(rawHaversineDistanceKm)
   const distanceKmAR = distanceKm * 2
 
   if (travelConfig.customCostPerKm !== undefined && Number.isFinite(travelConfig.customCostPerKm)) {

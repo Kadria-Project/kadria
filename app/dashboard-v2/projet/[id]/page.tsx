@@ -1239,7 +1239,7 @@ function ProjectDetail() {
                   </div>
                 </div>
                 <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
-                  Estimation indicative à vol d&apos;oiseau (distance routière non disponible).
+                  Distance géographique majorée de 10 %.
                 </p>
               </>
             );
