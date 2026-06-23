@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getArtisanConfig, updateArtisanConfig } from '@/src/lib/airtable'
+import { getArtisanConfig, updateArtisanConfig, getUserByArtisanIdentifier, updateUser } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
 
 export async function GET() {
@@ -11,8 +11,19 @@ export async function GET() {
         { status: 401 }
       )
     }
-    const config = await getArtisanConfig(session.artisanId)
-    return NextResponse.json({ success: true, config })
+    const [config, user] = await Promise.all([
+      getArtisanConfig(session.artisanId),
+      getUserByArtisanIdentifier(session.artisanId),
+    ])
+    return NextResponse.json({
+      success: true,
+      config: config && {
+        ...config,
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+        email: user?.email || '',
+      },
+    })
   } catch (error) {
     console.error('[CONFIG GET]', error)
     return NextResponse.json(
@@ -98,6 +109,16 @@ export async function PATCH(request: NextRequest) {
     console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
 
     await updateArtisanConfig(session.artisanId, fields)
+
+    // Identité (table Users) — champs distincts de Artisan_config
+    const userFields: Record<string, unknown> = {}
+    if (body.firstName !== undefined) userFields['first_name'] = body.firstName
+    if (body.lastName !== undefined) userFields['last_name'] = body.lastName
+    if (body.email !== undefined) userFields['email'] = body.email
+    if (Object.keys(userFields).length > 0) {
+      await updateUser(session.artisanId, userFields)
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CONFIG PATCH]', error)

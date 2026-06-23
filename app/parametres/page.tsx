@@ -122,7 +122,13 @@ export default function ParametresPage() {
   const [saved, setSaved] = useState(false)
   const [config, setConfig] = useState({
     companyName: '',
+    firstName: '',
+    lastName: '',
+    email: '',
     primaryTrade: '',
+    serviceArea: '',
+    interventionRadius: 0,
+    notificationEmail: '',
     phone: '',
     address: '',
     hours: '',
@@ -171,7 +177,13 @@ export default function ParametresPage() {
         if (data.success && data.config) {
           setConfig({
             companyName: data.config.companyName || '',
+            firstName: data.config.firstName || '',
+            lastName: data.config.lastName || '',
+            email: data.config.email || '',
             primaryTrade: data.config.primaryTrade || '',
+            serviceArea: data.config.serviceArea || '',
+            interventionRadius: data.config.interventionRadius || 0,
+            notificationEmail: data.config.notificationEmail || '',
             phone: data.config.phone || '',
             address: data.config.address || '',
             hours: data.config.hours || '',
@@ -538,6 +550,36 @@ export default function ParametresPage() {
                       </select>
                     </div>
                   </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Prénom</label>
+                      <input
+                        value={config.firstName}
+                        onChange={e => setConfig(c => ({ ...c, firstName: e.target.value }))}
+                        placeholder="Jean"
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Nom</label>
+                      <input
+                        value={config.lastName}
+                        onChange={e => setConfig(c => ({ ...c, lastName: e.target.value }))}
+                        placeholder="Martin"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Email</label>
+                    <input
+                      type="email"
+                      value={config.email}
+                      onChange={e => setConfig(c => ({ ...c, email: e.target.value }))}
+                      placeholder="jean@martin-renovation.fr"
+                      style={inputStyle}
+                    />
+                  </div>
                   <div>
                     <label style={labelStyle}>URL du logo</label>
                     <input
@@ -565,6 +607,34 @@ export default function ParametresPage() {
                       value={config.websiteUrl}
                       onChange={e => setConfig(c => ({ ...c, websiteUrl: e.target.value }))}
                       placeholder="https://monsite.fr"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Zone d&apos;intervention
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Zone d&apos;intervention</label>
+                    <input
+                      value={config.serviceArea}
+                      onChange={e => setConfig(c => ({ ...c, serviceArea: e.target.value }))}
+                      placeholder="Paris et proche banlieue"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Rayon d&apos;intervention (km)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={config.interventionRadius}
+                      onChange={e => setConfig(c => ({ ...c, interventionRadius: Number(e.target.value) }))}
+                      placeholder="30"
                       style={inputStyle}
                     />
                   </div>
@@ -822,6 +892,25 @@ export default function ParametresPage() {
                       style={inputStyle}
                     />
                   </div>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Notifications
+                </h3>
+                <div>
+                  <label style={labelStyle}>Email de notification</label>
+                  <input
+                    type="email"
+                    value={config.notificationEmail}
+                    onChange={e => setConfig(c => ({ ...c, notificationEmail: e.target.value }))}
+                    placeholder="contact@martin-renovation.fr"
+                    style={inputStyle}
+                  />
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                    Adresse utilisée pour recevoir les notifications de nouveaux dossiers et devis.
+                  </p>
                 </div>
               </div>
             </div>

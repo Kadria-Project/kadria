@@ -24,7 +24,6 @@ const STEPS = [
   { id: 'metier', label: 'Métier & zone', icon: '🛠️' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'devis', label: 'Devis', icon: '📋' },
-  { id: 'vocal', label: 'Assistant vocal', icon: '📞' },
   { id: 'widget', label: 'Widget', icon: '🎨' },
   { id: 'fin', label: 'Finalisation', icon: '✅' },
 ] as const
@@ -53,8 +52,6 @@ interface OnboardingConfig {
   devisValidite: number
   devisTvaDefaut: number
   devisConditionsPaiement: string
-  vapiEnabled: boolean
-  vapiGreeting: string
   primaryColor: string
   secondaryColor: string
   welcomeName: string
@@ -81,8 +78,6 @@ const EMPTY_CONFIG: OnboardingConfig = {
   devisValidite: 90,
   devisTvaDefaut: 10,
   devisConditionsPaiement: '',
-  vapiEnabled: false,
-  vapiGreeting: '',
   primaryColor: '#22c55e',
   secondaryColor: '#18181b',
   welcomeName: '',
@@ -134,8 +129,6 @@ export default function OnboardingPage() {
             devisValidite: c.devisValidite || 90,
             devisTvaDefaut: c.devisTvaDefaut || 10,
             devisConditionsPaiement: c.devisConditionsPaiement || '',
-            vapiEnabled: !!c.vapiEnabled,
-            vapiGreeting: c.vapiGreeting || '',
             primaryColor: c.primaryColor || '#22c55e',
             secondaryColor: c.secondaryColor || '#18181b',
             welcomeName: c.welcomeName || '',
@@ -357,7 +350,7 @@ export default function OnboardingPage() {
             </h2>
             <p style={{ color: 'var(--text-2)', fontSize: '14px', lineHeight: 1.7, margin: 0 }}>
               En quelques étapes, configurons votre espace : entreprise, métier, zone d&apos;intervention,
-              notifications, devis, assistant vocal et widget. Vous pourrez revenir modifier ces réglages
+              notifications, devis et widget. Vous pourrez revenir modifier ces réglages
               à tout moment depuis votre dashboard.
             </p>
           </div>
@@ -573,38 +566,6 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step.id === 'vocal' && (
-          <div style={sectionCard}>
-            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>📞 Assistant vocal</h3>
-            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
-              Disponible dès l&apos;offre Essentiel (10 appels/mois inclus). L&apos;assistant vocal qualifie
-              vos prospects par téléphone et crée automatiquement le dossier dans Kadria.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <label style={checkboxRowStyle}>
-                <input
-                  type="checkbox"
-                  checked={config.vapiEnabled}
-                  onChange={e => setConfig(c => ({ ...c, vapiEnabled: e.target.checked }))}
-                />
-                Activer l&apos;assistant vocal
-              </label>
-              {config.vapiEnabled && (
-                <div>
-                  <label style={labelStyle}>Message d&apos;accueil de l&apos;assistant</label>
-                  <textarea
-                    value={config.vapiGreeting}
-                    onChange={e => setConfig(c => ({ ...c, vapiGreeting: e.target.value }))}
-                    placeholder="Bonjour, vous êtes en contact avec Martin Rénovation, comment puis-je vous aider ?"
-                    rows={3}
-                    style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {step.id === 'widget' && (
           <div style={sectionCard}>
             <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🎨 Widget pour votre site</h3>
@@ -663,7 +624,6 @@ export default function OnboardingPage() {
                 { label: 'Métier & zone d\'intervention', done: !!config.primaryTrade },
                 { label: 'Notifications', done: !!config.notificationEmail },
                 { label: 'Préférences devis', done: !!config.devisPrefixe },
-                { label: 'Assistant vocal', done: config.vapiEnabled },
                 { label: 'Widget', done: true },
               ].map(item => (
                 <li key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-2)', fontSize: '13px' }}>
