@@ -1,27 +1,13 @@
+import { TRADE_TAXONOMIES } from '@/src/config/trade-taxonomy'
+
 export interface TradeOption {
   value: string
   label: string
 }
 
-export const ARTISAN_TRADES: TradeOption[] = [
-  { value: 'plombier', label: 'Plombier' },
-  { value: 'chauffagiste', label: 'Chauffagiste' },
-  { value: 'electricien', label: 'Électricien' },
-  { value: 'paysagiste', label: 'Paysagiste' },
-  { value: 'terrassier', label: 'Terrassier' },
-  { value: 'menuisier', label: 'Menuisier' },
-  { value: 'macon', label: 'Maçon' },
-  { value: 'peintre', label: 'Peintre' },
-  { value: 'plaquiste', label: 'Plaquiste' },
-  { value: 'couvreur', label: 'Couvreur' },
-  { value: 'serrurier', label: 'Serrurier' },
-  { value: 'carreleur', label: 'Carreleur' },
-  { value: 'pisciniste', label: 'Pisciniste' },
-  { value: 'climatisation', label: 'Climatisation' },
-  { value: 'domotique', label: 'Domotique' },
-  { value: 'multiservices', label: 'Multiservices / homme toutes mains' },
-  { value: 'autre', label: 'Autre' },
-]
+// Liste courte d'affichage, dérivée de la taxonomie métier enrichie
+// (src/config/trade-taxonomy.ts) pour éviter deux sources de vérité.
+export const ARTISAN_TRADES: TradeOption[] = TRADE_TAXONOMIES.map(t => ({ value: t.value, label: t.label }))
 
 const ARTISAN_TRADE_VALUES = new Set(ARTISAN_TRADES.map(t => t.value))
 
