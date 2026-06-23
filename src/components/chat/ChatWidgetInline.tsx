@@ -8,6 +8,7 @@ interface Dossier {
   clientFirstName?: string; clientName?: string
   clientPhone?: string; clientEmail?: string
   siteAddress?: string; city?: string; postalCode?: string
+  latitude?: number; longitude?: number
   trade?: string; projectType?: string; budget?: string
   desiredTimeline?: string; maturity?: string; aiSummary?: string
   photos?: { url: string; publicId: string }[]
@@ -51,7 +52,7 @@ function renderMarkdown(text: string): string {
 }
 
 // ─── Address autocomplete ─────────────────────────────────────────────────────
-interface AdresseSuggestion { label: string; city: string; postcode: string }
+interface AdresseSuggestion { label: string; city: string; postcode: string; latitude: number | null; longitude: number | null }
 
 async function fetchAdresses(q: string): Promise<AdresseSuggestion[]> {
   if (q.length < 3) return []
@@ -63,6 +64,8 @@ async function fetchAdresses(q: string): Promise<AdresseSuggestion[]> {
     label: f.properties.label,
     city: f.properties.city,
     postcode: f.properties.postcode,
+    longitude: f.geometry?.coordinates?.[0] ?? null,
+    latitude: f.geometry?.coordinates?.[1] ?? null,
   }))
 }
 
@@ -608,6 +611,8 @@ export default function ChatWidgetInline({
                           siteAddress: s.label,
                           city: s.city,
                           postalCode: s.postcode,
+                          latitude: s.latitude ?? undefined,
+                          longitude: s.longitude ?? undefined,
                         }))
                         sendMessage(s.label)
                       }}

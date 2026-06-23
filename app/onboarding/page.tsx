@@ -65,6 +65,7 @@ interface OnboardingConfig {
     vehicleType: VehicleType | ''
     consumptionPer100Km: number | undefined
     chargingType: ChargingType
+    originAddress: string | undefined
     originLat: number | undefined
     originLng: number | undefined
   }
@@ -100,6 +101,7 @@ const EMPTY_CONFIG: OnboardingConfig = {
     vehicleType: '',
     consumptionPer100Km: undefined,
     chargingType: 'maison',
+    originAddress: undefined,
     originLat: undefined,
     originLng: undefined,
   },
@@ -163,6 +165,7 @@ export default function OnboardingPage() {
               vehicleType: (c.travelConfig?.vehicleType || '') as VehicleType | '',
               consumptionPer100Km: c.travelConfig?.consumptionPer100Km,
               chargingType: (c.travelConfig?.chargingType || 'maison') as ChargingType,
+              originAddress: c.travelConfig?.originAddress || c.address || undefined,
               originLat: c.travelConfig?.originLat,
               originLng: c.travelConfig?.originLng,
             },
@@ -464,8 +467,10 @@ export default function OnboardingPage() {
                     adressePro: selection.address,
                     cpPro: selection.postalCode || c.cpPro,
                     villePro: selection.city || c.villePro,
+                    address: selection.address,
                     travelConfig: {
                       ...c.travelConfig,
+                      originAddress: selection.address,
                       originLat: selection.latitude ?? c.travelConfig.originLat,
                       originLng: selection.longitude ?? c.travelConfig.originLng,
                     },
@@ -473,6 +478,9 @@ export default function OnboardingPage() {
                   placeholder="12 rue de la Paix, 75001 Paris"
                   style={inputStyle}
                 />
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                  Sélectionnez une suggestion de l&apos;autocomplete pour permettre le calcul des frais de déplacement.
+                </p>
               </div>
             </div>
           </div>

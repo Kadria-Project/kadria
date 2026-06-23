@@ -163,6 +163,7 @@ export default function ParametresPage() {
       vehicleType: '' as VehicleType | '',
       consumptionPer100Km: undefined as number | undefined,
       chargingType: 'maison' as ChargingType,
+      originAddress: undefined as string | undefined,
       originLat: undefined as number | undefined,
       originLng: undefined as number | undefined,
     },
@@ -230,6 +231,7 @@ export default function ParametresPage() {
               vehicleType: (data.config.travelConfig?.vehicleType || '') as VehicleType | '',
               consumptionPer100Km: data.config.travelConfig?.consumptionPer100Km,
               chargingType: (data.config.travelConfig?.chargingType || 'maison') as ChargingType,
+              originAddress: data.config.travelConfig?.originAddress || data.config.address || undefined,
               originLat: data.config.travelConfig?.originLat,
               originLng: data.config.travelConfig?.originLng,
             },
@@ -958,10 +960,22 @@ export default function ParametresPage() {
                     <AddressAutocomplete
                       value={config.address}
                       onChange={value => setConfig(c => ({ ...c, address: value }))}
-                      onSelect={selection => setConfig(c => ({ ...c, address: selection.address }))}
+                      onSelect={selection => setConfig(c => ({
+                        ...c,
+                        address: selection.address,
+                        travelConfig: {
+                          ...c.travelConfig,
+                          originAddress: selection.address,
+                          originLat: selection.latitude ?? c.travelConfig.originLat,
+                          originLng: selection.longitude ?? c.travelConfig.originLng,
+                        },
+                      }))}
                       placeholder="12 rue de la Paix, 75001 Paris"
                       style={inputStyle}
                     />
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Sélectionnez une suggestion de l&apos;autocomplete pour permettre le calcul des frais de déplacement.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1085,11 +1099,6 @@ export default function ParametresPage() {
                         adressePro: selection.address,
                         cpPro: selection.postalCode || c.cpPro,
                         villePro: selection.city || c.villePro,
-                        travelConfig: {
-                          ...c.travelConfig,
-                          originLat: selection.latitude ?? c.travelConfig.originLat,
-                          originLng: selection.longitude ?? c.travelConfig.originLng,
-                        },
                       }))}
                       placeholder="12 rue de la Paix"
                       style={inputStyle}

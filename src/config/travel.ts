@@ -47,6 +47,7 @@ export interface TravelConfig {
   consumptionPer100Km?: number
   chargingType?: ChargingType
   customCostPerKm?: number
+  originAddress?: string
   originLat?: number
   originLng?: number
 }

@@ -197,6 +197,7 @@ function ProjectDetail() {
     siret?: string;
     raisonSociale?: string;
     adressePro?: string;
+    address?: string;
     assuranceNonRequise?: boolean;
     assureur?: string;
     numAssurance?: string;
@@ -206,6 +207,7 @@ function ProjectDetail() {
       consumptionPer100Km?: number;
       chargingType?: string;
       customCostPerKm?: number;
+      originAddress?: string;
       originLat?: number;
       originLng?: number;
     };
@@ -1160,19 +1162,49 @@ function ProjectDetail() {
             </div>
           ) : (() => {
             const travelConfig = artisanConfig?.travelConfig;
+            const originAddress = travelConfig?.originAddress || artisanConfig?.address;
             const originLat = travelConfig?.originLat;
             const originLng = travelConfig?.originLng;
+            const siteAddress = project?.siteAddress;
             const destLat = project?.latitude;
             const destLng = project?.longitude;
-            if (
-              originLat === undefined || originLng === undefined ||
-              destLat === null || destLat === undefined ||
-              destLng === null || destLng === undefined ||
-              !travelConfig?.vehicleType
-            ) {
+
+            // Cas 1 : adresse artisan absente
+            if (!originAddress) {
               return (
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse insuffisante pour estimer le déplacement.
+                  Adresse professionnelle manquante dans vos paramètres.
+                </p>
+              );
+            }
+            // Cas 2 : adresse artisan présente mais coordonnées absentes
+            if (originLat === undefined || originLng === undefined) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse professionnelle renseignée, mais non géocodée. Sélectionnez-la via l&apos;autocomplete dans Paramètres.
+                </p>
+              );
+            }
+            // Cas 3 : adresse chantier absente
+            if (!siteAddress) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse chantier manquante sur le dossier.
+                </p>
+              );
+            }
+            // Cas 4 : adresse chantier présente mais coordonnées absentes
+            if (destLat === null || destLat === undefined || destLng === null || destLng === undefined) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse chantier renseignée, mais coordonnées GPS manquantes. Les nouveaux dossiers doivent utiliser l&apos;adresse suggérée par l&apos;autocomplete.
+                </p>
+              );
+            }
+            if (!travelConfig?.vehicleType) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Motorisation non renseignée dans vos paramètres.
                 </p>
               );
             }
@@ -1186,7 +1218,7 @@ function ProjectDetail() {
             if (!result) {
               return (
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse insuffisante pour estimer le déplacement.
+                  Impossible de calculer le déplacement.
                 </p>
               );
             }
