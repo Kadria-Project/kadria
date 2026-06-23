@@ -1155,7 +1155,7 @@ function ProjectDetail() {
           {!canTravelCost ? (
             <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
               <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                Distance aller-retour et coût de déplacement estimé.
+                Distance aller, aller-retour et coût de déplacement estimé (vol d&apos;oiseau).
               </p>
             </div>
           ) : (() => {
@@ -1172,7 +1172,7 @@ function ProjectDetail() {
             ) {
               return (
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse manquante pour calculer le déplacement.
+                  Adresse insuffisante pour estimer le déplacement.
                 </p>
               );
             }
@@ -1186,25 +1186,30 @@ function ProjectDetail() {
             if (!result) {
               return (
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Impossible de calculer le déplacement pour le moment.
+                  Adresse insuffisante pour estimer le déplacement.
                 </p>
               );
             }
             return (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                  <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller (estimation)</p>
-                  <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKm.toFixed(1)} km</p>
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKm.toFixed(1)} km</p>
+                  </div>
+                  <div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKmAR.toFixed(1)} km</p>
+                  </div>
+                  <div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé ({result.energyLabel})</p>
+                    <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>{result.cost.toFixed(2)} €</p>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
-                  <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKmAR.toFixed(1)} km</p>
-                </div>
-                <div>
-                  <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé ({result.energyLabel})</p>
-                  <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>{result.cost.toFixed(2)} €</p>
-                </div>
-              </div>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
+                  Estimation indicative à vol d&apos;oiseau (distance routière non disponible).
+                </p>
+              </>
             );
           })()}
           {!canTravelCost && (
