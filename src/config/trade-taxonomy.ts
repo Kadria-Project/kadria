@@ -1,3 +1,5 @@
+export type GenericIntent = 'entretien' | 'depannage' | 'installation' | 'renovation' | 'creation' | 'reparation'
+
 export type TradeTaxonomy = {
   value: string
   label: string
@@ -8,6 +10,7 @@ export type TradeTaxonomy = {
   goodFitSignals: string[]
   riskSignals: string[]
   quoteItems: string[]
+  intentQuickReplies?: Partial<Record<GenericIntent, string[]>>
 }
 
 const GENERIC_FALLBACK: TradeTaxonomy = {
@@ -26,6 +29,14 @@ const GENERIC_FALLBACK: TradeTaxonomy = {
   goodFitSignals: ['photos disponibles', 'adresse précise', 'budget indiqué', 'délai réaliste'],
   riskSignals: ['demande très floue', 'budget absent', 'adresse imprécise', 'projet non défini'],
   quoteItems: ['déplacement', 'main d’œuvre', 'fournitures'],
+  intentQuickReplies: {
+    entretien: ['Entretien général', 'Petite révision'],
+    depannage: ['Panne / dysfonctionnement', 'Besoin urgent'],
+    installation: ['Nouvelle installation', 'Équipement à poser'],
+    renovation: ['Rénovation partielle', 'Rénovation complète'],
+    creation: ['Création / aménagement'],
+    reparation: ['Réparation ponctuelle'],
+  },
 }
 
 export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
@@ -45,6 +56,14 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['photos disponibles', 'adresse précise', 'budget indiqué', 'équipement identifié', 'délai réaliste'],
     riskSignals: ['demande très floue', 'budget absent', 'adresse imprécise', 'urgence hors zone', 'intervention très faible valeur'],
     quoteItems: ['déplacement', 'recherche de fuite', 'remplacement robinetterie', 'pose équipement', 'main d’œuvre', 'fournitures'],
+    intentQuickReplies: {
+      entretien: ['Chauffe-eau / cumulus', 'Robinetterie', 'Canalisations', 'WC / sanitaires'],
+      depannage: ['Fuite d’eau', 'Canalisation bouchée', 'Chauffe-eau en panne', 'WC ne fonctionne plus'],
+      installation: ['Chauffe-eau / cumulus', 'Robinetterie', 'WC / sanitaires', 'Salle de bain complète'],
+      renovation: ['Salle de bain', 'Cuisine', 'Réseau de canalisations', 'Robinetterie'],
+      creation: ['Salle de bain', 'Point d’eau', 'Réseau de canalisations'],
+      reparation: ['Fuite d’eau', 'Robinetterie', 'Chauffe-eau', 'Canalisation'],
+    },
   },
   {
     value: 'chauffagiste',
@@ -62,6 +81,14 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['budget indiqué', 'photos disponibles', 'installation existante identifiée', 'délai réaliste'],
     riskSignals: ['budget absent', 'demande très floue', 'installation très ancienne non décrite', 'adresse imprécise'],
     quoteItems: ['déplacement', 'diagnostic panne', 'remplacement pièce', 'pose chaudière', 'main d’œuvre', 'fournitures'],
+    intentQuickReplies: {
+      entretien: ['Chaudière', 'Pompe à chaleur', 'Radiateurs', 'Plancher chauffant'],
+      depannage: ['Panne de chaudière', 'Plus de chauffage', 'Pompe à chaleur en panne', 'Radiateur froid'],
+      installation: ['Chaudière', 'Pompe à chaleur', 'Plancher chauffant', 'Radiateurs'],
+      renovation: ['Remplacement chaudière', 'Réseau de chauffage', 'Radiateurs', 'Plancher chauffant'],
+      creation: ['Chaudière', 'Pompe à chaleur', 'Plancher chauffant'],
+      reparation: ['Chaudière', 'Radiateur', 'Pompe à chaleur', 'Plancher chauffant'],
+    },
   },
   {
     value: 'electricien',
@@ -79,6 +106,14 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['photos disponibles', 'tableau accessible', 'budget indiqué', 'délai réaliste'],
     riskSignals: ['budget absent', 'installation très vétuste non décrite', 'adresse imprécise', 'demande très floue'],
     quoteItems: ['déplacement', 'diagnostic électrique', 'remplacement tableau', 'pose prise/éclairage', 'main d’œuvre', 'fournitures'],
+    intentQuickReplies: {
+      entretien: ['Tableau électrique', 'Prises / interrupteurs', 'Éclairage', 'Mise aux normes'],
+      depannage: ['Panne / coupure', 'Disjoncteur qui saute', 'Prise / interrupteur défectueux', 'Court-circuit'],
+      installation: ['Tableau électrique', 'Prises / éclairage', 'Domotique', 'Mise aux normes'],
+      renovation: ['Tableau électrique', 'Réseau complet', 'Prises / éclairage', 'Mise aux normes'],
+      creation: ['Tableau électrique', 'Prises / éclairage', 'Domotique'],
+      reparation: ['Panne / coupure', 'Tableau électrique', 'Prise / interrupteur', 'Éclairage'],
+    },
   },
   {
     value: 'paysagiste',
@@ -96,6 +131,14 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['surface connue', 'photos disponibles', 'budget indiqué', 'projet planifié'],
     riskSignals: ['budget absent', 'surface inconnue', 'projet flou', 'accès très contraint non décrit'],
     quoteItems: ['déplacement', 'préparation terrain', 'plantation', 'engazonnement', 'main d’œuvre', 'fournitures'],
+    intentQuickReplies: {
+      entretien: ['Pelouse', 'Haies', 'Élagage', 'Nettoyage extérieur'],
+      depannage: ['Arbre/branche dangereux', 'Système d’arrosage en panne', 'Terrain à remettre en état'],
+      installation: ['Système d’arrosage', 'Clôture / haie', 'Engazonnement'],
+      renovation: ['Aménagement extérieur', 'Pelouse', 'Massifs et plantations'],
+      creation: ['Espace vert', 'Plantation', 'Engazonnement'],
+      reparation: ['Système d’arrosage', 'Clôture', 'Allée / terrain'],
+    },
   },
   {
     value: 'terrassier',
@@ -113,6 +156,12 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['surface connue', 'plan ou photos disponibles', 'budget indiqué', 'accès engins possible'],
     riskSignals: ['budget absent', 'accès engins impossible non anticipé', 'projet flou', 'terrain non décrit'],
     quoteItems: ['déplacement engins', 'terrassement', 'évacuation gravats', 'nivellement', 'main d’œuvre'],
+    intentQuickReplies: {
+      installation: ['Fondations', 'Tranchée', 'Nivellement'],
+      creation: ['Préparation terrain construction', 'Préparation piscine', 'Nivellement'],
+      renovation: ['Nivellement', 'Remblai / déblai'],
+      reparation: ['Tassement de terrain', 'Tranchée à reprendre'],
+    },
   },
   {
     value: 'menuisier',
@@ -130,6 +179,13 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['dimensions connues', 'photos disponibles', 'budget indiqué', 'projet planifié'],
     riskSignals: ['budget absent', 'dimensions inconnues', 'projet flou', 'demande très ponctuelle isolée'],
     quoteItems: ['déplacement', 'fourniture menuiserie', 'pose', 'finitions', 'main d’œuvre'],
+    intentQuickReplies: {
+      depannage: ['Porte qui ne ferme plus', 'Fenêtre endommagée', 'Volet bloqué'],
+      installation: ['Porte', 'Fenêtre', 'Placard sur mesure', 'Terrasse bois'],
+      renovation: ['Porte', 'Fenêtre', 'Agencement intérieur'],
+      creation: ['Placard sur mesure', 'Terrasse bois', 'Agencement intérieur'],
+      reparation: ['Porte', 'Fenêtre', 'Volet'],
+    },
   },
   {
     value: 'macon',
@@ -147,6 +203,13 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['plan ou photos disponibles', 'surface connue', 'budget indiqué', 'projet planifié'],
     riskSignals: ['budget absent', 'projet flou', 'surface inconnue', 'demande de très petite ampleur isolée'],
     quoteItems: ['déplacement', 'préparation chantier', 'matériaux', 'main d’œuvre', 'finitions'],
+    intentQuickReplies: {
+      depannage: ['Fissure', 'Mur instable', 'Infiltration'],
+      installation: ['Extension', 'Dalle béton', 'Ouverture de mur'],
+      renovation: ['Gros œuvre', 'Mur', 'Fondations'],
+      creation: ['Extension maison', 'Dalle béton', 'Mur'],
+      reparation: ['Fissure', 'Mur', 'Dalle'],
+    },
   },
   {
     value: 'peintre',
@@ -164,6 +227,11 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['surface connue', 'photos disponibles', 'budget indiqué', 'délai réaliste'],
     riskSignals: ['budget absent', 'surface inconnue', 'projet flou', 'demande très partielle isolée'],
     quoteItems: ['déplacement', 'préparation des surfaces', 'peinture', 'finitions', 'main d’œuvre', 'fournitures'],
+    intentQuickReplies: {
+      renovation: ['Peinture intérieure', 'Peinture extérieure', 'Enduit décoratif'],
+      creation: ['Peinture intérieure', 'Décoration murale'],
+      reparation: ['Reprise de peinture', 'Murs endommagés'],
+    },
   },
   {
     value: 'plaquiste',
@@ -181,6 +249,12 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['surface connue', 'plan ou photos disponibles', 'budget indiqué', 'projet planifié'],
     riskSignals: ['budget absent', 'surface inconnue', 'projet flou'],
     quoteItems: ['déplacement', 'matériaux', 'pose', 'finitions', 'main d’œuvre'],
+    intentQuickReplies: {
+      installation: ['Cloison', 'Plafond', 'Isolation intérieure'],
+      renovation: ['Cloison', 'Faux plafond', 'Isolation intérieure'],
+      creation: ['Cloison', 'Plafond'],
+      reparation: ['Plafond endommagé', 'Cloison'],
+    },
   },
   {
     value: 'couvreur',
@@ -198,6 +272,12 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['photos disponibles', 'âge toiture connu', 'budget indiqué', 'accès décrit'],
     riskSignals: ['budget absent', 'accès très difficile non anticipé', 'demande très floue'],
     quoteItems: ['déplacement', 'diagnostic toiture', 'matériaux', 'pose/réparation', 'main d’œuvre'],
+    intentQuickReplies: {
+      entretien: ['Gouttières', 'Démoussage', 'Tuiles'],
+      depannage: ['Fuite toiture', 'Tuiles tombées', 'Gouttière bouchée'],
+      renovation: ['Toiture complète', 'Gouttières', 'Isolation toiture'],
+      reparation: ['Fuite toiture', 'Tuiles', 'Gouttière'],
+    },
   },
   {
     value: 'serrurier',
@@ -215,6 +295,11 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['photos disponibles', 'budget indiqué', 'situation clairement décrite'],
     riskSignals: ['budget absent', 'adresse imprécise', 'demande très floue', 'urgence hors zone'],
     quoteItems: ['déplacement', 'ouverture de porte', 'remplacement serrure', 'main d’œuvre', 'fournitures'],
+    intentQuickReplies: {
+      depannage: ['Porte bloquée', 'Personne enfermée', 'Effraction récente'],
+      installation: ['Porte blindée', 'Nouvelle serrure', 'Sécurisation logement'],
+      reparation: ['Serrure', 'Volet', 'Porte'],
+    },
   },
   {
     value: 'carreleur',
@@ -232,6 +317,12 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['surface connue', 'photos disponibles', 'budget indiqué', 'matériaux déjà choisis'],
     riskSignals: ['budget absent', 'surface inconnue', 'projet flou'],
     quoteItems: ['déplacement', 'préparation support', 'fourniture carrelage', 'pose', 'main d’œuvre'],
+    intentQuickReplies: {
+      installation: ['Sol', 'Faïence murale', 'Salle de bain'],
+      renovation: ['Sol', 'Faïence murale', 'Salle de bain'],
+      creation: ['Sol', 'Faïence murale'],
+      reparation: ['Carrelage fissuré', 'Joints'],
+    },
   },
   {
     value: 'pisciniste',
@@ -249,6 +340,13 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['dimensions connues', 'photos disponibles', 'budget indiqué', 'projet planifié'],
     riskSignals: ['budget absent', 'dimensions inconnues', 'projet flou'],
     quoteItems: ['déplacement', 'diagnostic', 'matériaux/équipement', 'pose/réparation', 'main d’œuvre'],
+    intentQuickReplies: {
+      entretien: ['Filtration', 'Liner', 'Eau du bassin'],
+      depannage: ['Fuite du bassin', 'Eau verte/insalubre', 'Panne filtration'],
+      installation: ['Piscine enterrée', 'Piscine hors-sol', 'Piscine coque'],
+      renovation: ['Liner', 'Filtration', 'Margelles'],
+      creation: ['Piscine enterrée', 'Piscine coque'],
+    },
   },
   {
     value: 'climatisation',
@@ -266,6 +364,12 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['nombre de pièces connu', 'photos disponibles', 'budget indiqué', 'délai réaliste'],
     riskSignals: ['budget absent', 'projet flou', 'installation très ancienne non décrite'],
     quoteItems: ['déplacement', 'diagnostic', 'fourniture unité', 'pose', 'main d’œuvre'],
+    intentQuickReplies: {
+      entretien: ['Climatisation', 'VMC', 'Pompe à chaleur air-air'],
+      depannage: ['Climatisation en panne', 'VMC en panne', 'Fuite de fluide'],
+      installation: ['Climatisation', 'VMC', 'Pompe à chaleur air-air'],
+      renovation: ['Remplacement unité', 'VMC'],
+    },
   },
   {
     value: 'domotique',
@@ -283,6 +387,11 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['équipements listés', 'budget indiqué', 'projet planifié'],
     riskSignals: ['budget absent', 'projet très flou', 'compatibilité matériel inconnue'],
     quoteItems: ['déplacement', 'diagnostic', 'matériel connecté', 'installation/configuration', 'main d’œuvre'],
+    intentQuickReplies: {
+      installation: ['Volets connectés', 'Éclairage connecté', 'Alarme connectée'],
+      depannage: ['Système de sécurité en panne', 'Volets bloqués'],
+      renovation: ['Extension système existant', 'Volets connectés'],
+    },
   },
   {
     value: 'multiservices',
@@ -300,6 +409,12 @@ export const TRADE_TAXONOMIES: TradeTaxonomy[] = [
     goodFitSignals: ['liste des tâches claire', 'photos disponibles', 'budget indiqué'],
     riskSignals: ['budget absent', 'demande très floue', 'liste de tâches non définie'],
     quoteItems: ['déplacement', 'main d’œuvre', 'petites fournitures'],
+    intentQuickReplies: {
+      entretien: ['Entretien général', 'Petites réparations'],
+      depannage: ['Dépannage divers', 'Petite réparation urgente'],
+      installation: ['Montage meuble', 'Petits travaux'],
+      reparation: ['Petites réparations', 'Dépannage divers'],
+    },
   },
   GENERIC_FALLBACK,
 ]
@@ -351,4 +466,23 @@ export function getWorkTypesForTrades(values: string[]): string[] {
 export function getQuoteItemsForTrades(values: string[]): string[] {
   const taxonomies = getTradeTaxonomies(values)
   return dedupeStrings(taxonomies.flatMap(t => t.quoteItems))
+}
+
+const GENERIC_INTENTS: GenericIntent[] = ['entretien', 'depannage', 'installation', 'renovation', 'creation', 'reparation']
+
+export function isGenericIntent(value: string): value is GenericIntent {
+  return GENERIC_INTENTS.includes(value as GenericIntent)
+}
+
+/**
+ * Fusionne les suggestions de quick replies métier pour une intention générique
+ * (ex: "Entretien") à travers tous les métiers déclarés par l'artisan, sans doublons.
+ * Limité à 4 options + "Autre" pour respecter le format quickReplies du chat.
+ */
+export function getIntentQuickRepliesForTrades(values: string[], intent: GenericIntent, limit = 4): string[] {
+  const taxonomies = getTradeTaxonomies(values)
+  const options = dedupeStrings(
+    taxonomies.flatMap(t => t.intentQuickReplies?.[intent] ?? [])
+  )
+  return options.slice(0, limit)
 }

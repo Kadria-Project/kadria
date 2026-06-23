@@ -2,7 +2,22 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { getArtisanConfig } from '@/src/lib/airtable'
 import { normalizeTrades } from '@/src/config/trades'
-import { getTradeTaxonomies, getQualificationQuestionsForTrades, getWorkTypesForTrades } from '@/src/config/trade-taxonomy'
+import {
+  getTradeTaxonomies,
+  getQualificationQuestionsForTrades,
+  getWorkTypesForTrades,
+  getIntentQuickRepliesForTrades,
+  type GenericIntent,
+} from '@/src/config/trade-taxonomy'
+
+const GENERIC_INTENT_LABELS: Record<GenericIntent, string> = {
+  entretien: 'Entretien',
+  depannage: 'Dépannage',
+  installation: 'Installation',
+  renovation: 'Rénovation',
+  creation: 'Création',
+  reparation: 'Réparation',
+}
 
 function buildTradeQualificationContext(trades: string[]): string {
   if (!trades || trades.length === 0) return ''
@@ -25,10 +40,36 @@ function buildTradeQualificationContext(trades: string[]): string {
     lines.push('\nQuestions métier utiles à poser si pertinentes :')
     questions.forEach(q => lines.push(`- ${q}`))
   }
+
+  lines.push('\nPRIORITÉ MÉTIER SUR LES CHOIX GÉNÉRIQUES (RÈGLE OBLIGATOIRE) :')
   lines.push(
-    '\nSi les métiers de l\'artisan sont connus, adapte tes questions aux métiers indiqués.',
-    'Utilise les questions métier comme inspiration, sans toutes les poser d\'un coup.',
-    'Pose une seule question principale à la fois.',
+    'Quand le client choisit ou mentionne une intention générale (Entretien, Dépannage,',
+    'Installation, Rénovation, Création, Réparation, Autre), n\'enchaîne JAMAIS avec une',
+    'question générique (par exemple "intérieur ou extérieur ?"). Pose IMMÉDIATEMENT une',
+    'question adaptée aux métiers de l\'artisan ci-dessus, en proposant comme quickReplies',
+    'les options métier listées ci-dessous pour l\'intention concernée (max 4 + "Autre").',
+    'Ne reste jamais sur une qualification générique si une qualification métier est possible.',
+    'Une seule question à la fois.'
+  )
+
+  let hasIntentOptions = false
+  ;(Object.keys(GENERIC_INTENT_LABELS) as GenericIntent[]).forEach(intent => {
+    const options = getIntentQuickRepliesForTrades(trades, intent, 4)
+    if (options.length > 0) {
+      if (!hasIntentOptions) {
+        lines.push('\nOptions métier par intention générique (à utiliser comme quickReplies) :')
+        hasIntentOptions = true
+      }
+      lines.push(`- ${GENERIC_INTENT_LABELS[intent]} → [${options.map(o => `"${o}"`).join(', ')}, "Autre"]`)
+    }
+  })
+
+  lines.push(
+    '\nSi le client clique "Autre" pour une question métier, ne t\'arrête pas là : demande',
+    'une précision libre ("Pouvez-vous préciser le type de besoin ou l\'équipement concerné ?")',
+    'et conserve la réponse dans tradeAnswers.',
+    'Ne propose jamais de quickReplies hors des métiers déclarés par l\'artisan.',
+    'Si plusieurs métiers sont déclarés, les options ci-dessus sont déjà fusionnées sans doublons.',
     'Reste naturel, concis et orienté qualification.',
     'Si le projet semble hors métier, continue à qualifier poliment mais signale-le dans aiSummary si pertinent.'
   )
@@ -198,6 +239,17 @@ Si après 2 questions le budget reste flou, note dans le dossier une fourchette
 large par défaut basée sur le contexte (métier + ampleur du projet) et continue
 la conversation normalement. Un budget approximatif suffit pour qualifier un
 prospect — la précision excessive nuit à l'expérience client.
+
+PRIORITÉ MÉTIER SUR LES CHOIX GÉNÉRIQUES :
+
+Si une section "ADAPTATION MÉTIER" est fournie plus bas dans ce prompt (métiers
+déclarés par l'artisan), elle est PRIORITAIRE sur les exemples génériques
+ci-dessous. Quand le client choisit une intention générale (Entretien,
+Dépannage, Installation, Rénovation, Création, Réparation, Autre) et que les
+métiers de l'artisan sont connus, n'utilise jamais une question générique
+(ex: "intérieur ou extérieur ?") : pose immédiatement la question et les
+quickReplies métier indiquées dans "ADAPTATION MÉTIER". Si aucun métier n'est
+déclaré pour l'artisan, applique les règles génériques ci-dessous normalement.
 
 QUALIFICATION MÉTIER :
 
