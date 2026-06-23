@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
@@ -132,6 +132,9 @@ export default function OnboardingPage() {
   const [saveError, setSaveError] = useState('')
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [config, setConfig] = useState<OnboardingConfig>(EMPTY_CONFIG)
+  // Conserve les champs de businessConfig non gérés par l'onboarding (ex:
+  // serviceCatalog géré dans /parametres) pour ne jamais les écraser au PATCH.
+  const extraBusinessConfigRef = useRef<Record<string, unknown>>({})
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
   const [copied, setCopied] = useState(false)
 
@@ -195,6 +198,11 @@ export default function OnboardingPage() {
               customRefusedWork: c.businessConfig?.customRefusedWork || '',
             },
           })
+          const fullBusinessConfig = (c.businessConfig && typeof c.businessConfig === 'object' ? c.businessConfig : {}) as Record<string, unknown>
+          const managedKeys = new Set(['acceptedWorkTypes', 'refusedWorkTypes', 'customAcceptedWork', 'customRefusedWork'])
+          extraBusinessConfigRef.current = Object.fromEntries(
+            Object.entries(fullBusinessConfig).filter(([key]) => !managedKeys.has(key))
+          )
           if (c.artisanId) setArtisanIdDisplay(c.artisanId)
           if (c.onboardingCompleted) {
             router.replace('/dashboard-v2')
@@ -277,6 +285,7 @@ export default function OnboardingPage() {
           ...config,
           trades: effectiveTrades,
           interventionRadius: config.interventionRadius === '' ? undefined : Number(config.interventionRadius),
+          businessConfig: { ...extraBusinessConfigRef.current, ...config.businessConfig },
         }),
       })
       const data = await res.json()

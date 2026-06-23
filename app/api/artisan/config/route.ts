@@ -165,7 +165,16 @@ export async function PATCH(request: NextRequest) {
     if (body.travelConfig !== undefined) fields['travel_config'] = body.travelConfig
 
     // Préférences métier (travaux acceptés / à éviter)
-    if (body.businessConfig !== undefined) fields['business_config'] = body.businessConfig
+    // Merge superficiel avec le businessConfig existant : un PATCH partiel
+    // (ex: onboarding qui n'envoie que acceptedWorkTypes/refusedWorkTypes) ne
+    // doit jamais effacer des champs déjà sauvegardés comme serviceCatalog.
+    if (body.businessConfig !== undefined) {
+      const existingConfig = await getArtisanConfig(session.artisanId)
+      const existingBusinessConfig = (existingConfig?.businessConfig && typeof existingConfig.businessConfig === 'object')
+        ? existingConfig.businessConfig as Record<string, unknown>
+        : {}
+      fields['business_config'] = { ...existingBusinessConfig, ...body.businessConfig }
+    }
 
     console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
     console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
