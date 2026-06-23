@@ -66,6 +66,22 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    if (body.businessConfig !== undefined) {
+      const bc = body.businessConfig
+      const isStringArrayOrUndefined = (v: unknown) =>
+        v === undefined || (Array.isArray(v) && v.every(item => typeof item === 'string'))
+      if (
+        typeof bc !== 'object' || bc === null ||
+        !isStringArrayOrUndefined(bc.acceptedWorkTypes) ||
+        !isStringArrayOrUndefined(bc.refusedWorkTypes)
+      ) {
+        return NextResponse.json(
+          { success: false, error: 'businessConfig invalide : acceptedWorkTypes/refusedWorkTypes doivent être des tableaux de chaînes' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config
     const fields: Record<string, unknown> = {}
     if (body.companyName  !== undefined) fields['company_name']     = body.companyName
@@ -124,6 +140,9 @@ export async function PATCH(request: NextRequest) {
 
     // Véhicule & déplacements (Frais de déplacement estimés)
     if (body.travelConfig !== undefined) fields['travel_config'] = body.travelConfig
+
+    // Préférences métier (travaux acceptés / à éviter)
+    if (body.businessConfig !== undefined) fields['business_config'] = body.businessConfig
 
     console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
     console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))

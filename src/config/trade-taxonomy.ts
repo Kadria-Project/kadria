@@ -463,6 +463,19 @@ export function getWorkTypesForTrades(values: string[]): string[] {
   return dedupeStrings(taxonomies.flatMap(t => t.workTypes))
 }
 
+const GENERIC_WORK_TYPES = ['dépannage', 'entretien', 'installation', 'rénovation', 'réparation', 'remplacement', 'urgence', 'devis simple']
+
+/**
+ * Suggère une liste de types de travaux pertinents pour les métiers sélectionnés,
+ * en combinant les workTypes propres à chaque métier avec quelques types génériques
+ * utiles à tout artisan (dépannage, entretien, devis simple, etc).
+ */
+export function getSuggestedWorkTypesForTrades(trades: string[], limit = 20): string[] {
+  const specific = getWorkTypesForTrades(trades)
+  const merged = dedupeStrings([...specific, ...GENERIC_WORK_TYPES])
+  return merged.slice(0, limit)
+}
+
 export function getQuoteItemsForTrades(values: string[]): string[] {
   const taxonomies = getTradeTaxonomies(values)
   return dedupeStrings(taxonomies.flatMap(t => t.quoteItems))

@@ -155,6 +155,7 @@ export interface SupabaseArtisanConfig {
   onboardingCompleted: boolean
   onboardingCompletedAt: string
   travelConfig: Record<string, unknown>
+  businessConfig: Record<string, unknown>
 }
 
 export interface SupabaseProject {
@@ -259,6 +260,7 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     onboardingCompleted: getBoolean(row, 'onboarding_completed'),
     onboardingCompletedAt: getString(row, 'onboarding_completed_at'),
     travelConfig: getValue<Record<string, unknown>>(row, ['travel_config', 'Travel Config'], {}),
+    businessConfig: getValue<Record<string, unknown>>(row, ['business_config', 'Business Config'], {}),
   }
 }
 

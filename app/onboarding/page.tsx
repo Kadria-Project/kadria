@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
+import { getSuggestedWorkTypesForTrades } from '@/src/config/trade-taxonomy'
 import {
   VehicleType,
   ChargingType,
@@ -71,6 +72,12 @@ interface OnboardingConfig {
     minimumTravelFee: number | undefined
     freeTravelRadiusKm: number | undefined
   }
+  businessConfig: {
+    acceptedWorkTypes: string[]
+    refusedWorkTypes: string[]
+    customAcceptedWork: string
+    customRefusedWork: string
+  }
 }
 
 const EMPTY_CONFIG: OnboardingConfig = {
@@ -108,6 +115,12 @@ const EMPTY_CONFIG: OnboardingConfig = {
     originLng: undefined,
     minimumTravelFee: 25,
     freeTravelRadiusKm: 10,
+  },
+  businessConfig: {
+    acceptedWorkTypes: [],
+    refusedWorkTypes: [],
+    customAcceptedWork: '',
+    customRefusedWork: '',
   },
 }
 
@@ -174,6 +187,12 @@ export default function OnboardingPage() {
               originLng: c.travelConfig?.originLng,
               minimumTravelFee: c.travelConfig?.minimumTravelFee ?? 25,
               freeTravelRadiusKm: c.travelConfig?.freeTravelRadiusKm ?? 10,
+            },
+            businessConfig: {
+              acceptedWorkTypes: Array.isArray(c.businessConfig?.acceptedWorkTypes) ? c.businessConfig.acceptedWorkTypes : [],
+              refusedWorkTypes: Array.isArray(c.businessConfig?.refusedWorkTypes) ? c.businessConfig.refusedWorkTypes : [],
+              customAcceptedWork: c.businessConfig?.customAcceptedWork || '',
+              customRefusedWork: c.businessConfig?.customRefusedWork || '',
             },
           })
           if (c.artisanId) setArtisanIdDisplay(c.artisanId)
@@ -556,6 +575,56 @@ export default function OnboardingPage() {
                     placeholder="Ex : Ramoneur"
                     style={inputStyle}
                   />
+                </div>
+              )}
+              {config.trades.length > 0 && (
+                <div>
+                  <label style={labelStyle}>Quels types de demandes voulez-vous recevoir ?</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                    {getSuggestedWorkTypesForTrades(config.trades, 10).map(w => {
+                      const selected = config.businessConfig.acceptedWorkTypes.includes(w)
+                      return (
+                        <button
+                          key={`onb-accepted-${w}`}
+                          type="button"
+                          onClick={() => setConfig(c => ({
+                            ...c,
+                            businessConfig: {
+                              ...c.businessConfig,
+                              acceptedWorkTypes: selected
+                                ? c.businessConfig.acceptedWorkTypes.filter(v => v !== w)
+                                : [...c.businessConfig.acceptedWorkTypes, w],
+                            },
+                          }))}
+                          style={{
+                            background: selected ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
+                            border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            color: selected ? 'var(--accent)' : 'var(--text-2)',
+                            borderRadius: '20px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            fontWeight: selected ? 600 : 400,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {selected ? '✓ ' : ''}{w}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <textarea
+                    value={config.businessConfig.customRefusedWork}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      businessConfig: { ...c.businessConfig, customRefusedWork: e.target.value },
+                    }))}
+                    placeholder="Demandes à éviter (optionnel)"
+                    rows={2}
+                    style={{ ...inputStyle, marginTop: '10px', resize: 'vertical' }}
+                  />
+                  <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                    Vous pourrez affiner ces préférences plus tard dans Paramètres.
+                  </p>
                 </div>
               )}
               <div>

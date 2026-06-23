@@ -213,6 +213,12 @@ function ProjectDetail() {
       minimumTravelFee?: number;
       freeTravelRadiusKm?: number;
     };
+    businessConfig?: {
+      acceptedWorkTypes?: string[];
+      refusedWorkTypes?: string[];
+      customAcceptedWork?: string;
+      customRefusedWork?: string;
+    };
   } | null>(null);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
@@ -556,7 +562,11 @@ function ProjectDetail() {
           lastFollowUpAt: latestDevis.last_follow_up_at,
         }
       : null,
-  }, { artisanTrades: artisanConfig?.trades ?? [] });
+  }, {
+    artisanTrades: artisanConfig?.trades ?? [],
+    acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
+    refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
+  });
   const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);

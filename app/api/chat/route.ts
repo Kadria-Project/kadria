@@ -76,6 +76,35 @@ function buildTradeQualificationContext(trades: string[]): string {
   return lines.join('\n')
 }
 
+function buildBusinessPreferencesContext(businessConfig: {
+  acceptedWorkTypes?: unknown
+  refusedWorkTypes?: unknown
+  customAcceptedWork?: unknown
+  customRefusedWork?: unknown
+} | undefined): string {
+  if (!businessConfig) return ''
+
+  const accepted = [
+    ...(Array.isArray(businessConfig.acceptedWorkTypes) ? businessConfig.acceptedWorkTypes.filter(v => typeof v === 'string') : []),
+    ...(typeof businessConfig.customAcceptedWork === 'string' && businessConfig.customAcceptedWork.trim() ? [businessConfig.customAcceptedWork.trim()] : []),
+  ]
+  const refused = [
+    ...(Array.isArray(businessConfig.refusedWorkTypes) ? businessConfig.refusedWorkTypes.filter(v => typeof v === 'string') : []),
+    ...(typeof businessConfig.customRefusedWork === 'string' && businessConfig.customRefusedWork.trim() ? [businessConfig.customRefusedWork.trim()] : []),
+  ]
+
+  if (accepted.length === 0 && refused.length === 0) return ''
+
+  return [
+    '\n\nPRÉFÉRENCES ARTISAN :',
+    `Travaux recherchés : ${accepted.length > 0 ? accepted.join(', ') : 'non précisé'}`,
+    `Travaux à éviter : ${refused.length > 0 ? refused.join(', ') : 'non précisé'}`,
+    '\nUtilise ces informations pour mieux orienter la qualification.',
+    'Si la demande semble dans les travaux à éviter, continue poliment à qualifier, mais signale-le dans le résumé interne du dossier.',
+    'Ne refuse jamais brutalement une demande côté prospect.',
+  ].join('\n')
+}
+
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
@@ -564,6 +593,7 @@ export async function POST(request: Request) {
         const artisanConfig = await getArtisanConfig(artisanId)
         const trades = normalizeTrades(artisanConfig?.trades)
         tradeContext = buildTradeQualificationContext(trades)
+        tradeContext += buildBusinessPreferencesContext(artisanConfig?.businessConfig)
       } catch (error) {
         console.error('[KADRIA] Failed to load artisan trades for chat context:', error)
       }

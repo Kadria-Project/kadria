@@ -6,6 +6,7 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
+import { getSuggestedWorkTypesForTrades } from '@/src/config/trade-taxonomy'
 import {
   VehicleType,
   ChargingType,
@@ -169,6 +170,12 @@ export default function ParametresPage() {
       minimumTravelFee: undefined as number | undefined,
       freeTravelRadiusKm: undefined as number | undefined,
     },
+    businessConfig: {
+      acceptedWorkTypes: [] as string[],
+      refusedWorkTypes: [] as string[],
+      customAcceptedWork: '' as string,
+      customRefusedWork: '' as string,
+    },
   })
 
   const [legalErrors, setLegalErrors] = useState<Record<string, string>>({})
@@ -238,6 +245,12 @@ export default function ParametresPage() {
               originLng: data.config.travelConfig?.originLng,
               minimumTravelFee: data.config.travelConfig?.minimumTravelFee,
               freeTravelRadiusKm: data.config.travelConfig?.freeTravelRadiusKm,
+            },
+            businessConfig: {
+              acceptedWorkTypes: Array.isArray(data.config.businessConfig?.acceptedWorkTypes) ? data.config.businessConfig.acceptedWorkTypes : [],
+              refusedWorkTypes: Array.isArray(data.config.businessConfig?.refusedWorkTypes) ? data.config.businessConfig.refusedWorkTypes : [],
+              customAcceptedWork: data.config.businessConfig?.customAcceptedWork || '',
+              customRefusedWork: data.config.businessConfig?.customRefusedWork || '',
             },
           })
           if (data.config.artisanId) {
@@ -688,6 +701,115 @@ export default function ParametresPage() {
                     />
                   </div>
                 )}
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Types de travaux souhaités
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Indiquez les demandes que vous souhaitez recevoir en priorité, et celles que vous préférez éviter.
+                </p>
+                {config.trades.length === 0 ? (
+                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                    Sélectionnez d&apos;abord vos métiers pour obtenir des suggestions adaptées.
+                  </p>
+                ) : (() => {
+                  const suggestions = getSuggestedWorkTypesForTrades(config.trades)
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                      <div>
+                        <label style={labelStyle}>Travaux acceptés / recherchés</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                          {suggestions.map(w => {
+                            const selected = config.businessConfig.acceptedWorkTypes.includes(w)
+                            return (
+                              <button
+                                key={`accepted-${w}`}
+                                type="button"
+                                onClick={() => setConfig(c => ({
+                                  ...c,
+                                  businessConfig: {
+                                    ...c.businessConfig,
+                                    acceptedWorkTypes: selected
+                                      ? c.businessConfig.acceptedWorkTypes.filter(v => v !== w)
+                                      : [...c.businessConfig.acceptedWorkTypes, w],
+                                  },
+                                }))}
+                                style={{
+                                  background: selected ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
+                                  border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
+                                  color: selected ? 'var(--accent)' : 'var(--text-2)',
+                                  borderRadius: '20px',
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: selected ? 600 : 400,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {selected ? '✓ ' : ''}{w}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <input
+                          value={config.businessConfig.customAcceptedWork}
+                          onChange={e => setConfig(c => ({
+                            ...c,
+                            businessConfig: { ...c.businessConfig, customAcceptedWork: e.target.value },
+                          }))}
+                          placeholder="Autres travaux que vous recherchez"
+                          style={{ ...inputStyle, marginTop: '10px' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={labelStyle}>Travaux à éviter</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                          {suggestions.map(w => {
+                            const selected = config.businessConfig.refusedWorkTypes.includes(w)
+                            return (
+                              <button
+                                key={`refused-${w}`}
+                                type="button"
+                                onClick={() => setConfig(c => ({
+                                  ...c,
+                                  businessConfig: {
+                                    ...c.businessConfig,
+                                    refusedWorkTypes: selected
+                                      ? c.businessConfig.refusedWorkTypes.filter(v => v !== w)
+                                      : [...c.businessConfig.refusedWorkTypes, w],
+                                  },
+                                }))}
+                                style={{
+                                  background: selected ? 'rgba(239,68,68,0.12)' : 'var(--bg-hover)',
+                                  border: selected ? '1px solid #ef4444' : '1px solid var(--border)',
+                                  color: selected ? '#ef4444' : 'var(--text-2)',
+                                  borderRadius: '20px',
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: selected ? 600 : 400,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {selected ? '✓ ' : ''}{w}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <input
+                          value={config.businessConfig.customRefusedWork}
+                          onChange={e => setConfig(c => ({
+                            ...c,
+                            businessConfig: { ...c.businessConfig, customRefusedWork: e.target.value },
+                          }))}
+                          placeholder="Demandes que vous préférez éviter"
+                          style={{ ...inputStyle, marginTop: '10px' }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
 
               <div style={sectionCard}>

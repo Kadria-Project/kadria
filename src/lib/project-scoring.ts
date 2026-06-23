@@ -134,6 +134,17 @@ export interface ProjectAnalysisOptions {
   // Métiers déclarés par l'artisan (Artisan_config.trades). Optionnel : si
   // absent ou vide, le scoring reste identique au comportement actuel.
   artisanTrades?: string[]
+  // Préférences métier (Artisan_config.business_config). Optionnel : si
+  // absent ou vide, le scoring reste identique au comportement actuel.
+  acceptedWorkTypes?: string[]
+  refusedWorkTypes?: string[]
+}
+
+// Correspondance simple, sans IA : on cherche si l'un des termes de la liste
+// apparait dans le texte projet (trade/projectType/aiSummary).
+function matchesWorkTypeList(projectText: string, workTypes: string[] | undefined): boolean {
+  if (!workTypes || workTypes.length === 0 || !hasText(projectText)) return false
+  return workTypes.some(term => hasText(term) && projectText.includes(term.toLowerCase()))
 }
 
 type TradeFitStatus = 'good' | 'uncertain' | 'poor' | 'unknown'
@@ -311,6 +322,19 @@ export function getProjectCommercialAnalysis(
     riskFlags.push('Le projet semble éloigné des métiers déclarés')
   } else if (tradeFit?.status === 'uncertain') {
     weaknesses.push('Métier difficile à confirmer avec les informations actuelles')
+  }
+
+  // Préférences métier de l'artisan (travaux acceptés/à éviter) : signal
+  // léger, jamais bloquant, jamais une refonte du scoring.
+  const projectTextForPreferences = [project.trade, project.projectType, project.aiSummary]
+    .filter(hasText)
+    .join(' ')
+    .toLowerCase()
+  if (matchesWorkTypeList(projectTextForPreferences, options?.acceptedWorkTypes)) {
+    score += 5
+    strengths.push('Correspond aux travaux recherchés par l\'artisan')
+  } else if (matchesWorkTypeList(projectTextForPreferences, options?.refusedWorkTypes)) {
+    riskFlags.push('Le projet correspond à un type de travaux que l\'artisan préfère éviter')
   }
 
   // Le completenessScore existant est un signal supplementaire, pas la seule
