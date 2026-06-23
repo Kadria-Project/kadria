@@ -30,6 +30,13 @@ export interface ProjectCommercialAnalysis {
   missingInfo: string[]
   riskFlags: string[]
   confidence: Confidence
+  // Correspondance entre le projet et les métiers déclarés par l'artisan.
+  // Absent si aucun métier n'est configuré (artisanTrades vide/absent).
+  tradeFit?: {
+    status: 'good' | 'uncertain' | 'poor' | 'unknown'
+    label: string
+    reason?: string
+  }
 }
 
 // Reprend uniquement les champs reellement disponibles sur un projet Supabase
@@ -128,25 +135,27 @@ export interface ProjectAnalysisOptions {
   artisanTrades?: string[]
 }
 
-type TradeFit = 'good' | 'unknown' | 'poor'
+type TradeFitStatus = 'good' | 'uncertain' | 'poor' | 'unknown'
 
 // Correspondance metier deterministe, sans IA : on consolide les champs
 // projet disponibles en texte et on cherche des alias/types de travaux des
 // metiers declares par l'artisan. "multiservices" beneficie d'une tolerance
 // large (jamais de malus hors-metier).
-function assessTradeFit(project: ProjectAnalysisInput, artisanTrades: string[] | undefined): TradeFit {
+// "unknown" = aucun metier configure chez l'artisan (rien a afficher).
+// "uncertain" = metiers configures mais correspondance non determinable.
+function assessTradeFit(project: ProjectAnalysisInput, artisanTrades: string[] | undefined): TradeFitStatus {
   if (!artisanTrades || artisanTrades.length === 0) return 'unknown'
   if (artisanTrades.includes('multiservices')) return 'good'
 
   const taxonomies = getTradeTaxonomies(artisanTrades)
-  if (taxonomies.length === 0) return 'unknown'
+  if (taxonomies.length === 0) return 'uncertain'
 
   const projectText = [project.trade, project.projectType, project.aiSummary]
     .filter(hasText)
     .join(' ')
     .toLowerCase()
 
-  if (!hasText(projectText)) return 'unknown'
+  if (!hasText(projectText)) return 'uncertain'
 
   const hasStrongMatch = taxonomies.some(t =>
     [...(t.aliases || []), ...t.workTypes].some(term => projectText.includes(term.toLowerCase()))
@@ -159,7 +168,30 @@ function assessTradeFit(project: ProjectAnalysisInput, artisanTrades: string[] |
   const specificTrades = artisanTrades.filter(t => t !== 'autre')
   if (specificTrades.length > 0 && projectText.length >= 15) return 'poor'
 
-  return 'unknown'
+  return 'uncertain'
+}
+
+function buildTradeFitInfo(status: TradeFitStatus): ProjectCommercialAnalysis['tradeFit'] {
+  if (status === 'unknown') return undefined
+  if (status === 'good') {
+    return {
+      status,
+      label: 'Correspondance métier forte',
+      reason: 'Le dossier contient des éléments cohérents avec les métiers déclarés.',
+    }
+  }
+  if (status === 'poor') {
+    return {
+      status,
+      label: 'Potentiellement hors métier',
+      reason: 'Le dossier semble éloigné des métiers déclarés par l\'artisan.',
+    }
+  }
+  return {
+    status,
+    label: 'Métier à confirmer',
+    reason: 'Les informations actuelles ne permettent pas de confirmer la correspondance métier.',
+  }
 }
 
 export function getProjectCommercialAnalysis(
@@ -168,6 +200,7 @@ export function getProjectCommercialAnalysis(
 ): ProjectCommercialAnalysis {
   const status = project.status || ''
   const devis = project.latestDevis || null
+  const tradeFit = buildTradeFitInfo(assessTradeFit(project, options?.artisanTrades))
 
   // Dossier gagne ou perdu : pas de scoring commercial agressif, l'analyse
   // se contente de refleter l'etat du dossier.
@@ -188,6 +221,7 @@ export function getProjectCommercialAnalysis(
       missingInfo: [],
       riskFlags: [],
       confidence: 'high',
+      tradeFit,
     }
   }
 
@@ -211,6 +245,7 @@ export function getProjectCommercialAnalysis(
       missingInfo: [],
       riskFlags: ['Dossier perdu'],
       confidence: 'high',
+      tradeFit,
     }
   }
 
@@ -267,14 +302,13 @@ export function getProjectCommercialAnalysis(
   // Correspondance metier (Mission : ne pas etre brutal — bonus leger si bon
   // fit, pas de penalite forte en cas d'incertitude, malus modere si mauvais
   // fit probable).
-  const tradeFit = assessTradeFit(project, options?.artisanTrades)
-  if (tradeFit === 'good') {
+  if (tradeFit?.status === 'good') {
     score += 5
     strengths.push('Projet cohérent avec les métiers déclarés')
-  } else if (tradeFit === 'poor') {
+  } else if (tradeFit?.status === 'poor') {
     score -= 8
     riskFlags.push('Le projet semble éloigné des métiers déclarés')
-  } else if (options?.artisanTrades && options.artisanTrades.length > 0) {
+  } else if (tradeFit?.status === 'uncertain') {
     weaknesses.push('Métier difficile à confirmer avec les informations actuelles')
   }
 
@@ -372,6 +406,7 @@ export function getProjectCommercialAnalysis(
       missingInfo: missingInfo.slice(0, 4),
       riskFlags,
       confidence: 'low',
+      tradeFit,
     }
   }
 
@@ -387,5 +422,6 @@ export function getProjectCommercialAnalysis(
     missingInfo: missingInfo.slice(0, 4),
     riskFlags,
     confidence,
+    tradeFit,
   }
 }

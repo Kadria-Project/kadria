@@ -184,7 +184,7 @@ function budgetScore(budget?: string): number {
   return 10;
 }
 
-export function opportunityScore(project: Project, artisanTrades?: string[]): number {
+function getProjectAnalysisFor(project: Project, artisanTrades?: string[]) {
   return getProjectCommercialAnalysis({
     status: project.status,
     clientName: project.clientName,
@@ -202,7 +202,20 @@ export function opportunityScore(project: Project, artisanTrades?: string[]): nu
     completenessScore: project.completenessScore,
     photos: project.photos,
     source: project.source,
-  }, { artisanTrades: artisanTrades ?? [] }).score;
+  }, { artisanTrades: artisanTrades ?? [] });
+}
+
+export function opportunityScore(project: Project, artisanTrades?: string[]): number {
+  return getProjectAnalysisFor(project, artisanTrades).score;
+}
+
+// Mention courte du fit metier pour les cartes d'opportunites — null si
+// aucun metier configure ou si la correspondance n'est pas determinable
+// (pour ne pas surcharger l'affichage avec un signal peu informatif).
+function getOpportunityTradeFitLabel(project: Project, artisanTrades?: string[]): string | null {
+  const tradeFit = getProjectAnalysisFor(project, artisanTrades).tradeFit;
+  if (!tradeFit || tradeFit.status === 'uncertain') return null;
+  return tradeFit.status === 'good' ? 'Bon fit métier' : 'Hors métier possible';
 }
 
 function parseBudget(budgetStr: string): number {
@@ -1878,6 +1891,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               {canAccessFeature('topAiOpportunities') ? topOpportunities.slice(0, 3).map((project, index) => {
                 const score = opportunityScore(project, artisanTrades);
                 const badge = getOpportunityBadge(score);
+                const tradeFitLabel = getOpportunityTradeFitLabel(project, artisanTrades);
                 return (
                   <button
                     key={project.id}
@@ -1889,6 +1903,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Dossier'}</p>
                         <p className="truncate text-xs text-[var(--text-2)]">{project.projectType || project.trade || 'Projet'} - {project.city || 'Ville non renseignee'}</p>
+                        {tradeFitLabel && (
+                          <p className="truncate text-[11px] text-[var(--text-3)]">{tradeFitLabel}</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

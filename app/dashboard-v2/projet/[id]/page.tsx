@@ -914,6 +914,40 @@ function ProjectDetail() {
             </div>
           </div>
 
+          {/* Correspondance métier — basé sur les métiers déclarés dans les paramètres */}
+          {analysis.tradeFit && (
+            <div style={{
+              padding: isMobile ? '10px 16px' : '10px 20px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+            }}>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '20px',
+                background: analysis.tradeFit.status === 'good'
+                  ? 'rgba(34, 197, 94, 0.12)'
+                  : analysis.tradeFit.status === 'poor'
+                    ? 'rgba(249, 115, 22, 0.12)'
+                    : 'var(--bg-hover)',
+                color: analysis.tradeFit.status === 'good'
+                  ? 'rgb(34, 197, 94)'
+                  : analysis.tradeFit.status === 'poor'
+                    ? 'rgb(249, 115, 22)'
+                    : 'var(--text-2)',
+              }}>
+                {analysis.tradeFit.label}
+              </span>
+              <span style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                Basé sur les métiers déclarés dans vos paramètres.
+              </span>
+            </div>
+          )}
+
           {/* Recommandation principale + CTA */}
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
