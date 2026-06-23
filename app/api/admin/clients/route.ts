@@ -3,6 +3,7 @@ import { getAllUsers } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
 import { getPlanLabel, normalizePlan, hasFeature } from '@/src/lib/plans'
 import { getMonthlyUsageSummary, type UsageStatus } from '@/src/lib/usage/quotas'
+import { computeClientHealth, getClientHealthLabel } from '@/src/lib/admin/clientHealth'
 
 type AlertLevel = 'ok' | 'warning' | 'danger'
 
@@ -46,6 +47,8 @@ export async function GET() {
         const voiceCallLimit = usageData ? (usageData.vapi.callsUnlimited ? null : usageData.vapi.callsLimit) : null
         const voiceMinutesUsed = usageData?.vapi.minutesUsed ?? 0
         const voiceMinuteLimit = usageData?.vapi.minutesLimit ?? null
+        const devisUsed = usageData?.devis.used ?? 0
+        const devisLimit = usageData ? (usageData.devis.unlimited ? null : usageData.devis.limit) : null
 
         const usage = {
           projectsThisMonth: projectsUsed,
@@ -57,6 +60,9 @@ export async function GET() {
           voiceMinutesThisMonth: voiceMinutesUsed,
           voiceMinuteLimit,
           voiceMinuteUsageLabel: formatUsageLabel(voiceMinutesUsed, voiceMinuteLimit),
+          devisThisMonth: devisUsed,
+          devisLimit,
+          devisUsageLabel: formatUsageLabel(devisUsed, devisLimit),
         }
 
         const features = {
@@ -92,9 +98,23 @@ export async function GET() {
           if (vapiLevel !== 'ok') {
             messages.push(`Appels vocaux : ${usage.voiceCallUsageLabel}`)
           }
+
+          const devisLevel = toAlertLevel(usageData.devis.status)
+          level = combineAlertLevel(level, devisLevel)
+          if (devisLevel !== 'ok') {
+            messages.push(`Devis : ${usage.devisUsageLabel}`)
+          }
         }
 
         const detailId = u.id || u.artisanId
+
+        const health = computeClientHealth({
+          plan,
+          statut,
+          lastLogin: u.lastLogin,
+          createdAt: u.createdAt,
+          usage: usageData ? { projects: usageData.projects, vapi: usageData.vapi, devis: usageData.devis } : null,
+        })
 
         return {
           id: u.id,
@@ -123,6 +143,12 @@ export async function GET() {
           usage,
           features,
           alerts: { level, messages },
+          health: {
+            status: health.status,
+            label: getClientHealthLabel(health.status),
+            reasons: health.reasons,
+            recommendation: health.recommendation,
+          },
         }
       })
     )

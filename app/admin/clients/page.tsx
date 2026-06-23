@@ -15,6 +15,18 @@ interface ClientUsage {
   voiceMinutesThisMonth: number;
   voiceMinuteLimit: number | null;
   voiceMinuteUsageLabel: string;
+  devisThisMonth?: number;
+  devisLimit?: number | null;
+  devisUsageLabel?: string;
+}
+
+type ClientHealthStatus = 'healthy' | 'watch' | 'quota_warning' | 'upgrade_opportunity' | 'inactive';
+
+interface ClientHealth {
+  status: ClientHealthStatus;
+  label: string;
+  reasons: string[];
+  recommendation: string;
 }
 
 interface ClientFeatures {
@@ -55,6 +67,7 @@ interface ClientRecord {
   usage?: ClientUsage;
   features?: ClientFeatures;
   alerts?: ClientAlerts;
+  health?: ClientHealth;
 }
 
 const PLAN_BADGE: Record<string, { bg: string; color: string }> = {
@@ -74,6 +87,14 @@ const ALERT_BADGE: Record<AlertLevel, { bg: string; color: string; label: string
   ok: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e', label: 'OK' },
   warning: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b', label: 'Attention' },
   danger: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626', label: 'Danger' },
+};
+
+const HEALTH_BADGE: Record<ClientHealthStatus, { bg: string; color: string }> = {
+  healthy: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
+  watch: { bg: 'rgba(161,161,170,0.12)', color: '#a1a1aa' },
+  quota_warning: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+  upgrade_opportunity: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
+  inactive: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
 };
 
 const FEATURE_LABELS: Record<keyof ClientFeatures, string> = {
@@ -153,6 +174,29 @@ function FeatureBadges({ features }: { features?: ClientFeatures }) {
         </span>
       ))}
     </div>
+  );
+}
+
+function HealthBadge({ health }: { health?: ClientHealth }) {
+  if (!health) {
+    return <span style={{ color: '#52525b', fontSize: '12px' }}>—</span>;
+  }
+  const palette = HEALTH_BADGE[health.status];
+  return (
+    <span
+      title={health.reasons.join(' · ')}
+      style={{
+        background: palette.bg,
+        color: palette.color,
+        borderRadius: '999px',
+        padding: '4px 10px',
+        fontSize: '12px',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {health.label}
+    </span>
   );
 }
 
@@ -336,10 +380,11 @@ export default function AdminClientsPage() {
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Artisan ID</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Plan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Santé</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Dossiers</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Devis</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Appels vocaux</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Minutes vocales</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Coût VAPI</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Fonctionnalités</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Alertes</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Actions</th>
@@ -348,7 +393,7 @@ export default function AdminClientsPage() {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={11} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
+                      <td colSpan={12} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
                     </tr>
                   )}
                   {filtered.map((c, i) => (
@@ -394,10 +439,11 @@ export default function AdminClientsPage() {
                       </td>
                       <td style={{ padding: '12px 20px' }}><Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} /></td>
                       <td style={{ padding: '12px 20px' }}><Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} /></td>
+                      <td style={{ padding: '12px 20px' }}><HealthBadge health={c.health} /></td>
                       <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.projectUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.devisUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</td>
-                      <td style={{ padding: '12px 20px', color: '#52525b' }}>Non disponible</td>
                       <td style={{ padding: '12px 20px', minWidth: '180px' }}><FeatureBadges features={c.features} /></td>
                       <td style={{ padding: '12px 20px', minWidth: '160px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -471,6 +517,7 @@ export default function AdminClientsPage() {
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                   <Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} />
                   <Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} />
+                  <HealthBadge health={c.health} />
                   <AlertBadge alerts={c.alerts} />
                 </div>
 
@@ -484,16 +531,16 @@ export default function AdminClientsPage() {
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.projectUsageLabel || 'Non disponible'}</p>
                   </div>
                   <div>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Devis</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.devisUsageLabel || 'Non disponible'}</p>
+                  </div>
+                  <div>
                     <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Appels vocaux</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</p>
                   </div>
                   <div>
                     <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Minutes vocales</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</p>
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Coût VAPI</p>
-                    <p style={{ margin: 0, fontWeight: 600, color: '#52525b' }}>Non disponible</p>
                   </div>
                 </div>
 

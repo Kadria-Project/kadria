@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserById, updateUser } from '@/src/lib/airtable'
 import { requireAdminSession } from '@/src/lib/auth-utils'
+import { normalizePlan } from '@/src/lib/plans'
+import { getMonthlyUsageSummary } from '@/src/lib/usage/quotas'
+import { computeClientHealth, getClientHealthLabel } from '@/src/lib/admin/clientHealth'
 
 function timestampEntry(adminEmail: string, text: string) {
   const date = new Date().toLocaleString('fr-FR')
@@ -23,7 +26,29 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: 'Client introuvable' }, { status: 404 })
     }
-    return NextResponse.json(user)
+
+    const plan = normalizePlan(user.plan)
+    const usageResult = user.artisanId ? await getMonthlyUsageSummary(user.artisanId) : null
+    const usage = usageResult?.success ? usageResult.data : null
+
+    const health = computeClientHealth({
+      plan,
+      statut: user.statut || 'Actif',
+      lastLogin: user.lastLogin,
+      createdAt: user.createdAt,
+      usage: usage ? { projects: usage.projects, vapi: usage.vapi, devis: usage.devis } : null,
+    })
+
+    return NextResponse.json({
+      ...user,
+      usage,
+      health: {
+        status: health.status,
+        label: getClientHealthLabel(health.status),
+        reasons: health.reasons,
+        recommendation: health.recommendation,
+      },
+    })
   } catch (error) {
     console.error('[ADMIN CLIENT GET]', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

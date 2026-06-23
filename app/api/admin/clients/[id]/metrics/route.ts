@@ -41,11 +41,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const devisSent = devis.filter((d) => d.sent)
+    const devisAccepted = devis.filter((d) => d.accepted)
+    const caPotentiel = devisSent.reduce((sum, d) => sum + (d.totalTTC || 0), 0)
+    const caGagne = devisAccepted.reduce((sum, d) => sum + (d.totalTTC || 0), 0)
+    const estimatedMinutesSavedPerDevis = 20
+    const tempsEstimeEconomiseMinutes = devis.length * estimatedMinutesSavedPerDevis
+
+    type EventEntry = { type: string; label: string; date: string }
+    const events: EventEntry[] = []
+    for (const d of devis) {
+      if (d.quoteSentAt) events.push({ type: 'devis_sent', label: `Devis ${d.devisNumber || ''} envoyé`, date: d.quoteSentAt })
+      if (d.acceptedAt) events.push({ type: 'devis_accepted', label: `Devis ${d.devisNumber || ''} accepté`, date: d.acceptedAt })
+      if (d.declinedAt) events.push({ type: 'devis_declined', label: `Devis ${d.devisNumber || ''} refusé`, date: d.declinedAt })
+      if (d.lastFollowUpAt) events.push({ type: 'follow_up', label: `Relance envoyée pour le devis ${d.devisNumber || ''}`, date: d.lastFollowUpAt })
+    }
+    events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
     return NextResponse.json({
       total: projects.length,
       ceMois: projects.filter((p) => isSameMonth(p.createdAt, now)).length,
       devisGeneres: devis.length,
       statutFrequent,
+      value: {
+        dossiersCaptes: projects.length,
+        devisEnvoyes: devisSent.length,
+        devisAcceptes: devisAccepted.length,
+        caPotentiel,
+        caGagne,
+        tempsEstimeEconomiseMinutes,
+      },
+      events: events.slice(0, 8),
     })
   } catch (error) {
     console.error('[ADMIN CLIENT METRICS]', error)

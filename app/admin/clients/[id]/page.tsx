@@ -34,6 +34,55 @@ interface Metrics {
   ceMois: number;
   devisGeneres: number;
   statutFrequent: string;
+  value?: {
+    dossiersCaptes: number;
+    devisEnvoyes: number;
+    devisAcceptes: number;
+    caPotentiel: number;
+    caGagne: number;
+    tempsEstimeEconomiseMinutes: number;
+  };
+  events?: { type: string; label: string; date: string }[];
+}
+
+type ClientHealthStatus = 'healthy' | 'watch' | 'quota_warning' | 'upgrade_opportunity' | 'inactive';
+
+interface ClientHealth {
+  status: ClientHealthStatus;
+  label: string;
+  reasons: string[];
+  recommendation: string;
+}
+
+type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
+
+interface UsageSummary {
+  projects: { used: number; limit: number | null; unlimited: boolean; percent: number | null; status: UsageStatus };
+  vapi: { callsUsed: number; callsLimit: number | null; callsUnlimited: boolean; callsPercent: number | null; minutesUsed: number; minutesLimit: number | null; minutesPercent: number | null; status: UsageStatus };
+  devis: { used: number; limit: number | null; unlimited: boolean; percent: number | null; status: UsageStatus };
+}
+
+const HEALTH_BADGE: Record<ClientHealthStatus, { bg: string; color: string }> = {
+  healthy: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
+  watch: { bg: 'rgba(161,161,170,0.12)', color: '#a1a1aa' },
+  quota_warning: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+  upgrade_opportunity: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
+  inactive: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+};
+
+const USAGE_STATUS_BADGE: Record<UsageStatus, { bg: string; color: string; label: string }> = {
+  ok: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e', label: 'OK' },
+  warning: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', label: '80% atteint' },
+  limit_reached: { bg: 'rgba(245,158,11,0.18)', color: '#f59e0b', label: 'Limite atteinte' },
+  exceeded: { bg: 'rgba(220,38,38,0.12)', color: '#dc2626', label: 'Dépassement' },
+};
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value || 0);
+}
+
+function usageLabel(used: number, limit: number | null) {
+  return `${used} / ${limit === null ? 'Illimité' : limit}`;
 }
 
 const PLAN_BADGE: Record<string, { bg: string; color: string }> = {
@@ -157,6 +206,8 @@ export default function AdminClientDetailPage() {
 
   const [client, setClient] = useState<UserRecord | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [health, setHealth] = useState<ClientHealth | null>(null);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -193,6 +244,8 @@ export default function AdminClientDetailPage() {
           return;
         }
         setClient(data);
+        setHealth(data.health || null);
+        setUsage(data.usage || null);
         setForm({
           firstName: data.firstName || '',
           lastName: data.lastName || '',
@@ -466,6 +519,39 @@ export default function AdminClientDetailPage() {
         <Badge label={client.plan} palette={PLAN_BADGE[client.plan]} />
       </div>
 
+      <div style={card}>
+        <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Santé client</p>
+        {!health && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
+        {health && (
+          <>
+            <div style={{ marginBottom: '12px' }}>
+              <span
+                style={{
+                  background: HEALTH_BADGE[health.status].bg,
+                  color: HEALTH_BADGE[health.status].color,
+                  borderRadius: '999px',
+                  padding: '5px 12px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                }}
+              >
+                {health.label}
+              </span>
+            </div>
+            {health.reasons.length > 0 && (
+              <ul style={{ margin: '0 0 12px', paddingLeft: '18px', fontSize: '13px', color: '#a1a1aa' }}>
+                {health.reasons.map((reason, i) => (
+                  <li key={i} style={{ marginBottom: '4px' }}>{reason}</li>
+                ))}
+              </ul>
+            )}
+            <p style={{ fontSize: '13px', color: '#e4e4e7', margin: 0, fontStyle: 'italic' }}>
+              {health.recommendation}
+            </p>
+          </>
+        )}
+      </div>
+
       <div className="admin-client-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '16px', alignItems: 'start' }}>
         <div>
           <div style={card}>
@@ -688,6 +774,94 @@ export default function AdminClientDetailPage() {
                   <span style={{ color: '#a1a1aa' }}>Statut le plus fréquent</span>
                   <span style={{ fontWeight: 700 }}>{metrics.statutFrequent || '—'}</span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Valeur générée</p>
+            {!metrics?.value && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
+            {metrics?.value && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>Dossiers captés</span>
+                  <span style={{ fontWeight: 700 }}>{metrics.value.dossiersCaptes}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>Devis envoyés</span>
+                  <span style={{ fontWeight: 700 }}>{metrics.value.devisEnvoyes}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>Devis acceptés</span>
+                  <span style={{ fontWeight: 700 }}>{metrics.value.devisAcceptes}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>CA potentiel (devis envoyés)</span>
+                  <span style={{ fontWeight: 700 }}>{formatMoney(metrics.value.caPotentiel)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>CA gagné (devis acceptés)</span>
+                  <span style={{ fontWeight: 700, color: '#22c55e' }}>{formatMoney(metrics.value.caGagne)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>Temps estimé économisé</span>
+                  <span style={{ fontWeight: 700 }}>{Math.round(metrics.value.tempsEstimeEconomiseMinutes / 60)} h</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Usage vocal</p>
+            {!usage && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
+            {usage && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#a1a1aa' }}>Appels utilisés</span>
+                  <span style={{ fontWeight: 700 }}>{usageLabel(usage.vapi.callsUsed, usage.vapi.callsUnlimited ? null : usage.vapi.callsLimit)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>Minutes utilisées</span>
+                  <span style={{ fontWeight: 700 }}>{usageLabel(usage.vapi.minutesUsed, usage.vapi.minutesLimit)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#a1a1aa' }}>% consommé (appels)</span>
+                  <span style={{ fontWeight: 700 }}>{usage.vapi.callsPercent !== null ? `${usage.vapi.callsPercent}%` : '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#a1a1aa' }}>Statut quota vocal</span>
+                  <span
+                    style={{
+                      background: USAGE_STATUS_BADGE[usage.vapi.status].bg,
+                      color: USAGE_STATUS_BADGE[usage.vapi.status].color,
+                      borderRadius: '999px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {USAGE_STATUS_BADGE[usage.vapi.status].label}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Derniers événements</p>
+            {(!metrics?.events || metrics.events.length === 0) && (
+              <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Logs à venir</p>
+            )}
+            {metrics?.events && metrics.events.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {metrics.events.map((ev, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', fontSize: '13px' }}>
+                    <span style={{ color: '#e4e4e7' }}>{ev.label}</span>
+                    <span style={{ color: '#71717a', whiteSpace: 'nowrap' }}>
+                      {new Date(ev.date).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
