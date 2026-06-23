@@ -5,6 +5,8 @@
 // dans un composant (cf. l'ancien getVerdict/getRecommendation de
 // app/dashboard-v2/projet/[id]/page.tsx, desormais delegues a ce module).
 
+import { getTradeTaxonomies } from '@/src/config/trade-taxonomy'
+
 export type Temperature = 'hot' | 'warm' | 'cold'
 export type Priority = 'high' | 'medium' | 'low'
 export type Confidence = 'high' | 'medium' | 'low'
@@ -120,7 +122,50 @@ function isClosedStatus(status?: string): boolean {
   return status === 'Gagné' || status === 'Perdu'
 }
 
-export function getProjectCommercialAnalysis(project: ProjectAnalysisInput): ProjectCommercialAnalysis {
+export interface ProjectAnalysisOptions {
+  // Métiers déclarés par l'artisan (Artisan_config.trades). Optionnel : si
+  // absent ou vide, le scoring reste identique au comportement actuel.
+  artisanTrades?: string[]
+}
+
+type TradeFit = 'good' | 'unknown' | 'poor'
+
+// Correspondance metier deterministe, sans IA : on consolide les champs
+// projet disponibles en texte et on cherche des alias/types de travaux des
+// metiers declares par l'artisan. "multiservices" beneficie d'une tolerance
+// large (jamais de malus hors-metier).
+function assessTradeFit(project: ProjectAnalysisInput, artisanTrades: string[] | undefined): TradeFit {
+  if (!artisanTrades || artisanTrades.length === 0) return 'unknown'
+  if (artisanTrades.includes('multiservices')) return 'good'
+
+  const taxonomies = getTradeTaxonomies(artisanTrades)
+  if (taxonomies.length === 0) return 'unknown'
+
+  const projectText = [project.trade, project.projectType, project.aiSummary]
+    .filter(hasText)
+    .join(' ')
+    .toLowerCase()
+
+  if (!hasText(projectText)) return 'unknown'
+
+  const hasStrongMatch = taxonomies.some(t =>
+    [...(t.aliases || []), ...t.workTypes].some(term => projectText.includes(term.toLowerCase()))
+  )
+  if (hasStrongMatch) return 'good'
+
+  // Si les metiers de l'artisan sont tres specifiques (peu de metiers
+  // declares, hors "autre") et qu'aucun terme metier n'est trouve dans un
+  // texte projet suffisamment substantiel, on signale un risque modere.
+  const specificTrades = artisanTrades.filter(t => t !== 'autre')
+  if (specificTrades.length > 0 && projectText.length >= 15) return 'poor'
+
+  return 'unknown'
+}
+
+export function getProjectCommercialAnalysis(
+  project: ProjectAnalysisInput,
+  options?: ProjectAnalysisOptions
+): ProjectCommercialAnalysis {
   const status = project.status || ''
   const devis = project.latestDevis || null
 
@@ -218,6 +263,20 @@ export function getProjectCommercialAnalysis(project: ProjectAnalysisInput): Pro
   if (ready) { score += 8; strengths.push('Prêt à démarrer') }
   if (lowMaturity) { score -= 10; weaknesses.push('Encore en phase de comparaison') }
   if (!hasPhone && !hasEmail) riskFlags.push('Aucun moyen de contact fiable')
+
+  // Correspondance metier (Mission : ne pas etre brutal — bonus leger si bon
+  // fit, pas de penalite forte en cas d'incertitude, malus modere si mauvais
+  // fit probable).
+  const tradeFit = assessTradeFit(project, options?.artisanTrades)
+  if (tradeFit === 'good') {
+    score += 5
+    strengths.push('Projet cohérent avec les métiers déclarés')
+  } else if (tradeFit === 'poor') {
+    score -= 8
+    riskFlags.push('Le projet semble éloigné des métiers déclarés')
+  } else if (options?.artisanTrades && options.artisanTrades.length > 0) {
+    weaknesses.push('Métier difficile à confirmer avec les informations actuelles')
+  }
 
   // Le completenessScore existant est un signal supplementaire, pas la seule
   // source de verite (mission : "ne pas s'y limiter").
