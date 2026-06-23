@@ -518,6 +518,99 @@ export function filterProjects(projects: Project[], filters: FilterState): Proje
   });
 }
 
+export type ValuePeriod = 'week' | 'month' | '30d' | 'all';
+
+export const VALUE_PERIOD_OPTIONS: { value: ValuePeriod; label: string }[] = [
+  { value: 'week', label: 'Cette semaine' },
+  { value: 'month', label: 'Ce mois' },
+  { value: '30d', label: '30 derniers jours' },
+  { value: 'all', label: 'Tout' },
+];
+
+export type ValueSourceFilter = 'all' | 'web' | 'voice' | 'manual' | 'other';
+
+export const VALUE_SOURCE_FILTER_OPTIONS: { value: ValueSourceFilter; label: string }[] = [
+  { value: 'all', label: 'Toutes les sources' },
+  { value: 'web', label: 'Site / Widget' },
+  { value: 'voice', label: 'Assistant vocal' },
+  { value: 'manual', label: 'Manuel' },
+  { value: 'other', label: 'Autre' },
+];
+
+export function normalizeValueSource(source?: string): ValueSourceFilter {
+  const src = (source || '').toLowerCase().trim();
+
+  if (!src) return 'other';
+  if (src.includes('chat') || src.includes('widget') || src.includes('site') || src.includes('web')) return 'web';
+  if (src.includes('voice') || src.includes('vapi') || src.includes('call') || src.includes('vocal')) return 'voice';
+  if (src.includes('manual') || src.includes('admin') || src.includes('manuel')) return 'manual';
+
+  return 'other';
+}
+
+export function getValuePeriodRange(period: ValuePeriod, now: Date): { start: Date; end: Date } | null {
+  if (period === 'all') return null;
+
+  const end = new Date(now);
+  const start = new Date(now);
+
+  if (period === 'week') {
+    const day = start.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diffToMonday);
+    start.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+  } else if (period === '30d') {
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+  }
+
+  return { start, end };
+}
+
+export function getPreviousValuePeriodRange(period: ValuePeriod, now: Date): { start: Date; end: Date } | null {
+  const current = getValuePeriodRange(period, now);
+
+  if (!current) return null;
+
+  if (period === 'week') {
+    const start = new Date(current.start);
+    start.setDate(start.getDate() - 7);
+    const end = new Date(current.start.getTime() - 1);
+    return { start, end };
+  }
+
+  if (period === 'month') {
+    const start = new Date(current.start.getFullYear(), current.start.getMonth() - 1, 1);
+    const end = new Date(current.start.getTime() - 1);
+    return { start, end };
+  }
+
+  const start = new Date(current.start);
+  start.setDate(start.getDate() - 30);
+  const end = new Date(current.start.getTime() - 1);
+  return { start, end };
+}
+
+export function formatValuePercentDelta(current: number, previous: number): string | null {
+  if (previous === 0) return current > 0 ? 'Nouveau vs période précédente' : null;
+
+  const delta = ((current - previous) / previous) * 100;
+  const sign = delta >= 0 ? '+' : '';
+  return `${sign}${delta.toFixed(0)}% vs période précédente`;
+}
+
+export function formatValueCountDelta(current: number, previous: number, unit: string): string | null {
+  const delta = current - previous;
+
+  if (delta === 0) return `Stable vs période précédente`;
+
+  const sign = delta > 0 ? '+' : '';
+  return `${sign}${delta} ${unit} vs période précédente`;
+}
+
 export type KpiPeriod = '7d' | '30d' | '90d' | '1y';
 
 const KPI_PERIOD_DAYS: Record<KpiPeriod, number> = {
@@ -845,6 +938,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [valuePeriod, setValuePeriod] = useState<ValuePeriod>('all');
+  const [valueSourceFilter, setValueSourceFilter] = useState<ValueSourceFilter>('all');
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [todayLabel, setTodayLabel] = useState("Aujourd'hui");
 
@@ -1456,32 +1551,87 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   // CA gagné = projets Gagné + devis acceptés (acceptedAt), sans double comptage ;
   // devis acceptés = acceptedAt renseigné (avec fallback statut Gagné, seul signal
   // disponible sur les projets tant que le détail des devis n'est pas chargé ici).
+  const canSeeAdvancedValueDashboard = canAccessFeature('advancedValueDashboard');
   const projectValue = (p: Project) => p.devisAmount || parseBudget(p.budget || '');
   const isAcceptedValueProject = (p: Project) => p.status === 'Gagné' || Boolean(p.acceptedAt);
-  const wonProjects = allProjects.filter(isAcceptedValueProject);
-  const openValueProjects = allProjects.filter((p) => !isAcceptedValueProject(p) && p.status !== 'Perdu');
+
+  // Le filtre source détaillé est réservé Performance+ ; en Essentiel, on ignore la
+  // sélection et on retombe sur "Toutes les sources".
+  const effectiveValueSourceFilter: ValueSourceFilter = canSeeAdvancedValueDashboard ? valueSourceFilter : 'all';
+  const valuePeriodRange = getValuePeriodRange(valuePeriod, today);
+  const valuePreviousPeriodRange = getPreviousValuePeriodRange(valuePeriod, today);
+
+  const matchesValuePeriod = (p: Project, range: { start: Date; end: Date } | null) => {
+    if (!range) return true;
+    if (!p.createdAt) return false;
+
+    const created = new Date(p.createdAt);
+
+    // Date invalide ou future incohérente : exclue des périodes limitées.
+    if (Number.isNaN(created.getTime()) || created.getTime() > now + 24 * 60 * 60 * 1000) return false;
+
+    return created >= range.start && created <= range.end;
+  };
+
+  const matchesValueSource = (p: Project) =>
+    effectiveValueSourceFilter === 'all' || normalizeValueSource(p.source) === effectiveValueSourceFilter;
+
+  const valueFilteredProjects = allProjects.filter(
+    (p) => matchesValuePeriod(p, valuePeriodRange) && matchesValueSource(p),
+  );
+  const valuePreviousFilteredProjects = valuePreviousPeriodRange
+    ? allProjects.filter((p) => matchesValuePeriod(p, valuePreviousPeriodRange) && matchesValueSource(p))
+    : [];
+  const valueFilteredIds = new Set(valueFilteredProjects.map((p) => p.id));
+  const hasValueData = valueFilteredProjects.length > 0;
+
+  const wonProjects = valueFilteredProjects.filter(isAcceptedValueProject);
+  const openValueProjects = valueFilteredProjects.filter((p) => !isAcceptedValueProject(p) && p.status !== 'Perdu');
   const valueCaEnCours = openValueProjects.reduce((sum, p) => sum + projectValue(p), 0);
   const valueCaGagne = wonProjects.reduce((sum, p) => sum + projectValue(p), 0);
-  const valueDevisEnvoyesCount = allProjects.filter((p) => p.status === 'Devis envoyé').length;
+  const valueDevisEnvoyesCount = valueFilteredProjects.filter((p) => p.status === 'Devis envoyé').length;
   const valueDevisAcceptesCount = wonProjects.length;
   const valueTauxConversion = valueDevisEnvoyesCount > 0
     ? (valueDevisAcceptesCount / valueDevisEnvoyesCount) * 100
     : null;
-  const valueNouveauxCount = pipelineSteps.find((s) => s.label === 'Nouveau')?.value || 0;
-  const valueARappelerCount = pipelineSteps.find((s) => s.label === 'À rappeler')?.value || 0;
-  const valueARelancerCount = pipelineSteps.find((s) => s.label === 'A relancer')?.value || 0;
+  const valueNouveauxCount = valueFilteredProjects.filter((p) => p.status === 'Nouveau').length;
+  const valueARappelerCount = valueFilteredProjects.filter((p) => p.status === 'À rappeler').length;
+  const valueARelancerCount = valueFilteredProjects.filter((p) => p.status === 'A relancer').length;
+
+  // Comparaison période précédente (V1) : uniquement disponible si une période
+  // limitée est sélectionnée — "Tout" n'a pas de période précédente comparable.
+  const previousWonProjects = valuePreviousFilteredProjects.filter(isAcceptedValueProject);
+  const previousOpenProjects = valuePreviousFilteredProjects.filter((p) => !isAcceptedValueProject(p) && p.status !== 'Perdu');
+  const previousCaEnCours = previousOpenProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const previousCaGagne = previousWonProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const previousDevisEnvoyesCount = valuePreviousFilteredProjects.filter((p) => p.status === 'Devis envoyé').length;
+  const previousDevisAcceptesCount = previousWonProjects.length;
+  const previousDossiersCount = valuePreviousFilteredProjects.length;
+
+  const valueComparisons = {
+    dossiers: formatValueCountDelta(valueFilteredProjects.length, previousDossiersCount, 'dossier(s)'),
+    caEnCours: formatValuePercentDelta(valueCaEnCours, previousCaEnCours),
+    caGagne: formatValuePercentDelta(valueCaGagne, previousCaGagne),
+    devisEnvoyes: formatValueCountDelta(valueDevisEnvoyesCount, previousDevisEnvoyesCount, 'devis'),
+    devisAcceptes: formatValueCountDelta(valueDevisAcceptesCount, previousDevisAcceptesCount, 'devis'),
+  };
 
   // Alerte "devis sans réponse" V1 : seuil fixe (10 jours) défini dans
   // getProjectRiskStatus. À terme, ce seuil devra être configurable par artisan.
-  const staleQuoteProjects = allProjects.filter((p) => {
+  const staleQuoteProjects = valueFilteredProjects.filter((p) => {
     const risk = getProjectRiskStatus(p);
     return risk.status === 'followUp' && risk.reason.startsWith('Devis envoye');
   });
-  const incompleteValueProjects = allProjects.filter((p) => {
+  const incompleteValueProjects = valueFilteredProjects.filter((p) => {
     const risk = getProjectRiskStatus(p);
     return risk.status === 'followUp' && risk.reason.startsWith('Dossier incomplet');
   });
-  const uncontactedHotLeads = hotLeads.filter((p) => !p.lastFollowUpAt);
+  const valueHotLeads = valueFilteredProjects.filter(
+    (p) => p.status !== 'Gagné' && p.status !== 'Perdu' && isHotLead(p),
+  );
+  const uncontactedHotLeads = valueHotLeads.filter((p) => !p.lastFollowUpAt);
+  const pendingSentQuoteProjects = valueFilteredProjects.filter((p) => p.status === 'Devis envoyé' && !p.acceptedAt);
+  const valueQuotesProjects = quotesProjects.filter((p) => valueFilteredIds.has(p.id));
 
   type ValueAction = { key: string; title: string; client: string; context: string; projectId: string };
   const valueActions: ValueAction[] = [];
@@ -1497,39 +1647,76 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       projectId: project.id,
     });
   };
-  const canSeeAdvancedValueDashboard = canAccessFeature('advancedValueDashboard');
   // Alertes/opportunités avancées (devis sans réponse, opportunités chaudes) réservées Performance+.
   if (canSeeAdvancedValueDashboard) {
-    staleQuoteProjects.forEach((p) => pushValueAction(
-      p,
-      'Devis sans réponse',
-      `Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
-    ));
+    staleQuoteProjects.forEach((p) => {
+      const amount = projectValue(p);
+      pushValueAction(
+        p,
+        'Devis sans réponse',
+        `${amount > 0 ? `${formatCurrency(amount)} en attente · ` : ''}Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
+      );
+    });
   }
-  quotesProjects.forEach((p) => pushValueAction(p, 'Devis à envoyer', 'Dossier prêt à être chiffré'));
-  todayCallbacks.forEach((p) => pushValueAction(p, "Rappel prévu aujourd'hui", 'Rappel programmé ce jour'));
+  valueQuotesProjects.forEach((p) => {
+    const amount = projectValue(p);
+    pushValueAction(p, 'Devis à envoyer', amount > 0 ? `Budget estimé ${formatCurrency(amount)}` : 'Budget non renseigné');
+  });
+  todayCallbacks
+    .filter((p) => valueFilteredIds.has(p.id))
+    .forEach((p) => pushValueAction(p, "Rappel prévu aujourd'hui", 'Rappel programmé ce jour'));
   if (canSeeAdvancedValueDashboard) {
-    uncontactedHotLeads.forEach((p) => pushValueAction(p, 'Opportunité chaude', getHotLeadMessage(p)));
+    uncontactedHotLeads.forEach((p) => {
+      const amount = projectValue(p);
+      pushValueAction(
+        p,
+        'Opportunité chaude',
+        amount > 0 ? `${getHotLeadMessage(p)} · ${formatCurrency(amount)} potentiel` : getHotLeadMessage(p),
+      );
+    });
   }
-  incompleteValueProjects.forEach((p) => pushValueAction(p, 'Dossier incomplet', 'Informations manquantes à compléter'));
+  incompleteValueProjects.forEach((p) => {
+    const amount = projectValue(p);
+    pushValueAction(
+      p,
+      'Dossier incomplet',
+      amount > 0 ? `Informations manquantes · budget estimé ${formatCurrency(amount)}` : 'Informations manquantes — budget non renseigné',
+    );
+  });
   const topValueActions = valueActions.slice(0, canSeeAdvancedValueDashboard ? 5 : 3);
 
-  const qualifiedValueCount = allProjects.filter((p) => Number(p.completenessScore || 0) >= 100).length;
-  const handledFollowUpsValueCount = allProjects.filter((p) => p.lastFollowUpAt).length;
-  const estimatedMinutesSaved = qualifiedValueCount * 8 + handledFollowUpsValueCount * 5;
+  // "Valeur en attente" V1 : argent potentiellement récupérable à court terme,
+  // sans double comptage (devis envoyés en attente englobe les devis sans réponse).
+  const pendingQuoteValue = pendingSentQuoteProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const staleQuoteValue = staleQuoteProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const hotLeadPendingValue = uncontactedHotLeads.reduce((sum, p) => sum + projectValue(p), 0);
+  const quotesToSendValue = valueQuotesProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const totalPendingValue = pendingQuoteValue + hotLeadPendingValue + quotesToSendValue;
+
+  const qualifiedValueCount = valueFilteredProjects.filter((p) => Number(p.completenessScore || 0) >= 100).length;
+  const preparedQuotesValueCount = valueFilteredProjects.filter((p) => p.status === 'Devis envoyé' || Boolean(p.devisAmount)).length;
+  const handledFollowUpsValueCount = valueFilteredProjects.filter((p) => p.lastFollowUpAt).length;
+  const estimatedMinutesSaved = qualifiedValueCount * 8 + preparedQuotesValueCount * 5 + handledFollowUpsValueCount * 5;
   const estimatedHoursSaved = Math.floor(estimatedMinutesSaved / 60);
   const estimatedRemMinutesSaved = estimatedMinutesSaved % 60;
 
-  const valueSourceCounts = SOURCE_OPTIONS.map((opt) => ({
-    label: opt.label,
-    count: allProjects.filter((p) => {
+  const valueSourceStats = SOURCE_OPTIONS.map((opt) => {
+    const sourceProjects = valueFilteredProjects.filter((p) => {
       const src = (p.source || '').toLowerCase();
       if (opt.value === 'chat') return src.includes('chat');
       if (opt.value === 'voice') return src.includes('voice') || src.includes('vocal') || src.includes('call');
       if (opt.value === 'manual') return src.includes('manual') || src.includes('manuel');
       return false;
-    }).length,
-  })).filter((s) => s.count > 0);
+    });
+    return {
+      label: opt.label,
+      count: sourceProjects.length,
+      amount: sourceProjects.reduce((sum, p) => sum + projectValue(p), 0),
+    };
+  }).filter((s) => s.count > 0);
+  const mostValuableSource = valueSourceStats.length > 0
+    ? [...valueSourceStats].sort((a, b) => b.amount - a.amount)[0]
+    : null;
 
   return (
     <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
@@ -1818,15 +2005,70 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </p>
           </div>
 
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {VALUE_PERIOD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setValuePeriod(opt.value)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      valuePeriod === opt.value
+                        ? 'bg-green-500 text-zinc-950'
+                        : 'bg-[var(--bg-hover)] text-[var(--text-2)] hover:text-[var(--text-1)]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {canSeeAdvancedValueDashboard ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {VALUE_SOURCE_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setValueSourceFilter(opt.value)}
+                      className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                        valueSourceFilter === opt.value
+                          ? 'bg-[var(--text-1)] text-[var(--bg)]'
+                          : 'bg-[var(--bg-hover)] text-[var(--text-2)] hover:text-[var(--text-1)]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('advancedValueDashboard')}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--text-2)] hover:text-[var(--text-1)]"
+                >
+                  <Lock className="h-3.5 w-3.5 text-green-500" />
+                  Analyse par source avec Performance
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!hasValueData && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <p className="text-sm text-[var(--text-2)]">Aucune donnée sur cette période.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {[
-              { label: 'CA potentiel en cours', value: formatCurrency(valueCaEnCours), icon: Euro, borderColor: 'var(--accent)' },
-              { label: 'CA gagné', value: formatCurrency(valueCaGagne), icon: Trophy, borderColor: '#15803d' },
-              { label: 'Dossiers captés', value: String(allProjects.length), icon: FolderOpen, borderColor: '#2563eb' },
-              { label: 'Devis envoyés', value: String(valueDevisEnvoyesCount), icon: Send, borderColor: '#7c3aed' },
-              { label: 'Devis acceptés', value: String(valueDevisAcceptesCount), icon: CheckCircle, borderColor: '#22c55e' },
+              { label: 'CA potentiel en cours', value: formatCurrency(valueCaEnCours), icon: Euro, borderColor: 'var(--accent)', delta: valueComparisons.caEnCours },
+              { label: 'CA gagné', value: formatCurrency(valueCaGagne), icon: Trophy, borderColor: '#15803d', delta: valueComparisons.caGagne },
+              { label: 'Dossiers captés', value: String(valueFilteredProjects.length), icon: FolderOpen, borderColor: '#2563eb', delta: valueComparisons.dossiers },
+              { label: 'Devis envoyés', value: String(valueDevisEnvoyesCount), icon: Send, borderColor: '#7c3aed', delta: valueComparisons.devisEnvoyes },
+              { label: 'Devis acceptés', value: String(valueDevisAcceptesCount), icon: CheckCircle, borderColor: '#22c55e', delta: valueComparisons.devisAcceptes },
               ...(canSeeAdvancedValueDashboard
-                ? [{ label: 'Taux de conversion', value: valueTauxConversion !== null ? `${valueTauxConversion.toFixed(1)}%` : '—', icon: Target, borderColor: '#d97706' }]
+                ? [{ label: 'Taux de conversion', value: valueTauxConversion !== null ? `${valueTauxConversion.toFixed(1)}%` : '—', icon: Target, borderColor: '#d97706', delta: null as string | null }]
                 : []),
             ].map((card) => (
               <div
@@ -1841,8 +2083,53 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </div>
                 </div>
                 <span className="text-2xl font-bold tracking-tight text-[var(--text-1)] sm:text-[28px]">{card.value}</span>
+                {card.delta && <span className="text-xs font-medium text-[var(--text-3)]">{card.delta}</span>}
               </div>
             ))}
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <p className="text-base font-bold text-[var(--text-1)]">Valeur en attente</p>
+            {canSeeAdvancedValueDashboard ? (
+              <>
+                <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">
+                  {totalPendingValue > 0 ? `${formatCurrency(totalPendingValue)} en attente` : '— en attente'}
+                </p>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+                    <p className="text-xs text-[var(--text-3)]">Devis sans réponse</p>
+                    <p className="mt-1 text-base font-bold text-[var(--text-1)]">
+                      {staleQuoteProjects.length} devis{staleQuoteValue > 0 ? ` · ${formatCurrency(staleQuoteValue)}` : ''}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+                    <p className="text-xs text-[var(--text-3)]">Opportunités chaudes non traitées</p>
+                    <p className="mt-1 text-base font-bold text-[var(--text-1)]">
+                      {uncontactedHotLeads.length} dossier(s){hotLeadPendingValue > 0 ? ` · ${formatCurrency(hotLeadPendingValue)}` : ''}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+                    <p className="text-xs text-[var(--text-3)]">Devis à envoyer</p>
+                    <p className="mt-1 text-base font-bold text-[var(--text-1)]">
+                      {valueQuotesProjects.length} dossier(s){quotesToSendValue > 0 ? ` · ${formatCurrency(quotesToSendValue)}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-[var(--text-2)]">
+                  Kadria suit déjà les devis envoyés et les dossiers en cours. Passez à Performance pour voir le détail des montants récupérables à court terme.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('advancedValueDashboard')}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
+                >
+                  Passer à Performance
+                </button>
+              </>
+            )}
           </div>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
@@ -1850,12 +2137,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
               <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
               <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={Send} label="devis à envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Send} label="devis à envoyer" value={valueQuotesProjects.length} onClick={() => goToCommercialFilter('quotes')} />
               <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
               {canSeeAdvancedValueDashboard && (
                 <>
                   <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
-                  <ActionSummary icon={Bell} label="opportunités chaudes" value={hotLeads.length} onClick={() => setDashboardMode('commercial')} />
+                  <ActionSummary icon={Bell} label="opportunités chaudes" value={valueHotLeads.length} onClick={() => setDashboardMode('commercial')} />
                 </>
               )}
             </div>
@@ -1903,29 +2190,44 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">
                 {estimatedHoursSaved > 0 ? `${estimatedHoursSaved} h ${estimatedRemMinutesSaved} min` : `${estimatedRemMinutesSaved} min`}
               </p>
-              <p className="mt-1 text-xs text-[var(--text-3)]">
-                8 min économisées par dossier qualifié automatiquement, 5 min par relance/devis préparé.
-              </p>
+              {canSeeAdvancedValueDashboard ? (
+                <div className="mt-2 space-y-1 text-xs text-[var(--text-3)]">
+                  <p>Qualification automatique : {qualifiedValueCount * 8} min ({qualifiedValueCount} dossier(s))</p>
+                  <p>Devis préparés : {preparedQuotesValueCount * 5} min ({preparedQuotesValueCount} devis)</p>
+                  <p>Relances suivies : {handledFollowUpsValueCount * 5} min ({handledFollowUpsValueCount} relance(s))</p>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-[var(--text-3)]">
+                  8 min économisées par dossier qualifié automatiquement, 5 min par relance/devis préparé.
+                </p>
+              )}
               <p className="mt-2 text-xs text-[var(--text-3)]">
                 Estimation indicative basée sur les actions traitées par Kadria.
               </p>
             </div>
 
             {canSeeAdvancedValueDashboard ? (
-              valueSourceCounts.length > 0 && (
+              valueSourceStats.length > 0 && (
                 <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
                   <div className="flex items-center gap-2">
                     <Globe className="h-4 w-4 text-green-400" />
                     <p className="text-base font-bold text-[var(--text-1)]">Sources des demandes</p>
                   </div>
                   <div className="mt-3 space-y-2">
-                    {valueSourceCounts.map((s) => (
+                    {valueSourceStats.map((s) => (
                       <div key={s.label} className="flex items-center justify-between text-sm">
                         <span className="text-[var(--text-2)]">{s.label}</span>
-                        <span className="font-semibold text-[var(--text-1)]">{s.count}</span>
+                        <span className="font-semibold text-[var(--text-1)]">
+                          {s.count}{s.amount > 0 ? ` · ${formatCurrency(s.amount)}` : ''}
+                        </span>
                       </div>
                     ))}
                   </div>
+                  {mostValuableSource && mostValuableSource.amount > 0 && (
+                    <p className="mt-3 text-xs font-semibold text-green-400">
+                      Source la plus rentable : {mostValuableSource.label}
+                    </p>
+                  )}
                 </div>
               )
             ) : (
