@@ -7,7 +7,7 @@ import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { getSuggestedWorkTypesForTrades, getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
-import type { ArtisanServiceCatalogItem } from '@/src/lib/quote-suggestions'
+import type { ArtisanServiceCatalogItem, ArtisanQuoteTemplate, ArtisanQuoteTemplateLine } from '@/src/lib/quote-suggestions'
 import {
   VehicleType,
   ChargingType,
@@ -177,6 +177,7 @@ export default function ParametresPage() {
       customAcceptedWork: '' as string,
       customRefusedWork: '' as string,
       serviceCatalog: [] as ArtisanServiceCatalogItem[],
+      quoteTemplates: [] as ArtisanQuoteTemplate[],
     },
   })
 
@@ -254,6 +255,7 @@ export default function ParametresPage() {
               customAcceptedWork: data.config.businessConfig?.customAcceptedWork || '',
               customRefusedWork: data.config.businessConfig?.customRefusedWork || '',
               serviceCatalog: Array.isArray(data.config.businessConfig?.serviceCatalog) ? data.config.businessConfig.serviceCatalog : [],
+              quoteTemplates: Array.isArray(data.config.businessConfig?.quoteTemplates) ? data.config.businessConfig.quoteTemplates : [],
             },
           })
           if (data.config.artisanId) {
@@ -310,13 +312,16 @@ export default function ParametresPage() {
         t === 'autre' && config.otherTrade.trim() ? config.otherTrade.trim() : t
       )
       const cleanedServiceCatalog = config.businessConfig.serviceCatalog.filter(item => item.label.trim())
+      const cleanedQuoteTemplates = config.businessConfig.quoteTemplates
+        .filter(t => t.name.trim())
+        .map(t => ({ ...t, lines: t.lines.filter(l => l.label.trim()) }))
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...config,
           trades: effectiveTrades,
-          businessConfig: { ...config.businessConfig, serviceCatalog: cleanedServiceCatalog },
+          businessConfig: { ...config.businessConfig, serviceCatalog: cleanedServiceCatalog, quoteTemplates: cleanedQuoteTemplates },
         }),
       })
       const data = await res.json()
@@ -383,6 +388,151 @@ export default function ParametresPage() {
         serviceCatalog: [
           ...c.businessConfig.serviceCatalog,
           { id: makeCatalogItemId(), label, unit: 'forfait', unitPriceHT: null, vatRate: c.devisTvaDefaut || 10, isActive: true },
+        ],
+      },
+    }))
+  }
+
+  // ── Modèles de devis (V1) ───────────────────────────────────────────────
+  // Stockes dans businessConfig.quoteTemplates (JSONB existant), jamais
+  // utilises pour generer un devis/email/PDF automatiquement : ce sont des
+  // trames reutilisables que l'artisan applique lui-meme depuis une fiche
+  // projet.
+  const makeTemplateId = () => `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const makeTemplateLineId = () => `tplline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+  const addTemplate = () => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: [
+          ...c.businessConfig.quoteTemplates,
+          { id: makeTemplateId(), name: '', isActive: true, lines: [] },
+        ],
+      },
+    }))
+  }
+
+  const updateTemplate = (id: string, patch: Partial<ArtisanQuoteTemplate>) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: c.businessConfig.quoteTemplates.map(t => t.id === id ? { ...t, ...patch } : t),
+      },
+    }))
+  }
+
+  const removeTemplate = (id: string) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: c.businessConfig.quoteTemplates.filter(t => t.id !== id),
+      },
+    }))
+  }
+
+  const addTemplateLine = (templateId: string) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: c.businessConfig.quoteTemplates.map(t => t.id === templateId
+          ? { ...t, lines: [...t.lines, { id: makeTemplateLineId(), label: '', unit: 'forfait', unitPriceHT: null, vatRate: c.devisTvaDefaut || 10 }] }
+          : t),
+      },
+    }))
+  }
+
+  const updateTemplateLine = (templateId: string, lineId: string, patch: Partial<ArtisanQuoteTemplateLine>) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: c.businessConfig.quoteTemplates.map(t => t.id === templateId
+          ? {
+            ...t,
+            lines: t.lines.map(l => {
+              if (l.id !== lineId) return l
+              const next = { ...l, ...patch }
+              // Si la ligne se lie a une prestation du catalogue, on
+              // preremplit prix/unite/TVA depuis le catalogue (jamais
+              // l'inverse : le catalogue reste la source de verite des prix).
+              if (patch.catalogItemId) {
+                const catalogItem = c.businessConfig.serviceCatalog.find(i => i.id === patch.catalogItemId)
+                if (catalogItem) {
+                  next.unitPriceHT = catalogItem.unitPriceHT ?? next.unitPriceHT
+                  next.unit = (catalogItem.unit as ArtisanQuoteTemplateLine['unit']) || next.unit
+                  next.vatRate = catalogItem.vatRate ?? next.vatRate
+                  if (!next.label.trim()) next.label = catalogItem.label
+                }
+              }
+              return next
+            }),
+          }
+          : t),
+      },
+    }))
+  }
+
+  const removeTemplateLine = (templateId: string, lineId: string) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: c.businessConfig.quoteTemplates.map(t => t.id === templateId
+          ? { ...t, lines: t.lines.filter(l => l.id !== lineId) }
+          : t),
+      },
+    }))
+  }
+
+  // Suggestions initiales de modeles (Mission "quote templates", point 5) :
+  // jamais sauvegardees automatiquement, juste un point de depart propose a
+  // l'artisan selon ses metiers declares, qu'il peut ajouter puis editer.
+  const QUOTE_TEMPLATE_SUGGESTIONS: Record<string, { name: string; lines: string[] }[]> = {
+    plombier: [
+      { name: 'Entretien PAC', lines: ['Entretien PAC air/air', 'Nettoyage filtres', 'Contrôle fonctionnement'] },
+      { name: 'Entretien chaudière', lines: ['Entretien chaudière', 'Contrôle étanchéité', 'Nettoyage brûleur'] },
+      { name: 'Remplacement chauffe-eau', lines: ['Dépose ancien chauffe-eau', 'Fourniture et pose chauffe-eau', 'Mise en service'] },
+    ],
+    chauffagiste: [
+      { name: 'Entretien PAC', lines: ['Entretien PAC air/air', 'Nettoyage filtres', 'Contrôle fonctionnement'] },
+      { name: 'Entretien chaudière', lines: ['Entretien chaudière', 'Contrôle étanchéité', 'Nettoyage brûleur'] },
+      { name: 'Remplacement chauffe-eau', lines: ['Dépose ancien chauffe-eau', 'Fourniture et pose chauffe-eau', 'Mise en service'] },
+    ],
+    electricien: [
+      { name: 'Mise en sécurité électrique', lines: ['Diagnostic installation', 'Mise en sécurité tableau', 'Remplacement disjoncteurs défectueux'] },
+      { name: 'Remplacement tableau électrique', lines: ['Dépose ancien tableau', 'Fourniture et pose tableau', 'Mise aux normes'] },
+      { name: 'Ajout prise/point lumineux', lines: ['Ajout prise/point lumineux', 'Tirage de câble', 'Raccordement et essais'] },
+    ],
+    paysagiste: [
+      { name: 'Pose clôture', lines: ['Pose clôture', 'Fourniture poteaux et grillage', 'Finitions'] },
+      { name: 'Taille de haies', lines: ['Taille de haies', 'Évacuation des déchets verts'] },
+      { name: 'Création massif', lines: ['Création massif', 'Fourniture plantations', 'Paillage'] },
+    ],
+  }
+
+  const addSuggestedTemplate = (name: string, lineLabels: string[], trade?: string) => {
+    const alreadyExists = config.businessConfig.quoteTemplates.some(
+      t => t.name.trim().toLowerCase() === name.trim().toLowerCase()
+    )
+    if (alreadyExists) return
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        quoteTemplates: [
+          ...c.businessConfig.quoteTemplates,
+          {
+            id: makeTemplateId(),
+            name,
+            trade,
+            isActive: true,
+            lines: lineLabels.map(label => ({ id: makeTemplateLineId(), label, unit: 'forfait', unitPriceHT: null, vatRate: c.devisTvaDefaut || 10 })),
+          },
         ],
       },
     }))
@@ -1025,6 +1175,230 @@ export default function ParametresPage() {
                   }}
                 >
                   + Ajouter une prestation
+                </button>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Modèles de devis
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Créez des trames réutilisables pour vos devis fréquents.
+                </p>
+
+                {config.businessConfig.quoteTemplates.length === 0 && config.trades.length > 0 && (() => {
+                  const suggestions = config.trades.flatMap(trade => QUOTE_TEMPLATE_SUGGESTIONS[trade] || [])
+                  const existingNames = new Set(config.businessConfig.quoteTemplates.map(t => t.name.trim().toLowerCase()))
+                  const uniqueSuggestions = suggestions.filter((s, i, arr) =>
+                    !existingNames.has(s.name.trim().toLowerCase()) &&
+                    arr.findIndex(other => other.name === s.name) === i
+                  )
+                  if (uniqueSuggestions.length === 0) return null
+                  return (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={labelStyle}>Suggestions de modèles à ajouter</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                        {uniqueSuggestions.map(s => (
+                          <div
+                            key={`suggest-tpl-${s.name}`}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap',
+                              background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 12px',
+                            }}
+                          >
+                            <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>
+                              <strong style={{ color: 'var(--text-1)' }}>{s.name}</strong>
+                              {' — '}{s.lines.join(', ')}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => addSuggestedTemplate(s.name, s.lines)}
+                              style={{
+                                background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)',
+                                borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Ajouter ce modèle
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {config.businessConfig.quoteTemplates.length === 0 ? (
+                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                    Aucun modèle enregistré pour le moment.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+                    {config.businessConfig.quoteTemplates.map(template => (
+                      <div
+                        key={template.id}
+                        style={{
+                          background: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '10px',
+                          padding: '12px',
+                          opacity: template.isActive === false ? 0.5 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            value={template.name}
+                            onChange={e => updateTemplate(template.id, { name: e.target.value })}
+                            placeholder="Ex : Entretien PAC"
+                            style={inputStyle}
+                          />
+                          <input
+                            value={template.trade || ''}
+                            onChange={e => updateTemplate(template.id, { trade: e.target.value })}
+                            placeholder="Métier (optionnel)"
+                            style={inputStyle}
+                          />
+                          <input
+                            value={template.category || ''}
+                            onChange={e => updateTemplate(template.id, { category: e.target.value })}
+                            placeholder="Catégorie (optionnel)"
+                            style={inputStyle}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            value={(template.keywords || []).join(', ')}
+                            onChange={e => updateTemplate(template.id, { keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean) })}
+                            placeholder="Mots-clés séparés par une virgule (optionnel)"
+                            style={inputStyle}
+                          />
+                          <input
+                            value={template.notes || ''}
+                            onChange={e => updateTemplate(template.id, { notes: e.target.value })}
+                            placeholder="Notes (optionnel)"
+                            style={inputStyle}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                          {template.lines.map(line => (
+                            <div
+                              key={line.id}
+                              style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '2fr 1fr 1fr 1fr 1fr auto', gap: '6px', alignItems: 'center' }}
+                            >
+                              <input
+                                value={line.label}
+                                onChange={e => updateTemplateLine(template.id, line.id, { label: e.target.value })}
+                                placeholder="Libellé de la ligne"
+                                style={inputStyle}
+                              />
+                              <select
+                                value={line.catalogItemId || ''}
+                                onChange={e => updateTemplateLine(template.id, line.id, { catalogItemId: e.target.value || undefined })}
+                                style={inputStyle}
+                              >
+                                <option value="">Catalogue (optionnel)</option>
+                                {config.businessConfig.serviceCatalog.map(item => (
+                                  <option key={item.id} value={item.id}>{item.label}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={line.unit || 'forfait'}
+                                onChange={e => updateTemplateLine(template.id, line.id, { unit: e.target.value as ArtisanQuoteTemplateLine['unit'] })}
+                                style={inputStyle}
+                              >
+                                <option value="forfait">Forfait</option>
+                                <option value="heure">Heure</option>
+                                <option value="jour">Jour</option>
+                                <option value="m2">m²</option>
+                                <option value="ml">ml</option>
+                                <option value="unite">Unité</option>
+                              </select>
+                              <input
+                                type="number"
+                                min={0}
+                                step="any"
+                                value={line.unitPriceHT ?? ''}
+                                onChange={e => updateTemplateLine(template.id, line.id, { unitPriceHT: e.target.value === '' ? null : Number(e.target.value) })}
+                                placeholder="Prix HT"
+                                style={inputStyle}
+                              />
+                              <select
+                                value={line.vatRate ?? 20}
+                                onChange={e => updateTemplateLine(template.id, line.id, { vatRate: Number(e.target.value) })}
+                                style={inputStyle}
+                              >
+                                {[0, 5.5, 10, 20].map(rate => (
+                                  <option key={rate} value={rate}>{rate}% TVA</option>
+                                ))}
+                              </select>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <label style={{ ...checkboxRowStyle, fontSize: '11px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={line.optional === true}
+                                    onChange={e => updateTemplateLine(template.id, line.id, { optional: e.target.checked })}
+                                  />
+                                  Opt.
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => removeTemplateLine(template.id, line.id)}
+                                  style={{
+                                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444',
+                                    borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer',
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => addTemplateLine(template.id)}
+                            style={{
+                              background: 'transparent', border: '1px dashed var(--border)', color: 'var(--text-2)',
+                              borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', alignSelf: 'flex-start',
+                            }}
+                          >
+                            + Ajouter une ligne
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                          <label style={checkboxRowStyle}>
+                            <input
+                              type="checkbox"
+                              checked={template.isActive !== false}
+                              onChange={e => updateTemplate(template.id, { isActive: e.target.checked })}
+                            />
+                            Actif
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeTemplate(template.id)}
+                            style={{
+                              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444',
+                              borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
+                            }}
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={addTemplate}
+                  style={{
+                    background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)',
+                    borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  + Ajouter un modèle
                 </button>
               </div>
 

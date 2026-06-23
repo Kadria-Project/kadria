@@ -103,6 +103,36 @@ export async function PATCH(request: NextRequest) {
           )
         }
       }
+
+      if (bc.quoteTemplates !== undefined) {
+        if (!Array.isArray(bc.quoteTemplates) || bc.quoteTemplates.length > 50) {
+          return NextResponse.json(
+            { success: false, error: 'businessConfig invalide : quoteTemplates doit être un tableau de 50 modèles maximum' },
+            { status: 400 }
+          )
+        }
+        const isValidLine = (line: unknown) => {
+          if (typeof line !== 'object' || line === null) return false
+          const l = line as Record<string, unknown>
+          if (typeof l.label !== 'string' || !l.label.trim()) return false
+          if (l.unitPriceHT !== undefined && l.unitPriceHT !== null && typeof l.unitPriceHT !== 'number') return false
+          if (l.vatRate !== undefined && typeof l.vatRate !== 'number') return false
+          return true
+        }
+        const isValidTemplate = (template: unknown) => {
+          if (typeof template !== 'object' || template === null) return false
+          const t = template as Record<string, unknown>
+          if (typeof t.name !== 'string' || !t.name.trim()) return false
+          if (!Array.isArray(t.lines) || t.lines.length > 20) return false
+          return t.lines.every(isValidLine)
+        }
+        if (!bc.quoteTemplates.every(isValidTemplate)) {
+          return NextResponse.json(
+            { success: false, error: 'businessConfig invalide : chaque modèle de devis doit avoir un nom et au plus 20 lignes valides (libellé requis, prix/TVA numériques le cas échéant)' },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config

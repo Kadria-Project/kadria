@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/button';
 import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Lock, Plus, Trash2, X, XCircle } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getQuoteDraftStorageKey, type QuoteDraftLine } from '@/src/lib/quote-suggestions';
+import { getQuoteDraftStorageKey, type QuoteDraftLine, type QuoteDraftPayload } from '@/src/lib/quote-suggestions';
 
 interface ArtisanConfig {
   companyName: string;
@@ -102,6 +102,7 @@ function NewDevis() {
   const canQuote = hasFeature(plan, 'quoteGeneration');
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
   const [prefilledFromSuggestions, setPrefilledFromSuggestions] = useState(false);
+  const [prefilledTemplateName, setPrefilledTemplateName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -174,7 +175,9 @@ function NewDevis() {
             const draftKey = getQuoteDraftStorageKey(projetId);
             const rawDraft = sessionStorage.getItem(draftKey);
             if (rawDraft) {
-              const draftLines = JSON.parse(rawDraft) as QuoteDraftLine[];
+              const parsed = JSON.parse(rawDraft) as QuoteDraftPayload | QuoteDraftLine[];
+              const draftLines: QuoteDraftLine[] = Array.isArray(parsed) ? parsed : parsed.lines;
+              const draftTemplateName = Array.isArray(parsed) ? undefined : parsed.templateName;
               if (Array.isArray(draftLines) && draftLines.length > 0) {
                 setLines(
                   draftLines.map((d) => ({
@@ -190,6 +193,7 @@ function NewDevis() {
                 );
                 appliedDraft = true;
                 setPrefilledFromSuggestions(true);
+                if (draftTemplateName) setPrefilledTemplateName(draftTemplateName);
               }
               sessionStorage.removeItem(draftKey);
             }
@@ -741,7 +745,7 @@ function NewDevis() {
               color: '#a1a1aa',
               fontSize: '12px',
             }}>
-              Suggestions Kadria à vérifier et adapter avant envoi.
+              {prefilledTemplateName ? `Prérempli depuis le modèle : ${prefilledTemplateName}` : 'Suggestions Kadria à vérifier et adapter avant envoi.'}
             </div>
           )}
 

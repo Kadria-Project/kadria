@@ -12,7 +12,7 @@ import { getTradeTaxonomies, getTradeTaxonomy } from '@/src/config/trade-taxonom
 export type QuoteSuggestionLine = {
   label: string
   reason?: string
-  source: 'trade' | 'project' | 'travel' | 'generic'
+  source: 'trade' | 'project' | 'travel' | 'generic' | 'template'
   suggestedAmount?: number
   optional?: boolean
   vatRate?: number
@@ -35,6 +35,34 @@ export type ArtisanServiceCatalogItem = {
   notes?: string
 }
 
+// Modeles de devis reutilisables configures par l'artisan (Mission "quote
+// templates"). Stockes dans Artisan_config.business_config.quoteTemplates
+// (JSONB, pas de migration). Les prix des lignes viennent uniquement du
+// catalogue artisan (via catalogItemId) ou de ce que l'artisan a saisi lui
+// meme dans le modele : Kadria n'invente jamais de prix.
+export type ArtisanQuoteTemplateLine = {
+  id: string
+  label: string
+  catalogItemId?: string
+  description?: string
+  quantity?: number
+  unit?: 'forfait' | 'heure' | 'jour' | 'm2' | 'ml' | 'unite'
+  unitPriceHT?: number | null
+  vatRate?: number
+  optional?: boolean
+}
+
+export type ArtisanQuoteTemplate = {
+  id: string
+  name: string
+  trade?: string
+  category?: string
+  keywords?: string[]
+  isActive?: boolean
+  notes?: string
+  lines: ArtisanQuoteTemplateLine[]
+}
+
 export interface QuoteSuggestionProjectLike {
   trade?: string
   projectType?: string
@@ -48,6 +76,7 @@ export interface QuoteSuggestionBusinessConfig {
   customAcceptedWork?: string
   customRefusedWork?: string
   serviceCatalog?: ArtisanServiceCatalogItem[]
+  quoteTemplates?: ArtisanQuoteTemplate[]
 }
 
 export interface QuoteSuggestionTravel {
@@ -168,6 +197,100 @@ function findCatalogMatch(
   })
 }
 
+// Matching modele -> projet (Mission "quote templates"), volontairement
+// simple et deterministe (pas d'IA, pas d'appel externe) : en cas de doute,
+// on prefere ne suggerer aucun modele plutot que d'en imposer un incertain.
+const QUOTE_TEMPLATE_MATCH_THRESHOLD = 2
+
+export function findBestQuoteTemplate(params: {
+  project: QuoteSuggestionProjectLike
+  artisanTrades?: string[]
+  businessConfig?: QuoteSuggestionBusinessConfig
+}): ArtisanQuoteTemplate | null {
+  const { project, artisanTrades, businessConfig } = params
+  const templates = businessConfig?.quoteTemplates
+  if (!templates || templates.length === 0) return null
+
+  const projectText = buildProjectText(project)
+  const tradesToUse = artisanTrades && artisanTrades.length > 0
+    ? artisanTrades
+    : (project.trade ? [project.trade] : [])
+  const normalizedTrades = new Set(tradesToUse.map((t) => t.trim().toLowerCase()))
+
+  let bestTemplate: ArtisanQuoteTemplate | null = null
+  let bestScore = 0
+
+  for (const template of templates) {
+    if (template.isActive === false) continue
+    if (!template.name || !template.name.trim()) continue
+
+    let score = 0
+
+    if (template.trade && normalizedTrades.has(template.trade.trim().toLowerCase())) {
+      score += 3
+    }
+
+    const normalizedName = template.name.trim().toLowerCase()
+    if (normalizedName.length >= MIN_KEYWORD_MATCH_LENGTH && projectText.includes(normalizedName)) {
+      score += 2
+    } else {
+      const synonymName = normalizeForCatalogMatch(normalizedName)
+      const synonymProjectText = normalizeForCatalogMatch(projectText)
+      if (synonymName.length >= MIN_KEYWORD_MATCH_LENGTH && synonymProjectText.includes(synonymName)) {
+        score += 2
+      }
+    }
+
+    if (template.keywords) {
+      for (const keyword of template.keywords) {
+        const normalizedKeyword = keyword.trim().toLowerCase()
+        if (normalizedKeyword && projectText.includes(normalizedKeyword)) {
+          score += 1
+        }
+      }
+    }
+
+    if (template.category && projectText.includes(template.category.trim().toLowerCase())) {
+      score += 1
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestTemplate = template
+    }
+  }
+
+  return bestScore >= QUOTE_TEMPLATE_MATCH_THRESHOLD ? bestTemplate : null
+}
+
+function templateLineToSuggestion(
+  line: ArtisanQuoteTemplateLine,
+  catalog: ArtisanServiceCatalogItem[] | undefined
+): QuoteSuggestionLine {
+  const catalogItem = line.catalogItemId
+    ? catalog?.find((item) => item.id === line.catalogItemId && item.isActive !== false)
+    : undefined
+
+  if (catalogItem && typeof catalogItem.unitPriceHT === 'number') {
+    return {
+      label: line.label,
+      source: 'template',
+      optional: line.optional,
+      suggestedAmount: catalogItem.unitPriceHT,
+      vatRate: catalogItem.vatRate,
+      fromCatalog: true,
+    }
+  }
+
+  return {
+    label: line.label,
+    source: 'template',
+    optional: line.optional,
+    suggestedAmount: typeof line.unitPriceHT === 'number' ? line.unitPriceHT : undefined,
+    vatRate: line.vatRate,
+  }
+}
+
 export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggestionLine[] {
   const { project, artisanTrades, businessConfig, travel } = params
   const projectText = buildProjectText(project)
@@ -198,6 +321,21 @@ export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggest
         suggestedAmount: travel.suggestedFee,
       })
     }
+  }
+
+  // Modele de devis (Mission "quote templates") : priorite 1. Si un modele
+  // fiable correspond au projet, ses lignes remplacent les suggestions
+  // metier/mots-cles generiques — on ne mélange pas un modele avec le
+  // fallback automatique pour rester previsible pour l'artisan.
+  const matchedTemplate = findBestQuoteTemplate({ project, artisanTrades, businessConfig })
+  if (matchedTemplate) {
+    for (const line of matchedTemplate.lines) {
+      addLine(templateLineToSuggestion(line, businessConfig?.serviceCatalog))
+    }
+    if (!travel) {
+      addLine({ label: 'Déplacement', source: 'generic' })
+    }
+    return lines.slice(0, MAX_SUGGESTIONS)
   }
 
   // Si aucun signal déplacement n'est disponible (plan non éligible,
@@ -291,13 +429,40 @@ export type QuoteDraftLine = {
   unitPrice?: number | null
   amount?: number | null
   vatRate?: number
-  source?: 'trade' | 'project' | 'travel' | 'generic'
+  source?: 'trade' | 'project' | 'travel' | 'generic' | 'template'
   optional?: boolean
   fromCatalog?: boolean
 }
 
+export function getMatchedQuoteTemplateName(params: {
+  project: QuoteSuggestionProjectLike
+  artisanTrades?: string[]
+  businessConfig?: QuoteSuggestionBusinessConfig
+}): string | null {
+  return findBestQuoteTemplate(params)?.name ?? null
+}
+
 export function getQuoteDraftStorageKey(projectId: string): string {
   return `kadria:quoteDraft:${projectId}`
+}
+
+// Charge utile stockee en sessionStorage entre la fiche projet et /devis/new
+// (Mission "quote templates", point 8) : porte en plus le nom du modele
+// utilise, pour un simple bandeau d'info — jamais utilisee pour generer quoi
+// que ce soit automatiquement.
+export type QuoteDraftPayload = {
+  lines: QuoteDraftLine[]
+  templateName?: string
+}
+
+export function buildQuoteDraftPayload(
+  lines: QuoteSuggestionLine[],
+  templateName?: string | null
+): QuoteDraftPayload {
+  return {
+    lines: toQuoteDraftLines(lines),
+    ...(templateName ? { templateName } : {}),
+  }
 }
 
 export function toQuoteDraftLines(lines: QuoteSuggestionLine[]): QuoteDraftLine[] {

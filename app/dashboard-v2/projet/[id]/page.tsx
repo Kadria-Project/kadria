@@ -23,7 +23,7 @@ import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendat
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
-import { getQuoteSuggestions, toQuoteDraftLines, getQuoteDraftStorageKey, type ArtisanServiceCatalogItem } from '@/src/lib/quote-suggestions';
+import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate } from '@/src/lib/quote-suggestions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -220,6 +220,7 @@ function ProjectDetail() {
       customAcceptedWork?: string;
       customRefusedWork?: string;
       serviceCatalog?: ArtisanServiceCatalogItem[];
+      quoteTemplates?: ArtisanQuoteTemplate[];
     };
   } | null>(null);
 
@@ -618,19 +619,22 @@ function ProjectDetail() {
   // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
   // calculées à la demande, jamais persistées, basées sur les mêmes signaux
   // que l'analyse Kadria ci-dessus (métier, projet, déplacement).
+  const quoteSuggestionProject = {
+    trade: project.trade,
+    projectType: project.projectType,
+    aiSummary: project.aiSummary,
+    tradeAnswers: project.tradeAnswers,
+  };
+  const quoteSuggestionBusinessConfig = {
+    acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
+    refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
+    serviceCatalog: artisanConfig?.businessConfig?.serviceCatalog,
+    quoteTemplates: artisanConfig?.businessConfig?.quoteTemplates,
+  };
   const quoteSuggestions = getQuoteSuggestions({
-    project: {
-      trade: project.trade,
-      projectType: project.projectType,
-      aiSummary: project.aiSummary,
-      tradeAnswers: project.tradeAnswers,
-    },
+    project: quoteSuggestionProject,
     artisanTrades: artisanConfig?.trades,
-    businessConfig: {
-      acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
-      refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
-      serviceCatalog: artisanConfig?.businessConfig?.serviceCatalog,
-    },
+    businessConfig: quoteSuggestionBusinessConfig,
     travel: travelCostSignal?.available
       ? {
           suggestedFee: travelCostSignal.suggestedFee,
@@ -639,6 +643,13 @@ function ProjectDetail() {
           isFreeZone: travelCostSignal.isFreeZone,
         }
       : undefined,
+  });
+  // Modele suggere (Mission "quote templates", point 7) : affichage informatif
+  // uniquement, jamais utilise pour generer un devis automatiquement.
+  const matchedQuoteTemplateName = getMatchedQuoteTemplateName({
+    project: quoteSuggestionProject,
+    artisanTrades: artisanConfig?.trades,
+    businessConfig: quoteSuggestionBusinessConfig,
   });
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
@@ -1930,6 +1941,11 @@ function ProjectDetail() {
                     marginTop: '12px',
                     paddingTop: '14px',
                   }}>
+                    {matchedQuoteTemplateName && (
+                      <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '0 0 6px', fontWeight: 600 }}>
+                        Modèle suggéré : {matchedQuoteTemplateName}
+                      </p>
+                    )}
                     <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', margin: '0 0 2px' }}>
                       Suggestions de lignes de devis
                     </p>
@@ -1979,7 +1995,7 @@ function ProjectDetail() {
                               </span>
                             )}
                             <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                              {line.source === 'trade' ? 'métier' : line.source === 'travel' ? 'déplacement' : line.source === 'project' ? 'projet' : 'standard'}
+                              {line.source === 'trade' ? 'métier' : line.source === 'travel' ? 'déplacement' : line.source === 'project' ? 'projet' : line.source === 'template' ? 'modèle' : 'standard'}
                             </span>
                           </div>
                         </div>
@@ -1995,7 +2011,7 @@ function ProjectDetail() {
                         try {
                           sessionStorage.setItem(
                             getQuoteDraftStorageKey(id as string),
-                            JSON.stringify(toQuoteDraftLines(quoteSuggestions)),
+                            JSON.stringify(buildQuoteDraftPayload(quoteSuggestions, matchedQuoteTemplateName)),
                           );
                         } catch {
                           // sessionStorage indisponible : pas bloquant, le formulaire s'ouvrira vide.
