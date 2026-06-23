@@ -1139,6 +1139,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [artisanTrades, setArtisanTrades] = useState<string[]>([]);
+  const [artisanFirstName, setArtisanFirstName] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -1149,6 +1150,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         if (data.success && data.config) {
           setOnboardingIncomplete(!data.config.onboardingCompleted);
           setArtisanTrades(Array.isArray(data.config.trades) ? data.config.trades : []);
+          setArtisanFirstName(typeof data.config.firstName === 'string' ? data.config.firstName.trim() : '');
         }
       })
       .catch(() => {});
@@ -1518,7 +1520,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       alert: relanceCount > 0,
     },
     {
-      label: 'Dossiers en risque',
+      label: 'Opportunités à sécuriser',
       value: riskProjects.length,
       delta: null,
       icon: AlertTriangle,
@@ -1644,7 +1646,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       const amount = projectValue(p);
       pushValueAction(
         p,
-        'Devis sans réponse',
+        'Devis à relancer',
         `${amount > 0 ? `${formatCurrency(amount)} en attente · ` : ''}Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
       );
     });
@@ -1678,7 +1680,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const priorityAction = valueActions[0] || null;
   const priorityActionTitle = priorityAction
-    ? priorityAction.title === 'Devis sans réponse'
+    ? priorityAction.title === 'Devis à relancer'
       ? `Relancer le devis de ${priorityAction.client}`
       : priorityAction.title === 'Devis à envoyer'
         ? `Envoyer le devis à ${priorityAction.client}`
@@ -1774,16 +1776,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: 'var(--accent)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 6px' }}>
+          <p style={{ color: 'var(--accent)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 8px' }}>
             Kadria Pro
           </p>
 
-          <h1 style={{ color: 'var(--text-1)', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
-            Tableau de bord
+          <h1 style={{ color: 'var(--text-1)', fontSize: isMobile ? '24px' : '30px', fontWeight: 700, margin: '0 0 6px', lineHeight: 1.25 }}>
+            {artisanFirstName ? `Bonjour ${artisanFirstName},` : 'Bonjour,'}
           </h1>
 
-          <p style={{ color: 'var(--text-3)', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
-            {todayLabel}
+          <p style={{ color: 'var(--text-2)', fontSize: '15px', margin: '0 0 6px' }}>
+            Voici ce que Kadria a généré pour vous cette semaine.
+          </p>
+
+          <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+            Dossiers captés · Devis en attente · Valeur à récupérer
+            <span style={{ margin: '0 6px', color: 'var(--border)' }}>·</span>
+            <span style={{ textTransform: 'capitalize' }}>{todayLabel}</span>
           </p>
         </div>
 
@@ -2001,7 +2009,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
       {showValueOverview && !loading && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6">
             <h2 className="text-2xl font-bold text-[var(--text-1)]">Valeur générée par Kadria</h2>
             <p className="mt-1 text-sm text-[var(--text-2)]">
@@ -2100,7 +2108,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </p>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
-                  <p className="text-xs text-green-100/80">Devis sans réponse</p>
+                  <p className="text-xs text-green-100/80">Devis à relancer</p>
                   <p className="mt-1 text-base font-bold text-white">
                     {staleQuoteProjects.length} devis{staleQuoteValue > 0 ? ` · ${formatCurrency(staleQuoteValue)}` : ''}
                   </p>
@@ -2142,22 +2150,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           )}
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={Send} label="devis à envoyer" value={valueQuotesProjects.length} onClick={() => goToCommercialFilter('quotes')} />
-              <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
-              {canSeeAdvancedValueDashboard && (
-                <>
-                  <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
-                  <ActionSummary icon={Bell} label="opportunités chaudes" value={valueHotLeads.length} onClick={() => setDashboardMode('commercial')} />
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
             <div className="flex items-center justify-between">
               <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
               <button
@@ -2167,6 +2159,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 Voir toutes les tâches
               </button>
             </div>
+            <p className="mt-1 text-xs text-[var(--text-3)]">
+              Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.
+            </p>
             <div className="mt-3 space-y-2">
               {topValueActions.map((action, index) =>
                 index === 0 ? (
@@ -2191,7 +2186,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     key={action.key}
                     onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
                     className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                    title={action.title === 'Devis sans réponse' ? 'Devis envoyé sans réponse du client.' : undefined}
+                    title={action.title === 'Devis à relancer' ? 'Devis envoyé sans réponse du client.' : undefined}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
@@ -2205,6 +2200,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               )}
               {topValueActions.length === 0 && (
                 <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour le moment.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+              <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={Send} label="devis à envoyer" value={valueQuotesProjects.length} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
+              {canSeeAdvancedValueDashboard && (
+                <>
+                  <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
+                  <ActionSummary icon={Bell} label="opportunités chaudes" value={valueHotLeads.length} onClick={() => setDashboardMode('commercial')} />
+                </>
               )}
             </div>
           </div>
@@ -2389,7 +2400,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       onClick={() => applyQuickFilter('relance')}
                     />
                     <PriorityMetric
-                      label="Dossiers en risque"
+                      label="Opportunités à sécuriser"
                       value={riskProjects.length}
                       active={quickFilter === 'risk'}
                       onClick={() => applyQuickFilter('risk')}
@@ -2403,7 +2414,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </div>
                 ) : (
                   <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {['Opportunites prioritaires', 'Relances a effectuer', 'Dossiers en risque', 'Prospects chauds'].map((label) => (
+                    {['Opportunites prioritaires', 'Relances a effectuer', 'Opportunités à sécuriser', 'Prospects chauds'].map((label) => (
                       <div
                         key={label}
                         className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left"
@@ -2461,8 +2472,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[var(--text-1)]">Mes actions du jour</p>
-                <p className="text-sm text-[var(--text-2)]">Taches triees par priorite puis echeance.</p>
+                <p className="font-bold text-[var(--text-1)]">À traiter maintenant</p>
+                <p className="text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
               </div>
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
             </div>
@@ -2473,7 +2484,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
             <p className="mt-2 text-xs text-[var(--text-3)]">Cliquer pour filtrer le suivi commercial</p>
             <div className="mt-4 space-y-2">
-              {todayTasks.slice(0, 5).map((task) => {
+              {todayTasks.slice(0, 5).map((task, index) => {
                 const project = allProjects.find((p) => p.id === task.projectId);
                 const amount = project ? projectValue(project) : 0;
                 const amountLabel = amount > 0
@@ -2481,6 +2492,29 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     ? `${formatCurrency(amount)} en attente`
                     : `Budget estime ${formatCurrency(amount)}`
                   : null;
+                const clientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier';
+
+                if (index === 0) {
+                  return (
+                    <ImpactCard
+                      key={task.id}
+                      variant="priority"
+                      as="button"
+                      onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                      className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-green-100/80">Action prioritaire</p>
+                        <p className="text-sm font-semibold text-white">{task.title} — {clientLabel}</p>
+                        {amountLabel && <p className="text-xs text-green-100/80">{amountLabel}</p>}
+                      </div>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
+                        Voir le dossier <ChevronRight className="h-4 w-4" />
+                      </span>
+                    </ImpactCard>
+                  );
+                }
+
                 return (
                   <button
                     key={task.id}
@@ -2489,7 +2523,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
-                      <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                      <p className="text-xs text-[var(--text-2)]">{clientLabel}</p>
                       {amountLabel && <p className="text-xs text-green-400">{amountLabel}</p>}
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
@@ -2519,7 +2553,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div className="mb-4 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <div>
-                <p className="font-bold text-[var(--text-1)]">Dossiers en risque</p>
+                <p className="font-bold text-[var(--text-1)]">Opportunités à sécuriser</p>
                 <p className="text-sm text-[var(--text-2)]">Actions rapides recommandees.</p>
               </div>
             </div>
@@ -3426,7 +3460,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         : quickFilter === 'hot'
                           ? 'Prospects chauds'
                           : quickFilter === 'risk'
-                            ? 'Dossiers en risque'
+                            ? 'Opportunités à sécuriser'
                             : quickFilter === 'opportunities'
                               ? 'Opportunites prioritaires'
                               : quickFilter === 'calls'
