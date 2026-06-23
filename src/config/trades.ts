@@ -3,7 +3,7 @@ export interface TradeOption {
   label: string
 }
 
-export const TRADES: TradeOption[] = [
+export const ARTISAN_TRADES: TradeOption[] = [
   { value: 'plombier', label: 'Plombier' },
   { value: 'chauffagiste', label: 'Chauffagiste' },
   { value: 'electricien', label: 'Électricien' },
@@ -23,7 +23,37 @@ export const TRADES: TradeOption[] = [
   { value: 'autre', label: 'Autre' },
 ]
 
-export const TRADE_LABEL_BY_VALUE: Record<string, string> = TRADES.reduce(
-  (acc, t) => ({ ...acc, [t.value]: t.label }),
-  {} as Record<string, string>
-)
+const ARTISAN_TRADE_VALUES = new Set(ARTISAN_TRADES.map(t => t.value))
+
+/**
+ * Normalise n'importe quelle valeur brute issue de Supabase (jsonb natif,
+ * string JSON legacy, string CSV legacy, null/undefined) en string[].
+ * Ne lève jamais d'exception, même sur des données historiques malformées.
+ */
+export function normalizeTrades(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      }
+    } catch {
+      // Pas du JSON : string legacy simple ou CSV
+    }
+    return value.split(',').map(v => v.trim()).filter(Boolean)
+  }
+
+  return []
+}
+
+export function getTradeLabel(value: string): string {
+  return ARTISAN_TRADES.find(t => t.value === value)?.label || value
+}
+
+export function isKnownTrade(value: string): boolean {
+  return ARTISAN_TRADE_VALUES.has(value)
+}

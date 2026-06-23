@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
-import { TRADES } from '@/src/config/trades'
+import { ARTISAN_TRADES } from '@/src/config/trades'
 
 const SECTIONS = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
@@ -172,7 +172,7 @@ export default function ParametresPage() {
       .then(r => r.json())
       .then(data => {
         if (data.success && data.config) {
-          const knownValues = new Set(TRADES.map(t => t.value))
+          const knownValues = new Set(ARTISAN_TRADES.map(t => t.value))
           const rawTrades: string[] = Array.isArray(data.config.trades) ? data.config.trades : []
           const customTrade = rawTrades.find((t: string) => !knownValues.has(t)) || ''
           setConfig({
@@ -613,7 +613,7 @@ export default function ParametresPage() {
                   Sélectionnez un ou plusieurs métiers. Kadria s&apos;en sert pour mieux qualifier vos prospects.
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {TRADES.map(t => {
+                  {ARTISAN_TRADES.map(t => {
                     const selected = config.trades.includes(t.value)
                     return (
                       <button
@@ -627,7 +627,7 @@ export default function ParametresPage() {
                             ...c,
                             trades,
                             primaryTrade: trades[0]
-                              ? (TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
+                              ? (ARTISAN_TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
                               : '',
                             otherTrade: t.value === 'autre' && selected ? '' : c.otherTrade,
                           }

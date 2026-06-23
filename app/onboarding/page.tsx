@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
-import { TRADES } from '@/src/config/trades'
+import { ARTISAN_TRADES } from '@/src/config/trades'
 
 const FORMES_JURIDIQUES = [
   'Auto-entrepreneur', 'EI', 'EURL', 'SARL', 'SAS', 'SASU', 'Autre',
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
       .then(data => {
         if (data.success && data.config) {
           const c = data.config
-          const knownValues = new Set(TRADES.map(t => t.value))
+          const knownValues = new Set(ARTISAN_TRADES.map(t => t.value))
           const rawTrades: string[] = Array.isArray(c.trades) ? c.trades : []
           const customTrade = rawTrades.find(t => !knownValues.has(t)) || ''
           setConfig({
@@ -457,7 +457,7 @@ export default function OnboardingPage() {
               <div>
                 <label style={labelStyle}>Métiers *</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {TRADES.map(t => {
+                  {ARTISAN_TRADES.map(t => {
                     const selected = config.trades.includes(t.value)
                     return (
                       <button
@@ -471,7 +471,7 @@ export default function OnboardingPage() {
                             ...c,
                             trades,
                             primaryTrade: trades[0]
-                              ? (TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
+                              ? (ARTISAN_TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
                               : '',
                             otherTrade: t.value === 'autre' && selected ? '' : c.otherTrade,
                           }
