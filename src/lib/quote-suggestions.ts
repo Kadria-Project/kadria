@@ -263,7 +263,7 @@ export function findBestQuoteTemplate(params: {
   return bestScore >= QUOTE_TEMPLATE_MATCH_THRESHOLD ? bestTemplate : null
 }
 
-function templateLineToSuggestion(
+export function templateLineToSuggestion(
   line: ArtisanQuoteTemplateLine,
   catalog: ArtisanServiceCatalogItem[] | undefined
 ): QuoteSuggestionLine {
@@ -478,4 +478,16 @@ export function toQuoteDraftLines(lines: QuoteSuggestionLine[]): QuoteDraftLine[
     optional: line.optional,
     fromCatalog: line.fromCatalog,
   }))
+}
+
+// Application manuelle d'un modele depuis /devis/new (Mission "manual
+// template selection") : memes regles que le matching automatique — jamais
+// de prix invente, le catalogue reste la seule source de prix hors saisie
+// manuelle du modele lui-meme.
+export function templateToQuoteDraftLines(params: {
+  template: ArtisanQuoteTemplate
+  serviceCatalog?: ArtisanServiceCatalogItem[]
+}): QuoteDraftLine[] {
+  const { template, serviceCatalog } = params
+  return toQuoteDraftLines(template.lines.map((line) => templateLineToSuggestion(line, serviceCatalog)))
 }

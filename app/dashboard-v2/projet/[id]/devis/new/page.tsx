@@ -7,7 +7,7 @@ import { Button } from '@/src/components/ui/button';
 import { AlertTriangle, ArrowLeft, ArrowDown, ArrowUp, CheckCircle, Loader2, Lock, Plus, Trash2, X, XCircle } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getQuoteDraftStorageKey, type QuoteDraftLine, type QuoteDraftPayload } from '@/src/lib/quote-suggestions';
+import { getQuoteDraftStorageKey, templateToQuoteDraftLines, type QuoteDraftLine, type QuoteDraftPayload, type ArtisanQuoteTemplate, type ArtisanServiceCatalogItem } from '@/src/lib/quote-suggestions';
 
 interface ArtisanConfig {
   companyName: string;
@@ -30,6 +30,10 @@ interface ArtisanConfig {
   devisConditionsPaiement: string;
   devisMentionLegale: string;
   devisCompteur: number;
+  businessConfig?: {
+    serviceCatalog?: ArtisanServiceCatalogItem[];
+    quoteTemplates?: ArtisanQuoteTemplate[];
+  };
 }
 
 interface ProjectData {
@@ -103,6 +107,11 @@ function NewDevis() {
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
   const [prefilledFromSuggestions, setPrefilledFromSuggestions] = useState(false);
   const [prefilledTemplateName, setPrefilledTemplateName] = useState<string | null>(null);
+
+  // ── Sélecteur manuel de modèle (Mission "manual quote template selection") :
+  // action volontaire de l'artisan, jamais appliquée automatiquement.
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -256,6 +265,38 @@ function NewDevis() {
 
   const removeLine = (id: string) => {
     setLines((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const applyTemplate = () => {
+    const activeTemplates = artisanConfig?.businessConfig?.quoteTemplates?.filter((t) => t.isActive !== false) || [];
+    const template = activeTemplates.find((t) => t.id === selectedTemplateId);
+    if (!template) return;
+
+    const hasExistingContent = lines.some((l) => l.description.trim() || l.unitPrice > 0);
+    if (hasExistingContent) {
+      const confirmed = window.confirm(
+        `Remplacer les lignes actuelles par le modèle "${template.name}" ? Cette action est irréversible.`
+      );
+      if (!confirmed) return;
+    }
+
+    const draftLines = templateToQuoteDraftLines({
+      template,
+      serviceCatalog: artisanConfig?.businessConfig?.serviceCatalog,
+    });
+    setLines(
+      draftLines.map((d) => ({
+        id: makeLineId(),
+        type: 'item',
+        description: d.label,
+        quantity: d.quantity ?? 1,
+        unit: d.unit || 'u',
+        unitPrice: d.unitPrice ?? 0,
+        tvaRate: d.vatRate ?? (artisanConfig?.devisTvaDefaut || 10),
+        fromCatalog: d.fromCatalog,
+      }))
+    );
+    setAppliedTemplateName(template.name);
   };
 
   const moveLine = (id: string, direction: -1 | 1) => {
@@ -697,6 +738,57 @@ function NewDevis() {
               placeholder="Ex : Rénovation de la salle de bain"
             />
           </div>
+        </div>
+
+        {/* Sélecteur manuel de modèle de devis */}
+        <div style={sectionCard}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px' }}>Partir d&apos;un modèle</h2>
+          {(() => {
+            const activeTemplates = artisanConfig?.businessConfig?.quoteTemplates?.filter((t) => t.isActive !== false) || [];
+            if (activeTemplates.length === 0) {
+              return (
+                <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>
+                  Aucun modèle disponible. Ajoutez-en depuis Paramètres.
+                </p>
+              );
+            }
+            const hasExistingContent = lines.some((l) => l.description.trim() || l.unitPrice > 0);
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  style={{ ...inputStyle, maxWidth: '320px' }}
+                >
+                  <option value="">Choisir un modèle…</option>
+                  {activeTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}{t.trade ? ` (${t.trade})` : ''}{t.category ? ` — ${t.category}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={applyTemplate}
+                  disabled={!selectedTemplateId}
+                  style={{
+                    background: selectedTemplateId ? 'rgba(34,197,94,0.1)' : '#27272a',
+                    border: selectedTemplateId ? '1px solid rgba(34,197,94,0.3)' : '1px solid #3f3f46',
+                    color: selectedTemplateId ? '#22c55e' : '#71717a',
+                    borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600,
+                    cursor: selectedTemplateId ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {hasExistingContent ? 'Remplacer les lignes par ce modèle' : 'Appliquer le modèle'}
+                </button>
+              </div>
+            );
+          })()}
+          {appliedTemplateName && (
+            <p style={{ fontSize: '12px', color: '#22c55e', margin: '10px 0 0' }}>
+              Modèle appliqué : {appliedTemplateName}. Vérifiez et adaptez les lignes avant envoi.
+            </p>
+          )}
         </div>
 
         {/* Section 2 — Lignes du devis */}
