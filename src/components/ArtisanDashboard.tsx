@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { getProjects, updateProject } from '@/src/lib/api';
@@ -2088,49 +2088,54 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <p className="text-base font-bold text-[var(--text-1)]">Valeur en attente</p>
-            {canSeeAdvancedValueDashboard ? (
-              <>
-                <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">
-                  {totalPendingValue > 0 ? `${formatCurrency(totalPendingValue)} en attente` : '— en attente'}
-                </p>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
-                    <p className="text-xs text-[var(--text-3)]">Devis sans réponse</p>
-                    <p className="mt-1 text-base font-bold text-[var(--text-1)]">
-                      {staleQuoteProjects.length} devis{staleQuoteValue > 0 ? ` · ${formatCurrency(staleQuoteValue)}` : ''}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
-                    <p className="text-xs text-[var(--text-3)]">Opportunités chaudes non traitées</p>
-                    <p className="mt-1 text-base font-bold text-[var(--text-1)]">
-                      {uncontactedHotLeads.length} dossier(s){hotLeadPendingValue > 0 ? ` · ${formatCurrency(hotLeadPendingValue)}` : ''}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
-                    <p className="text-xs text-[var(--text-3)]">Devis à envoyer</p>
-                    <p className="mt-1 text-base font-bold text-[var(--text-1)]">
-                      {valueQuotesProjects.length} dossier(s){quotesToSendValue > 0 ? ` · ${formatCurrency(quotesToSendValue)}` : ''}
-                    </p>
-                  </div>
+          {canSeeAdvancedValueDashboard && totalPendingValue > 0 ? (
+            <ImpactCard variant="money">
+              <p className="text-base font-bold text-white">Valeur en attente</p>
+              <p className="mt-2 text-2xl font-bold text-white">
+                {formatCurrency(totalPendingValue)} en attente
+              </p>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
+                  <p className="text-xs text-green-100/80">Devis sans réponse</p>
+                  <p className="mt-1 text-base font-bold text-white">
+                    {staleQuoteProjects.length} devis{staleQuoteValue > 0 ? ` · ${formatCurrency(staleQuoteValue)}` : ''}
+                  </p>
                 </div>
-              </>
-            ) : (
-              <>
-                <p className="mt-2 text-sm text-[var(--text-2)]">
-                  Kadria suit déjà les devis envoyés et les dossiers en cours. Passez à Performance pour voir le détail des montants récupérables à court terme.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => openUpgradeModal('advancedValueDashboard')}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
-                >
-                  Passer à Performance
-                </button>
-              </>
-            )}
-          </div>
+                <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
+                  <p className="text-xs text-green-100/80">Opportunités chaudes non traitées</p>
+                  <p className="mt-1 text-base font-bold text-white">
+                    {uncontactedHotLeads.length} dossier(s){hotLeadPendingValue > 0 ? ` · ${formatCurrency(hotLeadPendingValue)}` : ''}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-green-400/30 bg-black/20 px-4 py-3">
+                  <p className="text-xs text-green-100/80">Devis à envoyer</p>
+                  <p className="mt-1 text-base font-bold text-white">
+                    {valueQuotesProjects.length} dossier(s){quotesToSendValue > 0 ? ` · ${formatCurrency(quotesToSendValue)}` : ''}
+                  </p>
+                </div>
+              </div>
+            </ImpactCard>
+          ) : (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <p className="text-base font-bold text-[var(--text-1)]">Valeur en attente</p>
+              {canSeeAdvancedValueDashboard ? (
+                <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">— en attente</p>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm text-[var(--text-2)]">
+                    Kadria suit déjà les devis envoyés et les dossiers en cours. Passez à Performance pour voir le détail des montants récupérables à court terme.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openUpgradeModal('advancedValueDashboard')}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
+                  >
+                    Passer à Performance
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
             <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
@@ -2159,22 +2164,41 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </button>
             </div>
             <div className="mt-3 space-y-2">
-              {topValueActions.map((action) => (
-                <button
-                  key={action.key}
-                  onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
-                  className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                  title={action.title === 'Devis sans réponse' ? 'Devis envoyé sans réponse du client.' : undefined}
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
-                    <p className="text-xs text-[var(--text-2)]">{action.context}</p>
-                  </div>
-                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-green-400">
-                    Voir le dossier <ChevronRight className="h-4 w-4" />
-                  </span>
-                </button>
-              ))}
+              {topValueActions.map((action, index) =>
+                index === 0 ? (
+                  <ImpactCard
+                    key={action.key}
+                    variant="priority"
+                    as="button"
+                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                    className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-green-100/80">Action prioritaire</p>
+                      <p className="text-sm font-semibold text-white">{action.title} — {action.client}</p>
+                      <p className="text-xs text-green-100/80">{action.context}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-white">
+                      Voir le dossier <ChevronRight className="h-4 w-4" />
+                    </span>
+                  </ImpactCard>
+                ) : (
+                  <button
+                    key={action.key}
+                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                    className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                    title={action.title === 'Devis sans réponse' ? 'Devis envoyé sans réponse du client.' : undefined}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
+                      <p className="text-xs text-[var(--text-2)]">{action.context}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-green-400">
+                      Voir le dossier <ChevronRight className="h-4 w-4" />
+                    </span>
+                  </button>
+                )
+              )}
               {topValueActions.length === 0 && (
                 <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour le moment.</p>
               )}
@@ -2724,7 +2748,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
                       className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
                       index === 0
-                        ? 'border-2 border-green-400 bg-gradient-to-br from-green-500/20 via-green-500/10 to-green-500/[0.04] shadow-[0_0_0_1px_rgba(34,197,94,0.35),0_8px_24px_-8px_rgba(34,197,94,0.45)]'
+                        ? IMPACT_CARD_BASE_CLASSES
                         : 'border-[var(--border)] bg-[var(--bg-elevated)]'
                     }`}
                   >
@@ -4115,6 +4139,36 @@ function ActionSummary({
   }
 
   return <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">{content}</div>;
+}
+
+export const IMPACT_CARD_BASE_CLASSES =
+  'border-2 border-green-400 bg-gradient-to-br from-green-500/20 via-green-500/10 to-green-500/[0.04] shadow-[0_0_0_1px_rgba(34,197,94,0.35),0_8px_24px_-8px_rgba(34,197,94,0.45)]';
+
+function ImpactCard({
+  variant = 'priority',
+  children,
+  className = '',
+  as: Component = 'div',
+  onClick,
+}: {
+  variant?: 'priority' | 'insight' | 'money' | 'success';
+  children: ReactNode;
+  className?: string;
+  as?: 'div' | 'button';
+  onClick?: () => void;
+}) {
+  const Tag = Component as any;
+
+  return (
+    <Tag
+      type={Component === 'button' ? 'button' : undefined}
+      onClick={onClick}
+      className={`rounded-2xl p-4 sm:p-5 ${IMPACT_CARD_BASE_CLASSES} ${className}`}
+      data-impact-variant={variant}
+    >
+      {children}
+    </Tag>
+  );
 }
 
 const PLAN_FEATURE_HIGHLIGHTS: Record<PlanKey, string[]> = {

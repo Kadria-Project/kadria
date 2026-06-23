@@ -735,6 +735,16 @@ function ProjectDetail() {
     return { icon: '❄️', color: '#9ca3af', bg: 'rgba(156,163,175,0.12)', border: 'rgba(156,163,175,0.3)', label: temperatureLabel };
   }
 
+  function impactCardStyle(extra: Record<string, string | number> = {}): Record<string, string | number> {
+    return {
+      background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1) 50%, rgba(34,197,94,0.04))',
+      border: '2px solid #4ade80',
+      borderRadius: '16px',
+      boxShadow: '0 0 0 1px rgba(34,197,94,0.35), 0 8px 24px -8px rgba(34,197,94,0.45)',
+      ...extra,
+    };
+  }
+
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
@@ -966,16 +976,20 @@ function ProjectDetail() {
           </div>
         </div>
 
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          overflow: 'hidden',
-        }}>
+        <div style={
+          analysis.temperature === 'hot'
+            ? impactCardStyle({ overflow: 'hidden' })
+            : {
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '16px',
+                overflow: 'hidden',
+              }
+        }>
           {/* Header avec badge température + score */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: '1px solid var(--border)',
+            borderBottom: analysis.temperature === 'hot' ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
             display: 'flex',
             alignItems: isMobile ? 'flex-start' : 'center',
             justifyContent: 'space-between',
@@ -985,7 +999,7 @@ function ProjectDetail() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '16px' }}>✦</span>
               <span style={{
-                color: 'var(--accent)',
+                color: analysis.temperature === 'hot' ? '#ffffff' : 'var(--accent)',
                 fontWeight: 700,
                 fontSize: '14px',
                 letterSpacing: '0.02em'
@@ -995,7 +1009,7 @@ function ProjectDetail() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{
-                color: 'var(--text-2)',
+                color: analysis.temperature === 'hot' ? '#ffffff' : 'var(--text-2)',
                 fontSize: '12px',
                 fontWeight: 600,
               }}>
@@ -1681,24 +1695,37 @@ function ProjectDetail() {
                     <div
                       key={devis.id}
                       onClick={() => router.push(`/dashboard-v2/projet/${id}/devis/${devis.id}`)}
-                      style={{
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '12px',
-                        padding: isMobile ? '14px 16px' : '14px 20px',
-                        cursor: 'pointer',
-                        marginTop: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        transition: 'border-color 150ms, transform 150ms',
-                      }}
+                      style={
+                        devis.accepted
+                          ? {
+                              ...impactCardStyle(),
+                              padding: isMobile ? '14px 16px' : '14px 20px',
+                              cursor: 'pointer',
+                              marginTop: '8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              transition: 'transform 150ms',
+                            }
+                          : {
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border)',
+                              borderRadius: '12px',
+                              padding: isMobile ? '14px 16px' : '14px 20px',
+                              cursor: 'pointer',
+                              marginTop: '8px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              transition: 'border-color 150ms, transform 150ms',
+                            }
+                      }
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)';
+                        if (!devis.accepted) e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)';
                         e.currentTarget.style.transform = 'translateY(-1px)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border)';
+                        if (!devis.accepted) e.currentTarget.style.borderColor = 'var(--border)';
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}
                     >
