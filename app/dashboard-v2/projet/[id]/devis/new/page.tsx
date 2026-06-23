@@ -410,6 +410,30 @@ function NewDevis() {
   const totalTVA = Object.values(tvaBreakdown).reduce((a, b) => a + b, 0);
   const totalTTC = totalHT + totalTVA;
 
+  const itemLines = lines.filter((l) => l.type === 'item');
+  const itemLinesWithText = itemLines.filter((l) => l.description.trim());
+  const linesMissingPrice = itemLinesWithText.filter((l) => !l.unitPrice || l.unitPrice <= 0);
+  const allItemLinesPriceless = itemLinesWithText.length > 0 && linesMissingPrice.length === itemLinesWithText.length;
+  const depositPercent = artisanConfig?.businessConfig?.quoteSettings?.defaultDepositPercent;
+
+  const recapAlerts: string[] = [];
+  if (linesMissingPrice.length > 0) {
+    recapAlerts.push(
+      allItemLinesPriceless
+        ? 'Aucune ligne n\'a de prix renseigné — le devis affichera un total à 0 €.'
+        : `${linesMissingPrice.length} ligne${linesMissingPrice.length > 1 ? 's' : ''} sans prix : prix à compléter.`
+    );
+  }
+  if (!conditionsPaiement.trim()) {
+    recapAlerts.push('Aucune condition de paiement renseignée.');
+  }
+  if (!dateValidite) {
+    recapAlerts.push('Aucune date de validité renseignée.');
+  }
+  if (!clientEmail.trim()) {
+    recapAlerts.push('Le client n\'a pas d\'email — l\'envoi par email ne sera pas possible.');
+  }
+
   const devisNumberPreview = nextDevisNumber || (artisanConfig
     ? `${artisanConfig.devisPrefixe || 'DEV'}-${new Date().getFullYear()}-${String((artisanConfig.devisCompteur || 0) + 1).padStart(3, '0')}`
     : '...');
@@ -1050,7 +1074,98 @@ function NewDevis() {
           </div>
         </div>
 
-        {/* Section 5 — Barre d'action sticky */}
+        {/* Section 5 — Récapitulatif du devis */}
+        <div style={sectionCard}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Récapitulatif du devis</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
+              <p style={{ color: 'white', fontSize: '16px', fontWeight: 700, margin: 0 }}>{itemLines.length}</p>
+            </div>
+            <div>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total HT</p>
+              <p style={{ color: 'white', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
+            </div>
+            <div>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total TVA</p>
+              <p style={{ color: 'white', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
+            </div>
+            <div>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total TTC</p>
+              <p style={{ color: '#22c55e', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: '#a1a1aa', marginBottom: recapAlerts.length > 0 ? '16px' : 0 }}>
+            <p style={{ margin: 0 }}>Validité du devis : {dateValidite || 'non renseignée'}</p>
+            {depositPercent != null && (
+              <p style={{ margin: 0 }}>Acompte demandé : {depositPercent}%</p>
+            )}
+            {conditionsPaiement.trim() && (
+              <p style={{ margin: 0 }}>Conditions de paiement : {conditionsPaiement}</p>
+            )}
+            {delaiExecution.trim() && (
+              <p style={{ margin: 0 }}>Délai estimatif : {delaiExecution}</p>
+            )}
+          </div>
+          {recapAlerts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {recapAlerts.map((alertMsg) => (
+                <div
+                  key={alertMsg}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '8px',
+                    background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+                    borderRadius: '8px', padding: '8px 12px', color: '#f59e0b', fontSize: '12px',
+                  }}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ marginTop: '1px' }} />
+                  <span>{alertMsg}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Section 6 — Prévisualisation simple */}
+        <div style={sectionCard}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Prévisualisation</h2>
+          <div style={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '10px', padding: '16px', fontSize: '13px', color: '#d4d4d8', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Client</p>
+              <p style={{ margin: 0 }}>{clientName || 'Client non renseigné'}</p>
+              {clientAddress && <p style={{ margin: 0, color: '#a1a1aa' }}>{clientAddress}</p>}
+            </div>
+            {objet.trim() && (
+              <div>
+                <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Objet</p>
+                <p style={{ margin: 0 }}>{objet}</p>
+              </div>
+            )}
+            <div>
+              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {lines.map((l) => (
+                  <p key={l.id} style={{ margin: 0, color: l.type === 'section' ? 'white' : '#d4d4d8', fontWeight: l.type === 'section' ? 700 : 400 }}>
+                    {l.type === 'section'
+                      ? (l.description || 'Section sans titre')
+                      : `${l.description || 'Sans description'} — ${l.quantity} ${l.unit} × ${l.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div style={{ borderTop: '1px solid #27272a', paddingTop: '10px' }}>
+              <p style={{ margin: 0 }}>Total HT : {totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € — Total TVA : {totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € — Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
+            </div>
+            {conditionsPaiement.trim() && <p style={{ margin: 0, color: '#a1a1aa' }}>Conditions de paiement : {conditionsPaiement}</p>}
+            {noteInterne.trim() && <p style={{ margin: 0, color: '#71717a', fontStyle: 'italic' }}>Note interne (non visible client) : {noteInterne}</p>}
+          </div>
+        </div>
+
+        <p style={{ textAlign: 'center', color: '#71717a', fontSize: '12px', margin: 0 }}>
+          Rien n&apos;est envoyé automatiquement. Vous gardez la main jusqu&apos;à l&apos;envoi.
+        </p>
+
+        {/* Section 7 — Barre d'action sticky */}
         <div style={{
           position: 'sticky',
           bottom: '12px',
@@ -1092,7 +1207,7 @@ function NewDevis() {
             >
               {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'draft' && <Loader2 className="animate-spin" size={14} />}
-              {isSubmitting && submitMode === 'draft' ? 'Génération du PDF...' : 'Enregistrer · Envoyer plus tard'}
+              {isSubmitting && submitMode === 'draft' ? 'Génération du PDF...' : 'Enregistrer le devis · Envoyer plus tard'}
             </button>
             <button
               onClick={() => handleSubmit('send')}
@@ -1117,7 +1232,7 @@ function NewDevis() {
             >
               {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'send' && <Loader2 className="animate-spin" size={14} />}
-              {isSubmitting && submitMode === 'send' ? 'Génération du PDF...' : 'Envoyer le devis →'}
+              {isSubmitting && submitMode === 'send' ? 'Génération du PDF...' : 'Envoyer au client →'}
             </button>
           </div>
         </div>
