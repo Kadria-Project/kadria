@@ -289,6 +289,7 @@ export function getOpportunityBadge(score: number): OpportunityBadge {
 
 export function shouldShowIdealFollowUp(project: ProjectLike): boolean {
   if (!project.id) return false
+  if (project.status === 'Gagné' || project.status === 'Perdu') return false
   const tasks = buildAutomaticTasks([project])
   return tasks.some((task) => task.projectId === project.id && (task.type === 'call' || task.type === 'followUp'))
 }
@@ -309,6 +310,33 @@ export function getBestFollowUpTime(project: FollowUpProjectLike) {
     lastInteractionDate,
     daysWithoutInteraction,
   }
+}
+
+type NextActionTypeLike = 'call' | 'quote' | 'followup' | 'ask_info' | 'archive' | 'wait'
+
+export function getIdealActionLabel(
+  project: FollowUpProjectLike,
+  nextActionType?: NextActionTypeLike,
+): { title: string; mainSlot: string; secondarySlot?: string } {
+  const followUp = getBestFollowUpTime(project)
+
+  if (project.status === 'Gagné' || project.status === 'Perdu') {
+    return { title: 'Dossier clôturé', mainSlot: 'Aucune relance nécessaire sur ce dossier.' }
+  }
+
+  if (project.status === 'À rappeler' || nextActionType === 'call') {
+    return { title: 'Moment idéal pour rappeler', mainSlot: followUp.primarySlot, secondarySlot: followUp.secondarySlot }
+  }
+
+  if (project.status?.startsWith('Devis') || project.status === 'A relancer' || nextActionType === 'followup') {
+    return { title: 'Moment idéal pour relancer le devis', mainSlot: followUp.primarySlot, secondarySlot: followUp.secondarySlot }
+  }
+
+  if (nextActionType === 'quote') {
+    return { title: 'Moment idéal pour envoyer le devis', mainSlot: followUp.primarySlot, secondarySlot: followUp.secondarySlot }
+  }
+
+  return { title: 'Moment idéal pour contacter le prospect', mainSlot: followUp.primarySlot, secondarySlot: followUp.secondarySlot }
 }
 
 // Logique d'eligibilite et de contenu des relances de devis centralisee dans

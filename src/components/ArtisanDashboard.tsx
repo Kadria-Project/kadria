@@ -236,19 +236,22 @@ export const formatAmount = (n: number) =>
 
 export function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (!dateStr || Number.isNaN(date.getTime())) return 'Date inconnue';
+
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return 'à l\'instant';
+
   const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMins < 60) return `il y a ${diffMins}min`;
-  if (diffHours < 24) return `il y a ${diffHours}h`;
-  if (diffDays === 1) return 'hier';
-  if (diffDays < 7) return `il y a ${diffDays}j`;
-  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)}sem`;
+  if (diffMins < 1) return 'à l\'instant';
+  if (diffMins < 60) return `il y a ${diffMins} min`;
+  if (diffHours < 24) return `il y a ${diffHours} h`;
+  if (diffDays < 7) return `il y a ${diffDays} j`;
+  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)} sem.`;
 
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatIsoDate(dateStr?: string): string {
@@ -2340,16 +2343,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
                       className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
                       index === 0
-                        ? 'border-green-500/25 bg-green-500/[0.02]'
+                        ? 'border-2 border-green-400 bg-gradient-to-br from-green-500/20 via-green-500/10 to-green-500/[0.04] shadow-[0_0_0_1px_rgba(34,197,94,0.35),0_8px_24px_-8px_rgba(34,197,94,0.45)]'
                         : 'border-[var(--border)] bg-[var(--bg-elevated)]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
+                      <span className={`text-xs rounded px-2 py-0.5 font-bold ${
+                        index === 0 ? 'bg-green-400 text-zinc-950' : 'bg-green-500/20 text-green-400'
+                      }`}>
                         #{index + 1}
                       </span>
 
-                      <span className="text-green-400 font-bold text-sm">
+                      <span className={`font-bold text-sm ${index === 0 ? 'text-white' : 'text-green-400'}`}>
                         {opportunityScore(project, artisanTrades)}/100
                       </span>
                     </div>
@@ -2382,7 +2387,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       </span>
                     </div>
 
-                    <span className="mt-auto text-sm font-semibold text-green-400">Voir le dossier</span>
+                    <span className={`mt-auto text-sm font-semibold ${
+                      index === 0 ? 'text-white' : 'text-green-400'
+                    }`}>Voir le dossier</span>
                   </button>
                 )) : Array.from({ length: 3 }).map((_, index) => (
                   <button
@@ -2418,13 +2425,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <>
           {/* ZONE 2 — Toggles */}
           <div>
-            <div className="relative my-2 border-t border-[var(--border)]">
+            <div className="relative my-8 border-t border-[var(--border)]">
               <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg)] px-4 text-xs uppercase tracking-[0.08em] text-[var(--text-2)]">
                 Analyses détaillées
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="contents">
               <button
                 onClick={() => togglePanel('pipeline')}

@@ -20,7 +20,7 @@ import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendation, type VehicleType, type ChargingType } from '@/src/config/travel';
-import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
+import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
 import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate } from '@/src/lib/quote-suggestions';
@@ -654,6 +654,7 @@ function ProjectDetail() {
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
   const showIdealFollowUp = shouldShowIdealFollowUp(project);
+  const idealActionLabel = getIdealActionLabel(project, analysis.nextBestAction.type);
 
   function getNextActionCtaLabel(type: NextActionType): string {
     switch (type) {
@@ -1412,14 +1413,16 @@ function ProjectDetail() {
                 textTransform: 'uppercase',
                 margin: '0 0 8px',
               }}>
-                Moment idéal de relance
+                {idealActionLabel.title}
               </p>
               <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
-                {followUpTime.primarySlot}
+                {idealActionLabel.mainSlot}
               </p>
-              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
-                {followUpTime.secondarySlot}
-              </p>
+              {idealActionLabel.secondarySlot && (
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
+                  {idealActionLabel.secondarySlot}
+                </p>
+              )}
             </div>
 
             <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
