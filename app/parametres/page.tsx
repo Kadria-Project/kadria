@@ -6,12 +6,20 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
+import {
+  VehicleType,
+  ChargingType,
+  VEHICLE_TYPE_LABELS,
+  CHARGING_TYPE_LABELS,
+  DEFAULT_CONSUMPTION_PER_100KM,
+} from '@/src/config/travel'
 
 const SECTIONS = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
   { id: 'legal', label: 'Infos légales', icon: '📋' },
+  { id: 'vehicule', label: 'Véhicule & déplacements', icon: '🚗' },
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
 ]
@@ -151,6 +159,13 @@ export default function ParametresPage() {
     devisTvaDefaut: 10,
     devisConditionsPaiement: '',
     devisMentionLegale: '',
+    travelConfig: {
+      vehicleType: '' as VehicleType | '',
+      consumptionPer100Km: undefined as number | undefined,
+      chargingType: 'maison' as ChargingType,
+      originLat: undefined as number | undefined,
+      originLng: undefined as number | undefined,
+    },
   })
 
   const [legalErrors, setLegalErrors] = useState<Record<string, string>>({})
@@ -211,6 +226,13 @@ export default function ParametresPage() {
             devisTvaDefaut: data.config.devisTvaDefaut || 10,
             devisConditionsPaiement: data.config.devisConditionsPaiement || '',
             devisMentionLegale: data.config.devisMentionLegale || '',
+            travelConfig: {
+              vehicleType: (data.config.travelConfig?.vehicleType || '') as VehicleType | '',
+              consumptionPer100Km: data.config.travelConfig?.consumptionPer100Km,
+              chargingType: (data.config.travelConfig?.chargingType || 'maison') as ChargingType,
+              originLat: data.config.travelConfig?.originLat,
+              originLng: data.config.travelConfig?.originLng,
+            },
           })
           if (data.config.artisanId) {
             setArtisanIdDisplay(data.config.artisanId)
@@ -1063,6 +1085,11 @@ export default function ParametresPage() {
                         adressePro: selection.address,
                         cpPro: selection.postalCode || c.cpPro,
                         villePro: selection.city || c.villePro,
+                        travelConfig: {
+                          ...c.travelConfig,
+                          originLat: selection.latitude ?? c.travelConfig.originLat,
+                          originLng: selection.longitude ?? c.travelConfig.originLng,
+                        },
                       }))}
                       placeholder="12 rue de la Paix"
                       style={inputStyle}
@@ -1204,6 +1231,90 @@ export default function ParametresPage() {
                       style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'vehicule' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                🚗 Véhicule & déplacements
+              </h2>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 16px' }}>
+                Ces informations permettent d&apos;estimer le coût d&apos;un déplacement entre votre
+                adresse professionnelle et un chantier (fonctionnalité disponible avec le plan Performance).
+              </p>
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Motorisation
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Type de motorisation</label>
+                    <select
+                      value={config.travelConfig.vehicleType}
+                      onChange={e => {
+                        const vehicleType = e.target.value as VehicleType
+                        setConfig(c => ({
+                          ...c,
+                          travelConfig: {
+                            ...c.travelConfig,
+                            vehicleType,
+                            consumptionPer100Km: DEFAULT_CONSUMPTION_PER_100KM[vehicleType],
+                          },
+                        }))
+                      }}
+                      style={inputStyle}
+                    >
+                      <option value="">Sélectionner...</option>
+                      {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map(type => (
+                        <option key={type} value={type}>{VEHICLE_TYPE_LABELS[type]}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {config.travelConfig.vehicleType && (
+                    <div>
+                      <label style={labelStyle}>
+                        Consommation moyenne ({config.travelConfig.vehicleType === 'electrique' ? 'kWh/100km' : 'L/100km'})
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={config.travelConfig.consumptionPer100Km ?? ''}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: { ...c.travelConfig, consumptionPer100Km: e.target.value === '' ? undefined : Number(e.target.value) },
+                        }))}
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+
+                  {config.travelConfig.vehicleType === 'electrique' && (
+                    <div>
+                      <label style={labelStyle}>Type de recharge principal</label>
+                      <select
+                        value={config.travelConfig.chargingType}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: { ...c.travelConfig, chargingType: e.target.value as ChargingType },
+                        }))}
+                        style={inputStyle}
+                      >
+                        {(Object.keys(CHARGING_TYPE_LABELS) as ChargingType[]).map(type => (
+                          <option key={type} value={type}>{CHARGING_TYPE_LABELS[type]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {!config.travelConfig.originLat && (
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      L&apos;adresse professionnelle (section Infos légales) doit être renseignée pour calculer une distance.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

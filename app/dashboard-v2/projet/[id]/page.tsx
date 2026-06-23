@@ -19,6 +19,7 @@ import {
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { haversineDistanceKm, calculateTravelCost, type VehicleType, type ChargingType } from '@/src/config/travel';
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, type NextActionType } from '@/src/lib/project-scoring';
@@ -187,6 +188,7 @@ function ProjectDetail() {
   const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const canQuote = hasFeature(plan, 'quoteGeneration');
   const canExportPdf = hasFeature(plan, 'pdfExports');
+  const canTravelCost = hasFeature(plan, 'travelCost');
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
 
   const [showAllHistory, setShowAllHistory] = useState(false);
@@ -199,6 +201,14 @@ function ProjectDetail() {
     assureur?: string;
     numAssurance?: string;
     trades?: string[];
+    travelConfig?: {
+      vehicleType?: string;
+      consumptionPer100Km?: number;
+      chargingType?: string;
+      customCostPerKm?: number;
+      originLat?: number;
+      originLng?: number;
+    };
   } | null>(null);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
@@ -1124,6 +1134,105 @@ function ProjectDetail() {
                 {project.aiSummary}
               </p>
             </div>
+          )}
+        </div>
+
+        {/* Frais de déplacement estimés — plan Performance et supérieur */}
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: isMobile ? '16px' : '16px 20px',
+          marginTop: '16px',
+          position: 'relative',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '16px' }}>🚗</span>
+            <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>
+              Frais de déplacement estimés
+            </span>
+          </div>
+          {!canTravelCost ? (
+            <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                Distance aller-retour et coût de déplacement estimé.
+              </p>
+            </div>
+          ) : (() => {
+            const travelConfig = artisanConfig?.travelConfig;
+            const originLat = travelConfig?.originLat;
+            const originLng = travelConfig?.originLng;
+            const destLat = project?.latitude;
+            const destLng = project?.longitude;
+            if (
+              originLat === undefined || originLng === undefined ||
+              destLat === null || destLat === undefined ||
+              destLng === null || destLng === undefined ||
+              !travelConfig?.vehicleType
+            ) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse manquante pour calculer le déplacement.
+                </p>
+              );
+            }
+            const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
+            const result = calculateTravelCost(distanceKm, {
+              vehicleType: travelConfig.vehicleType as VehicleType,
+              consumptionPer100Km: travelConfig.consumptionPer100Km,
+              chargingType: travelConfig.chargingType as ChargingType | undefined,
+              customCostPerKm: travelConfig.customCostPerKm,
+            });
+            if (!result) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Impossible de calculer le déplacement pour le moment.
+                </p>
+              );
+            }
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller (estimation)</p>
+                  <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKm.toFixed(1)} km</p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
+                  <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKmAR.toFixed(1)} km</p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé ({result.energyLabel})</p>
+                  <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>{result.cost.toFixed(2)} €</p>
+                </div>
+              </div>
+            );
+          })()}
+          {!canTravelCost && (
+            <button
+              onClick={() => openUpgradeModal('travelCost')}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--accent)',
+              }}>
+                Disponible avec Performance
+              </span>
+            </button>
           )}
         </div>
 

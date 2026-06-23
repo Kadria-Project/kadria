@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
+import {
+  VehicleType,
+  ChargingType,
+  VEHICLE_TYPE_LABELS,
+  CHARGING_TYPE_LABELS,
+  DEFAULT_CONSUMPTION_PER_100KM,
+} from '@/src/config/travel'
 
 const FORMES_JURIDIQUES = [
   'Auto-entrepreneur', 'EI', 'EURL', 'SARL', 'SAS', 'SASU', 'Autre',
@@ -17,6 +24,7 @@ const STEPS = [
   { id: 'bienvenue', label: 'Bienvenue', icon: '👋' },
   { id: 'entreprise', label: 'Entreprise', icon: '🏢' },
   { id: 'metier', label: 'Métier & zone', icon: '🛠️' },
+  { id: 'vehicule', label: 'Véhicule', icon: '🚗' },
   { id: 'notifications', label: 'Notifications', icon: '🔔' },
   { id: 'devis', label: 'Devis', icon: '📋' },
   { id: 'widget', label: 'Widget', icon: '🎨' },
@@ -53,6 +61,13 @@ interface OnboardingConfig {
   secondaryColor: string
   welcomeName: string
   welcomeMessage: string
+  travelConfig: {
+    vehicleType: VehicleType | ''
+    consumptionPer100Km: number | undefined
+    chargingType: ChargingType
+    originLat: number | undefined
+    originLng: number | undefined
+  }
 }
 
 const EMPTY_CONFIG: OnboardingConfig = {
@@ -81,6 +96,13 @@ const EMPTY_CONFIG: OnboardingConfig = {
   secondaryColor: '#18181b',
   welcomeName: '',
   welcomeMessage: '',
+  travelConfig: {
+    vehicleType: '',
+    consumptionPer100Km: undefined,
+    chargingType: 'maison',
+    originLat: undefined,
+    originLng: undefined,
+  },
 }
 
 export default function OnboardingPage() {
@@ -137,6 +159,13 @@ export default function OnboardingPage() {
             secondaryColor: c.secondaryColor || '#18181b',
             welcomeName: c.welcomeName || '',
             welcomeMessage: c.welcomeMessage || '',
+            travelConfig: {
+              vehicleType: (c.travelConfig?.vehicleType || '') as VehicleType | '',
+              consumptionPer100Km: c.travelConfig?.consumptionPer100Km,
+              chargingType: (c.travelConfig?.chargingType || 'maison') as ChargingType,
+              originLat: c.travelConfig?.originLat,
+              originLng: c.travelConfig?.originLng,
+            },
           })
           if (c.artisanId) setArtisanIdDisplay(c.artisanId)
           if (c.onboardingCompleted) {
@@ -435,6 +464,11 @@ export default function OnboardingPage() {
                     adressePro: selection.address,
                     cpPro: selection.postalCode || c.cpPro,
                     villePro: selection.city || c.villePro,
+                    travelConfig: {
+                      ...c.travelConfig,
+                      originLat: selection.latitude ?? c.travelConfig.originLat,
+                      originLng: selection.longitude ?? c.travelConfig.originLng,
+                    },
                   }))}
                   placeholder="12 rue de la Paix, 75001 Paris"
                   style={inputStyle}
@@ -545,6 +579,76 @@ export default function OnboardingPage() {
                   style={inputStyle}
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {step.id === 'vehicule' && (
+          <div style={sectionCard}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🚗 Véhicule & déplacements</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+              Permet d&apos;estimer le coût d&apos;un déplacement vers un chantier (fonctionnalité Performance).
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={labelStyle}>Type de motorisation</label>
+                <select
+                  value={config.travelConfig.vehicleType}
+                  onChange={e => {
+                    const vehicleType = e.target.value as VehicleType
+                    setConfig(c => ({
+                      ...c,
+                      travelConfig: {
+                        ...c.travelConfig,
+                        vehicleType,
+                        consumptionPer100Km: DEFAULT_CONSUMPTION_PER_100KM[vehicleType],
+                      },
+                    }))
+                  }}
+                  style={inputStyle}
+                >
+                  <option value="">Sélectionner...</option>
+                  {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map(type => (
+                    <option key={type} value={type}>{VEHICLE_TYPE_LABELS[type]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {config.travelConfig.vehicleType && (
+                <div>
+                  <label style={labelStyle}>
+                    Consommation moyenne ({config.travelConfig.vehicleType === 'electrique' ? 'kWh/100km' : 'L/100km'})
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={config.travelConfig.consumptionPer100Km ?? ''}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      travelConfig: { ...c.travelConfig, consumptionPer100Km: e.target.value === '' ? undefined : Number(e.target.value) },
+                    }))}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+
+              {config.travelConfig.vehicleType === 'electrique' && (
+                <div>
+                  <label style={labelStyle}>Type de recharge principal</label>
+                  <select
+                    value={config.travelConfig.chargingType}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      travelConfig: { ...c.travelConfig, chargingType: e.target.value as ChargingType },
+                    }))}
+                    style={inputStyle}
+                  >
+                    {(Object.keys(CHARGING_TYPE_LABELS) as ChargingType[]).map(type => (
+                      <option key={type} value={type}>{CHARGING_TYPE_LABELS[type]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -122,6 +122,9 @@ export async function PATCH(request: NextRequest) {
     if (body.vapiEnabled !== undefined) fields['vapi_enabled'] = body.vapiEnabled
     if (body.vapiGreeting !== undefined) fields['vapi_greeting'] = body.vapiGreeting
 
+    // Véhicule & déplacements (Frais de déplacement estimés)
+    if (body.travelConfig !== undefined) fields['travel_config'] = body.travelConfig
+
     console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
     console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
 

@@ -103,6 +103,11 @@ export const FEATURE_DEFINITIONS = {
     description: 'Visualisation geographique des dossiers.',
     requiredPlan: 'performance',
   },
+  travelCost: {
+    label: 'Frais de deplacement estimes',
+    description: 'Estimation du cout de deplacement entre l\'artisan et le chantier.',
+    requiredPlan: 'performance',
+  },
   topAiOpportunities: {
     label: 'Top opportunites IA',
     description: 'Classement IA des opportunites prioritaires.',
@@ -215,6 +220,7 @@ export const PLAN_FEATURES = {
     'kpiTrends',
     'commercialPipeline',
     'geoProjects',
+    'travelCost',
     'topAiOpportunities',
     'calendar',
     'quoteGeneration',
@@ -246,6 +252,7 @@ export const PLAN_FEATURES = {
     'kpiTrends',
     'commercialPipeline',
     'geoProjects',
+    'travelCost',
     'topAiOpportunities',
     'calendar',
     'quoteGeneration',

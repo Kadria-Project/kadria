@@ -6,6 +6,7 @@
 // app/dashboard-v2/projet/[id]/page.tsx, desormais delegues a ce module).
 
 import { getTradeTaxonomies } from '@/src/config/trade-taxonomy'
+import { classifyTravelCostRisk, type TravelCostResult } from '@/src/config/travel'
 
 export type Temperature = 'hot' | 'warm' | 'cold'
 export type Priority = 'high' | 'medium' | 'low'
@@ -423,5 +424,26 @@ export function getProjectCommercialAnalysis(
     riskFlags,
     confidence,
     tradeFit,
+  }
+}
+
+// Préparation pour une intégration future du coût de déplacement dans le
+// scoring (non branchée ici) : coût élevé = risque ; distance longue + petit
+// budget = priorité plus faible ; distance courte + budget cohérent = signal positif.
+export interface TravelCostSignal {
+  risk: 'low' | 'medium' | 'high'
+  isLongDistanceLowBudget: boolean
+  isShortDistanceConsistentBudget: boolean
+}
+
+export function getTravelCostSignal(
+  travelCost: TravelCostResult,
+  budgetIsLow: boolean
+): TravelCostSignal {
+  const risk = classifyTravelCostRisk(travelCost.cost)
+  return {
+    risk,
+    isLongDistanceLowBudget: travelCost.distanceKm > 30 && budgetIsLow,
+    isShortDistanceConsistentBudget: travelCost.distanceKm <= 15 && !budgetIsLow,
   }
 }
