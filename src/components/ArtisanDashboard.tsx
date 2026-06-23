@@ -234,12 +234,18 @@ export const formatAmount = (n: number) =>
     ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k €`
     : `${n} €`
 
-export function timeAgo(dateStr: string): string {
-  const date = new Date(dateStr);
-  if (!dateStr || Number.isNaN(date.getTime())) return 'Date inconnue';
+const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+
+export function formatReceivedAt(dateLike: unknown): string {
+  if (!dateLike) return 'Date inconnue';
+  const date = new Date(dateLike as string);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
 
   const diffMs = Date.now() - date.getTime();
-  if (diffMs < 0) return 'à l\'instant';
+
+  if (diffMs < 0) {
+    return Math.abs(diffMs) <= FUTURE_TOLERANCE_MS ? 'à l\'instant' : 'Date à vérifier';
+  }
 
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -249,22 +255,34 @@ export function timeAgo(dateStr: string): string {
   if (diffMins < 60) return `il y a ${diffMins} min`;
   if (diffHours < 24) return `il y a ${diffHours} h`;
   if (diffDays < 7) return `il y a ${diffDays} j`;
-  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)} sem.`;
 
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function formatIsoDate(dateStr?: string): string {
-  if (!dateStr) return '—';
-  const iso = String(dateStr).slice(0, 10);
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return '—';
+export function getReceivedSortTimestamp(dateLike: unknown): number {
+  if (!dateLike) return 0;
+  const date = new Date(dateLike as string);
+  const time = date.getTime();
+  if (Number.isNaN(time)) return 0;
 
-  const [, year, month, day] = match;
-  const monthIndex = Number(month) - 1;
-  const monthNames = ['janv.', 'fevr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'aout', 'sept.', 'oct.', 'nov.', 'dec.'];
+  const diffMs = Date.now() - time;
+  if (diffMs < 0 && Math.abs(diffMs) > FUTURE_TOLERANCE_MS) return 0;
 
-  return `${Number(day)} ${monthNames[monthIndex] ?? year}`;
+  return time;
+}
+
+export function timeAgo(dateStr: string): string {
+  return formatReceivedAt(dateStr);
+}
+
+function ReceivedAtLabel({ dateLike, className }: { dateLike: unknown; className?: string }) {
+  const label = formatReceivedAt(dateLike);
+  const title = label === 'Date à vérifier' ? 'Date de réception incohérente ou future.' : undefined;
+  return (
+    <span className={className} title={title}>
+      {label}
+    </span>
+  );
 }
 
 function escapeCsvValue(value: unknown): string {
@@ -362,8 +380,8 @@ function sortKanbanProjects(projects: Project[], columnId: string) {
       if (priorityA !== priorityB) return priorityA - priorityB;
     }
 
-    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const dateA = getReceivedSortTimestamp(a.createdAt);
+    const dateB = getReceivedSortTimestamp(b.createdAt);
     return dateB - dateA;
   });
 }
@@ -1122,8 +1140,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const sortedProjects = useMemo(
     () =>
       [...filteredProjects].sort((a, b) => {
-        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const da = getReceivedSortTimestamp(a.createdAt);
+        const db = getReceivedSortTimestamp(b.createdAt);
 
         return db - da;
       }),
@@ -3125,9 +3143,7 @@ export function ProjectList({
               {String(p.id).slice(0, 6)}
             </span>
 
-            <span className="col-span-1 text-[var(--text-2)]">
-              {p.createdAt ? timeAgo(p.createdAt) : '—'}
-            </span>
+            <ReceivedAtLabel dateLike={p.createdAt} className="col-span-1 text-[var(--text-2)]" />
 
             <span className="col-span-2 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
@@ -3195,9 +3211,7 @@ export function ProjectList({
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-[var(--text-3)]">
-                {p.createdAt ? timeAgo(p.createdAt) : formatIsoDate(p.createdAt)}
-              </span>
+              <ReceivedAtLabel dateLike={p.createdAt} className="text-xs text-[var(--text-3)]" />
               <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-400">
                 Voir le dossier
                 <ChevronRight className="h-4 w-4" />
@@ -3361,7 +3375,7 @@ function KanbanCard({
           Score: {score}%
         </span>
 
-        <span className="ml-auto text-xs text-[var(--text-3)]">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
+        <ReceivedAtLabel dateLike={project.createdAt} className="ml-auto text-xs text-[var(--text-3)]" />
       </div>
     </div>
   );
