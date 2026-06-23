@@ -23,6 +23,7 @@ import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendat
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
+import { getQuoteSuggestions } from '@/src/lib/quote-suggestions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -612,6 +613,31 @@ function ProjectDetail() {
     travelSignal: travelCostSignal,
   });
   const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
+
+  // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
+  // calculées à la demande, jamais persistées, basées sur les mêmes signaux
+  // que l'analyse Kadria ci-dessus (métier, projet, déplacement).
+  const quoteSuggestions = getQuoteSuggestions({
+    project: {
+      trade: project.trade,
+      projectType: project.projectType,
+      aiSummary: project.aiSummary,
+      tradeAnswers: project.tradeAnswers,
+    },
+    artisanTrades: artisanConfig?.trades,
+    businessConfig: {
+      acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
+      refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
+    },
+    travel: travelCostSignal?.available
+      ? {
+          suggestedFee: travelCostSignal.suggestedFee,
+          estimatedCost: travelCostSignal.estimatedCost,
+          oneWayDistanceKm: travelCostSignal.oneWayDistanceKm,
+          isFreeZone: travelCostSignal.isFreeZone,
+        }
+      : undefined,
+  });
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
   const showIdealFollowUp = shouldShowIdealFollowUp(project);
@@ -1895,6 +1921,65 @@ function ProjectDetail() {
                     </div>
                   )}
                 </div>
+
+                {quoteSuggestions.length > 0 && (
+                  <div style={{
+                    borderTop: '1px solid var(--border)',
+                    marginTop: '12px',
+                    paddingTop: '14px',
+                  }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', margin: '0 0 2px' }}>
+                      Suggestions de lignes de devis
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
+                      Kadria vous propose une base de structure à adapter avant envoi.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {quoteSuggestions.map((line, index) => (
+                        <div
+                          key={`${line.label}-${index}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            padding: '8px 12px',
+                            fontSize: '13px',
+                          }}
+                          title={line.reason}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <span style={{ color: 'var(--text-1)' }}>{line.label}</span>
+                            {line.optional && (
+                              <span style={{
+                                fontSize: '11px',
+                                color: 'var(--text-3)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '999px',
+                                padding: '1px 8px',
+                              }}>
+                                optionnel
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                            {line.suggestedAmount !== undefined && (
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>
+                                {formatInteger(line.suggestedAmount)} €
+                              </span>
+                            )}
+                            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                              {line.source === 'trade' ? 'métier' : line.source === 'travel' ? 'déplacement' : line.source === 'project' ? 'projet' : 'standard'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{
                   borderTop: '1px solid var(--border)',
