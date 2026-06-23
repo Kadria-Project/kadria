@@ -6,7 +6,8 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import { ARTISAN_TRADES } from '@/src/config/trades'
-import { getSuggestedWorkTypesForTrades } from '@/src/config/trade-taxonomy'
+import { getSuggestedWorkTypesForTrades, getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
+import type { ArtisanServiceCatalogItem } from '@/src/lib/quote-suggestions'
 import {
   VehicleType,
   ChargingType,
@@ -175,6 +176,7 @@ export default function ParametresPage() {
       refusedWorkTypes: [] as string[],
       customAcceptedWork: '' as string,
       customRefusedWork: '' as string,
+      serviceCatalog: [] as ArtisanServiceCatalogItem[],
     },
   })
 
@@ -251,6 +253,7 @@ export default function ParametresPage() {
               refusedWorkTypes: Array.isArray(data.config.businessConfig?.refusedWorkTypes) ? data.config.businessConfig.refusedWorkTypes : [],
               customAcceptedWork: data.config.businessConfig?.customAcceptedWork || '',
               customRefusedWork: data.config.businessConfig?.customRefusedWork || '',
+              serviceCatalog: Array.isArray(data.config.businessConfig?.serviceCatalog) ? data.config.businessConfig.serviceCatalog : [],
             },
           })
           if (data.config.artisanId) {
@@ -306,10 +309,15 @@ export default function ParametresPage() {
       const effectiveTrades = config.trades.map(t =>
         t === 'autre' && config.otherTrade.trim() ? config.otherTrade.trim() : t
       )
+      const cleanedServiceCatalog = config.businessConfig.serviceCatalog.filter(item => item.label.trim())
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...config, trades: effectiveTrades }),
+        body: JSON.stringify({
+          ...config,
+          trades: effectiveTrades,
+          businessConfig: { ...config.businessConfig, serviceCatalog: cleanedServiceCatalog },
+        }),
       })
       const data = await res.json()
       if (!data.success) {
@@ -323,6 +331,61 @@ export default function ParametresPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // ── Catalogue de prestations (V1) ──────────────────────────────────────
+  // Stocke dans businessConfig.serviceCatalog (JSONB existant), sauvegarde
+  // via le meme bouton "Enregistrer" que le reste de la page.
+  const makeCatalogItemId = () => `svc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+  const addCatalogItem = () => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        serviceCatalog: [
+          ...c.businessConfig.serviceCatalog,
+          { id: makeCatalogItemId(), label: '', unit: 'forfait', unitPriceHT: null, vatRate: c.devisTvaDefaut || 10, isActive: true },
+        ],
+      },
+    }))
+  }
+
+  const updateCatalogItem = (id: string, patch: Partial<ArtisanServiceCatalogItem>) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        serviceCatalog: c.businessConfig.serviceCatalog.map(item => item.id === id ? { ...item, ...patch } : item),
+      },
+    }))
+  }
+
+  const removeCatalogItem = (id: string) => {
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        serviceCatalog: c.businessConfig.serviceCatalog.filter(item => item.id !== id),
+      },
+    }))
+  }
+
+  const addCatalogSuggestion = (label: string) => {
+    const alreadyExists = config.businessConfig.serviceCatalog.some(
+      item => item.label.trim().toLowerCase() === label.trim().toLowerCase()
+    )
+    if (alreadyExists) return
+    setConfig(c => ({
+      ...c,
+      businessConfig: {
+        ...c.businessConfig,
+        serviceCatalog: [
+          ...c.businessConfig.serviceCatalog,
+          { id: makeCatalogItemId(), label, unit: 'forfait', unitPriceHT: null, vatRate: c.devisTvaDefaut || 10, isActive: true },
+        ],
+      },
+    }))
   }
 
   const inputStyle: React.CSSProperties = {
@@ -810,6 +873,159 @@ export default function ParametresPage() {
                     </div>
                   )
                 })()}
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Catalogue de prestations
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Ajoutez vos prestations courantes pour préremplir plus rapidement vos devis.
+                </p>
+
+                {config.businessConfig.serviceCatalog.length === 0 && config.trades.length > 0 && (() => {
+                  const catalogLabels = new Set(config.businessConfig.serviceCatalog.map(i => i.label.trim().toLowerCase()))
+                  const suggestions = getQuoteItemsForTrades(config.trades)
+                    .filter(label => !catalogLabels.has(label.trim().toLowerCase()))
+                    .slice(0, 8)
+                  if (suggestions.length === 0) return null
+                  return (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={labelStyle}>Suggestions à ajouter</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                        {suggestions.map(label => (
+                          <button
+                            key={`suggest-${label}`}
+                            type="button"
+                            onClick={() => addCatalogSuggestion(label.charAt(0).toUpperCase() + label.slice(1))}
+                            style={{
+                              background: 'var(--bg-hover)',
+                              border: '1px solid var(--border)',
+                              color: 'var(--text-2)',
+                              borderRadius: '20px',
+                              padding: '6px 12px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            + {label.charAt(0).toUpperCase() + label.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {config.businessConfig.serviceCatalog.length === 0 ? (
+                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                    Aucune prestation enregistrée pour le moment.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+                    {config.businessConfig.serviceCatalog.map(item => (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: 'var(--bg-hover)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '10px',
+                          padding: '12px',
+                          opacity: item.isActive === false ? 0.5 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            value={item.label}
+                            onChange={e => updateCatalogItem(item.id, { label: e.target.value })}
+                            placeholder="Ex : Entretien PAC air/air"
+                            style={inputStyle}
+                          />
+                          <input
+                            value={item.category || ''}
+                            onChange={e => updateCatalogItem(item.id, { category: e.target.value })}
+                            placeholder="Catégorie (optionnel)"
+                            style={inputStyle}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                          <select
+                            value={item.unit || 'forfait'}
+                            onChange={e => updateCatalogItem(item.id, { unit: e.target.value as ArtisanServiceCatalogItem['unit'] })}
+                            style={inputStyle}
+                          >
+                            <option value="forfait">Forfait</option>
+                            <option value="heure">Heure</option>
+                            <option value="jour">Jour</option>
+                            <option value="m2">m²</option>
+                            <option value="ml">ml</option>
+                            <option value="unite">Unité</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={item.unitPriceHT ?? ''}
+                            onChange={e => updateCatalogItem(item.id, { unitPriceHT: e.target.value === '' ? null : Number(e.target.value) })}
+                            placeholder="Prix HT"
+                            style={inputStyle}
+                          />
+                          <select
+                            value={item.vatRate ?? 20}
+                            onChange={e => updateCatalogItem(item.id, { vatRate: Number(e.target.value) })}
+                            style={inputStyle}
+                          >
+                            {[0, 5.5, 10, 20].map(rate => (
+                              <option key={rate} value={rate}>{rate}% TVA</option>
+                            ))}
+                          </select>
+                          <input
+                            value={item.trade || ''}
+                            onChange={e => updateCatalogItem(item.id, { trade: e.target.value })}
+                            placeholder="Métier (optionnel)"
+                            style={inputStyle}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                          <input
+                            value={item.notes || ''}
+                            onChange={e => updateCatalogItem(item.id, { notes: e.target.value })}
+                            placeholder="Notes (optionnel)"
+                            style={{ ...inputStyle, flex: 1, minWidth: '160px' }}
+                          />
+                          <label style={checkboxRowStyle}>
+                            <input
+                              type="checkbox"
+                              checked={item.isActive !== false}
+                              onChange={e => updateCatalogItem(item.id, { isActive: e.target.checked })}
+                            />
+                            Actif
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeCatalogItem(item.id)}
+                            style={{
+                              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444',
+                              borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
+                            }}
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={addCatalogItem}
+                  style={{
+                    background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)',
+                    borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  + Ajouter une prestation
+                </button>
               </div>
 
               <div style={sectionCard}>

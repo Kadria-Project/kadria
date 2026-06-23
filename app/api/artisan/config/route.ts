@@ -80,6 +80,29 @@ export async function PATCH(request: NextRequest) {
           { status: 400 }
         )
       }
+
+      if (bc.serviceCatalog !== undefined) {
+        if (!Array.isArray(bc.serviceCatalog) || bc.serviceCatalog.length > 100) {
+          return NextResponse.json(
+            { success: false, error: 'businessConfig invalide : serviceCatalog doit être un tableau de 100 éléments maximum' },
+            { status: 400 }
+          )
+        }
+        const isValidItem = (item: unknown) => {
+          if (typeof item !== 'object' || item === null) return false
+          const i = item as Record<string, unknown>
+          if (typeof i.label !== 'string' || !i.label.trim()) return false
+          if (i.unitPriceHT !== undefined && i.unitPriceHT !== null && typeof i.unitPriceHT !== 'number') return false
+          if (i.vatRate !== undefined && typeof i.vatRate !== 'number') return false
+          return true
+        }
+        if (!bc.serviceCatalog.every(isValidItem)) {
+          return NextResponse.json(
+            { success: false, error: 'businessConfig invalide : chaque prestation du catalogue doit avoir un libellé, et un prix/TVA numériques le cas échéant' },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config

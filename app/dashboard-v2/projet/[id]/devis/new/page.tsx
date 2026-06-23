@@ -52,6 +52,7 @@ interface DevisLine {
   unit: string;
   unitPrice: number;
   tvaRate: number;
+  fromCatalog?: boolean;
 }
 
 interface Prestation {
@@ -183,7 +184,8 @@ function NewDevis() {
                     quantity: d.quantity ?? 1,
                     unit: d.unit || 'u',
                     unitPrice: d.unitPrice ?? 0,
-                    tvaRate: config.devisTvaDefaut || 10,
+                    tvaRate: d.vatRate ?? (config.devisTvaDefaut || 10),
+                    fromCatalog: d.fromCatalog,
                   }))
                 );
                 appliedDraft = true;
@@ -831,7 +833,7 @@ function NewDevis() {
                         />
                         {prefilledFromSuggestions && (
                           <p style={{ color: line.unitPrice > 0 ? '#22c55e' : '#71717a', fontSize: '11px', margin: '4px 0 0' }}>
-                            {line.unitPrice > 0 ? 'Montant suggéré' : 'Prix à compléter'}
+                            {line.unitPrice > 0 ? (line.fromCatalog ? 'Depuis votre catalogue' : 'Montant suggéré') : 'Prix à compléter'}
                           </p>
                         )}
                       </div>

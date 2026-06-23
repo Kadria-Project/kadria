@@ -15,6 +15,24 @@ export type QuoteSuggestionLine = {
   source: 'trade' | 'project' | 'travel' | 'generic'
   suggestedAmount?: number
   optional?: boolean
+  vatRate?: number
+  fromCatalog?: boolean
+}
+
+// Catalogue de prestations configure par l'artisan (Mission "service
+// catalog"). Stocke dans Artisan_config.business_config.serviceCatalog (JSONB,
+// pas de migration). Les prix viennent uniquement de ce catalogue : Kadria
+// n'invente jamais de grille tarifaire.
+export type ArtisanServiceCatalogItem = {
+  id: string
+  label: string
+  trade?: string
+  category?: string
+  unit?: 'forfait' | 'heure' | 'jour' | 'm2' | 'ml' | 'unite'
+  unitPriceHT?: number | null
+  vatRate?: number
+  isActive?: boolean
+  notes?: string
 }
 
 export interface QuoteSuggestionProjectLike {
@@ -29,6 +47,7 @@ export interface QuoteSuggestionBusinessConfig {
   refusedWorkTypes?: string[]
   customAcceptedWork?: string
   customRefusedWork?: string
+  serviceCatalog?: ArtisanServiceCatalogItem[]
 }
 
 export interface QuoteSuggestionTravel {
@@ -99,6 +118,54 @@ const KEYWORD_SPECIFIC_LINES: Array<{ keywords: string[]; lines: string[] }> = [
 function matchesWorkTypeList(projectText: string, workTypes: string[] | undefined): string | undefined {
   if (!workTypes || workTypes.length === 0 || !projectText) return undefined
   return workTypes.find((term) => term && term.trim() && projectText.includes(term.trim().toLowerCase()))
+}
+
+// Matching V1 volontairement simple (label exact ou inclusion de mots-cles) :
+// en cas de doute, on prefere ne pas prerempler de prix plutot que de risquer
+// un montant incorrect. Quelques synonymes courants sont normalises pour
+// couvrir le cas "Entretien pompe a chaleur" / "Entretien PAC".
+const MIN_KEYWORD_MATCH_LENGTH = 4
+
+const CATALOG_MATCH_SYNONYMS: Array<[RegExp, string]> = [
+  [/pompe\s*à\s*chaleur|pompe\s*a\s*chaleur|\bpac\b/g, 'pac'],
+]
+
+function normalizeForCatalogMatch(text: string): string {
+  let normalized = text.trim().toLowerCase()
+  for (const [pattern, replacement] of CATALOG_MATCH_SYNONYMS) {
+    normalized = normalized.replace(pattern, replacement)
+  }
+  return normalized
+}
+
+function findCatalogMatch(
+  label: string,
+  catalog: ArtisanServiceCatalogItem[] | undefined
+): ArtisanServiceCatalogItem | undefined {
+  if (!catalog || catalog.length === 0) return undefined
+  const normalizedLabel = label.trim().toLowerCase()
+  if (!normalizedLabel) return undefined
+
+  const usableItems = catalog.filter(
+    (item) => item.isActive !== false && typeof item.unitPriceHT === 'number' && item.unitPriceHT !== null
+  )
+
+  const exactMatch = usableItems.find((item) => item.label.trim().toLowerCase() === normalizedLabel)
+  if (exactMatch) return exactMatch
+
+  const keywordMatch = usableItems.find((item) => {
+    const normalizedItemLabel = item.label.trim().toLowerCase()
+    if (normalizedItemLabel.length < MIN_KEYWORD_MATCH_LENGTH) return false
+    return normalizedLabel.includes(normalizedItemLabel) || normalizedItemLabel.includes(normalizedLabel)
+  })
+  if (keywordMatch) return keywordMatch
+
+  const synonymLabel = normalizeForCatalogMatch(normalizedLabel)
+  return usableItems.find((item) => {
+    const synonymItemLabel = normalizeForCatalogMatch(item.label)
+    if (synonymItemLabel.length < MIN_KEYWORD_MATCH_LENGTH) return false
+    return synonymLabel.includes(synonymItemLabel) || synonymItemLabel.includes(synonymLabel)
+  })
 }
 
 export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggestionLine[] {
@@ -193,6 +260,21 @@ export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggest
     }
   }
 
+  // Catalogue de prestations (Mission "service catalog") : priorite 2, apres
+  // le deplacement chiffre. Ne preremplit jamais un prix si aucune
+  // prestation active du catalogue ne correspond raisonnablement.
+  if (businessConfig?.serviceCatalog && businessConfig.serviceCatalog.length > 0) {
+    for (const line of lines) {
+      if (line.suggestedAmount !== undefined) continue
+      const match = findCatalogMatch(line.label, businessConfig.serviceCatalog)
+      if (match && typeof match.unitPriceHT === 'number') {
+        line.suggestedAmount = match.unitPriceHT
+        line.vatRate = match.vatRate
+        line.fromCatalog = true
+      }
+    }
+  }
+
   return lines.slice(0, MAX_SUGGESTIONS)
 }
 
@@ -208,8 +290,10 @@ export type QuoteDraftLine = {
   unit?: string
   unitPrice?: number | null
   amount?: number | null
+  vatRate?: number
   source?: 'trade' | 'project' | 'travel' | 'generic'
   optional?: boolean
+  fromCatalog?: boolean
 }
 
 export function getQuoteDraftStorageKey(projectId: string): string {
@@ -224,7 +308,9 @@ export function toQuoteDraftLines(lines: QuoteSuggestionLine[]): QuoteDraftLine[
     unit: 'u',
     unitPrice: line.suggestedAmount ?? null,
     amount: line.suggestedAmount ?? null,
+    vatRate: line.vatRate,
     source: line.source,
     optional: line.optional,
+    fromCatalog: line.fromCatalog,
   }))
 }

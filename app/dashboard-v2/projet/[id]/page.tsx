@@ -23,7 +23,7 @@ import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendat
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
-import { getQuoteSuggestions, toQuoteDraftLines, getQuoteDraftStorageKey } from '@/src/lib/quote-suggestions';
+import { getQuoteSuggestions, toQuoteDraftLines, getQuoteDraftStorageKey, type ArtisanServiceCatalogItem } from '@/src/lib/quote-suggestions';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -219,6 +219,7 @@ function ProjectDetail() {
       refusedWorkTypes?: string[];
       customAcceptedWork?: string;
       customRefusedWork?: string;
+      serviceCatalog?: ArtisanServiceCatalogItem[];
     };
   } | null>(null);
 
@@ -628,6 +629,7 @@ function ProjectDetail() {
     businessConfig: {
       acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
       refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
+      serviceCatalog: artisanConfig?.businessConfig?.serviceCatalog,
     },
     travel: travelCostSignal?.available
       ? {
@@ -1968,7 +1970,12 @@ function ProjectDetail() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                             {line.suggestedAmount !== undefined && (
                               <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>
-                                {formatInteger(line.suggestedAmount)} €
+                                {formatInteger(line.suggestedAmount)} € HT
+                              </span>
+                            )}
+                            {line.fromCatalog && (
+                              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                                catalogue
                               </span>
                             )}
                             <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
