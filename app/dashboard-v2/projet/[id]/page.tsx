@@ -22,7 +22,7 @@ import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/
 import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendation, type VehicleType, type ChargingType } from '@/src/config/travel';
 import { getBestFollowUpTime, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
-import { getProjectCommercialAnalysis, type NextActionType } from '@/src/lib/project-scoring';
+import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -535,6 +535,48 @@ function ProjectDetail() {
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
   const latestDevis = devisList[0];
+
+  // Signal frais de deplacement pour l'Analyse Kadria : reprend les memes
+  // helpers que la card "Frais de deplacement estimes" ci-dessous. Ne rien
+  // produire si la feature est verrouillee (plan) ou si une donnee
+  // necessaire manque (coordonnees, motorisation...) — comportement de
+  // scoring identique a avant dans ce cas.
+  const travelCostSignal = (() => {
+    if (!canTravelCost) return undefined;
+    const travelConfig = artisanConfig?.travelConfig;
+    const originLat = travelConfig?.originLat;
+    const originLng = travelConfig?.originLng;
+    const destLat = project?.latitude;
+    const destLng = project?.longitude;
+    if (originLat === undefined || originLng === undefined) return undefined;
+    if (destLat === null || destLat === undefined || destLng === null || destLng === undefined) return undefined;
+    if (!travelConfig?.vehicleType) return undefined;
+
+    const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
+    const result = calculateTravelCost(distanceKm, {
+      vehicleType: travelConfig.vehicleType as VehicleType,
+      consumptionPer100Km: travelConfig.consumptionPer100Km,
+      chargingType: travelConfig.chargingType as ChargingType | undefined,
+      customCostPerKm: travelConfig.customCostPerKm,
+    });
+    if (!result) return undefined;
+
+    const recommendation = calculateTravelFeeRecommendation({
+      oneWayDistanceKm: result.distanceKm,
+      estimatedCost: result.cost,
+      minimumTravelFee: travelConfig.minimumTravelFee,
+      freeTravelRadiusKm: travelConfig.freeTravelRadiusKm,
+    });
+
+    return buildTravelCostSignal({
+      oneWayDistanceKm: result.distanceKm,
+      roundTripDistanceKm: result.distanceKmAR,
+      estimatedCost: result.cost,
+      suggestedFee: recommendation.suggestedFee,
+      isFreeZone: recommendation.isFreeZone,
+    });
+  })();
+
   const analysis = getProjectCommercialAnalysis({
     status: project.status,
     clientName: project.clientName,
@@ -567,6 +609,7 @@ function ProjectDetail() {
     artisanTrades: artisanConfig?.trades ?? [],
     acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
     refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
+    travelSignal: travelCostSignal,
   });
   const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
   const summary = getStructuredSummary(project);

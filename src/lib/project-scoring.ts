@@ -6,7 +6,6 @@
 // app/dashboard-v2/projet/[id]/page.tsx, desormais delegues a ce module).
 
 import { getTradeTaxonomies } from '@/src/config/trade-taxonomy'
-import { classifyTravelCostRisk, type TravelCostResult } from '@/src/config/travel'
 
 export type Temperature = 'hot' | 'warm' | 'cold'
 export type Priority = 'high' | 'medium' | 'low'
@@ -151,6 +150,59 @@ export interface ProjectAnalysisOptions {
   // absent ou vide, le scoring reste identique au comportement actuel.
   acceptedWorkTypes?: string[]
   refusedWorkTypes?: string[]
+  // Signal frais de déplacement (issu de src/config/travel.ts via
+  // buildTravelCostSignal). Optionnel et rétrocompatible : si absent, le
+  // scoring reste identique au comportement actuel.
+  travelSignal?: TravelCostSignal
+}
+
+// Signal frais de déplacement, deterministe (pas d'IA, pas de nouvel appel
+// reseau) : reprend les resultats deja calcules par la card "Frais de
+// deplacement estimes" (calculateTravelCost / calculateTravelFeeRecommendation)
+// pour les rendre exploitables par le scoring commercial.
+export interface TravelCostSignal {
+  available: boolean
+  oneWayDistanceKm?: number
+  roundTripDistanceKm?: number
+  estimatedCost?: number
+  suggestedFee?: number
+  isFreeZone?: boolean
+  riskLevel?: 'low' | 'medium' | 'high'
+  reason?: string
+}
+
+export function buildTravelCostSignal(params: {
+  oneWayDistanceKm: number
+  roundTripDistanceKm: number
+  estimatedCost: number
+  suggestedFee: number
+  isFreeZone: boolean
+}): TravelCostSignal {
+  const { oneWayDistanceKm, roundTripDistanceKm, estimatedCost, suggestedFee, isFreeZone } = params
+
+  let riskLevel: 'low' | 'medium' | 'high' = 'medium'
+  let reason: string
+  if (isFreeZone || oneWayDistanceKm <= 10) {
+    riskLevel = 'low'
+    reason = 'Chantier proche de la zone d\'intervention.'
+  } else if (oneWayDistanceKm <= 30) {
+    riskLevel = 'medium'
+    reason = 'Distance cohérente pour une intervention.'
+  } else {
+    riskLevel = 'high'
+    reason = 'Distance longue, déplacement à anticiper dans le chiffrage.'
+  }
+
+  return {
+    available: true,
+    oneWayDistanceKm,
+    roundTripDistanceKm,
+    estimatedCost,
+    suggestedFee,
+    isFreeZone,
+    riskLevel,
+    reason,
+  }
 }
 
 // Correspondance simple, sans IA : on cherche si l'un des termes de la liste
@@ -360,6 +412,35 @@ export function getProjectCommercialAnalysis(
     riskFlags.push('Le projet correspond à un type de travaux que l\'artisan préfère éviter')
   }
 
+  // Frais de déplacement (Mission : signal leger, jamais brutal — bonus
+  // leger si zone proche, malus leger si distance longue, malus modere
+  // seulement si distance longue ET budget faible).
+  const travelSignal = options?.travelSignal
+  let travelIsLongDistanceLowBudget = false
+  if (travelSignal?.available) {
+    const oneWay = travelSignal.oneWayDistanceKm
+    const isShort = travelSignal.isFreeZone || (oneWay !== undefined && oneWay <= 10)
+    const isLong = oneWay !== undefined && oneWay > 30
+    const budgetIsLow = budgetKnown && budgetValue > 0 && travelSignal.estimatedCost !== undefined
+      && travelSignal.estimatedCost > budgetValue * 0.15
+    travelIsLongDistanceLowBudget = isLong && budgetIsLow
+
+    if (isShort) {
+      score += 3
+      strengths.push('Chantier proche de votre zone d\'intervention')
+    } else if (isLong) {
+      if (budgetIsLow) {
+        score -= 8
+        riskFlags.push('Distance élevée par rapport au budget indiqué')
+      } else {
+        score -= 4
+        weaknesses.push('Déplacement à anticiper dans le chiffrage')
+      }
+    } else if (travelSignal.suggestedFee !== undefined && travelSignal.suggestedFee > 0) {
+      weaknesses.push('Frais de déplacement à confirmer')
+    }
+  }
+
   // Le completenessScore existant est un signal supplementaire, pas la seule
   // source de verite (mission : "ne pas s'y limiter").
   score = score * 0.85 + completeness * 0.15
@@ -437,6 +518,33 @@ export function getProjectCommercialAnalysis(
     recommendation = nextBestAction.reason
   }
 
+  // Ajustement de la recommandation selon le deplacement : on ne remplace
+  // une recommandation deja prioritaire (devis, budget manquant, precisions
+  // manquantes) que si le deplacement constitue un vrai risque commercial
+  // (distance longue + budget faible). Sinon, on enrichit simplement le
+  // texte de la recommandation existante (call/quote).
+  if (travelSignal?.available) {
+    if (travelIsLongDistanceLowBudget) {
+      nextBestAction = {
+        type: 'ask_info',
+        label: 'Confirmer le budget et les frais de déplacement',
+        reason: 'Confirmer le budget avant déplacement et intégrer des frais de déplacement.',
+      }
+      recommendation = nextBestAction.reason
+    } else if (nextBestAction.type === 'call' || nextBestAction.type === 'quote') {
+      const oneWay = travelSignal.oneWayDistanceKm
+      const isShort = travelSignal.isFreeZone || (oneWay !== undefined && oneWay <= 10)
+      const isLong = oneWay !== undefined && oneWay > 30
+      if (isShort) {
+        recommendation = 'Contacter rapidement le prospect : dossier clair et déplacement limité.'
+        nextBestAction.reason = recommendation
+      } else if (isLong || (travelSignal.suggestedFee !== undefined && travelSignal.suggestedFee > 0)) {
+        recommendation = 'Contacter le prospect et prévoir des frais de déplacement dans le chiffrage.'
+        nextBestAction.reason = recommendation
+      }
+    }
+  }
+
   if (confidence === 'low' && dataPointsKnown <= 1) {
     return {
       score,
@@ -474,23 +582,3 @@ export function getProjectCommercialAnalysis(
   }
 }
 
-// Préparation pour une intégration future du coût de déplacement dans le
-// scoring (non branchée ici) : coût élevé = risque ; distance longue + petit
-// budget = priorité plus faible ; distance courte + budget cohérent = signal positif.
-export interface TravelCostSignal {
-  risk: 'low' | 'medium' | 'high'
-  isLongDistanceLowBudget: boolean
-  isShortDistanceConsistentBudget: boolean
-}
-
-export function getTravelCostSignal(
-  travelCost: TravelCostResult,
-  budgetIsLow: boolean
-): TravelCostSignal {
-  const risk = classifyTravelCostRisk(travelCost.cost)
-  return {
-    risk,
-    isLongDistanceLowBudget: travelCost.distanceKm > 30 && budgetIsLow,
-    isShortDistanceConsistentBudget: travelCost.distanceKm <= 15 && !budgetIsLow,
-  }
-}
