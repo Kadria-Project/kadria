@@ -21,7 +21,8 @@ const SECTIONS = [
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
   { id: 'legal', label: 'Infos légales', icon: '📋' },
-  { id: 'vehicule', label: 'Véhicule & déplacements', icon: '🚗' },
+  { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
+  { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
 ]
@@ -786,20 +787,56 @@ export default function ParametresPage() {
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Informations générales
+                  Identité
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                    <div>
-                      <label style={labelStyle}>Nom de l&apos;entreprise</label>
-                      <input
-                        value={config.companyName}
-                        onChange={e => setConfig(c => ({ ...c, companyName: e.target.value }))}
-                        placeholder="Martin Rénovation"
-                        style={inputStyle}
-                      />
-                    </div>
+                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
+                    <label style={labelStyle}>Nom de l&apos;entreprise</label>
+                    <input
+                      value={config.companyName}
+                      onChange={e => setConfig(c => ({ ...c, companyName: e.target.value }))}
+                      placeholder="Martin Rénovation"
+                      style={inputStyle}
+                    />
                   </div>
+                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
+                    <label style={labelStyle}>Site web</label>
+                    <input
+                      value={config.websiteUrl}
+                      onChange={e => setConfig(c => ({ ...c, websiteUrl: e.target.value }))}
+                      placeholder="https://monsite.fr"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
+                    <label style={labelStyle}>URL du logo</label>
+                    <input
+                      value={config.logoUrl}
+                      onChange={e => setConfig(c => ({ ...c, logoUrl: e.target.value }))}
+                      placeholder="https://monsite.fr/logo.png"
+                      style={inputStyle}
+                    />
+                    {config.logoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={config.logoUrl}
+                        alt="Logo preview"
+                        style={{
+                          marginTop: '8px', height: '40px',
+                          objectFit: 'contain', borderRadius: '6px',
+                        }}
+                        onError={e => (e.currentTarget.style.display = 'none')}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Contact principal
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: isMobile ? '100%' : '420px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                     <div>
                       <label style={labelStyle}>Prénom</label>
@@ -827,36 +864,6 @@ export default function ParametresPage() {
                       value={config.email}
                       onChange={e => setConfig(c => ({ ...c, email: e.target.value }))}
                       placeholder="jean@martin-renovation.fr"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>URL du logo</label>
-                    <input
-                      value={config.logoUrl}
-                      onChange={e => setConfig(c => ({ ...c, logoUrl: e.target.value }))}
-                      placeholder="https://monsite.fr/logo.png"
-                      style={inputStyle}
-                    />
-                    {config.logoUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={config.logoUrl}
-                        alt="Logo preview"
-                        style={{
-                          marginTop: '8px', height: '40px',
-                          objectFit: 'contain', borderRadius: '6px',
-                        }}
-                        onError={e => (e.currentTarget.style.display = 'none')}
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Site web</label>
-                    <input
-                      value={config.websiteUrl}
-                      onChange={e => setConfig(c => ({ ...c, websiteUrl: e.target.value }))}
-                      placeholder="https://monsite.fr"
                       style={inputStyle}
                     />
                   </div>
@@ -1029,6 +1036,715 @@ export default function ParametresPage() {
                 })()}
               </div>
 
+            </div>
+          )}
+
+          {/* Section Widget */}
+          {activeSection === 'widget' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                🎨 Mon widget
+              </h2>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Couleurs
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Couleur principale</label>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={config.primaryColor}
+                        onChange={e => setConfig(c => ({ ...c, primaryColor: e.target.value }))}
+                        style={{
+                          width: isMobile ? '40px' : '48px', height: '44px',
+                          borderRadius: '8px', border: '1px solid var(--border)',
+                          background: 'transparent', cursor: 'pointer',
+                          padding: '2px',
+                        }}
+                      />
+                      <input
+                        value={config.primaryColor}
+                        onChange={e => setConfig(c => ({ ...c, primaryColor: e.target.value }))}
+                        placeholder="#22c55e"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                      Couleur du header et des boutons CTA
+                    </p>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Couleur secondaire</label>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={config.secondaryColor}
+                        onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
+                        style={{
+                          width: isMobile ? '40px' : '48px', height: '44px',
+                          borderRadius: '8px', border: '1px solid var(--border)',
+                          background: 'transparent', cursor: 'pointer',
+                          padding: '2px',
+                        }}
+                      />
+                      <input
+                        value={config.secondaryColor}
+                        onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
+                        placeholder="var(--bg-elevated)"
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                      Fond du widget
+                    </p>
+                  </div>
+                </div>
+
+                {/* Palette de couleurs suggestions */}
+                <div style={{ marginTop: '16px' }}>
+                  <p style={{ ...labelStyle, marginBottom: '8px' }}>Palettes suggérées</p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      { name: 'Kadria', primary: '#22c55e', secondary: '#09090b' },
+                      { name: 'Océan', primary: '#3b82f6', secondary: '#0f172a' },
+                      { name: 'Ardoise', primary: '#64748b', secondary: '#0f172a' },
+                      { name: 'Terracotta', primary: '#ea580c', secondary: '#1c0a00' },
+                      { name: 'Violet', primary: '#8b5cf6', secondary: '#0f0a1e' },
+                      { name: 'Or', primary: '#d97706', secondary: '#1c1000' },
+                    ].map(palette => (
+                      <button
+                        key={palette.name}
+                        onClick={() => setConfig(c => ({
+                          ...c,
+                          primaryColor: palette.primary,
+                          secondaryColor: palette.secondary,
+                        }))}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          background: 'var(--bg-hover)', border: '1px solid var(--border)',
+                          borderRadius: '8px', padding: '6px 12px',
+                          cursor: 'pointer', color: 'var(--text-1)', fontSize: '12px',
+                        }}
+                      >
+                        <div style={{
+                          width: '14px', height: '14px', borderRadius: '50%',
+                          background: palette.primary,
+                        }} />
+                        {palette.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Message d&apos;accueil
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Personnalise le premier message affiché au prospect.
+                  Le moteur de qualification Kadria reste identique.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Nom affiché dans le widget</label>
+                    <input
+                      value={config.welcomeName}
+                      onChange={e => setConfig(c => ({ ...c, welcomeName: e.target.value }))}
+                      placeholder="Assistant Martin Rénovation"
+                      style={inputStyle}
+                    />
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
+                      Affiché dans le header du widget à la place de &quot;Kadria&quot;
+                    </p>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Message d&apos;accueil personnalisé</label>
+                    <textarea
+                      value={config.welcomeMessage}
+                      onChange={e => setConfig(c => ({ ...c, welcomeMessage: e.target.value }))}
+                      placeholder="Bonjour ! Je suis l'assistant de Martin Rénovation. Je vais vous aider à préparer votre projet. Pour commencer, quel type de travaux souhaitez-vous réaliser ?"
+                      rows={4}
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                    />
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
+                      Si vide, le message Kadria par défaut est utilisé.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Code d'intégration */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Intégration sur votre site
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 14px' }}>
+                  Copiez ce code et collez-le sur votre site
+                  pour afficher le widget Kadria.
+                </p>
+                <div style={{
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  position: 'relative',
+                }}>
+                  <pre style={{
+                    margin: 0,
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    color: '#4ade80',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    lineHeight: 1.6,
+                  }}>
+                    {`<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`
+                      )
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      background: copied ? 'rgba(34,197,94,0.2)' : 'var(--bg-hover)',
+                      border: '1px solid',
+                      borderColor: copied ? 'var(--accent)' : 'var(--border)',
+                      color: copied ? '#4ade80' : 'var(--text-2)',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {copied ? '✓ Copié !' : 'Copier'}
+                  </button>
+                </div>
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
+                  Collez ce code avant la balise &lt;/body&gt; de votre site.
+                  Le widget apparaît automatiquement aux couleurs de votre entreprise.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Section Contact */}
+          {activeSection === 'contact' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                📍 Coordonnées
+              </h2>
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Informations de contact
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Téléphone professionnel</label>
+                    <input
+                      type="tel"
+                      value={config.phone}
+                      onChange={e => setConfig(c => ({ ...c, phone: e.target.value }))}
+                      placeholder="06 12 34 56 78"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Adresse professionnelle</label>
+                    <AddressAutocomplete
+                      value={config.address}
+                      onChange={value => setConfig(c => ({ ...c, address: value }))}
+                      onSelect={selection => setConfig(c => ({
+                        ...c,
+                        address: selection.address,
+                        travelConfig: {
+                          ...c.travelConfig,
+                          originAddress: selection.address,
+                          originLat: selection.latitude ?? c.travelConfig.originLat,
+                          originLng: selection.longitude ?? c.travelConfig.originLng,
+                        },
+                      }))}
+                      placeholder="12 rue de la Paix, 75001 Paris"
+                      style={inputStyle}
+                    />
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Sélectionnez une suggestion de l&apos;autocomplete pour permettre le calcul des frais de déplacement.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Notifications
+                </h3>
+                <div>
+                  <label style={labelStyle}>Email de notification</label>
+                  <input
+                    type="email"
+                    value={config.notificationEmail}
+                    onChange={e => setConfig(c => ({ ...c, notificationEmail: e.target.value }))}
+                    placeholder="contact@martin-renovation.fr"
+                    style={inputStyle}
+                  />
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                    Adresse utilisée pour recevoir les notifications de nouveaux dossiers et devis.
+                  </p>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Zone d&apos;intervention
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Zone d&apos;intervention</label>
+                    <input
+                      value={config.serviceArea}
+                      onChange={e => setConfig(c => ({ ...c, serviceArea: e.target.value }))}
+                      placeholder="Paris et proche banlieue"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Rayon d&apos;intervention (km)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={config.interventionRadius}
+                      onChange={e => setConfig(c => ({ ...c, interventionRadius: Number(e.target.value) }))}
+                      placeholder="30"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Horaires d&apos;ouverture
+                </h3>
+                <div>
+                  <label style={labelStyle}>Horaires (affiché dans le widget)</label>
+                  <textarea
+                    value={config.hours}
+                    onChange={e => setConfig(c => ({ ...c, hours: e.target.value }))}
+                    placeholder={"Lun-Ven : 8h-18h\nSam : 9h-12h"}
+                    rows={3}
+                    style={{
+                      ...inputStyle,
+                      resize: 'vertical',
+                      lineHeight: 1.6,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section Infos légales */}
+          {activeSection === 'legal' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                📋 Informations légales
+              </h2>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '-12px 0 16px' }}>
+                Ces informations apparaissent sur vos devis et documents officiels.
+              </p>
+
+              {/* Groupe 1 — Identité professionnelle */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Identité professionnelle
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Raison sociale / Nom complet *</label>
+                    <input
+                      value={config.raisonSociale}
+                      onChange={e => setConfig(c => ({ ...c, raisonSociale: e.target.value }))}
+                      placeholder="Martin Rénovation SARL"
+                      style={inputStyle}
+                    />
+                    {legalErrors.raisonSociale && <p style={errorStyle}>{legalErrors.raisonSociale}</p>}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Forme juridique *</label>
+                      <select
+                        value={config.formeJuridique}
+                        onChange={e => setConfig(c => ({ ...c, formeJuridique: e.target.value }))}
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                      >
+                        <option value="">Sélectionner</option>
+                        {FORMES_JURIDIQUES.map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                      {legalErrors.formeJuridique && <p style={errorStyle}>{legalErrors.formeJuridique}</p>}
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>SIRET *</label>
+                      <input
+                        value={config.siret}
+                        onChange={e => setConfig(c => ({ ...c, siret: e.target.value.replace(/[^\d]/g, '') }))}
+                        placeholder="12345678901234"
+                        maxLength={14}
+                        inputMode="numeric"
+                        style={inputStyle}
+                      />
+                      {legalErrors.siret && <p style={errorStyle}>{legalErrors.siret}</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={!config.tvaAssujetti}
+                        onChange={e => setConfig(c => ({ ...c, tvaAssujetti: !e.target.checked }))}
+                      />
+                      Je ne suis pas assujetti à la TVA
+                    </label>
+                  </div>
+
+                  {config.tvaAssujetti && (
+                    <div>
+                      <label style={labelStyle}>Numéro de TVA intracommunautaire</label>
+                      <input
+                        value={config.tvaNumber}
+                        onChange={e => setConfig(c => ({ ...c, tvaNumber: e.target.value }))}
+                        placeholder="FR12345678901"
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Groupe 2 — Adresse professionnelle */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Adresse professionnelle
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Adresse *</label>
+                    <AddressAutocomplete
+                      value={config.adressePro}
+                      onChange={value => setConfig(c => ({ ...c, adressePro: value }))}
+                      onSelect={selection => setConfig(c => ({
+                        ...c,
+                        adressePro: selection.address,
+                        cpPro: selection.postalCode || c.cpPro,
+                        villePro: selection.city || c.villePro,
+                      }))}
+                      placeholder="12 rue de la Paix"
+                      style={inputStyle}
+                    />
+                    {legalErrors.adressePro && <p style={errorStyle}>{legalErrors.adressePro}</p>}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Code postal *</label>
+                      <input
+                        value={config.cpPro}
+                        onChange={e => setConfig(c => ({ ...c, cpPro: e.target.value }))}
+                        placeholder="75001"
+                        style={inputStyle}
+                      />
+                      {legalErrors.cpPro && <p style={errorStyle}>{legalErrors.cpPro}</p>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Ville *</label>
+                      <input
+                        value={config.villePro}
+                        onChange={e => setConfig(c => ({ ...c, villePro: e.target.value }))}
+                        placeholder="Paris"
+                        style={inputStyle}
+                      />
+                      {legalErrors.villePro && <p style={errorStyle}>{legalErrors.villePro}</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Groupe 3 — Assurance */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Assurance
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={config.assuranceNonRequise}
+                        onChange={e => setConfig(c => ({ ...c, assuranceNonRequise: e.target.checked }))}
+                      />
+                      Mon métier ne requiert pas d&apos;assurance décennale
+                    </label>
+                  </div>
+
+                  {!config.assuranceNonRequise && (
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                      <div>
+                        <label style={labelStyle}>Nom de l&apos;assureur *</label>
+                        <input
+                          value={config.assureur}
+                          onChange={e => setConfig(c => ({ ...c, assureur: e.target.value }))}
+                          placeholder="AXA, MAAF, ..."
+                          style={inputStyle}
+                        />
+                        {legalErrors.assureur && <p style={errorStyle}>{legalErrors.assureur}</p>}
+                      </div>
+                      <div>
+                        <label style={labelStyle}>N° police d&apos;assurance décennale *</label>
+                        <input
+                          value={config.numAssurance}
+                          onChange={e => setConfig(c => ({ ...c, numAssurance: e.target.value }))}
+                          placeholder="123456789"
+                          style={inputStyle}
+                        />
+                        {legalErrors.numAssurance && <p style={errorStyle}>{legalErrors.numAssurance}</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Groupe 4 — Préférences devis */}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Préférences devis
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={labelStyle}>Préfixe numérotation</label>
+                      <input
+                        value={config.devisPrefixe}
+                        onChange={e => setConfig(c => ({ ...c, devisPrefixe: e.target.value.toUpperCase().slice(0, 6) }))}
+                        placeholder="DEV"
+                        maxLength={6}
+                        style={inputStyle}
+                      />
+                      {legalErrors.devisPrefixe && <p style={errorStyle}>{legalErrors.devisPrefixe}</p>}
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Délai de validité par défaut</label>
+                      <select
+                        value={config.devisValidite}
+                        onChange={e => setConfig(c => ({ ...c, devisValidite: Number(e.target.value) }))}
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                      >
+                        {DEVIS_VALIDITES.map(v => (
+                          <option key={v} value={v}>{v} jours</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Taux TVA par défaut</label>
+                      <select
+                        value={config.devisTvaDefaut}
+                        onChange={e => setConfig(c => ({ ...c, devisTvaDefaut: Number(e.target.value) }))}
+                        style={{ ...inputStyle, cursor: 'pointer' }}
+                      >
+                        {DEVIS_TVA_TAUX.map(t => (
+                          <option key={t} value={t}>{t}%</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Conditions de paiement par défaut</label>
+                    <textarea
+                      value={config.devisConditionsPaiement}
+                      onChange={e => setConfig(c => ({ ...c, devisConditionsPaiement: e.target.value }))}
+                      placeholder="30% à la commande, solde à la livraison"
+                      rows={3}
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Mention légale personnalisée</label>
+                    <textarea
+                      value={config.devisMentionLegale}
+                      onChange={e => setConfig(c => ({ ...c, devisMentionLegale: e.target.value }))}
+                      placeholder="Artisan RGE certifié"
+                      rows={2}
+                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'vehicule' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                🚗 Véhicule & déplacements
+              </h2>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 16px' }}>
+                Ces informations permettent d&apos;estimer le coût d&apos;un déplacement entre votre
+                adresse professionnelle et un chantier (fonctionnalité disponible avec le plan Performance).
+              </p>
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Motorisation
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Type de motorisation</label>
+                    <select
+                      value={config.travelConfig.vehicleType}
+                      onChange={e => {
+                        const vehicleType = e.target.value as VehicleType
+                        setConfig(c => ({
+                          ...c,
+                          travelConfig: {
+                            ...c.travelConfig,
+                            vehicleType,
+                            consumptionPer100Km: DEFAULT_CONSUMPTION_PER_100KM[vehicleType],
+                          },
+                        }))
+                      }}
+                      style={inputStyle}
+                    >
+                      <option value="">Sélectionner...</option>
+                      {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map(type => (
+                        <option key={type} value={type}>{VEHICLE_TYPE_LABELS[type]}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {config.travelConfig.vehicleType && (
+                    <div>
+                      <label style={labelStyle}>
+                        Consommation moyenne ({config.travelConfig.vehicleType === 'electrique' ? 'kWh/100km' : 'L/100km'})
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={config.travelConfig.consumptionPer100Km ?? ''}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: { ...c.travelConfig, consumptionPer100Km: e.target.value === '' ? undefined : Number(e.target.value) },
+                        }))}
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+
+                  {config.travelConfig.vehicleType === 'electrique' && (
+                    <div>
+                      <label style={labelStyle}>Type de recharge principal</label>
+                      <select
+                        value={config.travelConfig.chargingType}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: { ...c.travelConfig, chargingType: e.target.value as ChargingType },
+                        }))}
+                        style={inputStyle}
+                      >
+                        {(Object.keys(CHARGING_TYPE_LABELS) as ChargingType[]).map(type => (
+                          <option key={type} value={type}>{CHARGING_TYPE_LABELS[type]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {!config.travelConfig.originLat && (
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      L&apos;adresse professionnelle (section Infos légales) doit être renseignée pour calculer une distance.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ ...sectionCard, marginTop: '16px' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Recommandation de frais de déplacement
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Frais minimum de déplacement</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="25"
+                        value={config.travelConfig.minimumTravelFee ?? ''}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: {
+                            ...c.travelConfig,
+                            minimumTravelFee: e.target.value === '' ? undefined : Number(e.target.value),
+                          },
+                        }))}
+                        style={{ ...inputStyle, paddingRight: '32px' }}
+                      />
+                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>€</span>
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Montant minimum conseillé à intégrer lorsque vous vous déplacez chez un prospect ou client.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Zone sans frais de déplacement</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="10"
+                        value={config.travelConfig.freeTravelRadiusKm ?? ''}
+                        onChange={e => setConfig(c => ({
+                          ...c,
+                          travelConfig: {
+                            ...c.travelConfig,
+                            freeTravelRadiusKm: e.target.value === '' ? undefined : Number(e.target.value),
+                          },
+                        }))}
+                        style={{ ...inputStyle, paddingRight: '36px' }}
+                      />
+                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>km</span>
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Dans ce rayon autour de votre adresse professionnelle, Kadria ne recommandera pas forcément de frais supplémentaires.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'catalogue' && (
+            <div>
+              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                📒 Catalogue & devis
+              </h2>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '-12px 0 16px' }}>
+                Votre catalogue de prestations, vos modèles de devis et vos paramètres par défaut.
+              </p>
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Catalogue de prestations
@@ -1496,704 +2212,6 @@ export default function ParametresPage() {
                     placeholder="Prix valable selon les informations transmises."
                     style={inputStyle}
                   />
-                </div>
-              </div>
-
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Zone d&apos;intervention
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Zone d&apos;intervention</label>
-                    <input
-                      value={config.serviceArea}
-                      onChange={e => setConfig(c => ({ ...c, serviceArea: e.target.value }))}
-                      placeholder="Paris et proche banlieue"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Rayon d&apos;intervention (km)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={config.interventionRadius}
-                      onChange={e => setConfig(c => ({ ...c, interventionRadius: Number(e.target.value) }))}
-                      placeholder="30"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Horaires d&apos;ouverture
-                </h3>
-                <div>
-                  <label style={labelStyle}>Horaires (affiché dans le widget)</label>
-                  <textarea
-                    value={config.hours}
-                    onChange={e => setConfig(c => ({ ...c, hours: e.target.value }))}
-                    placeholder={"Lun-Ven : 8h-18h\nSam : 9h-12h"}
-                    rows={3}
-                    style={{
-                      ...inputStyle,
-                      resize: 'vertical',
-                      lineHeight: 1.6,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Section Widget */}
-          {activeSection === 'widget' && (
-            <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                🎨 Mon widget
-              </h2>
-
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Couleurs
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Couleur principale</label>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <input
-                        type="color"
-                        value={config.primaryColor}
-                        onChange={e => setConfig(c => ({ ...c, primaryColor: e.target.value }))}
-                        style={{
-                          width: isMobile ? '40px' : '48px', height: '44px',
-                          borderRadius: '8px', border: '1px solid var(--border)',
-                          background: 'transparent', cursor: 'pointer',
-                          padding: '2px',
-                        }}
-                      />
-                      <input
-                        value={config.primaryColor}
-                        onChange={e => setConfig(c => ({ ...c, primaryColor: e.target.value }))}
-                        placeholder="#22c55e"
-                        style={{ ...inputStyle, flex: 1 }}
-                      />
-                    </div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
-                      Couleur du header et des boutons CTA
-                    </p>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Couleur secondaire</label>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <input
-                        type="color"
-                        value={config.secondaryColor}
-                        onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
-                        style={{
-                          width: isMobile ? '40px' : '48px', height: '44px',
-                          borderRadius: '8px', border: '1px solid var(--border)',
-                          background: 'transparent', cursor: 'pointer',
-                          padding: '2px',
-                        }}
-                      />
-                      <input
-                        value={config.secondaryColor}
-                        onChange={e => setConfig(c => ({ ...c, secondaryColor: e.target.value }))}
-                        placeholder="var(--bg-elevated)"
-                        style={{ ...inputStyle, flex: 1 }}
-                      />
-                    </div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
-                      Fond du widget
-                    </p>
-                  </div>
-                </div>
-
-                {/* Palette de couleurs suggestions */}
-                <div style={{ marginTop: '16px' }}>
-                  <p style={{ ...labelStyle, marginBottom: '8px' }}>Palettes suggérées</p>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {[
-                      { name: 'Kadria', primary: '#22c55e', secondary: '#09090b' },
-                      { name: 'Océan', primary: '#3b82f6', secondary: '#0f172a' },
-                      { name: 'Ardoise', primary: '#64748b', secondary: '#0f172a' },
-                      { name: 'Terracotta', primary: '#ea580c', secondary: '#1c0a00' },
-                      { name: 'Violet', primary: '#8b5cf6', secondary: '#0f0a1e' },
-                      { name: 'Or', primary: '#d97706', secondary: '#1c1000' },
-                    ].map(palette => (
-                      <button
-                        key={palette.name}
-                        onClick={() => setConfig(c => ({
-                          ...c,
-                          primaryColor: palette.primary,
-                          secondaryColor: palette.secondary,
-                        }))}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          background: 'var(--bg-hover)', border: '1px solid var(--border)',
-                          borderRadius: '8px', padding: '6px 12px',
-                          cursor: 'pointer', color: 'var(--text-1)', fontSize: '12px',
-                        }}
-                      >
-                        <div style={{
-                          width: '14px', height: '14px', borderRadius: '50%',
-                          background: palette.primary,
-                        }} />
-                        {palette.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Message d&apos;accueil
-                </h3>
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
-                  Personnalise le premier message affiché au prospect.
-                  Le moteur de qualification Kadria reste identique.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Nom affiché dans le widget</label>
-                    <input
-                      value={config.welcomeName}
-                      onChange={e => setConfig(c => ({ ...c, welcomeName: e.target.value }))}
-                      placeholder="Assistant Martin Rénovation"
-                      style={inputStyle}
-                    />
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                      Affiché dans le header du widget à la place de &quot;Kadria&quot;
-                    </p>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Message d&apos;accueil personnalisé</label>
-                    <textarea
-                      value={config.welcomeMessage}
-                      onChange={e => setConfig(c => ({ ...c, welcomeMessage: e.target.value }))}
-                      placeholder="Bonjour ! Je suis l'assistant de Martin Rénovation. Je vais vous aider à préparer votre projet. Pour commencer, quel type de travaux souhaitez-vous réaliser ?"
-                      rows={4}
-                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-                    />
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                      Si vide, le message Kadria par défaut est utilisé.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Code d'intégration */}
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Intégration sur votre site
-                </h3>
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 14px' }}>
-                  Copiez ce code et collez-le sur votre site
-                  pour afficher le widget Kadria.
-                </p>
-                <div style={{
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  padding: '16px',
-                  position: 'relative',
-                }}>
-                  <pre style={{
-                    margin: 0,
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                    color: '#4ade80',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                    lineHeight: 1.6,
-                  }}>
-                    {`<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`}
-                  </pre>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        `<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`
-                      )
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 2000)
-                    }}
-                    style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      background: copied ? 'rgba(34,197,94,0.2)' : 'var(--bg-hover)',
-                      border: '1px solid',
-                      borderColor: copied ? 'var(--accent)' : 'var(--border)',
-                      color: copied ? '#4ade80' : 'var(--text-2)',
-                      borderRadius: '6px',
-                      padding: '4px 10px',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {copied ? '✓ Copié !' : 'Copier'}
-                  </button>
-                </div>
-                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
-                  Collez ce code avant la balise &lt;/body&gt; de votre site.
-                  Le widget apparaît automatiquement aux couleurs de votre entreprise.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Section Contact */}
-          {activeSection === 'contact' && (
-            <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                📍 Coordonnées
-              </h2>
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Informations de contact
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Téléphone professionnel</label>
-                    <input
-                      type="tel"
-                      value={config.phone}
-                      onChange={e => setConfig(c => ({ ...c, phone: e.target.value }))}
-                      placeholder="06 12 34 56 78"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Adresse professionnelle</label>
-                    <AddressAutocomplete
-                      value={config.address}
-                      onChange={value => setConfig(c => ({ ...c, address: value }))}
-                      onSelect={selection => setConfig(c => ({
-                        ...c,
-                        address: selection.address,
-                        travelConfig: {
-                          ...c.travelConfig,
-                          originAddress: selection.address,
-                          originLat: selection.latitude ?? c.travelConfig.originLat,
-                          originLng: selection.longitude ?? c.travelConfig.originLng,
-                        },
-                      }))}
-                      placeholder="12 rue de la Paix, 75001 Paris"
-                      style={inputStyle}
-                    />
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
-                      Sélectionnez une suggestion de l&apos;autocomplete pour permettre le calcul des frais de déplacement.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Notifications
-                </h3>
-                <div>
-                  <label style={labelStyle}>Email de notification</label>
-                  <input
-                    type="email"
-                    value={config.notificationEmail}
-                    onChange={e => setConfig(c => ({ ...c, notificationEmail: e.target.value }))}
-                    placeholder="contact@martin-renovation.fr"
-                    style={inputStyle}
-                  />
-                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
-                    Adresse utilisée pour recevoir les notifications de nouveaux dossiers et devis.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Section Infos légales */}
-          {activeSection === 'legal' && (
-            <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                📋 Informations légales
-              </h2>
-              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '-12px 0 16px' }}>
-                Ces informations apparaissent sur vos devis et documents officiels.
-              </p>
-
-              {/* Groupe 1 — Identité professionnelle */}
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Identité professionnelle
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Raison sociale / Nom complet *</label>
-                    <input
-                      value={config.raisonSociale}
-                      onChange={e => setConfig(c => ({ ...c, raisonSociale: e.target.value }))}
-                      placeholder="Martin Rénovation SARL"
-                      style={inputStyle}
-                    />
-                    {legalErrors.raisonSociale && <p style={errorStyle}>{legalErrors.raisonSociale}</p>}
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                    <div>
-                      <label style={labelStyle}>Forme juridique *</label>
-                      <select
-                        value={config.formeJuridique}
-                        onChange={e => setConfig(c => ({ ...c, formeJuridique: e.target.value }))}
-                        style={{ ...inputStyle, cursor: 'pointer' }}
-                      >
-                        <option value="">Sélectionner</option>
-                        {FORMES_JURIDIQUES.map(f => (
-                          <option key={f} value={f}>{f}</option>
-                        ))}
-                      </select>
-                      {legalErrors.formeJuridique && <p style={errorStyle}>{legalErrors.formeJuridique}</p>}
-                    </div>
-
-                    <div>
-                      <label style={labelStyle}>SIRET *</label>
-                      <input
-                        value={config.siret}
-                        onChange={e => setConfig(c => ({ ...c, siret: e.target.value.replace(/[^\d]/g, '') }))}
-                        placeholder="12345678901234"
-                        maxLength={14}
-                        inputMode="numeric"
-                        style={inputStyle}
-                      />
-                      {legalErrors.siret && <p style={errorStyle}>{legalErrors.siret}</p>}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={checkboxRowStyle}>
-                      <input
-                        type="checkbox"
-                        checked={!config.tvaAssujetti}
-                        onChange={e => setConfig(c => ({ ...c, tvaAssujetti: !e.target.checked }))}
-                      />
-                      Je ne suis pas assujetti à la TVA
-                    </label>
-                  </div>
-
-                  {config.tvaAssujetti && (
-                    <div>
-                      <label style={labelStyle}>Numéro de TVA intracommunautaire</label>
-                      <input
-                        value={config.tvaNumber}
-                        onChange={e => setConfig(c => ({ ...c, tvaNumber: e.target.value }))}
-                        placeholder="FR12345678901"
-                        style={inputStyle}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Groupe 2 — Adresse professionnelle */}
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Adresse professionnelle
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Adresse *</label>
-                    <AddressAutocomplete
-                      value={config.adressePro}
-                      onChange={value => setConfig(c => ({ ...c, adressePro: value }))}
-                      onSelect={selection => setConfig(c => ({
-                        ...c,
-                        adressePro: selection.address,
-                        cpPro: selection.postalCode || c.cpPro,
-                        villePro: selection.city || c.villePro,
-                      }))}
-                      placeholder="12 rue de la Paix"
-                      style={inputStyle}
-                    />
-                    {legalErrors.adressePro && <p style={errorStyle}>{legalErrors.adressePro}</p>}
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                    <div>
-                      <label style={labelStyle}>Code postal *</label>
-                      <input
-                        value={config.cpPro}
-                        onChange={e => setConfig(c => ({ ...c, cpPro: e.target.value }))}
-                        placeholder="75001"
-                        style={inputStyle}
-                      />
-                      {legalErrors.cpPro && <p style={errorStyle}>{legalErrors.cpPro}</p>}
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Ville *</label>
-                      <input
-                        value={config.villePro}
-                        onChange={e => setConfig(c => ({ ...c, villePro: e.target.value }))}
-                        placeholder="Paris"
-                        style={inputStyle}
-                      />
-                      {legalErrors.villePro && <p style={errorStyle}>{legalErrors.villePro}</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Groupe 3 — Assurance */}
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Assurance
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={checkboxRowStyle}>
-                      <input
-                        type="checkbox"
-                        checked={config.assuranceNonRequise}
-                        onChange={e => setConfig(c => ({ ...c, assuranceNonRequise: e.target.checked }))}
-                      />
-                      Mon métier ne requiert pas d&apos;assurance décennale
-                    </label>
-                  </div>
-
-                  {!config.assuranceNonRequise && (
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                      <div>
-                        <label style={labelStyle}>Nom de l&apos;assureur *</label>
-                        <input
-                          value={config.assureur}
-                          onChange={e => setConfig(c => ({ ...c, assureur: e.target.value }))}
-                          placeholder="AXA, MAAF, ..."
-                          style={inputStyle}
-                        />
-                        {legalErrors.assureur && <p style={errorStyle}>{legalErrors.assureur}</p>}
-                      </div>
-                      <div>
-                        <label style={labelStyle}>N° police d&apos;assurance décennale *</label>
-                        <input
-                          value={config.numAssurance}
-                          onChange={e => setConfig(c => ({ ...c, numAssurance: e.target.value }))}
-                          placeholder="123456789"
-                          style={inputStyle}
-                        />
-                        {legalErrors.numAssurance && <p style={errorStyle}>{legalErrors.numAssurance}</p>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Groupe 4 — Préférences devis */}
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Préférences devis
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '14px' }}>
-                    <div>
-                      <label style={labelStyle}>Préfixe numérotation</label>
-                      <input
-                        value={config.devisPrefixe}
-                        onChange={e => setConfig(c => ({ ...c, devisPrefixe: e.target.value.toUpperCase().slice(0, 6) }))}
-                        placeholder="DEV"
-                        maxLength={6}
-                        style={inputStyle}
-                      />
-                      {legalErrors.devisPrefixe && <p style={errorStyle}>{legalErrors.devisPrefixe}</p>}
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Délai de validité par défaut</label>
-                      <select
-                        value={config.devisValidite}
-                        onChange={e => setConfig(c => ({ ...c, devisValidite: Number(e.target.value) }))}
-                        style={{ ...inputStyle, cursor: 'pointer' }}
-                      >
-                        {DEVIS_VALIDITES.map(v => (
-                          <option key={v} value={v}>{v} jours</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Taux TVA par défaut</label>
-                      <select
-                        value={config.devisTvaDefaut}
-                        onChange={e => setConfig(c => ({ ...c, devisTvaDefaut: Number(e.target.value) }))}
-                        style={{ ...inputStyle, cursor: 'pointer' }}
-                      >
-                        {DEVIS_TVA_TAUX.map(t => (
-                          <option key={t} value={t}>{t}%</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Conditions de paiement par défaut</label>
-                    <textarea
-                      value={config.devisConditionsPaiement}
-                      onChange={e => setConfig(c => ({ ...c, devisConditionsPaiement: e.target.value }))}
-                      placeholder="30% à la commande, solde à la livraison"
-                      rows={3}
-                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Mention légale personnalisée</label>
-                    <textarea
-                      value={config.devisMentionLegale}
-                      onChange={e => setConfig(c => ({ ...c, devisMentionLegale: e.target.value }))}
-                      placeholder="Artisan RGE certifié"
-                      rows={2}
-                      style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'vehicule' && (
-            <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                🚗 Véhicule & déplacements
-              </h2>
-              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 16px' }}>
-                Ces informations permettent d&apos;estimer le coût d&apos;un déplacement entre votre
-                adresse professionnelle et un chantier (fonctionnalité disponible avec le plan Performance).
-              </p>
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Motorisation
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Type de motorisation</label>
-                    <select
-                      value={config.travelConfig.vehicleType}
-                      onChange={e => {
-                        const vehicleType = e.target.value as VehicleType
-                        setConfig(c => ({
-                          ...c,
-                          travelConfig: {
-                            ...c.travelConfig,
-                            vehicleType,
-                            consumptionPer100Km: DEFAULT_CONSUMPTION_PER_100KM[vehicleType],
-                          },
-                        }))
-                      }}
-                      style={inputStyle}
-                    >
-                      <option value="">Sélectionner...</option>
-                      {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map(type => (
-                        <option key={type} value={type}>{VEHICLE_TYPE_LABELS[type]}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {config.travelConfig.vehicleType && (
-                    <div>
-                      <label style={labelStyle}>
-                        Consommation moyenne ({config.travelConfig.vehicleType === 'electrique' ? 'kWh/100km' : 'L/100km'})
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={config.travelConfig.consumptionPer100Km ?? ''}
-                        onChange={e => setConfig(c => ({
-                          ...c,
-                          travelConfig: { ...c.travelConfig, consumptionPer100Km: e.target.value === '' ? undefined : Number(e.target.value) },
-                        }))}
-                        style={inputStyle}
-                      />
-                    </div>
-                  )}
-
-                  {config.travelConfig.vehicleType === 'electrique' && (
-                    <div>
-                      <label style={labelStyle}>Type de recharge principal</label>
-                      <select
-                        value={config.travelConfig.chargingType}
-                        onChange={e => setConfig(c => ({
-                          ...c,
-                          travelConfig: { ...c.travelConfig, chargingType: e.target.value as ChargingType },
-                        }))}
-                        style={inputStyle}
-                      >
-                        {(Object.keys(CHARGING_TYPE_LABELS) as ChargingType[]).map(type => (
-                          <option key={type} value={type}>{CHARGING_TYPE_LABELS[type]}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {!config.travelConfig.originLat && (
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
-                      L&apos;adresse professionnelle (section Infos légales) doit être renseignée pour calculer une distance.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ ...sectionCard, marginTop: '16px' }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Recommandation de frais de déplacement
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Frais minimum de déplacement</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="25"
-                        value={config.travelConfig.minimumTravelFee ?? ''}
-                        onChange={e => setConfig(c => ({
-                          ...c,
-                          travelConfig: {
-                            ...c.travelConfig,
-                            minimumTravelFee: e.target.value === '' ? undefined : Number(e.target.value),
-                          },
-                        }))}
-                        style={{ ...inputStyle, paddingRight: '32px' }}
-                      />
-                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>€</span>
-                    </div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
-                      Montant minimum conseillé à intégrer lorsque vous vous déplacez chez un prospect ou client.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Zone sans frais de déplacement</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="10"
-                        value={config.travelConfig.freeTravelRadiusKm ?? ''}
-                        onChange={e => setConfig(c => ({
-                          ...c,
-                          travelConfig: {
-                            ...c.travelConfig,
-                            freeTravelRadiusKm: e.target.value === '' ? undefined : Number(e.target.value),
-                          },
-                        }))}
-                        style={{ ...inputStyle, paddingRight: '36px' }}
-                      />
-                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>km</span>
-                    </div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
-                      Dans ce rayon autour de votre adresse professionnelle, Kadria ne recommandera pas forcément de frais supplémentaires.
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
