@@ -1,5 +1,39 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { getArtisanConfig } from '@/src/lib/airtable'
+import { normalizeTrades } from '@/src/config/trades'
+import { getTradeTaxonomies, getQualificationQuestionsForTrades, getWorkTypesForTrades } from '@/src/config/trade-taxonomy'
+
+function buildTradeQualificationContext(trades: string[]): string {
+  if (!trades || trades.length === 0) return ''
+
+  const taxonomies = getTradeTaxonomies(trades)
+  if (taxonomies.length === 0) return ''
+
+  const workTypes = getWorkTypesForTrades(trades).slice(0, 8)
+  const questions = getQualificationQuestionsForTrades(trades, 6)
+
+  const lines: string[] = []
+  lines.push('\n\nADAPTATION MÉTIER :')
+  lines.push('Métiers couverts par l\'artisan :')
+  taxonomies.forEach(t => lines.push(`- ${t.label}`))
+  if (workTypes.length > 0) {
+    lines.push('\nTypes de travaux fréquents :')
+    workTypes.forEach(w => lines.push(`- ${w}`))
+  }
+  if (questions.length > 0) {
+    lines.push('\nQuestions métier utiles à poser si pertinentes :')
+    questions.forEach(q => lines.push(`- ${q}`))
+  }
+  lines.push(
+    '\nSi les métiers de l\'artisan sont connus, adapte tes questions aux métiers indiqués.',
+    'Utilise les questions métier comme inspiration, sans toutes les poser d\'un coup.',
+    'Pose une seule question principale à la fois.',
+    'Reste naturel, concis et orienté qualification.',
+    'Si le projet semble hors métier, continue à qualifier poliment mais signale-le dans aiSummary si pertinent.'
+  )
+  return lines.join('\n')
+}
 
 function getOpenAIClient() {
   const apiKey = process.env.OPENAI_API_KEY
@@ -472,6 +506,17 @@ export async function POST(request: Request) {
       ? `\n[Dossier en cours : ${JSON.stringify(currentDossier)}]`
       : ''
 
+    let tradeContext = ''
+    if (artisanId) {
+      try {
+        const artisanConfig = await getArtisanConfig(artisanId)
+        const trades = normalizeTrades(artisanConfig?.trades)
+        tradeContext = buildTradeQualificationContext(trades)
+      } catch (error) {
+        console.error('[KADRIA] Failed to load artisan trades for chat context:', error)
+      }
+    }
+
     const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
       max_tokens: 1024,
@@ -480,7 +525,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: 'system',
-          content: SYSTEM_PROMPT + contextNote
+          content: SYSTEM_PROMPT + tradeContext + contextNote
         },
         ...messages.map((m: { role: string; content: string }) => ({
           role: m.role as 'user' | 'assistant',
