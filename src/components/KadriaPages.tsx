@@ -664,20 +664,20 @@ function LandingFaqSection() {
           <SectionDescription className="mt-4">
             Voyons ensemble comment Kadria peut s’adapter à votre métier, vos demandes et votre façon de travailler.
           </SectionDescription>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/demo-request"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-            >
-              Réserver une démo <ArrowRight className="h-4 w-4" />
-            </Link>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => openTrialPlanModal()}
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
             >
-              Essai gratuit
+              Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
             </button>
+            <Link
+              href="/demo-request"
+              className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+            >
+              Vous préférez être accompagné ? Planifier une démonstration.
+            </Link>
           </div>
         </div>
       </div>
@@ -3172,20 +3172,23 @@ export function LandingRoutePage() {
               <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5 max-w-3xl mx-0">
                 Kadria qualifie vos prospects 24h/24, sur votre site et par t&eacute;l&eacute;phone. Chaque conversation devient un dossier complet, prioris&eacute; et pr&ecirc;t &agrave; &ecirc;tre chiffr&eacute;.
               </SectionDescription>
-              <div className="kr-reveal kr-reveal-delay-3 mt-7 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/demo-request"
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400 sm:w-auto"
-                >
-                  R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
-                </Link>
+              <div className="kr-reveal kr-reveal-delay-3 mt-7 flex flex-col items-start gap-3">
                 <button
                   type="button"
                   onClick={() => openTrialPlanModal()}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03] sm:w-auto"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400 sm:w-auto"
                 >
-                  Essai gratuit
+                  Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
                 </button>
+                <p className="text-xs text-zinc-500">
+                  Toutes les fonctionnalit&eacute;s Performance &bull; Aucun d&eacute;bit pendant 7 jours
+                </p>
+                <Link
+                  href="/demo-request"
+                  className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+                >
+                  Vous pr&eacute;f&eacute;rez &ecirc;tre accompagn&eacute; ? Planifier une d&eacute;monstration.
+                </Link>
               </div>
               <div className="kr-reveal kr-reveal-delay-4 mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400">
                 {[
@@ -3304,25 +3307,23 @@ export function LandingRoutePage() {
                 </div>
               </div>
             </div>
-            <div className="kr-reveal kr-reveal-delay-3 mt-10 flex flex-col items-center gap-4 text-center">
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/demo-request"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-                >
-                  R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => openTrialPlanModal()}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
-                >
-                  Essai gratuit
-                </button>
-              </div>
+            <div className="kr-reveal kr-reveal-delay-3 mt-10 flex flex-col items-center gap-3 text-center">
+              <button
+                type="button"
+                onClick={() => openTrialPlanModal()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
+              >
+                Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
+              </button>
               <p className="text-sm text-zinc-500">
                 Installation accompagn&eacute;e &bull; Compatible avec votre site actuel &bull; Sans engagement
               </p>
+              <Link
+                href="/demo-request"
+                className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+              >
+                Vous pr&eacute;f&eacute;rez &ecirc;tre accompagn&eacute; ? Planifier une d&eacute;monstration.
+              </Link>
             </div>
           </div>
         </section>
@@ -3390,20 +3391,20 @@ export function LandingRoutePage() {
               ))}
             </div>
 
-            <div className="kr-reveal kr-reveal-delay-4 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/demo-request"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-              >
-                R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
-              </Link>
+            <div className="kr-reveal kr-reveal-delay-4 mt-8 flex flex-col items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => openTrialPlanModal()}
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
               >
-                Essai gratuit
+                Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
               </button>
+              <Link
+                href="/demo-request"
+                className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+              >
+                Vous pr&eacute;f&eacute;rez &ecirc;tre accompagn&eacute; ? Planifier une d&eacute;monstration.
+              </Link>
             </div>
           </div>
         </section>
@@ -3553,20 +3554,20 @@ export function LandingRoutePage() {
             <p className="kr-reveal kr-reveal-delay-2 mx-auto mt-3 max-w-2xl text-center text-sm text-[var(--text-2)]">
               Toutes vos demandes, vos devis et votre suivi commercial enfin réunis au même endroit.
             </p>
-            <div className="kr-reveal kr-reveal-delay-3 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/demo-request"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-              >
-                Réserver une démo <ArrowRight className="h-4 w-4" />
-              </Link>
+            <div className="kr-reveal kr-reveal-delay-3 mt-8 flex flex-col items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => openTrialPlanModal()}
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
               >
-                Essai gratuit
+                Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
               </button>
+              <Link
+                href="/demo-request"
+                className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+              >
+                Vous préférez être accompagné ? Planifier une démonstration.
+              </Link>
             </div>
             <p className="kr-reveal kr-reveal-delay-4 mt-4 text-center text-sm text-[var(--text-2)]">
               Installation accompagnée • Compatible avec votre site actuel • Sans engagement
@@ -3846,28 +3847,28 @@ export function LandingRoutePage() {
 
             <div className="kr-reveal kr-reveal-delay-3 mx-auto mt-12 max-w-3xl text-center">
               <SectionTitle className="text-center">
-                Prêt à transformer vos demandes en chantiers qualifiés ?
+                Arrêtez de perdre des chantiers.
               </SectionTitle>
               <SectionDescription className="mt-5">
-                Voyons ensemble comment Kadria peut s&apos;adapter à votre métier, vos demandes et votre façon de travailler.
+                Essayez Kadria gratuitement pendant 7 jours. Toutes les fonctionnalités Performance, aucune limitation, aucun débit avant la fin de l&apos;essai.
               </SectionDescription>
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link
-                  href="/demo-request"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
-                >
-                  Réserver une démo <ArrowRight className="h-4 w-4" />
-                </Link>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={() => openTrialPlanModal()}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400"
                 >
-                  Essai gratuit
+                  Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
                 </button>
+                <Link
+                  href="/demo-request"
+                  className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+                >
+                  Vous préférez être accompagné ? Planifier une démonstration.
+                </Link>
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-400">
-                {['Sans engagement', 'Support inclus dès le premier jour', 'Installation accompagnée'].map((item) => (
+                {['Carte bancaire requise', 'Résiliable à tout moment', 'Installation en quelques minutes'].map((item) => (
                   <span key={item} className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500" />
                     {item}
