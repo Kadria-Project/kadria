@@ -21,6 +21,29 @@ function buildArtisanId() {
   return `Artisan_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
 }
 
+function serializeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    }
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const supabaseError = error as { message?: string; code?: string; details?: string; hint?: string }
+    return {
+      message: supabaseError.message,
+      code: supabaseError.code,
+      details: supabaseError.details,
+      hint: supabaseError.hint,
+      raw: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    }
+  }
+
+  return String(error)
+}
+
 export async function POST(request: NextRequest) {
   let createdUserId: string | null = null
   let createdConfigId: string | null = null
@@ -82,9 +105,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError) {
-      console.error('[REGISTER] Supabase user error:', userError.message)
+      console.error('[REGISTER] Supabase user error:', serializeError(userError))
       return NextResponse.json(
-        { error: 'Erreur création compte' },
+        { success: false, error: 'Erreur lors de la création du compte' },
         { status: 500 },
       )
     }
@@ -108,7 +131,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (configError) {
-      console.error('[REGISTER] Supabase config error:', configError.message)
+      console.error('[REGISTER] Supabase config error:', serializeError(configError))
 
       await supabaseAdmin
         .from(TABLES.users)
@@ -116,7 +139,7 @@ export async function POST(request: NextRequest) {
         .eq('id', createdUserId)
 
       return NextResponse.json(
-        { error: 'Erreur création compte' },
+        { success: false, error: 'Erreur lors de la création du compte' },
         { status: 500 },
       )
     }
@@ -199,7 +222,8 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('[REGISTER] Error:', error instanceof Error ? error.message : String(error))
+    const serializedError = serializeError(error)
+    console.error('[REGISTER] Error:', serializedError)
 
     if (createdConfigId) {
       await supabaseAdmin
@@ -216,7 +240,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: 'Erreur serveur' },
+      {
+        success: false,
+        error: 'Erreur lors de la création du compte',
+        details: process.env.NODE_ENV === 'development' ? serializedError : undefined,
+      },
       { status: 500 },
     )
   }
