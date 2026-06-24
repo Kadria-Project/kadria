@@ -1988,6 +1988,9 @@ export interface AccountStatusSummary {
   billingStatus: string | null
   trialEndDate: string | null
   nextBilling: string | null
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+  hasStripeCustomer: boolean
 }
 
 export async function getAccountStatusForArtisan(artisanId: string): Promise<QuotaResult<AccountStatusSummary>> {
@@ -2011,6 +2014,7 @@ export async function getAccountStatusForArtisan(artisanId: string): Promise<Quo
     }
 
     const row = (data || {}) as JsonObject
+    const currentPeriodEnd = (row.current_period_end as string) || null
 
     return {
       success: true,
@@ -2018,8 +2022,11 @@ export async function getAccountStatusForArtisan(artisanId: string): Promise<Quo
         plan: normalizeQuotaPlan(row.plan as string),
         status: (row.statut as string) || (row.status as string) || null,
         billingStatus: (row.billing_status as string) || null,
-        trialEndDate: (row.trial_end_date as string) || null,
-        nextBilling: (row.next_billing as string) || null,
+        trialEndDate: (row.trial_end_date as string) || (row.trial_end as string) || null,
+        nextBilling: (row.next_billing as string) || currentPeriodEnd,
+        currentPeriodEnd,
+        cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+        hasStripeCustomer: Boolean(row.stripe_customer_id),
       },
     }
   } catch (error) {

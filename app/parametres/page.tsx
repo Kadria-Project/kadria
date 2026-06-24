@@ -42,6 +42,9 @@ interface AccountStatusSummary {
   billingStatus: string | null
   trialEndDate: string | null
   nextBilling: string | null
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+  hasStripeCustomer: boolean
 }
 
 const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
@@ -275,6 +278,26 @@ export default function ParametresPage() {
   const [accountStatus, setAccountStatus] = useState<AccountStatusSummary | null>(null)
   const [usageLoading, setUsageLoading] = useState(true)
   const [usageError, setUsageError] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState<string | null>(null)
+
+  const openBillingPortal = async () => {
+    setPortalLoading(true)
+    setPortalError(null)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.success && data.url) {
+        window.location.href = data.url
+        return
+      }
+      setPortalError(data.error || 'Impossible d’ouvrir la gestion d’abonnement.')
+    } catch {
+      setPortalError('Impossible d’ouvrir la gestion d’abonnement.')
+    } finally {
+      setPortalLoading(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -2516,9 +2539,42 @@ export default function ParametresPage() {
                       )}
                       {accountStatus?.nextBilling && (
                         <div>
-                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Prochaine échéance</p>
+                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>
+                            {accountStatus.cancelAtPeriodEnd ? 'Fin d’accès le' : 'Renouvellement le'}
+                          </p>
                           <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.nextBilling}</p>
                         </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                      {accountStatus?.hasStripeCustomer ? (
+                        <>
+                          <button
+                            onClick={openBillingPortal}
+                            disabled={portalLoading}
+                            style={{
+                              background: 'var(--accent)',
+                              border: 'none',
+                              color: 'black',
+                              fontWeight: 700,
+                              borderRadius: '10px',
+                              padding: '10px 20px',
+                              fontSize: '14px',
+                              cursor: portalLoading ? 'default' : 'pointer',
+                              opacity: portalLoading ? 0.7 : 1,
+                            }}
+                          >
+                            {portalLoading ? 'Redirection...' : 'Gérer mon abonnement'}
+                          </button>
+                          {portalError && (
+                            <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#ef4444' }}>{portalError}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '13px' }}>
+                          Aucun abonnement Stripe actif
+                        </p>
                       )}
                     </div>
                   </div>

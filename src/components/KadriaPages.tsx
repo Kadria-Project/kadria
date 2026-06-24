@@ -3849,9 +3849,12 @@ interface PricingPlanCard {
   highlighted: boolean;
   availabilityBadge?: string;
   cta: { label: string; href: string; primary: boolean; disabled?: boolean };
+  checkout?: { plan: 'essentiel' | 'performance'; interval: 'monthly' | 'yearly' };
 }
 
 function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
+  const checkoutIntervalFor = (): 'monthly' | 'yearly' =>
+    billingMode === 'monthly' ? 'monthly' : 'yearly';
   const priceNoteFor = (plan: PricingPlanKey) =>
     billingMode === 'monthly' ? undefined : BILLING_MODES[billingMode].label;
 
@@ -3887,6 +3890,7 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       ],
       highlighted: false,
       cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
+      checkout: { plan: 'essentiel', interval: checkoutIntervalFor() },
     },
     {
       slug: 'performance',
@@ -3916,6 +3920,7 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       ],
       highlighted: true,
       cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
+      checkout: { plan: 'performance', interval: checkoutIntervalFor() },
     },
     {
       slug: 'agence',
@@ -4085,8 +4090,37 @@ function SwipeHint({ label, className = '' }: { label: string; className?: strin
 export function PricingRoutePage() {
   const [billingMode, setBillingMode] = useState<BillingModeKey>('monthly');
   const [addonMode, setAddonMode] = useState<'oneShot' | 'monthly'>('oneShot');
+  const [checkoutLoadingSlug, setCheckoutLoadingSlug] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<{ slug: string; message: string } | null>(null);
   const pricingPlanCards = buildPricingPlanCards(billingMode);
   const selectedAddon = addonMode === 'oneShot' ? WEBSITE_ADDON.oneShot : WEBSITE_ADDON.monthly;
+
+  const handleCheckout = async (plan: PricingPlanCard) => {
+    if (!plan.checkout) return;
+    setCheckoutError(null);
+    setCheckoutLoadingSlug(plan.slug);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: plan.checkout.plan, interval: plan.checkout.interval }),
+      });
+      const data = await res.json();
+      if (res.status === 401) {
+        window.location.href = '/register';
+        return;
+      }
+      if (data.success && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setCheckoutError({ slug: plan.slug, message: data.error || 'Une erreur est survenue.' });
+    } catch {
+      setCheckoutError({ slug: plan.slug, message: 'Une erreur est survenue.' });
+    } finally {
+      setCheckoutLoadingSlug(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -4189,6 +4223,19 @@ export function PricingRoutePage() {
                       <span className="block w-full cursor-not-allowed rounded-xl border border-zinc-800 bg-zinc-900/80 py-3 text-center text-sm font-semibold text-zinc-500 opacity-70">
                         {plan.cta.label}
                       </span>
+                    ) : plan.checkout ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCheckout(plan)}
+                        disabled={checkoutLoadingSlug === plan.slug}
+                        className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
+                          plan.cta.primary
+                            ? 'bg-green-500 font-bold text-black hover:bg-green-400'
+                            : 'border border-zinc-800 font-semibold text-white hover:bg-zinc-800'
+                        } ${checkoutLoadingSlug === plan.slug ? 'cursor-default opacity-70' : ''}`}
+                      >
+                        {checkoutLoadingSlug === plan.slug ? 'Redirection...' : plan.cta.label}
+                      </button>
                     ) : (
                       <Link
                         href={plan.cta.href}
@@ -4200,6 +4247,9 @@ export function PricingRoutePage() {
                       >
                         {plan.cta.label}
                       </Link>
+                    )}
+                    {checkoutError?.slug === plan.slug && (
+                      <p className="mt-2 text-center text-xs text-red-400">{checkoutError.message}</p>
                     )}
                   </div>
                 </div>
