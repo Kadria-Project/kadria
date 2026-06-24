@@ -958,6 +958,25 @@ export function buildSparklineData(projects: Project[], period: KpiPeriod): { la
   }));
 }
 
+// Picks a handful of evenly-spaced labels (first, middle points, last) from the
+// sparkline data's existing `label` field so the axis stays readable without
+// overcrowding it with one label per data point.
+export function sampleSparklineLabels(data: { label: string; value: number }[], maxLabels = 5): string[] {
+  if (data.length === 0) return [];
+  if (data.length <= maxLabels) return data.map((d) => d.label);
+
+  const indices = new Set<number>();
+  const last = data.length - 1;
+
+  for (let i = 0; i < maxLabels; i++) {
+    indices.add(Math.round((i / (maxLabels - 1)) * last));
+  }
+
+  return Array.from(indices)
+    .sort((a, b) => a - b)
+    .map((i) => data[i].label);
+}
+
 function useCountUp(target: number, durationMs = 800): number {
   const [value, setValue] = useState(target);
   const prevTarget = useRef(target);
@@ -2358,6 +2377,51 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             ))}
           </div>
 
+          {/* Sparkline CA potentiel */}
+          {!loading && (
+            <FeatureGate feature="kpiTrends" requiredPlan="performance">
+              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-[var(--text-1)]">Évolution du CA potentiel</p>
+                    <p className="text-sm text-[var(--text-2)]">
+                      {kpiPeriod === '7d'
+                        ? 'Sur les 7 derniers jours'
+                        : kpiPeriod === '30d'
+                          ? 'Sur les 30 derniers jours'
+                          : kpiPeriod === '90d'
+                            ? 'Sur les 3 derniers mois'
+                            : 'Sur les 12 derniers mois'}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-500 sm:text-sm">
+                    {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
+                  </span>
+                </div>
+
+                {kpiPeriodData.sparkline.length < 2 || kpiPeriodData.sparkline.every((d) => d.value === 0) ? (
+                  <p className="mt-3 text-sm text-[var(--text-3)]">
+                    Pas encore assez de données pour afficher une évolution.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mt-3">
+                      <Sparkline data={kpiPeriodData.sparkline} height={isMobile ? 56 : 80} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      {sampleSparklineLabels(kpiPeriodData.sparkline).map((lbl, i) => (
+                        <span key={i} className="text-[11px] text-[var(--text-3)]">
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </FeatureGate>
+          )}
+
           {canSeeAdvancedValueDashboard && totalPendingValue > 0 ? (
             <ImpactCard variant="money">
               <p className="text-base font-bold text-[var(--impact-text)]">Valeur en attente</p>
@@ -2892,36 +2956,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
           </div>
         </div>
-      )}
-
-      {/* Sparkline CA potentiel */}
-      {showBusinessOverview && !loading && (
-        <FeatureGate feature="kpiTrends" requiredPlan="performance">
-        <div className="mb-6 w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="font-bold text-[var(--text-1)]">Évolution du CA potentiel</p>
-              <p className="text-sm text-[var(--text-2)]">
-                {kpiPeriod === '7d'
-                  ? 'Sur les 7 derniers jours'
-                  : kpiPeriod === '30d'
-                    ? 'Sur les 30 derniers jours'
-                    : kpiPeriod === '90d'
-                      ? 'Sur les 3 derniers mois'
-                      : 'Sur les 12 derniers mois'}
-              </p>
-            </div>
-
-            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-500 sm:text-sm">
-              {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
-            </span>
-          </div>
-
-          <div className="mt-3">
-            <Sparkline data={kpiPeriodData.sparkline} height={isMobile ? 56 : 80} />
-          </div>
-        </div>
-        </FeatureGate>
       )}
 
       {/* Alertes */}
