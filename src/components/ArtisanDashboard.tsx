@@ -1949,8 +1949,87 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     ? [...valueSourceStats].sort((a, b) => b.amount - a.amount)[0]
     : null;
 
+  const NAV_ITEMS: { mode: DashboardMode; label: string; icon: typeof Euro }[] = [
+    { mode: 'value', label: 'Valeur générée', icon: Euro },
+    { mode: 'commercial', label: 'Suivi commercial', icon: Target },
+    { mode: 'calendar', label: 'Calendrier', icon: CalendarDays },
+    { mode: 'clients', label: 'Mes clients', icon: FolderOpen },
+    { mode: 'tasks', label: 'Mes taches a faire', icon: CheckCircle },
+  ];
+
   return (
-    <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
+    <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: isMobile ? 'block' : 'flex', overflowX: 'hidden' }}>
+      {!isMobile && (
+        <aside
+          className="sticky top-0 flex h-screen w-[252px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-6"
+          style={{ background: 'color-mix(in srgb, var(--bg-elevated) 92%, #050607 8%)' }}
+        >
+          <div className="mb-8 px-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">Kadria</p>
+            <p className="text-lg font-extrabold text-[var(--text-1)]">KADRIA PRO</p>
+          </div>
+
+          <nav className="flex flex-1 flex-col gap-1">
+            {NAV_ITEMS.map((item) => {
+              const isActive = dashboardMode === item.mode;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.mode}
+                  type="button"
+                  onClick={() => {
+                    setDashboardMode(item.mode);
+                    setQuickFilter(null);
+                  }}
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150 ${
+                    isActive
+                      ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                      : 'border-transparent text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
+                  }`}
+                  style={isActive ? { boxShadow: 'inset 3px 0 0 0 var(--accent)' } : undefined}
+                >
+                  <Icon className="h-[18px] w-[18px] shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto flex flex-col gap-2 pt-4">
+            <button
+              onClick={() => setPlanModalOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-2.5 text-sm font-semibold text-[var(--accent)]"
+            >
+              <Sparkles className="w-4 h-4" /> {planChangeCtaLabel}
+            </button>
+
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'} {theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
+            </button>
+
+            <button
+              onClick={() => router.push('/parametres')}
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]"
+            >
+              ⚙️ Mon profil
+            </button>
+
+            <button
+              onClick={logout}
+              title="Déconnexion"
+              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2.5 text-sm text-[var(--text-2)]"
+            >
+              <LogOut className="w-4 h-4" /> Déconnexion
+            </button>
+          </div>
+        </aside>
+      )}
+
+      <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
       {onboardingIncomplete && (
         <div
           style={{
@@ -2145,91 +2224,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
           </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: 'auto' }}>
-            {[
-              { mode: 'value' as const, label: 'Valeur générée' },
-              { mode: 'commercial' as const, label: 'Suivi commercial' },
-              { mode: 'calendar' as const, label: 'Calendrier' },
-              { mode: 'clients' as const, label: 'Mes clients' },
-              { mode: 'tasks' as const, label: 'Mes taches a faire' },
-            ].map((item) => (
-              <button
-                key={item.mode}
-                type="button"
-                onClick={() => {
-                  setDashboardMode(item.mode);
-                  setQuickFilter(null);
-                }}
-                style={navButtonStyle(dashboardMode === item.mode)}
-              >
-                {item.label}
-              </button>
-            ))}
-            <button
-              onClick={() => setPlanModalOpen(true)}
-              style={{
-                background: 'var(--accent-dim)',
-                border: '1px solid var(--accent-border)',
-                color: 'var(--accent)',
-                borderRadius: '8px',
-                padding: '9px 14px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <Sparkles className="w-4 h-4" /> {planChangeCtaLabel}
-            </button>
-            <button
-              onClick={toggleTheme}
-              title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-2)',
-                borderRadius: '8px',
-                padding: '9px 12px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
-
-            <button
-              onClick={() => router.push('/parametres')}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-2)',
-                borderRadius: '8px',
-                padding: '9px 14px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-              }}
-            >
-              ⚙️ Mon profil
-            </button>
-
-            <button
-              onClick={logout}
-              title="Déconnexion"
-              className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
-              style={{ padding: '9px 12px', cursor: 'pointer' }}
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
@@ -3800,6 +3795,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {planModalOpen && (
         <PlanChangeModal currentPlan={plan} onClose={() => setPlanModalOpen(false)} />
       )}
+      </div>
     </div>
   );
 }
