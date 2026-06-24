@@ -45,8 +45,8 @@ function serializeError(error: unknown) {
 }
 
 export async function POST(request: NextRequest) {
-  let createdUserId: string | null = null
-  let createdConfigId: string | null = null
+  let createdUserArtisanId: string | null = null
+  let createdConfigArtisanId: string | null = null
 
   try {
     const resend = getResendClient()
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from(TABLES.users)
-      .select('id')
+      .select('artisan_id,email')
       .ilike('email', normalizedEmail)
       .limit(1)
       .maybeSingle()
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const subscriptionStart = formatDateOnly(new Date())
     const artisanId = buildArtisanId()
 
-    const { data: userData, error: userError } = await supabaseAdmin
+    const { error: userError } = await supabaseAdmin
       .from(TABLES.users)
       .insert({
         email: normalizedEmail,
@@ -101,8 +101,6 @@ export async function POST(request: NextRequest) {
         phone: phone || '',
         active: true,
       })
-      .select('id')
-      .single()
 
     if (userError) {
       console.error('[REGISTER] Supabase user error:', serializeError(userError))
@@ -112,9 +110,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    createdUserId = userData.id
+    createdUserArtisanId = artisanId
 
-    const { data: configData, error: configError } = await supabaseAdmin
+    const { error: configError } = await supabaseAdmin
       .from(TABLES.artisanConfig)
       .insert({
         artisan_id: artisanId,
@@ -127,8 +125,6 @@ export async function POST(request: NextRequest) {
         devis_validite: 90,
         devis_tva_defaut: 10,
       })
-      .select('id')
-      .single()
 
     if (configError) {
       console.error('[REGISTER] Supabase config error:', serializeError(configError))
@@ -136,7 +132,7 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin
         .from(TABLES.users)
         .delete()
-        .eq('id', createdUserId)
+        .eq('artisan_id', createdUserArtisanId)
 
       return NextResponse.json(
         { success: false, error: 'Erreur lors de la création du compte' },
@@ -144,7 +140,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    createdConfigId = configData.id
+    createdConfigArtisanId = artisanId
 
     const magicToken = await createMagicToken(normalizedEmail)
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
@@ -191,15 +187,13 @@ export async function POST(request: NextRequest) {
           <p><strong>Email :</strong> ${normalizedEmail}</p>
           <p><strong>Téléphone :</strong> ${phone || '-'}</p>
           <p><strong>Métier :</strong> ${trade}</p>
-          <p><strong>User record :</strong> ${userData.id}</p>
-          <p><strong>Artisan_config record :</strong> ${configData.id}</p>
           <p><strong>Artisan ID :</strong> ${artisanId}</p>
         </div>
       `,
     })
 
     const sessionToken = await createToken({
-      id: userData.id,
+      id: artisanId,
       email: normalizedEmail,
       artisanId,
       companyName: company,
@@ -225,18 +219,18 @@ export async function POST(request: NextRequest) {
     const serializedError = serializeError(error)
     console.error('[REGISTER] Error:', serializedError)
 
-    if (createdConfigId) {
+    if (createdConfigArtisanId) {
       await supabaseAdmin
         .from(TABLES.artisanConfig)
         .delete()
-        .eq('id', createdConfigId)
+        .eq('artisan_id', createdConfigArtisanId)
     }
 
-    if (createdUserId) {
+    if (createdUserArtisanId) {
       await supabaseAdmin
         .from(TABLES.users)
         .delete()
-        .eq('id', createdUserId)
+        .eq('artisan_id', createdUserArtisanId)
     }
 
     return NextResponse.json(
