@@ -11,19 +11,19 @@ export const BILLING_MODES: Record<BillingModeKey, {
   commitmentMonths: number;
 }> = {
   monthly: {
-    label: 'Mensuel — sans engagement',
+    label: 'Sans engagement — Facturation mensuelle',
     shortLabel: 'Mensuel',
     discount: 0,
     commitmentMonths: 0,
   },
   annualMonthly: {
-    label: 'Payable mensuellement — engagement 12 mois — -15%',
+    label: '-15 % — Payable mensuellement — Engagement 12 mois',
     shortLabel: 'Annuel mensualisé',
     discount: 0.15,
     commitmentMonths: 12,
   },
   annualOneShot: {
-    label: 'Paiement annuel en une fois — -15%',
+    label: '-15 % — Paiement annuel en une fois — Engagement 12 mois',
     shortLabel: 'Annuel comptant',
     discount: 0.15,
     commitmentMonths: 12,
@@ -53,19 +53,49 @@ export function getAnnualOneShotPrice(plan: PricingPlanKey, mode: BillingModeKey
   return roundEuro(base * 12 * (1 - discount));
 }
 
+const formatEuro = (value: number) =>
+  value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Phrase d'affichage combinant le prix mensuel de base et l'équivalent annuel
+ * avec la remise -15% appliquée en paiement annuel comptant.
+ * Ex: "149 €/mois ou 1 519,80 €/an avec -15 %"
+ */
+export function getAnnualPitchLabel(plan: PricingPlanKey): string {
+  const monthly = PLAN_BASE_MONTHLY_PRICE[plan];
+  const annual = monthly * 12 * (1 - BILLING_MODES.annualOneShot.discount);
+
+  return `${monthly} €/mois ou ${formatEuro(annual)} €/an avec -15 %`;
+}
+
 export const WEBSITE_ADDON = {
   availableForPlans: ['essentiel', 'performance'] as PricingPlanKey[],
+  headline: 'Site vitrine connecté à Kadria',
+  positioning:
+    'Un mini-site vitrine connecté à Kadria pour rassurer vos prospects et transformer votre présence en ligne en demandes qualifiées.',
   oneShot: {
     price: 300,
-    label: '300 € une fois',
-    description: 'Site vitrine livré clé en main — 300 € une fois, site acquis. Abonnement Kadria facturé séparément.',
+    label: '+300 € HT une fois',
+    description: 'Disponible en option sur Essentiel et Performance — inclus dans Agence.',
     commitmentMonths: 0,
   },
   monthly: {
     price: 50,
     commitmentMonths: 6,
     label: '50 €/mois',
-    description: 'Site vitrine en mensualité — 50 €/mois avec engagement 6 mois. Abonnement Kadria facturé séparément.',
+    description: 'Mensualisation possible sur demande : 50 €/mois avec engagement 6 mois.',
   },
-  agencyNote: 'Site vitrine inclus avec l’offre Agence (logique sur mesure).',
+  features: [
+    'Mini-site vitrine 3 pages',
+    'Intégration du widget/assistant Kadria',
+    "Formulaire ou point d'entrée vers Kadria",
+    "Accompagnement domaine/hébergement",
+    'Maintenance incluse',
+    '2 modifications par mois',
+    'Local SEO et contenu de base',
+  ],
+  smallPrintNote:
+    "Photos, nom de domaine et hébergement à la charge de l'artisan si nécessaire, avec accompagnement Kadria.",
+  checkoutMention: 'Vous pourrez ajouter le site vitrine au moment du paiement.',
+  agencyNote: 'Inclus dans Agence (logique sur mesure).',
 };

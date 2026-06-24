@@ -66,6 +66,7 @@ import {
   BILLING_MODES,
   WEBSITE_ADDON,
   getAnnualOneShotPrice,
+  getAnnualPitchLabel,
   getMonthlyPriceForMode,
   type BillingModeKey,
   type PricingPlanKey,
@@ -3865,6 +3866,9 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
 
   const periodFor = () => (billingMode === 'annualOneShot' ? '/an' : '/mois');
 
+  const annualPitchFor = (plan: PricingPlanKey) =>
+    billingMode === 'monthly' ? getAnnualPitchLabel(plan) : undefined;
+
   return [
     {
       slug: 'essentiel',
@@ -3872,21 +3876,25 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       price: priceFor('essentiel'),
       priceSize: 'text-5xl',
       period: periodFor(),
-      priceNote: priceNoteFor('essentiel'),
-      description: 'Pour démarrer et ne plus manquer de demandes web',
+      priceNote: priceNoteFor('essentiel') ?? annualPitchFor('essentiel'),
+      description: 'Pour démarrer avec une base claire de qualification et de suivi.',
       features: [
-        { text: 'Assistant chat web 24h/24' },
-        { text: 'Qualification IA + score dossier' },
-        { text: 'Résumé IA + recommandation par dossier' },
-        { text: 'CRM vue liste' },
-        { text: 'Filtres simples (statut, métier)' },
         { text: '50 dossiers / mois' },
-        { text: 'Devis inclus — 10 devis/mois' },
-        { text: 'Assistant vocal inclus — 10 appels/mois' },
-        { text: 'KPI essentiels' },
-        { text: 'Export CSV' },
-        { text: 'Support email' },
-        { text: '1 utilisateur' },
+        { text: 'Assistant web de qualification' },
+        { text: 'Création automatique de dossiers projet' },
+        { text: 'Tableau de bord artisan' },
+        { text: 'Fiche projet détaillée' },
+        { text: 'Suivi commercial simple' },
+        { text: 'Devis — 10 devis/mois' },
+        { text: 'Appels vocaux — 10 appels/mois' },
+        { text: 'Base clients' },
+        { text: 'Site vitrine en option (+300 € HT one-shot)' },
+        { text: 'Pipeline avancé', badge: 'Limité' },
+        { text: 'Reporting avancé', badge: 'Limité' },
+        { text: 'Export PDF', badge: 'Limité' },
+        { text: 'Assistant vocal au-delà de 10 appels', badge: 'Limité' },
+        { text: 'Valeur générée avancée', badge: 'Limité' },
+        { text: 'Géolocalisation / frais de déplacement avancés', badge: 'Limité' },
       ],
       highlighted: false,
       cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
@@ -3898,25 +3906,27 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       price: priceFor('performance'),
       priceSize: 'text-5xl',
       period: periodFor(),
-      priceNote: priceNoteFor('performance'),
-      description: 'Pour ne plus perdre aucune opportunité',
+      priceNote: priceNoteFor('performance') ?? annualPitchFor('performance'),
+      description: 'L’offre recommandée pour capter, qualifier, suivre et convertir plus de demandes.',
       features: [
-        { text: 'Tout Essentiel inclus' },
         { text: 'Dossiers illimités' },
-        { text: 'Vue Kanban' },
-        { text: 'Filtres avancés (budget, score IA, période, source)' },
-        { text: 'KPI avancés avec tendances et sparkline' },
-        { text: 'Top 3 opportunités scorées par IA' },
-        { text: 'Pipeline commercial' },
-        { text: 'Chantiers géolocalisés' },
-        { text: 'Calendrier + rappels' },
-        { text: 'Export PDF dossiers' },
         { text: 'Devis illimités' },
-        { text: 'Relances planifiables' },
-        { text: 'Assistant vocal étendu selon quota' },
-        { text: 'Relances automatiques' },
-        { text: 'Support prioritaire' },
-        { text: '1 utilisateur' },
+        { text: 'Assistant web de qualification' },
+        { text: 'Assistant vocal inclus selon quota' },
+        { text: 'Tableau de bord complet' },
+        { text: 'Valeur générée par Kadria' },
+        { text: 'Suivi commercial avancé' },
+        { text: 'Pipeline commercial' },
+        { text: 'Priorités et actions à faire' },
+        { text: 'Relances devis' },
+        { text: 'Devis PDF — envoi, acceptation, refus' },
+        { text: 'Catalogue de prestations' },
+        { text: 'Modèles de devis' },
+        { text: 'Frais de déplacement / estimation selon configuration' },
+        { text: 'Base clients enrichie' },
+        { text: 'Reporting avancé' },
+        { text: 'Site vitrine en option (+300 € HT one-shot)' },
+        { text: 'Mensualisation site sur demande (50 €/mois, engagement 6 mois)' },
       ],
       highlighted: true,
       cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
@@ -3928,37 +3938,31 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       price: 'Sur devis',
       priceSize: 'text-[28px]',
       period: '',
-      description: "Pour les groupements d'artisans et réseaux",
-      priceNote: "Offre réservée aux réseaux et groupements d’artisans - disponibilité prochaine.",
+      description: 'Pour les équipes artisanales qui veulent centraliser plusieurs utilisateurs, numéros et volumes.',
+      priceNote: "499 €/mois ou sur devis selon volume/besoins spécifiques.",
       features: [
         { text: 'Tout Performance inclus' },
-        { text: "Jusqu'à 10 artisans" },
-        { text: 'Dashboard multi-comptes' },
-        { text: 'Marque blanche complète' },
-        { text: 'API access' },
-        { text: 'Account manager dédié' },
-        { text: 'Onboarding personnalisé' },
-        { text: 'Rapports consolidés multi-sites' },
-        { text: 'Support téléphonique dédié' },
+        { text: 'Site vitrine inclus' },
+        { text: 'Multi-utilisateurs' },
+        { text: 'Multi-numéros' },
+        { text: 'Quotas vocaux renforcés' },
+        { text: 'Accompagnement prioritaire' },
+        { text: 'Configuration avancée' },
+        { text: 'Sur devis possible selon volume / besoins spécifiques' },
       ],
       highlighted: false,
       availabilityBadge: 'BIENTÔT DISPONIBLE',
-      cta: { label: 'Bientôt disponible', href: '/contact', primary: false, disabled: true },
+      cta: { label: 'Nous contacter', href: '/contact', primary: false, disabled: true },
     },
   ];
 }
 
 const addonSiteVitrine = {
-  title: '➕ Site vitrine clé en main',
-  description: 'Votre site professionnel créé et intégré avec votre assistant Kadria',
-  availabilityText: 'Disponible avec les offres Essentiel et Performance',
-  features: [
-    'Site vitrine professionnel (template métier)',
-    'Intégration automatique du widget Kadria',
-    '1 modification incluse par mois',
-    'Support technique site inclus',
-  ],
-  mention: '⚠️ Hébergement et nom de domaine non inclus (~15€/mois chez votre hébergeur)',
+  title: WEBSITE_ADDON.headline,
+  description: WEBSITE_ADDON.positioning,
+  availabilityText: 'Disponible en option sur Essentiel et Performance — inclus dans Agence',
+  features: WEBSITE_ADDON.features,
+  mention: WEBSITE_ADDON.smallPrintNote,
   cta: { label: 'Ajouter le site vitrine', href: '/contact?sujet=addon-site' },
 };
 
@@ -4057,9 +4061,9 @@ const comparatifCategories: { category: string; rows: [string, ComparatifValue, 
     ],
   },
   {
-    category: 'Add-on',
+    category: 'Site vitrine',
     rows: [
-      ['Site vitrine clé en main', '300€ ou 50€/mois', '300€ ou 50€/mois', '✓'],
+      ['Site vitrine connecté à Kadria', 'En option (+300€ HT)', 'En option (+300€ HT)', 'Inclus'],
     ],
   },
 ];
@@ -4157,6 +4161,12 @@ export function PricingRoutePage() {
                 </button>
               ))}
             </div>
+
+            <p className="mx-auto mt-3 max-w-md text-xs text-zinc-500">
+              {billingMode === 'monthly'
+                ? 'Sans engagement — Facturation mensuelle.'
+                : '-15 % — Paiement annuel en une fois — Engagement 12 mois.'}
+            </p>
           </section>
 
           {/* GRILLE 3 PLANS */}
@@ -4262,7 +4272,7 @@ export function PricingRoutePage() {
             <div className="flex flex-col items-start gap-8 md:flex-row md:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-green-500">Add-on</p>
-                <h3 className="mt-2 text-xl font-extrabold">{addonSiteVitrine.title.replace('➕ ', '')}</h3>
+                <h3 className="mt-2 text-xl font-extrabold">{addonSiteVitrine.title}</h3>
                 <p className="mt-2 text-sm text-zinc-400">{addonSiteVitrine.description}</p>
                 <p className="mt-3 text-xs font-semibold text-green-500">{addonSiteVitrine.availabilityText}</p>
 
@@ -4307,6 +4317,7 @@ export function PricingRoutePage() {
                 </ul>
                 <p className="mt-3 text-xs text-zinc-500">{addonSiteVitrine.mention}</p>
                 <p className="mt-1 text-xs text-zinc-500">{WEBSITE_ADDON.agencyNote}</p>
+                <p className="mt-3 text-xs font-semibold text-zinc-300">{WEBSITE_ADDON.checkoutMention}</p>
               </div>
 
               <div className="w-full md:min-w-[200px] md:w-auto">
