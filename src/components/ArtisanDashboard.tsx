@@ -1988,7 +1988,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: isMobile ? 'block' : 'flex', overflowX: 'hidden' }}>
       {!isMobile && (
         <aside
-          className="sticky top-0 flex min-h-screen self-stretch shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] py-6"
+          className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] py-6"
           style={{
             background: 'color-mix(in srgb, var(--bg-elevated) 92%, #050607 8%)',
             width: sidebarCollapsed ? '76px' : '252px',
@@ -1998,7 +1998,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             overflow: 'hidden',
           }}
         >
-          <div className={`mb-8 flex items-center ${sidebarCollapsed ? 'flex-col gap-3 px-0' : 'justify-between px-2'}`}>
+        <div className="flex h-full flex-col">
+          <div className={`mb-8 flex items-center shrink-0 ${sidebarCollapsed ? 'flex-col gap-3 px-0' : 'justify-between px-2'}`}>
             {sidebarCollapsed ? (
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">K</p>
             ) : (
@@ -2026,7 +2027,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
           </div>
 
-          <nav className={`flex flex-1 flex-col gap-1 ${sidebarCollapsed ? 'items-center' : ''}`}>
+          <nav className={`flex flex-1 flex-col gap-1 overflow-y-auto ${sidebarCollapsed ? 'items-center' : ''}`}>
             {NAV_ITEMS.map((item) => {
               const isActive = dashboardMode === item.mode;
               const Icon = item.icon;
@@ -2062,7 +2063,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             })}
           </nav>
 
-          <div className={`mt-auto flex flex-col gap-2 pt-4 ${sidebarCollapsed ? 'items-center' : ''}`}>
+          <div className={`mt-auto flex shrink-0 flex-col gap-2 border-t border-[var(--border)] pt-4 ${sidebarCollapsed ? 'items-center' : ''}`}>
             <button
               onClick={() => setPlanModalOpen(true)}
               title={planChangeCtaLabel}
@@ -2115,6 +2116,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <LogOut className="w-4 h-4" /> {!sidebarCollapsed && 'Déconnexion'}
             </button>
           </div>
+        </div>
         </aside>
       )}
 
