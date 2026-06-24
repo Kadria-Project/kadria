@@ -1369,6 +1369,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [artisanTrades, setArtisanTrades] = useState<string[]>([]);
   const [artisanFirstName, setArtisanFirstName] = useState('');
 
+  const formattedToday = useMemo(() => {
+    const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch('/api/artisan/config')
@@ -1996,11 +2001,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             {sidebarCollapsed ? (
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">K</p>
             ) : (
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">Kadria</p>
-                <p className="truncate text-lg font-extrabold text-[var(--text-1)]">
-                  KADRIA PRO{artisanFirstName ? ` · ${artisanFirstName}` : ''}
-                </p>
+              <div className="min-w-0 pr-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-extrabold text-[var(--text-1)]">KADRIA</span>
+                  <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-400">PRO</span>
+                </div>
+                <div className="mt-3 text-base font-semibold text-[var(--text-1)]">
+                  {artisanFirstName ? `Bonjour ${artisanFirstName}` : 'Bonjour'}
+                </div>
+                <div className="mt-1 text-sm text-[var(--text-3)]">
+                  {formattedToday}
+                </div>
               </div>
             )}
             <button
