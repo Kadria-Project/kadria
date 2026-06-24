@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   AlertTriangle,
   ArrowDown,
@@ -155,36 +156,17 @@ export function TrialPlanModal() {
           </p>
         </div>
 
-        <div className="relative mx-auto mt-7 w-full max-w-sm">
+        <div className="relative mx-auto mt-7 w-full max-w-md">
           <div className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-green-500/20 blur-3xl" />
-          <div className="relative box-border w-full max-w-full overflow-hidden rounded-2xl border border-green-500/30 bg-zinc-900/80 p-4 shadow-[0_0_60px_rgba(34,197,94,0.18)]">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-300">Pilotage commercial</span>
-              <span className="flex h-2 w-2 rounded-full bg-green-500" />
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2">
-                <p className="text-[10px] text-zinc-500">Dossiers</p>
-                <p className="mt-1 text-sm font-bold text-white">128</p>
-              </div>
-              <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2">
-                <p className="text-[10px] text-zinc-500">Devis</p>
-                <p className="mt-1 text-sm font-bold text-white">46</p>
-              </div>
-              <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-2">
-                <p className="text-[10px] text-green-400">CA potentiel</p>
-                <p className="mt-1 text-sm font-bold text-green-400">28.4k€</p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-end gap-1.5">
-              {[40, 65, 50, 80, 60, 95, 70].map((height, index) => (
-                <span
-                  key={index}
-                  className="flex-1 rounded-t-sm bg-gradient-to-t from-green-500/20 to-green-500"
-                  style={{ height: `${height * 0.4}px` }}
-                />
-              ))}
-            </div>
+          <div className="relative box-border w-full max-w-full overflow-hidden rounded-2xl shadow-[0_0_60px_rgba(34,197,94,0.18)]">
+            <Image
+              src="/trial-performance-hero.png"
+              alt="Aperçu du tableau de bord Kadria Performance"
+              width={1535}
+              height={1024}
+              className="h-auto w-full object-contain"
+              priority
+            />
           </div>
         </div>
 
