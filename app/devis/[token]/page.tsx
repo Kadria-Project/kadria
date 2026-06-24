@@ -42,6 +42,13 @@ interface PublicDevis {
   accepted_at: string | null;
   declined: boolean;
   opens_count: number;
+  pricing_mention?: string | null;
+  vat_exemption_mention?: string | null;
+  insurance_lines?: string[] | null;
+  fallback_insurance_mention?: string | null;
+  delay_mention?: string | null;
+  labor_mention?: string | null;
+  travel_fee_mention?: string | null;
 }
 
 const DECLINE_REASONS = [
@@ -210,6 +217,9 @@ export default function PublicDevisPage() {
           <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
             Émis le {formatDate(devis.date_emission)} · Valable jusqu&apos;au {formatDate(devis.date_validite)}
           </p>
+          {devis.pricing_mention && (
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0' }}>{devis.pricing_mention}</p>
+          )}
         </div>
 
         {devis.accepted && (
@@ -286,7 +296,7 @@ export default function PublicDevisPage() {
                   <td style={{ padding: '10px 12px' }}>{line.description}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>{line.quantity} {line.unit}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>{formatEuro(line.unitPrice)}</td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{line.tvaRate}%</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{devis.vat_exemption_mention ? '—' : `${line.tvaRate}%`}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>{formatEuro(line.quantity * line.unitPrice)}</td>
                 </tr>
               )
@@ -300,10 +310,14 @@ export default function PublicDevisPage() {
             <span>Total HT</span>
             <span style={{ fontWeight: 700, textAlign: 'right' }}>{formatEuro(devis.total_ht)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#6b7280' }}>
-            <span>Total TVA</span>
-            <span style={{ fontWeight: 700, textAlign: 'right' }}>{formatEuro(devis.total_tva)}</span>
-          </div>
+          {devis.vat_exemption_mention ? (
+            <div style={{ fontSize: '13px', color: '#6b7280' }}>{devis.vat_exemption_mention}</div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#6b7280' }}>
+              <span>Total TVA</span>
+              <span style={{ fontWeight: 700, textAlign: 'right' }}>{formatEuro(devis.total_tva)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: 800, borderTop: '1px solid #e5e7eb', paddingTop: '8px' }}>
             <span>Total TTC</span>
             <span style={{ textAlign: 'right' }}>{formatEuro(devis.amount)}</span>
@@ -311,7 +325,7 @@ export default function PublicDevisPage() {
         </div>
 
         {/* Conditions */}
-        {(devis.conditions_paiement || devis.delai_execution || devis.mention_legale) && (
+        {(devis.conditions_paiement || devis.delay_mention || devis.mention_legale || devis.labor_mention || devis.travel_fee_mention || devis.insurance_lines || devis.fallback_insurance_mention) && (
           <div style={{ marginBottom: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {devis.conditions_paiement && (
               <div>
@@ -321,14 +335,30 @@ export default function PublicDevisPage() {
                 <p style={{ fontSize: '13px', color: '#374151', margin: 0, whiteSpace: 'pre-wrap' }}>{devis.conditions_paiement}</p>
               </div>
             )}
-            {devis.delai_execution && (
+            {devis.delay_mention && (
               <div>
                 <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: '4px' }}>
-                  Délai d&apos;exécution
+                  Délai d&apos;intervention
                 </p>
-                <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{devis.delai_execution}</p>
+                <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{devis.delay_mention}</p>
               </div>
             )}
+            {devis.labor_mention && (
+              <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{devis.labor_mention}</p>
+            )}
+            {devis.travel_fee_mention && (
+              <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{devis.travel_fee_mention}</p>
+            )}
+            {devis.insurance_lines && devis.insurance_lines.length > 0 ? (
+              <div>
+                <p style={{ fontSize: '13px', color: '#374151', fontWeight: 700, margin: '0 0 2px' }}>{devis.insurance_lines[0]}</p>
+                {devis.insurance_lines.slice(1).map((line, i) => (
+                  <p key={i} style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{line}</p>
+                ))}
+              </div>
+            ) : devis.fallback_insurance_mention ? (
+              <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>{devis.fallback_insurance_mention}</p>
+            ) : null}
             {devis.mention_legale && (
               <div>
                 <p style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: '#9ca3af', marginBottom: '4px' }}>

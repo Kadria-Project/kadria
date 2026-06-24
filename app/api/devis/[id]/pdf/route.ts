@@ -97,7 +97,7 @@ export async function GET(
           <td>${line.description || ''}</td>
           <td class="num">${line.quantity || 0} ${line.unit || ''}</td>
           <td class="num">${formatEuro(line.unitPrice || 0)}</td>
-          <td class="num">${line.tvaRate || 0}%</td>
+          <td class="num">${vatExemptionMention ? '—' : `${line.tvaRate || 0}%`}</td>
           <td class="num">${formatEuro(total)}</td>
         </tr>
       `

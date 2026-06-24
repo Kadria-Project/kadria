@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, getDevisByToken } from '@/src/lib/airtable'
+import { getPricingMention, getVatExemptionMention, getInsuranceLines, getDelayMention, getLaborMention, getTravelFeeMention } from '@/src/lib/devis-legal'
+import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 
 export async function GET(
   _request: NextRequest,
@@ -27,7 +29,29 @@ export async function GET(
       lignes = []
     }
 
+    const quoteSettings = (config?.businessConfig as { quoteSettings?: QuoteCommercialSettings } | undefined)?.quoteSettings
+    const pricingMention = getPricingMention(quoteSettings)
+    const vatExemptionMention = getVatExemptionMention(quoteSettings?.vatMode)
+    const insuranceLines = getInsuranceLines({
+      ...quoteSettings,
+      insuranceCompany: quoteSettings?.insuranceCompany || config?.assureur,
+      insurancePolicyNumber: quoteSettings?.insurancePolicyNumber || config?.numAssurance,
+    })
+    const fallbackInsuranceMention = !insuranceLines && !config?.assuranceNonRequise && config?.assureur
+      ? `Assurance : ${config.assureur}${config.numAssurance ? ` — N° ${config.numAssurance}` : ''}`
+      : null
+    const delayMention = getDelayMention(devis.delaiExecution, quoteSettings?.defaultEstimatedDelay)
+    const laborMention = getLaborMention(quoteSettings?.laborMentionMode, lignes as { description?: string }[])
+    const travelFeeMention = getTravelFeeMention(quoteSettings?.travelFeeMentionMode, lignes as { description?: string }[])
+
     return NextResponse.json({
+      pricing_mention: pricingMention,
+      vat_exemption_mention: vatExemptionMention,
+      insurance_lines: insuranceLines,
+      fallback_insurance_mention: fallbackInsuranceMention,
+      delay_mention: delayMention,
+      labor_mention: laborMention,
+      travel_fee_mention: travelFeeMention,
       id: devis.id,
       numero: devis.devisNumber,
       amount: devis.totalTTC,

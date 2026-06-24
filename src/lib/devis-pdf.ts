@@ -300,7 +300,7 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
     w.drawAt(line.description || '', colX.description, w.y, colWidths.description - 8, 9, fontRegular, TEXT_DARK)
     w.drawAt(`${line.quantity || 0} ${line.unit || ''}`, colX.qty, w.y, colWidths.qty, 9, fontRegular, TEXT_DARK, 'right')
     w.drawAt(formatEuro(line.unitPrice || 0), colX.pu, w.y, colWidths.pu, 9, fontRegular, TEXT_DARK, 'right')
-    w.drawAt(`${line.tvaRate || 0}%`, colX.tva, w.y, colWidths.tva, 9, fontRegular, TEXT_DARK, 'right')
+    w.drawAt(vatExemptionMention ? '—' : `${line.tvaRate || 0}%`, colX.tva, w.y, colWidths.tva, 9, fontRegular, TEXT_DARK, 'right')
     w.drawAt(formatEuro(total), colX.total, w.y, colWidths.total, 9, fontRegular, TEXT_DARK, 'right')
 
     w.y += rowHeight
