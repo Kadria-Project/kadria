@@ -87,6 +87,8 @@ export function openTrialPlanModal() {
 
 export function TrialPlanModal() {
   const [open, setOpen] = useState(false);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const cardsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -101,6 +103,15 @@ export function TrialPlanModal() {
     window.location.href = href;
   };
 
+  const handleCardsScroll = () => {
+    const el = cardsRef.current;
+    if (!el || el.children.length === 0) return;
+    const firstCard = el.children[0] as HTMLElement;
+    const cardWidth = firstCard.offsetWidth + 16;
+    const index = Math.round(el.scrollLeft / cardWidth);
+    setActiveCardIndex(Math.min(Math.max(index, 0), el.children.length - 1));
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
       <button
@@ -109,7 +120,7 @@ export function TrialPlanModal() {
         onClick={() => setOpen(false)}
         className="fixed inset-0 z-0 cursor-default"
       />
-      <div className="relative z-10 w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-8">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-8">
         <button
           type="button"
           aria-label="Fermer"
@@ -127,8 +138,14 @@ export function TrialPlanModal() {
           Vous pouvez annuler avant la fin des 7 jours depuis votre espace abonnement.
         </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <SwipeHint label="Swipez pour comparer les offres" className="mt-4 text-xs sm:hidden" />
+
+        <div
+          ref={cardsRef}
+          onScroll={handleCardsScroll}
+          className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0"
+        >
+          <div className="flex min-w-[88vw] shrink-0 snap-center flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:min-w-0 sm:shrink">
             <p className="text-sm font-semibold text-white">Essentiel</p>
             <p className="mt-1 text-2xl font-bold text-white">
               {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
@@ -151,7 +168,7 @@ export function TrialPlanModal() {
             </button>
           </div>
 
-          <div className="relative flex flex-col rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5">
+          <div className="relative flex min-w-[88vw] shrink-0 snap-center flex-col rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5 sm:min-w-0 sm:shrink">
             <span className="absolute -top-3 left-5 rounded-full bg-green-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
               Offre recommandée
             </span>
@@ -177,7 +194,7 @@ export function TrialPlanModal() {
             </button>
           </div>
 
-          <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="flex min-w-[88vw] shrink-0 snap-center flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:min-w-0 sm:shrink">
             <p className="text-sm font-semibold text-white">Agence</p>
             <p className="mt-1 text-2xl font-bold text-white">Sur devis</p>
             <p className="mt-2 text-sm text-zinc-400">
@@ -196,6 +213,17 @@ export function TrialPlanModal() {
               Nous contacter
             </button>
           </div>
+        </div>
+
+        <div className="mt-3 flex justify-center gap-1.5 sm:hidden">
+          {[0, 1, 2].map((index) => (
+            <span
+              key={index}
+              className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                index === activeCardIndex ? 'bg-green-500' : 'bg-zinc-700'
+              }`}
+            />
+          ))}
         </div>
       </div>
     </div>
