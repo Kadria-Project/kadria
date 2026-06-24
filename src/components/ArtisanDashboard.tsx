@@ -583,12 +583,16 @@ function isQuoteSentProject(p: Project): boolean {
   return p.status === 'Devis envoyé' || Boolean(p.quoteSentAt) || Boolean(p.devisAmount);
 }
 
+function isArchivedProject(p: Project): boolean {
+  return p.leadStatus === 'archived';
+}
+
 function computeRelationshipStatus(projects: Project[]): ClientRelationshipStatus {
   if (projects.some((p) => isWonProject(p))) return 'active_client';
 
   if (
     projects.some((p) => {
-      if (isWonProject(p) || isLostProject(p)) return false;
+      if (isWonProject(p) || isLostProject(p) || isArchivedProject(p)) return false;
       const risk = getProjectRiskStatus(p);
       return risk.status === 'followUp' || risk.status === 'atRisk' || (isQuoteSentProject(p) && !p.acceptedAt);
     })
@@ -596,16 +600,16 @@ function computeRelationshipStatus(projects: Project[]): ClientRelationshipStatu
     return 'to_follow_up';
   }
 
-  if (projects.length > 0 && projects.every((p) => isLostProject(p))) return 'lost';
+  if (projects.length > 0 && projects.every((p) => isLostProject(p) || isArchivedProject(p))) return 'lost';
 
-  if (projects.some((p) => !isWonProject(p) && !isLostProject(p))) return 'prospect';
+  if (projects.some((p) => !isWonProject(p) && !isLostProject(p) && !isArchivedProject(p))) return 'prospect';
 
   return 'inactive';
 }
 
 function computeNextAction(projects: Project[]): { label: string; project?: Project } {
   const active = [...projects]
-    .filter((p) => !isWonProject(p) && !isLostProject(p))
+    .filter((p) => !isWonProject(p) && !isLostProject(p) && !isArchivedProject(p))
     .sort((a, b) => getReceivedSortTimestamp(b.createdAt) - getReceivedSortTimestamp(a.createdAt));
 
   const needsFollowUp = active.find((p) => {
@@ -1383,7 +1387,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const todayKey = today.toISOString().slice(0, 10);
   const now = today.getTime();
 
-  const todayCallbacks = allProjects.filter((project) => {
+  const activeProjects = useMemo(
+    () => allProjects.filter((p) => p.leadStatus !== 'archived'),
+    [allProjects],
+  );
+
+  const todayCallbacks = activeProjects.filter((project) => {
     if (!project.callbackDate) return false;
 
     const callbackKey = String(project.callbackDate).slice(0, 10);
@@ -1391,7 +1400,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     return callbackKey === todayKey;
   });
 
-  const overdueCallbacks = allProjects.filter((project) => {
+  const overdueCallbacks = activeProjects.filter((project) => {
     if (!project.callbackDate) return false;
     if (project.status === 'Gagné' || project.status === 'Perdu') return false;
 
@@ -1413,21 +1422,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     { label: 'Gagné', value: allProjects.filter((p) => p.status === 'Gagné').length },
   ];
 
-  const topOpportunities = [...allProjects]
+  const topOpportunities = [...activeProjects]
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
     .sort((a, b) => opportunityScore(b, artisanTrades) - opportunityScore(a, artisanTrades))
     .slice(0, 5);
 
-  const hotLeads = allProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
-  const riskProjects = allProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
-  const todayTasks = buildAutomaticTasks(allProjects).filter((task) => {
+  const hotLeads = activeProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
+  const riskProjects = activeProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
+  const todayTasks = buildAutomaticTasks(activeProjects).filter((task) => {
     const due = new Date(task.dueDate);
     return !Number.isNaN(due.getTime()) && due <= new Date(Date.now() + 24 * 60 * 60 * 1000);
   });
 
   const filteredProjects = useMemo(
-    () => filterProjects(allProjects, filters, { skipStatusFilter: dashboardMode === 'clients' }),
-    [allProjects, filters, dashboardMode],
+    () => filterProjects(dashboardMode === 'clients' ? allProjects : activeProjects, filters, { skipStatusFilter: dashboardMode === 'clients' }),
+    [allProjects, activeProjects, filters, dashboardMode],
   );
 
   const clientSummaries = useMemo(
@@ -1462,13 +1471,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     ).values(),
   );
 
-  const callsProjects = allProjects.filter((project) =>
+  const callsProjects = activeProjects.filter((project) =>
     todayTasks.some((task) => task.type === 'call' && task.projectId === project.id),
   );
-  const quotesProjects = allProjects.filter((project) =>
+  const quotesProjects = activeProjects.filter((project) =>
     todayTasks.some((task) => task.type === 'quote' && task.projectId === project.id),
   );
-  const followupsProjects = allProjects.filter((project) =>
+  const followupsProjects = activeProjects.filter((project) =>
     todayTasks.some((task) => (task.type === 'followUp' || task.type === 'email') && task.projectId === project.id),
   );
 
@@ -1785,11 +1794,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const matchesValueSource = (p: Project) =>
     effectiveValueSourceFilter === 'all' || normalizeValueSource(p.source) === effectiveValueSourceFilter;
 
-  const valueFilteredProjects = allProjects.filter(
+  const valueFilteredProjects = activeProjects.filter(
     (p) => matchesValuePeriod(p, valuePeriodRange) && matchesValueSource(p),
   );
   const valuePreviousFilteredProjects = valuePreviousPeriodRange
-    ? allProjects.filter((p) => matchesValuePeriod(p, valuePreviousPeriodRange) && matchesValueSource(p))
+    ? activeProjects.filter((p) => matchesValuePeriod(p, valuePreviousPeriodRange) && matchesValueSource(p))
     : [];
   const valueFilteredIds = new Set(valueFilteredProjects.map((p) => p.id));
   const hasValueData = valueFilteredProjects.length > 0;

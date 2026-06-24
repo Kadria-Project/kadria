@@ -425,6 +425,28 @@ function ProjectDetail() {
     }
   }
 
+  async function archiveProject() {
+    const confirmed = window.confirm(
+      'Archiver ce dossier ? Il restera disponible dans l’historique client mais ne sera plus affiché dans les actions prioritaires.',
+    );
+    if (!confirmed) return;
+
+    try {
+      setUpdating(true);
+
+      const data = await updateProject(id, { leadStatus: 'archived' });
+
+      if (data.success) {
+        setProject(data.project);
+        await loadActivities();
+      }
+    } catch (error) {
+      console.error('ARCHIVE_PROJECT_ERROR', error);
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   async function saveNote() {
     try {
       setUpdating(true);
@@ -662,7 +684,7 @@ function ProjectDetail() {
       case 'quote': return 'Préparer un devis';
       case 'followup': return 'Relancer';
       case 'ask_info': return 'Demander des précisions';
-      case 'archive': return 'Classer';
+      case 'archive': return 'Archiver le dossier';
       case 'wait': return 'Attendre';
       default: return 'Voir';
     }
@@ -718,7 +740,10 @@ function ProjectDetail() {
         setEditingContact(true);
         break;
       }
-      case 'archive':
+      case 'archive': {
+        archiveProject();
+        break;
+      }
       case 'wait':
       default:
         break;
@@ -1102,9 +1127,24 @@ function ProjectDetail() {
                 </p>
               </div>
             </div>
-            {analysis.nextBestAction.type !== 'wait' && (
+            {project.leadStatus === 'archived' ? (
+              <span style={{
+                background: 'var(--bg-elevated)',
+                color: 'var(--text-3)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}>
+                📁 Dossier archivé
+              </span>
+            ) : analysis.nextBestAction.type !== 'wait' && (
               <button
                 onClick={() => handleNextBestAction(analysis.nextBestAction.type)}
+                disabled={updating}
                 style={{
                   background: 'var(--accent)',
                   color: 'black',
@@ -1113,7 +1153,8 @@ function ProjectDetail() {
                   padding: '8px 16px',
                   fontSize: '12px',
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: updating ? 'not-allowed' : 'pointer',
+                  opacity: updating ? 0.6 : 1,
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
                 }}

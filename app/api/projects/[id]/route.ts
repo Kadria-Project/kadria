@@ -136,6 +136,10 @@ export async function PATCH(
       fieldsToUpdate.callback_date = input.callbackDate || null;
     }
 
+    if (input.leadStatus !== undefined) {
+      fieldsToUpdate.lead_status = input.leadStatus;
+    }
+
     if (input.fields && typeof input.fields === 'object') {
       const safeFields = { ...input.fields } as Record<string, unknown>;
       delete safeFields['Artisan ID'];
@@ -207,6 +211,14 @@ export async function PATCH(
         targetId,
         'NOTE_UPDATED',
         'Note interne mise à jour',
+      );
+    }
+
+    if (input.leadStatus === 'archived') {
+      await createActivityLog(
+        targetId,
+        'PROJECT_ARCHIVED',
+        `Dossier archivé le ${new Date().toLocaleDateString('fr-FR')}`,
       );
     }
 
