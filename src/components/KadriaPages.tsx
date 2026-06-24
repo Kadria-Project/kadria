@@ -3742,11 +3742,15 @@ export function LandingRoutePage() {
                 Un tarif simple, <span className="kr-gradient-text">adapté à votre activité.</span>
               </SectionTitle>
             </div>
-            <div className="mt-12 grid items-center gap-4 md:grid-cols-3">
+            <SwipeHint
+              label="Faites glisser horizontalement pour comparer les formules"
+              className="mb-4 justify-center text-xs md:hidden"
+            />
+            <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 scroll-px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mt-12 md:grid md:grid-cols-3 md:items-center md:gap-4 md:overflow-visible md:px-0 md:pb-0">
               {plans.map((plan, i) => (
                 <div
                   key={plan.slug}
-                  className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} kr-card-hover rounded-xl border p-6 ${
+                  className={`kr-reveal kr-reveal-scale kr-reveal-delay-${i + 1} kr-card-hover min-w-[85vw] shrink-0 snap-center rounded-xl border p-6 sm:min-w-[80vw] md:min-w-0 md:shrink ${
                     plan.highlighted
                       ? 'border-green-500/40 bg-green-500/5 shadow-[0_0_40px_rgba(34,197,94,0.08)] lg:scale-[1.02]'
                       : 'border-zinc-700 bg-zinc-800'
