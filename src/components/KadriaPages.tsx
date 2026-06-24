@@ -106,9 +106,9 @@ export function TrialPlanModal() {
   const handleCardsScroll = () => {
     const el = cardsRef.current;
     if (!el || el.children.length === 0) return;
-    const firstCard = el.children[0] as HTMLElement;
-    const cardWidth = firstCard.offsetWidth + 16;
-    const index = Math.round(el.scrollLeft / cardWidth);
+    const firstSlide = el.children[0] as HTMLElement;
+    const slideWidth = firstSlide.offsetWidth;
+    const index = slideWidth > 0 ? Math.round(el.scrollLeft / slideWidth) : 0;
     setActiveCardIndex(Math.min(Math.max(index, 0), el.children.length - 1));
   };
 
@@ -140,58 +140,64 @@ export function TrialPlanModal() {
 
         <SwipeHint label="Swipez pour comparer les offres" className="mt-4 text-xs sm:hidden" />
 
-        <div
-          ref={cardsRef}
-          onScroll={handleCardsScroll}
-          className="mt-6 box-border flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0"
-        >
-          <div className="box-border flex min-w-full shrink-0 snap-center flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:min-w-0 sm:shrink">
-            <p className="text-sm font-semibold text-white">Essentiel</p>
-            <p className="mt-1 text-2xl font-bold text-white">
-              {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
-            </p>
-            <p className="mt-2 text-sm text-zinc-400">
-              Pour démarrer avec une base claire de qualification et de suivi
-            </p>
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
-              <li>50 dossiers/mois</li>
-              <li>10 devis/mois</li>
-              <li>10 appels vocaux/mois</li>
-              <li>Assistant web de qualification</li>
-            </ul>
-            <button
-              type="button"
-              onClick={() => goTo('/register?plan=essentiel&interval=monthly')}
-              className="mt-5 w-full rounded-lg border border-zinc-700 py-2.5 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
-            >
-              Tester Essentiel
-            </button>
-          </div>
+        <div className="mt-6 box-border w-full overflow-hidden sm:overflow-visible">
+          <div
+            ref={cardsRef}
+            onScroll={handleCardsScroll}
+            className="box-border flex w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0"
+          >
+            <div className="box-border w-full max-w-full flex-[0_0_100%] snap-center px-1 sm:w-auto sm:max-w-none sm:flex-none sm:px-0">
+              <div className="box-border flex w-full max-w-full flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+                <p className="break-words text-sm font-semibold text-white">Essentiel</p>
+                <p className="mt-1 break-words text-2xl font-bold text-white">
+                  {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
+                </p>
+                <p className="mt-2 whitespace-normal break-words text-sm text-zinc-400">
+                  Pour démarrer avec une base claire de qualification et de suivi
+                </p>
+                <ul className="mt-4 flex-1 space-y-2 whitespace-normal break-words text-sm text-zinc-400">
+                  <li>50 dossiers/mois</li>
+                  <li>10 devis/mois</li>
+                  <li>10 appels vocaux/mois</li>
+                  <li>Assistant web de qualification</li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => goTo('/register?plan=essentiel&interval=monthly')}
+                  className="mt-5 w-full rounded-lg border border-zinc-700 py-2.5 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+                >
+                  Tester Essentiel
+                </button>
+              </div>
+            </div>
 
-          <div className="relative box-border flex min-w-full shrink-0 snap-center flex-col rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5 sm:min-w-0 sm:shrink">
-            <span className="absolute -top-3 left-5 rounded-full bg-green-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
-              Offre recommandée
-            </span>
-            <p className="text-sm font-semibold text-white">Performance</p>
-            <p className="mt-1 text-2xl font-bold text-white">
-              {PLAN_BASE_MONTHLY_PRICE.performance}€<span className="text-sm font-normal text-zinc-500">/mois</span>
-            </p>
-            <p className="mt-2 text-sm text-zinc-400">
-              Pour capter, qualifier, suivre et convertir plus de demandes
-            </p>
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
-              <li>Dossiers illimités</li>
-              <li>Devis illimités</li>
-              <li>Assistant vocal inclus selon quota</li>
-              <li>Valeur générée / reporting avancé</li>
-            </ul>
-            <button
-              type="button"
-              onClick={() => goTo('/register?plan=performance&interval=monthly')}
-              className="mt-5 w-full rounded-lg bg-green-500 py-2.5 text-sm font-bold text-black transition-colors hover:bg-green-400"
-            >
-              Tester Performance
-            </button>
+            <div className="box-border w-full max-w-full flex-[0_0_100%] snap-center px-1 sm:w-auto sm:max-w-none sm:flex-none sm:px-0">
+              <div className="relative box-border flex w-full max-w-full flex-col overflow-hidden rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5">
+                <span className="absolute -top-3 left-5 rounded-full bg-green-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
+                  Offre recommandée
+                </span>
+                <p className="break-words text-sm font-semibold text-white">Performance</p>
+                <p className="mt-1 break-words text-2xl font-bold text-white">
+                  {PLAN_BASE_MONTHLY_PRICE.performance}€<span className="text-sm font-normal text-zinc-500">/mois</span>
+                </p>
+                <p className="mt-2 whitespace-normal break-words text-sm text-zinc-400">
+                  Pour capter, qualifier, suivre et convertir plus de demandes
+                </p>
+                <ul className="mt-4 flex-1 space-y-2 whitespace-normal break-words text-sm text-zinc-400">
+                  <li>Dossiers illimités</li>
+                  <li>Devis illimités</li>
+                  <li>Assistant vocal inclus selon quota</li>
+                  <li>Valeur générée / reporting avancé</li>
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => goTo('/register?plan=performance&interval=monthly')}
+                  className="mt-5 w-full rounded-lg bg-green-500 py-2.5 text-sm font-bold text-black transition-colors hover:bg-green-400"
+                >
+                  Tester Performance
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
