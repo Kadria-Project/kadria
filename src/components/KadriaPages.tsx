@@ -123,6 +123,9 @@ export function TrialPlanModal() {
         <p className="mt-2 text-sm text-zinc-400">
           7 jours d&apos;essai gratuit. Carte requise, aucun débit avant la fin de l&apos;essai.
         </p>
+        <p className="mt-1 text-sm text-zinc-400">
+          Vous pouvez annuler avant la fin des 7 jours depuis votre espace abonnement.
+        </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
@@ -130,10 +133,14 @@ export function TrialPlanModal() {
             <p className="mt-1 text-2xl font-bold text-white">
               {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
             </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Pour démarrer avec une base claire de qualification et de suivi
+            </p>
             <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
               <li>50 dossiers/mois</li>
               <li>10 devis/mois</li>
               <li>10 appels vocaux/mois</li>
+              <li>Assistant web de qualification</li>
             </ul>
             <button
               type="button"
@@ -152,10 +159,14 @@ export function TrialPlanModal() {
             <p className="mt-1 text-2xl font-bold text-white">
               {PLAN_BASE_MONTHLY_PRICE.performance}€<span className="text-sm font-normal text-zinc-500">/mois</span>
             </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Pour capter, qualifier, suivre et convertir plus de demandes
+            </p>
             <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
               <li>Dossiers illimités</li>
               <li>Devis illimités</li>
               <li>Assistant vocal inclus selon quota</li>
+              <li>Valeur générée / reporting avancé</li>
             </ul>
             <button
               type="button"
@@ -169,7 +180,11 @@ export function TrialPlanModal() {
           <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
             <p className="text-sm font-semibold text-white">Agence</p>
             <p className="mt-1 text-2xl font-bold text-white">Sur devis</p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Pour équipes artisanales avec plusieurs utilisateurs, numéros ou volumes
+            </p>
             <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
+              <li>Tout Performance</li>
               <li>Multi-utilisateurs / multi-numéros</li>
               <li>Site vitrine inclus</li>
             </ul>
