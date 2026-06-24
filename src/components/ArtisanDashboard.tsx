@@ -53,6 +53,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, PLAN_DEFINITIONS, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { formatEuro, getAnnualFullPrice, getAnnualOneShotPrice } from '@/src/config/pricing';
 import {
   buildAutomaticTasks,
   getHotLeadMessage,
@@ -4632,31 +4633,59 @@ function ImpactCard({
 const PLAN_FEATURE_HIGHLIGHTS: Record<PlanKey, string[]> = {
   essentiel: [
     '50 dossiers / mois',
-    'Qualification web automatique',
-    'Dashboard de base, vue liste',
-    'Devis inclus — 10 devis/mois',
-    'Assistant vocal inclus — 10 appels/mois',
-    'Relances manuelles',
-    'Export CSV',
+    'Assistant web de qualification',
+    'Création automatique de dossiers projet',
+    'Tableau de bord artisan',
+    'Fiche projet détaillée',
+    'Suivi commercial simple',
+    'Base clients',
+    '10 devis / mois',
+    '10 appels vocaux / mois',
+    'Accès limité aux fonctions avancées',
+    'Site vitrine en option : +300 € HT une fois',
   ],
   performance: [
     'Dossiers illimités',
     'Devis illimités',
-    'Export PDF des dossiers',
-    'Pipeline commercial avancé + vue Kanban',
-    'Chantiers géolocalisés',
-    'Relances automatiques',
-    'Calendrier et rappels',
-    'Assistant vocal étendu selon quota',
-    'Support prioritaire',
+    'Assistant web de qualification',
+    'Assistant vocal inclus',
+    '150 appels vocaux / mois',
+    'Tableau de bord complet',
+    'Valeur générée par Kadria',
+    'Suivi commercial avancé',
+    'Pipeline commercial',
+    'Priorités et actions à faire',
+    'Relances devis',
+    'Devis PDF / envoi / acceptation / refus',
+    'Catalogue de prestations',
+    'Modèles de devis',
+    'Frais de déplacement / estimation',
+    'Base clients enrichie',
+    'Reporting avancé',
+    'Site vitrine en option : +300 € HT une fois',
   ],
   entreprise: [
-    'Tout Performance, plus :',
-    'Fonctionnalités équipe / multi-utilisateurs',
-    'Marque blanche',
-    'Accès API',
-    'Account manager dédié',
+    'Tout Performance',
+    'Site vitrine inclus',
+    'Multi-utilisateurs',
+    'Multi-numéros',
+    'Quotas vocaux renforcés : 400 appels / mois',
+    'Accompagnement prioritaire',
+    'Configuration avancée',
+    'Suivi adapté au contexte client',
+    'Offre ajustable selon volume et besoins spécifiques',
   ],
+};
+
+const PLAN_POSITIONING: Record<PlanKey, string> = {
+  essentiel: 'Pour démarrer avec une base claire de qualification et de suivi.',
+  performance: 'L’offre recommandée pour capter, qualifier, suivre et convertir plus de demandes.',
+  entreprise: 'Pour les équipes artisanales qui veulent centraliser plusieurs utilisateurs, plusieurs numéros et plus de volume.',
+};
+
+const PLAN_ANNUAL_PITCH: Partial<Record<PlanKey, string>> = {
+  essentiel: `${formatEuro(getAnnualOneShotPrice('essentiel', 'annualOneShot'))} € / an au lieu de ${getAnnualFullPrice('essentiel')} €`,
+  performance: `${formatEuro(getAnnualOneShotPrice('performance', 'annualOneShot'))} € / an au lieu de ${getAnnualFullPrice('performance')} €`,
 };
 
 function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClose: () => void }) {
@@ -4668,7 +4697,8 @@ function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClo
       ? ['essentiel', 'entreprise']
       : ['performance'];
 
-  const losingEssentiel = currentPlan === 'performance';
+  // Affiché chaque fois qu'une offre inférieure est disponible (downgrade possible).
+  const canDowngrade = candidatePlans.some((p) => PLAN_DEFINITIONS[p].rank < PLAN_DEFINITIONS[currentPlan].rank);
 
   const requestChange = async (targetPlan: PlanKey) => {
     setRequestState((prev) => ({ ...prev, [targetPlan]: 'loading' }));
@@ -4685,63 +4715,114 @@ function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClo
     }
   };
 
+  // "Passer à Performance" réutilise le même flux de checkout Stripe que /tarifs
+  // (POST /api/stripe/checkout avec { plan, interval }) plutôt que la demande
+  // générique upgrade-request : c'est un changement direct, pas une demande à traiter.
+  const goToPerformanceCheckout = async () => {
+    setRequestState((prev) => ({ ...prev, performance: 'loading' }));
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'performance', interval: 'monthly' }),
+      });
+      const data = await res.json();
+      if (data?.success && data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setRequestState((prev) => ({ ...prev, performance: 'error' }));
+    } catch {
+      setRequestState((prev) => ({ ...prev, performance: 'error' }));
+    }
+  };
+
   const ctaLabel = (targetPlan: PlanKey): string => {
-    if (currentPlan === 'essentiel' && targetPlan === 'performance') return 'Passer à Performance';
-    if (currentPlan === 'essentiel' && targetPlan === 'entreprise') return 'Demander l\'offre Agence';
-    if (currentPlan === 'performance' && targetPlan === 'essentiel') return 'Demander le passage à Essentiel';
-    if (currentPlan === 'performance' && targetPlan === 'entreprise') return 'Demander l\'offre Agence';
+    if (targetPlan === 'performance') return 'Passer à Performance';
+    if (targetPlan === 'essentiel') return 'Demander le passage à Essentiel';
+    if (targetPlan === 'entreprise') return 'Demander l\'offre Agence';
     return 'Demander le changement';
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto">
-      <div className="w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-6xl rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] max-h-[90vh] overflow-y-auto sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">Changer d&apos;offre</p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">Comparer les offres Kadria</h3>
+            <h3 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Comparez les offres Kadria</h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              Choisissez le niveau adapté à votre volume de demandes, vos devis et votre organisation.
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Mensuel sans engagement · Annuel comptant -15 % · Site vitrine en option ou inclus selon l&apos;offre
+            </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-lg p-1 text-zinc-500 hover:text-white">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {losingEssentiel && (
+        {canDowngrade && (
           <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-            Certaines fonctionnalités seront verrouillées immédiatement après changement d&apos;offre si vous repassez à Essentiel.
+            Certaines fonctionnalités peuvent être verrouillées si vous repassez sur une offre inférieure.
           </p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {(['essentiel', 'performance', 'entreprise'] as PlanKey[]).map((planKey) => {
             const isCurrent = planKey === currentPlan;
             const def = PLAN_DEFINITIONS[planKey];
             const isCandidate = candidatePlans.includes(planKey);
             const state = requestState[planKey] || 'idle';
+            const isPerformanceEmphasis = planKey === 'performance' && !isCurrent;
 
             return (
               <div
                 key={planKey}
-                className={`flex flex-col gap-3 rounded-2xl border p-4 ${isCurrent ? 'border-green-500/40 bg-green-500/[0.04]' : 'border-zinc-800 bg-zinc-900/40'}`}
+                className={`flex flex-col gap-4 rounded-2xl border p-5 sm:p-6 ${
+                  isCurrent
+                    ? 'border-green-500/40 bg-green-500/[0.04]'
+                    : isPerformanceEmphasis
+                      ? 'border-green-500/25 bg-green-500/[0.02]'
+                      : 'border-zinc-800 bg-zinc-900/40'
+                }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-base font-bold text-white">{def.label}</p>
+                  <p className="text-lg font-bold text-white">{def.label}</p>
                   {isCurrent ? (
                     <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
                       Votre offre actuelle
                     </span>
-                  ) : isCandidate ? (
+                  ) : planKey === 'performance' ? (
+                    <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
+                      Recommandé
+                    </span>
+                  ) : planKey === 'entreprise' ? (
                     <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300">
-                      Disponible
+                      Sur devis possible
                     </span>
                   ) : null}
                 </div>
 
-                <p className="text-xs text-zinc-400">
+                <p className="text-sm text-zinc-400">{PLAN_POSITIONING[planKey]}</p>
+
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    {planKey === 'essentiel' && '149 €/mois'}
+                    {planKey === 'performance' && '249 €/mois'}
+                    {planKey === 'entreprise' && '499 €/mois ou sur devis'}
+                  </p>
+                  {PLAN_ANNUAL_PITCH[planKey] && (
+                    <p className="mt-0.5 text-xs text-zinc-500">{PLAN_ANNUAL_PITCH[planKey]}</p>
+                  )}
+                </div>
+
+                <p className="text-xs text-zinc-500">
                   {def.monthlyProjectLimit ? `${def.monthlyProjectLimit} dossiers / mois` : 'Dossiers illimités'}
                 </p>
 
-                <ul className="flex flex-col gap-1.5 text-sm text-zinc-300">
+                <ul className="flex flex-col gap-2 text-sm text-zinc-300">
                   {PLAN_FEATURE_HIGHLIGHTS[planKey].map((line) => (
                     <li key={line} className="flex items-start gap-2">
                       <span className="mt-0.5 text-green-500">•</span>
@@ -4750,7 +4831,18 @@ function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClo
                   ))}
                 </ul>
 
-                {!isCurrent && isCandidate && (
+                {!isCurrent && isCandidate && planKey === 'performance' && (
+                  <button
+                    type="button"
+                    disabled={state === 'loading' || state === 'sent'}
+                    onClick={goToPerformanceCheckout}
+                    className="mt-auto inline-flex min-h-10 items-center justify-center rounded-md bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] disabled:opacity-60"
+                  >
+                    {state === 'loading' ? 'Redirection...' : ctaLabel(planKey)}
+                  </button>
+                )}
+
+                {!isCurrent && isCandidate && planKey !== 'performance' && (
                   <button
                     type="button"
                     disabled={state === 'loading' || state === 'sent'}
@@ -4790,8 +4882,8 @@ function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClo
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <a
-            href="/pricing"
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-zinc-500"
+            href="/tarifs"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
           >
             Voir la page tarifs
           </a>
