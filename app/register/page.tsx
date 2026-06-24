@@ -203,7 +203,7 @@ export default function RegisterPage() {
             fontWeight: 600,
             marginBottom: '16px',
           }}>
-            14 jours gratuits — sans CB
+            7 jours gratuits — sans CB
           </span>
           <h1 style={{
             color: 'white',

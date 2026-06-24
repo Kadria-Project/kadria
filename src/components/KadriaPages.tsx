@@ -66,8 +66,10 @@ import {
   BILLING_MODES,
   WEBSITE_ADDON,
   getAnnualOneShotPrice,
+  getAnnualFullPrice,
   getAnnualPitchLabel,
   getMonthlyPriceForMode,
+  formatEuro,
   type BillingModeKey,
   type PricingPlanKey,
 } from '@/src/config/pricing';
@@ -3647,7 +3649,7 @@ export function LandingRoutePage() {
             </div>
             <p className="kr-reveal kr-reveal-delay-2 mt-8 text-center text-sm text-green-500">
               <Link href="/tarifs#addon" className="hover:underline">
-                ➕ Site vitrine clé en main — 300 € une fois ou 50 €/mois — Essentiel et Performance
+                ➕ Site vitrine clé en main — +300 € HT une fois — Essentiel et Performance
               </Link>
             </p>
             <p className="kr-reveal kr-reveal-delay-2 mt-4 text-center text-sm text-zinc-400">
@@ -3846,6 +3848,7 @@ interface PricingPlanCard {
   period: string;
   description: string;
   priceNote?: string;
+  originalAnnualPrice?: string;
   features: PricingFeature[];
   highlighted: boolean;
   availabilityBadge?: string;
@@ -3854,17 +3857,21 @@ interface PricingPlanCard {
 }
 
 function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
+  const isAnnual = billingMode !== 'monthly';
   const checkoutIntervalFor = (): 'monthly' | 'yearly' =>
     billingMode === 'monthly' ? 'monthly' : 'yearly';
   const priceNoteFor = (plan: PricingPlanKey) =>
     billingMode === 'monthly' ? undefined : BILLING_MODES[billingMode].label;
 
   const priceFor = (plan: PricingPlanKey) =>
-    billingMode === 'annualOneShot'
-      ? `${getAnnualOneShotPrice(plan, billingMode)}€`
+    isAnnual
+      ? `${formatEuro(getAnnualOneShotPrice(plan, billingMode))}€`
       : `${getMonthlyPriceForMode(plan, billingMode)}€`;
 
-  const periodFor = () => (billingMode === 'annualOneShot' ? '/an' : '/mois');
+  const periodFor = () => (isAnnual ? '/an' : '/mois');
+
+  const originalAnnualPriceFor = (plan: PricingPlanKey) =>
+    isAnnual ? `${formatEuro(getAnnualFullPrice(plan))}€` : undefined;
 
   const annualPitchFor = (plan: PricingPlanKey) =>
     billingMode === 'monthly' ? getAnnualPitchLabel(plan) : undefined;
@@ -3877,6 +3884,7 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       priceSize: 'text-5xl',
       period: periodFor(),
       priceNote: priceNoteFor('essentiel') ?? annualPitchFor('essentiel'),
+      originalAnnualPrice: originalAnnualPriceFor('essentiel'),
       description: 'Pour démarrer avec une base claire de qualification et de suivi.',
       features: [
         { text: '50 dossiers / mois' },
@@ -3907,6 +3915,7 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
       priceSize: 'text-5xl',
       period: periodFor(),
       priceNote: priceNoteFor('performance') ?? annualPitchFor('performance'),
+      originalAnnualPrice: originalAnnualPriceFor('performance'),
       description: 'L’offre recommandée pour capter, qualifier, suivre et convertir plus de demandes.',
       features: [
         { text: 'Dossiers illimités' },
@@ -3926,7 +3935,6 @@ function buildPricingPlanCards(billingMode: BillingModeKey): PricingPlanCard[] {
         { text: 'Base clients enrichie' },
         { text: 'Reporting avancé' },
         { text: 'Site vitrine en option (+300 € HT one-shot)' },
-        { text: 'Mensualisation site sur demande (50 €/mois, engagement 6 mois)' },
       ],
       highlighted: true,
       cta: { label: "Commencer l'essai gratuit", href: '/register', primary: true },
@@ -3968,7 +3976,7 @@ const addonSiteVitrine = {
 
 const pricingGuarantees = [
   { title: 'Sans engagement', subtitle: 'Résiliez à tout moment' },
-  { title: 'Essai 14 jours', subtitle: 'Sans carte bancaire' },
+  { title: 'Essai 7 jours', subtitle: 'Sans carte bancaire' },
   { title: 'Support J+1', subtitle: 'Réponse sous 24h ouvrées' },
 ];
 
@@ -3979,7 +3987,7 @@ const pricingFaqQuick = [
   },
   {
     question: "L'essai gratuit inclut-il toutes les fonctionnalités ?",
-    answer: 'Oui, accès complet au plan Performance pendant 14 jours.',
+    answer: 'Oui, accès complet au plan Performance pendant 7 jours.',
   },
   {
     question: "Que se passe-t-il après l'essai ?",
@@ -4093,11 +4101,10 @@ function SwipeHint({ label, className = '' }: { label: string; className?: strin
 
 export function PricingRoutePage() {
   const [billingMode, setBillingMode] = useState<BillingModeKey>('monthly');
-  const [addonMode, setAddonMode] = useState<'oneShot' | 'monthly'>('oneShot');
   const [checkoutLoadingSlug, setCheckoutLoadingSlug] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<{ slug: string; message: string } | null>(null);
   const pricingPlanCards = buildPricingPlanCards(billingMode);
-  const selectedAddon = addonMode === 'oneShot' ? WEBSITE_ADDON.oneShot : WEBSITE_ADDON.monthly;
+  const selectedAddon = WEBSITE_ADDON.oneShot;
 
   const handleCheckout = async (plan: PricingPlanCard) => {
     if (!plan.checkout) return;
@@ -4202,9 +4209,22 @@ export function PricingRoutePage() {
 
                   <h3 className="text-xl font-extrabold">{plan.name}</h3>
 
-                  <p className="mt-3">
+                  {plan.originalAnnualPrice && (
+                    <p className="mt-3">
+                      <span
+                        className="text-base font-semibold"
+                        style={{ textDecoration: 'line-through', opacity: 0.5, color: 'var(--text-2)' }}
+                      >
+                        {plan.originalAnnualPrice} / an
+                      </span>
+                    </p>
+                  )}
+                  <p className={plan.originalAnnualPrice ? 'mt-1' : 'mt-3'}>
                     <span className={`${plan.priceSize} font-black`}>{plan.price}</span>
                     {plan.period && <span className="text-base text-zinc-400"> {plan.period}</span>}
+                    {plan.originalAnnualPrice && (
+                      <span className="ml-2 text-sm font-bold text-green-500">-15%</span>
+                    )}
                   </p>
 
                   {plan.priceNote && <p className="mt-2 text-sm leading-6 text-zinc-500">{plan.priceNote}</p>}
@@ -4276,35 +4296,9 @@ export function PricingRoutePage() {
                 <p className="mt-2 text-sm text-zinc-400">{addonSiteVitrine.description}</p>
                 <p className="mt-3 text-xs font-semibold text-green-500">{addonSiteVitrine.availabilityText}</p>
 
-                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 p-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setAddonMode('oneShot')}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      addonMode === 'oneShot' ? 'bg-green-500 text-black' : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Achat one shot
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAddonMode('monthly')}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      addonMode === 'monthly' ? 'bg-green-500 text-black' : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Mensualité
-                  </button>
-                </div>
-
                 <p className="mt-4">
                   <span className="text-3xl font-black text-green-500">{selectedAddon.label}</span>
                 </p>
-                {addonMode === 'monthly' && (
-                  <p className="text-sm font-semibold text-amber-400">
-                    Engagement {WEBSITE_ADDON.monthly.commitmentMonths} mois
-                  </p>
-                )}
                 <p className="mt-2 text-sm text-zinc-400">{selectedAddon.description}</p>
 
                 <ul className="mt-4 flex flex-col gap-2">

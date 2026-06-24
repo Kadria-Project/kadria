@@ -17,8 +17,8 @@ export const BILLING_MODES: Record<BillingModeKey, {
     commitmentMonths: 0,
   },
   annualMonthly: {
-    label: '-15 % — Payable mensuellement — Engagement 12 mois',
-    shortLabel: 'Annuel mensualisé',
+    label: '-15 % — Paiement annuel en une fois — Engagement 12 mois',
+    shortLabel: 'Annuel comptant',
     discount: 0.15,
     commitmentMonths: 12,
   },
@@ -53,7 +53,16 @@ export function getAnnualOneShotPrice(plan: PricingPlanKey, mode: BillingModeKey
   return roundEuro(base * 12 * (1 - discount));
 }
 
-const formatEuro = (value: number) =>
+/**
+ * Prix annuel plein tarif avant remise (ex: 1 788 € pour Essentiel),
+ * utilisé pour l'affichage barré aux côtés du prix annuel remisé.
+ */
+export function getAnnualFullPrice(plan: PricingPlanKey): number {
+  const base = PLAN_BASE_MONTHLY_PRICE[plan];
+  return roundEuro(base * 12);
+}
+
+export const formatEuro = (value: number) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
@@ -78,12 +87,6 @@ export const WEBSITE_ADDON = {
     label: '+300 € HT une fois',
     description: 'Disponible en option sur Essentiel et Performance — inclus dans Agence.',
     commitmentMonths: 0,
-  },
-  monthly: {
-    price: 50,
-    commitmentMonths: 6,
-    label: '50 €/mois',
-    description: 'Mensualisation possible sur demande : 50 €/mois avec engagement 6 mois.',
   },
   features: [
     'Mini-site vitrine 3 pages',

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const trialEndDate = formatDateOnly(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))
+    const trialEndDate = formatDateOnly(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
     const subscriptionStart = formatDateOnly(new Date())
     const artisanId = buildArtisanId()
 
