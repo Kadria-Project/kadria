@@ -1987,7 +1987,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: isMobile ? 'block' : 'flex', overflowX: 'hidden' }}>
       {!isMobile && (
         <aside
-          className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] py-6"
+          className="sticky top-0 flex min-h-screen self-stretch shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] py-6"
           style={{
             background: 'color-mix(in srgb, var(--bg-elevated) 92%, #050607 8%)',
             width: sidebarCollapsed ? '76px' : '252px',
