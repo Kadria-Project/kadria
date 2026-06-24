@@ -143,9 +143,9 @@ export function TrialPlanModal() {
         <div
           ref={cardsRef}
           onScroll={handleCardsScroll}
-          className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0"
+          className="mt-6 box-border flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0"
         >
-          <div className="flex min-w-[88vw] shrink-0 snap-center flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:min-w-0 sm:shrink">
+          <div className="box-border flex min-w-full shrink-0 snap-center flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:min-w-0 sm:shrink">
             <p className="text-sm font-semibold text-white">Essentiel</p>
             <p className="mt-1 text-2xl font-bold text-white">
               {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
@@ -168,7 +168,7 @@ export function TrialPlanModal() {
             </button>
           </div>
 
-          <div className="relative flex min-w-[88vw] shrink-0 snap-center flex-col rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5 sm:min-w-0 sm:shrink">
+          <div className="relative box-border flex min-w-full shrink-0 snap-center flex-col rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5 sm:min-w-0 sm:shrink">
             <span className="absolute -top-3 left-5 rounded-full bg-green-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
               Offre recommandée
             </span>
@@ -193,30 +193,10 @@ export function TrialPlanModal() {
               Tester Performance
             </button>
           </div>
-
-          <div className="flex min-w-[88vw] shrink-0 snap-center flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 sm:min-w-0 sm:shrink">
-            <p className="text-sm font-semibold text-white">Agence</p>
-            <p className="mt-1 text-2xl font-bold text-white">Sur devis</p>
-            <p className="mt-2 text-sm text-zinc-400">
-              Pour équipes artisanales avec plusieurs utilisateurs, numéros ou volumes
-            </p>
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
-              <li>Tout Performance</li>
-              <li>Multi-utilisateurs / multi-numéros</li>
-              <li>Site vitrine inclus</li>
-            </ul>
-            <button
-              type="button"
-              onClick={() => goTo('/contact')}
-              className="mt-5 w-full rounded-lg border border-zinc-700 py-2.5 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
-            >
-              Nous contacter
-            </button>
-          </div>
         </div>
 
         <div className="mt-3 flex justify-center gap-1.5 sm:hidden">
-          {[0, 1, 2].map((index) => (
+          {[0, 1].map((index) => (
             <span
               key={index}
               className={`h-1.5 w-1.5 rounded-full transition-colors ${
