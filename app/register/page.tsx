@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, CSSProperties } from 'react'
+import { Suspense, useState, CSSProperties } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
+import { normalizePlan, getPlanLabel, type PlanKey } from '@/src/config/plans'
 
 const TRADES = [
   'Plombier',
@@ -17,9 +19,25 @@ const TRADES = [
   'Autre',
 ]
 
-export default function RegisterPage() {
+type RegisterInterval = 'monthly' | 'yearly'
+
+function resolveSelectedPlan(rawPlan: string | null): 'essentiel' | 'performance' {
+  const normalized = normalizePlan(rawPlan)
+  return normalized === 'performance' ? 'performance' : 'essentiel'
+}
+
+function resolveSelectedInterval(rawInterval: string | null): RegisterInterval {
+  return rawInterval === 'yearly' ? 'yearly' : 'monthly'
+}
+
+function RegisterPageContent() {
+  const searchParams = useSearchParams()
+  const selectedPlan = resolveSelectedPlan(searchParams.get('plan'))
+  const selectedInterval = resolveSelectedInterval(searchParams.get('interval'))
+
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [checkoutFailed, setCheckoutFailed] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     firstName: '',
@@ -46,17 +64,37 @@ export default function RegisterPage() {
 
     setLoading(true)
     setError('')
+    setCheckoutFailed(false)
 
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, plan: selectedPlan, interval: selectedInterval }),
       })
       const data = await res.json()
 
       if (data.success) {
-        setDone(true)
+        try {
+          const checkoutRes = await fetch('/api/stripe/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ plan: selectedPlan, interval: selectedInterval }),
+          })
+          const checkoutData = await checkoutRes.json().catch(() => null)
+
+          if (checkoutRes.ok && checkoutData?.success && checkoutData?.url) {
+            window.location.href = checkoutData.url
+            return
+          }
+
+          setCheckoutFailed(true)
+          setDone(true)
+        } catch {
+          setCheckoutFailed(true)
+          setDone(true)
+        }
       } else {
         setError(data.error || 'Une erreur est survenue. Veuillez réessayer.')
       }
@@ -88,6 +126,8 @@ export default function RegisterPage() {
     textTransform: 'uppercase',
     marginBottom: '8px',
   }
+
+  const selectedPlanLabel = getPlanLabel(selectedPlan as PlanKey)
 
   if (done) {
     return (
@@ -128,6 +168,21 @@ export default function RegisterPage() {
             <strong style={{ color: 'white' }}>{form.email}</strong><br />
             avec un lien pour accéder à votre espace.
           </p>
+          {checkoutFailed && (
+            <div style={{
+              background: 'rgba(248,113,113,0.08)',
+              border: '1px solid rgba(248,113,113,0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              textAlign: 'left',
+              marginBottom: '16px',
+            }}>
+              <p style={{ color: '#f87171', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
+                Votre compte a été créé, mais le démarrage de l&apos;essai Stripe a échoué.
+                Vous pourrez réessayer depuis les paramètres.
+              </p>
+            </div>
+          )}
           <div style={{
             background: '#27272a',
             borderRadius: '12px',
@@ -203,7 +258,7 @@ export default function RegisterPage() {
             fontWeight: 600,
             marginBottom: '16px',
           }}>
-            7 jours gratuits — sans CB
+            7 jours gratuits — carte requise
           </span>
           <h1 style={{
             color: 'white',
@@ -218,6 +273,23 @@ export default function RegisterPage() {
               backgroundClip: 'text',
             }}>Kadria</span>
           </h1>
+        </div>
+
+        {/* Selected plan reminder */}
+        <div style={{
+          background: 'rgba(34,197,94,0.06)',
+          border: '1px solid rgba(34,197,94,0.2)',
+          borderRadius: '14px',
+          padding: '14px 18px',
+          marginBottom: '24px',
+          textAlign: 'center',
+        }}>
+          <p style={{ color: 'white', fontSize: '14px', fontWeight: 600, margin: '0 0 4px' }}>
+            Offre sélectionnée : {selectedPlanLabel}
+          </p>
+          <p style={{ color: '#a1a1aa', fontSize: '12px', margin: 0 }}>
+            7 jours d&apos;essai gratuit — aucun débit avant la fin de l&apos;essai.
+          </p>
         </div>
 
         {/* Form card */}
@@ -325,9 +397,29 @@ export default function RegisterPage() {
           margin: '24px 0 0',
           lineHeight: 1.6,
         }}>
-          Sans engagement · Sans carte bancaire · Annulation à tout moment
+          Sans engagement · Carte requise — aucun débit avant la fin des 7 jours d&apos;essai · Annulation possible avant la fin de l&apos;essai
         </p>
       </div>
     </main>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <main style={{
+        minHeight: '100vh',
+        background: '#09090b',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, sans-serif',
+        color: '#a1a1aa',
+      }}>
+        Chargement...
+      </main>
+    }>
+      <RegisterPageContent />
+    </Suspense>
   )
 }

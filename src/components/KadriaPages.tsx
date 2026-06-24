@@ -70,9 +70,122 @@ import {
   getAnnualPitchLabel,
   getMonthlyPriceForMode,
   formatEuro,
+  PLAN_BASE_MONTHLY_PRICE,
   type BillingModeKey,
   type PricingPlanKey,
 } from '@/src/config/pricing';
+
+// Tiny module-level event bus so any CTA anywhere in this file can open the
+// trial plan-choice modal without prop-drilling through PageShell/SiteHeader.
+const TRIAL_MODAL_EVENT = 'kadria:open-trial-modal';
+
+export function openTrialPlanModal() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(TRIAL_MODAL_EVENT));
+  }
+}
+
+export function TrialPlanModal() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener(TRIAL_MODAL_EVENT, handler);
+    return () => window.removeEventListener(TRIAL_MODAL_EVENT, handler);
+  }, []);
+
+  if (!open) return null;
+
+  const goTo = (href: string) => {
+    setOpen(false);
+    window.location.href = href;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+      <button
+        type="button"
+        aria-label="Fermer"
+        onClick={() => setOpen(false)}
+        className="fixed inset-0 z-0 cursor-default"
+      />
+      <div className="relative z-10 w-full max-w-3xl rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-8">
+        <button
+          type="button"
+          aria-label="Fermer"
+          onClick={() => setOpen(false)}
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <h2 className="text-xl font-bold text-white sm:text-2xl">Choisissez le plan à tester</h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          7 jours d&apos;essai gratuit. Carte requise, aucun débit avant la fin de l&apos;essai.
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+            <p className="text-sm font-semibold text-white">Essentiel</p>
+            <p className="mt-1 text-2xl font-bold text-white">
+              {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
+            </p>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
+              <li>50 dossiers/mois</li>
+              <li>10 devis/mois</li>
+              <li>10 appels vocaux/mois</li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => goTo('/register?plan=essentiel&interval=monthly')}
+              className="mt-5 w-full rounded-lg border border-zinc-700 py-2.5 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+            >
+              Tester Essentiel
+            </button>
+          </div>
+
+          <div className="relative flex flex-col rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5">
+            <span className="absolute -top-3 left-5 rounded-full bg-green-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
+              Offre recommandée
+            </span>
+            <p className="text-sm font-semibold text-white">Performance</p>
+            <p className="mt-1 text-2xl font-bold text-white">
+              {PLAN_BASE_MONTHLY_PRICE.performance}€<span className="text-sm font-normal text-zinc-500">/mois</span>
+            </p>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
+              <li>Dossiers illimités</li>
+              <li>Devis illimités</li>
+              <li>Assistant vocal inclus selon quota</li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => goTo('/register?plan=performance&interval=monthly')}
+              className="mt-5 w-full rounded-lg bg-green-500 py-2.5 text-sm font-bold text-black transition-colors hover:bg-green-400"
+            >
+              Tester Performance
+            </button>
+          </div>
+
+          <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+            <p className="text-sm font-semibold text-white">Agence</p>
+            <p className="mt-1 text-2xl font-bold text-white">Sur devis</p>
+            <ul className="mt-4 flex-1 space-y-2 text-sm text-zinc-400">
+              <li>Multi-utilisateurs / multi-numéros</li>
+              <li>Site vitrine inclus</li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => goTo('/contact')}
+              className="mt-5 w-full rounded-lg border border-zinc-700 py-2.5 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
+            >
+              Nous contacter
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const DottedSurface = dynamic(
   () => import('@/components/ui/dotted-surface').then((mod) => mod.DottedSurface),
@@ -280,6 +393,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
       <SiteHeader />
       {children}
       <Footer />
+      <TrialPlanModal />
     </div>
   );
 }
@@ -522,12 +636,13 @@ function LandingFaqSection() {
             >
               Réserver une démo <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="/register"
+            <button
+              type="button"
+              onClick={() => openTrialPlanModal()}
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
             >
               Essai gratuit
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -3029,12 +3144,13 @@ export function LandingRoutePage() {
                 >
                   R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="/register"
+                <button
+                  type="button"
+                  onClick={() => openTrialPlanModal()}
                   className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03] sm:w-auto"
                 >
                   Essai gratuit
-                </Link>
+                </button>
               </div>
               <div className="kr-reveal kr-reveal-delay-4 mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400">
                 {[
@@ -3161,12 +3277,13 @@ export function LandingRoutePage() {
                 >
                   R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="/register"
+                <button
+                  type="button"
+                  onClick={() => openTrialPlanModal()}
                   className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
                 >
                   Essai gratuit
-                </Link>
+                </button>
               </div>
               <p className="text-sm text-zinc-500">
                 Installation accompagn&eacute;e &bull; Compatible avec votre site actuel &bull; Sans engagement
@@ -3245,12 +3362,13 @@ export function LandingRoutePage() {
               >
                 R&eacute;server une d&eacute;mo <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                href="/register"
+              <button
+                type="button"
+                onClick={() => openTrialPlanModal()}
                 className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
               >
                 Essai gratuit
-              </Link>
+              </button>
             </div>
           </div>
         </section>
@@ -3407,12 +3525,13 @@ export function LandingRoutePage() {
               >
                 Réserver une démo <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                href="/register"
+              <button
+                type="button"
+                onClick={() => openTrialPlanModal()}
                 className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
               >
                 Essai gratuit
-              </Link>
+              </button>
             </div>
             <p className="kr-reveal kr-reveal-delay-4 mt-4 text-center text-sm text-[var(--text-2)]">
               Installation accompagnée • Compatible avec votre site actuel • Sans engagement
@@ -3700,12 +3819,13 @@ export function LandingRoutePage() {
                 >
                   Réserver une démo <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="/register"
+                <button
+                  type="button"
+                  onClick={() => openTrialPlanModal()}
                   className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
                 >
                   Essai gratuit
-                </Link>
+                </button>
               </div>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-400">
                 {['Sans engagement', 'Support inclus dès le premier jour', 'Installation accompagnée'].map((item) => (
@@ -4119,7 +4239,7 @@ export function PricingRoutePage() {
       });
       const data = await res.json();
       if (res.status === 401) {
-        window.location.href = '/register';
+        window.location.href = `/register?plan=${plan.checkout.plan}&interval=${plan.checkout.interval}`;
         return;
       }
       if (data.success && data.url) {

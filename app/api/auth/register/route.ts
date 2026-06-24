@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { createMagicToken } from '@/src/lib/auth-utils'
+import { createMagicToken, createToken } from '@/src/lib/auth-utils'
 import { TABLES } from '@/src/lib/airtable'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { normalizePlan, getPlanLabel } from '@/src/config/plans'
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const resend = getResendClient()
-    const { email, firstName, lastName, phone, company, trade } = await request.json()
+    const { email, firstName, lastName, phone, company, trade, plan, interval } = await request.json()
 
     if (!email || !firstName || !lastName || !company || !trade) {
       return NextResponse.json(
@@ -36,6 +37,8 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase()
+    const requestedPlan = normalizePlan(plan)
+    const validatedPlan = requestedPlan === 'performance' ? 'performance' : 'essentiel'
 
     const { data: existingUser, error: existingUserError } = await supabaseAdmin
       .from(TABLES.users)
@@ -67,7 +70,7 @@ export async function POST(request: NextRequest) {
         last_name: lastName,
         company_name: company,
         role: 'Artisan',
-        plan: 'Performance',
+        plan: getPlanLabel(validatedPlan),
         statut: 'Trial',
         trial_end_date: trialEndDate,
         subscription_start: subscriptionStart,
@@ -172,7 +175,29 @@ export async function POST(request: NextRequest) {
       `,
     })
 
-    return NextResponse.json({ success: true })
+    const sessionToken = await createToken({
+      id: userData.id,
+      email: normalizedEmail,
+      artisanId,
+      companyName: company,
+      primaryColor: '#22c55e',
+      role: 'Artisan',
+      plan: normalizePlan(validatedPlan),
+      statut: 'Trial',
+      firstName,
+      lastName,
+    })
+
+    const response = NextResponse.json({ success: true })
+    response.cookies.set('kadria-auth', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    })
+
+    return response
   } catch (error) {
     console.error('[REGISTER] Error:', error instanceof Error ? error.message : String(error))
 

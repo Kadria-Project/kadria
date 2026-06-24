@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { KadriaLogo } from '@/src/components/KadriaLogo';
+import { openTrialPlanModal, TrialPlanModal } from '@/src/components/KadriaPages';
 
 export function DarkNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -79,12 +80,13 @@ export function DarkNav() {
           >
             Se connecter
           </Link>
-          <Link
-            href="/register"
+          <button
+            type="button"
+            onClick={() => openTrialPlanModal()}
             className="inline-flex min-h-11 items-center justify-center rounded-[10px] bg-accent px-4 py-2 text-sm font-semibold text-background transition-all duration-150 hover:scale-[1.02] hover:opacity-90"
           >
             Essai gratuit
-          </Link>
+          </button>
         </div>
         <button
           type="button"
@@ -130,17 +132,21 @@ export function DarkNav() {
             </Link>
           </nav>
           <div className="grid gap-3 border-t border-white/10 p-4">
-            <Link
-              href="/register"
-              onClick={() => setMobileOpen(false)}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(false);
+                openTrialPlanModal();
+              }}
               className="flex min-h-11 w-full items-center justify-center rounded-[10px] bg-accent px-5 py-2 text-sm font-semibold text-background transition-transform duration-200 hover:scale-[1.02] hover:opacity-90"
             >
               Essai gratuit
-            </Link>
+            </button>
           </div>
         </div>
       </div>
     </header>
+    <TrialPlanModal />
     </>
   );
 }
