@@ -6,6 +6,7 @@ import { generateDevisPdf } from '@/src/lib/devis-pdf'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { createSentDevisSnapshot } from '@/src/lib/devis-snapshots'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -267,12 +268,19 @@ export async function POST(
   const newStatut = mode === 'send' ? 'Envoyé' : 'Brouillon'
   const now = new Date().toISOString()
 
+  let sentSnapshot: { id: string } | null = null
+  if (mode === 'send' && emailSent) {
+    sentSnapshot = await createSentDevisSnapshot({ devis, config })
+  }
+
   try {
     await updateDevis(id, {
       pdfUrl,
       sent: mode === 'send',
       statut: newStatut,
       ...(mode === 'send' && !devis.quoteSentAt ? { quoteSentAt: now } : {}),
+      ...(mode === 'send' && emailSent ? { sentAt: now } : {}),
+      ...(sentSnapshot ? { sentSnapshotId: sentSnapshot.id } : {}),
     })
 
     const { error: projectUpdateError } = await supabaseAdmin

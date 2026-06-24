@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TABLES, getDevisByToken, updateDevis } from '@/src/lib/airtable'
+import { TABLES, getArtisanConfig, getDevisByToken, updateDevis } from '@/src/lib/airtable'
 import { notifyArtisanQuoteDeclined } from '@/src/lib/artisan-notifications'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { createDeclinedDevisSnapshot } from '@/src/lib/devis-snapshots'
 
 const MAX_REQUESTS_PER_IP = 5
 const requestCounts = new Map<string, number>()
@@ -45,6 +46,7 @@ export async function POST(
     }
 
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
 
     const count = (requestCounts.get(ip) || 0) + 1
     requestCounts.set(ip, count)
@@ -78,11 +80,24 @@ export async function POST(
     const noteEntry = `[${now}] Refus prospect (${reasonCategory || 'Autre'}) : ${reason}`
     const existingNote = devis.noteInterne || ''
 
+    const config = await getArtisanConfig(devis.artisanId)
+    const declinedSnapshot = await createDeclinedDevisSnapshot({
+      devis,
+      config,
+      decline: {
+        declinedAt: now,
+        reason: declineReason,
+        ip,
+        userAgent,
+      },
+    })
+
     await updateDevis(devis.id, {
       statut: 'Refusé',
       declinedAt: now,
       declineReason,
       noteInterne: existingNote ? `${existingNote}\n${noteEntry}` : noteEntry,
+      ...(declinedSnapshot ? { declinedSnapshotId: declinedSnapshot.id } : {}),
     })
 
     const { data: projectRow, error: projectFetchError } = await supabaseAdmin

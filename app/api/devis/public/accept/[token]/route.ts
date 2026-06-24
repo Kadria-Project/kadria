@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TABLES, getDevisByToken, updateDevis } from '@/src/lib/airtable'
+import { TABLES, getArtisanConfig, getDevisByToken, updateDevis } from '@/src/lib/airtable'
 import { notifyArtisanQuoteAccepted } from '@/src/lib/artisan-notifications'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import {
+  createAcceptedDevisSnapshot,
+  createSentDevisSnapshot,
+  getExistingSnapshot,
+} from '@/src/lib/devis-snapshots'
 
 const MAX_REQUESTS_PER_IP = 5
 const requestCounts = new Map<string, number>()
@@ -32,6 +37,7 @@ export async function POST(
     }
 
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const userAgent = request.headers.get('user-agent') || 'unknown'
 
     const count = (requestCounts.get(ip) || 0) + 1
     requestCounts.set(ip, count)
@@ -49,12 +55,41 @@ export async function POST(
     }
 
     const now = new Date().toISOString()
+    const config = await getArtisanConfig(devis.artisanId)
+
+    // Le frontend public n'envoie pas de nom/email distinct a l'acceptation —
+    // on retombe sur les coordonnees client deja connues du devis.
+    const acceptedByName = devis.clientName || null
+    const acceptedByEmail = devis.clientEmail || null
+
+    // Garantit qu'un snapshot "sent" existe toujours avant l'acceptation,
+    // meme si l'envoi initial n'a pas pu en creer un (mode fallback).
+    const existingSentSnapshot = await getExistingSnapshot(devis.id, 'sent')
+    if (!existingSentSnapshot) {
+      await createSentDevisSnapshot({ devis, config, options: { isFallback: true } })
+    }
+
+    const acceptedSnapshot = await createAcceptedDevisSnapshot({
+      devis,
+      config,
+      acceptance: {
+        acceptedAt: now,
+        acceptedByName,
+        acceptedByEmail,
+        ip,
+        userAgent,
+      },
+    })
 
     await updateDevis(devis.id, {
       accepted: true,
       acceptedAt: now,
       acceptedIp: ip,
       statut: 'Accepté',
+      acceptedUserAgent: userAgent,
+      acceptedByName,
+      acceptedByEmail,
+      ...(acceptedSnapshot ? { acceptedSnapshotId: acceptedSnapshot.id } : {}),
     })
 
     const { data: projectRow, error: projectFetchError } = await supabaseAdmin

@@ -49,6 +49,9 @@ interface DevisData {
   acceptedIp: string | null;
   declinedAt: string | null;
   declineReason: string;
+  sentSnapshotId?: string | null;
+  acceptedSnapshotId?: string | null;
+  declinedSnapshotId?: string | null;
 }
 
 function formatDate(value: string) {
@@ -433,7 +436,18 @@ function DevisView() {
               {devis.acceptedIp && (
                 <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#71717a' }}>IP : {devis.acceptedIp}</p>
               )}
+              {devis.acceptedSnapshotId && (
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#71717a' }}>Preuve d&apos;acceptation enregistrée</p>
+              )}
             </div>
+          )}
+
+          {isDeclined && devis.declinedSnapshotId && (
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#71717a' }}>Preuve de refus enregistrée</p>
+          )}
+
+          {devis.sentSnapshotId && (
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#71717a' }}>Preuve d&apos;envoi enregistrée</p>
           )}
 
           <button

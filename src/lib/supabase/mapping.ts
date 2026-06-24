@@ -534,6 +534,13 @@ export interface SupabaseDevis {
   declineReason: string
   followUpDisabled: boolean
   followUpDisabledAt: string | null
+  sentAt: string | null
+  sentSnapshotId: string | null
+  acceptedSnapshotId: string | null
+  declinedSnapshotId: string | null
+  acceptedByName: string | null
+  acceptedByEmail: string | null
+  acceptedUserAgent: string | null
 }
 
 export function mapSupabaseDevis(row: RawRow): SupabaseDevis {
@@ -576,6 +583,13 @@ export function mapSupabaseDevis(row: RawRow): SupabaseDevis {
     declineReason: getString(row, 'decline_reason', 'declineReason'),
     followUpDisabled: getBoolean(row, 'follow_up_disabled'),
     followUpDisabledAt: getValue<string | null>(row, ['follow_up_disabled_at'], null),
+    sentAt: getValue<string | null>(row, ['sent_at'], null),
+    sentSnapshotId: getValue<string | null>(row, ['sent_snapshot_id'], null),
+    acceptedSnapshotId: getValue<string | null>(row, ['accepted_snapshot_id'], null),
+    declinedSnapshotId: getValue<string | null>(row, ['declined_snapshot_id'], null),
+    acceptedByName: getValue<string | null>(row, ['accepted_by_name'], null),
+    acceptedByEmail: getValue<string | null>(row, ['accepted_by_email'], null),
+    acceptedUserAgent: getValue<string | null>(row, ['accepted_user_agent'], null),
   }
 }
 
@@ -644,6 +658,13 @@ export function toSupabaseDevisUpdate(input: Record<string, unknown>) {
   if (input.declineReason !== undefined) row.decline_reason = input.declineReason
   if (input.followUpDisabled !== undefined) row.follow_up_disabled = input.followUpDisabled
   if (input.followUpDisabledAt !== undefined) row.follow_up_disabled_at = input.followUpDisabledAt
+  if (input.sentAt !== undefined) row.sent_at = input.sentAt
+  if (input.sentSnapshotId !== undefined) row.sent_snapshot_id = input.sentSnapshotId
+  if (input.acceptedSnapshotId !== undefined) row.accepted_snapshot_id = input.acceptedSnapshotId
+  if (input.declinedSnapshotId !== undefined) row.declined_snapshot_id = input.declinedSnapshotId
+  if (input.acceptedByName !== undefined) row.accepted_by_name = input.acceptedByName
+  if (input.acceptedByEmail !== undefined) row.accepted_by_email = input.acceptedByEmail
+  if (input.acceptedUserAgent !== undefined) row.accepted_user_agent = input.acceptedUserAgent
 
   delete row.artisan_id
 
