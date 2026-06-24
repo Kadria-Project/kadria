@@ -87,8 +87,6 @@ export function openTrialPlanModal() {
 
 export function TrialPlanModal() {
   const [open, setOpen] = useState(false);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
-  const cardsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -103,14 +101,27 @@ export function TrialPlanModal() {
     window.location.href = href;
   };
 
-  const handleCardsScroll = () => {
-    const el = cardsRef.current;
-    if (!el || el.children.length === 0) return;
-    const firstSlide = el.children[0] as HTMLElement;
-    const slideWidth = firstSlide.offsetWidth;
-    const index = slideWidth > 0 ? Math.round(el.scrollLeft / slideWidth) : 0;
-    setActiveCardIndex(Math.min(Math.max(index, 0), el.children.length - 1));
-  };
+  const features = [
+    { icon: Layers, text: 'Dossiers illimités' },
+    { icon: FileCheck, text: 'Devis illimités' },
+    { icon: Bot, text: 'Assistant web de qualification' },
+    { icon: CheckSquare, text: 'Qualification automatique' },
+    { icon: KanbanSquare, text: 'Pipeline commercial' },
+    { icon: Send, text: 'Relances automatiques de devis' },
+    { icon: Target, text: 'Priorités du jour' },
+    { icon: MapPin, text: 'Géolocalisation des projets' },
+    { icon: LayoutDashboard, text: 'Tableau de bord de pilotage' },
+    { icon: BarChart3, text: 'Reporting avancé' },
+    { icon: Download, text: 'Export PDF' },
+    { icon: TrendingUp, text: 'Suivi de la valeur générée' },
+  ];
+
+  const guarantees = [
+    { icon: Banknote, text: 'Carte bancaire requise' },
+    { icon: Clock, text: 'Aucun débit pendant 7 jours' },
+    { icon: CheckCircle, text: 'Résiliable à tout moment' },
+    { icon: Shield, text: 'Accès complet à toutes les fonctionnalités' },
+  ];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
@@ -120,104 +131,110 @@ export function TrialPlanModal() {
         onClick={() => setOpen(false)}
         className="fixed inset-0 z-0 cursor-default"
       />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-8">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[28px] border border-white/10 bg-gradient-to-b from-zinc-950 to-black p-6 shadow-[0_24px_100px_rgba(34,197,94,0.12)] sm:p-9">
         <button
           type="button"
           aria-label="Fermer"
           onClick={() => setOpen(false)}
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white"
+          className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <h2 className="text-xl font-bold text-white sm:text-2xl">Choisissez le plan à tester</h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          7 jours d&apos;essai gratuit. Carte requise, aucun débit avant la fin de l&apos;essai.
-        </p>
-        <p className="mt-1 text-sm text-zinc-400">
-          Vous pouvez annuler avant la fin des 7 jours depuis votre espace abonnement.
-        </p>
+        <div className="text-center">
+          <span className="inline-flex items-center rounded-full border border-green-500/30 bg-green-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-green-400">
+            Essai gratuit 7 jours
+          </span>
+          <h2 className="mt-4 break-words text-2xl font-extrabold leading-tight text-white sm:text-3xl">
+            Découvrez
+            <br />
+            <span className="text-green-500">Kadria Performance</span>
+          </h2>
+          <p className="mx-auto mt-3 max-w-sm break-words text-sm leading-6 text-zinc-400">
+            Testez toutes les fonctionnalités sans limitation et voyez la différence pour votre activité.
+          </p>
+        </div>
 
-        <SwipeHint label="Swipez pour comparer les offres" className="mt-4 text-xs sm:hidden" />
-
-        <div className="mt-6 box-border w-full overflow-hidden sm:overflow-visible">
-          <div
-            ref={cardsRef}
-            onScroll={handleCardsScroll}
-            className="box-border flex w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0"
-          >
-            <div className="box-border w-full max-w-full flex-[0_0_100%] snap-center px-1 sm:w-auto sm:max-w-none sm:flex-none sm:px-0">
-              <div className="relative box-border flex w-full max-w-full flex-col overflow-hidden rounded-xl border border-green-500/40 bg-green-500/[0.06] p-5">
-                <span className="absolute -top-3 left-5 rounded-full bg-green-500 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
-                  Offre recommandée
-                </span>
-                <p className="break-words text-sm font-semibold text-white">Performance</p>
-                <p className="mt-1 break-words text-2xl font-bold text-white">
-                  {PLAN_BASE_MONTHLY_PRICE.performance}€<span className="text-sm font-normal text-zinc-500">/mois</span>
-                </p>
-                <ul className="mt-4 flex-1 space-y-2 whitespace-normal break-words text-sm text-zinc-400">
-                  <li>Dossiers illimités</li>
-                  <li>Devis illimités</li>
-                  <li>Qualification IA</li>
-                  <li>Assistant web</li>
-                  <li>Suivi commercial</li>
-                  <li>Relances devis</li>
-                  <li>Pipeline commercial</li>
-                  <li>Tableau de bord</li>
-                  <li>Priorités du jour</li>
-                  <li>Géolocalisation</li>
-                  <li>Reporting avancé</li>
-                  <li>Export PDF</li>
-                  <li>Valeur générée</li>
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => goTo('/register?plan=performance&interval=monthly')}
-                  className="mt-5 w-full rounded-lg bg-green-500 py-2.5 text-sm font-bold text-black transition-colors hover:bg-green-400"
-                >
-                  Tester Performance
-                </button>
+        <div className="relative mx-auto mt-7 w-full max-w-sm">
+          <div className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-green-500/20 blur-3xl" />
+          <div className="relative box-border w-full max-w-full overflow-hidden rounded-2xl border border-green-500/30 bg-zinc-900/80 p-4 shadow-[0_0_60px_rgba(34,197,94,0.18)]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-300">Pilotage commercial</span>
+              <span className="flex h-2 w-2 rounded-full bg-green-500" />
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2">
+                <p className="text-[10px] text-zinc-500">Dossiers</p>
+                <p className="mt-1 text-sm font-bold text-white">128</p>
+              </div>
+              <div className="rounded-lg border border-white/5 bg-white/[0.03] p-2">
+                <p className="text-[10px] text-zinc-500">Devis</p>
+                <p className="mt-1 text-sm font-bold text-white">46</p>
+              </div>
+              <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-2">
+                <p className="text-[10px] text-green-400">CA potentiel</p>
+                <p className="mt-1 text-sm font-bold text-green-400">28.4k€</p>
               </div>
             </div>
-
-            <div className="box-border w-full max-w-full flex-[0_0_100%] snap-center px-1 sm:w-auto sm:max-w-none sm:flex-none sm:px-0">
-              <div className="box-border flex w-full max-w-full flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-                <p className="break-words text-sm font-semibold text-white">Essentiel</p>
-                <p className="mt-1 break-words text-2xl font-bold text-white">
-                  {PLAN_BASE_MONTHLY_PRICE.essentiel}€<span className="text-sm font-normal text-zinc-500">/mois</span>
-                </p>
-                <ul className="mt-4 flex-1 space-y-2 whitespace-normal break-words text-sm text-zinc-400">
-                  <li>Dossiers</li>
-                  <li>Devis</li>
-                  <li>Qualification IA</li>
-                  <li>Assistant web</li>
-                  <li>Tableau de bord</li>
-                  <li>Fiches projets</li>
-                  <li>Notes internes</li>
-                  <li>Historique client</li>
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => goTo('/register?plan=essentiel&interval=monthly')}
-                  className="mt-5 w-full rounded-lg border border-zinc-700 py-2.5 text-sm font-semibold text-white transition-colors hover:border-green-500/40 hover:bg-white/[0.03]"
-                >
-                  Tester Essentiel
-                </button>
-              </div>
+            <div className="mt-3 flex items-end gap-1.5">
+              {[40, 65, 50, 80, 60, 95, 70].map((height, index) => (
+                <span
+                  key={index}
+                  className="flex-1 rounded-t-sm bg-gradient-to-t from-green-500/20 to-green-500"
+                  style={{ height: `${height * 0.4}px` }}
+                />
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex justify-center gap-1.5 sm:hidden">
-          {[0, 1].map((index) => (
-            <span
-              key={index}
-              className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                index === activeCardIndex ? 'bg-green-500' : 'bg-zinc-700'
-              }`}
-            />
+        <p className="mt-8 text-center text-xs font-semibold uppercase tracking-widest text-green-500">
+          Ce qui est inclus pendant votre essai
+        </p>
+        <ul className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {features.map(({ icon: Icon, text }) => (
+            <li
+              key={text}
+              className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-300"
+            >
+              <Icon className="h-4 w-4 flex-shrink-0 text-green-500" />
+              <span className="break-words">{text}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-6 grid grid-cols-2 gap-2.5">
+          {guarantees.map(({ icon: Icon, text }) => (
+            <div
+              key={text}
+              className="flex flex-col items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-center"
+            >
+              <Icon className="h-5 w-5 text-green-500" />
+              <span className="break-words text-xs text-zinc-400">{text}</span>
+            </div>
           ))}
         </div>
+
+        <div className="mt-7 text-center">
+          <p className="text-3xl font-black text-green-500">
+            {PLAN_BASE_MONTHLY_PRICE.performance}€<span className="text-base font-semibold text-zinc-400">/mois</span>
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">après la période d&apos;essai</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => goTo('/register?plan=performance&interval=monthly')}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-green-500 py-4 text-base font-bold text-black shadow-[0_8px_30px_rgba(34,197,94,0.35)] transition-colors hover:bg-green-400"
+        >
+          Commencer mon essai gratuit
+          <ArrowRight className="h-5 w-5" />
+        </button>
+
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-zinc-500">
+          <Shield className="h-3.5 w-3.5" />
+          Vos données sont sécurisées
+        </p>
       </div>
     </div>
   );
