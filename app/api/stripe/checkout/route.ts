@@ -7,6 +7,7 @@ import {
   isAllowedPriceId,
   resolvePriceId,
   StripeNotConfiguredError,
+  STRIPE_TRIAL_DAYS,
 } from '@/src/lib/stripe'
 import type { PlanKey } from '@/src/lib/plans'
 
@@ -74,6 +75,19 @@ export async function POST(request: Request) {
         user_id: session.id ?? '',
         plan: mapping.plan,
         interval: mapping.interval,
+      },
+      payment_method_collection: 'always',
+      subscription_data: {
+        trial_period_days: STRIPE_TRIAL_DAYS,
+        trial_settings: {
+          end_behavior: { missing_payment_method: 'cancel' },
+        },
+        metadata: {
+          artisan_id: artisanId,
+          user_id: session.id ?? '',
+          plan: mapping.plan,
+          interval: mapping.interval,
+        },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard-v2?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/tarifs?checkout=cancel`,

@@ -57,6 +57,7 @@ const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
 const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   essai: 'Essai',
   trial: 'Essai',
+  trialing: 'Essai gratuit en cours',
   actif: 'Actif',
   active: 'Actif',
   en_cours: 'Actif',

@@ -3976,7 +3976,7 @@ const addonSiteVitrine = {
 
 const pricingGuarantees = [
   { title: 'Sans engagement', subtitle: 'Résiliez à tout moment' },
-  { title: 'Essai 7 jours', subtitle: 'Sans carte bancaire' },
+  { title: 'Essai 7 jours', subtitle: 'Carte requise, aucun débit avant la fin de l\'essai' },
   { title: 'Support J+1', subtitle: 'Réponse sous 24h ouvrées' },
 ];
 
@@ -3991,7 +3991,8 @@ const pricingFaqQuick = [
   },
   {
     question: "Que se passe-t-il après l'essai ?",
-    answer: 'Vous choisissez votre plan ou vous arrêtez — sans frais, sans engagement.',
+    answer:
+      "Votre carte est débitée automatiquement à la fin des 7 jours, sauf si vous annulez avant — sans engagement.",
   },
 ];
 

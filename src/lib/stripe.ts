@@ -4,6 +4,13 @@ import type { PlanKey } from '@/src/lib/plans'
 
 let client: Stripe | null = null
 
+/**
+ * Fixed product policy: every Essentiel/Performance subscription checkout
+ * starts with a 7-day free trial (card required upfront, auto-charged at
+ * trial end unless canceled). Not configurable per-request / by the client.
+ */
+export const STRIPE_TRIAL_DAYS = 7
+
 export class StripeNotConfiguredError extends Error {
   constructor() {
     super('Stripe non configuré')
