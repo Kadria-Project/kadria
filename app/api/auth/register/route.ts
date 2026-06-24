@@ -99,7 +99,6 @@ export async function POST(request: NextRequest) {
         subscription_start: subscriptionStart,
         artisan_id: artisanId,
         phone: phone || '',
-        active: true,
       })
 
     if (userError) {

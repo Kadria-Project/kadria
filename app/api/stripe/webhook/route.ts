@@ -35,6 +35,13 @@ async function updateUsersRow(
   throw new Error('No match key (artisanId/customerId) to update Users row')
 }
 
+function statutForSubscriptionStatus(status: Stripe.Subscription.Status): string | undefined {
+  if (status === 'trialing') return 'Trial'
+  if (status === 'active') return 'Actif'
+  if (status === 'canceled') return 'Résilié'
+  return undefined
+}
+
 function subscriptionToPatch(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price?.id
   const mapping = priceId ? getPriceToPlanMap()[priceId] : undefined
@@ -43,6 +50,11 @@ function subscriptionToPatch(subscription: Stripe.Subscription) {
     stripe_subscription_id: subscription.id,
     billing_status: subscription.status,
     cancel_at_period_end: subscription.cancel_at_period_end,
+  }
+
+  const statut = statutForSubscriptionStatus(subscription.status)
+  if (statut) {
+    patch.statut = statut
   }
 
   const currentPeriodEnd = subscription.items.data[0]?.current_period_end
@@ -146,6 +158,7 @@ export async function POST(request: Request) {
           {
             plan: 'essentiel',
             billing_status: 'canceled',
+            statut: 'Résilié',
             stripe_subscription_id: null,
             stripe_price_id: null,
           },
@@ -159,7 +172,7 @@ export async function POST(request: Request) {
           typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
         const artisanId = invoice.metadata?.artisan_id
 
-        const patch: Record<string, unknown> = { billing_status: 'active' }
+        const patch: Record<string, unknown> = { billing_status: 'active', statut: 'Actif' }
 
         const priceRef = invoice.lines?.data?.[0]?.pricing?.price_details?.price
         const lineItemPriceId = typeof priceRef === 'string' ? priceRef : priceRef?.id
