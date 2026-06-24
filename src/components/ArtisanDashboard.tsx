@@ -22,6 +22,7 @@ import {
   Send,
   Trophy,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   BarChart3,
   Bell,
@@ -1218,6 +1219,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -1961,15 +1963,39 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: isMobile ? 'block' : 'flex', overflowX: 'hidden' }}>
       {!isMobile && (
         <aside
-          className="sticky top-0 flex h-screen w-[252px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-6"
-          style={{ background: 'color-mix(in srgb, var(--bg-elevated) 92%, #050607 8%)' }}
+          className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] py-6"
+          style={{
+            background: 'color-mix(in srgb, var(--bg-elevated) 92%, #050607 8%)',
+            width: sidebarCollapsed ? '76px' : '252px',
+            paddingLeft: sidebarCollapsed ? '10px' : '16px',
+            paddingRight: sidebarCollapsed ? '10px' : '16px',
+            transition: 'width 0.2s ease, padding 0.2s ease',
+            overflow: 'hidden',
+          }}
         >
-          <div className="mb-8 px-2">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">Kadria</p>
-            <p className="text-lg font-extrabold text-[var(--text-1)]">KADRIA PRO</p>
+          <div className={`mb-8 flex items-center ${sidebarCollapsed ? 'flex-col gap-3 px-0' : 'justify-between px-2'}`}>
+            {sidebarCollapsed ? (
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">K</p>
+            ) : (
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">Kadria</p>
+                <p className="truncate text-lg font-extrabold text-[var(--text-1)]">
+                  KADRIA PRO{artisanFirstName ? ` · ${artisanFirstName}` : ''}
+                </p>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              aria-label={sidebarCollapsed ? 'Déployer le menu' : 'Réduire le menu'}
+              title={sidebarCollapsed ? 'Déployer le menu' : 'Réduire le menu'}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
           </div>
 
-          <nav className="flex flex-1 flex-col gap-1">
+          <nav className={`flex flex-1 flex-col gap-1 ${sidebarCollapsed ? 'items-center' : ''}`}>
             {NAV_ITEMS.map((item) => {
               const isActive = dashboardMode === item.mode;
               const Icon = item.icon;
@@ -1981,49 +2007,81 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     setDashboardMode(item.mode);
                     setQuickFilter(null);
                   }}
-                  className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150 ${
-                    isActive
-                      ? 'border-green-500/30 bg-green-500/10 text-green-400'
-                      : 'border-transparent text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
-                  }`}
-                  style={isActive ? { boxShadow: 'inset 3px 0 0 0 var(--accent)' } : undefined}
+                  title={item.label}
+                  aria-label={item.label}
+                  className={
+                    sidebarCollapsed
+                      ? `flex h-10 w-10 items-center justify-center rounded-xl border transition-colors duration-150 ${
+                          isActive
+                            ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                            : 'border-transparent text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
+                        }`
+                      : `flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150 ${
+                          isActive
+                            ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                            : 'border-transparent text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
+                        }`
+                  }
+                  style={isActive && !sidebarCollapsed ? { boxShadow: 'inset 3px 0 0 0 var(--accent)' } : undefined}
                 >
                   <Icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                 </button>
               );
             })}
           </nav>
 
-          <div className="mt-auto flex flex-col gap-2 pt-4">
+          <div className={`mt-auto flex flex-col gap-2 pt-4 ${sidebarCollapsed ? 'items-center' : ''}`}>
             <button
               onClick={() => setPlanModalOpen(true)}
-              className="flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-2.5 text-sm font-semibold text-[var(--accent)]"
+              title={planChangeCtaLabel}
+              aria-label={planChangeCtaLabel}
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] text-[var(--accent)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-2.5 text-sm font-semibold text-[var(--accent)]'
+              }
             >
-              <Sparkles className="w-4 h-4" /> {planChangeCtaLabel}
+              <Sparkles className="w-4 h-4" /> {!sidebarCollapsed && planChangeCtaLabel}
             </button>
 
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
-              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]"
+              aria-label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]'
+              }
             >
-              {theme === 'dark' ? '☀️' : '🌙'} {theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
+              {theme === 'dark' ? '☀️' : '🌙'} {!sidebarCollapsed && (theme === 'dark' ? 'Thème clair' : 'Thème sombre')}
             </button>
 
             <button
               onClick={() => router.push('/parametres')}
-              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]"
+              title="Mon profil"
+              aria-label="Mon profil"
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]'
+              }
             >
-              ⚙️ Mon profil
+              ⚙️ {!sidebarCollapsed && 'Mon profil'}
             </button>
 
             <button
               onClick={logout}
               title="Déconnexion"
-              className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2.5 text-sm text-[var(--text-2)]"
+              aria-label="Déconnexion"
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2.5 text-sm text-[var(--text-2)]'
+              }
             >
-              <LogOut className="w-4 h-4" /> Déconnexion
+              <LogOut className="w-4 h-4" /> {!sidebarCollapsed && 'Déconnexion'}
             </button>
           </div>
         </aside>
@@ -2066,41 +2124,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </button>
         </div>
       )}
-      {/* Header */}
+      {/* Header (mobile only: burger menu + drawer; desktop greeting removed) */}
+      {isMobile && (
       <div
         style={{
           padding: 0,
           display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
+          flexDirection: 'column',
           justifyContent: 'space-between',
-          alignItems: isMobile ? 'stretch' : 'flex-start',
+          alignItems: 'stretch',
           marginBottom: '24px',
           gap: '16px',
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: 'var(--accent)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 8px' }}>
-            Kadria Pro
-          </p>
-
-          <h1 style={{ color: 'var(--text-1)', fontSize: isMobile ? '24px' : '30px', fontWeight: 700, margin: '0 0 6px', lineHeight: 1.25 }}>
-            {artisanFirstName ? `Bonjour ${artisanFirstName},` : 'Bonjour,'}
-          </h1>
-
-          <p style={{ color: 'var(--text-2)', fontSize: '15px', margin: '0 0 6px' }}>
-            Voici ce que Kadria a généré pour vous cette semaine.
-          </p>
-
-          <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-            Dossiers captés · Devis en attente · Valeur à récupérer
-            <span style={{ margin: '0 6px', color: 'var(--border)' }}>·</span>
-            <span style={{ textTransform: 'capitalize' }}>{todayLabel}</span>
-          </p>
-        </div>
-
-        {isMobile ? (
-          <div style={{ width: '100%', position: 'relative' }}>
+        <div style={{ width: '100%', position: 'relative' }}>
             <button
               onClick={() => setMobileMenuOpen((v) => !v)}
               style={{
@@ -2224,8 +2262,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
           </div>
-        ) : null}
       </div>
+      )}
 
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
       {showValueOverview && !loading && (
