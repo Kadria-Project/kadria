@@ -461,6 +461,14 @@ export interface UserRecord {
   cancelledAt: string
   cancellationReason: string
   theme: string
+  stripeCustomerId: string
+  stripeSubscriptionId: string
+  billingStatus: string
+  billingInterval: string
+  currentPeriodEnd: string
+  trialEnd: string
+  cancelAtPeriodEnd: boolean
+  billingUpdatedAt: string
 }
 
 function mapSupabaseAdminUser(row: Record<string, unknown>): UserRecord {
@@ -491,6 +499,14 @@ function mapSupabaseAdminUser(row: Record<string, unknown>): UserRecord {
     cancelledAt: s(row.cancelled_at),
     cancellationReason: s(row.cancellation_reason),
     theme: s(row.theme),
+    stripeCustomerId: s(row.stripe_customer_id),
+    stripeSubscriptionId: s(row.stripe_subscription_id),
+    billingStatus: s(row.billing_status),
+    billingInterval: s(row.billing_interval),
+    currentPeriodEnd: s(row.current_period_end),
+    trialEnd: s(row.trial_end),
+    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    billingUpdatedAt: s(row.billing_updated_at),
   }
 }
 

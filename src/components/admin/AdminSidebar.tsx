@@ -4,13 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  CreditCard,
   LayoutDashboard,
   Mail,
   Menu,
   Users,
   X,
-  XCircle,
 } from 'lucide-react';
 
 interface NavItem {
@@ -22,8 +20,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Vue d'ensemble", href: '/admin', icon: LayoutDashboard },
   { label: 'Clients', href: '/admin/clients', icon: Users },
-  { label: 'Abonnements', href: '/admin/clients?filter=plan', icon: CreditCard },
-  { label: 'Résiliations', href: '/admin/clients?filter=cancelled', icon: XCircle },
   { label: 'Emails', href: '/admin/emails', icon: Mail },
 ];
 

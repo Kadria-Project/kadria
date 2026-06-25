@@ -27,6 +27,14 @@ interface UserRecord {
   suspendedAt: string;
   cancelledAt: string;
   cancellationReason: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  billingStatus: string;
+  billingInterval: string;
+  currentPeriodEnd: string;
+  trialEnd: string;
+  cancelAtPeriodEnd: boolean;
+  billingUpdatedAt: string;
 }
 
 interface Metrics {
@@ -141,6 +149,32 @@ function toInputDate(value: string) {
   return d.toISOString().slice(0, 10);
 }
 
+function formatDateFr(value: string) {
+  if (!value) return 'Non disponible';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return 'Non disponible';
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function billingStatusBadge(client: UserRecord): { label: string; bg: string; color: string } {
+  if (client.cancelAtPeriodEnd) {
+    return { label: 'Annulation prévue', bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
+  }
+  if (client.billingStatus === 'past_due' || client.billingStatus === 'unpaid') {
+    return { label: 'Paiement en échec', bg: 'rgba(220,38,38,0.12)', color: '#dc2626' };
+  }
+  if (client.billingStatus === 'trialing' || client.statut === 'Trial') {
+    return { label: 'Trial actif', bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' };
+  }
+  if (client.billingStatus === 'active') {
+    return { label: 'Paiement OK', bg: 'rgba(34,197,94,0.1)', color: '#22c55e' };
+  }
+  if (client.billingStatus === 'canceled') {
+    return { label: 'Résilié', bg: 'rgba(220,38,38,0.1)', color: '#dc2626' };
+  }
+  return { label: 'Non disponible', bg: 'rgba(161,161,170,0.12)', color: '#a1a1aa' };
+}
+
 function initials(firstName: string, lastName: string, email: string) {
   const a = (firstName || '').trim()[0];
   const b = (lastName || '').trim()[0];
@@ -212,6 +246,7 @@ export default function AdminClientDetailPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const [form, setForm] = useState({
     firstName: '',
@@ -318,6 +353,22 @@ export default function AdminClientDetailPage() {
       showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleOpenPortal() {
+    setPortalLoading(true);
+    try {
+      const res = await fetch(`/api/admin/clients/${id}/portal`, { method: 'POST' });
+      const data = await res.json();
+      if (data.error || !data.url) {
+        throw new Error(data.error || 'Lien indisponible');
+      }
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      showToast('error', `Customer Portal indisponible${err instanceof Error ? ' : ' + err.message : ''}`);
+    } finally {
+      setPortalLoading(false);
     }
   }
 
@@ -631,6 +682,85 @@ export default function AdminClientDetailPage() {
         </div>
 
         <div>
+          <div style={card}>
+            <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Abonnement &amp; facturation</p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              <Badge label={billingStatusBadge(client).label} palette={billingStatusBadge(client)} />
+              {client.plan && <Badge label={client.plan} palette={PLAN_BADGE[client.plan]} />}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Plan actuel</span>
+                <span style={{ fontWeight: 700 }}>{client.plan || 'Non disponible'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Trial actif</span>
+                <span style={{ fontWeight: 700 }}>{client.statut === 'Trial' ? 'Oui' : 'Non'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Date de fin trial</span>
+                <span style={{ fontWeight: 700 }}>{formatDateFr(client.trialEnd || client.trialEndDate)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Statut paiement</span>
+                <span style={{ fontWeight: 700 }}>{client.billingStatus || 'Non disponible'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Prochaine échéance</span>
+                <span style={{ fontWeight: 700 }}>{formatDateFr(client.currentPeriodEnd || client.nextBilling)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Dernière facture</span>
+                <span style={{ fontWeight: 700 }}>Non disponible</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', wordBreak: 'break-all' }}>
+                <span style={{ color: '#a1a1aa' }}>Stripe customer ID</span>
+                <span style={{ fontWeight: 700, fontSize: '12px' }}>{client.stripeCustomerId || 'Non disponible'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', wordBreak: 'break-all' }}>
+                <span style={{ color: '#a1a1aa' }}>Stripe subscription ID</span>
+                <span style={{ fontWeight: 700, fontSize: '12px' }}>{client.stripeSubscriptionId || 'Non disponible'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#a1a1aa' }}>Historique billing</span>
+                <span style={{ fontWeight: 700 }}>Non disponible</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
+              <button
+                onClick={handleOpenPortal}
+                disabled={!client.stripeCustomerId || portalLoading}
+                style={{
+                  ...secondaryButton,
+                  width: '100%',
+                  opacity: client.stripeCustomerId ? 1 : 0.5,
+                  cursor: client.stripeCustomerId ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {!client.stripeCustomerId
+                  ? 'Customer Portal — à connecter'
+                  : portalLoading
+                    ? 'Ouverture...'
+                    : 'Ouvrir le Customer Portal'}
+              </button>
+              <button
+                disabled
+                title="Nécessite une route d'annulation Stripe non encore implémentée"
+                style={{
+                  ...secondaryButton,
+                  width: '100%',
+                  opacity: 0.5,
+                  cursor: 'not-allowed',
+                }}
+              >
+                Annulation — à connecter
+              </button>
+            </div>
+          </div>
+
           <div style={card}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Abonnement</p>
 
