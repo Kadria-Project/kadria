@@ -107,12 +107,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Agenda non connecté' }, { status: 409 })
     }
 
+    // Aucun fuseau horaire utilisateur n'existe dans le modèle artisan/projet
+    // (vérifié par grep) — Europe/Paris est donc utilisé systématiquement.
+    const timeZone = 'Europe/Paris'
+
     const googleEventBody: Record<string, unknown> = {
       summary: title,
       description: description || undefined,
       location: location || undefined,
-      start: { dateTime: start },
-      end: { dateTime: end },
+      start: { dateTime: start, timeZone },
+      end: { dateTime: end, timeZone },
     }
 
     const createResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
