@@ -534,12 +534,23 @@ function SiteHeader() {
   );
 }
 
-function Footer() {
+export function Footer() {
   return (
     <footer className="border-t border-white/5 py-12">
       <div className="mx-auto flex max-w-[1488px] flex-col gap-4 px-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
         <KadriaLogo size="md" />
         <p>© {new Date().getFullYear()} Kadria. Tous droits reserves.</p>
+        <nav className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground md:gap-6">
+          <Link href="/legal" className="transition-colors hover:text-foreground">
+            Mentions légales
+          </Link>
+          <Link href="/privacy" className="transition-colors hover:text-foreground">
+            Confidentialité
+          </Link>
+          <Link href="/terms" className="transition-colors hover:text-foreground">
+            CGU
+          </Link>
+        </nav>
       </div>
     </footer>
   );
