@@ -662,7 +662,7 @@ export default function MobileDashboardView({
                 icon={TargetIcon}
                 title="Pipeline complet"
                 description="Toutes vos opportunités commerciales"
-                onClick={() => { setMoreOpen(false); setDashboardMode('commercial'); resetFilters(); }}
+                onClick={() => { setMoreOpen(false); setDashboardMode('pipeline'); resetFilters(); }}
               />
               <MenuRow
                 icon={BarChart3}
