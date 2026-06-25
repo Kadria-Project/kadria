@@ -1141,6 +1141,18 @@ function navButtonStyle(active: boolean): React.CSSProperties {
   };
 }
 
+function parseAccountDate(value: string | null): Date | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateFR(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}`;
+}
+
 function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -1155,6 +1167,48 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const canAccessFeature = (feature: PlanFeatureKey) => hasFeature(plan, feature);
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
   const planChangeCtaLabel = plan === 'essentiel' ? 'Mettre à niveau' : plan === 'performance' ? 'Changer d\'offre' : 'Gérer mon offre';
+
+  const [accountStatus, setAccountStatus] = useState<{
+    status: string | null;
+    billingStatus: string | null;
+    trialEndDate: string | null;
+  } | null>(null);
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+  const [continueTrialLoading, setContinueTrialLoading] = useState(false);
+
+  const isSubscriptionActive = accountStatus
+    ? accountStatus.status?.toLowerCase() === 'actif' || accountStatus.billingStatus === 'active'
+    : false;
+  const isTrialActive = Boolean(
+    accountStatus &&
+    !isSubscriptionActive &&
+    (accountStatus.status?.toLowerCase() === 'trial' || accountStatus.billingStatus === 'trialing'),
+  );
+  const trialEndDateObj = isTrialActive ? parseAccountDate(accountStatus?.trialEndDate ?? null) : null;
+  const trialEndDateFR = trialEndDateObj ? formatDateFR(trialEndDateObj) : null;
+  const trialHoursLeft = trialEndDateObj ? (trialEndDateObj.getTime() - Date.now()) / (1000 * 60 * 60) : null;
+  const showTrialEndingBanner =
+    isTrialActive && !trialBannerDismissed && trialHoursLeft !== null && trialHoursLeft <= 48 && trialHoursLeft > -24;
+
+  const continueWithPerformance = async () => {
+    setContinueTrialLoading(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'performance', interval: 'monthly' }),
+      });
+      const data = await res.json();
+      if (data?.success && data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+    } catch {
+      // L'utilisateur reste sur le dashboard ; il peut réessayer via "Voir les offres".
+    } finally {
+      setContinueTrialLoading(false);
+    }
+  };
 
   const user = {
     email: 'demo@kadria.local',
@@ -1352,6 +1406,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           setMonthlyUsage(data.usage);
         } else {
           setMonthlyUsageError(true);
+        }
+        if (data.success && data.account) {
+          setAccountStatus(data.account);
         }
       })
       .catch(() => {
@@ -2063,6 +2120,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             })}
           </nav>
 
+          {isTrialActive && trialEndDateFR && (
+            sidebarCollapsed ? (
+              <div
+                className="mb-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500/10 text-green-400"
+                title={`Essai gratuit Performance jusqu'au ${trialEndDateFR}`}
+              >
+                <Sparkles className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="mb-2 shrink-0 rounded-xl border border-green-500/30 bg-green-500/[0.08] px-3 py-2.5">
+                <p className="text-xs font-semibold text-green-400">Vous testez Kadria Performance</p>
+                <p className="mt-0.5 text-xs text-[var(--text-2)]">Essai gratuit jusqu&apos;au {trialEndDateFR}</p>
+              </div>
+            )
+          )}
+
           <div className={`mt-auto flex shrink-0 flex-col gap-2 border-t border-[var(--border)] pt-4 ${sidebarCollapsed ? 'items-center' : ''}`}>
             <button
               onClick={() => setPlanModalOpen(true)}
@@ -2121,6 +2194,46 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
+      {showTrialEndingBanner && (
+        <div
+          className="mb-5 flex flex-col gap-3 rounded-2xl border border-green-500/30 bg-green-500/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500/10 text-green-400">
+              <Clock className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-1)]">Votre essai se termine bientôt.</p>
+              <p className="mt-0.5 text-sm text-[var(--text-2)]">Continuez avec Performance ou choisissez une offre adaptée.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={continueWithPerformance}
+              disabled={continueTrialLoading}
+              className="inline-flex items-center justify-center rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-green-400 disabled:opacity-60"
+            >
+              {continueTrialLoading ? '...' : 'Continuer avec Performance'}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/tarifs')}
+              className="inline-flex items-center justify-center rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
+            >
+              Voir les offres
+            </button>
+            <button
+              type="button"
+              aria-label="Fermer"
+              onClick={() => setTrialBannerDismissed(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       {onboardingIncomplete && (
         <div
           style={{
@@ -2226,6 +2339,20 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     {item.label}
                   </button>
                 ))}
+
+                {isTrialActive && trialEndDateFR && (
+                  <div
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid rgba(34,197,94,0.3)',
+                      background: 'rgba(34,197,94,0.08)',
+                      padding: '9px 12px',
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#4ade80' }}>Vous testez Kadria Performance</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-2)' }}>Essai gratuit jusqu&apos;au {trialEndDateFR}</p>
+                  </div>
+                )}
 
                 <button
                   onClick={() => {
