@@ -454,10 +454,10 @@ export default function MobileDashboardView({
         </div>
       </div>
 
-      {/* REPORTING — uniquement des indicateurs non déjà visibles dans le carrousel KPI */}
+      {/* VALEUR GÉNÉRÉE — uniquement des indicateurs non déjà visibles dans le carrousel KPI */}
       {(conversionCard || wonCard) && (
         <div>
-          <div style={sectionTitle}>Reporting</div>
+          <div style={sectionTitle}>Valeur générée</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {conversionCard && (
               <div style={{ ...cardBase, padding: '8px 12px', flex: '1 1 auto' }}>
@@ -666,9 +666,9 @@ export default function MobileDashboardView({
               />
               <MenuRow
                 icon={BarChart3}
-                title="Reporting"
-                description="Analyses détaillées de votre activité"
-                disabled
+                title="Valeur générée"
+                description="ROI, conversions et temps gagné"
+                onClick={() => { setMoreOpen(false); setDashboardMode('value-report'); }}
               />
               <MenuRow
                 icon={CalendarDays}

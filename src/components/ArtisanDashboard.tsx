@@ -107,6 +107,8 @@ const MobileDevisView = dynamic(() => import('./dashboard/MobileDevisView'), { s
 
 const MobilePipelineView = dynamic(() => import('./dashboard/MobilePipelineView'), { ssr: false });
 
+const MobileValueReportView = dynamic(() => import('./dashboard/MobileValueReportView'), { ssr: false });
+
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
   { ssr: false },
@@ -129,7 +131,7 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
-export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline';
+export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -1771,6 +1773,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const showClientsWorkspace = dashboardMode === 'clients';
   const showCalendarWorkspace = dashboardMode === 'calendar';
   const showPipelineWorkspace = dashboardMode === 'pipeline';
+  const showValueReportWorkspace = dashboardMode === 'value-report';
   const showBusinessOverviewDesktop = showBusinessOverview && !isMobile;
 
 
@@ -3115,6 +3118,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {isMobile && showPipelineWorkspace && (
         <MobilePipelineView projects={sortedProjects} router={router} />
+      )}
+
+      {isMobile && showValueReportWorkspace && (
+        <MobileValueReportView
+          projects={sortedProjects}
+          topOpportunities={topOpportunities}
+          hotLeads={hotLeads}
+          valueCaEnCours={valueCaEnCours}
+          valueCaGagne={valueCaGagne}
+          valueDevisEnvoyesCount={valueDevisEnvoyesCount}
+          valueDevisAcceptesCount={valueDevisAcceptesCount}
+          valueTauxConversion={valueTauxConversion}
+          qualifiedValueCount={qualifiedValueCount}
+          preparedQuotesValueCount={preparedQuotesValueCount}
+          handledFollowUpsValueCount={handledFollowUpsValueCount}
+          estimatedHoursSaved={estimatedHoursSaved}
+          estimatedRemMinutesSaved={estimatedRemMinutesSaved}
+        />
       )}
 
       {(showCommercialWorkspace || showClientsWorkspace) &&
