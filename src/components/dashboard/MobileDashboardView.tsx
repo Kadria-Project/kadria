@@ -13,7 +13,15 @@ import {
   FolderOpen,
   Target,
   CalendarDays,
-  MoreHorizontal,
+  Menu as MenuIcon,
+  FileText,
+  Bell,
+  StickyNote,
+  Target as TargetIcon,
+  BarChart3,
+  CreditCard,
+  Settings,
+  LifeBuoy,
 } from 'lucide-react';
 import {
   getProjectRiskStatus,
@@ -465,43 +473,31 @@ export default function MobileDashboardView({
         </div>
       )}
 
-      {/* FAB */}
-      <button
-        type="button"
-        aria-label="Créer"
-        onClick={() => setFabOpen(true)}
-        style={{
-          position: 'fixed',
-          bottom: '76px',
-          right: '16px',
-          width: '52px',
-          height: '52px',
-          borderRadius: '50%',
-          background: 'var(--accent)',
-          color: '#052e16',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: 'var(--impact-glow)',
-          zIndex: 40,
-          cursor: 'pointer',
-        }}
-      >
-        <Plus style={{ width: 24, height: 24 }} />
-      </button>
-
       {fabOpen && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}
+          className="kr-sheet-backdrop"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 70, display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setFabOpen(false)}
         >
           <div
-            style={{ ...cardBase, width: '100%', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, padding: '16px' }}
+            className="kr-sheet-panel"
+            style={{
+              ...cardBase,
+              width: '100%',
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              borderTopLeftRadius: '18px',
+              borderTopRightRadius: '18px',
+              padding: '16px',
+              paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>Créer</span>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '999px', background: 'var(--border)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Créer rapidement</span>
               <button type="button" onClick={() => setFabOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer' }}>
                 <X style={{ width: 18, height: 18 }} />
               </button>
@@ -510,30 +506,46 @@ export default function MobileDashboardView({
               <button
                 type="button"
                 onClick={() => { setFabOpen(false); setCreateOpen(true); }}
-                style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)', color: 'var(--accent)', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: 600, textAlign: 'left', cursor: 'pointer' }}
+                style={quickCreateRowStyle(true)}
               >
-                Créer un dossier
+                <FolderOpen style={{ width: 20, height: 20, color: 'var(--accent)', flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>Nouveau dossier</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>Créer un nouveau dossier client</span>
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => { setFabOpen(false); setDashboardMode('clients'); showToast('Sélectionnez un dossier pour créer un devis'); }}
-                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-2)', borderRadius: '10px', padding: '12px', fontSize: '14px', textAlign: 'left', cursor: 'pointer' }}
+                style={quickCreateRowStyle(false)}
               >
-                Créer un devis
+                <FileText style={{ width: 20, height: 20, color: 'var(--text-2)', flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>Nouveau devis</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>Choisissez un dossier existant</span>
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => { setFabOpen(false); setDashboardMode('clients'); showToast('Sélectionnez un dossier pour créer une relance'); }}
-                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-2)', borderRadius: '10px', padding: '12px', fontSize: '14px', textAlign: 'left', cursor: 'pointer' }}
+                style={quickCreateRowStyle(false)}
               >
-                Créer une relance
+                <Bell style={{ width: 20, height: 20, color: 'var(--text-2)', flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>Nouvelle relance</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>Choisissez un dossier existant</span>
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => { setFabOpen(false); setDashboardMode('clients'); showToast('Sélectionnez un dossier pour ajouter une note'); }}
-                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-2)', borderRadius: '10px', padding: '12px', fontSize: '14px', textAlign: 'left', cursor: 'pointer' }}
+                style={quickCreateRowStyle(false)}
               >
-                Ajouter une note
+                <StickyNote style={{ width: 20, height: 20, color: 'var(--text-2)', flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>Ajouter une note</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>Choisissez un dossier existant</span>
+                </span>
               </button>
             </div>
           </div>
@@ -602,7 +614,8 @@ export default function MobileDashboardView({
           bottom: 0,
           left: 0,
           right: 0,
-          height: '60px',
+          height: 'calc(60px + env(safe-area-inset-bottom))',
+          paddingBottom: 'env(safe-area-inset-bottom)',
           background: 'var(--bg-elevated)',
           borderTop: '1px solid var(--border)',
           display: 'flex',
@@ -619,6 +632,33 @@ export default function MobileDashboardView({
           <FolderOpen style={{ width: 18, height: 18 }} />
           <span>Dossiers</span>
         </button>
+        <div style={{ width: '64px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            aria-label="Créer"
+            onClick={() => setFabOpen(true)}
+            style={{
+              position: 'relative',
+              top: '-22px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              color: '#052e16',
+              border: '4px solid var(--bg-elevated)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--impact-glow), 0 6px 16px -4px rgba(34,197,94,0.45)',
+              zIndex: 46,
+              cursor: 'pointer',
+              transition: 'transform 150ms ease',
+            }}
+            className="active:scale-95"
+          >
+            <Plus style={{ width: 26, height: 26 }} />
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => goToCommercialFilter('quotes')}
@@ -627,47 +667,88 @@ export default function MobileDashboardView({
           <Send style={{ width: 18, height: 18 }} />
           <span>Devis</span>
         </button>
-        <button type="button" onClick={() => setDashboardMode('calendar')} style={navItemStyle()}>
-          <CalendarDays style={{ width: 18, height: 18 }} />
-          <span>Agenda</span>
-        </button>
         <button type="button" onClick={() => setMoreOpen(true)} style={navItemStyle()}>
-          <MoreHorizontal style={{ width: 18, height: 18 }} />
-          <span>Plus</span>
+          <MenuIcon style={{ width: 18, height: 18 }} />
+          <span>Menu</span>
         </button>
       </div>
 
       {moreOpen && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 55, display: 'flex', alignItems: 'flex-end' }}
+          className="kr-sheet-backdrop"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}
           onClick={() => setMoreOpen(false)}
         >
           <div
-            style={{ ...cardBase, width: '100%', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, padding: '16px', marginBottom: '60px' }}
+            className="kr-sheet-panel"
+            style={{
+              width: '100%',
+              maxHeight: '88dvh',
+              minHeight: '75dvh',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderBottom: 'none',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+              padding: '12px 16px',
+              paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                type="button"
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '999px', background: 'var(--border)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-1)' }}>Menu Kadria</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '2px' }}>
+                  Accédez aux espaces secondaires de pilotage.
+                </div>
+              </div>
+              <button type="button" onClick={() => setMoreOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer', padding: '4px' }}>
+                <X style={{ width: 20, height: 20 }} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <MenuRow
+                icon={TargetIcon}
+                title="Pipeline complet"
+                description="Toutes vos opportunités commerciales"
                 onClick={() => { setMoreOpen(false); setDashboardMode('commercial'); resetFilters(); }}
-                style={menuRowStyle()}
-              >
-                Pipeline complet
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMoreOpen(false); setDashboardMode('value'); }}
-                style={menuRowStyle()}
-              >
-                Reporting
-              </button>
-              <button
-                type="button"
+              />
+              <MenuRow
+                icon={BarChart3}
+                title="Reporting"
+                description="Analyses détaillées de votre activité"
+                disabled
+              />
+              <MenuRow
+                icon={CalendarDays}
+                title="Agenda"
+                description="Vue calendrier de vos rendez-vous"
+                onClick={() => { setMoreOpen(false); setDashboardMode('calendar'); }}
+              />
+              <MenuRow
+                icon={CreditCard}
+                title="Mon abonnement"
+                description="Facturation et gestion Stripe"
                 onClick={() => { setMoreOpen(false); router.push('/parametres'); }}
-                style={menuRowStyle()}
-              >
-                Paramètres
-              </button>
+              />
+              <MenuRow
+                icon={Settings}
+                title="Paramètres"
+                description="Préférences de votre compte"
+                onClick={() => { setMoreOpen(false); router.push('/parametres'); }}
+              />
+              <MenuRow
+                icon={LifeBuoy}
+                title="Support"
+                description="contact@kadria.fr"
+                onClick={() => { setMoreOpen(false); window.location.href = 'mailto:contact@kadria.fr'; }}
+              />
             </div>
           </div>
         </div>
@@ -691,16 +772,73 @@ function navItemStyle(): React.CSSProperties {
   };
 }
 
-function menuRowStyle(): React.CSSProperties {
+function quickCreateRowStyle(primary: boolean): React.CSSProperties {
   return {
-    background: 'var(--bg-hover)',
-    border: '1px solid var(--border)',
-    color: 'var(--text-1)',
-    borderRadius: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: primary ? 'var(--accent-dim)' : 'var(--bg-hover)',
+    border: primary ? '1px solid var(--accent-border)' : '1px solid var(--border)',
+    borderRadius: '12px',
     padding: '12px',
-    fontSize: '14px',
-    fontWeight: 600,
     textAlign: 'left',
     cursor: 'pointer',
+    transition: 'transform 150ms ease',
   };
+}
+
+function MenuRow({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+  disabled,
+}: {
+  icon: any;
+  title: string;
+  description: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        background: 'var(--bg-hover)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '12px',
+        textAlign: 'left',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      <Icon style={{ width: 20, height: 20, color: disabled ? 'var(--text-3)' : 'var(--accent)', flexShrink: 0 }} />
+      <span style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>{title}</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>{description}</span>
+      </span>
+      {disabled && (
+        <span
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            padding: '3px 8px',
+            borderRadius: '999px',
+            background: 'rgba(148,163,184,0.15)',
+            color: 'var(--text-3)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Bientôt
+        </span>
+      )}
+    </button>
+  );
 }
