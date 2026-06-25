@@ -103,6 +103,8 @@ const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardVie
 
 const MobileDossiersView = dynamic(() => import('./dashboard/MobileDossiersView'), { ssr: false });
 
+const MobileDevisView = dynamic(() => import('./dashboard/MobileDevisView'), { ssr: false });
+
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
   { ssr: false },
@@ -3103,7 +3105,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         <MobileDossiersView projects={sortedProjects} router={router} />
       )}
 
-      {(showCommercialWorkspace || showClientsWorkspace) && !(isMobile && showClientsWorkspace) && (
+      {isMobile && showCommercialWorkspace && (
+        <MobileDevisView projects={sortedProjects} router={router} />
+      )}
+
+      {(showCommercialWorkspace || showClientsWorkspace) &&
+        !(isMobile && showClientsWorkspace) &&
+        !(isMobile && showCommercialWorkspace) && (
       <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (
