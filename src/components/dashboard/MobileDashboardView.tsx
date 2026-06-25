@@ -680,7 +680,7 @@ export default function MobileDashboardView({
                 icon={CreditCard}
                 title="Mon abonnement"
                 description="Facturation et gestion Stripe"
-                onClick={() => { setMoreOpen(false); router.push('/parametres'); }}
+                onClick={() => { setMoreOpen(false); router.push('/abonnement'); }}
               />
               <MenuRow
                 icon={Settings}
