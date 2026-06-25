@@ -18,20 +18,20 @@ import {
 
 type Router = ReturnType<typeof useRouter>;
 
-// Tokens repris du thème clair existant (app/globals.css, bloc
-// [data-theme="light"] .dashboard-shell / app/abonnement/page.tsx) — fond
-// clair + accents verts, volontairement différent du style sombre utilisé par
-// les autres vues mobiles (Pipeline/Devis/Dossiers).
+// Variables CSS du thème .dashboard-shell (app/globals.css), exactement
+// comme MobileDossiersView/MobileDevisView/MobilePipelineView — bascule
+// automatiquement clair/sombre selon le thème choisi par l'utilisateur
+// ([data-theme="dark"|"light"] .dashboard-shell), au lieu de couleurs figées.
 const COLORS = {
-  bg: '#e9e9ec',
-  bgElevated: '#ffffff',
-  border: '#d4d4d8',
-  text1: '#18181b',
-  text2: '#3f3f46',
-  text3: '#71717a',
-  accent: '#16a34a',
-  accentDim: 'rgba(22,163,74,0.08)',
-  accentBorder: 'rgba(22,163,74,0.3)',
+  bg: 'var(--bg)',
+  bgElevated: 'var(--bg-elevated)',
+  border: 'var(--border)',
+  text1: 'var(--text-1)',
+  text2: 'var(--text-2)',
+  text3: 'var(--text-3)',
+  accent: 'var(--accent)',
+  accentDim: 'var(--accent-dim)',
+  accentBorder: 'var(--accent-border)',
 };
 
 const card: React.CSSProperties = {
