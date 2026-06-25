@@ -101,6 +101,11 @@ const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
 const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardView'), { ssr: false });
 
+const MobileBottomNav = dynamic(
+  () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
+  { ssr: false },
+);
+
 const ProspectsLeafletMap = dynamic(
   () => import('@/src/components/ProspectsLeafletMap'),
   {
@@ -2271,7 +2276,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </button>
         </div>
       )}
-      {isMobile ? (
+      {isMobile && dashboardMode === 'value' ? (
         <MobileDashboardView
           firstName={artisanFirstName}
           artisanTrades={artisanTrades}
@@ -2283,6 +2288,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           pipelineSteps={pipelineSteps}
           kpiCards={kpiCards}
           router={router}
+          dashboardMode={dashboardMode}
           setDashboardMode={setDashboardMode}
           setFilters={setFilters}
           applyQuickFilter={applyQuickFilter}
@@ -3833,7 +3839,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
       </div>
       )}
+      {isMobile && <div style={{ height: '76px' }} />}
       </>
+      )}
+      {isMobile && dashboardMode !== 'value' && (
+        <MobileBottomNav
+          dashboardMode={dashboardMode}
+          setDashboardMode={setDashboardMode}
+          goToCommercialFilter={goToCommercialFilter}
+          onFabClick={() => setDashboardMode('value')}
+          onMenuClick={() => setDashboardMode('value')}
+        />
       )}
 
       <div

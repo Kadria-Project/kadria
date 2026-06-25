@@ -67,6 +67,7 @@ export interface MobileDashboardViewProps {
   pipelineSteps: PipelineStep[];
   kpiCards: KpiCard[];
   router: Router;
+  dashboardMode?: DashboardMode;
   setDashboardMode: (mode: DashboardMode) => void;
   setFilters: (filters: FilterState | ((prev: FilterState) => FilterState)) => void;
   applyQuickFilter: (value: QuickFilter) => void;
@@ -193,6 +194,7 @@ export default function MobileDashboardView({
   pipelineSteps,
   kpiCards,
   router,
+  dashboardMode = 'value',
   setDashboardMode,
   setFilters,
   applyQuickFilter,
@@ -608,70 +610,13 @@ export default function MobileDashboardView({
       )}
 
       {/* BOTTOM NAV */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 'calc(60px + env(safe-area-inset-bottom))',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          background: 'var(--bg-elevated)',
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          zIndex: 45,
-        }}
-      >
-        <button type="button" onClick={() => setDashboardMode('value')} style={navItemStyle()}>
-          <Target style={{ width: 18, height: 18 }} />
-          <span>Accueil</span>
-        </button>
-        <button type="button" onClick={() => setDashboardMode('clients')} style={navItemStyle()}>
-          <FolderOpen style={{ width: 18, height: 18 }} />
-          <span>Dossiers</span>
-        </button>
-        <div style={{ width: '64px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-          <button
-            type="button"
-            aria-label="Créer"
-            onClick={() => setFabOpen(true)}
-            style={{
-              position: 'relative',
-              top: '-22px',
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              background: 'var(--accent)',
-              color: '#052e16',
-              border: '4px solid var(--bg-elevated)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--impact-glow), 0 6px 16px -4px rgba(34,197,94,0.45)',
-              zIndex: 46,
-              cursor: 'pointer',
-              transition: 'transform 150ms ease',
-            }}
-            className="active:scale-95"
-          >
-            <Plus style={{ width: 26, height: 26 }} />
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={() => goToCommercialFilter('quotes')}
-          style={navItemStyle()}
-        >
-          <Send style={{ width: 18, height: 18 }} />
-          <span>Devis</span>
-        </button>
-        <button type="button" onClick={() => setMoreOpen(true)} style={navItemStyle()}>
-          <MenuIcon style={{ width: 18, height: 18 }} />
-          <span>Menu</span>
-        </button>
-      </div>
+      <MobileBottomNav
+        dashboardMode={dashboardMode}
+        setDashboardMode={setDashboardMode}
+        goToCommercialFilter={goToCommercialFilter}
+        onFabClick={() => setFabOpen(true)}
+        onMenuClick={() => setMoreOpen(true)}
+      />
 
       {moreOpen && (
         <div
@@ -757,7 +702,7 @@ export default function MobileDashboardView({
   );
 }
 
-function navItemStyle(): React.CSSProperties {
+function navItemStyle(active = false): React.CSSProperties {
   return {
     display: 'flex',
     flexDirection: 'column',
@@ -765,11 +710,95 @@ function navItemStyle(): React.CSSProperties {
     gap: '2px',
     background: 'none',
     border: 'none',
-    color: 'var(--text-2)',
+    color: active ? 'var(--accent)' : 'var(--text-2)',
     fontSize: '11px',
+    fontWeight: active ? 700 : 400,
     cursor: 'pointer',
     padding: '4px 8px',
   };
+}
+
+export interface MobileBottomNavProps {
+  dashboardMode: DashboardMode;
+  setDashboardMode: (mode: DashboardMode) => void;
+  goToCommercialFilter: (value: 'calls' | 'quotes' | 'followups') => void;
+  onFabClick: () => void;
+  onMenuClick: () => void;
+}
+
+export function MobileBottomNav({
+  dashboardMode,
+  setDashboardMode,
+  goToCommercialFilter,
+  onFabClick,
+  onMenuClick,
+}: MobileBottomNavProps) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 'calc(60px + env(safe-area-inset-bottom))',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        background: 'var(--bg-elevated)',
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        zIndex: 45,
+      }}
+    >
+      <button type="button" onClick={() => setDashboardMode('value')} style={navItemStyle(dashboardMode === 'value')}>
+        <Target style={{ width: 18, height: 18 }} />
+        <span>Accueil</span>
+      </button>
+      <button type="button" onClick={() => setDashboardMode('clients')} style={navItemStyle(dashboardMode === 'clients')}>
+        <FolderOpen style={{ width: 18, height: 18 }} />
+        <span>Dossiers</span>
+      </button>
+      <div style={{ width: '64px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          aria-label="Créer"
+          onClick={onFabClick}
+          style={{
+            position: 'relative',
+            top: '-22px',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'var(--accent)',
+            color: '#052e16',
+            border: '4px solid var(--bg-elevated)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'var(--impact-glow), 0 6px 16px -4px rgba(34,197,94,0.45)',
+            zIndex: 46,
+            cursor: 'pointer',
+            transition: 'transform 150ms ease',
+          }}
+          className="active:scale-95"
+        >
+          <Plus style={{ width: 26, height: 26 }} />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => goToCommercialFilter('quotes')}
+        style={navItemStyle(dashboardMode === 'commercial')}
+      >
+        <Send style={{ width: 18, height: 18 }} />
+        <span>Devis</span>
+      </button>
+      <button type="button" onClick={onMenuClick} style={navItemStyle(dashboardMode === 'calendar')}>
+        <MenuIcon style={{ width: 18, height: 18 }} />
+        <span>Menu</span>
+      </button>
+    </div>
+  );
 }
 
 function quickCreateRowStyle(primary: boolean): React.CSSProperties {
