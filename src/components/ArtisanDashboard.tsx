@@ -109,6 +109,8 @@ const MobilePipelineView = dynamic(() => import('./dashboard/MobilePipelineView'
 
 const MobileValueReportView = dynamic(() => import('./dashboard/MobileValueReportView'), { ssr: false });
 
+const MobileAgendaView = dynamic(() => import('./dashboard/MobileAgendaView'), { ssr: false });
+
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
   { ssr: false },
@@ -1772,6 +1774,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const showCommercialWorkspace = dashboardMode === 'commercial';
   const showClientsWorkspace = dashboardMode === 'clients';
   const showCalendarWorkspace = dashboardMode === 'calendar';
+  const showCalendarWorkspaceDesktop = showCalendarWorkspace && !isMobile;
   const showPipelineWorkspace = dashboardMode === 'pipeline';
   const showValueReportWorkspace = dashboardMode === 'value-report';
   const showBusinessOverviewDesktop = showBusinessOverview && !isMobile;
@@ -3082,7 +3085,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showCalendarWorkspace && (
+      {showCalendarWorkspaceDesktop && (
         <FeatureGate feature="calendar" requiredPlan="performance">
           <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
@@ -3118,6 +3121,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {isMobile && showPipelineWorkspace && (
         <MobilePipelineView projects={sortedProjects} router={router} />
+      )}
+
+      {isMobile && showCalendarWorkspace && (
+        <MobileAgendaView router={router} />
       )}
 
       {isMobile && showValueReportWorkspace && (

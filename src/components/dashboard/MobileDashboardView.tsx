@@ -673,7 +673,7 @@ export default function MobileDashboardView({
               <MenuRow
                 icon={CalendarDays}
                 title="Agenda"
-                description="Vue calendrier de vos rendez-vous"
+                description="Rendez-vous, disponibilités et tournées"
                 onClick={() => { setMoreOpen(false); setDashboardMode('calendar'); }}
               />
               <MenuRow
