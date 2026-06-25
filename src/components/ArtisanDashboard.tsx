@@ -101,6 +101,8 @@ const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
 const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardView'), { ssr: false });
 
+const MobileDossiersView = dynamic(() => import('./dashboard/MobileDossiersView'), { ssr: false });
+
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
   { ssr: false },
@@ -3097,7 +3099,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </FeatureGate>
       )}
 
-      {(showCommercialWorkspace || showClientsWorkspace) && (
+      {isMobile && showClientsWorkspace && (
+        <MobileDossiersView projects={sortedProjects} router={router} />
+      )}
+
+      {(showCommercialWorkspace || showClientsWorkspace) && !(isMobile && showClientsWorkspace) && (
       <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (
