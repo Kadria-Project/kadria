@@ -1768,6 +1768,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const showCommercialWorkspace = dashboardMode === 'commercial';
   const showClientsWorkspace = dashboardMode === 'clients';
   const showCalendarWorkspace = dashboardMode === 'calendar';
+  const showBusinessOverviewDesktop = showBusinessOverview && !isMobile;
 
 
   const kpiCards: {
@@ -2632,7 +2633,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* Barre période */}
-      {showBusinessOverview && (
+      {showBusinessOverviewDesktop && (
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-[var(--text-2)]">Période analysée · {periodLabel}</p>
 
@@ -2662,7 +2663,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* KPIs */}
-      {showBusinessOverview && (
+      {showBusinessOverviewDesktop && (
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
@@ -2700,7 +2701,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {showBusinessOverview && (
+      {showBusinessOverviewDesktop && (
         <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
           {!loading && (
             <FeatureGate
@@ -2778,7 +2779,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showBusinessOverview && !loading && priorityAction && (
+      {showBusinessOverviewDesktop && !loading && priorityAction && (
         <div className="mb-4">
           <ImpactCard
             variant="priority"
@@ -2801,7 +2802,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </ImpactCard>
         </div>
       )}
-      {showBusinessOverview && !loading && !priorityAction && (
+      {showBusinessOverviewDesktop && !loading && !priorityAction && (
         <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
           <p className="text-sm text-[var(--text-2)]">Tout est à jour pour le moment.</p>
         </div>
@@ -2977,7 +2978,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* Alertes */}
-      {showBusinessOverview && !loading && (overdueCount > 0 || todayCount > 0) && (
+      {showBusinessOverviewDesktop && !loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {overdueCount > 0 && (
             <div
