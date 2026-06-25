@@ -99,6 +99,8 @@ interface MonthlyUsageSummary {
 
 const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
 
+const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardView'), { ssr: false });
+
 const ProspectsLeafletMap = dynamic(
   () => import('@/src/components/ProspectsLeafletMap'),
   {
@@ -116,7 +118,7 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
-type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks';
+export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks';
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -1292,7 +1294,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   useEffect(() => {
@@ -2270,161 +2271,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </button>
         </div>
       )}
-      {/* Header (mobile only: burger menu + drawer; desktop greeting removed) */}
-      {isMobile && (
-      <div
-        style={{
-          padding: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          alignItems: 'stretch',
-          marginBottom: '24px',
-          gap: '16px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ width: '100%', position: 'relative' }}>
-            <button
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-1)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                gap: '8px',
-              }}
-            >
-              <span>☰ Menu</span>
-              <span>{theme === 'dark' ? '🌙' : '☀️'}</span>
-            </button>
-
-            {mobileMenuOpen && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  marginTop: '8px',
-                  padding: '12px',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                }}
-              >
-                {[
-                  { mode: 'value' as const, label: 'Valeur générée' },
-                  { mode: 'commercial' as const, label: 'Suivi commercial' },
-                  { mode: 'calendar' as const, label: 'Calendrier' },
-                  { mode: 'clients' as const, label: 'Mes clients' },
-                  { mode: 'tasks' as const, label: 'Mes taches a faire' },
-                ].map((item) => (
-                  <button
-                    key={item.mode}
-                    type="button"
-                    onClick={() => {
-                      setDashboardMode(item.mode);
-                      setQuickFilter(null);
-                      setMobileMenuOpen(false);
-                    }}
-                    style={navButtonStyle(dashboardMode === item.mode)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-
-                {isTrialActive && trialEndDateFR && (
-                  <div
-                    style={{
-                      borderRadius: '8px',
-                      border: '1px solid rgba(34,197,94,0.3)',
-                      background: 'rgba(34,197,94,0.08)',
-                      padding: '9px 12px',
-                    }}
-                  >
-                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#4ade80' }}>Vous testez Kadria Performance</p>
-                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-2)' }}>Essai gratuit jusqu&apos;au {trialEndDateFR}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setPlanModalOpen(true);
-                  }}
-                  style={{
-                    background: 'var(--accent-dim)',
-                    border: '1px solid var(--accent-border)',
-                    color: 'var(--accent)',
-                    borderRadius: '8px',
-                    padding: '9px 14px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    textAlign: 'left',
-                  }}
-                >
-                  <Sparkles className="w-4 h-4" /> {planChangeCtaLabel}
-                </button>
-
-                <button
-                  onClick={toggleTheme}
-                  style={{
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-2)',
-                    borderRadius: '8px',
-                    padding: '9px 12px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    textAlign: 'left',
-                  }}
-                >
-                  {theme === 'dark' ? '☀️ Thème clair' : '🌙 Thème sombre'}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/parametres');
-                  }}
-                  style={{
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-2)',
-                    borderRadius: '8px',
-                    padding: '9px 14px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                  }}
-                >
-                  ⚙️ Mon profil
-                </button>
-
-                <button
-                  onClick={logout}
-                  className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
-                  style={{ padding: '9px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}
-                >
-                  <LogOut className="w-4 h-4" /> Déconnexion
-                </button>
-              </div>
-            )}
-          </div>
-      </div>
-      )}
-
+      {isMobile ? (
+        <MobileDashboardView
+          firstName={artisanFirstName}
+          artisanTrades={artisanTrades}
+          priorityProjects={priorityProjects}
+          topOpportunities={topOpportunities}
+          hotLeads={hotLeads}
+          riskProjects={riskProjects}
+          todayTasks={todayTasks}
+          pipelineSteps={pipelineSteps}
+          kpiCards={kpiCards}
+          router={router}
+          setDashboardMode={setDashboardMode}
+          setFilters={setFilters}
+          applyQuickFilter={applyQuickFilter}
+          goToCommercialFilter={goToCommercialFilter}
+          resetFilters={resetFilters}
+          showToast={showToast}
+        />
+      ) : (
+      <>
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
       {showValueOverview && !loading && (
         <div className="flex flex-col gap-6">
@@ -3965,6 +3832,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
           </div>
       </div>
+      )}
+      </>
       )}
 
       <div
