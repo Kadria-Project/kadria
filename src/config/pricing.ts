@@ -2,7 +2,7 @@
 // Les plans Agence restent "sur devis" et ne sont pas concernés par les
 // réductions annuelles automatiques ci-dessous.
 
-export type BillingModeKey = 'monthly' | 'annualMonthly' | 'annualOneShot';
+export type BillingModeKey = 'monthly' | 'annualOneShot';
 
 export const BILLING_MODES: Record<BillingModeKey, {
   label: string;
@@ -16,15 +16,9 @@ export const BILLING_MODES: Record<BillingModeKey, {
     discount: 0,
     commitmentMonths: 0,
   },
-  annualMonthly: {
-    label: '-15 % — Paiement annuel en une fois — Engagement 12 mois',
-    shortLabel: 'Annuel comptant',
-    discount: 0.15,
-    commitmentMonths: 12,
-  },
   annualOneShot: {
-    label: '-15 % — Paiement annuel en une fois — Engagement 12 mois',
-    shortLabel: 'Annuel comptant',
+    label: '15 % d’économie — Engagement 12 mois',
+    shortLabel: 'Annuel',
     discount: 0.15,
     commitmentMonths: 12,
   },
@@ -66,15 +60,15 @@ export const formatEuro = (value: number) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
- * Phrase d'affichage combinant le prix mensuel de base et l'équivalent annuel
- * avec la remise -15% appliquée en paiement annuel comptant.
- * Ex: "149 €/mois ou 1 519,80 €/an avec -15 %"
+ * Phrase d'affichage présentant l'équivalent annuel remisé du plan,
+ * affichée sous le prix mensuel pour mettre en avant l'économie.
+ * Ex: "1 519,80 €/an • 15 % d'économie"
  */
 export function getAnnualPitchLabel(plan: PricingPlanKey): string {
   const monthly = PLAN_BASE_MONTHLY_PRICE[plan];
   const annual = monthly * 12 * (1 - BILLING_MODES.annualOneShot.discount);
 
-  return `${monthly} €/mois ou ${formatEuro(annual)} €/an avec -15 %`;
+  return `${formatEuro(annual)} €/an • 15 % d’économie`;
 }
 
 export const WEBSITE_ADDON = {

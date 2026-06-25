@@ -4332,8 +4332,8 @@ export function PricingRoutePage() {
 
             <p className="mx-auto mt-3 max-w-md text-xs text-zinc-500">
               {billingMode === 'monthly'
-                ? 'Sans engagement — Facturation mensuelle.'
-                : '-15 % — Paiement annuel en une fois — Engagement 12 mois.'}
+                ? 'Sans engagement • Facturation mensuelle.'
+                : 'Paiement annuel • Économisez 15 %.'}
             </p>
           </section>
 
