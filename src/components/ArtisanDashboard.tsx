@@ -110,6 +110,7 @@ const MobilePipelineView = dynamic(() => import('./dashboard/MobilePipelineView'
 const MobileValueReportView = dynamic(() => import('./dashboard/MobileValueReportView'), { ssr: false });
 
 const MobileAgendaView = dynamic(() => import('./dashboard/MobileAgendaView'), { ssr: false });
+const DesktopAgendaView = dynamic(() => import('./dashboard/DesktopAgendaView'), { ssr: false });
 
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
@@ -3087,26 +3088,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {showCalendarWorkspaceDesktop && (
         <FeatureGate feature="calendar" requiredPlan="performance">
-          <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-base font-bold text-[var(--text-1)]">Calendrier Kadria</p>
-                <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Utilisez le calendrier integre de Kadria. La synchronisation Google Calendar reste optionnelle.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCalendarModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
-              >
-                <CalendarDays className="h-4 w-4" />
-                Synchroniser mon agenda
-              </button>
-            </div>
-
-            <Calendar artisanId="" />
+          <div className="mb-6">
+            <DesktopAgendaView />
           </div>
         </FeatureGate>
       )}
