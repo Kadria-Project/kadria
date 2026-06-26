@@ -4,6 +4,14 @@
 // l'artisan une fois importé (les fiches importées restent des prestations
 // normales, modifiables/désactivables comme les autres).
 
+export interface ServiceProfileTemplatePhoto {
+  id: string
+  title: string
+  description: string
+  required: boolean
+  order: number
+}
+
 export interface ServiceProfileTemplate {
   name: string
   category: string
@@ -12,6 +20,7 @@ export interface ServiceProfileTemplate {
   qualificationQuestions: string[]
   requiredInformation: string[]
   requiredPhotos: boolean
+  requiredPhotosList: ServiceProfileTemplatePhoto[]
   recommendedQuoteLines: Array<{ label: string; unitPriceHT: number | null; vatRate: number | null }>
   averageDurationMinutes: number | null
   defaultVatRate: number | null
@@ -46,6 +55,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Où la fuite est-elle visible ?', 'Depuis combien de temps ?', 'L’eau est-elle coupée ?'],
       requiredInformation: ['Localisation précise', 'Accessibilité de la zone'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'fuite-zone', title: 'Zone concernée', description: 'Vue rapprochée de la zone où la fuite est visible.', required: true, order: 0 },
+        { id: 'fuite-piece', title: 'Vue d’ensemble de la pièce', description: 'Vue large de la pièce concernée.', required: true, order: 1 },
+        { id: 'fuite-arrivee-evacuation', title: 'Arrivée / évacuation visible', description: 'Photo de l’arrivée ou de l’évacuation d’eau accessible.', required: false, order: 2 },
+        { id: 'fuite-degats', title: 'Dégâts apparents', description: 'Traces d’humidité, moisissures ou dégâts visibles.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Recherche de fuite', unitPriceHT: null, vatRate: null },
         { label: 'Déplacement', unitPriceHT: null, vatRate: null },
@@ -66,6 +81,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quel volume actuel ?', 'Électrique ou thermodynamique ?', 'Accès au local technique ?'],
       requiredInformation: ['Volume souhaité', 'Type d’énergie'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'chauffe-eau-plaque', title: 'Plaque signalétique', description: 'Plaque indiquant la marque, le modèle et le volume.', required: true, order: 0 },
+        { id: 'chauffe-eau-vue', title: 'Vue complète du chauffe-eau', description: 'Vue d’ensemble de l’appareil actuel.', required: true, order: 1 },
+        { id: 'chauffe-eau-raccordements', title: 'Raccordements', description: 'Raccordements eau et électricité/gaz.', required: false, order: 2 },
+        { id: 'chauffe-eau-emplacement', title: 'Emplacement disponible', description: 'Espace disponible pour le nouvel appareil.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Dépose ancien chauffe-eau', unitPriceHT: null, vatRate: null },
         { label: 'Fourniture / pose chauffe-eau', unitPriceHT: null, vatRate: null },
@@ -87,6 +108,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quel équipement est concerné ?', 'L’eau s’évacue-t-elle un peu ?'],
       requiredInformation: ['Équipement concerné'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Débouchage', unitPriceHT: null, vatRate: null },
       ],
@@ -106,6 +128,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quel type de robinetterie ?', 'Le nouveau matériel est-il déjà acheté ?'],
       requiredInformation: ['Type d’équipement', 'Marque souhaitée'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'robinetterie-actuelle', title: 'Robinetterie actuelle', description: 'Vue du robinet ou mitigeur à remplacer.', required: true, order: 0 },
+        { id: 'robinetterie-raccordements', title: 'Raccordements', description: 'Arrivées d’eau sous le point d’eau.', required: false, order: 1 },
+        { id: 'robinetterie-piece', title: 'Vue d’ensemble du point d’eau', description: 'Vue large de l’évier, du lavabo ou de la baignoire.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Dépose ancienne robinetterie', unitPriceHT: null, vatRate: null },
         { label: 'Fourniture / pose robinetterie', unitPriceHT: null, vatRate: null },
@@ -126,6 +153,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['WC suspendu ou au sol ?', 'Le modèle est-il déjà choisi ?'],
       requiredInformation: ['Type de WC', 'Configuration de l’évacuation'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'wc-actuel', title: 'WC actuel', description: 'Vue du WC à remplacer.', required: true, order: 0 },
+        { id: 'wc-evacuation', title: 'Configuration de l’évacuation', description: 'Vue de l’évacuation existante.', required: false, order: 1 },
+        { id: 'wc-piece', title: 'Vue d’ensemble de la pièce', description: 'Vue large de la pièce concernée.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Dépose ancien WC', unitPriceHT: null, vatRate: null },
         { label: 'Fourniture / pose WC', unitPriceHT: null, vatRate: null },
@@ -146,6 +178,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Où se situe l’évacuation concernée ?', 'Le problème est-il récurrent ?'],
       requiredInformation: ['Localisation de l’évacuation'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'evacuation-zone', title: 'Zone concernée', description: 'Vue rapprochée de l’évacuation endommagée.', required: true, order: 0 },
+        { id: 'evacuation-etat', title: 'État de la canalisation', description: 'État visible de la canalisation ou de l’évacuation.', required: false, order: 1 },
+        { id: 'evacuation-degats', title: 'Dégâts apparents', description: 'Traces ou dégâts liés au problème d’évacuation.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Diagnostic évacuation', unitPriceHT: null, vatRate: null },
         { label: 'Réparation évacuation', unitPriceHT: null, vatRate: null },
@@ -168,6 +205,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Le tableau est-il encore aux normes ?', 'Y a-t-il des coupures fréquentes ?'],
       requiredInformation: ['Âge approximatif de l’installation'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'tableau-complet', title: 'Tableau électrique complet', description: 'Vue d’ensemble du tableau électrique actuel.', required: true, order: 0 },
+        { id: 'tableau-disjoncteur', title: 'Disjoncteur général', description: 'Vue rapprochée du disjoncteur général.', required: true, order: 1 },
+        { id: 'tableau-compteur', title: 'Compteur', description: 'Vue du compteur électrique.', required: false, order: 2 },
+        { id: 'tableau-circuits', title: 'Vue des circuits / étiquettes', description: 'Étiquetage des circuits si disponible.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Diagnostic électrique', unitPriceHT: null, vatRate: null },
         { label: 'Tableau électrique', unitPriceHT: null, vatRate: null },
@@ -189,6 +232,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Toute l’installation est-elle touchée ?', 'Depuis quand ?'],
       requiredInformation: ['Zone concernée par la panne'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Diagnostic panne', unitPriceHT: null, vatRate: null },
         { label: 'Réparation', unitPriceHT: null, vatRate: null },
@@ -209,6 +253,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Combien de prises/interrupteurs ?', 'Création ou remplacement ?'],
       requiredInformation: ['Nombre d’éléments', 'Emplacement souhaité'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Installation prise/interrupteur', unitPriceHT: null, vatRate: null },
       ],
@@ -228,6 +273,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Le luminaire est-il déjà acheté ?', 'Type de plafond ?'],
       requiredInformation: ['Type de luminaire', 'Emplacement'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'luminaire-emplacement', title: 'Emplacement du luminaire', description: 'Vue de l’emplacement souhaité.', required: true, order: 0 },
+        { id: 'luminaire-plafond', title: 'Plafond / mur concerné', description: 'Vue du plafond ou du mur de fixation.', required: false, order: 1 },
+        { id: 'luminaire-ancien', title: 'Ancien luminaire', description: 'Vue de l’ancien luminaire si présent.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Installation luminaire', unitPriceHT: null, vatRate: null },
       ],
@@ -247,6 +297,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Avez-vous un diagnostic récent ?', 'Quelle surface concernée ?'],
       requiredInformation: ['Surface du logement', 'Date de l’installation'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'conformite-tableau', title: 'Tableau électrique', description: 'Vue du tableau électrique actuel.', required: true, order: 0 },
+        { id: 'conformite-installation', title: 'Vue d’ensemble de l’installation', description: 'Vue générale de l’installation électrique.', required: false, order: 1 },
+        { id: 'conformite-zones-risque', title: 'Zones à risque identifiées', description: 'Points d’installation jugés non conformes.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Diagnostic conformité', unitPriceHT: null, vatRate: null },
         { label: 'Travaux de mise en conformité', unitPriceHT: null, vatRate: null },
@@ -269,6 +324,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quel type de chaudière ?', 'Date du dernier entretien ?'],
       requiredInformation: ['Type de chaudière', 'Date dernier entretien'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Entretien chaudière', unitPriceHT: null, vatRate: null },
       ],
@@ -288,6 +344,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quel modèle de PAC ?', 'Constatez-vous une baisse de performance ?'],
       requiredInformation: ['Modèle de la PAC'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Contrôle fonctionnement', unitPriceHT: null, vatRate: null },
         { label: 'Nettoyage filtres', unitPriceHT: null, vatRate: null },
@@ -308,6 +365,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Tous les radiateurs sont-ils concernés ?', 'Depuis quand ?'],
       requiredInformation: ['Zone affectée'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Diagnostic panne', unitPriceHT: null, vatRate: null },
         { label: 'Réparation', unitPriceHT: null, vatRate: null },
@@ -328,6 +386,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Combien de pièces à climatiser ?', 'Mono-split ou multi-split ?'],
       requiredInformation: ['Surface à climatiser', 'Nombre de pièces'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'clim-piece', title: 'Pièce à climatiser', description: 'Vue d’ensemble de la pièce concernée.', required: true, order: 0 },
+        { id: 'clim-unite-interieure', title: 'Emplacement unité intérieure souhaité', description: 'Mur ou emplacement prévu pour l’unité intérieure.', required: false, order: 1 },
+        { id: 'clim-unite-exterieure', title: 'Emplacement unité extérieure souhaité', description: 'Emplacement prévu pour l’unité extérieure.', required: false, order: 2 },
+        { id: 'clim-acces', title: 'Accès technique', description: 'Accès disponible pour le passage des liaisons.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Fourniture / pose climatisation', unitPriceHT: null, vatRate: null },
         { label: 'Mise en service', unitPriceHT: null, vatRate: null },
@@ -348,6 +412,7 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quels radiateurs sont concernés ?'],
       requiredInformation: ['Radiateurs concernés'],
       requiredPhotos: false,
+      requiredPhotosList: [],
       recommendedQuoteLines: [
         { label: 'Purge radiateurs', unitPriceHT: null, vatRate: null },
       ],
@@ -369,6 +434,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quelles dimensions ?', 'Bois, PVC ou aluminium ?'],
       requiredInformation: ['Dimensions', 'Matériau souhaité'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'fenetre-ouverture', title: 'Ouverture complète', description: 'Vue complète de l’ouverture concernée.', required: true, order: 0 },
+        { id: 'fenetre-dimensions', title: 'Dimensions / tableau', description: 'Vue permettant d’estimer les dimensions du tableau.', required: true, order: 1 },
+        { id: 'fenetre-exterieur', title: 'Vue extérieure', description: 'Vue de la fenêtre depuis l’extérieur.', required: false, order: 2 },
+        { id: 'fenetre-dormant', title: 'État de l’ancien dormant', description: 'État du dormant existant.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Dépose ancienne fenêtre', unitPriceHT: null, vatRate: null },
         { label: 'Fourniture / pose fenêtre', unitPriceHT: null, vatRate: null },
@@ -389,6 +460,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['La porte est-elle déjà achetée ?', 'Quelles dimensions ?'],
       requiredInformation: ['Dimensions de l’ouverture'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'porte-int-ouverture', title: 'Ouverture / emplacement', description: 'Vue de l’ouverture concernée.', required: true, order: 0 },
+        { id: 'porte-int-dimensions', title: 'Dimensions', description: 'Vue permettant d’estimer les dimensions.', required: false, order: 1 },
+        { id: 'porte-int-bloc-actuel', title: 'État du bloc-porte actuel', description: 'État de la porte actuelle si présente.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Pose porte intérieure', unitPriceHT: null, vatRate: null },
       ],
@@ -408,6 +484,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quelles dimensions ?', 'Souhaitez-vous une porte sécurisée ?'],
       requiredInformation: ['Dimensions', 'Niveau de sécurité souhaité'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'porte-entree-actuelle', title: 'Porte actuelle', description: 'Vue de la porte d’entrée à remplacer.', required: true, order: 0 },
+        { id: 'porte-entree-dimensions', title: 'Dimensions de l’ouverture', description: 'Vue permettant d’estimer les dimensions.', required: true, order: 1 },
+        { id: 'porte-entree-exterieur', title: 'Vue extérieure', description: 'Vue de la porte depuis l’extérieur.', required: false, order: 2 },
+        { id: 'porte-entree-securite', title: 'Serrure / sécurité actuelle', description: 'Serrure et dispositifs de sécurité existants.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Dépose ancienne porte', unitPriceHT: null, vatRate: null },
         { label: 'Fourniture / pose porte d’entrée', unitPriceHT: null, vatRate: null },
@@ -428,6 +510,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quelle surface disponible ?', 'Sur mesure ou standard ?'],
       requiredInformation: ['Dimensions disponibles'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'placard-espace', title: 'Espace disponible', description: 'Vue de l’espace où le placard sera installé.', required: true, order: 0 },
+        { id: 'placard-dimensions', title: 'Dimensions du mur / recoin', description: 'Vue permettant d’estimer les dimensions disponibles.', required: false, order: 1 },
+        { id: 'placard-piece', title: 'Vue d’ensemble de la pièce', description: 'Vue large de la pièce concernée.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Fourniture / pose placard', unitPriceHT: null, vatRate: null },
       ],
@@ -447,6 +534,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Volet roulant ou battant ?', 'Quel est le problème constaté ?'],
       requiredInformation: ['Type de volet'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'volet-concerne', title: 'Volet concerné', description: 'Vue du volet à réparer.', required: true, order: 0 },
+        { id: 'volet-mecanisme', title: 'Mécanisme / coffre visible', description: 'Vue du mécanisme ou du coffre si accessible.', required: false, order: 1 },
+        { id: 'volet-degats', title: 'Dégâts constatés', description: 'Vue rapprochée du dégât ou blocage constaté.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Diagnostic volet', unitPriceHT: null, vatRate: null },
         { label: 'Réparation volet', unitPriceHT: null, vatRate: null },
@@ -469,6 +561,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Combien de pièces / m² ?', 'État actuel des murs ?'],
       requiredInformation: ['Surface à peindre', 'État des murs'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'peinture-int-piece', title: 'Pièce complète', description: 'Vue d’ensemble de la pièce à peindre.', required: true, order: 0 },
+        { id: 'peinture-int-murs', title: 'État des murs', description: 'État actuel des murs (peinture, revêtement).', required: true, order: 1 },
+        { id: 'peinture-int-defauts', title: 'Défauts / fissures', description: 'Fissures ou défauts visibles sur les murs.', required: false, order: 2 },
+        { id: 'peinture-int-surface', title: 'Surface concernée', description: 'Vue permettant d’estimer la surface à traiter.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Préparation des surfaces', unitPriceHT: null, vatRate: null },
         { label: 'Peinture', unitPriceHT: null, vatRate: null },
@@ -489,6 +587,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quelle surface de façade ?', 'État actuel de la façade ?'],
       requiredInformation: ['Surface de façade', 'Hauteur du bâtiment'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'ravalement-facade', title: 'Façade complète', description: 'Vue d’ensemble de la façade concernée.', required: true, order: 0 },
+        { id: 'ravalement-revetement', title: 'État du revêtement', description: 'État actuel de l’enduit ou du revêtement.', required: true, order: 1 },
+        { id: 'ravalement-defauts', title: 'Défauts / fissures visibles', description: 'Fissures, fissures ou décollements visibles.', required: false, order: 2 },
+        { id: 'ravalement-surface', title: 'Surface concernée', description: 'Vue permettant d’estimer la surface à traiter.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Diagnostic façade', unitPriceHT: null, vatRate: null },
         { label: 'Ravalement de façade', unitPriceHT: null, vatRate: null },
@@ -509,6 +613,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quel type de revêtement souhaité ?', 'Quelle surface ?'],
       requiredInformation: ['Surface à couvrir', 'Type de revêtement'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'sol-actuel', title: 'Sol actuel', description: 'Vue du revêtement de sol actuel.', required: true, order: 0 },
+        { id: 'sol-surface', title: 'Surface concernée', description: 'Vue permettant d’estimer la surface à couvrir.', required: false, order: 1 },
+        { id: 'sol-support', title: 'État du support', description: 'État du support sous le revêtement actuel.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Préparation du sol', unitPriceHT: null, vatRate: null },
         { label: 'Pose du revêtement', unitPriceHT: null, vatRate: null },
@@ -529,6 +638,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quelle surface concernée ?', 'Le papier peint est-il déjà choisi ?'],
       requiredInformation: ['Surface concernée'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'papier-peint-mur', title: 'Mur concerné', description: 'Vue du mur où le papier peint sera posé.', required: true, order: 0 },
+        { id: 'papier-peint-etat', title: 'État actuel du mur', description: 'État du mur (revêtement précédent, défauts).', required: false, order: 1 },
+        { id: 'papier-peint-surface', title: 'Surface concernée', description: 'Vue permettant d’estimer la surface à couvrir.', required: false, order: 2 },
+      ],
       recommendedQuoteLines: [
         { label: 'Préparation des murs', unitPriceHT: null, vatRate: null },
         { label: 'Pose papier peint', unitPriceHT: null, vatRate: null },
@@ -549,6 +663,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       qualificationQuestions: ['Quelle pièce ?', 'Quelle surface ?', 'Quel budget envisagé ?'],
       requiredInformation: ['Pièce concernée', 'Surface', 'Budget envisagé'],
       requiredPhotos: true,
+      requiredPhotosList: [
+        { id: 'renovation-piece', title: 'Pièce complète', description: 'Vue d’ensemble de la pièce à rénover.', required: true, order: 0 },
+        { id: 'renovation-murs', title: 'État des murs', description: 'État actuel des murs.', required: true, order: 1 },
+        { id: 'renovation-sol', title: 'État du sol', description: 'État actuel du sol.', required: false, order: 2 },
+        { id: 'renovation-surface', title: 'Surface concernée', description: 'Vue permettant d’estimer la surface totale.', required: false, order: 3 },
+      ],
       recommendedQuoteLines: [
         { label: 'Diagnostic rénovation', unitPriceHT: null, vatRate: null },
         { label: 'Travaux de rénovation', unitPriceHT: null, vatRate: null },
@@ -579,6 +699,7 @@ export function serviceProfileTemplateToPayload(template: ServiceProfileTemplate
     qualificationQuestions: template.qualificationQuestions,
     requiredInformation: template.requiredInformation,
     requiredPhotos: template.requiredPhotos,
+    requiredPhotosList: template.requiredPhotosList,
     recommendedQuoteLines: template.recommendedQuoteLines,
     averageDurationMinutes: template.averageDurationMinutes,
     defaultVatRate: template.defaultVatRate,
