@@ -254,6 +254,14 @@ export default function ProfilMetierPage() {
   const [loading, setLoading] = useState(true)
   const [hasProfile, setHasProfile] = useState(false)
   const [profile, setProfile] = useState<BusinessProfile>({ ...EMPTY_PROFILE })
+  // Texte brut des champs "séparés par des virgules" : on ne dérive PAS
+  // l'affichage depuis toCsv(profile.specialties) à chaque frappe, sinon le
+  // round-trip toCsv -> fromCsv supprime immédiatement la virgule tapée
+  // (segment vide filtré par fromCsv) avant même que l'utilisateur puisse
+  // taper le mot suivant. Resynchronisé uniquement quand `profile` est
+  // remplacé depuis le serveur (chargement, sauvegarde, wizard).
+  const [specialtiesText, setSpecialtiesText] = useState('')
+  const [excludedServicesText, setExcludedServicesText] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -354,6 +362,8 @@ export default function ProfilMetierPage() {
         if (profileRes.success) {
           nextProfile = profileFromRow(profileRes.profile)
           setProfile(nextProfile)
+          setSpecialtiesText(toCsv(nextProfile.specialties))
+          setExcludedServicesText(toCsv(nextProfile.excludedServices))
           setHasProfile(!!profileRes.profile)
         }
         if (catalogRes.success) {
@@ -502,7 +512,10 @@ export default function ProfilMetierPage() {
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde')
-      setProfile(profileFromRow(data.profile))
+      const savedProfile = profileFromRow(data.profile)
+      setProfile(savedProfile)
+      setSpecialtiesText(toCsv(savedProfile.specialties))
+      setExcludedServicesText(toCsv(savedProfile.excludedServices))
       setHasProfile(true)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -824,8 +837,11 @@ export default function ProfilMetierPage() {
             <label style={labelStyle}>Spécialités (séparées par des virgules)</label>
             <input
               type="text"
-              value={toCsv(profile.specialties)}
-              onChange={(e) => setProfile((p) => ({ ...p, specialties: fromCsv(e.target.value) }))}
+              value={specialtiesText}
+              onChange={(e) => {
+                setSpecialtiesText(e.target.value)
+                setProfile((p) => ({ ...p, specialties: fromCsv(e.target.value) }))
+              }}
               placeholder="Ex : pompe à chaleur, climatisation réversible"
               style={inputStyle}
             />
@@ -834,8 +850,11 @@ export default function ProfilMetierPage() {
             <label style={labelStyle}>Prestations exclues (séparées par des virgules)</label>
             <input
               type="text"
-              value={toCsv(profile.excludedServices)}
-              onChange={(e) => setProfile((p) => ({ ...p, excludedServices: fromCsv(e.target.value) }))}
+              value={excludedServicesText}
+              onChange={(e) => {
+                setExcludedServicesText(e.target.value)
+                setProfile((p) => ({ ...p, excludedServices: fromCsv(e.target.value) }))
+              }}
               placeholder="Ex : dépannage chaudière fioul"
               style={inputStyle}
             />
@@ -1932,7 +1951,10 @@ export default function ProfilMetierPage() {
           onClose={() => setShowWizard(false)}
           onComplete={({ profile, importedServiceProfiles }) => {
             if (profile) {
-              setProfile(profileFromRow(profile))
+              const nextProfile = profileFromRow(profile)
+              setProfile(nextProfile)
+              setSpecialtiesText(toCsv(nextProfile.specialties))
+              setExcludedServicesText(toCsv(nextProfile.excludedServices))
               setHasProfile(true)
             }
             if (importedServiceProfiles.length > 0) {
