@@ -424,7 +424,7 @@ function ProjectDetail() {
             : item
         )
       );
-      setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyee' });
+      setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyée. Le client a reçu un email lui rappelant ce devis en attente.' });
     } catch (error) {
       setFollowUpToast({
         type: 'error',
@@ -459,7 +459,9 @@ function ProjectDetail() {
       await loadActivities();
       setFollowUpToast({
         type: 'success',
-        message: nextDisabled ? 'Relances desactivees pour ce devis' : 'Relances reactivees pour ce devis',
+        message: nextDisabled
+          ? 'Relances désactivées. Ce devis ne sera plus relancé automatiquement.'
+          : 'Relances réactivées. Ce devis sera de nouveau relancé automatiquement si besoin.',
       });
     } catch (error) {
       setFollowUpToast({

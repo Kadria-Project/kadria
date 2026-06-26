@@ -360,7 +360,7 @@ export default function AdminClientDetailPage() {
         siret: form.siret,
         address: form.address,
       });
-      showToast('success', 'Modifications enregistrées');
+      showToast('success', 'Informations du client enregistrées et mises à jour sur sa fiche.');
     } catch (err) {
       showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
@@ -372,7 +372,7 @@ export default function AdminClientDetailPage() {
     setSaving(true);
     try {
       await patch({ notes_admin: notes });
-      showToast('success', 'Modifications enregistrées');
+      showToast('success', 'Note enregistrée dans l\'historique de ce client.');
     } catch (err) {
       showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
@@ -405,7 +405,7 @@ export default function AdminClientDetailPage() {
         plan: newPlan,
         history_entry: `Plan changé : ${client.plan || 'Aucun'} → ${newPlan}`,
       });
-      showToast('success', 'Modifications enregistrées');
+      showToast('success', `Plan changé vers "${newPlan}". La facturation du client sera mise à jour en conséquence.`);
     } catch (err) {
       showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
@@ -422,7 +422,7 @@ export default function AdminClientDetailPage() {
         statut: newStatut,
         history_entry: `Statut changé : ${client.statut || 'Aucun'} → ${newStatut}`,
       });
-      showToast('success', 'Modifications enregistrées');
+      showToast('success', `Statut changé vers "${newStatut}". Le client verra ce changement reflété sur son compte.`);
     } catch (err) {
       showToast('error', `Erreur lors de l'enregistrement${err instanceof Error ? ' : ' + err.message : ''}`);
     } finally {
@@ -484,6 +484,9 @@ export default function AdminClientDetailPage() {
       }
 
       setCancelOpen(false);
+      showToast('success', cancelNotify
+        ? 'Abonnement résilié. Un email de confirmation a été envoyé au client.'
+        : 'Abonnement résilié. Le client n\'a pas été notifié par email.');
     } catch (err) {
       alert(`Erreur lors de la résiliation : ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -521,6 +524,7 @@ export default function AdminClientDetailPage() {
       setEmailSubject('');
       setEmailBody('');
       setEmailTemplate('Autre');
+      showToast('success', 'Email envoyé. Une copie est disponible dans l\'historique des échanges de ce client.');
     } catch {
       alert("Erreur lors de l'envoi de l'email");
     } finally {

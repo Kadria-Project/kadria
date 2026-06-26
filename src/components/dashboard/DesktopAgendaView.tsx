@@ -164,7 +164,7 @@ export default function DesktopAgendaView() {
       }
       const json = await response.json();
       if (json.success) {
-        setReturnMessage('Déconnexion réussie');
+        setReturnMessage('Google Calendar déconnecté. Kadria ne synchronisera plus votre agenda.');
         setEvents([]);
         await fetchStatus();
       } else {
@@ -214,7 +214,7 @@ export default function DesktopAgendaView() {
         return;
       }
 
-      setCreateSuccess('Événement créé');
+      setCreateSuccess('Rendez-vous planifié. L\'événement a été ajouté à Google Calendar.');
       setNewEvent(EMPTY_NEW_EVENT_FORM);
       setShowCreateForm(false);
       await fetchEvents();

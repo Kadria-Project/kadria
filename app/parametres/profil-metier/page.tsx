@@ -632,6 +632,19 @@ export default function ProfilMetierPage() {
         </button>
       </div>
 
+      {saved && !saveError && (
+        <div className="mx-3 mt-4 sm:mx-8" style={{
+          background: 'rgba(34,197,94,0.08)',
+          border: '1px solid rgba(34,197,94,0.3)',
+          borderRadius: '10px',
+          padding: '12px 16px',
+          color: '#4ade80',
+          fontSize: '13px',
+        }}>
+          Profil métier enregistré. Les prochaines suggestions de devis utiliseront désormais ces informations.
+        </div>
+      )}
+
       {saveError && (
         <div className="mx-3 mt-4 sm:mx-8" style={{
           background: 'rgba(220,38,38,0.08)',

@@ -174,7 +174,7 @@ function DevisView() {
     const url = getPublicDevisUrl(devis.token);
     try {
       await navigator.clipboard.writeText(url);
-      setToast({ type: 'success', message: '✓ Lien copié !' });
+      setToast({ type: 'success', message: '✓ Lien copié. Vous pouvez le partager directement avec le client.' });
     } catch (err) {
       setToast({ type: 'error', message: '✗ Impossible de copier le lien' });
       console.error('[DEVIS VIEW] Erreur copie lien:', err);

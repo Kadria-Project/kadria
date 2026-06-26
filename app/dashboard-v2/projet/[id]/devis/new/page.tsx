@@ -572,11 +572,11 @@ function NewDevis() {
       }
 
       if (mode === 'draft') {
-        setToast({ type: 'success', message: `✓ Devis ${numero} enregistré — PDF généré · Envoi possible depuis le dossier` });
+        setToast({ type: 'success', message: `✓ Devis ${numero} enregistré. Le PDF a été généré, vous pouvez maintenant l'envoyer au client depuis le dossier.` });
       } else if (finalizeData.email_sent) {
-        setToast({ type: 'success', message: `✓ Devis ${numero} envoyé à ${clientEmail} — PDF joint à l'email` });
+        setToast({ type: 'success', message: `✓ Devis ${numero} envoyé à ${clientEmail}. Le PDF est joint à l'email, votre client peut le consulter dès maintenant.` });
       } else {
-        setToast({ type: 'warning', message: `⚠️ Devis ${numero} enregistré mais l'email n'a pas pu être envoyé — vérifiez l'email client` });
+        setToast({ type: 'warning', message: `⚠️ Devis ${numero} enregistré, mais l'email n'a pas pu être envoyé. Vérifiez l'adresse email du client puis réessayez l'envoi depuis le dossier.` });
       }
       setTimeout(() => {
         router.push(`/dashboard-v2/projet/${projetId}`);

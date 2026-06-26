@@ -172,8 +172,8 @@ export default function AdminEmailsPage() {
 
       setFeedback(
         failed === 0
-          ? `${success} email${success > 1 ? 's' : ''} envoyé${success > 1 ? 's' : ''} avec succès`
-          : `${success} envoyé(s), ${failed} échec(s)`
+          ? `${success} email${success > 1 ? 's' : ''} envoyé${success > 1 ? 's' : ''}. Une copie est disponible dans l'historique des échanges ci-dessous.`
+          : `${success} email${success > 1 ? 's' : ''} envoyé${success > 1 ? 's' : ''}, ${failed} échec${failed > 1 ? 's' : ''}. Consultez l'historique pour identifier les envois en erreur.`
       );
 
       if (success > 0) {
