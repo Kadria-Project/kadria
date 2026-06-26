@@ -45,6 +45,17 @@ interface ClientAlerts {
   messages: string[];
 }
 
+type SetupProgressBandKey = 'a_demarrer' | 'a_completer' | 'presque_pret' | 'complet';
+
+interface SetupProgressSummary {
+  percent: number;
+  completedSteps: number;
+  totalSteps: number;
+  stepsRemaining: number;
+  band: { key: SetupProgressBandKey; label: string };
+  dataAvailable: boolean;
+}
+
 interface ClientRecord {
   id: string;
   email: string;
@@ -68,6 +79,47 @@ interface ClientRecord {
   features?: ClientFeatures;
   alerts?: ClientAlerts;
   health?: ClientHealth;
+  setupProgress?: SetupProgressSummary | null;
+}
+
+const SETUP_BAND_BADGE: Record<SetupProgressBandKey, { bg: string; color: string }> = {
+  a_demarrer: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+  a_completer: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+  presque_pret: { bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' },
+  complet: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
+};
+
+function SetupProgressCell({ setupProgress }: { setupProgress?: SetupProgressSummary | null }) {
+  if (!setupProgress) {
+    return <span style={{ color: '#52525b', fontSize: '12px' }}>Données configuration indisponibles</span>;
+  }
+  const palette = SETUP_BAND_BADGE[setupProgress.band.key];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <span style={{ fontWeight: 700, fontSize: '13px' }}>{setupProgress.percent}%</span>
+      <span
+        style={{
+          background: palette.bg,
+          color: palette.color,
+          borderRadius: '999px',
+          padding: '2px 8px',
+          fontSize: '11px',
+          fontWeight: 600,
+          width: 'fit-content',
+        }}
+      >
+        {setupProgress.band.label}
+      </span>
+      {setupProgress.stepsRemaining > 0 && (
+        <span style={{ fontSize: '11px', color: '#71717a' }}>
+          {setupProgress.stepsRemaining} étape{setupProgress.stepsRemaining > 1 ? 's' : ''} restante{setupProgress.stepsRemaining > 1 ? 's' : ''}
+        </span>
+      )}
+      {!setupProgress.dataAvailable && (
+        <span style={{ fontSize: '11px', color: '#52525b' }}>Données partielles</span>
+      )}
+    </div>
+  );
 }
 
 const PLAN_BADGE: Record<string, { bg: string; color: string }> = {
@@ -381,6 +433,7 @@ export default function AdminClientsPage() {
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Plan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Santé</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Configuration</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Dossiers</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Devis</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Appels vocaux</th>
@@ -393,7 +446,7 @@ export default function AdminClientsPage() {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={12} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
+                      <td colSpan={13} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
                     </tr>
                   )}
                   {filtered.map((c, i) => (
@@ -440,6 +493,7 @@ export default function AdminClientsPage() {
                       <td style={{ padding: '12px 20px' }}><Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} /></td>
                       <td style={{ padding: '12px 20px' }}><Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} /></td>
                       <td style={{ padding: '12px 20px' }}><HealthBadge health={c.health} /></td>
+                      <td style={{ padding: '12px 20px', minWidth: '150px' }}><SetupProgressCell setupProgress={c.setupProgress} /></td>
                       <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.projectUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.devisUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</td>
@@ -519,6 +573,11 @@ export default function AdminClientsPage() {
                   <Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} />
                   <HealthBadge health={c.health} />
                   <AlertBadge alerts={c.alerts} />
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Configuration</p>
+                  <SetupProgressCell setupProgress={c.setupProgress} />
                 </div>
 
                 <div style={{ fontSize: '12px', color: '#71717a', marginBottom: '8px', fontFamily: 'monospace' }}>

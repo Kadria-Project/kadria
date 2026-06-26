@@ -62,6 +62,36 @@ interface ClientHealth {
   recommendation: string;
 }
 
+type SetupStepStatus = 'done' | 'todo';
+
+interface SetupProgressStep {
+  key: string;
+  label: string;
+  description: string;
+  status: SetupStepStatus;
+  ctaLabel: string;
+  href: string;
+  priority: number;
+}
+
+type SetupProgressBandKey = 'a_demarrer' | 'a_completer' | 'presque_pret' | 'complet';
+
+interface SetupProgressDetail {
+  percent: number;
+  completedSteps: number;
+  totalSteps: number;
+  steps: SetupProgressStep[];
+  band: { key: SetupProgressBandKey; label: string };
+  dataAvailable: boolean;
+}
+
+const SETUP_BAND_BADGE: Record<SetupProgressBandKey, { bg: string; color: string }> = {
+  a_demarrer: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+  a_completer: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+  presque_pret: { bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' },
+  complet: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
+};
+
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
 interface UsageSummary {
@@ -242,6 +272,7 @@ export default function AdminClientDetailPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [health, setHealth] = useState<ClientHealth | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [setupProgress, setSetupProgress] = useState<SetupProgressDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -281,6 +312,7 @@ export default function AdminClientDetailPage() {
         setClient(data);
         setHealth(data.health || null);
         setUsage(data.usage || null);
+        setSetupProgress(data.setupProgress || null);
         setForm({
           firstName: data.firstName || '',
           lastName: data.lastName || '',
@@ -599,6 +631,106 @@ export default function AdminClientDetailPage() {
             <p style={{ fontSize: '13px', color: '#e4e4e7', margin: 0, fontStyle: 'italic' }}>
               {health.recommendation}
             </p>
+          </>
+        )}
+      </div>
+
+      <div style={card}>
+        <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Configuration métier</p>
+        {!setupProgress && (
+          <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Données configuration indisponibles</p>
+        )}
+        {setupProgress && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '22px', fontWeight: 800 }}>{setupProgress.percent}%</span>
+              <span
+                style={{
+                  background: SETUP_BAND_BADGE[setupProgress.band.key].bg,
+                  color: SETUP_BAND_BADGE[setupProgress.band.key].color,
+                  borderRadius: '999px',
+                  padding: '5px 12px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                }}
+              >
+                {setupProgress.band.label}
+              </span>
+              <span style={{ fontSize: '13px', color: '#a1a1aa' }}>
+                {setupProgress.completedSteps} / {setupProgress.totalSteps} étapes complétées
+              </span>
+            </div>
+            <div style={{ height: '6px', borderRadius: '4px', background: '#27272a', overflow: 'hidden', marginBottom: '16px' }}>
+              <div style={{ height: '100%', width: `${setupProgress.percent}%`, background: '#22c55e', transition: 'width 0.2s' }} />
+            </div>
+            {!setupProgress.dataAvailable && (
+              <p style={{ fontSize: '12px', color: '#71717a', margin: '0 0 12px' }}>
+                Certaines données de configuration sont indisponibles — score calculé sur les données accessibles uniquement.
+              </p>
+            )}
+
+            {setupProgress.steps.filter((s) => s.status === 'done').length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <p style={{ ...label, marginBottom: '8px' }}>Étapes terminées</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {setupProgress.steps
+                    .filter((s) => s.status === 'done')
+                    .map((s) => (
+                      <span
+                        key={s.key}
+                        style={{
+                          background: 'rgba(34,197,94,0.08)',
+                          color: '#22c55e',
+                          borderRadius: '999px',
+                          padding: '3px 9px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        ✓ {s.label}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {setupProgress.steps.filter((s) => s.status === 'todo').length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#22c55e', margin: 0, fontWeight: 600 }}>
+                Configuration complète — rien à faire avec ce client.
+              </p>
+            ) : (
+              <div>
+                <p style={{ ...label, marginBottom: '8px' }}>À faire avec le client</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {setupProgress.steps
+                    .filter((s) => s.status === 'todo')
+                    .sort((a, b) => a.priority - b.priority)
+                    .map((s) => (
+                      <div
+                        key={s.key}
+                        style={{
+                          border: '1px solid #27272a',
+                          borderRadius: '8px',
+                          padding: '8px 10px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '10px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <div>
+                          <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{s.label}</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>{s.description}</p>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {s.ctaLabel}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

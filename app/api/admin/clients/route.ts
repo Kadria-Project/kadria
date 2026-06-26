@@ -4,6 +4,9 @@ import { requireAdminSession } from '@/src/lib/auth-utils'
 import { getPlanLabel, normalizePlan, hasFeature } from '@/src/lib/plans'
 import { getMonthlyUsageSummary, type UsageStatus } from '@/src/lib/usage/quotas'
 import { computeClientHealth, getClientHealthLabel } from '@/src/lib/admin/clientHealth'
+import { batchGetSetupProgress } from '@/src/lib/admin/setupProgressBatch'
+import { getSetupProgressBand } from '@/src/lib/setup-progress'
+import type { SetupProgressArtisanConfig } from '@/src/lib/setup-progress'
 
 type AlertLevel = 'ok' | 'warning' | 'danger'
 
@@ -31,6 +34,14 @@ export async function GET() {
   try {
     const users = await getAllUsers()
     const artisans = users.filter((u) => u.role !== 'Admin')
+
+    const artisanConfigs = new Map<string, SetupProgressArtisanConfig>()
+    for (const u of artisans) {
+      if (u.artisanId) {
+        artisanConfigs.set(u.artisanId, { companyName: u.company, phone: u.phone, address: u.address })
+      }
+    }
+    const setupProgressByArtisan = await batchGetSetupProgress(artisanConfigs)
 
     const clients = await Promise.all(
       artisans.map(async (u) => {
@@ -108,6 +119,18 @@ export async function GET() {
 
         const detailId = u.id || u.artisanId
 
+        const setupProgressEntry = u.artisanId ? setupProgressByArtisan.get(u.artisanId) : null
+        const setupProgress = setupProgressEntry
+          ? {
+              percent: setupProgressEntry.progress.percent,
+              completedSteps: setupProgressEntry.progress.completedSteps,
+              totalSteps: setupProgressEntry.progress.totalSteps,
+              stepsRemaining: setupProgressEntry.progress.totalSteps - setupProgressEntry.progress.completedSteps,
+              band: getSetupProgressBand(setupProgressEntry.progress.percent),
+              dataAvailable: setupProgressEntry.dataAvailable,
+            }
+          : null
+
         const health = computeClientHealth({
           plan,
           statut,
@@ -143,6 +166,7 @@ export async function GET() {
           usage,
           features,
           alerts: { level, messages },
+          setupProgress,
           health: {
             status: health.status,
             label: getClientHealthLabel(health.status),

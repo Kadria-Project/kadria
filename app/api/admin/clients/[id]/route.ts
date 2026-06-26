@@ -4,6 +4,8 @@ import { requireAdminSession } from '@/src/lib/auth-utils'
 import { normalizePlan } from '@/src/lib/plans'
 import { getMonthlyUsageSummary } from '@/src/lib/usage/quotas'
 import { computeClientHealth, getClientHealthLabel } from '@/src/lib/admin/clientHealth'
+import { getSetupProgressForArtisan } from '@/src/lib/admin/setupProgressBatch'
+import { getSetupProgressBand } from '@/src/lib/setup-progress'
 
 function timestampEntry(adminEmail: string, text: string) {
   const date = new Date().toLocaleString('fr-FR')
@@ -39,9 +41,30 @@ export async function GET(
       usage: usage ? { projects: usage.projects, vapi: usage.vapi, devis: usage.devis } : null,
     })
 
+    const setupProgressEntry = user.artisanId
+      ? await getSetupProgressForArtisan(user.artisanId, {
+          companyName: user.company,
+          phone: user.phone,
+          address: user.address,
+        })
+      : null
+
+    const setupProgress = setupProgressEntry
+      ? {
+          percent: setupProgressEntry.progress.percent,
+          completedSteps: setupProgressEntry.progress.completedSteps,
+          totalSteps: setupProgressEntry.progress.totalSteps,
+          steps: setupProgressEntry.progress.steps,
+          band: getSetupProgressBand(setupProgressEntry.progress.percent),
+          tablesMissing: setupProgressEntry.tablesMissing,
+          dataAvailable: setupProgressEntry.dataAvailable,
+        }
+      : null
+
     return NextResponse.json({
       ...user,
       usage,
+      setupProgress,
       health: {
         status: health.status,
         label: getClientHealthLabel(health.status),

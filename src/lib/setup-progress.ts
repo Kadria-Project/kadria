@@ -152,3 +152,21 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
 
   return { percent, completedSteps, totalSteps, steps }
 }
+
+export type SetupProgressBand = 'a_demarrer' | 'a_completer' | 'presque_pret' | 'complet'
+
+export interface SetupProgressBandInfo {
+  key: SetupProgressBand
+  label: string
+}
+
+/**
+ * Catégorise un pourcentage déjà calculé par computeSetupProgress en bande
+ * d'affichage admin. Ne recalcule rien, ne fait que classer une valeur.
+ */
+export function getSetupProgressBand(percent: number): SetupProgressBandInfo {
+  if (percent >= 100) return { key: 'complet', label: 'Complet' }
+  if (percent >= 71) return { key: 'presque_pret', label: 'Presque prêt' }
+  if (percent >= 26) return { key: 'a_completer', label: 'À compléter' }
+  return { key: 'a_demarrer', label: 'À démarrer' }
+}
