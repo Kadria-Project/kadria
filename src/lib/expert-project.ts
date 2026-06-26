@@ -16,6 +16,11 @@ import type {
   ServiceMatchResult,
 } from '@/src/lib/service-matcher';
 import type { QuoteSuggestionLine } from '@/src/lib/quote-suggestions';
+import {
+  type QualificationField,
+  isQualificationFieldAnswered,
+  computeQualificationFieldsStatus,
+} from '@/src/lib/qualification-fields';
 
 // Sous-ensemble du référentiel métier (table `service_profiles`) utile au
 // Mode Expert. Déclaré localement (et non importé depuis src/lib/service-profiles.ts,
@@ -34,6 +39,7 @@ export interface ExpertReferentialServiceProfile {
   id?: string;
   name?: string;
   qualification_questions?: string[] | null;
+  qualification_fields?: QualificationField[] | null;
   required_information?: string[] | null;
   required_photos?: boolean | null;
   required_photos_list?: ExpertPhotoRequirement[] | null;
@@ -71,6 +77,7 @@ export interface ExpertConfidence {
 export interface ExpertQualificationQuestion {
   label: string;
   answered: boolean;
+  type?: QualificationField['type'];
 }
 
 export interface ExpertQualification {
@@ -78,6 +85,10 @@ export interface ExpertQualification {
   questions: ExpertQualificationQuestion[];
   remaining: number;
   total: number;
+  // Préparation pour le chat (non branchée ici, cf. brief "Chat").
+  expectedQualificationFields: QualificationField[];
+  completedQualificationFields: QualificationField[];
+  remainingQualificationFields: QualificationField[];
 }
 
 export interface ExpertPhotos {
@@ -199,18 +210,47 @@ export function computeExpertProjectView(input: ExpertProjectInput): ExpertProje
   // 2. QUALIFICATION — uniquement les questions du référentiel métier
   // (table service_profiles). Si aucun profil métier ne correspond, on
   // n'invente rien : "non disponible".
+  const referentialFields = referentialProfile?.qualification_fields || [];
   const referentialQuestions = referentialProfile?.qualification_questions || [];
-  const qualificationQuestions: ExpertQualificationQuestion[] = referentialQuestions.map((q) => ({
-    label: q,
-    answered: isQuestionAnswered(q, project.tradeAnswers),
-  }));
-  const qualificationRemaining = qualificationQuestions.filter((q) => !q.answered).length;
-  const qualification: ExpertQualification = {
-    available: referentialQuestions.length > 0,
-    questions: qualificationQuestions,
-    remaining: qualificationRemaining,
-    total: qualificationQuestions.length,
-  };
+
+  let qualification: ExpertQualification;
+  if (referentialFields.length > 0) {
+    // Champs structurés disponibles : ils deviennent la source de vérité
+    // (cf. brief "Aucune régression" — la liste texte legacy n'est plus lue
+    // dès que des champs structurés existent pour cette prestation).
+    const status = computeQualificationFieldsStatus(referentialFields, project.tradeAnswers);
+    const qualificationQuestions: ExpertQualificationQuestion[] = status.expectedQualificationFields.map((f) => ({
+      label: f.label,
+      answered: isQualificationFieldAnswered(f, project.tradeAnswers),
+      type: f.type,
+    }));
+    qualification = {
+      available: true,
+      questions: qualificationQuestions,
+      remaining: status.remainingQualificationFields.length,
+      total: status.expectedQualificationFields.length,
+      expectedQualificationFields: status.expectedQualificationFields,
+      completedQualificationFields: status.completedQualificationFields,
+      remainingQualificationFields: status.remainingQualificationFields,
+    };
+  } else {
+    // Compatibilité : pas de champs structurés, on retombe sur les
+    // questions texte historiques.
+    const qualificationQuestions: ExpertQualificationQuestion[] = referentialQuestions.map((q) => ({
+      label: q,
+      answered: isQuestionAnswered(q, project.tradeAnswers),
+    }));
+    const qualificationRemaining = qualificationQuestions.filter((q) => !q.answered).length;
+    qualification = {
+      available: referentialQuestions.length > 0,
+      questions: qualificationQuestions,
+      remaining: qualificationRemaining,
+      total: qualificationQuestions.length,
+      expectedQualificationFields: [],
+      completedQualificationFields: [],
+      remainingQualificationFields: [],
+    };
+  }
 
   // 3. PHOTOS — si le référentiel décrit une liste structurée (preuves
   // visuelles), on l'affiche telle quelle, jamais inventée. Sinon on

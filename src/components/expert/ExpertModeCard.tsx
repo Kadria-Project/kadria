@@ -3,10 +3,25 @@
 import { useState, type CSSProperties, type ReactElement } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { ExpertProjectView } from '@/src/lib/expert-project';
+import type { QualificationFieldType } from '@/src/lib/qualification-fields';
 
 interface ExpertModeCardProps {
   view: ExpertProjectView;
 }
+
+const QUALIFICATION_FIELD_TYPE_LABELS: Record<QualificationFieldType, string> = {
+  text: 'texte',
+  number: 'nombre',
+  boolean: 'oui/non',
+  date: 'date',
+  select: 'choix',
+  multiselect: 'choix multiples',
+  photo: 'photo',
+  phone: 'téléphone',
+  email: 'email',
+  address: 'adresse',
+  currency: 'montant',
+};
 
 const card: CSSProperties = {
   background: 'var(--bg-elevated)',
@@ -109,6 +124,11 @@ function QualificationSection({ view }: { view: ExpertProjectView }) {
                   {q.answered ? '✓' : '○'}
                 </span>
                 {q.label}
+                {q.type && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                    ({QUALIFICATION_FIELD_TYPE_LABELS[q.type]})
+                  </span>
+                )}
               </li>
             ))}
           </ul>

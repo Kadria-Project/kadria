@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { getServiceProfile, updateServiceProfile, deleteOrDeactivateServiceProfile } from '@/src/lib/service-profiles'
+import { isQualificationFieldArray } from '@/src/lib/qualification-fields'
 
 function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((item) => typeof item === 'string')
@@ -77,6 +78,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return NextResponse.json({ success: false, error: 'qualificationQuestions doit être un tableau de chaînes' }, { status: 400 })
       }
       fields.qualification_questions = body.qualificationQuestions
+    }
+    if (body.qualificationFields !== undefined) {
+      if (!isQualificationFieldArray(body.qualificationFields)) {
+        return NextResponse.json({ success: false, error: 'qualificationFields doit être un tableau de champs de qualification valides' }, { status: 400 })
+      }
+      fields.qualification_fields = body.qualificationFields
     }
     if (body.requiredInformation !== undefined) {
       if (!isStringArray(body.requiredInformation)) {

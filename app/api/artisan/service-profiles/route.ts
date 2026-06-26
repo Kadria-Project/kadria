@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { listServiceProfiles, createServiceProfile } from '@/src/lib/service-profiles'
+import { isQualificationFieldArray } from '@/src/lib/qualification-fields'
 
 function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((item) => typeof item === 'string')
@@ -68,6 +69,9 @@ export async function POST(request: NextRequest) {
     if (body.requiredPhotosList !== undefined && !isPhotoRequirementArray(body.requiredPhotosList)) {
       return NextResponse.json({ success: false, error: 'requiredPhotosList doit être un tableau de { id, title, description, required, order }' }, { status: 400 })
     }
+    if (body.qualificationFields !== undefined && !isQualificationFieldArray(body.qualificationFields)) {
+      return NextResponse.json({ success: false, error: 'qualificationFields doit être un tableau de champs de qualification valides' }, { status: 400 })
+    }
 
     const requiredPhotosList: Array<{ id: string; title: string; description: string; required: boolean; order: number }> = body.requiredPhotosList ?? []
     const fields: Record<string, unknown> = {
@@ -78,6 +82,7 @@ export async function POST(request: NextRequest) {
       service_catalog_id: typeof body.serviceCatalogId === 'string' && body.serviceCatalogId ? body.serviceCatalogId : null,
       detection_keywords: body.detectionKeywords ?? [],
       qualification_questions: body.qualificationQuestions ?? [],
+      qualification_fields: body.qualificationFields ?? [],
       required_information: body.requiredInformation ?? [],
       // Migration douce : required_photos (legacy) reste piloté manuellement
       // si la nouvelle liste est vide ; dès qu'une liste est définie, elle

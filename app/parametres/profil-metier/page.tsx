@@ -8,6 +8,7 @@ import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTempla
 import { BusinessSetupWizard } from '@/src/components/BusinessSetupWizard'
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine'
 import LoadingForm from '@/src/components/ui/loading/LoadingForm'
+import type { QualificationField, QualificationFieldType } from '@/src/lib/qualification-fields'
 
 interface BusinessProfile {
   primaryTrade: string
@@ -59,6 +60,7 @@ interface ServiceProfileRow {
   is_active: boolean
   detection_keywords: string[]
   qualification_questions: string[]
+  qualification_fields: QualificationField[]
   required_information: string[]
   required_photos: boolean
   required_photos_list: ServicePhotoRequirement[]
@@ -80,6 +82,7 @@ interface ServiceProfileForm {
   serviceCatalogId: string
   detectionKeywords: string[]
   qualificationQuestions: string[]
+  qualificationFields: QualificationField[]
   requiredInformation: string[]
   requiredPhotos: boolean
   requiredPhotosList: ServicePhotoRequirement[]
@@ -101,6 +104,7 @@ const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   serviceCatalogId: '',
   detectionKeywords: [],
   qualificationQuestions: [],
+  qualificationFields: [],
   requiredInformation: [],
   requiredPhotos: false,
   requiredPhotosList: [],
@@ -118,6 +122,24 @@ function newPhotoRequirementId(): string {
   return `photo_${Math.random().toString(36).slice(2, 10)}`
 }
 
+function newQualificationFieldId(): string {
+  return `field_${Math.random().toString(36).slice(2, 10)}`
+}
+
+const QUALIFICATION_FIELD_TYPE_OPTIONS: Array<{ value: QualificationFieldType; label: string }> = [
+  { value: 'text', label: 'Texte' },
+  { value: 'number', label: 'Nombre' },
+  { value: 'boolean', label: 'Oui/Non' },
+  { value: 'date', label: 'Date' },
+  { value: 'select', label: 'Choix' },
+  { value: 'multiselect', label: 'Choix multiples' },
+  { value: 'photo', label: 'Photo' },
+  { value: 'phone', label: 'Téléphone' },
+  { value: 'email', label: 'Email' },
+  { value: 'address', label: 'Adresse' },
+  { value: 'currency', label: 'Monétaire' },
+]
+
 function serviceProfileFormFromRow(row: ServiceProfileRow): ServiceProfileForm {
   return {
     name: row.name,
@@ -127,6 +149,7 @@ function serviceProfileFormFromRow(row: ServiceProfileRow): ServiceProfileForm {
     serviceCatalogId: row.service_catalog_id || '',
     detectionKeywords: row.detection_keywords || [],
     qualificationQuestions: row.qualification_questions || [],
+    qualificationFields: (row.qualification_fields || []).slice().sort((a, b) => a.order - b.order),
     requiredInformation: row.required_information || [],
     requiredPhotos: row.required_photos,
     requiredPhotosList: (row.required_photos_list || []).slice().sort((a, b) => a.order - b.order),
@@ -382,6 +405,9 @@ export default function ProfilMetierPage() {
       serviceCatalogId: serviceProfileForm.serviceCatalogId || null,
       detectionKeywords: serviceProfileForm.detectionKeywords,
       qualificationQuestions: serviceProfileForm.qualificationQuestions,
+      qualificationFields: serviceProfileForm.qualificationFields
+        .filter((f) => f.label.trim())
+        .map((f, idx) => ({ ...f, label: f.label.trim(), order: idx })),
       requiredInformation: serviceProfileForm.requiredInformation,
       requiredPhotos: serviceProfileForm.requiredPhotos,
       requiredPhotosList: serviceProfileForm.requiredPhotosList
@@ -1457,6 +1483,156 @@ export default function ProfilMetierPage() {
                   rows={2}
                   style={{ ...inputStyle, resize: 'vertical' }}
                 />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Questions de qualification structurées</label>
+                <p style={{ fontSize: '12px', color: 'var(--text-2)', margin: '0 0 8px' }}>
+                  Tant qu&apos;aucune question structurée n&apos;est ajoutée ici, les questions ci-dessus (texte libre) restent utilisées.
+                </p>
+                {serviceProfileForm.qualificationFields.map((field, idx) => {
+                  const needsOptions = field.type === 'select' || field.type === 'multiselect'
+                  const needsUnit = field.type === 'number' || field.type === 'currency'
+                  return (
+                    <div
+                      key={field.id}
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: '10px',
+                        padding: '10px',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px' }}>
+                        <input
+                          type="text"
+                          placeholder="Libellé (ex : Puissance compteur)"
+                          value={field.label}
+                          onChange={(e) => setServiceProfileForm((p) => ({
+                            ...p,
+                            qualificationFields: p.qualificationFields.map((f, i) => (i === idx ? { ...f, label: e.target.value } : f)),
+                          }))}
+                          style={inputStyle}
+                        />
+                        <select
+                          value={field.type}
+                          onChange={(e) => setServiceProfileForm((p) => ({
+                            ...p,
+                            qualificationFields: p.qualificationFields.map((f, i) => (i === idx ? { ...f, type: e.target.value as QualificationFieldType } : f)),
+                          }))}
+                          style={inputStyle}
+                        >
+                          {QUALIFICATION_FIELD_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: needsUnit || needsOptions ? '1fr 1fr' : '1fr', gap: '6px' }}>
+                        <input
+                          type="text"
+                          placeholder="Aide / placeholder (optionnel)"
+                          value={field.helpText || ''}
+                          onChange={(e) => setServiceProfileForm((p) => ({
+                            ...p,
+                            qualificationFields: p.qualificationFields.map((f, i) => (i === idx ? { ...f, helpText: e.target.value } : f)),
+                          }))}
+                          style={inputStyle}
+                        />
+                        {needsUnit && (
+                          <input
+                            type="text"
+                            placeholder="Unité (ex : A, €)"
+                            value={field.unit || ''}
+                            onChange={(e) => setServiceProfileForm((p) => ({
+                              ...p,
+                              qualificationFields: p.qualificationFields.map((f, i) => (i === idx ? { ...f, unit: e.target.value } : f)),
+                            }))}
+                            style={inputStyle}
+                          />
+                        )}
+                        {needsOptions && (
+                          <input
+                            type="text"
+                            placeholder="Options (séparées par des virgules)"
+                            value={toCsv(field.options || [])}
+                            onChange={(e) => setServiceProfileForm((p) => ({
+                              ...p,
+                              qualificationFields: p.qualificationFields.map((f, i) => (i === idx ? { ...f, options: fromCsv(e.target.value) } : f)),
+                            }))}
+                            style={inputStyle}
+                          />
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '12px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={field.required}
+                            onChange={(e) => setServiceProfileForm((p) => ({
+                              ...p,
+                              qualificationFields: p.qualificationFields.map((f, i) => (i === idx ? { ...f, required: e.target.checked } : f)),
+                            }))}
+                          />
+                          Obligatoire
+                        </label>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => setServiceProfileForm((p) => {
+                              const next = p.qualificationFields.slice()
+                              ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+                              return { ...p, qualificationFields: next }
+                            })}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-2)', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.4 : 1, padding: '2px 8px', fontSize: '12px' }}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === serviceProfileForm.qualificationFields.length - 1}
+                            onClick={() => setServiceProfileForm((p) => {
+                              const next = p.qualificationFields.slice()
+                              ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+                              return { ...p, qualificationFields: next }
+                            })}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-2)', cursor: idx === serviceProfileForm.qualificationFields.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === serviceProfileForm.qualificationFields.length - 1 ? 0.4 : 1, padding: '2px 8px', fontSize: '12px' }}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setServiceProfileForm((p) => ({
+                              ...p,
+                              qualificationFields: p.qualificationFields.filter((_, i) => i !== idx),
+                            }))}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '2px 8px', fontSize: '12px' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                <button
+                  type="button"
+                  onClick={() => setServiceProfileForm((p) => ({
+                    ...p,
+                    qualificationFields: [
+                      ...p.qualificationFields,
+                      { id: newQualificationFieldId(), label: '', type: 'text', required: true, order: p.qualificationFields.length },
+                    ],
+                  }))}
+                  style={{
+                    width: '100%', padding: '8px', borderRadius: '8px', border: '1px dashed var(--border)',
+                    background: 'transparent', color: 'var(--text-2)', fontSize: '12px', cursor: 'pointer',
+                  }}
+                >
+                  + Ajouter une question structurée
+                </button>
               </div>
               <div style={fieldWrap}>
                 <label style={labelStyle}>Informations indispensables (séparées par des virgules)</label>

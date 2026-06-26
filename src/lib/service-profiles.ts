@@ -1,5 +1,6 @@
 import 'server-only'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import type { QualificationField } from '@/src/lib/qualification-fields'
 
 export interface ServicePhotoRequirement {
   id: string
@@ -19,6 +20,7 @@ export interface ServiceProfileRow {
   is_active: boolean
   detection_keywords: string[]
   qualification_questions: string[]
+  qualification_fields: QualificationField[]
   required_information: string[]
   required_photos: boolean
   required_photos_list: ServicePhotoRequirement[]
