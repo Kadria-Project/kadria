@@ -32,6 +32,8 @@ import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionTyp
 import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate, type QuoteSuggestionLine } from '@/src/lib/quote-suggestions';
 import { matchProjectToServices, type ServiceMatcherBusinessProfile, type ServiceMatcherServiceProfile, type ServiceMatchResult } from '@/src/lib/service-matcher';
 import { computeNextAction } from '@/src/lib/action-engine';
+import { computeExpertProjectView } from '@/src/lib/expert-project';
+import ExpertModeCardDesktop, { ExpertModeAccordionMobile } from '@/src/components/expert/ExpertModeCard';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -836,6 +838,18 @@ function ProjectDetail() {
     businessProfile,
     serviceProfiles,
   );
+
+  // Mode Expert — orchestrateur pur (src/lib/expert-project.ts) : rassemble
+  // ce qui est déjà calculé ci-dessus, ne recalcule rien.
+  const expertView = computeExpertProjectView({
+    project: { budget: project.budget, tradeAnswers: project.tradeAnswers, photos: project.photos },
+    analysis,
+    serviceMatches,
+    nextAction,
+    businessProfile,
+    serviceProfiles,
+    quoteSuggestions,
+  });
 
   type ReferentialSuggestionLine = QuoteSuggestionLine & {
     fromReferential?: boolean;
@@ -1845,6 +1859,17 @@ function ProjectDetail() {
               Bientôt disponible
             </p>
           </div>
+        </div>
+
+        {/* Mode Expert — orchestrateur pur, lit les sorties déjà calculées ci-dessus
+            (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,
+            Suggestions devis) sans rien recalculer (src/lib/expert-project.ts). */}
+        <div style={{ marginBottom: '16px' }}>
+          {isMobile ? (
+            <ExpertModeAccordionMobile view={expertView} />
+          ) : (
+            <ExpertModeCardDesktop view={expertView} />
+          )}
         </div>
 
         {/* Timeline intelligente — uniquement des étapes appuyées sur des données réelles du dossier */}
