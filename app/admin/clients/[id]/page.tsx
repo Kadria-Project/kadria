@@ -141,7 +141,7 @@ function usageLabel(used: number, limit: number | null) {
 const PLAN_TONE: Record<string, AdminBadgeTone> = {
   'Essentiel': 'neutral',
   'Performance': 'success',
-  'Agence': 'warning',
+  'Agence': 'premium',
 };
 
 const STATUT_TONE: Record<string, AdminBadgeTone> = {
@@ -849,12 +849,12 @@ export default function AdminClientDetailPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
-              <button
+              <AdminButton
+                variant="secondary"
+                fullWidth
                 onClick={handleOpenPortal}
                 disabled={!client.stripeCustomerId || portalLoading}
                 style={{
-                  ...secondaryButton,
-                  width: '100%',
                   opacity: client.stripeCustomerId ? 1 : 0.5,
                   cursor: client.stripeCustomerId ? 'pointer' : 'not-allowed',
                 }}
@@ -864,7 +864,7 @@ export default function AdminClientDetailPage() {
                   : portalLoading
                     ? 'Ouverture...'
                     : 'Ouvrir le Customer Portal'}
-              </button>
+              </AdminButton>
               <button
                 disabled
                 title="Nécessite une route d'annulation Stripe non encore implémentée"
@@ -948,58 +948,37 @@ export default function AdminClientDetailPage() {
           <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Actions rapides</p>
 
-            <button
+            <AdminButton
               onClick={handleSuspendToggle}
+              fullWidth
               style={{
-                width: '100%',
                 marginBottom: '8px',
-                borderRadius: '10px',
-                padding: '10px 16px',
-                fontSize: '13px',
                 fontWeight: 600,
-                cursor: 'pointer',
                 ...(client.statut === 'Suspendu'
                   ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)' }
                   : { background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--status-callback)' }),
               }}
             >
               {client.statut === 'Suspendu' ? '▶ Réactiver' : '⏸ Suspendre le compte'}
-            </button>
+            </AdminButton>
 
-            <button
+            <AdminButton
               onClick={() => setCancelOpen(true)}
+              fullWidth
               style={{
-                width: '100%',
                 marginBottom: '8px',
-                borderRadius: '10px',
-                padding: '10px 16px',
-                fontSize: '13px',
                 fontWeight: 600,
-                cursor: 'pointer',
                 background: 'rgba(220,38,38,0.08)',
                 border: '1px solid rgba(220,38,38,0.2)',
                 color: 'var(--status-lost)',
               }}
             >
               ✕ Résilier l&apos;abonnement
-            </button>
+            </AdminButton>
 
-            <button
-              onClick={() => setEmailOpen(true)}
-              style={{
-                width: '100%',
-                borderRadius: '10px',
-                padding: '10px 16px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                background: 'var(--border)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-1)',
-              }}
-            >
+            <AdminButton variant="secondary" onClick={() => setEmailOpen(true)} fullWidth>
               📧 Envoyer un email
-            </button>
+            </AdminButton>
           </AdminCard>
 
           <AdminCard style={{ marginBottom: '16px' }}>

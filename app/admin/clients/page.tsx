@@ -118,7 +118,7 @@ function SetupProgressCell({ setupProgress }: { setupProgress?: SetupProgressSum
 const PLAN_TONE: Record<string, AdminBadgeTone> = {
   'Essentiel': 'neutral',
   'Performance': 'success',
-  'Agence': 'warning',
+  'Agence': 'premium',
 };
 
 const STATUT_TONE: Record<string, AdminBadgeTone> = {
@@ -307,7 +307,7 @@ export default function AdminClientsPage() {
         <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>Gestion des comptes artisans</p>
       </div>
 
-      {loading && <LoadingTable columns={6} rows={5} />}
+      {loading && <LoadingTable columns={13} rows={5} />}
       {error && <p style={{ color: 'var(--status-lost)' }}>{error}</p>}
 
       {clients && (

@@ -638,8 +638,8 @@ function ProjectDetail() {
   if (loading) {
     return (
       <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)]" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <LoadingSkeleton width="280px" height="24px" />
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        <LoadingSkeleton width="70%" style={{ maxWidth: '280px' }} height="24px" />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[2fr_1fr]">
           <LoadingForm fields={4} />
           <LoadingCard lines={3} />
         </div>
