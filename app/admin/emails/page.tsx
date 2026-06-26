@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import AdminBadge from '@/src/components/admin/AdminBadge';
+import AdminCard from '@/src/components/admin/AdminCard';
+import AdminButton from '@/src/components/admin/AdminButton';
 
 interface ClientRecord {
   id: string;
@@ -40,13 +42,6 @@ const EMAIL_TEMPLATES: Record<string, { subject: string; body: string }> = {
     body: "Nous sommes heureux de vous annoncer une nouvelle fonctionnalité sur Kadria !",
   },
   'Vide': { subject: '', body: '' },
-};
-
-const card: React.CSSProperties = {
-  background: 'var(--bg-elevated)',
-  border: '1px solid var(--border)',
-  borderRadius: '16px',
-  padding: '28px',
 };
 
 const label: React.CSSProperties = {
@@ -202,7 +197,7 @@ export default function AdminEmailsPage() {
         </p>
       </div>
 
-      <div style={{ ...card, marginBottom: '24px' }}>
+      <AdminCard radius="md" padding="lg" style={{ marginBottom: '24px' }}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 20px' }}>Nouvel email</p>
 
         <div style={{ marginBottom: '16px' }}>
@@ -267,26 +262,12 @@ export default function AdminEmailsPage() {
           <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 12px' }}>{feedback}</p>
         )}
 
-        <button
-          onClick={handleSend}
-          disabled={sending}
-          style={{
-            background: 'var(--accent)',
-            color: 'var(--bg)',
-            border: 'none',
-            borderRadius: '12px',
-            padding: '12px 32px',
-            fontSize: '14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            width: '100%',
-          }}
-        >
+        <AdminButton onClick={handleSend} disabled={sending} size="large" fullWidth>
           {sending ? 'Envoi en cours...' : 'Envoyer via Resend →'}
-        </button>
-      </div>
+        </AdminButton>
+      </AdminCard>
 
-      <div style={card}>
+      <AdminCard radius="md" padding="lg">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <p style={{ fontWeight: 700, fontSize: '15px', margin: 0 }}>Historique</p>
           <button
@@ -365,7 +346,7 @@ export default function AdminEmailsPage() {
             </table>
           </div>
         )}
-      </div>
+      </AdminCard>
 
       <style>{`
         @keyframes admin-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
+import AdminCard from '@/src/components/admin/AdminCard';
+import AdminButton from '@/src/components/admin/AdminButton';
 
 interface UserRecord {
   id: string;
@@ -590,7 +592,7 @@ export default function AdminClientDetailPage() {
         <AdminBadge label={client.plan} tone={PLAN_TONE[client.plan] || 'neutral'} variant="plan" />
       </div>
 
-      <div style={card}>
+      <AdminCard style={{ marginBottom: '16px' }}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Santé artisan</p>
         {!health && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
         {health && (
@@ -610,9 +612,9 @@ export default function AdminClientDetailPage() {
             </p>
           </>
         )}
-      </div>
+      </AdminCard>
 
-      <div style={card}>
+      <AdminCard style={{ marginBottom: '16px' }}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Configuration métier</p>
         {!setupProgress && (
           <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Données configuration indisponibles</p>
@@ -699,11 +701,11 @@ export default function AdminClientDetailPage() {
             )}
           </>
         )}
-      </div>
+      </AdminCard>
 
       <div className="admin-client-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '16px', alignItems: 'start' }}>
         <div>
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Informations</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
               <div>
@@ -741,12 +743,12 @@ export default function AdminClientDetailPage() {
                 style={inputStyle}
               />
             </div>
-            <button style={primaryButton} onClick={handleSaveInfo} disabled={saving}>
+            <AdminButton onClick={handleSaveInfo} disabled={saving}>
               {saving ? 'Enregistrement...' : 'Enregistrer les modifications'}
-            </button>
-          </div>
+            </AdminButton>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 12px' }}>Notes admin</p>
             <textarea
               rows={5}
@@ -757,12 +759,12 @@ export default function AdminClientDetailPage() {
             <p style={{ fontSize: '12px', color: 'var(--text-2)', margin: '8px 0 12px' }}>
               Ces notes sont visibles uniquement par l&apos;admin
             </p>
-            <button style={secondaryButton} onClick={handleSaveNotes} disabled={saving}>
+            <AdminButton variant="secondary" onClick={handleSaveNotes} disabled={saving}>
               {saving ? 'Enregistrement...' : 'Sauvegarder la note'}
-            </button>
-          </div>
+            </AdminButton>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 12px' }}>Historique admin</p>
             {historyEntries.length === 0 && (
               <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Aucune action enregistrée</p>
@@ -776,11 +778,11 @@ export default function AdminClientDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </AdminCard>
         </div>
 
         <div>
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Abonnement &amp; facturation</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
@@ -857,9 +859,9 @@ export default function AdminClientDetailPage() {
                 Annulation — à connecter
               </button>
             </div>
-          </div>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Abonnement</p>
 
             <span style={label}>Plan actuel</span>
@@ -922,9 +924,9 @@ export default function AdminClientDetailPage() {
                 />
               </div>
             )}
-          </div>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Actions rapides</p>
 
             <button
@@ -979,9 +981,9 @@ export default function AdminClientDetailPage() {
             >
               📧 Envoyer un email
             </button>
-          </div>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Métriques artisan</p>
             {!metrics && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Aucune donnée disponible</p>}
             {metrics && (
@@ -1004,9 +1006,9 @@ export default function AdminClientDetailPage() {
                 </div>
               </div>
             )}
-          </div>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Valeur générée</p>
             {!metrics?.value && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
             {metrics?.value && (
@@ -1037,9 +1039,9 @@ export default function AdminClientDetailPage() {
                 </div>
               </div>
             )}
-          </div>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Usage vocal</p>
             {!usage && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
             {usage && (
@@ -1062,9 +1064,9 @@ export default function AdminClientDetailPage() {
                 </div>
               </div>
             )}
-          </div>
+          </AdminCard>
 
-          <div style={card}>
+          <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Derniers événements</p>
             {(!metrics?.events || metrics.events.length === 0) && (
               <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Logs à venir</p>
@@ -1081,7 +1083,7 @@ export default function AdminClientDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </AdminCard>
         </div>
       </div>
 
@@ -1112,13 +1114,10 @@ export default function AdminClientDetailPage() {
               Notifier le client par email
             </label>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button style={secondaryButton} onClick={() => setCancelOpen(false)}>Annuler</button>
-              <button
-                style={{ ...primaryButton, background: 'var(--status-lost)', color: 'var(--text-1)' }}
-                onClick={handleCancelConfirm}
-              >
+              <AdminButton variant="secondary" onClick={() => setCancelOpen(false)}>Annuler</AdminButton>
+              <AdminButton variant="danger" onClick={handleCancelConfirm}>
                 Confirmer la résiliation
-              </button>
+              </AdminButton>
             </div>
           </div>
         </div>
@@ -1163,10 +1162,10 @@ export default function AdminClientDetailPage() {
             />
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button style={secondaryButton} onClick={() => setEmailOpen(false)}>Annuler</button>
-              <button style={primaryButton} onClick={handleSendEmail} disabled={emailSending}>
+              <AdminButton variant="secondary" onClick={() => setEmailOpen(false)}>Annuler</AdminButton>
+              <AdminButton onClick={handleSendEmail} disabled={emailSending}>
                 Envoyer via Resend
-              </button>
+              </AdminButton>
             </div>
           </div>
         </div>

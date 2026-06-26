@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
+import AdminCard from '@/src/components/admin/AdminCard';
 
 interface DernierClient {
   id: string;
@@ -112,21 +113,21 @@ export default function AdminHomePage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }} className="admin-plan-grid">
-            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            <AdminCard>
               <p style={{ fontSize: '12px', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', fontWeight: 700 }}>Essentiel</p>
               <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.essentiel} artisans</p>
               <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>{formatEuro(stats.par_plan.essentiel * 149)}/mois</p>
-            </div>
-            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            </AdminCard>
+            <AdminCard>
               <p style={{ fontSize: '12px', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', fontWeight: 700 }}>Performance</p>
               <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.performance} artisans</p>
               <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>{formatEuro(stats.par_plan.performance * 249)}/mois</p>
-            </div>
-            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
+            </AdminCard>
+            <AdminCard>
               <p style={{ fontSize: '12px', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', fontWeight: 700 }}>Agence</p>
               <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.agence} artisans</p>
               <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>Sur devis</p>
-            </div>
+            </AdminCard>
           </div>
 
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
