@@ -27,6 +27,7 @@ import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } fro
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
 import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate } from '@/src/lib/quote-suggestions';
+import { computeNextAction } from '@/src/lib/action-engine';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -692,6 +693,53 @@ function ProjectDetail() {
   });
   const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
 
+  // Action Engine V1 : moteur de decision central, independant de cette
+  // page (cf. src/lib/action-engine.ts). Ne remplace pas l'Analyse Kadria
+  // ci-dessus ni les statuts existants — calcule juste "que faire maintenant".
+  const nextAction = computeNextAction({
+    status: project.status,
+    clientName: project.clientName,
+    clientFirstName: project.clientFirstName,
+    clientPhone: project.clientPhone,
+    clientEmail: project.clientEmail,
+    trade: project.trade,
+    projectType: project.projectType,
+    aiSummary: project.aiSummary,
+    tradeAnswers: project.tradeAnswers,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+    city: project.city,
+    siteAddress: project.siteAddress,
+    photos: project.photos,
+    completenessScore: project.completenessScore,
+    appointment: appointment ? { start: appointment.start } : null,
+    latestDevis: latestDevis
+      ? {
+          sent: latestDevis.sent,
+          accepted: latestDevis.accepted,
+          declined: latestDevis.declined,
+          sentAt: latestDevis.quote_sent_at || latestDevis.date_emission || null,
+        }
+      : null,
+  });
+  const NEXT_ACTION_CTA_LABEL: Record<string, string> = {
+    complete_qualification: 'Compléter',
+    request_photos: 'Demander photos',
+    schedule_appointment: 'Planifier',
+    send_quote: 'Préparer le devis',
+    follow_up_quote: 'Relancer',
+    schedule_intervention: 'Programmer',
+    ask_review: 'Demander un avis',
+    monitor: 'Consulter',
+  };
+  // Seuls les CTA deja reellement branches ailleurs sur cette page declenchent
+  // une action ; les autres restent volontairement non destructifs (pas de
+  // fausse action) tant qu'ils ne sont pas integres.
+  const NEXT_ACTION_CTA_HANDLER: Partial<Record<string, () => void>> = {
+    schedule_appointment: () => { if (!appointment) openAppointmentModal(); },
+    follow_up_quote: () => { if (latestDevis) followUpQuote(latestDevis); },
+  };
+
   // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
   // calculées à la demande, jamais persistées, basées sur les mêmes signaux
   // que l'analyse Kadria ci-dessus (métier, projet, déplacement).
@@ -1116,6 +1164,76 @@ function ProjectDetail() {
               ✏️ Modifier
             </button>
           </div>
+        </div>
+
+        {/* Action recommandée — sortie minimale de l'Action Engine (src/lib/action-engine.ts) */}
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '14px 16px',
+          marginBottom: '16px',
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              Action recommandée
+            </p>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1)', margin: '0 0 2px' }}>
+              {nextAction.title}
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px' }}>
+              {nextAction.description}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                border: '1px solid var(--border)',
+                color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)',
+              }}>
+                Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                Impact {nextAction.impact === 'high' ? 'fort' : nextAction.impact === 'medium' ? 'moyen' : 'faible'}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                ~{nextAction.estimatedDuration}
+              </span>
+            </div>
+            {nextAction.blockingReasons.length > 0 && (
+              <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '6px 0 0' }}>
+                Blocages : {nextAction.blockingReasons.join(' · ')}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
+            disabled={!NEXT_ACTION_CTA_HANDLER[nextAction.actionType]}
+            title={!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'Action pas encore disponible depuis cette carte' : undefined}
+            style={{
+              flexShrink: 0,
+              background: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'var(--accent)' : 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? '#fff' : 'var(--text-3)',
+              cursor: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'pointer' : 'not-allowed',
+              opacity: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 1 : 0.6,
+              width: isMobile ? '100%' : undefined,
+            }}
+          >
+            {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
+          </button>
         </div>
 
         {/* Centre d'actions — les actions prioritaires du dossier, toujours visibles en haut */}
