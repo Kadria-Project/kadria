@@ -38,6 +38,93 @@ interface CatalogItem {
   is_active: boolean
 }
 
+interface ServiceProfileRow {
+  id: string
+  service_catalog_id: string | null
+  name: string
+  category: string | null
+  description: string | null
+  is_active: boolean
+  detection_keywords: string[]
+  qualification_questions: string[]
+  required_information: string[]
+  required_photos: boolean
+  recommended_quote_lines: Array<{ label?: string; unitPriceHT?: number | null; vatRate?: number | null }>
+  average_duration_minutes: number | null
+  default_vat_rate: number | null
+  travel_required: boolean
+  appointment_recommended: boolean
+  emergency_supported: boolean
+  related_services: string[]
+  internal_notes: string | null
+}
+
+interface ServiceProfileForm {
+  name: string
+  category: string
+  description: string
+  isActive: boolean
+  serviceCatalogId: string
+  detectionKeywords: string[]
+  qualificationQuestions: string[]
+  requiredInformation: string[]
+  requiredPhotos: boolean
+  recommendedQuoteLines: Array<{ label: string; unitPriceHT: string; vatRate: string }>
+  averageDurationMinutes: string
+  defaultVatRate: string
+  travelRequired: boolean
+  appointmentRecommended: boolean
+  emergencySupported: boolean
+  relatedServices: string[]
+  internalNotes: string
+}
+
+const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
+  name: '',
+  category: '',
+  description: '',
+  isActive: true,
+  serviceCatalogId: '',
+  detectionKeywords: [],
+  qualificationQuestions: [],
+  requiredInformation: [],
+  requiredPhotos: false,
+  recommendedQuoteLines: [],
+  averageDurationMinutes: '',
+  defaultVatRate: '',
+  travelRequired: false,
+  appointmentRecommended: false,
+  emergencySupported: false,
+  relatedServices: [],
+  internalNotes: '',
+}
+
+function serviceProfileFormFromRow(row: ServiceProfileRow): ServiceProfileForm {
+  return {
+    name: row.name,
+    category: row.category || '',
+    description: row.description || '',
+    isActive: row.is_active,
+    serviceCatalogId: row.service_catalog_id || '',
+    detectionKeywords: row.detection_keywords || [],
+    qualificationQuestions: row.qualification_questions || [],
+    requiredInformation: row.required_information || [],
+    requiredPhotos: row.required_photos,
+    recommendedQuoteLines: (row.recommended_quote_lines || []).map((l) => ({
+      label: l.label || '',
+      unitPriceHT: l.unitPriceHT != null ? String(l.unitPriceHT) : '',
+      vatRate: l.vatRate != null ? String(l.vatRate) : '',
+    })),
+    averageDurationMinutes: row.average_duration_minutes != null ? String(row.average_duration_minutes) : '',
+    defaultVatRate: row.default_vat_rate != null ? String(row.default_vat_rate) : '',
+    travelRequired: row.travel_required,
+    appointmentRecommended: row.appointment_recommended,
+    emergencySupported: row.emergency_supported,
+    relatedServices: row.related_services || [],
+    internalNotes: row.internal_notes || '',
+  }
+}
+
 const EMPTY_PROFILE: BusinessProfile = {
   primaryTrade: '',
   specialties: [],
@@ -133,13 +220,31 @@ export default function ProfilMetierPage() {
   const [addingItem, setAddingItem] = useState(false)
   const [newItem, setNewItem] = useState({ name: '', category: '', priceHt: '', unit: '', durationMinutes: '', vatRate: '' })
 
+  const [serviceProfiles, setServiceProfiles] = useState<ServiceProfileRow[]>([])
+  const [serviceProfilesUnavailable, setServiceProfilesUnavailable] = useState(false)
+  const [serviceProfileError, setServiceProfileError] = useState('')
+  const [editingServiceProfile, setEditingServiceProfile] = useState<ServiceProfileRow | 'new' | null>(null)
+  const [serviceProfileForm, setServiceProfileForm] = useState<ServiceProfileForm>({ ...EMPTY_SERVICE_PROFILE_FORM })
+  const [savingServiceProfile, setSavingServiceProfile] = useState(false)
+  const [openServiceProfileSections, setOpenServiceProfileSections] = useState<Set<string>>(new Set(['presentation']))
+
+  function toggleServiceProfileSection(key: string) {
+    setOpenServiceProfileSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   useEffect(() => {
     let cancelled = false
     async function load() {
       try {
-        const [profileRes, catalogRes] = await Promise.all([
+        const [profileRes, catalogRes, serviceProfilesRes] = await Promise.all([
           fetch('/api/artisan/business-profile').then((r) => r.json()),
           fetch('/api/artisan/service-catalog').then((r) => r.json()),
+          fetch('/api/artisan/service-profiles').then((r) => r.json()),
         ])
         if (cancelled) return
         if (profileRes.success) {
@@ -149,6 +254,12 @@ export default function ProfilMetierPage() {
         if (catalogRes.success) {
           setCatalog(catalogRes.items || [])
         }
+        if (serviceProfilesRes.success) {
+          setServiceProfiles(serviceProfilesRes.profiles || [])
+          setServiceProfilesUnavailable(false)
+        } else {
+          setServiceProfilesUnavailable(true)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -156,6 +267,89 @@ export default function ProfilMetierPage() {
     load()
     return () => { cancelled = true }
   }, [])
+
+  function openNewServiceProfile() {
+    setServiceProfileForm({ ...EMPTY_SERVICE_PROFILE_FORM })
+    setOpenServiceProfileSections(new Set(['presentation']))
+    setServiceProfileError('')
+    setEditingServiceProfile('new')
+  }
+
+  function openServiceProfileEditor(row: ServiceProfileRow) {
+    setServiceProfileForm(serviceProfileFormFromRow(row))
+    setOpenServiceProfileSections(new Set(['presentation']))
+    setServiceProfileError('')
+    setEditingServiceProfile(row)
+  }
+
+  function buildServiceProfilePayload() {
+    return {
+      name: serviceProfileForm.name.trim(),
+      category: serviceProfileForm.category.trim() || null,
+      description: serviceProfileForm.description.trim() || null,
+      isActive: serviceProfileForm.isActive,
+      serviceCatalogId: serviceProfileForm.serviceCatalogId || null,
+      detectionKeywords: serviceProfileForm.detectionKeywords,
+      qualificationQuestions: serviceProfileForm.qualificationQuestions,
+      requiredInformation: serviceProfileForm.requiredInformation,
+      requiredPhotos: serviceProfileForm.requiredPhotos,
+      recommendedQuoteLines: serviceProfileForm.recommendedQuoteLines
+        .filter((l) => l.label.trim())
+        .map((l) => ({
+          label: l.label.trim(),
+          unitPriceHT: toNumberOrNull(l.unitPriceHT),
+          vatRate: toNumberOrNull(l.vatRate),
+        })),
+      averageDurationMinutes: serviceProfileForm.averageDurationMinutes.trim() ? Number(serviceProfileForm.averageDurationMinutes) : null,
+      defaultVatRate: toNumberOrNull(serviceProfileForm.defaultVatRate),
+      travelRequired: serviceProfileForm.travelRequired,
+      appointmentRecommended: serviceProfileForm.appointmentRecommended,
+      emergencySupported: serviceProfileForm.emergencySupported,
+      relatedServices: serviceProfileForm.relatedServices,
+      internalNotes: serviceProfileForm.internalNotes.trim() || null,
+    }
+  }
+
+  async function saveServiceProfile() {
+    if (!serviceProfileForm.name.trim()) {
+      setServiceProfileError('Le nom de la prestation est requis')
+      return
+    }
+    setSavingServiceProfile(true)
+    setServiceProfileError('')
+    try {
+      const isNew = editingServiceProfile === 'new'
+      const url = isNew ? '/api/artisan/service-profiles' : `/api/artisan/service-profiles/${(editingServiceProfile as ServiceProfileRow).id}`
+      const res = await fetch(url, {
+        method: isNew ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildServiceProfilePayload()),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      setServiceProfiles((prev) => (isNew ? [...prev, data.profile] : prev.map((p) => (p.id === data.profile.id ? data.profile : p))))
+      setEditingServiceProfile(null)
+    } catch (err) {
+      setServiceProfileError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+    } finally {
+      setSavingServiceProfile(false)
+    }
+  }
+
+  async function toggleServiceProfileActive(row: ServiceProfileRow) {
+    try {
+      const res = await fetch(`/api/artisan/service-profiles/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !row.is_active }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Erreur')
+      setServiceProfiles((prev) => prev.map((p) => (p.id === row.id ? data.profile : p)))
+    } catch (err) {
+      setServiceProfileError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour')
+    }
+  }
 
   async function save() {
     setSaving(true)
@@ -748,7 +942,468 @@ export default function ProfilMetierPage() {
             </button>
           </div>
         </div>
+
+        {/* Bibliothèque de prestations (référentiel métier) */}
+        <div style={sectionCard}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '10px', flexWrap: 'wrap' }}>
+            <h3 style={{ color: 'var(--accent)', fontSize: '14px', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              🧩 Bibliothèque de prestations
+            </h3>
+            <button
+              onClick={openNewServiceProfile}
+              style={{
+                padding: '8px 14px', borderRadius: '8px', border: 'none',
+                background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              + Nouvelle fiche
+            </button>
+          </div>
+
+          <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
+            Décrivez comment chaque prestation doit être qualifiée, chiffrée et planifiée. Pas encore connecté au chat, au vocal, aux devis ou à l&apos;Action Engine.
+          </p>
+
+          {serviceProfileError && (
+            <div style={{ color: '#f87171', fontSize: '13px', marginBottom: '12px' }}>{serviceProfileError}</div>
+          )}
+
+          {serviceProfilesUnavailable ? (
+            <div style={{
+              textAlign: 'center', padding: '24px 12px',
+              border: '1px dashed var(--border)', borderRadius: '12px',
+              color: 'var(--text-3)', fontSize: '13px',
+            }}>
+              La bibliothèque de prestations n&apos;est pas encore disponible (migration Supabase non exécutée).
+            </div>
+          ) : serviceProfiles.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: '28px 16px',
+              border: '1px dashed var(--border)', borderRadius: '12px',
+              color: 'var(--text-3)', fontSize: '13px',
+            }}>
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
+              Aucune fiche prestation pour l&apos;instant. Créez votre première fiche pour préciser comment une prestation doit être qualifiée et chiffrée.
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: '10px',
+            }}>
+              {serviceProfiles.map((sp) => {
+                const linkedCatalogItem = sp.service_catalog_id ? catalog.find((c) => c.id === sp.service_catalog_id) : null
+                const badges: string[] = []
+                if (sp.required_photos) badges.push('📷 Photos requises')
+                if (sp.appointment_recommended) badges.push('📅 RDV conseillé')
+                if (sp.emergency_supported) badges.push('🚨 Urgence possible')
+                if (sp.travel_required) badges.push('🚐 Déplacement requis')
+                return (
+                  <div
+                    key={sp.id}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      background: sp.is_active ? 'var(--bg-hover)' : 'var(--bg)',
+                      opacity: sp.is_active ? 1 : 0.55,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>{sp.name}</div>
+                      <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                        {[sp.category, linkedCatalogItem?.price_ht != null ? `${linkedCatalogItem.price_ht} € HT` : null, linkedCatalogItem?.estimated_duration_minutes ? `${linkedCatalogItem.estimated_duration_minutes} min` : sp.average_duration_minutes ? `${sp.average_duration_minutes} min` : null]
+                          .filter(Boolean)
+                          .join(' · ') || 'Sans détail'}
+                      </div>
+                    </div>
+                    {badges.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {badges.map((b) => (
+                          <span key={b} style={{
+                            fontSize: '11px', padding: '3px 8px', borderRadius: '999px',
+                            background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.25)',
+                          }}>
+                            {b}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        onClick={() => openServiceProfileEditor(sp)}
+                        style={{
+                          flex: 1, padding: '8px', borderRadius: '8px',
+                          border: '1px solid var(--border)', background: 'transparent',
+                          color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        Configurer
+                      </button>
+                      <button
+                        onClick={() => toggleServiceProfileActive(sp)}
+                        style={{
+                          padding: '8px 10px', borderRadius: '8px',
+                          border: '1px solid var(--border)', background: 'transparent',
+                          color: sp.is_active ? '#f87171' : '#4ade80', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        {sp.is_active ? 'Désactiver' : 'Réactiver'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {editingServiceProfile && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-3"
+          style={{ backdropFilter: 'blur(2px)' }}
+        >
+          <div style={{
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: isMobile ? '16px' : '24px',
+            maxWidth: '600px', width: '100%', maxHeight: '88vh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700, margin: 0 }}>
+                {editingServiceProfile === 'new' ? 'Nouvelle fiche prestation' : 'Configurer la prestation'}
+              </h2>
+              <button
+                onClick={() => setEditingServiceProfile(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-2)', fontSize: '18px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {serviceProfileError && (
+              <div style={{ color: '#f87171', fontSize: '13px', marginBottom: '12px' }}>{serviceProfileError}</div>
+            )}
+
+            {/* 1. Présentation */}
+            <ServiceProfileAccordion
+              title="🪪 Présentation"
+              sectionKey="presentation"
+              open={openServiceProfileSections.has('presentation')}
+              onToggle={toggleServiceProfileSection}
+            >
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Nom de la prestation</label>
+                <input
+                  type="text"
+                  value={serviceProfileForm.name}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, name: e.target.value }))}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Catégorie</label>
+                <input
+                  type="text"
+                  value={serviceProfileForm.category}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, category: e.target.value }))}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Description</label>
+                <textarea
+                  value={serviceProfileForm.description}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, description: e.target.value }))}
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Lier au catalogue (optionnel)</label>
+                <select
+                  value={serviceProfileForm.serviceCatalogId}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, serviceCatalogId: e.target.value }))}
+                  style={inputStyle}
+                >
+                  <option value="">Aucune prestation liée</option>
+                  {catalog.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={serviceProfileForm.isActive}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, isActive: e.target.checked }))}
+                />
+                Fiche active
+              </label>
+            </ServiceProfileAccordion>
+
+            {/* 2. Détection */}
+            <ServiceProfileAccordion
+              title="🔍 Détection"
+              sectionKey="detection"
+              open={openServiceProfileSections.has('detection')}
+              onToggle={toggleServiceProfileSection}
+            >
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Mots-clés de détection (séparés par des virgules)</label>
+                <input
+                  type="text"
+                  value={toCsv(serviceProfileForm.detectionKeywords)}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, detectionKeywords: fromCsv(e.target.value) }))}
+                  placeholder="Ex : fuite, robinet, chasse d'eau"
+                  style={inputStyle}
+                />
+              </div>
+            </ServiceProfileAccordion>
+
+            {/* 3. Qualification */}
+            <ServiceProfileAccordion
+              title="❓ Qualification"
+              sectionKey="qualification"
+              open={openServiceProfileSections.has('qualification')}
+              onToggle={toggleServiceProfileSection}
+            >
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Questions à poser (séparées par des virgules)</label>
+                <textarea
+                  value={toCsv(serviceProfileForm.qualificationQuestions)}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, qualificationQuestions: fromCsv(e.target.value) }))}
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Informations indispensables (séparées par des virgules)</label>
+                <textarea
+                  value={toCsv(serviceProfileForm.requiredInformation)}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, requiredInformation: fromCsv(e.target.value) }))}
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={serviceProfileForm.requiredPhotos}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, requiredPhotos: e.target.checked }))}
+                />
+                Photos requises
+              </label>
+            </ServiceProfileAccordion>
+
+            {/* 4. Chiffrage */}
+            <ServiceProfileAccordion
+              title="💶 Chiffrage"
+              sectionKey="chiffrage"
+              open={openServiceProfileSections.has('chiffrage')}
+              onToggle={toggleServiceProfileSection}
+            >
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Lignes de devis recommandées</label>
+                {serviceProfileForm.recommendedQuoteLines.map((line, idx) => (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '6px', marginBottom: '6px' }}>
+                    <input
+                      type="text"
+                      placeholder="Libellé"
+                      value={line.label}
+                      onChange={(e) => setServiceProfileForm((p) => ({
+                        ...p,
+                        recommendedQuoteLines: p.recommendedQuoteLines.map((l, i) => (i === idx ? { ...l, label: e.target.value } : l)),
+                      }))}
+                      style={inputStyle}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Prix HT"
+                      value={line.unitPriceHT}
+                      onChange={(e) => setServiceProfileForm((p) => ({
+                        ...p,
+                        recommendedQuoteLines: p.recommendedQuoteLines.map((l, i) => (i === idx ? { ...l, unitPriceHT: e.target.value } : l)),
+                      }))}
+                      style={inputStyle}
+                    />
+                    <input
+                      type="number"
+                      placeholder="TVA %"
+                      value={line.vatRate}
+                      onChange={(e) => setServiceProfileForm((p) => ({
+                        ...p,
+                        recommendedQuoteLines: p.recommendedQuoteLines.map((l, i) => (i === idx ? { ...l, vatRate: e.target.value } : l)),
+                      }))}
+                      style={inputStyle}
+                    />
+                    <button
+                      onClick={() => setServiceProfileForm((p) => ({
+                        ...p,
+                        recommendedQuoteLines: p.recommendedQuoteLines.filter((_, i) => i !== idx),
+                      }))}
+                      style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: '#f87171', cursor: 'pointer', padding: '0 10px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setServiceProfileForm((p) => ({
+                    ...p,
+                    recommendedQuoteLines: [...p.recommendedQuoteLines, { label: '', unitPriceHT: '', vatRate: '' }],
+                  }))}
+                  style={{
+                    width: '100%', padding: '8px', borderRadius: '8px', border: '1px dashed var(--border)',
+                    background: 'transparent', color: 'var(--text-2)', fontSize: '12px', cursor: 'pointer',
+                  }}
+                >
+                  + Ajouter une ligne
+                </button>
+              </div>
+              <div style={gridTwo}>
+                <div style={fieldWrap}>
+                  <label style={labelStyle}>Durée moyenne (min)</label>
+                  <input
+                    type="number"
+                    value={serviceProfileForm.averageDurationMinutes}
+                    onChange={(e) => setServiceProfileForm((p) => ({ ...p, averageDurationMinutes: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={fieldWrap}>
+                  <label style={labelStyle}>TVA (%)</label>
+                  <input
+                    type="number"
+                    value={serviceProfileForm.defaultVatRate}
+                    onChange={(e) => setServiceProfileForm((p) => ({ ...p, defaultVatRate: e.target.value }))}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            </ServiceProfileAccordion>
+
+            {/* 5. Planification */}
+            <ServiceProfileAccordion
+              title="🗓️ Planification"
+              sectionKey="planification"
+              open={openServiceProfileSections.has('planification')}
+              onToggle={toggleServiceProfileSection}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer', marginBottom: '10px' }}>
+                <input
+                  type="checkbox"
+                  checked={serviceProfileForm.appointmentRecommended}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, appointmentRecommended: e.target.checked }))}
+                />
+                Rendez-vous conseillé
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer', marginBottom: '10px' }}>
+                <input
+                  type="checkbox"
+                  checked={serviceProfileForm.travelRequired}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, travelRequired: e.target.checked }))}
+                />
+                Déplacement nécessaire
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={serviceProfileForm.emergencySupported}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, emergencySupported: e.target.checked }))}
+                />
+                Urgence possible
+              </label>
+              <div style={{ ...fieldWrap, marginTop: '12px' }}>
+                <label style={labelStyle}>Prestations liées (séparées par des virgules)</label>
+                <input
+                  type="text"
+                  value={toCsv(serviceProfileForm.relatedServices)}
+                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, relatedServices: fromCsv(e.target.value) }))}
+                  style={inputStyle}
+                />
+              </div>
+            </ServiceProfileAccordion>
+
+            {/* 6. Notes internes */}
+            <ServiceProfileAccordion
+              title="📝 Notes internes"
+              sectionKey="notes"
+              open={openServiceProfileSections.has('notes')}
+              onToggle={toggleServiceProfileSection}
+            >
+              <textarea
+                value={serviceProfileForm.internalNotes}
+                onChange={(e) => setServiceProfileForm((p) => ({ ...p, internalNotes: e.target.value }))}
+                rows={3}
+                style={{ ...inputStyle, resize: 'vertical' }}
+              />
+            </ServiceProfileAccordion>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button
+                onClick={() => setEditingServiceProfile(null)}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '10px',
+                  border: '1px solid var(--border)', background: 'transparent',
+                  color: 'var(--text-1)', fontWeight: 600, fontSize: '14px', cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveServiceProfile}
+                disabled={savingServiceProfile}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: '10px',
+                  border: 'none', background: 'var(--accent)', color: 'black',
+                  fontWeight: 700, fontSize: '14px', cursor: savingServiceProfile ? 'default' : 'pointer',
+                }}
+              >
+                {savingServiceProfile ? 'Sauvegarde...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
+  )
+}
+
+function ServiceProfileAccordion({
+  title,
+  sectionKey,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  sectionKey: string
+  open: boolean
+  onToggle: (key: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '10px', overflow: 'hidden' }}>
+      <button
+        onClick={() => onToggle(sectionKey)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 14px', background: 'var(--bg-hover)', border: 'none',
+          color: 'var(--text-1)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+        }}
+      >
+        <span>{title}</span>
+        <span style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-3)' }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ padding: '14px', background: 'var(--bg)' }}>
+          {children}
+        </div>
+      )}
+    </div>
   )
 }
