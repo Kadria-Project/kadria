@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'projectId requis' }, { status: 400 })
     }
 
+    const date = request.nextUrl.searchParams.get('date')
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json({ success: false, error: 'date invalide' }, { status: 400 })
+    }
+
     const { data: project, error: projectError } = await supabaseAdmin
       .from(TABLES.projects)
       .select('id, artisan_id')
@@ -49,16 +54,26 @@ export async function GET(request: NextRequest) {
 
     const now = new Date()
 
+    // Fenêtre large (14 jours calendaires) pour couvrir 7 jours ouvrés même
+    // en présence de week-ends ; élargie si une date précise plus lointaine
+    // est demandée, pour que les événements de ce jour soient bien inclus.
+    let windowDays = 14
+    if (date) {
+      const requestedMs = new Date(`${date}T00:00:00Z`).getTime()
+      const daysAhead = Math.ceil((requestedMs - now.getTime()) / (24 * 60 * 60 * 1000)) + 2
+      windowDays = Math.max(windowDays, daysAhead)
+    }
+
     let busyIntervals: BusyInterval[]
     try {
-      // Fenêtre large (14 jours calendaires) pour couvrir 7 jours ouvrés
-      // même en présence de week-ends.
-      busyIntervals = await fetchBusyIntervals(accessToken, now, 14)
+      busyIntervals = await fetchBusyIntervals(accessToken, now, windowDays)
     } catch {
       return NextResponse.json({ success: false, error: 'Synchronisation Google impossible' }, { status: 502 })
     }
 
-    const slots = computeFreeSlots(busyIntervals, { now, maxSlots: 3, maxBusinessDays: 7 })
+    const slots = date
+      ? computeFreeSlots(busyIntervals, { now, maxSlots: 8, forDate: date })
+      : computeFreeSlots(busyIntervals, { now, maxSlots: 3, maxBusinessDays: 7 })
 
     return NextResponse.json({ success: true, connected: true, slots })
   } catch (error) {

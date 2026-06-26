@@ -89,26 +89,18 @@ function overlaps(aStart: number, aEnd: number, busy: BusyInterval[]): boolean {
  */
 export function computeFreeSlots(
   busyIntervals: BusyInterval[],
-  options: { now?: Date; maxSlots?: number; maxBusinessDays?: number } = {}
+  options: { now?: Date; maxSlots?: number; maxBusinessDays?: number; forDate?: string } = {}
 ): CandidateSlot[] {
   const now = options.now || new Date()
   const maxSlots = options.maxSlots ?? 3
   const maxBusinessDays = options.maxBusinessDays ?? 7
 
   const slots: CandidateSlot[] = []
-  let businessDaysScanned = 0
-  let cursorDay = new Date(now)
 
-  for (let i = 0; i < 30 && businessDaysScanned < maxBusinessDays && slots.length < maxSlots; i += 1) {
-    const dayDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000)
-    if (!isWeekday(dayDate)) continue
-    businessDaysScanned += 1
+  // Créneaux horaires de la journée : 09-12 puis 14-18, par tranches de 60 min.
+  const dayRanges: Array<[number, number]> = [[9, 12], [14, 18]]
 
-    const { year, month, day } = parisDateParts(dayDate)
-
-    // Créneaux horaires de la journée : 09-12 puis 14-18, par tranches de 60 min.
-    const dayRanges: Array<[number, number]> = [[9, 12], [14, 18]]
-
+  const collectForDay = (year: number, month: number, day: number) => {
     for (const [startHour, endHour] of dayRanges) {
       for (let hour = startHour; hour < endHour && slots.length < maxSlots; hour += 1) {
         const slotStart = buildParisDateTime(year, month, day, hour, 0)
@@ -120,6 +112,33 @@ export function computeFreeSlots(
         slots.push({ start: slotStart.toISOString(), end: slotEnd.toISOString() })
       }
     }
+  }
+
+  if (options.forDate) {
+    // Mode "date précise" : on ne calcule que sur cette journée. Mêmes
+    // règles (jour ouvré, horaires, pause déjeuner, pas de passé, pas de
+    // conflit) ; un week-end ou une journée pleine renvoie simplement [].
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(options.forDate)
+    if (!match) return []
+    const year = Number(match[1])
+    const month = Number(match[2]) - 1
+    const day = Number(match[3])
+
+    const probeDate = buildParisDateTime(year, month, day, 12, 0)
+    if (!isWeekday(probeDate)) return []
+
+    collectForDay(year, month, day)
+    return slots.slice(0, maxSlots)
+  }
+
+  let businessDaysScanned = 0
+  for (let i = 0; i < 30 && businessDaysScanned < maxBusinessDays && slots.length < maxSlots; i += 1) {
+    const dayDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000)
+    if (!isWeekday(dayDate)) continue
+    businessDaysScanned += 1
+
+    const { year, month, day } = parisDateParts(dayDate)
+    collectForDay(year, month, day)
   }
 
   return slots.slice(0, maxSlots)

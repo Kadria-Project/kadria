@@ -182,6 +182,7 @@ function ProjectDetail() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookingSlot, setBookingSlot] = useState<{ start: string; end: string } | null>(null);
   const [appointmentError, setAppointmentError] = useState<string | null>(null);
+  const [appointmentDate, setAppointmentDate] = useState<string>('');
 
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -568,12 +569,14 @@ function ProjectDetail() {
     }
   }
 
-  async function openAppointmentModal() {
-    setAppointmentError(null);
+  async function fetchAppointmentSlots(date?: string) {
     setLoadingSlots(true);
-    setShowAppointmentModal(true);
+    setAppointmentError(null);
     try {
-      const res = await fetch(`/api/appointments/availability?projectId=${project.id}`);
+      const url = date
+        ? `/api/appointments/availability?projectId=${project.id}&date=${date}`
+        : `/api/appointments/availability?projectId=${project.id}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (!data.success) {
         setAppointmentError('Erreur Google Calendar — réessayez.');
@@ -590,21 +593,21 @@ function ProjectDetail() {
     }
   }
 
+  function openAppointmentModal() {
+    setAppointmentDate('');
+    setBookingSlot(null);
+    setShowAppointmentModal(true);
+    fetchAppointmentSlots();
+  }
+
+  function handleAppointmentDateChange(date: string) {
+    setAppointmentDate(date);
+    setBookingSlot(null);
+    fetchAppointmentSlots(date || undefined);
+  }
+
   async function refreshAppointmentSlots() {
-    setLoadingSlots(true);
-    setAppointmentError(null);
-    try {
-      const res = await fetch(`/api/appointments/availability?projectId=${project.id}`);
-      const data = await res.json();
-      if (data.success) {
-        setAppointmentConnected(!!data.connected);
-        setAppointmentSlots(data.connected ? data.slots || [] : []);
-      }
-    } catch {
-      setAppointmentError('Erreur Google Calendar — réessayez.');
-    } finally {
-      setLoadingSlots(false);
-    }
+    await fetchAppointmentSlots(appointmentDate || undefined);
   }
 
   async function confirmAppointment() {
@@ -2665,32 +2668,49 @@ function ProjectDetail() {
               </button>
             </div>
 
-            {loadingSlots ? (
-              <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
-            ) : !appointmentConnected ? (
-              <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
-            ) : appointmentError ? (
-              <p className="text-sm text-red-400">{appointmentError}</p>
-            ) : appointmentSlots.length === 0 ? (
-              <p className="text-sm text-[var(--text-2)]">Aucun créneau disponible</p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide">Créneaux proposés</p>
-                {appointmentSlots.map((slot) => (
-                  <button
-                    key={slot.start}
-                    onClick={() => setBookingSlot(slot)}
-                    className={`w-full text-left rounded-lg border p-2 text-sm ${
-                      bookingSlot?.start === slot.start
-                        ? 'border-green-500 bg-green-500/10 text-[var(--text-1)]'
-                        : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
-                    }`}
-                  >
-                    {formatDateTime(slot.start)}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div>
+              <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">
+                Choisir une date
+              </label>
+              <input
+                type="date"
+                value={appointmentDate}
+                onChange={(e) => handleAppointmentDateChange(e.target.value)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
+
+              {loadingSlots ? (
+                <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+              ) : !appointmentConnected ? (
+                <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
+              ) : appointmentError ? (
+                <p className="text-sm text-red-400">{appointmentError}</p>
+              ) : appointmentSlots.length === 0 ? (
+                <p className="text-sm text-[var(--text-2)]">
+                  {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {appointmentSlots.map((slot) => (
+                    <button
+                      key={slot.start}
+                      onClick={() => setBookingSlot(slot)}
+                      className={`w-full text-left rounded-lg border p-2 text-sm ${
+                        bookingSlot?.start === slot.start
+                          ? 'border-green-500 bg-green-500/10 text-[var(--text-1)]'
+                          : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                      }`}
+                    >
+                      {formatDateTime(slot.start)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {appointmentConnected && appointmentSlots.length > 0 && (
               <button
