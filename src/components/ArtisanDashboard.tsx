@@ -65,7 +65,7 @@ import {
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
-import { computeKadriaCoach, type KadriaCoachProjectEntry } from '@/src/lib/kadria-coach';
+import { computeKadriaCoach, type KadriaCoachProjectEntry, type KadriaCoachResult, type CoachActionType, type CoachPriorityLevel } from '@/src/lib/kadria-coach';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -239,6 +239,163 @@ export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   'Gagné':        { bg: 'var(--badge-won-bg)',       color: 'var(--badge-won-text)' },
   'Perdu':        { bg: 'var(--badge-lost-bg)',      color: 'var(--badge-lost-text)' },
 };
+
+const COACH_PRIORITY_BADGE: Record<CoachPriorityLevel, { label: string; bg: string; color: string }> = {
+  critical: { label: 'Urgent', bg: 'rgba(220,38,38,0.12)', color: '#dc2626' },
+  high: { label: 'Important', bg: 'rgba(217,119,6,0.12)', color: '#d97706' },
+  medium: { label: 'À faire', bg: 'var(--accent-dim, rgba(34,197,94,0.12))', color: 'var(--accent)' },
+  low: { label: 'Tout est prêt', bg: 'rgba(34,197,94,0.12)', color: '#16a34a' },
+};
+
+// Carte Coach Kadria compacte pour mobile : une seule action prioritaire
+// visible immediatement, sans scroll horizontal ni pave de texte. Ne
+// recalcule rien — se contente d'afficher le resultat deja produit par
+// computeKadriaCoach (cf. src/lib/kadria-coach.ts).
+function MobileCoachKadriaCard({
+  coach,
+  onDismiss,
+  onAction,
+  onViewDashboard,
+}: {
+  coach: KadriaCoachResult;
+  onDismiss: () => void;
+  onAction: (actionType: CoachActionType, href?: string) => void;
+  onViewDashboard: () => void;
+}) {
+  const badge = COACH_PRIORITY_BADGE[coach.priorityLevel];
+  const win = coach.wins[0];
+  const alert = coach.alerts[0];
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--accent-border, var(--border))',
+        background: 'linear-gradient(135deg, var(--bg-elevated), var(--accent-dim, var(--bg-elevated)))',
+        borderRadius: '16px',
+        padding: '14px',
+        marginBottom: '16px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <span style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, whiteSpace: 'nowrap' }}>👋 Coach Kadria</span>
+          <span
+            style={{
+              background: badge.bg, color: badge.color, fontSize: '11px', fontWeight: 700,
+              borderRadius: '999px', padding: '3px 9px', whiteSpace: 'nowrap',
+            }}
+          >
+            {badge.label}
+          </span>
+        </div>
+        <button
+          onClick={onDismiss}
+          aria-label="Fermer"
+          style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '14px', flexShrink: 0 }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div
+        style={{
+          color: 'var(--text-2)', fontSize: '12px', marginBottom: '10px',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}
+      >
+        {coach.message}
+      </div>
+
+      {coach.primaryAction ? (
+        <div
+          style={{
+            border: '1px solid var(--border)', borderRadius: '12px', padding: '12px',
+            background: 'var(--bg-elevated)', marginBottom: '10px',
+          }}
+        >
+          <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, marginBottom: '2px' }}>
+            {coach.primaryAction.title}
+          </div>
+          <div
+            style={{
+              color: 'var(--text-3)', fontSize: '12px', marginBottom: '10px',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}
+          >
+            {coach.primaryAction.estimatedTime ? `${coach.primaryAction.estimatedTime} · ` : ''}
+            {coach.primaryAction.description}
+          </div>
+          <button
+            onClick={() => onAction(coach.primaryAction!.actionType, coach.primaryAction!.href)}
+            style={{
+              width: '100%', background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+              borderRadius: '10px', padding: '12px 16px', fontSize: '14px', cursor: 'pointer',
+            }}
+          >
+            {coach.primaryAction.ctaLabel}
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            border: '1px solid var(--border)', borderRadius: '12px', padding: '12px',
+            background: 'var(--bg-elevated)', marginBottom: '10px',
+          }}
+        >
+          <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, marginBottom: '2px' }}>
+            Tout est sous contrôle.
+          </div>
+          <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '10px' }}>
+            Vos dossiers et votre configuration sont à jour.
+          </div>
+          <button
+            onClick={onViewDashboard}
+            style={{
+              width: '100%', background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-1)', fontWeight: 600,
+              borderRadius: '10px', padding: '11px 16px', fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            Voir le tableau de bord
+          </button>
+        </div>
+      )}
+
+      {coach.recommendations.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: (win || alert) ? '10px' : 0 }}>
+          {coach.recommendations.slice(0, 2).map((rec, idx) => (
+            <button
+              key={`${rec.actionType}-${idx}`}
+              onClick={() => onAction(rec.actionType, rec.href)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                textAlign: 'left', background: 'none', border: '1px solid var(--border)', borderRadius: '8px',
+                padding: '9px 10px', cursor: 'pointer', color: 'var(--text-2)', fontSize: '12px', width: '100%',
+              }}
+            >
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {rec.title}{rec.estimatedTime ? ` · ${rec.estimatedTime}` : ''}
+              </span>
+              <span style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{rec.ctaLabel}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(win || alert) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {win && (
+            <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>✓ {win.title}</div>
+          )}
+          {alert && (
+            <div style={{ color: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#d97706' : 'var(--text-3)', fontSize: '11px' }}>
+              ⓘ {alert.title}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ArtisanDashboardPage({
   plan = 'essentiel',
@@ -2419,13 +2576,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
-      {!coachCardDismissed && (
+      {!coachCardDismissed && isMobile && (
+        <MobileCoachKadriaCard
+          coach={kadriaCoach}
+          onDismiss={() => setCoachCardDismissed(true)}
+          onAction={(actionType, href) => {
+            if (actionType === 'connect_calendar') setDashboardMode('calendar');
+            else if (href) router.push(href);
+          }}
+          onViewDashboard={() => setDashboardMode('value')}
+        />
+      )}
+      {!coachCardDismissed && !isMobile && (
         <div
           style={{
             border: '1px solid var(--accent-border, var(--border))',
             background: 'linear-gradient(135deg, var(--bg-elevated), var(--accent-dim, var(--bg-elevated)))',
             borderRadius: '16px',
-            padding: isMobile ? '16px' : '20px',
+            padding: '20px',
             marginBottom: '20px',
           }}
         >
