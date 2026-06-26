@@ -700,6 +700,8 @@ function ProjectDetail() {
     projectType: project.projectType,
     aiSummary: project.aiSummary,
     tradeAnswers: project.tradeAnswers,
+    city: project.city,
+    siteAddress: project.siteAddress,
   };
   const quoteSuggestionBusinessConfig = {
     acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
@@ -753,6 +755,18 @@ function ProjectDetail() {
     }
     group.lines.push(line);
   });
+
+  const highConfidenceSuggestions = quoteSuggestions.filter((l) => l.confidence === 'high');
+  const mediumConfidenceSuggestions = quoteSuggestions.filter((l) => l.confidence === 'medium');
+  const recommendedSuggestions = highConfidenceSuggestions.length > 0
+    ? highConfidenceSuggestions
+    : mediumConfidenceSuggestions;
+
+  function getConfidenceBadge(confidence?: 'high' | 'medium' | 'low'): { icon: string; label: string } {
+    if (confidence === 'high') return { icon: '🟢', label: 'Confiance élevée' };
+    if (confidence === 'medium') return { icon: '🟡', label: 'Confiance moyenne' };
+    return { icon: '⚪', label: 'À vérifier' };
+  }
 
   function addSuggestionLinesToSelection(lines: typeof quoteSuggestions) {
     if (lines.length === 0) return;
@@ -2290,8 +2304,20 @@ function ProjectDetail() {
                       }}
                     >
                       <span>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', display: 'block' }}>
-                          Suggestions de lignes de devis
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {suggestionsOpen ? '▼' : '▶'} Suggestions de lignes de devis
+                          {highConfidenceSuggestions.length > 0 && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              color: 'var(--accent)',
+                              border: '1px solid var(--border)',
+                              borderRadius: '999px',
+                              padding: '1px 8px',
+                            }}>
+                              {highConfidenceSuggestions.length} recommandation{highConfidenceSuggestions.length > 1 ? 's' : ''} forte{highConfidenceSuggestions.length > 1 ? 's' : ''}
+                            </span>
+                          )}
                         </span>
                         <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
                           Kadria vous propose des lignes adaptées au projet.
@@ -2341,17 +2367,10 @@ function ProjectDetail() {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
                           <button
                             type="button"
-                            onClick={() => addSuggestionLinesToSelection(filteredQuoteSuggestions.filter((l) => !l.optional))}
+                            onClick={() => addSuggestionLinesToSelection(recommendedSuggestions)}
                             style={quickActionButtonStyle}
                           >
-                            Ajouter les suggestions principales
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => addSuggestionLinesToSelection(filteredQuoteSuggestions.filter((l) => !l.optional))}
-                            style={quickActionButtonStyle}
-                          >
-                            Ajouter uniquement les indispensables
+                            Ajouter les recommandations
                           </button>
                           <button
                             type="button"
@@ -2456,8 +2475,9 @@ function ProjectDetail() {
                                               borderRadius: '999px',
                                               padding: '1px 6px',
                                               flexShrink: 0,
+                                              whiteSpace: 'nowrap',
                                             }}>
-                                              {line.optional ? 'Pertinence moyenne' : 'Pertinence élevée'}
+                                              {getConfidenceBadge(line.confidence).icon} {getConfidenceBadge(line.confidence).label}
                                             </span>
                                           </div>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>

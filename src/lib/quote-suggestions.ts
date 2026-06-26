@@ -9,6 +9,8 @@
 
 import { getTradeTaxonomies, getTradeTaxonomy } from '@/src/config/trade-taxonomy'
 
+export type QuoteSuggestionConfidence = 'high' | 'medium' | 'low'
+
 export type QuoteSuggestionLine = {
   label: string
   reason?: string
@@ -17,6 +19,7 @@ export type QuoteSuggestionLine = {
   optional?: boolean
   vatRate?: number
   fromCatalog?: boolean
+  confidence?: QuoteSuggestionConfidence
 }
 
 // Catalogue de prestations configure par l'artisan (Mission "service
@@ -68,6 +71,8 @@ export interface QuoteSuggestionProjectLike {
   projectType?: string
   aiSummary?: string
   tradeAnswers?: unknown
+  city?: string
+  siteAddress?: string
 }
 
 // Parametres commerciaux par defaut (Mission "quote commercial settings") :
@@ -321,9 +326,42 @@ export function templateLineToSuggestion(
   }
 }
 
+// Niveau de confiance par suggestion (jamais un score chiffré inventé) :
+// calcul simple et transparent base sur les signaux deja disponibles
+// (metier connu, mots-cles du besoin, ville/adresse renseignee, origine de
+// la ligne). En cas de doute, on retombe sur "À vérifier" plutot que
+// d'afficher une confiance optimiste non justifiee.
+function computeSuggestionConfidence(
+  line: { label: string; source: QuoteSuggestionLine['source']; optional?: boolean },
+  ctx: { projectText: string; hasAddress: boolean; hasKnownTrade: boolean }
+): QuoteSuggestionConfidence {
+  const label = line.label.trim().toLowerCase()
+  const text = ctx.projectText
+
+  if (label.includes('déplacement') || line.source === 'travel') {
+    return ctx.hasAddress ? 'high' : 'medium'
+  }
+  if (label.includes('fuite')) {
+    return /fuite|infiltration|dégât des eaux|degat des eaux|degats des eaux/.test(text) ? 'high' : 'low'
+  }
+  if (label.includes('robinetterie') || label.includes('robinet')) {
+    return /robinet|mitigeur|évier|evier|lavabo|salle de bain/.test(text) ? 'high' : 'low'
+  }
+  if (label.includes('fourniture')) return 'medium'
+  if (label.includes('main d’œuvre') || label.includes("main d'œuvre")) {
+    return ctx.hasKnownTrade ? 'high' : 'medium'
+  }
+  if (line.source === 'template') return 'high'
+  if (line.source === 'project') return 'high'
+  if (line.source === 'trade') return ctx.hasKnownTrade ? 'high' : 'medium'
+  if (line.optional) return 'low'
+  return 'low'
+}
+
 export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggestionLine[] {
   const { project, artisanTrades, businessConfig, travel } = params
   const projectText = buildProjectText(project)
+  const hasAddress = Boolean(project.city || project.siteAddress)
   const lines: QuoteSuggestionLine[] = []
   const seenLabels = new Set<string>()
 
@@ -364,6 +402,9 @@ export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggest
     }
     if (!travel) {
       addLine({ label: 'Déplacement', source: 'generic' })
+    }
+    for (const line of lines) {
+      line.confidence = computeSuggestionConfidence(line, { projectText, hasAddress, hasKnownTrade: false })
     }
     return lines.slice(0, MAX_SUGGESTIONS)
   }
@@ -441,6 +482,10 @@ export function getQuoteSuggestions(params: QuoteSuggestionParams): QuoteSuggest
         line.fromCatalog = true
       }
     }
+  }
+
+  for (const line of lines) {
+    line.confidence = computeSuggestionConfidence(line, { projectText, hasAddress, hasKnownTrade })
   }
 
   return lines.slice(0, MAX_SUGGESTIONS)
