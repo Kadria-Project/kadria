@@ -1404,7 +1404,7 @@ function ProjectDetail() {
                   <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
                 ) : !appointmentConnected ? (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
-                    <p className="text-sm text-[var(--text-2)]">Connectez votre agenda pour planifier vos rendez-vous.</p>
+                    <p className="text-sm text-[var(--text-2)]">Connecter votre agenda débloquera des rendez-vous synchronisés et un planning fiable.</p>
                     <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
                   </div>
                 ) : appointmentError ? (
@@ -2983,7 +2983,7 @@ function ProjectDetail() {
                             padding: '8px 10px', marginBottom: '10px', flexWrap: 'wrap',
                           }}>
                             <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                              Configurez vos prestations pour obtenir des suggestions personnalisées.
+                              Configurer cette étape débloquera des suggestions personnalisées et des devis préremplis.
                             </span>
                             <a
                               href="/parametres/profil-metier"

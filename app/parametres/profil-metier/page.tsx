@@ -6,7 +6,7 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTemplateToPayload } from '@/src/lib/service-profile-templates'
 import { BusinessSetupWizard } from '@/src/components/BusinessSetupWizard'
-import { computeSetupProgress, type SetupProgressResult } from '@/src/lib/setup-progress'
+import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine'
 
 interface BusinessProfile {
   primaryTrade: string
@@ -232,7 +232,7 @@ export default function ProfilMetierPage() {
   const [openServiceProfileSections, setOpenServiceProfileSections] = useState<Set<string>>(new Set(['presentation']))
 
   const [showWizard, setShowWizard] = useState(false)
-  const [setupProgress, setSetupProgress] = useState<SetupProgressResult | null>(null)
+  const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null)
 
   const [templateTrade, setTemplateTrade] = useState(SERVICE_PROFILE_TRADES[0].value)
   const [selectedTemplateNames, setSelectedTemplateNames] = useState<Set<string>>(new Set())
@@ -326,8 +326,8 @@ export default function ProfilMetierPage() {
         } else {
           setServiceProfilesUnavailable(true)
         }
-        setSetupProgress(
-          computeSetupProgress({
+        setProgressRecommendations(
+          computeProgressRecommendations({
             businessProfile: nextProfile,
             serviceProfiles: nextServiceProfiles,
             calendarIntegration: calendarRes?.success ? { connected: !!calendarRes.connected } : null,
@@ -646,7 +646,7 @@ export default function ProfilMetierPage() {
       )}
 
       <div className="mx-auto w-full max-w-full px-3 py-4 sm:px-6 sm:py-8" style={{ maxWidth: '760px' }}>
-        {setupProgress && (
+        {progressRecommendations && (
           <div style={{
             ...sectionCard,
             background: 'var(--bg-elevated)',
@@ -654,35 +654,52 @@ export default function ProfilMetierPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
               <div>
                 <div style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>
-                  Score de préparation
+                  🚀 Centre de progression
                 </div>
                 <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                  {setupProgress.completedSteps} / {setupProgress.totalSteps} étapes complétées.
+                  {progressRecommendations.globalMessage}
                 </div>
               </div>
               <div style={{ color: 'var(--accent)', fontSize: '22px', fontWeight: 800, whiteSpace: 'nowrap' }}>
-                {setupProgress.percent}%
+                {progressRecommendations.progress.percent}%
               </div>
             </div>
 
-            <div style={{ height: '6px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', marginBottom: setupProgress.percent < 100 ? '12px' : 0 }}>
-              <div style={{ height: '100%', width: `${setupProgress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+            <div style={{ height: '6px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', marginBottom: progressRecommendations.progress.percent < 100 ? '8px' : 0 }}>
+              <div style={{ height: '100%', width: `${progressRecommendations.progress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
             </div>
 
-            {setupProgress.percent < 100 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                {setupProgress.steps
-                  .filter((s) => s.status === 'todo')
-                  .sort((a, b) => a.priority - b.priority)
-                  .map((s) => (
-                    <div key={s.key} style={{ color: 'var(--text-2)', fontSize: '12px' }}>
-                      · {s.label}
-                    </div>
-                  ))}
+            {progressRecommendations.progress.percent < 100 && (
+              <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '14px' }}>
+                Encore environ {progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.
               </div>
             )}
 
-            {setupProgress.percent < 100 && (
+            {progressRecommendations.progress.percent < 100 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {progressRecommendations.nextSteps.map((s) => (
+                  <div
+                    key={s.key}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px',
+                      border: '1px solid var(--border)', borderRadius: '10px', padding: '8px 10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', minWidth: 0 }}>
+                      <span style={{ fontSize: '16px' }}>{s.icon}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>{s.title}</div>
+                        <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                          {s.estimatedTime} · {s.benefits.map((b) => `✓ ${b}`).join(' ')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {progressRecommendations.progress.percent < 100 ? (
               <button
                 onClick={() => setShowWizard(true)}
                 style={{
@@ -692,6 +709,18 @@ export default function ProfilMetierPage() {
               >
                 Configurer mon métier
               </button>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                  <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Profil métier</span>
+                  <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Prestations</span>
+                  <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Tarifs</span>
+                  <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Agenda</span>
+                </div>
+                <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>
+                  🎉 Votre entreprise est prête.
+                </div>
+              </div>
             )}
           </div>
         )}
