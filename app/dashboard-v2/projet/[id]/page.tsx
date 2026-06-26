@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
@@ -265,6 +265,17 @@ function ProjectDetail() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  // Accordéons de la fiche projet mobile native (détails secondaires repliés).
+  const [openMobileSections, setOpenMobileSections] = useState<Set<string>>(new Set());
+  function toggleMobileSection(key: string) {
+    setOpenMobileSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   async function loadActivities() {
     const activityData = await getProjectActivity(id);
@@ -933,6 +944,334 @@ function ProjectDetail() {
       color: 'var(--impact-text)',
       ...extra,
     };
+  }
+
+  // Fiche projet mobile native — experience dediee terrain (pas un responsive
+  // du desktop). N'utilise que des donnees reelles deja chargees plus haut
+  // (project, nextAction, appointment, latestDevis, analysis, activities).
+  if (isMobile) {
+    const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Dossier';
+    const hasContact = Boolean(project.clientPhone || project.clientEmail);
+    const devisStatusLabel = !latestDevis
+      ? 'Aucun devis'
+      : latestDevis.accepted
+        ? 'Devis accepté'
+        : latestDevis.declined
+          ? 'Devis refusé'
+          : latestDevis.sent
+            ? 'Devis envoyé'
+            : 'Devis créé';
+    const devisCtaLabel = !latestDevis ? 'Créer' : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined ? 'Relancer' : 'Voir';
+    const devisCtaAction = !latestDevis
+      ? () => handleNextBestAction('quote')
+      : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined
+        ? () => followUpQuote(latestDevis)
+        : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
+
+    const qualificationDone = !!(project.completenessScore || project.aiSummary);
+    const devisDoneMobile = !!latestDevis;
+    const mobileTimelineSteps: Array<{ label: string; detail?: string; state: 'done' | 'current' | 'todo' | 'future' }> = [
+      { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
+      { label: 'Qualification', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
+      { label: 'Rendez-vous', detail: appointment ? formatDateTime(appointment.start) : undefined, state: appointment ? 'done' : 'todo' },
+      { label: 'Devis', detail: devisDoneMobile ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer', state: devisDoneMobile ? (latestDevis.accepted ? 'done' : 'current') : 'todo' },
+      { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
+    ];
+
+    const mobileAccordions: Array<{ key: string; title: string; content: ReactNode }> = [
+      {
+        key: 'contact',
+        title: 'Coordonnées',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>📞 {project.clientPhone || 'Non renseigné'}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>✉️ {project.clientEmail || 'Non renseigné'}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>📍 {project.siteAddress || project.city || 'Non renseignée'}</p>
+            <button
+              onClick={() => {
+                setContactForm({
+                  clientFirstName: project.clientFirstName || '',
+                  clientName: project.clientName || '',
+                  clientPhone: project.clientPhone || '',
+                  clientEmail: project.clientEmail || '',
+                  siteAddress: project.siteAddress || '',
+                  city: project.city || '',
+                  postalCode: project.postalCode || '',
+                  latitude: project.latitude ?? null,
+                  longitude: project.longitude ?? null,
+                });
+                setEditingContact(true);
+              }}
+              style={{ marginTop: '4px', alignSelf: 'flex-start', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)', borderRadius: '8px', padding: '6px 12px', fontSize: '12px' }}
+            >
+              ✏️ Modifier
+            </button>
+          </div>
+        ),
+      },
+      {
+        key: 'description',
+        title: 'Description complète',
+        content: (
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)', whiteSpace: 'pre-wrap' }}>
+            {project.aiSummary || 'Aucune description disponible.'}
+          </p>
+        ),
+      },
+      {
+        key: 'photos',
+        title: 'Photos',
+        content: (
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
+            {project.photos && project.photos.length > 0 ? `${project.photos.length} photo(s) jointe(s)` : 'Aucune photo'}
+          </p>
+        ),
+      },
+      {
+        key: 'analyse',
+        title: 'Analyse détaillée',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-2)' }}>
+            <p style={{ margin: 0 }}>Score : {analysis.score}/100 — {analysis.temperatureLabel}</p>
+            {analysis.strengths.length > 0 && <p style={{ margin: 0 }}>✓ {analysis.strengths.join(' · ')}</p>}
+            {analysis.weaknesses.length > 0 && <p style={{ margin: 0 }}>⚠ {analysis.weaknesses.join(' · ')}</p>}
+            {analysis.missingInfo.length > 0 && <p style={{ margin: 0 }}>À compléter : {analysis.missingInfo.join(' · ')}</p>}
+          </div>
+        ),
+      },
+      {
+        key: 'documents',
+        title: 'Documents',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {devisList.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun document</p>}
+            {devisList.map((d) => (
+              <a
+                key={d.id}
+                href={d.pdf_url || undefined}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '13px', color: d.pdf_url ? 'var(--accent)' : 'var(--text-3)', pointerEvents: d.pdf_url ? 'auto' : 'none' }}
+              >
+                📄 Devis {d.numero} — {formatMoney(d.amount)} €
+              </a>
+            ))}
+          </div>
+        ),
+      },
+      {
+        key: 'historique',
+        title: 'Historique',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
+            {activities.map((a, i) => (
+              <p key={a.id || i} style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
+                {formatShortDate(a.createdAt)} — {a.description}
+              </p>
+            ))}
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)]" style={{ paddingBottom: '88px' }}>
+        {/* Header sticky compact */}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 20,
+          background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)',
+          padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px',
+        }}>
+          <button onClick={() => router.push('/dashboard-v2')} aria-label="Retour" style={{ background: 'transparent', border: 'none', color: 'var(--text-1)', padding: '6px', flexShrink: 0 }}>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {clientLabel}
+            </p>
+            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-3)' }}>
+              {project.status || 'Nouveau'} · Maturité {nextAction.maturityScore}/100
+            </p>
+          </div>
+        </div>
+
+        <main style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Carte Action recommandée */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
+            <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', margin: '0 0 6px' }}>
+              Action recommandée
+            </p>
+            <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>{nextAction.title}</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>{nextAction.description}</p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)' }}>
+                Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>~{nextAction.estimatedDuration}</span>
+            </div>
+            <button
+              onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
+              disabled={!NEXT_ACTION_CTA_HANDLER[nextAction.actionType]}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: 700,
+                background: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'var(--accent)' : 'var(--bg)',
+                color: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? '#fff' : 'var(--text-3)',
+                border: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'none' : '1px solid var(--border)',
+                opacity: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 1 : 0.7,
+              }}
+            >
+              {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
+            </button>
+          </div>
+
+          {/* Résumé IA court */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', fontSize: '13px', color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Résumé</p>
+            <p style={{ margin: 0 }}>Besoin : {project.projectType || project.trade || 'Non renseigné'}</p>
+            <p style={{ margin: 0 }}>Urgence : {project.desiredTimeline || 'Non renseignée'}</p>
+            <p style={{ margin: 0 }}>Budget : {project.budget || 'Non renseigné'}</p>
+            <p style={{ margin: 0 }}>Localisation : {project.siteAddress || project.city || 'Non renseignée'}</p>
+          </div>
+
+          {/* Blocages */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
+            {nextAction.blockingReasons.length > 0 ? (
+              <>
+                <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#ea580c' }}>⚠ À compléter</p>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: 'var(--text-2)' }}>
+                  {nextAction.blockingReasons.map((r) => <li key={r}>{r}</li>)}
+                </ul>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>✓ Dossier exploitable</p>
+            )}
+          </div>
+
+          {/* Actions rapides */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            {[
+              { label: '📞 Appeler', disabled: !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; } },
+              { label: '✉️ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
+              { label: '📅 RDV', disabled: !!appointment, onClick: () => { if (!appointment) openAppointmentModal(); } },
+              { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
+              { label: '🔁 Relancer', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
+            ].map((a) => (
+              <button
+                key={a.label}
+                onClick={a.onClick}
+                disabled={a.disabled}
+                style={{
+                  padding: '12px 6px', borderRadius: '12px', border: '1px solid var(--border)',
+                  background: 'var(--bg-elevated)', color: a.disabled ? 'var(--text-3)' : 'var(--text-1)',
+                  fontSize: '12px', fontWeight: 600, opacity: a.disabled ? 0.5 : 1,
+                }}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Rendez-vous */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>Rendez-vous</p>
+            {loadingAppointment ? (
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-3)' }}>Chargement...</p>
+            ) : appointment ? (
+              <div>
+                <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{formatDateTime(appointment.start)}</p>
+                {appointment.location && <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>📍 {appointment.location}</p>}
+                <p style={{ margin: 0, fontSize: '11px', color: 'var(--accent)' }}>✓ Synchronisé Google Calendar</p>
+              </div>
+            ) : (
+              <div>
+                <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--text-2)' }}>Aucun rendez-vous</p>
+                <button onClick={openAppointmentModal} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
+                  Planifier
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Devis */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
+            <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>Devis</p>
+            <p style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>{devisStatusLabel}</p>
+            {latestDevis && <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--text-2)' }}>{formatMoney(latestDevis.amount)} €</p>}
+            <button onClick={devisCtaAction} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
+              {devisCtaLabel}
+            </button>
+          </div>
+
+          {/* Timeline condensée */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Parcours</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {mobileTimelineSteps.map((step, i) => {
+                const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
+                const color = step.state === 'done' ? 'var(--accent)' : step.state === 'current' ? 'var(--text-1)' : step.state === 'future' ? 'var(--text-3)' : 'var(--text-2)';
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', opacity: step.state === 'future' ? 0.5 : 1 }}>
+                    <span style={{ color, fontSize: '12px', fontWeight: 700, width: '14px', flexShrink: 0 }}>{icon}</span>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: step.state === 'current' ? 'var(--text-1)' : color }}>{step.label}</p>
+                      {step.detail && <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-3)' }}>{step.detail}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Détails secondaires en accordéons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {mobileAccordions.map((section) => {
+              const open = openMobileSections.has(section.key);
+              return (
+                <div key={section.key} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <button
+                    onClick={() => toggleMobileSection(section.key)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}
+                  >
+                    {section.title}
+                    <ChevronDown style={{ width: '16px', height: '16px', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }} />
+                  </button>
+                  {open && <div style={{ padding: '0 14px 14px' }}>{section.content}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </main>
+
+        {/* Bottom action bar sticky */}
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 20,
+          background: 'var(--bg-elevated)', borderTop: '1px solid var(--border)',
+          padding: '10px 14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
+        }}>
+          <button
+            disabled={!project.clientPhone}
+            onClick={() => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; }}
+            style={{ padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg)', color: project.clientPhone ? 'var(--text-1)' : 'var(--text-3)', fontSize: '13px', fontWeight: 700, opacity: project.clientPhone ? 1 : 0.5 }}
+          >
+            📞 Appeler
+          </button>
+          <button
+            disabled={!!appointment}
+            onClick={() => { if (!appointment) openAppointmentModal(); }}
+            style={{ padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg)', color: appointment ? 'var(--text-3)' : 'var(--text-1)', fontSize: '13px', fontWeight: 700, opacity: appointment ? 0.5 : 1 }}
+          >
+            📅 RDV
+          </button>
+          <button
+            onClick={devisCtaAction}
+            style={{ padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: '13px', fontWeight: 700 }}
+          >
+            📄 Devis
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
