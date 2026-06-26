@@ -434,7 +434,7 @@ export default function AdminClientDetailPage() {
     try {
       await patch({ [field]: value });
     } catch (err) {
-      alert(`Erreur lors de la mise à jour de la date : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Impossible de mettre à jour la date. Réessayez dans quelques instants.${err instanceof Error ? ' (' + err.message + ')' : ''}`);
     }
   }
 
@@ -456,7 +456,7 @@ export default function AdminClientDetailPage() {
       }
       await patch(fields);
     } catch (err) {
-      alert(`Erreur lors de la mise à jour du statut : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Impossible de mettre à jour le statut.${err instanceof Error ? ' (' + err.message + ')' : ''}`);
     }
   }
 
@@ -488,7 +488,7 @@ export default function AdminClientDetailPage() {
         ? 'Abonnement résilié. Un email de confirmation a été envoyé au client.'
         : 'Abonnement résilié. Le client n\'a pas été notifié par email.');
     } catch (err) {
-      alert(`Erreur lors de la résiliation : ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Impossible de résilier l'abonnement.${err instanceof Error ? ' (' + err.message + ')' : ''}`);
     }
   }
 
@@ -526,7 +526,7 @@ export default function AdminClientDetailPage() {
       setEmailTemplate('Autre');
       showToast('success', 'Email envoyé. Une copie est disponible dans l\'historique des échanges de ce client.');
     } catch {
-      alert("Erreur lors de l'envoi de l'email");
+      showToast('error', "Impossible d'envoyer l'email. Réessayez dans quelques instants.");
     } finally {
       setEmailSending(false);
     }
