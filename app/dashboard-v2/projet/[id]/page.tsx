@@ -1403,7 +1403,10 @@ function ProjectDetail() {
                 {loadingSlots ? (
                   <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
                 ) : !appointmentConnected ? (
-                  <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
+                    <p className="text-sm text-[var(--text-2)]">Connectez votre agenda pour planifier vos rendez-vous.</p>
+                    <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
+                  </div>
                 ) : appointmentError ? (
                   <p className="text-sm text-red-400">{appointmentError}</p>
                 ) : appointmentSlots.length === 0 ? (
@@ -2972,6 +2975,24 @@ function ProjectDetail() {
                         <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
                           Kadria a identifié les prestations les plus probables pour ce chantier.
                         </p>
+
+                        {serviceProfiles.length === 0 && (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                            background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px',
+                            padding: '8px 10px', marginBottom: '10px', flexWrap: 'wrap',
+                          }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                              Configurez vos prestations pour obtenir des suggestions personnalisées.
+                            </span>
+                            <a
+                              href="/parametres/profil-metier"
+                              style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}
+                            >
+                              Configurer mon métier
+                            </a>
+                          </div>
+                        )}
 
                         <div style={{ position: 'relative', marginBottom: '10px' }}>
                           <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />

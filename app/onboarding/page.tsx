@@ -320,7 +320,10 @@ export default function OnboardingPage() {
     setStepIndex(i => Math.max(i - 1, 0))
   }
 
-  function skipForNow() {
+  async function skipForNow() {
+    // Sauvegarde ce qui est déjà renseigné avant de quitter, pour ne jamais
+    // perdre le minimum (entreprise, métier...) si l'artisan quitte tôt.
+    await persistStep()
     router.push('/dashboard-v2')
   }
 

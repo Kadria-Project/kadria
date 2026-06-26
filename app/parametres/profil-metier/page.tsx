@@ -6,6 +6,7 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTemplateToPayload } from '@/src/lib/service-profile-templates'
 import { BusinessSetupWizard } from '@/src/components/BusinessSetupWizard'
+import { computeSetupProgress, type SetupProgressResult } from '@/src/lib/setup-progress'
 
 interface BusinessProfile {
   primaryTrade: string
@@ -231,6 +232,7 @@ export default function ProfilMetierPage() {
   const [openServiceProfileSections, setOpenServiceProfileSections] = useState<Set<string>>(new Set(['presentation']))
 
   const [showWizard, setShowWizard] = useState(false)
+  const [setupProgress, setSetupProgress] = useState<SetupProgressResult | null>(null)
 
   const [templateTrade, setTemplateTrade] = useState(SERVICE_PROFILE_TRADES[0].value)
   const [selectedTemplateNames, setSelectedTemplateNames] = useState<Set<string>>(new Set())
@@ -299,25 +301,39 @@ export default function ProfilMetierPage() {
     let cancelled = false
     async function load() {
       try {
-        const [profileRes, catalogRes, serviceProfilesRes] = await Promise.all([
+        const [profileRes, catalogRes, serviceProfilesRes, calendarRes, configRes] = await Promise.all([
           fetch('/api/artisan/business-profile').then((r) => r.json()),
           fetch('/api/artisan/service-catalog').then((r) => r.json()),
           fetch('/api/artisan/service-profiles').then((r) => r.json()),
+          fetch('/api/integrations/google-calendar/status').then((r) => r.json()).catch(() => null),
+          fetch('/api/artisan/config').then((r) => r.json()).catch(() => null),
         ])
         if (cancelled) return
+        let nextProfile = { ...EMPTY_PROFILE }
+        let nextServiceProfiles: ServiceProfileRow[] = []
         if (profileRes.success) {
-          setProfile(profileFromRow(profileRes.profile))
+          nextProfile = profileFromRow(profileRes.profile)
+          setProfile(nextProfile)
           setHasProfile(!!profileRes.profile)
         }
         if (catalogRes.success) {
           setCatalog(catalogRes.items || [])
         }
         if (serviceProfilesRes.success) {
-          setServiceProfiles(serviceProfilesRes.profiles || [])
+          nextServiceProfiles = serviceProfilesRes.profiles || []
+          setServiceProfiles(nextServiceProfiles)
           setServiceProfilesUnavailable(false)
         } else {
           setServiceProfilesUnavailable(true)
         }
+        setSetupProgress(
+          computeSetupProgress({
+            businessProfile: nextProfile,
+            serviceProfiles: nextServiceProfiles,
+            calendarIntegration: calendarRes?.success ? { connected: !!calendarRes.connected } : null,
+            artisanConfig: configRes?.success ? configRes.config : null,
+          })
+        )
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -630,6 +646,56 @@ export default function ProfilMetierPage() {
       )}
 
       <div className="mx-auto w-full max-w-full px-3 py-4 sm:px-6 sm:py-8" style={{ maxWidth: '760px' }}>
+        {setupProgress && (
+          <div style={{
+            ...sectionCard,
+            background: 'var(--bg-elevated)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+              <div>
+                <div style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>
+                  Score de préparation
+                </div>
+                <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                  {setupProgress.completedSteps} / {setupProgress.totalSteps} étapes complétées.
+                </div>
+              </div>
+              <div style={{ color: 'var(--accent)', fontSize: '22px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                {setupProgress.percent}%
+              </div>
+            </div>
+
+            <div style={{ height: '6px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', marginBottom: setupProgress.percent < 100 ? '12px' : 0 }}>
+              <div style={{ height: '100%', width: `${setupProgress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+            </div>
+
+            {setupProgress.percent < 100 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                {setupProgress.steps
+                  .filter((s) => s.status === 'todo')
+                  .sort((a, b) => a.priority - b.priority)
+                  .map((s) => (
+                    <div key={s.key} style={{ color: 'var(--text-2)', fontSize: '12px' }}>
+                      · {s.label}
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {setupProgress.percent < 100 && (
+              <button
+                onClick={() => setShowWizard(true)}
+                style={{
+                  background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                  borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer',
+                }}
+              >
+                Configurer mon métier
+              </button>
+            )}
+          </div>
+        )}
+
         {!hasProfile && (
           <div style={{
             ...sectionCard,

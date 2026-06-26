@@ -64,6 +64,7 @@ import {
 } from '@/src/lib/commercial-actions';
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
+import { computeSetupProgress, type SetupProgressResult } from '@/src/lib/setup-progress';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -1522,6 +1523,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [artisanTrades, setArtisanTrades] = useState<string[]>([]);
   const [artisanFirstName, setArtisanFirstName] = useState('');
+  const [setupProgress, setSetupProgress] = useState<SetupProgressResult | null>(null);
+  const [setupCardDismissed, setSetupCardDismissed] = useState(false);
 
   const formattedToday = useMemo(() => {
     const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
@@ -1541,6 +1544,41 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         }
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch('/api/artisan/business-profile').then((r) => r.json()).catch(() => null),
+      fetch('/api/artisan/service-profiles').then((r) => r.json()).catch(() => null),
+      fetch('/api/integrations/google-calendar/status').then((r) => r.json()).catch(() => null),
+      fetch('/api/artisan/config').then((r) => r.json()).catch(() => null),
+    ]).then(([profileRes, serviceProfilesRes, calendarRes, configRes]) => {
+      if (cancelled) return;
+      const row = profileRes?.success ? profileRes.profile : null;
+      setSetupProgress(
+        computeSetupProgress({
+          businessProfile: row
+            ? {
+                primaryTrade: row.primary_trade,
+                baseCity: row.base_city,
+                interventionRadiusKm: row.intervention_radius_km,
+                hourlyRateHt: row.hourly_rate_ht,
+                defaultVatRate: row.default_vat_rate,
+                workingDays: row.working_days,
+                workStartTime: row.work_start_time,
+                workEndTime: row.work_end_time,
+              }
+            : null,
+          serviceProfiles: serviceProfilesRes?.success ? serviceProfilesRes.profiles : [],
+          calendarIntegration: calendarRes?.success ? { connected: !!calendarRes.connected } : null,
+          artisanConfig: configRes?.success ? configRes.config : null,
+        })
+      );
+    });
     return () => {
       cancelled = true;
     };
@@ -2432,6 +2470,95 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             }}
           >
             Reprendre l&apos;onboarding
+          </button>
+        </div>
+      )}
+      {setupProgress && setupProgress.percent < 100 && !setupCardDismissed && (
+        <div
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: isMobile ? '14px' : '18px',
+            marginBottom: '20px',
+            background: 'var(--bg-elevated)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+            <div>
+              <div style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>
+                Configurez votre entreprise
+              </div>
+              <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                Plus votre profil est complet, plus Kadria peut qualifier vos demandes et préparer vos devis.
+              </div>
+            </div>
+            <div style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+              {setupProgress.percent}%
+            </div>
+          </div>
+
+          <div style={{ height: '6px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', marginBottom: '12px' }}>
+            <div style={{ height: '100%', width: `${setupProgress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            {setupProgress.steps
+              .filter((s) => s.status === 'todo')
+              .sort((a, b) => a.priority - b.priority)
+              .slice(0, 3)
+              .map((s) => (
+                <div key={s.key} style={{ color: 'var(--text-2)', fontSize: '12px' }}>
+                  · {s.label}
+                </div>
+              ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => router.push('/parametres/profil-metier')}
+              style={{
+                background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              Finaliser mon profil métier
+            </button>
+            {setupProgress.steps.find((s) => s.key === 'calendar')?.status === 'todo' && (
+              <button
+                onClick={() => setDashboardMode('calendar')}
+                style={{
+                  background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-1)', fontWeight: 600,
+                  borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer',
+                }}
+              >
+                Connecter Google Calendar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {setupProgress && setupProgress.percent === 100 && !setupCardDismissed && (
+        <div
+          style={{
+            border: '1px solid rgba(34,197,94,0.3)',
+            background: 'rgba(34,197,94,0.08)',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+          }}
+        >
+          <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>
+            ✓ Votre profil métier est complet.
+          </span>
+          <button
+            onClick={() => setSetupCardDismissed(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '14px' }}
+          >
+            ✕
           </button>
         </div>
       )}
