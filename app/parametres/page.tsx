@@ -16,7 +16,7 @@ import {
   DEFAULT_CONSUMPTION_PER_100KM,
 } from '@/src/config/travel'
 
-const SECTIONS = [
+const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }> = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
@@ -25,6 +25,12 @@ const SECTIONS = [
   { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
+]
+
+const SETTINGS_SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }> = [
+  SECTIONS[0]!,
+  { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
+  ...SECTIONS.slice(1),
 ]
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded'
@@ -705,10 +711,16 @@ export default function ParametresPage() {
               padding: '12px',
             } : {}),
           }}>
-            {SECTIONS.map(section => (
+            {SETTINGS_SECTIONS.map(section => (
               <button
                 key={section.id}
-                onClick={() => setActiveSection(section.id)}
+                onClick={() => {
+                  if (section.href) {
+                    router.push(section.href)
+                    return
+                  }
+                  setActiveSection(section.id)
+                }}
                 style={{
                   width: isMobile ? 'auto' : '100%',
                   flexShrink: isMobile ? 0 : undefined,

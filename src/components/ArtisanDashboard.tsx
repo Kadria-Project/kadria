@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { getProjects, updateProject } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
@@ -1410,6 +1410,7 @@ function formatDateFR(date: Date): string {
 
 function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const canExportPdf = hasFeature(plan, 'pdfExports');
   const canExportMonthlyReport = hasFeature(plan, 'monthlyPdfReport');
@@ -2807,7 +2808,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
         </div>
       )}
-      {progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (
+      {pathname.startsWith('/parametres') && progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (
         <div
           style={{
             border: '1px solid rgba(34,197,94,0.3)',
