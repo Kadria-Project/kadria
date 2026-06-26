@@ -146,16 +146,10 @@ export default function AdminHomePage() {
                 Voir tous les artisans →
               </Link>
             </div>
-            <AdminTable style={{ background: 'transparent', border: 'none', borderRadius: 0 }}>
-              <thead>
-                <tr style={{ background: 'var(--border)' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Nom</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Email</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Plan</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Inscrit le</th>
-                </tr>
-              </thead>
+            <AdminTable
+              columns={['Nom', 'Email', 'Plan', 'Statut', 'Inscrit le']}
+              style={{ background: 'transparent', border: 'none', borderRadius: 0 }}
+            >
               <tbody>
                 {stats.derniers_clients.length === 0 && (
                   <tr>
