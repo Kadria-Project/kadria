@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { ARTISAN_TRADES } from '@/src/config/trades'
+import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTemplateToPayload } from '@/src/lib/service-profile-templates'
 
 interface BusinessProfile {
   primaryTrade: string
@@ -227,6 +228,60 @@ export default function ProfilMetierPage() {
   const [serviceProfileForm, setServiceProfileForm] = useState<ServiceProfileForm>({ ...EMPTY_SERVICE_PROFILE_FORM })
   const [savingServiceProfile, setSavingServiceProfile] = useState(false)
   const [openServiceProfileSections, setOpenServiceProfileSections] = useState<Set<string>>(new Set(['presentation']))
+
+  const [templateTrade, setTemplateTrade] = useState(SERVICE_PROFILE_TRADES[0].value)
+  const [selectedTemplateNames, setSelectedTemplateNames] = useState<Set<string>>(new Set())
+  const [importingTemplates, setImportingTemplates] = useState(false)
+  const [templateImportMessage, setTemplateImportMessage] = useState('')
+
+  function toggleTemplateSelection(name: string) {
+    setSelectedTemplateNames((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+
+  async function importSelectedTemplates() {
+    const templates = (SERVICE_PROFILE_TEMPLATES[templateTrade] || []).filter((t) => selectedTemplateNames.has(t.name))
+    if (templates.length === 0) return
+    setImportingTemplates(true)
+    setTemplateImportMessage('')
+    try {
+      const existingNames = new Set(serviceProfiles.map((sp) => sp.name.trim().toLowerCase()))
+      const imported: ServiceProfileRow[] = []
+      const skipped: string[] = []
+      for (const template of templates) {
+        if (existingNames.has(template.name.trim().toLowerCase())) {
+          skipped.push(template.name)
+          continue
+        }
+        const res = await fetch('/api/artisan/service-profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(serviceProfileTemplateToPayload(template)),
+        })
+        const data = await res.json()
+        if (data.success && data.profile) {
+          imported.push(data.profile)
+          existingNames.add(template.name.trim().toLowerCase())
+        } else {
+          skipped.push(template.name)
+        }
+      }
+      if (imported.length > 0) {
+        setServiceProfiles((prev) => [...prev, ...imported])
+      }
+      setSelectedTemplateNames(new Set())
+      const parts: string[] = []
+      if (imported.length > 0) parts.push(`${imported.length} prestation${imported.length > 1 ? 's' : ''} importée${imported.length > 1 ? 's' : ''}`)
+      if (skipped.length > 0) parts.push(`${skipped.length} ignorée${skipped.length > 1 ? 's' : ''} (déjà existante${skipped.length > 1 ? 's' : ''})`)
+      setTemplateImportMessage(parts.join(' · ') || 'Aucune prestation importée.')
+    } finally {
+      setImportingTemplates(false)
+    }
+  }
 
   function toggleServiceProfileSection(key: string) {
     setOpenServiceProfileSections((prev) => {
@@ -963,6 +1018,81 @@ export default function ProfilMetierPage() {
           <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
             Décrivez comment chaque prestation doit être qualifiée, chiffrée et planifiée. Pas encore connecté au chat, au vocal, aux devis ou à l&apos;Action Engine.
           </p>
+
+          <div style={{
+            border: '1px solid var(--border)', borderRadius: '12px',
+            padding: isMobile ? '14px' : '18px', marginBottom: '20px',
+            background: 'var(--bg-hover)',
+          }}>
+            <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+              🚀 Démarrer plus vite
+            </div>
+            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 14px' }}>
+              Importez des modèles de prestations adaptés à votre métier, puis ajustez-les à votre façon de travailler.
+            </p>
+
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Métier</label>
+              <select
+                value={templateTrade}
+                onChange={(e) => { setTemplateTrade(e.target.value); setSelectedTemplateNames(new Set()); setTemplateImportMessage('') }}
+                style={inputStyle}
+              >
+                {SERVICE_PROFILE_TRADES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+              {(SERVICE_PROFILE_TEMPLATES[templateTrade] || []).map((t) => {
+                const alreadyExists = serviceProfiles.some((sp) => sp.name.trim().toLowerCase() === t.name.trim().toLowerCase())
+                return (
+                  <label
+                    key={t.name}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: '8px',
+                      padding: '8px 10px', borderRadius: '8px',
+                      border: '1px solid var(--border)',
+                      opacity: alreadyExists ? 0.5 : 1,
+                      cursor: alreadyExists ? 'default' : 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTemplateNames.has(t.name)}
+                      disabled={alreadyExists}
+                      onChange={() => toggleTemplateSelection(t.name)}
+                      style={{ marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>
+                        {t.name}{alreadyExists ? ' (déjà dans votre bibliothèque)' : ''}
+                      </div>
+                      <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>{t.description}</div>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {templateImportMessage && (
+              <div style={{ color: 'var(--text-2)', fontSize: '12px', marginBottom: '10px' }}>{templateImportMessage}</div>
+            )}
+
+            <button
+              onClick={importSelectedTemplates}
+              disabled={importingTemplates || selectedTemplateNames.size === 0}
+              style={{
+                padding: '8px 14px', borderRadius: '8px', border: 'none',
+                background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '13px',
+                cursor: importingTemplates || selectedTemplateNames.size === 0 ? 'not-allowed' : 'pointer',
+                opacity: importingTemplates || selectedTemplateNames.size === 0 ? 0.6 : 1,
+              }}
+            >
+              {importingTemplates ? 'Import en cours…' : 'Importer les prestations sélectionnées'}
+            </button>
+          </div>
 
           {serviceProfileError && (
             <div style={{ color: '#f87171', fontSize: '13px', marginBottom: '12px' }}>{serviceProfileError}</div>
