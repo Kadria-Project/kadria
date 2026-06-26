@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { ARTISAN_TRADES } from '@/src/config/trades'
@@ -280,7 +280,32 @@ export default function ProfilMetierPage() {
   const [openServiceProfileSections, setOpenServiceProfileSections] = useState<Set<string>>(new Set(['presentation']))
 
   const [showWizard, setShowWizard] = useState(false)
-  const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null)
+  // Snapshots des données externes (calendrier, coordonnées entreprise) qui
+  // entrent dans le calcul de progression mais ne sont pas édités sur cette
+  // page : on les garde en state pour que le % reste recalculable en direct.
+  const [calendarConnected, setCalendarConnected] = useState(false)
+  const [artisanConfigSnapshot, setArtisanConfigSnapshot] = useState<{
+    companyName?: string | null
+    phone?: string | null
+    villePro?: string | null
+    address?: string | null
+  } | null>(null)
+  // Le % de progression doit refléter l'état React courant immédiatement
+  // (pas d'attente d'un refresh/retour API) : calcul dérivé à chaque rendu,
+  // jamais figé dans un state mis à jour une seule fois au chargement.
+  const progressRecommendations: ProgressRecommendations = useMemo(
+    () =>
+      computeProgressRecommendations({
+        businessProfile: profile,
+        serviceProfiles,
+        calendarIntegration: { connected: calendarConnected },
+        artisanConfig: artisanConfigSnapshot,
+      }),
+    [profile, serviceProfiles, calendarConnected, artisanConfigSnapshot]
+  )
+  const [moduleSaving, setModuleSaving] = useState<Record<string, boolean>>({})
+  const [moduleSaved, setModuleSaved] = useState<Record<string, boolean>>({})
+  const [moduleError, setModuleError] = useState<Record<string, string>>({})
 
   const [templateTrade, setTemplateTrade] = useState(SERVICE_PROFILE_TRADES[0].value)
   const [selectedTemplateNames, setSelectedTemplateNames] = useState<Set<string>>(new Set())
@@ -357,10 +382,8 @@ export default function ProfilMetierPage() {
           fetch('/api/artisan/config').then((r) => r.json()).catch(() => null),
         ])
         if (cancelled) return
-        let nextProfile = { ...EMPTY_PROFILE }
-        let nextServiceProfiles: ServiceProfileRow[] = []
         if (profileRes.success) {
-          nextProfile = profileFromRow(profileRes.profile)
+          const nextProfile = profileFromRow(profileRes.profile)
           setProfile(nextProfile)
           setSpecialtiesText(toCsv(nextProfile.specialties))
           setExcludedServicesText(toCsv(nextProfile.excludedServices))
@@ -370,20 +393,13 @@ export default function ProfilMetierPage() {
           setCatalog(catalogRes.items || [])
         }
         if (serviceProfilesRes.success) {
-          nextServiceProfiles = serviceProfilesRes.profiles || []
-          setServiceProfiles(nextServiceProfiles)
+          setServiceProfiles(serviceProfilesRes.profiles || [])
           setServiceProfilesUnavailable(false)
         } else {
           setServiceProfilesUnavailable(true)
         }
-        setProgressRecommendations(
-          computeProgressRecommendations({
-            businessProfile: nextProfile,
-            serviceProfiles: nextServiceProfiles,
-            calendarIntegration: calendarRes?.success ? { connected: !!calendarRes.connected } : null,
-            artisanConfig: configRes?.success ? configRes.config : null,
-          })
-        )
+        setCalendarConnected(!!calendarRes?.success && !!calendarRes.connected)
+        setArtisanConfigSnapshot(configRes?.success ? configRes.config : null)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -479,6 +495,103 @@ export default function ProfilMetierPage() {
     } catch (err) {
       setServiceProfileError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour')
     }
+  }
+
+  // Sauvegarde un sous-ensemble de champs (un "module" de la page) via le
+  // PATCH existant, qui n'applique que les clés présentes dans le body :
+  // les autres champs du profil ne sont jamais touchés ni réinitialisés.
+  async function saveModule(moduleKey: string, fields: Record<string, unknown>) {
+    setModuleSaving((m) => ({ ...m, [moduleKey]: true }))
+    setModuleError((m) => ({ ...m, [moduleKey]: '' }))
+    try {
+      const res = await fetch('/api/artisan/business-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      const savedProfile = profileFromRow(data.profile)
+      setProfile(savedProfile)
+      setSpecialtiesText(toCsv(savedProfile.specialties))
+      setExcludedServicesText(toCsv(savedProfile.excludedServices))
+      setHasProfile(true)
+      setModuleSaved((m) => ({ ...m, [moduleKey]: true }))
+      setTimeout(() => setModuleSaved((m) => ({ ...m, [moduleKey]: false })), 2000)
+    } catch (err) {
+      setModuleError((m) => ({ ...m, [moduleKey]: err instanceof Error ? err.message : 'Erreur lors de la sauvegarde' }))
+    } finally {
+      setModuleSaving((m) => ({ ...m, [moduleKey]: false }))
+    }
+  }
+
+  function saveIdentiteModule() {
+    return saveModule('identite', {
+      primaryTrade: profile.primaryTrade,
+      specialties: profile.specialties,
+      excludedServices: profile.excludedServices,
+    })
+  }
+
+  function saveZoneModule() {
+    return saveModule('zone', {
+      baseCity: profile.baseCity,
+      interventionRadiusKm: toNumberOrNull(profile.interventionRadiusKm),
+      travelFeeHt: toNumberOrNull(profile.travelFeeHt),
+      travelFeePerKm: toNumberOrNull(profile.travelFeePerKm),
+    })
+  }
+
+  function saveHorairesModule() {
+    return saveModule('horaires', {
+      workingDays: profile.workingDays,
+      workStartTime: profile.workStartTime,
+      workEndTime: profile.workEndTime,
+      urgentAvailable: profile.urgentAvailable,
+    })
+  }
+
+  function saveChiffrageModule() {
+    return saveModule('chiffrage', {
+      defaultVatRate: toNumberOrNull(profile.defaultVatRate),
+      hourlyRateHt: toNumberOrNull(profile.hourlyRateHt),
+      diagnosticFeeHt: toNumberOrNull(profile.diagnosticFeeHt),
+      defaultMarginPercent: toNumberOrNull(profile.defaultMarginPercent),
+      paymentTerms: profile.paymentTerms,
+    })
+  }
+
+  function saveMarquesModule() {
+    return saveModule('marques', {
+      preferredBrands: profile.preferredBrands,
+      avoidedBrands: profile.avoidedBrands,
+      internalNotes: profile.internalNotes,
+    })
+  }
+
+  function renderModuleSaveButton(moduleKey: string, onSave: () => void) {
+    const isSaving = !!moduleSaving[moduleKey]
+    const isSaved = !!moduleSaved[moduleKey]
+    const error = moduleError[moduleKey]
+    return (
+      <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={isSaving}
+          style={{
+            background: isSaved ? 'rgba(34,197,94,0.2)' : isSaving ? 'var(--bg-hover)' : 'var(--bg-hover)',
+            border: isSaved ? '1px solid var(--accent)' : '1px solid var(--border)',
+            color: isSaved ? '#4ade80' : isSaving ? 'var(--text-3)' : 'var(--text-1)',
+            fontWeight: 600, borderRadius: '8px', padding: '7px 14px', fontSize: '12px',
+            cursor: isSaving ? 'default' : 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          {isSaved ? '✓ Module enregistré' : isSaving ? 'Enregistrement...' : 'Enregistrer ce module'}
+        </button>
+        {error && <span style={{ color: '#f87171', fontSize: '12px' }}>{error}</span>}
+      </div>
+    )
   }
 
   async function save() {
@@ -859,6 +972,7 @@ export default function ProfilMetierPage() {
               style={inputStyle}
             />
           </div>
+          {renderModuleSaveButton('identite', saveIdentiteModule)}
         </div>
 
         {/* 2. Zone d'intervention */}
@@ -904,6 +1018,7 @@ export default function ProfilMetierPage() {
               />
             </div>
           </div>
+          {renderModuleSaveButton('zone', saveZoneModule)}
         </div>
 
         {/* 3. Horaires */}
@@ -969,6 +1084,7 @@ export default function ProfilMetierPage() {
             />
             J&apos;accepte les urgences
           </label>
+          {renderModuleSaveButton('horaires', saveHorairesModule)}
         </div>
 
         {/* 4. Chiffrage */}
@@ -1024,6 +1140,7 @@ export default function ProfilMetierPage() {
               placeholder="Ex : 30% à la commande, solde à la livraison"
             />
           </div>
+          {renderModuleSaveButton('chiffrage', saveChiffrageModule)}
         </div>
 
         {/* 5. Marques / préférences */}
@@ -1058,6 +1175,7 @@ export default function ProfilMetierPage() {
               style={{ ...inputStyle, resize: 'vertical' }}
             />
           </div>
+          {renderModuleSaveButton('marques', saveMarquesModule)}
         </div>
 
         {/* 6. Catalogue simple de prestations */}
