@@ -154,19 +154,6 @@ function ProjectDetail() {
   const [callbackDate, setCallbackDate] = useState('');
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
-  const [showRdvModal, setShowRdvModal] = useState(false);
-  const [savingRdv, setSavingRdv] = useState(false);
-  const [rdvData, setRdvData] = useState({
-    title: '',
-    date: '',
-    time: '',
-    type: 'RDV',
-    notes: '',
-  });
-  const [eventType, setEventType] = useState('Relance');
-  const [eventDate, setEventDate] = useState(callbackDate || '');
-  const [savingEvent, setSavingEvent] = useState(false);
-
   // --- Rendez-vous assisté (Google Calendar) ---
   const [appointment, setAppointment] = useState<{
     id: string;
@@ -258,13 +245,6 @@ function ProjectDetail() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  const EVENT_TYPES = [
-    { value: 'Relance', color: '#fbbf24', bg: 'rgba(251,191,36,0.15)', border: '#d97706' },
-    { value: 'Rappel', color: '#60a5fa', bg: 'rgba(96,165,250,0.15)', border: '#3b82f6' },
-    { value: 'RDV', color: '#4ade80', bg: 'rgba(34,197,94,0.15)', border: 'var(--accent)' },
-    { value: 'Intervention', color: '#c084fc', bg: 'rgba(192,132,252,0.15)', border: '#a855f7' },
-  ];
 
   async function loadActivities() {
     const activityData = await getProjectActivity(id);
@@ -513,59 +493,6 @@ function ProjectDetail() {
       console.error('SAVE_CALLBACK_DATE_ERROR', error);
     } finally {
       setUpdating(false);
-    }
-  }
-
-  async function handleRdvSave() {
-    if (!rdvData.title || !rdvData.date) return;
-    setSavingRdv(true);
-    try {
-      await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: rdvData.title || `RDV ${project.clientFirstName} ${project.clientName}`,
-          date: `${rdvData.date}T${rdvData.time || '09:00'}:00`,
-          type: rdvData.type || 'RDV',
-          projectId: project.id,
-          notes: rdvData.notes || '',
-        }),
-      });
-      setShowRdvModal(false);
-      alert('RDV enregistré dans le calendrier !');
-    } finally {
-      setSavingRdv(false);
-    }
-  }
-
-  async function saveCalendarEvent() {
-    if (!eventDate) return;
-    setSavingEvent(true);
-    try {
-      await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `${eventType} — ${project.clientFirstName} ${project.clientName}`,
-          date: eventDate.includes('T') ? eventDate : `${eventDate}T09:00:00`,
-          type: eventType,
-          projectId: project.id,
-          notes: 'Planifié depuis le dossier projet',
-        }),
-      });
-      if (eventType === 'Relance') {
-        await fetch(`/api/projects/${project.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ callbackDate: eventDate }),
-        });
-      }
-      setEventDate('');
-      alert(`${eventType} ajouté au calendrier ✓`);
-    } catch {
-      alert('Erreur lors de l\'enregistrement');
-    } finally {
-      setSavingEvent(false);
     }
   }
 
@@ -1107,6 +1034,168 @@ function ProjectDetail() {
             >
               ✏️ Modifier
             </button>
+          </div>
+        </div>
+
+        {/* Centre d'actions — les actions prioritaires du dossier, toujours visibles en haut */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+          gap: '10px',
+          marginBottom: '16px',
+        }}>
+          {/* Rendez-vous */}
+          <button
+            onClick={() => {
+              if (!appointment) openAppointmentModal();
+            }}
+            disabled={!!appointment}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: appointment ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: appointment ? 'default' : 'pointer',
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📅 Rendez-vous
+            </p>
+            <p style={{ fontSize: '13px', color: appointment ? 'var(--accent)' : 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              {loadingAppointment ? 'Chargement...' : appointment ? formatDateTime(appointment.start) : 'Planifier un rendez-vous'}
+            </p>
+          </button>
+
+          {/* Relance */}
+          <button
+            onClick={() => handleNextBestAction(latestDevis ? 'followup' : 'call')}
+            disabled={!latestDevis && !project.clientPhone}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: (latestDevis || project.clientPhone) ? 'pointer' : 'not-allowed',
+              opacity: (latestDevis || project.clientPhone) ? 1 : 0.5,
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📞 Relance
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              Relancer le client
+            </p>
+          </button>
+
+          {/* Devis */}
+          <button
+            onClick={() => handleNextBestAction('quote')}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📄 Devis
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              {latestDevis ? 'Voir / relancer le devis' : 'Préparer un devis'}
+            </p>
+          </button>
+
+          {/* Intervention — pas de donnée réelle aujourd'hui, affiché honnêtement comme futur */}
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '14px',
+            opacity: 0.55,
+          }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              🛠️ Intervention
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-3)', fontWeight: 600, margin: 0 }}>
+              Bientôt disponible
+            </p>
+          </div>
+        </div>
+
+        {/* Timeline intelligente — uniquement des étapes appuyées sur des données réelles du dossier */}
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: isMobile ? '16px' : '16px 20px',
+          marginBottom: '16px',
+        }}>
+          <p style={{
+            color: 'var(--text-3)',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            margin: '0 0 12px',
+          }}>
+            Parcours du dossier
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {(() => {
+              const qualificationDone = !!(project.completenessScore || project.aiSummary);
+              const devisDone = !!latestDevis;
+              const steps: Array<{ label: string; detail?: string; state: 'done' | 'current' | 'todo' | 'future' }> = [
+                { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
+                { label: 'Qualification IA', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
+                {
+                  label: 'Rendez-vous',
+                  detail: appointment ? formatDateTime(appointment.start) : undefined,
+                  state: appointment ? 'done' : 'todo',
+                },
+                {
+                  label: idealActionLabel.title || analysis.nextBestAction.label,
+                  detail: project.leadStatus === 'archived' ? 'Dossier archivé' : analysis.recommendation,
+                  state: project.leadStatus === 'archived' || analysis.nextBestAction.type === 'wait' ? 'todo' : 'current',
+                },
+                {
+                  label: 'Devis',
+                  detail: devisDone ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer',
+                  state: devisDone ? (latestDevis.accepted ? 'done' : 'current') : 'todo',
+                },
+                { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
+                { label: 'Facturation', detail: 'Bientôt disponible', state: 'future' },
+                { label: "Demande d'avis Google", detail: 'Bientôt disponible', state: 'future' },
+              ];
+              return steps.map((step, i) => {
+                const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
+                const color = step.state === 'done'
+                  ? 'var(--accent)'
+                  : step.state === 'current'
+                    ? 'var(--text-1)'
+                    : step.state === 'future'
+                      ? 'var(--text-3)'
+                      : 'var(--text-2)';
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', opacity: step.state === 'future' ? 0.55 : 1 }}>
+                    <span style={{ color, fontSize: '13px', fontWeight: 700, width: '16px', flexShrink: 0 }}>{icon}</span>
+                    <div>
+                      <p style={{ color: step.state === 'current' ? 'var(--text-1)' : color, fontSize: '13px', fontWeight: step.state === 'current' ? 700 : 600, margin: 0 }}>
+                        {step.label}
+                      </p>
+                      {step.detail && (
+                        <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '2px 0 0' }}>
+                          {step.detail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
 
@@ -2282,83 +2371,6 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Planificateur calendrier */}
-            <div style={{ padding: isMobile ? '14px 16px' : '14px 20px' }}>
-            <div style={{
-              borderTop: '1px solid var(--border)',
-              marginTop: '12px',
-              paddingTop: '14px',
-            }}>
-              <p style={{
-                color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
-                margin: '0 0 10px',
-              }}>
-                Planifier dans le calendrier
-              </p>
-
-              {/* Type selector */}
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                {EVENT_TYPES.map(t => (
-                  <button
-                    key={t.value}
-                    onClick={() => setEventType(t.value)}
-                    style={{
-                      background: eventType === t.value ? t.bg : 'var(--border)',
-                      border: `1px solid ${eventType === t.value ? t.border : 'var(--border)'}`,
-                      color: eventType === t.value ? t.color : 'var(--text-2)',
-                      borderRadius: '8px',
-                      padding: '5px 12px',
-                      fontSize: '12px',
-                      fontWeight: eventType === t.value ? 600 : 400,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {t.value}
-                  </button>
-                ))}
-              </div>
-
-              {/* Date + bouton */}
-              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center' }}>
-                <input
-                  type="datetime-local"
-                  value={eventDate}
-                  onChange={e => setEventDate(e.target.value)}
-                  style={{
-                    flex: 1,
-                    background: 'var(--border)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '7px 10px',
-                    color: 'var(--text-1)',
-                    fontSize: '13px',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  onClick={saveCalendarEvent}
-                  disabled={savingEvent || !eventDate}
-                  style={{
-                    background: savingEvent || !eventDate ? 'var(--border)' : 'var(--accent)',
-                    border: 'none',
-                    color: savingEvent || !eventDate ? 'var(--text-3)' : 'black',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    padding: '7px 16px',
-                    fontSize: '13px',
-                    cursor: savingEvent || !eventDate ? 'default' : 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    width: isMobile ? '100%' : undefined,
-                  }}
-                >
-                  {savingEvent ? '...' : '+ Calendrier'}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div style={{
@@ -2570,90 +2582,6 @@ function ProjectDetail() {
         </section>
 
       </main>
-
-      {showRdvModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Nouveau rendez-vous</h2>
-
-              <button
-                onClick={() => setShowRdvModal(false)}
-                className="text-[var(--text-2)] hover:text-[var(--text-1)]"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Titre</label>
-                <input
-                  type="text"
-                  value={rdvData.title}
-                  onChange={(e) => setRdvData({ ...rdvData, title: e.target.value })}
-                  placeholder="Visite technique, Devis..."
-                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Type</label>
-                <select
-                  value={rdvData.type}
-                  onChange={(e) => setRdvData({ ...rdvData, type: e.target.value })}
-                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="RDV">RDV</option>
-                  <option value="Relance">Relance</option>
-                  <option value="Rappel">Rappel</option>
-                  <option value="Intervention">Intervention</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Date</label>
-                  <input
-                    type="date"
-                    value={rdvData.date}
-                    onChange={(e) => setRdvData({ ...rdvData, date: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Heure</label>
-                  <input
-                    type="time"
-                    value={rdvData.time}
-                    onChange={(e) => setRdvData({ ...rdvData, time: e.target.value })}
-                    className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Notes</label>
-                <textarea
-                  value={rdvData.notes}
-                  onChange={(e) => setRdvData({ ...rdvData, notes: e.target.value })}
-                  rows={3}
-                  className="w-full mt-1 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-sm text-[var(--text-1)] outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={handleRdvSave}
-              disabled={savingRdv || !rdvData.title || !rdvData.date}
-              className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
-            >
-              {savingRdv ? 'Enregistrement...' : 'Enregistrer le RDV'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {showAppointmentModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
