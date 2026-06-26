@@ -860,8 +860,19 @@ function ProjectDetail() {
     });
   });
 
-  // Référentiel métier en premier, suggestions génériques en fallback.
-  const allSuggestions: ReferentialSuggestionLine[] = [...referentialSuggestions, ...quoteSuggestions];
+  // Référentiel métier en premier, suggestions génériques en fallback —
+  // dédoublonnées par libellé (le référentiel prime en cas de doublon avec
+  // une suggestion générique ou un autre profil de prestation).
+  const allSuggestions: ReferentialSuggestionLine[] = [];
+  {
+    const seen = new Set<string>();
+    for (const line of [...referentialSuggestions, ...quoteSuggestions]) {
+      const key = line.label.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      allSuggestions.push(line);
+    }
+  }
 
   function getSuggestionCategory(line: { label: string; source: string }): string {
     const text = line.label.toLowerCase();
@@ -895,8 +906,8 @@ function ProjectDetail() {
     return 0;
   });
 
-  const highConfidenceReferentialSuggestions = referentialSuggestions.filter(
-    (l) => (l.referentialConfidence || 0) >= HIGH_CONFIDENCE_THRESHOLD,
+  const highConfidenceReferentialSuggestions = allSuggestions.filter(
+    (l) => l.fromReferential && (l.referentialConfidence || 0) >= HIGH_CONFIDENCE_THRESHOLD,
   );
   const highConfidenceSuggestions = quoteSuggestions.filter((l) => l.confidence === 'high');
   const mediumConfidenceSuggestions = quoteSuggestions.filter((l) => l.confidence === 'medium');

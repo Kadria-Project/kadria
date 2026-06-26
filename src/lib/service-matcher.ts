@@ -103,13 +103,6 @@ export function matchProjectToServices(
       reasons.push(`✓ mot-clé "${matchedKeyword}"`)
     }
 
-    // Toujours active (filtré ci-dessus) : on le mentionne quand un signal
-    // métier/mot-clé existe déjà, pour expliquer pourquoi la fiche apparaît.
-    if (matchedKeyword) {
-      score += 10
-      reasons.push('✓ prestation active')
-    }
-
     if (isTradeCompatible(serviceProfile, businessProfile)) {
       score += 25
       reasons.push('✓ compatible métier')
@@ -128,6 +121,16 @@ export function matchProjectToServices(
       reasons.push('✓ type de projet correspondant')
     }
 
+    // Le budget et les photos ne sont que des signaux complémentaires : ils
+    // ne suffisent jamais à eux seuls à faire apparaître une prestation sans
+    // lien identifié avec le projet (mot-clé, métier, nom ou type de projet).
+    if (score <= 0) continue
+
+    // Le filtre `is_active` ci-dessus garantit que toute prestation retenue
+    // ici est active : on l'explicite une fois la prestation qualifiée.
+    score += 10
+    reasons.push('✓ prestation active')
+
     if (serviceProfile.required_photos && hasPhotos) {
       score += 5
       reasons.push('✓ photos présentes')
@@ -137,8 +140,6 @@ export function matchProjectToServices(
       score += 5
       reasons.push('✓ budget renseigné')
     }
-
-    if (score <= 0) continue
 
     results.push({
       serviceProfile,
