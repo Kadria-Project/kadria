@@ -1270,6 +1270,76 @@ function ProjectDetail() {
             📄 Devis
           </button>
         </div>
+
+        {showAppointmentModal && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Planifier un rendez-vous</h2>
+                <button
+                  onClick={() => { setShowAppointmentModal(false); setBookingSlot(null); setAppointmentError(null); }}
+                  className="text-[var(--text-2)] hover:text-[var(--text-1)]"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">
+                  Choisir une date
+                </label>
+                <input
+                  type="date"
+                  value={appointmentDate}
+                  onChange={(e) => handleAppointmentDateChange(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                />
+              </div>
+
+              <div>
+                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
+
+                {loadingSlots ? (
+                  <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+                ) : !appointmentConnected ? (
+                  <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
+                ) : appointmentError ? (
+                  <p className="text-sm text-red-400">{appointmentError}</p>
+                ) : appointmentSlots.length === 0 ? (
+                  <p className="text-sm text-[var(--text-2)]">
+                    {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {appointmentSlots.map((slot) => (
+                      <button
+                        key={slot.start}
+                        onClick={() => setBookingSlot(slot)}
+                        className={`w-full text-left rounded-lg border p-2 text-sm ${
+                          bookingSlot?.start === slot.start
+                            ? 'border-green-500 bg-green-500/10 text-[var(--text-1)]'
+                            : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                        }`}
+                      >
+                        {formatDateTime(slot.start)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {appointmentConnected && appointmentSlots.length > 0 && (
+                <button
+                  onClick={confirmAppointment}
+                  disabled={!bookingSlot}
+                  className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
+                >
+                  Confirmer le rendez-vous
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
