@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Download } from 'lucide-react';
+import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 
 interface ClientUsage {
   projectsThisMonth: number;
@@ -82,71 +83,66 @@ interface ClientRecord {
   setupProgress?: SetupProgressSummary | null;
 }
 
-const SETUP_BAND_BADGE: Record<SetupProgressBandKey, { bg: string; color: string }> = {
-  a_demarrer: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
-  a_completer: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-  presque_pret: { bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' },
-  complet: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
+const SETUP_BAND_TONE: Record<SetupProgressBandKey, AdminBadgeTone> = {
+  a_demarrer: 'danger',
+  a_completer: 'warning',
+  presque_pret: 'info',
+  complet: 'success',
 };
 
 function SetupProgressCell({ setupProgress }: { setupProgress?: SetupProgressSummary | null }) {
   if (!setupProgress) {
-    return <span style={{ color: '#52525b', fontSize: '12px' }}>Données configuration indisponibles</span>;
+    return <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>Données configuration indisponibles</span>;
   }
-  const palette = SETUP_BAND_BADGE[setupProgress.band.key];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <span style={{ fontWeight: 700, fontSize: '13px' }}>{setupProgress.percent}%</span>
-      <span
-        style={{
-          background: palette.bg,
-          color: palette.color,
-          borderRadius: '999px',
-          padding: '2px 8px',
-          fontSize: '11px',
-          fontWeight: 600,
-          width: 'fit-content',
-        }}
-      >
-        {setupProgress.band.label}
-      </span>
+      <div style={{ width: 'fit-content' }}>
+        <AdminBadge label={setupProgress.band.label} tone={SETUP_BAND_TONE[setupProgress.band.key]} variant="setup" size="sm" />
+      </div>
       {setupProgress.stepsRemaining > 0 && (
-        <span style={{ fontSize: '11px', color: '#71717a' }}>
+        <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
           {setupProgress.stepsRemaining} étape{setupProgress.stepsRemaining > 1 ? 's' : ''} restante{setupProgress.stepsRemaining > 1 ? 's' : ''}
         </span>
       )}
       {!setupProgress.dataAvailable && (
-        <span style={{ fontSize: '11px', color: '#52525b' }}>Données partielles</span>
+        <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>Données partielles</span>
       )}
     </div>
   );
 }
 
-const PLAN_BADGE: Record<string, { bg: string; color: string }> = {
-  'Essentiel': { bg: 'rgba(255,255,255,0.06)', color: '#a1a1aa' },
-  'Performance': { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
-  'Agence': { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+const PLAN_TONE: Record<string, AdminBadgeTone> = {
+  'Essentiel': 'neutral',
+  'Performance': 'success',
+  'Agence': 'warning',
 };
 
-const STATUT_BADGE: Record<string, { bg: string; color: string }> = {
-  'Trial': { bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' },
-  'Actif': { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
-  'Suspendu': { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-  'Résilié': { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+const STATUT_TONE: Record<string, AdminBadgeTone> = {
+  'Trial': 'info',
+  'Actif': 'success',
+  'Suspendu': 'warning',
+  'Résilié': 'danger',
 };
 
-const ALERT_BADGE: Record<AlertLevel, { bg: string; color: string; label: string }> = {
-  ok: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e', label: 'OK' },
-  warning: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b', label: 'Attention' },
-  danger: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626', label: 'Danger' },
+const ALERT_TONE: Record<AlertLevel, AdminBadgeTone> = {
+  ok: 'success',
+  warning: 'warning',
+  danger: 'danger',
 };
 
-const HEALTH_BADGE: Record<ClientHealthStatus, { bg: string; color: string }> = {
-  healthy: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
-  watch: { bg: 'rgba(161,161,170,0.12)', color: '#a1a1aa' },
-  quota_warning: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
-  upgrade_opportunity: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
-  inactive: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+const ALERT_LABEL: Record<AlertLevel, string> = {
+  ok: 'OK',
+  warning: 'Attention',
+  danger: 'Danger',
+};
+
+const HEALTH_TONE: Record<ClientHealthStatus, AdminBadgeTone> = {
+  healthy: 'success',
+  watch: 'neutral',
+  quota_warning: 'warning',
+  upgrade_opportunity: 'success',
+  inactive: 'danger',
 };
 
 const FEATURE_LABELS: Record<keyof ClientFeatures, string> = {
@@ -158,72 +154,23 @@ const FEATURE_LABELS: Record<keyof ClientFeatures, string> = {
   multiUsers: 'Multi-utilisateurs',
 };
 
-function Badge({ label, palette }: { label: string; palette?: { bg: string; color: string } }) {
-  if (!label || !palette) {
-    return <span style={{ color: '#52525b', fontSize: '13px' }}>—</span>;
-  }
-  return (
-    <span
-      style={{
-        background: palette.bg,
-        color: palette.color,
-        borderRadius: '999px',
-        padding: '4px 10px',
-        fontSize: '12px',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
 function AlertBadge({ alerts }: { alerts?: ClientAlerts }) {
   const level = alerts?.level ?? 'ok';
-  const palette = ALERT_BADGE[level];
-  return (
-    <span
-      style={{
-        background: palette.bg,
-        color: palette.color,
-        borderRadius: '999px',
-        padding: '4px 10px',
-        fontSize: '12px',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {palette.label}
-    </span>
-  );
+  return <AdminBadge label={ALERT_LABEL[level]} tone={ALERT_TONE[level]} variant="alert" />;
 }
 
 function FeatureBadges({ features }: { features?: ClientFeatures }) {
   if (!features) {
-    return <span style={{ color: '#52525b', fontSize: '12px' }}>Non renseigné</span>;
+    return <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>Non renseigné</span>;
   }
   const active = (Object.keys(FEATURE_LABELS) as (keyof ClientFeatures)[]).filter((key) => features[key]);
   if (active.length === 0) {
-    return <span style={{ color: '#52525b', fontSize: '12px' }}>Aucune</span>;
+    return <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>Aucune</span>;
   }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
       {active.map((key) => (
-        <span
-          key={key}
-          style={{
-            background: 'rgba(34,197,94,0.08)',
-            color: '#22c55e',
-            borderRadius: '999px',
-            padding: '3px 9px',
-            fontSize: '11px',
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {FEATURE_LABELS[key]}
-        </span>
+        <AdminBadge key={key} label={FEATURE_LABELS[key]} tone="success" variant="feature" size="sm" />
       ))}
     </div>
   );
@@ -231,35 +178,19 @@ function FeatureBadges({ features }: { features?: ClientFeatures }) {
 
 function HealthBadge({ health }: { health?: ClientHealth }) {
   if (!health) {
-    return <span style={{ color: '#52525b', fontSize: '12px' }}>—</span>;
+    return <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>—</span>;
   }
-  const palette = HEALTH_BADGE[health.status];
-  return (
-    <span
-      title={health.reasons.join(' · ')}
-      style={{
-        background: palette.bg,
-        color: palette.color,
-        borderRadius: '999px',
-        padding: '4px 10px',
-        fontSize: '12px',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {health.label}
-    </span>
-  );
+  return <AdminBadge label={health.label} tone={HEALTH_TONE[health.status]} variant="health" title={health.reasons.join(' · ')} />;
 }
 
 function AlertMessages({ alerts }: { alerts?: ClientAlerts }) {
   if (!alerts || alerts.messages.length === 0) {
-    return <span style={{ color: '#52525b', fontSize: '12px' }}>Aucune alerte</span>;
+    return <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>Aucune alerte</span>;
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
       {alerts.messages.map((message, i) => (
-        <span key={i} style={{ fontSize: '12px', color: '#a1a1aa' }}>{message}</span>
+        <span key={i} style={{ fontSize: '12px', color: 'var(--text-2)' }}>{message}</span>
       ))}
     </div>
   );
@@ -315,10 +246,10 @@ function exportCsv(clients: ClientRecord[]) {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: '#18181b',
-  border: '1px solid #27272a',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
   borderRadius: '10px',
-  color: '#ffffff',
+  color: 'var(--text-1)',
   fontSize: '13px',
   padding: '10px 12px',
 };
@@ -370,17 +301,17 @@ export default function AdminClientsPage() {
     <div>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Artisans</h1>
-        <p style={{ fontSize: '14px', color: '#a1a1aa', margin: '4px 0 0' }}>Gestion des comptes artisans</p>
+        <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>Gestion des comptes artisans</p>
       </div>
 
-      {loading && <p style={{ color: '#a1a1aa' }}>Chargement...</p>}
-      {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+      {loading && <p style={{ color: 'var(--text-2)' }}>Chargement...</p>}
+      {error && <p style={{ color: 'var(--status-lost)' }}>{error}</p>}
 
       {clients && (
         <>
           <div className="admin-toolbar" style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-              <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+              <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
               <input
                 type="text"
                 placeholder="Nom, email, entreprise..."
@@ -418,35 +349,35 @@ export default function AdminClientsPage() {
             </button>
           </div>
 
-          <p style={{ fontSize: '13px', color: '#a1a1aa', marginBottom: '12px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '12px' }}>
             {filtered.length} artisan{filtered.length === 1 ? '' : 's'} trouvé{filtered.length === 1 ? '' : 's'}
           </p>
 
           {/* Desktop : tableau cockpit */}
-          <div className="admin-clients-table-wrap" style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', overflow: 'hidden' }}>
+          <div className="admin-clients-table-wrap" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ background: '#27272a' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Artisan</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Artisan ID</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Plan</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Santé</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Configuration</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Dossiers</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Devis</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Appels vocaux</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Minutes vocales</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Fonctionnalités</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Alertes</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Actions</th>
+                  <tr style={{ background: 'var(--border)' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan ID</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Plan</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Santé</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Configuration</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Dossiers</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Devis</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Appels vocaux</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Minutes vocales</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Fonctionnalités</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Alertes</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={13} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun artisan trouvé</td>
+                      <td colSpan={13} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-3)' }}>Aucun artisan trouvé</td>
                     </tr>
                   )}
                   {filtered.map((c, i) => (
@@ -454,12 +385,12 @@ export default function AdminClientsPage() {
                       key={c.id || c.detailId || i}
                       onClick={() => c.detailId && router.push(`/admin/clients/${c.detailId}`)}
                       style={{
-                        borderTop: '1px solid #27272a',
-                        background: i % 2 === 0 ? '#18181b' : '#09090b',
+                        borderTop: '1px solid var(--border)',
+                        background: i % 2 === 0 ? 'var(--bg-elevated)' : 'var(--bg)',
                         cursor: c.detailId ? 'pointer' : 'default',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#27272a')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? '#18181b' : '#09090b')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? 'var(--bg-elevated)' : 'var(--bg)')}
                     >
                       <td style={{ padding: '12px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -468,13 +399,13 @@ export default function AdminClientsPage() {
                               width: '32px',
                               height: '32px',
                               borderRadius: '50%',
-                              background: '#27272a',
+                              background: 'var(--border)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '12px',
                               fontWeight: 700,
-                              color: '#22c55e',
+                              color: 'var(--accent)',
                               flexShrink: 0,
                             }}
                           >
@@ -482,22 +413,22 @@ export default function AdminClientsPage() {
                           </div>
                           <div>
                             <p style={{ margin: 0, fontWeight: 600 }}>{`${c.first_name} ${c.last_name}`.trim() || '—'}</p>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#a1a1aa' }}>{c.email}</p>
-                            {c.company && <p style={{ margin: 0, fontSize: '12px', color: '#52525b' }}>{c.company}</p>}
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>{c.email}</p>
+                            {c.company && <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>{c.company}</p>}
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 20px', color: '#a1a1aa', fontFamily: 'monospace', fontSize: '12px' }}>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '12px' }}>
                         {c.artisanId || c.artisan_id || 'Non renseigné'}
                       </td>
-                      <td style={{ padding: '12px 20px' }}><Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} /></td>
-                      <td style={{ padding: '12px 20px' }}><Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} /></td>
+                      <td style={{ padding: '12px 20px' }}><AdminBadge label={c.planLabel || c.plan} tone={PLAN_TONE[c.planLabel || c.plan] || 'neutral'} variant="plan" /></td>
+                      <td style={{ padding: '12px 20px' }}><AdminBadge label={c.status || c.statut} tone={STATUT_TONE[c.status || c.statut] || 'neutral'} variant="status" /></td>
                       <td style={{ padding: '12px 20px' }}><HealthBadge health={c.health} /></td>
                       <td style={{ padding: '12px 20px', minWidth: '150px' }}><SetupProgressCell setupProgress={c.setupProgress} /></td>
-                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.projectUsageLabel || 'Non disponible'}</td>
-                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.devisUsageLabel || 'Non disponible'}</td>
-                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</td>
-                      <td style={{ padding: '12px 20px', color: '#e4e4e7' }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.projectUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.devisUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</td>
+                      <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', minWidth: '180px' }}><FeatureBadges features={c.features} /></td>
                       <td style={{ padding: '12px 20px', minWidth: '160px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -510,12 +441,12 @@ export default function AdminClientsPage() {
                           <Link
                             href={`/admin/clients/${c.detailId}`}
                             onClick={(e) => e.stopPropagation()}
-                            style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                            style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
                           >
                             Voir le détail →
                           </Link>
                         ) : (
-                          <span style={{ color: '#52525b', fontSize: '13px', fontWeight: 600 }}>ID manquant</span>
+                          <span style={{ color: 'var(--text-3)', fontSize: '13px', fontWeight: 600 }}>ID manquant</span>
                         )}
                       </td>
                     </tr>
@@ -528,15 +459,15 @@ export default function AdminClientsPage() {
           {/* Mobile : cards empilées */}
           <div className="admin-clients-cards">
             {filtered.length === 0 && (
-              <p style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun artisan trouvé</p>
+              <p style={{ padding: '20px', textAlign: 'center', color: 'var(--text-3)' }}>Aucun artisan trouvé</p>
             )}
             {filtered.map((c) => (
               <div
                 key={c.id || c.detailId}
                 onClick={() => c.detailId && router.push(`/admin/clients/${c.detailId}`)}
                 style={{
-                  background: '#18181b',
-                  border: '1px solid #27272a',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
                   borderRadius: '14px',
                   padding: '16px',
                   marginBottom: '12px',
@@ -549,13 +480,13 @@ export default function AdminClientsPage() {
                       width: '36px',
                       height: '36px',
                       borderRadius: '50%',
-                      background: '#27272a',
+                      background: 'var(--border)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '13px',
                       fontWeight: 700,
-                      color: '#22c55e',
+                      color: 'var(--accent)',
                       flexShrink: 0,
                     }}
                   >
@@ -563,53 +494,53 @@ export default function AdminClientsPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontWeight: 700 }}>{`${c.first_name} ${c.last_name}`.trim() || '—'}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}</p>
-                    {c.company && <p style={{ margin: 0, fontSize: '12px', color: '#52525b' }}>{c.company}</p>}
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email}</p>
+                    {c.company && <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>{c.company}</p>}
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                  <Badge label={c.planLabel || c.plan} palette={PLAN_BADGE[c.planLabel || c.plan]} />
-                  <Badge label={c.status || c.statut} palette={STATUT_BADGE[c.status || c.statut]} />
+                  <AdminBadge label={c.planLabel || c.plan} tone={PLAN_TONE[c.planLabel || c.plan] || 'neutral'} variant="plan" />
+                  <AdminBadge label={c.status || c.statut} tone={STATUT_TONE[c.status || c.statut] || 'neutral'} variant="status" />
                   <HealthBadge health={c.health} />
                   <AlertBadge alerts={c.alerts} />
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
-                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Configuration</p>
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Configuration</p>
                   <SetupProgressCell setupProgress={c.setupProgress} />
                 </div>
 
-                <div style={{ fontSize: '12px', color: '#71717a', marginBottom: '8px', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-3)', marginBottom: '8px', fontFamily: 'monospace' }}>
                   ID artisan : {c.artisanId || c.artisan_id || 'Non renseigné'}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px', fontSize: '13px' }}>
                   <div>
-                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Dossiers</p>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Dossiers</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.projectUsageLabel || 'Non disponible'}</p>
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Devis</p>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Devis</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.devisUsageLabel || 'Non disponible'}</p>
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Appels vocaux</p>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Appels vocaux</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</p>
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Minutes vocales</p>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Minutes vocales</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</p>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
-                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Fonctionnalités</p>
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Fonctionnalités</p>
                   <FeatureBadges features={c.features} />
                 </div>
 
                 <div style={{ marginBottom: '4px' }}>
-                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }}>Alertes</p>
+                  <p style={{ margin: '0 0 6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Alertes</p>
                   <AlertMessages alerts={c.alerts} />
                 </div>
 
@@ -618,12 +549,12 @@ export default function AdminClientsPage() {
                     <Link
                       href={`/admin/clients/${c.detailId}`}
                       onClick={(e) => e.stopPropagation()}
-                      style={{ color: '#22c55e', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
+                      style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600, textDecoration: 'none' }}
                     >
                       Voir le détail →
                     </Link>
                   ) : (
-                    <span style={{ color: '#52525b', fontSize: '13px', fontWeight: 600 }}>ID manquant</span>
+                    <span style={{ color: 'var(--text-3)', fontSize: '13px', fontWeight: 600 }}>ID manquant</span>
                   )}
                 </div>
               </div>

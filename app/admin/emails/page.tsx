@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import AdminBadge from '@/src/components/admin/AdminBadge';
 
 interface ClientRecord {
   id: string;
@@ -42,8 +43,8 @@ const EMAIL_TEMPLATES: Record<string, { subject: string; body: string }> = {
 };
 
 const card: React.CSSProperties = {
-  background: '#18181b',
-  border: '1px solid #27272a',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
   borderRadius: '16px',
   padding: '28px',
 };
@@ -52,7 +53,7 @@ const label: React.CSSProperties = {
   fontSize: '11px',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
-  color: '#71717a',
+  color: 'var(--text-3)',
   fontWeight: 700,
   marginBottom: '6px',
   display: 'block',
@@ -68,10 +69,10 @@ function formatDateTime(value: string) {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: '#09090b',
-  border: '1px solid #27272a',
+  background: 'var(--bg)',
+  border: '1px solid var(--border)',
   borderRadius: '8px',
-  color: '#ffffff',
+  color: 'var(--text-1)',
   fontSize: '13px',
   padding: '10px 12px',
   width: '100%',
@@ -196,7 +197,7 @@ export default function AdminEmailsPage() {
     <div>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Emails</h1>
-        <p style={{ fontSize: '14px', color: '#a1a1aa', margin: '4px 0 0' }}>
+        <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>
           Envoyez des emails à vos artisans depuis Kadria
         </p>
       </div>
@@ -230,9 +231,9 @@ export default function AdminEmailsPage() {
                 key={name}
                 onClick={() => applyTemplate(name)}
                 style={{
-                  background: template === name ? 'rgba(34,197,94,0.1)' : '#27272a',
-                  color: template === name ? '#22c55e' : '#ffffff',
-                  border: template === name ? '1px solid rgba(34,197,94,0.3)' : '1px solid #27272a',
+                  background: template === name ? 'rgba(34,197,94,0.1)' : 'var(--border)',
+                  color: template === name ? 'var(--accent)' : 'var(--text-1)',
+                  border: template === name ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
                   borderRadius: '999px',
                   padding: '6px 14px',
                   fontSize: '12px',
@@ -263,15 +264,15 @@ export default function AdminEmailsPage() {
         </div>
 
         {feedback && (
-          <p style={{ fontSize: '13px', color: '#a1a1aa', margin: '0 0 12px' }}>{feedback}</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 12px' }}>{feedback}</p>
         )}
 
         <button
           onClick={handleSend}
           disabled={sending}
           style={{
-            background: '#22c55e',
-            color: '#09090b',
+            background: 'var(--accent)',
+            color: 'var(--bg)',
             border: 'none',
             borderRadius: '12px',
             padding: '12px 32px',
@@ -294,7 +295,7 @@ export default function AdminEmailsPage() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#a1a1aa',
+              color: 'var(--text-2)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -307,13 +308,13 @@ export default function AdminEmailsPage() {
         {logsLoading && emailLogs.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[0, 1, 2].map((i) => (
-              <div key={i} className="admin-skeleton" style={{ background: '#27272a', borderRadius: '8px', height: '48px' }} />
+              <div key={i} className="admin-skeleton" style={{ background: 'var(--border)', borderRadius: '8px', height: '48px' }} />
             ))}
           </div>
         )}
 
         {!logsLoading && emailLogs.length === 0 && (
-          <p style={{ fontSize: '13px', color: '#71717a', textAlign: 'center', padding: '32px 0', margin: 0 }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', padding: '32px 0', margin: 0 }}>
             Aucun email envoyé pour l&apos;instant
           </p>
         )}
@@ -323,25 +324,25 @@ export default function AdminEmailsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Destinataire</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Objet</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Envoyé le</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Destinataire</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Objet</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Envoyé le</th>
+                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
                 </tr>
               </thead>
               <tbody>
                 {emailLogs.map((log) => (
                   <tr
                     key={log.id}
-                    style={{ borderTop: '1px solid #27272a' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#27272a')}
+                    style={{ borderTop: '1px solid var(--border)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <td style={{ padding: '10px 12px', fontWeight: 500 }}>{log.to}</td>
                     <td
                       style={{
                         padding: '10px 12px',
-                        color: '#a1a1aa',
+                        color: 'var(--text-2)',
                         maxWidth: '200px',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -350,16 +351,12 @@ export default function AdminEmailsPage() {
                     >
                       {log.subject}
                     </td>
-                    <td style={{ padding: '10px 12px', color: '#a1a1aa' }}>{formatDateTime(log.sent_at)}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--text-2)' }}>{formatDateTime(log.sent_at)}</td>
                     <td style={{ padding: '10px 12px' }}>
                       {log.status === 'sent' ? (
-                        <span style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', borderRadius: '999px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>
-                          ✓ Envoyé
-                        </span>
+                        <AdminBadge label="✓ Envoyé" tone="success" />
                       ) : (
-                        <span style={{ background: 'rgba(220,38,38,0.1)', color: '#dc2626', borderRadius: '999px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>
-                          ✗ Erreur
-                        </span>
+                        <AdminBadge label="✗ Erreur" tone="danger" />
                       )}
                     </td>
                   </tr>

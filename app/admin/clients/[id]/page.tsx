@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 
 interface UserRecord {
   id: string;
@@ -85,11 +86,11 @@ interface SetupProgressDetail {
   dataAvailable: boolean;
 }
 
-const SETUP_BAND_BADGE: Record<SetupProgressBandKey, { bg: string; color: string }> = {
-  a_demarrer: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
-  a_completer: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-  presque_pret: { bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' },
-  complet: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
+const SETUP_BAND_TONE: Record<SetupProgressBandKey, AdminBadgeTone> = {
+  a_demarrer: 'danger',
+  a_completer: 'warning',
+  presque_pret: 'info',
+  complet: 'success',
 };
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
@@ -100,19 +101,26 @@ interface UsageSummary {
   devis: { used: number; limit: number | null; unlimited: boolean; percent: number | null; status: UsageStatus };
 }
 
-const HEALTH_BADGE: Record<ClientHealthStatus, { bg: string; color: string }> = {
-  healthy: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
-  watch: { bg: 'rgba(161,161,170,0.12)', color: '#a1a1aa' },
-  quota_warning: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
-  upgrade_opportunity: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
-  inactive: { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+const HEALTH_TONE: Record<ClientHealthStatus, AdminBadgeTone> = {
+  healthy: 'success',
+  watch: 'neutral',
+  quota_warning: 'warning',
+  upgrade_opportunity: 'success',
+  inactive: 'danger',
 };
 
-const USAGE_STATUS_BADGE: Record<UsageStatus, { bg: string; color: string; label: string }> = {
-  ok: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e', label: 'OK' },
-  warning: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', label: '80% atteint' },
-  limit_reached: { bg: 'rgba(245,158,11,0.18)', color: '#f59e0b', label: 'Limite atteinte' },
-  exceeded: { bg: 'rgba(220,38,38,0.12)', color: '#dc2626', label: 'Dépassement' },
+const USAGE_STATUS_TONE: Record<UsageStatus, AdminBadgeTone> = {
+  ok: 'success',
+  warning: 'warning',
+  limit_reached: 'warning',
+  exceeded: 'danger',
+};
+
+const USAGE_STATUS_LABEL: Record<UsageStatus, string> = {
+  ok: 'OK',
+  warning: '80% atteint',
+  limit_reached: 'Limite atteinte',
+  exceeded: 'Dépassement',
 };
 
 function formatMoney(value: number) {
@@ -123,17 +131,17 @@ function usageLabel(used: number, limit: number | null) {
   return `${used} / ${limit === null ? 'Illimité' : limit}`;
 }
 
-const PLAN_BADGE: Record<string, { bg: string; color: string }> = {
-  'Essentiel': { bg: 'rgba(255,255,255,0.06)', color: '#a1a1aa' },
-  'Performance': { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
-  'Agence': { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+const PLAN_TONE: Record<string, AdminBadgeTone> = {
+  'Essentiel': 'neutral',
+  'Performance': 'success',
+  'Agence': 'warning',
 };
 
-const STATUT_BADGE: Record<string, { bg: string; color: string }> = {
-  'Trial': { bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' },
-  'Actif': { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
-  'Suspendu': { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
-  'Résilié': { bg: 'rgba(220,38,38,0.1)', color: '#dc2626' },
+const STATUT_TONE: Record<string, AdminBadgeTone> = {
+  'Trial': 'info',
+  'Actif': 'success',
+  'Suspendu': 'warning',
+  'Résilié': 'danger',
 };
 
 const EMAIL_TEMPLATES: Record<string, { subject: string; body: string }> = {
@@ -152,26 +160,6 @@ const EMAIL_TEMPLATES: Record<string, { subject: string; body: string }> = {
   'Autre': { subject: '', body: '' },
 };
 
-function Badge({ label, palette }: { label: string; palette?: { bg: string; color: string } }) {
-  if (!label || !palette) {
-    return <span style={{ color: '#52525b', fontSize: '13px' }}>—</span>;
-  }
-  return (
-    <span
-      style={{
-        background: palette.bg,
-        color: palette.color,
-        borderRadius: '999px',
-        padding: '4px 10px',
-        fontSize: '12px',
-        fontWeight: 600,
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
 function toInputDate(value: string) {
   if (!value) return '';
   const d = new Date(value);
@@ -186,23 +174,23 @@ function formatDateFr(value: string) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function billingStatusBadge(client: UserRecord): { label: string; bg: string; color: string } {
+function billingStatusBadge(client: UserRecord): { label: string; tone: AdminBadgeTone } {
   if (client.cancelAtPeriodEnd) {
-    return { label: 'Annulation prévue', bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' };
+    return { label: 'Annulation prévue', tone: 'warning' };
   }
   if (client.billingStatus === 'past_due' || client.billingStatus === 'unpaid') {
-    return { label: 'Paiement en échec', bg: 'rgba(220,38,38,0.12)', color: '#dc2626' };
+    return { label: 'Paiement en échec', tone: 'danger' };
   }
   if (client.billingStatus === 'trialing' || client.statut === 'Trial') {
-    return { label: 'Trial actif', bg: 'rgba(59,130,246,0.1)', color: '#60a5fa' };
+    return { label: 'Trial actif', tone: 'info' };
   }
   if (client.billingStatus === 'active') {
-    return { label: 'Paiement OK', bg: 'rgba(34,197,94,0.1)', color: '#22c55e' };
+    return { label: 'Paiement OK', tone: 'success' };
   }
   if (client.billingStatus === 'canceled') {
-    return { label: 'Résilié', bg: 'rgba(220,38,38,0.1)', color: '#dc2626' };
+    return { label: 'Résilié', tone: 'danger' };
   }
-  return { label: 'Non disponible', bg: 'rgba(161,161,170,0.12)', color: '#a1a1aa' };
+  return { label: 'Non disponible', tone: 'neutral' };
 }
 
 function initials(firstName: string, lastName: string, email: string) {
@@ -214,8 +202,8 @@ function initials(firstName: string, lastName: string, email: string) {
 }
 
 const card: React.CSSProperties = {
-  background: '#18181b',
-  border: '1px solid #27272a',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
   borderRadius: '12px',
   padding: '20px',
   marginBottom: '16px',
@@ -225,17 +213,17 @@ const label: React.CSSProperties = {
   fontSize: '11px',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
-  color: '#71717a',
+  color: 'var(--text-3)',
   fontWeight: 700,
   marginBottom: '6px',
   display: 'block',
 };
 
 const inputStyle: React.CSSProperties = {
-  background: '#09090b',
-  border: '1px solid #27272a',
+  background: 'var(--bg)',
+  border: '1px solid var(--border)',
   borderRadius: '8px',
-  color: '#ffffff',
+  color: 'var(--text-1)',
   fontSize: '13px',
   padding: '8px 10px',
   width: '100%',
@@ -243,8 +231,8 @@ const inputStyle: React.CSSProperties = {
 };
 
 const primaryButton: React.CSSProperties = {
-  background: '#22c55e',
-  color: '#09090b',
+  background: 'var(--accent)',
+  color: 'var(--bg)',
   border: 'none',
   borderRadius: '10px',
   padding: '10px 16px',
@@ -254,9 +242,9 @@ const primaryButton: React.CSSProperties = {
 };
 
 const secondaryButton: React.CSSProperties = {
-  background: '#27272a',
-  color: '#ffffff',
-  border: '1px solid #27272a',
+  background: 'var(--border)',
+  color: 'var(--text-1)',
+  border: '1px solid var(--border)',
   borderRadius: '10px',
   padding: '10px 16px',
   fontSize: '13px',
@@ -536,8 +524,8 @@ export default function AdminClientDetailPage() {
     }
   }
 
-  if (loading) return <p style={{ color: '#a1a1aa' }}>Chargement...</p>;
-  if (error) return <p style={{ color: '#dc2626' }}>{error}</p>;
+  if (loading) return <p style={{ color: 'var(--text-2)' }}>Chargement...</p>;
+  if (error) return <p style={{ color: 'var(--status-lost)' }}>{error}</p>;
   if (!client) return null;
 
   const historyEntries = (client.notesAdmin || '')
@@ -558,7 +546,7 @@ export default function AdminClientDetailPage() {
             borderRadius: '10px',
             fontSize: '14px',
             fontWeight: 600,
-            color: '#fff',
+            color: 'var(--text-1)',
             background: toast.type === 'success' ? 'rgba(34,197,94,0.95)' : 'rgba(220,38,38,0.95)',
             boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
             maxWidth: '360px',
@@ -568,7 +556,7 @@ export default function AdminClientDetailPage() {
         </div>
       )}
 
-      <Link href="/admin/clients" style={{ fontSize: '13px', color: '#a1a1aa', textDecoration: 'none' }}>
+      <Link href="/admin/clients" style={{ fontSize: '13px', color: 'var(--text-2)', textDecoration: 'none' }}>
         ← Retour aux artisans
       </Link>
 
@@ -578,13 +566,13 @@ export default function AdminClientDetailPage() {
             width: '48px',
             height: '48px',
             borderRadius: '50%',
-            background: '#27272a',
+            background: 'var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '18px',
             fontWeight: 700,
-            color: '#22c55e',
+            color: 'var(--accent)',
             flexShrink: 0,
           }}
         >
@@ -594,41 +582,30 @@ export default function AdminClientDetailPage() {
           <h1 style={{ fontSize: '24px', fontWeight: 800, margin: 0 }}>
             {`${client.firstName} ${client.lastName}`.trim() || '—'}
           </h1>
-          <p style={{ fontSize: '13px', color: '#a1a1aa', margin: '4px 0 0' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>
             {client.email}{client.company ? ` · ${client.company}` : ''}
           </p>
         </div>
-        <Badge label={client.statut} palette={STATUT_BADGE[client.statut]} />
-        <Badge label={client.plan} palette={PLAN_BADGE[client.plan]} />
+        <AdminBadge label={client.statut} tone={STATUT_TONE[client.statut] || 'neutral'} variant="status" />
+        <AdminBadge label={client.plan} tone={PLAN_TONE[client.plan] || 'neutral'} variant="plan" />
       </div>
 
       <div style={card}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Santé artisan</p>
-        {!health && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
+        {!health && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
         {health && (
           <>
             <div style={{ marginBottom: '12px' }}>
-              <span
-                style={{
-                  background: HEALTH_BADGE[health.status].bg,
-                  color: HEALTH_BADGE[health.status].color,
-                  borderRadius: '999px',
-                  padding: '5px 12px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                }}
-              >
-                {health.label}
-              </span>
+              <AdminBadge label={health.label} tone={HEALTH_TONE[health.status]} variant="health" />
             </div>
             {health.reasons.length > 0 && (
-              <ul style={{ margin: '0 0 12px', paddingLeft: '18px', fontSize: '13px', color: '#a1a1aa' }}>
+              <ul style={{ margin: '0 0 12px', paddingLeft: '18px', fontSize: '13px', color: 'var(--text-2)' }}>
                 {health.reasons.map((reason, i) => (
                   <li key={i} style={{ marginBottom: '4px' }}>{reason}</li>
                 ))}
               </ul>
             )}
-            <p style={{ fontSize: '13px', color: '#e4e4e7', margin: 0, fontStyle: 'italic' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', margin: 0, fontStyle: 'italic' }}>
               {health.recommendation}
             </p>
           </>
@@ -638,33 +615,22 @@ export default function AdminClientDetailPage() {
       <div style={card}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Configuration métier</p>
         {!setupProgress && (
-          <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Données configuration indisponibles</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Données configuration indisponibles</p>
         )}
         {setupProgress && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '22px', fontWeight: 800 }}>{setupProgress.percent}%</span>
-              <span
-                style={{
-                  background: SETUP_BAND_BADGE[setupProgress.band.key].bg,
-                  color: SETUP_BAND_BADGE[setupProgress.band.key].color,
-                  borderRadius: '999px',
-                  padding: '5px 12px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                }}
-              >
-                {setupProgress.band.label}
-              </span>
-              <span style={{ fontSize: '13px', color: '#a1a1aa' }}>
+              <AdminBadge label={setupProgress.band.label} tone={SETUP_BAND_TONE[setupProgress.band.key]} variant="setup" />
+              <span style={{ fontSize: '13px', color: 'var(--text-2)' }}>
                 {setupProgress.completedSteps} / {setupProgress.totalSteps} étapes complétées
               </span>
             </div>
-            <div style={{ height: '6px', borderRadius: '4px', background: '#27272a', overflow: 'hidden', marginBottom: '16px' }}>
-              <div style={{ height: '100%', width: `${setupProgress.percent}%`, background: '#22c55e', transition: 'width 0.2s' }} />
+            <div style={{ height: '6px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', marginBottom: '16px' }}>
+              <div style={{ height: '100%', width: `${setupProgress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
             </div>
             {!setupProgress.dataAvailable && (
-              <p style={{ fontSize: '12px', color: '#71717a', margin: '0 0 12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 12px' }}>
                 Certaines données de configuration sont indisponibles — score calculé sur les données accessibles uniquement.
               </p>
             )}
@@ -680,7 +646,7 @@ export default function AdminClientDetailPage() {
                         key={s.key}
                         style={{
                           background: 'rgba(34,197,94,0.08)',
-                          color: '#22c55e',
+                          color: 'var(--accent)',
                           borderRadius: '999px',
                           padding: '3px 9px',
                           fontSize: '11px',
@@ -695,7 +661,7 @@ export default function AdminClientDetailPage() {
             )}
 
             {setupProgress.steps.filter((s) => s.status === 'todo').length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#22c55e', margin: 0, fontWeight: 600 }}>
+              <p style={{ fontSize: '13px', color: 'var(--accent)', margin: 0, fontWeight: 600 }}>
                 Configuration complète — rien à faire avec ce client.
               </p>
             ) : (
@@ -709,7 +675,7 @@ export default function AdminClientDetailPage() {
                       <div
                         key={s.key}
                         style={{
-                          border: '1px solid #27272a',
+                          border: '1px solid var(--border)',
                           borderRadius: '8px',
                           padding: '8px 10px',
                           display: 'flex',
@@ -721,9 +687,9 @@ export default function AdminClientDetailPage() {
                       >
                         <div>
                           <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{s.label}</p>
-                          <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>{s.description}</p>
+                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>{s.description}</p>
                         </div>
-                        <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--status-callback)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                           {s.ctaLabel}
                         </span>
                       </div>
@@ -788,7 +754,7 @@ export default function AdminClientDetailPage() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
-            <p style={{ fontSize: '12px', color: '#a1a1aa', margin: '8px 0 12px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-2)', margin: '8px 0 12px' }}>
               Ces notes sont visibles uniquement par l&apos;admin
             </p>
             <button style={secondaryButton} onClick={handleSaveNotes} disabled={saving}>
@@ -799,12 +765,12 @@ export default function AdminClientDetailPage() {
           <div style={card}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 12px' }}>Historique admin</p>
             {historyEntries.length === 0 && (
-              <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Aucune action enregistrée</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Aucune action enregistrée</p>
             )}
             {historyEntries.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {historyEntries.map((entry, i) => (
-                  <div key={i} style={{ fontSize: '13px', color: '#a1a1aa', borderLeft: '2px solid #27272a', paddingLeft: '10px' }}>
+                  <div key={i} style={{ fontSize: '13px', color: 'var(--text-2)', borderLeft: '2px solid var(--border)', paddingLeft: '10px' }}>
                     {entry}
                   </div>
                 ))}
@@ -818,45 +784,45 @@ export default function AdminClientDetailPage() {
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Abonnement &amp; facturation</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-              <Badge label={billingStatusBadge(client).label} palette={billingStatusBadge(client)} />
-              {client.plan && <Badge label={client.plan} palette={PLAN_BADGE[client.plan]} />}
+              <AdminBadge label={billingStatusBadge(client).label} tone={billingStatusBadge(client).tone} variant="billing" />
+              {client.plan && <AdminBadge label={client.plan} tone={PLAN_TONE[client.plan] || 'neutral'} variant="plan" />}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Plan actuel</span>
+                <span style={{ color: 'var(--text-2)' }}>Plan actuel</span>
                 <span style={{ fontWeight: 700 }}>{client.plan || 'Non disponible'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Trial actif</span>
+                <span style={{ color: 'var(--text-2)' }}>Trial actif</span>
                 <span style={{ fontWeight: 700 }}>{client.statut === 'Trial' ? 'Oui' : 'Non'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Date de fin trial</span>
+                <span style={{ color: 'var(--text-2)' }}>Date de fin trial</span>
                 <span style={{ fontWeight: 700 }}>{formatDateFr(client.trialEnd || client.trialEndDate)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Statut paiement</span>
+                <span style={{ color: 'var(--text-2)' }}>Statut paiement</span>
                 <span style={{ fontWeight: 700 }}>{client.billingStatus || 'Non disponible'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Prochaine échéance</span>
+                <span style={{ color: 'var(--text-2)' }}>Prochaine échéance</span>
                 <span style={{ fontWeight: 700 }}>{formatDateFr(client.currentPeriodEnd || client.nextBilling)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Dernière facture</span>
+                <span style={{ color: 'var(--text-2)' }}>Dernière facture</span>
                 <span style={{ fontWeight: 700 }}>Non disponible</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', wordBreak: 'break-all' }}>
-                <span style={{ color: '#a1a1aa' }}>Stripe customer ID</span>
+                <span style={{ color: 'var(--text-2)' }}>Stripe customer ID</span>
                 <span style={{ fontWeight: 700, fontSize: '12px' }}>{client.stripeCustomerId || 'Non disponible'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', wordBreak: 'break-all' }}>
-                <span style={{ color: '#a1a1aa' }}>Stripe subscription ID</span>
+                <span style={{ color: 'var(--text-2)' }}>Stripe subscription ID</span>
                 <span style={{ fontWeight: 700, fontSize: '12px' }}>{client.stripeSubscriptionId || 'Non disponible'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ color: '#a1a1aa' }}>Historique billing</span>
+                <span style={{ color: 'var(--text-2)' }}>Historique billing</span>
                 <span style={{ fontWeight: 700 }}>Non disponible</span>
               </div>
             </div>
@@ -972,8 +938,8 @@ export default function AdminClientDetailPage() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 ...(client.statut === 'Suspendu'
-                  ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }
-                  : { background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }),
+                  ? { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)' }
+                  : { background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--status-callback)' }),
               }}
             >
               {client.statut === 'Suspendu' ? '▶ Réactiver' : '⏸ Suspendre le compte'}
@@ -991,7 +957,7 @@ export default function AdminClientDetailPage() {
                 cursor: 'pointer',
                 background: 'rgba(220,38,38,0.08)',
                 border: '1px solid rgba(220,38,38,0.2)',
-                color: '#dc2626',
+                color: 'var(--status-lost)',
               }}
             >
               ✕ Résilier l&apos;abonnement
@@ -1006,9 +972,9 @@ export default function AdminClientDetailPage() {
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                background: '#27272a',
-                border: '1px solid #27272a',
-                color: '#ffffff',
+                background: 'var(--border)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
               }}
             >
               📧 Envoyer un email
@@ -1017,23 +983,23 @@ export default function AdminClientDetailPage() {
 
           <div style={card}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Métriques artisan</p>
-            {!metrics && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Aucune donnée disponible</p>}
+            {!metrics && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Aucune donnée disponible</p>}
             {metrics && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Total dossiers créés</span>
+                  <span style={{ color: 'var(--text-2)' }}>Total dossiers créés</span>
                   <span style={{ fontWeight: 700 }}>{metrics.total}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Dossiers ce mois</span>
+                  <span style={{ color: 'var(--text-2)' }}>Dossiers ce mois</span>
                   <span style={{ fontWeight: 700 }}>{metrics.ceMois}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Devis générés</span>
+                  <span style={{ color: 'var(--text-2)' }}>Devis générés</span>
                   <span style={{ fontWeight: 700 }}>{metrics.devisGeneres}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Statut le plus fréquent</span>
+                  <span style={{ color: 'var(--text-2)' }}>Statut le plus fréquent</span>
                   <span style={{ fontWeight: 700 }}>{metrics.statutFrequent || '—'}</span>
                 </div>
               </div>
@@ -1042,31 +1008,31 @@ export default function AdminClientDetailPage() {
 
           <div style={card}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Valeur générée</p>
-            {!metrics?.value && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
+            {!metrics?.value && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
             {metrics?.value && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Dossiers captés</span>
+                  <span style={{ color: 'var(--text-2)' }}>Dossiers captés</span>
                   <span style={{ fontWeight: 700 }}>{metrics.value.dossiersCaptes}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Devis envoyés</span>
+                  <span style={{ color: 'var(--text-2)' }}>Devis envoyés</span>
                   <span style={{ fontWeight: 700 }}>{metrics.value.devisEnvoyes}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Devis acceptés</span>
+                  <span style={{ color: 'var(--text-2)' }}>Devis acceptés</span>
                   <span style={{ fontWeight: 700 }}>{metrics.value.devisAcceptes}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>CA potentiel (devis envoyés)</span>
+                  <span style={{ color: 'var(--text-2)' }}>CA potentiel (devis envoyés)</span>
                   <span style={{ fontWeight: 700 }}>{formatMoney(metrics.value.caPotentiel)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>CA gagné (devis acceptés)</span>
-                  <span style={{ fontWeight: 700, color: '#22c55e' }}>{formatMoney(metrics.value.caGagne)}</span>
+                  <span style={{ color: 'var(--text-2)' }}>CA gagné (devis acceptés)</span>
+                  <span style={{ fontWeight: 700, color: 'var(--accent)' }}>{formatMoney(metrics.value.caGagne)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Temps estimé économisé</span>
+                  <span style={{ color: 'var(--text-2)' }}>Temps estimé économisé</span>
                   <span style={{ fontWeight: 700 }}>{Math.round(metrics.value.tempsEstimeEconomiseMinutes / 60)} h</span>
                 </div>
               </div>
@@ -1075,35 +1041,24 @@ export default function AdminClientDetailPage() {
 
           <div style={card}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Usage vocal</p>
-            {!usage && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
+            {!usage && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
             {usage && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#a1a1aa' }}>Appels utilisés</span>
+                  <span style={{ color: 'var(--text-2)' }}>Appels utilisés</span>
                   <span style={{ fontWeight: 700 }}>{usageLabel(usage.vapi.callsUsed, usage.vapi.callsUnlimited ? null : usage.vapi.callsLimit)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>Minutes utilisées</span>
+                  <span style={{ color: 'var(--text-2)' }}>Minutes utilisées</span>
                   <span style={{ fontWeight: 700 }}>{usageLabel(usage.vapi.minutesUsed, usage.vapi.minutesLimit)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#a1a1aa' }}>% consommé (appels)</span>
+                  <span style={{ color: 'var(--text-2)' }}>% consommé (appels)</span>
                   <span style={{ fontWeight: 700 }}>{usage.vapi.callsPercent !== null ? `${usage.vapi.callsPercent}%` : '—'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#a1a1aa' }}>Statut quota vocal</span>
-                  <span
-                    style={{
-                      background: USAGE_STATUS_BADGE[usage.vapi.status].bg,
-                      color: USAGE_STATUS_BADGE[usage.vapi.status].color,
-                      borderRadius: '999px',
-                      padding: '4px 10px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {USAGE_STATUS_BADGE[usage.vapi.status].label}
-                  </span>
+                  <span style={{ color: 'var(--text-2)' }}>Statut quota vocal</span>
+                  <AdminBadge label={USAGE_STATUS_LABEL[usage.vapi.status]} tone={USAGE_STATUS_TONE[usage.vapi.status]} variant="usage" />
                 </div>
               </div>
             )}
@@ -1112,14 +1067,14 @@ export default function AdminClientDetailPage() {
           <div style={card}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Derniers événements</p>
             {(!metrics?.events || metrics.events.length === 0) && (
-              <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Logs à venir</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Logs à venir</p>
             )}
             {metrics?.events && metrics.events.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {metrics.events.map((ev, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', fontSize: '13px' }}>
-                    <span style={{ color: '#e4e4e7' }}>{ev.label}</span>
-                    <span style={{ color: '#71717a', whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-1)' }}>{ev.label}</span>
+                    <span style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
                       {new Date(ev.date).toLocaleDateString('fr-FR')}
                     </span>
                   </div>
@@ -1132,9 +1087,9 @@ export default function AdminClientDetailPage() {
 
       {cancelOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
-          <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', padding: '24px', maxWidth: '440px', width: '100%' }}>
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', maxWidth: '440px', width: '100%' }}>
             <p style={{ fontWeight: 700, fontSize: '16px', margin: '0 0 8px' }}>Résilier l&apos;abonnement</p>
-            <p style={{ fontSize: '13px', color: '#a1a1aa', margin: '0 0 16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 16px' }}>
               Êtes-vous sûr ? Cette action résilie l&apos;abonnement du client.
             </p>
             <span style={label}>Motif de résiliation</span>
@@ -1152,14 +1107,14 @@ export default function AdminClientDetailPage() {
               value={cancelDate}
               onChange={(e) => setCancelDate(e.target.value)}
             />
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#a1a1aa', marginBottom: '20px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-2)', marginBottom: '20px' }}>
               <input type="checkbox" checked={cancelNotify} onChange={(e) => setCancelNotify(e.target.checked)} />
               Notifier le client par email
             </label>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button style={secondaryButton} onClick={() => setCancelOpen(false)}>Annuler</button>
               <button
-                style={{ ...primaryButton, background: '#dc2626', color: '#ffffff' }}
+                style={{ ...primaryButton, background: 'var(--status-lost)', color: 'var(--text-1)' }}
                 onClick={handleCancelConfirm}
               >
                 Confirmer la résiliation
@@ -1171,7 +1126,7 @@ export default function AdminClientDetailPage() {
 
       {emailOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
-          <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '16px', padding: '24px', maxWidth: '480px', width: '100%' }}>
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', maxWidth: '480px', width: '100%' }}>
             <p style={{ fontWeight: 700, fontSize: '16px', margin: '0 0 16px' }}>Envoyer un email à {client.email}</p>
 
             <span style={label}>Modèle rapide</span>
@@ -1184,7 +1139,7 @@ export default function AdminClientDetailPage() {
                     ...secondaryButton,
                     padding: '6px 12px',
                     fontSize: '12px',
-                    ...(emailTemplate === name ? { background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' } : {}),
+                    ...(emailTemplate === name ? { background: 'rgba(34,197,94,0.1)', color: 'var(--accent)', border: '1px solid rgba(34,197,94,0.3)' } : {}),
                   }}
                 >
                   {name}
