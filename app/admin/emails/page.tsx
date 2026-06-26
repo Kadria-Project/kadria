@@ -6,6 +6,7 @@ import AdminBadge from '@/src/components/admin/AdminBadge';
 import AdminCard from '@/src/components/admin/AdminCard';
 import AdminButton from '@/src/components/admin/AdminButton';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
+import AdminTable from '@/src/components/admin/AdminTable';
 
 interface ClientRecord {
   id: string;
@@ -300,50 +301,48 @@ export default function AdminEmailsPage() {
         )}
 
         {emailLogs.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Destinataire</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Objet</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Envoyé le</th>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {emailLogs.map((log) => (
-                  <tr
-                    key={log.id}
-                    style={{ borderTop: '1px solid var(--border)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          <AdminTable style={{ background: 'transparent', border: 'none', borderRadius: 0 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Destinataire</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Objet</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Envoyé le</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {emailLogs.map((log) => (
+                <tr
+                  key={log.id}
+                  style={{ borderTop: '1px solid var(--border)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ padding: '10px 12px', fontWeight: 500 }}>{log.to}</td>
+                  <td
+                    style={{
+                      padding: '10px 12px',
+                      color: 'var(--text-2)',
+                      maxWidth: '200px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    <td style={{ padding: '10px 12px', fontWeight: 500 }}>{log.to}</td>
-                    <td
-                      style={{
-                        padding: '10px 12px',
-                        color: 'var(--text-2)',
-                        maxWidth: '200px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {log.subject}
-                    </td>
-                    <td style={{ padding: '10px 12px', color: 'var(--text-2)' }}>{formatDateTime(log.sent_at)}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {log.status === 'sent' ? (
-                        <AdminBadge label="✓ Envoyé" tone="success" />
-                      ) : (
-                        <AdminBadge label="✗ Erreur" tone="danger" />
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    {log.subject}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'var(--text-2)' }}>{formatDateTime(log.sent_at)}</td>
+                  <td style={{ padding: '10px 12px' }}>
+                    {log.status === 'sent' ? (
+                      <AdminBadge label="✓ Envoyé" tone="success" />
+                    ) : (
+                      <AdminBadge label="✗ Erreur" tone="danger" />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </AdminTable>
         )}
       </AdminCard>
 

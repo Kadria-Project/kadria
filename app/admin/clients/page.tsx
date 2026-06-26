@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Search, Download } from 'lucide-react';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
+import AdminTable from '@/src/components/admin/AdminTable';
 
 interface ClientUsage {
   projectsThisMonth: number;
@@ -355,10 +356,8 @@ export default function AdminClientsPage() {
           </p>
 
           {/* Desktop : tableau cockpit */}
-          <div className="admin-clients-table-wrap" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
+          <AdminTable className="admin-clients-table-wrap">
+            <thead>
                   <tr style={{ background: 'var(--border)' }}>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan ID</th>
@@ -455,9 +454,7 @@ export default function AdminClientsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          </div>
+          </AdminTable>
 
           {/* Mobile : cards empilées */}
           <div className="admin-clients-cards">

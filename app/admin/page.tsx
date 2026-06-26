@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 import AdminCard from '@/src/components/admin/AdminCard';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
+import AdminTable from '@/src/components/admin/AdminTable';
 
 interface DernierClient {
   id: string;
@@ -138,37 +139,35 @@ export default function AdminHomePage() {
                 Voir tous les artisans →
               </Link>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: 'var(--border)' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Nom</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Email</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Plan</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Inscrit le</th>
+            <AdminTable style={{ background: 'transparent', border: 'none', borderRadius: 0 }}>
+              <thead>
+                <tr style={{ background: 'var(--border)' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Nom</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Plan</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Inscrit le</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.derniers_clients.length === 0 && (
+                  <tr>
+                    <td colSpan={5}>
+                      <AdminEmptyState compact title="Aucun artisan pour le moment" description="Les nouvelles inscriptions apparaîtront ici." />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {stats.derniers_clients.length === 0 && (
-                    <tr>
-                      <td colSpan={5}>
-                        <AdminEmptyState compact title="Aucun artisan pour le moment" description="Les nouvelles inscriptions apparaîtront ici." />
-                      </td>
-                    </tr>
-                  )}
-                  {stats.derniers_clients.map((c) => (
-                    <tr key={c.id} style={{ borderTop: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 20px', fontWeight: 600 }}>{c.nom || '—'}</td>
-                      <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{c.email}</td>
-                      <td style={{ padding: '12px 20px' }}><AdminBadge label={c.plan} tone={PLAN_TONE[c.plan] || 'neutral'} variant="plan" /></td>
-                      <td style={{ padding: '12px 20px' }}><AdminBadge label={c.statut} tone={STATUT_TONE[c.statut] || 'neutral'} variant="status" /></td>
-                      <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{formatDate(c.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                )}
+                {stats.derniers_clients.map((c) => (
+                  <tr key={c.id} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px 20px', fontWeight: 600 }}>{c.nom || '—'}</td>
+                    <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{c.email}</td>
+                    <td style={{ padding: '12px 20px' }}><AdminBadge label={c.plan} tone={PLAN_TONE[c.plan] || 'neutral'} variant="plan" /></td>
+                    <td style={{ padding: '12px 20px' }}><AdminBadge label={c.statut} tone={STATUT_TONE[c.statut] || 'neutral'} variant="status" /></td>
+                    <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{formatDate(c.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </AdminTable>
           </div>
         </>
       )}
