@@ -4,6 +4,8 @@
 // l'artisan une fois importé (les fiches importées restent des prestations
 // normales, modifiables/désactivables comme les autres).
 
+import type { QualificationField } from '@/src/lib/qualification-fields'
+
 export interface ServiceProfileTemplatePhoto {
   id: string
   title: string
@@ -18,6 +20,7 @@ export interface ServiceProfileTemplate {
   description: string
   detectionKeywords: string[]
   qualificationQuestions: string[]
+  qualificationFields: QualificationField[]
   requiredInformation: string[]
   requiredPhotos: boolean
   requiredPhotosList: ServiceProfileTemplatePhoto[]
@@ -53,6 +56,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Diagnostic et localisation d’une fuite d’eau avant intervention.',
       detectionKeywords: ['fuite', 'infiltration', 'dégât des eaux', 'humidité'],
       qualificationQuestions: ['Où la fuite est-elle visible ?', 'Depuis combien de temps ?', 'L’eau est-elle coupée ?'],
+      qualificationFields: [
+        { id: 'localisation_fuite', label: 'Localisation de la fuite', type: 'text', required: true, order: 0 },
+        { id: 'fuite_active', label: 'La fuite est-elle active ?', type: 'boolean', required: true, order: 1 },
+        { id: 'degats_visibles', label: 'Dégâts visibles ?', type: 'boolean', required: false, order: 2 },
+        { id: 'acces_zone', label: 'Accès à la zone', type: 'select', options: ['Facile', 'Moyen', 'Difficile'], required: false, order: 3 },
+      ],
       requiredInformation: ['Localisation précise', 'Accessibilité de la zone'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -79,6 +88,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Dépose de l’ancien chauffe-eau et installation d’un nouveau modèle.',
       detectionKeywords: ['chauffe-eau', 'ballon eau chaude', 'cumulus'],
       qualificationQuestions: ['Quel volume actuel ?', 'Électrique ou thermodynamique ?', 'Accès au local technique ?'],
+      qualificationFields: [
+        { id: 'capacite_litres', label: 'Capacité souhaitée', type: 'number', unit: 'L', required: true, order: 0 },
+        { id: 'type_chauffe_eau', label: 'Type de chauffe-eau', type: 'select', options: ['Électrique', 'Thermodynamique', 'Gaz', 'Autre'], required: true, order: 1 },
+        { id: 'acces', label: 'Accès au local technique', type: 'select', options: ['Facile', 'Moyen', 'Difficile'], required: false, order: 2 },
+      ],
       requiredInformation: ['Volume souhaité', 'Type d’énergie'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -106,6 +120,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Débouchage de canalisation (évier, douche, WC).',
       detectionKeywords: ['bouché', 'débouchage', 'canalisation', 'évacuation lente'],
       qualificationQuestions: ['Quel équipement est concerné ?', 'L’eau s’évacue-t-elle un peu ?'],
+      qualificationFields: [
+        { id: 'equipement_concerne', label: 'Équipement concerné', type: 'select', options: ['Évier', 'Douche', 'WC', 'Lavabo', 'Autre'], required: true, order: 0 },
+        { id: 'evacuation_partielle', label: 'L’eau s’évacue-t-elle un peu ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Équipement concerné'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -126,6 +144,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Dépose et remplacement d’un robinet ou mitigeur.',
       detectionKeywords: ['robinet', 'mitigeur', 'robinetterie'],
       qualificationQuestions: ['Quel type de robinetterie ?', 'Le nouveau matériel est-il déjà acheté ?'],
+      qualificationFields: [
+        { id: 'type_robinetterie', label: 'Type de robinetterie', type: 'select', options: ['Mitigeur', 'Robinet simple', 'Mitigeur thermostatique', 'Autre'], required: true, order: 0 },
+        { id: 'materiel_achete', label: 'Le nouveau matériel est-il déjà acheté ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Type d’équipement', 'Marque souhaitée'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -151,6 +173,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Installation ou remplacement d’un WC.',
       detectionKeywords: ['wc', 'toilettes', 'sanibroyeur'],
       qualificationQuestions: ['WC suspendu ou au sol ?', 'Le modèle est-il déjà choisi ?'],
+      qualificationFields: [
+        { id: 'type_wc', label: 'Type de WC', type: 'select', options: ['Suspendu', 'Au sol'], required: true, order: 0 },
+        { id: 'modele_choisi', label: 'Le modèle est-il déjà choisi ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Type de WC', 'Configuration de l’évacuation'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -176,6 +202,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Réparation d’une canalisation ou évacuation endommagée.',
       detectionKeywords: ['évacuation', 'canalisation cassée', 'odeur égout'],
       qualificationQuestions: ['Où se situe l’évacuation concernée ?', 'Le problème est-il récurrent ?'],
+      qualificationFields: [
+        { id: 'localisation_evacuation', label: 'Localisation de l’évacuation', type: 'text', required: true, order: 0 },
+        { id: 'probleme_recurrent', label: 'Le problème est-il récurrent ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Localisation de l’évacuation'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -203,6 +233,12 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Diagnostic et mise en sécurité du tableau électrique.',
       detectionKeywords: ['tableau électrique', 'mise aux normes', 'disjoncteur'],
       qualificationQuestions: ['Le tableau est-il encore aux normes ?', 'Y a-t-il des coupures fréquentes ?'],
+      qualificationFields: [
+        { id: 'nombre_modules', label: 'Nombre de modules', type: 'number', required: false, order: 0 },
+        { id: 'puissance_compteur', label: 'Puissance compteur', type: 'number', unit: 'A', required: false, order: 1 },
+        { id: 'logement_occupe', label: 'Logement occupé ?', type: 'boolean', required: false, order: 2 },
+        { id: 'mise_aux_normes_complete', label: 'Mise aux normes complète souhaitée ?', type: 'boolean', required: true, order: 3 },
+      ],
       requiredInformation: ['Âge approximatif de l’installation'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -230,6 +266,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Diagnostic et réparation d’une panne électrique.',
       detectionKeywords: ['panne électrique', 'plus de courant', 'court-circuit', 'disjoncteur saute'],
       qualificationQuestions: ['Toute l’installation est-elle touchée ?', 'Depuis quand ?'],
+      qualificationFields: [
+        { id: 'installation_totale_touchee', label: 'Toute l’installation est-elle touchée ?', type: 'boolean', required: true, order: 0 },
+        { id: 'depuis_quand', label: 'Depuis quand ?', type: 'text', required: false, order: 1 },
+      ],
       requiredInformation: ['Zone concernée par la panne'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -251,6 +291,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Ajout ou remplacement d’une prise ou d’un interrupteur.',
       detectionKeywords: ['prise électrique', 'interrupteur', 'prise murale'],
       qualificationQuestions: ['Combien de prises/interrupteurs ?', 'Création ou remplacement ?'],
+      qualificationFields: [
+        { id: 'nombre_elements', label: 'Nombre de prises/interrupteurs', type: 'number', required: true, order: 0 },
+        { id: 'creation_ou_remplacement', label: 'Création ou remplacement ?', type: 'select', options: ['Création', 'Remplacement'], required: false, order: 1 },
+      ],
       requiredInformation: ['Nombre d’éléments', 'Emplacement souhaité'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -271,6 +315,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Pose ou remplacement d’un luminaire.',
       detectionKeywords: ['luminaire', 'spot', 'plafonnier', 'éclairage'],
       qualificationQuestions: ['Le luminaire est-il déjà acheté ?', 'Type de plafond ?'],
+      qualificationFields: [
+        { id: 'luminaire_achete', label: 'Le luminaire est-il déjà acheté ?', type: 'boolean', required: false, order: 0 },
+        { id: 'type_plafond', label: 'Type de plafond', type: 'select', options: ['Placo', 'Béton', 'Bois', 'Autre'], required: false, order: 1 },
+      ],
       requiredInformation: ['Type de luminaire', 'Emplacement'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -295,6 +343,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Mise en conformité d’une installation électrique existante.',
       detectionKeywords: ['conformité électrique', 'diagnostic électrique', 'norme nfc'],
       qualificationQuestions: ['Avez-vous un diagnostic récent ?', 'Quelle surface concernée ?'],
+      qualificationFields: [
+        { id: 'diagnostic_recent', label: 'Avez-vous un diagnostic récent ?', type: 'boolean', required: false, order: 0 },
+        { id: 'surface_logement', label: 'Surface du logement', type: 'number', unit: 'm²', required: false, order: 1 },
+      ],
       requiredInformation: ['Surface du logement', 'Date de l’installation'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -322,6 +374,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Entretien annuel obligatoire d’une chaudière.',
       detectionKeywords: ['chaudière', 'entretien chaudière', 'révision chaudière'],
       qualificationQuestions: ['Quel type de chaudière ?', 'Date du dernier entretien ?'],
+      qualificationFields: [
+        { id: 'type_chaudiere', label: 'Type de chaudière', type: 'select', options: ['Gaz', 'Fioul', 'Électrique', 'Bois', 'Autre'], required: true, order: 0 },
+        { id: 'date_dernier_entretien', label: 'Date du dernier entretien', type: 'date', required: false, order: 1 },
+      ],
       requiredInformation: ['Type de chaudière', 'Date dernier entretien'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -342,6 +398,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Entretien et contrôle de fonctionnement d’une pompe à chaleur.',
       detectionKeywords: ['pompe à chaleur', 'pac', 'climatisation'],
       qualificationQuestions: ['Quel modèle de PAC ?', 'Constatez-vous une baisse de performance ?'],
+      qualificationFields: [
+        { id: 'modele_pac', label: 'Modèle de la PAC', type: 'text', required: false, order: 0 },
+        { id: 'baisse_performance', label: 'Constatez-vous une baisse de performance ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Modèle de la PAC'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -363,6 +423,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Diagnostic et dépannage d’une panne de chauffage.',
       detectionKeywords: ['plus de chauffage', 'panne chaudière', 'radiateur froid'],
       qualificationQuestions: ['Tous les radiateurs sont-ils concernés ?', 'Depuis quand ?'],
+      qualificationFields: [
+        { id: 'tous_radiateurs_concernes', label: 'Tous les radiateurs sont-ils concernés ?', type: 'boolean', required: true, order: 0 },
+        { id: 'depuis_quand', label: 'Depuis quand ?', type: 'text', required: false, order: 1 },
+      ],
       requiredInformation: ['Zone affectée'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -384,6 +448,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Installation d’un système de climatisation.',
       detectionKeywords: ['climatisation', 'climatiseur', 'split'],
       qualificationQuestions: ['Combien de pièces à climatiser ?', 'Mono-split ou multi-split ?'],
+      qualificationFields: [
+        { id: 'nombre_pieces', label: 'Nombre de pièces à climatiser', type: 'number', required: true, order: 0 },
+        { id: 'type_installation', label: 'Type d’installation', type: 'select', options: ['Mono-split', 'Multi-split'], required: true, order: 1 },
+      ],
       requiredInformation: ['Surface à climatiser', 'Nombre de pièces'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -410,6 +478,9 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Purge et équilibrage du circuit de chauffage.',
       detectionKeywords: ['radiateur froid en haut', 'bruit radiateur', 'purge radiateur'],
       qualificationQuestions: ['Quels radiateurs sont concernés ?'],
+      qualificationFields: [
+        { id: 'radiateurs_concernes', label: 'Radiateurs concernés', type: 'text', required: false, order: 0 },
+      ],
       requiredInformation: ['Radiateurs concernés'],
       requiredPhotos: false,
       requiredPhotosList: [],
@@ -432,6 +503,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Dépose et remplacement d’une fenêtre.',
       detectionKeywords: ['fenêtre', 'double vitrage', 'remplacement fenêtre'],
       qualificationQuestions: ['Quelles dimensions ?', 'Bois, PVC ou aluminium ?'],
+      qualificationFields: [
+        { id: 'largeur', label: 'Largeur', type: 'number', unit: 'cm', required: true, order: 0 },
+        { id: 'hauteur', label: 'Hauteur', type: 'number', unit: 'cm', required: true, order: 1 },
+        { id: 'type_pose', label: 'Type de pose', type: 'select', options: ['Rénovation', 'Dépose totale', 'À définir'], required: false, order: 2 },
+      ],
       requiredInformation: ['Dimensions', 'Matériau souhaité'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -458,6 +534,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Pose ou remplacement d’une porte intérieure.',
       detectionKeywords: ['porte intérieure', 'porte de chambre', 'bloc-porte'],
       qualificationQuestions: ['La porte est-elle déjà achetée ?', 'Quelles dimensions ?'],
+      qualificationFields: [
+        { id: 'porte_achetee', label: 'La porte est-elle déjà achetée ?', type: 'boolean', required: false, order: 0 },
+        { id: 'dimensions_ouverture', label: 'Dimensions de l’ouverture', type: 'text', required: true, order: 1 },
+      ],
       requiredInformation: ['Dimensions de l’ouverture'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -482,6 +562,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Dépose et remplacement d’une porte d’entrée.',
       detectionKeywords: ['porte d’entrée', 'porte blindée', 'serrure porte entrée'],
       qualificationQuestions: ['Quelles dimensions ?', 'Souhaitez-vous une porte sécurisée ?'],
+      qualificationFields: [
+        { id: 'dimensions', label: 'Dimensions', type: 'text', required: true, order: 0 },
+        { id: 'porte_securisee', label: 'Souhaitez-vous une porte sécurisée ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Dimensions', 'Niveau de sécurité souhaité'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -508,6 +592,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Conception et installation de placards ou dressing sur mesure.',
       detectionKeywords: ['placard', 'dressing', 'rangement sur mesure'],
       qualificationQuestions: ['Quelle surface disponible ?', 'Sur mesure ou standard ?'],
+      qualificationFields: [
+        { id: 'surface_disponible', label: 'Surface disponible', type: 'number', unit: 'm²', required: false, order: 0 },
+        { id: 'sur_mesure', label: 'Sur mesure ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Dimensions disponibles'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -532,6 +620,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Réparation d’un volet roulant ou battant.',
       detectionKeywords: ['volet', 'volet roulant bloqué', 'volet cassé'],
       qualificationQuestions: ['Volet roulant ou battant ?', 'Quel est le problème constaté ?'],
+      qualificationFields: [
+        { id: 'type_volet', label: 'Type de volet', type: 'select', options: ['Roulant', 'Battant'], required: true, order: 0 },
+        { id: 'probleme_constate', label: 'Problème constaté', type: 'text', required: false, order: 1 },
+      ],
       requiredInformation: ['Type de volet'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -559,6 +651,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Travaux de peinture pour une ou plusieurs pièces.',
       detectionKeywords: ['peinture', 'repeindre', 'mur à peindre'],
       qualificationQuestions: ['Combien de pièces / m² ?', 'État actuel des murs ?'],
+      qualificationFields: [
+        { id: 'surface_m2', label: 'Surface à peindre', type: 'number', unit: 'm²', required: true, order: 0 },
+        { id: 'etat_support', label: 'État du support', type: 'select', options: ['Bon', 'Moyen', 'Mauvais', 'À reprendre'], required: true, order: 1 },
+        { id: 'nombre_pieces', label: 'Nombre de pièces', type: 'number', required: false, order: 2 },
+      ],
       requiredInformation: ['Surface à peindre', 'État des murs'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -585,6 +682,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Rénovation et traitement de la façade extérieure.',
       detectionKeywords: ['ravalement', 'façade', 'enduit façade'],
       qualificationQuestions: ['Quelle surface de façade ?', 'État actuel de la façade ?'],
+      qualificationFields: [
+        { id: 'surface_facade', label: 'Surface de façade', type: 'number', unit: 'm²', required: true, order: 0 },
+        { id: 'etat_facade', label: 'État de la façade', type: 'select', options: ['Bon', 'Moyen', 'Mauvais', 'À reprendre'], required: true, order: 1 },
+      ],
       requiredInformation: ['Surface de façade', 'Hauteur du bâtiment'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -611,6 +712,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Pose de carrelage, parquet ou autre revêtement de sol.',
       detectionKeywords: ['revêtement de sol', 'carrelage', 'parquet'],
       qualificationQuestions: ['Quel type de revêtement souhaité ?', 'Quelle surface ?'],
+      qualificationFields: [
+        { id: 'surface_m2', label: 'Surface à couvrir', type: 'number', unit: 'm²', required: true, order: 0 },
+        { id: 'type_revetement', label: 'Type de revêtement', type: 'select', options: ['Carrelage', 'Parquet', 'Vinyle', 'Autre'], required: true, order: 1 },
+      ],
       requiredInformation: ['Surface à couvrir', 'Type de revêtement'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -636,6 +741,10 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Pose de papier peint sur un ou plusieurs murs.',
       detectionKeywords: ['papier peint', 'tapisserie'],
       qualificationQuestions: ['Quelle surface concernée ?', 'Le papier peint est-il déjà choisi ?'],
+      qualificationFields: [
+        { id: 'surface_m2', label: 'Surface concernée', type: 'number', unit: 'm²', required: false, order: 0 },
+        { id: 'papier_choisi', label: 'Le papier peint est-il déjà choisi ?', type: 'boolean', required: false, order: 1 },
+      ],
       requiredInformation: ['Surface concernée'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -661,6 +770,11 @@ export const SERVICE_PROFILE_TEMPLATES: Record<string, ServiceProfileTemplate[]>
       description: 'Rénovation globale d’une pièce (peinture, sol, finitions).',
       detectionKeywords: ['rénovation complète', 'rénover une pièce', 'remise à neuf'],
       qualificationQuestions: ['Quelle pièce ?', 'Quelle surface ?', 'Quel budget envisagé ?'],
+      qualificationFields: [
+        { id: 'piece_concernee', label: 'Pièce concernée', type: 'text', required: true, order: 0 },
+        { id: 'surface_m2', label: 'Surface', type: 'number', unit: 'm²', required: true, order: 1 },
+        { id: 'budget_envisage', label: 'Budget envisagé', type: 'currency', required: false, order: 2 },
+      ],
       requiredInformation: ['Pièce concernée', 'Surface', 'Budget envisagé'],
       requiredPhotos: true,
       requiredPhotosList: [
@@ -697,6 +811,7 @@ export function serviceProfileTemplateToPayload(template: ServiceProfileTemplate
     isActive: true,
     detectionKeywords: template.detectionKeywords,
     qualificationQuestions: template.qualificationQuestions,
+    qualificationFields: template.qualificationFields,
     requiredInformation: template.requiredInformation,
     requiredPhotos: template.requiredPhotos,
     requiredPhotosList: template.requiredPhotosList,
