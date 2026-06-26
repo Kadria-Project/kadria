@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react';
 import AdminBadge from '@/src/components/admin/AdminBadge';
 import AdminCard from '@/src/components/admin/AdminCard';
 import AdminButton from '@/src/components/admin/AdminButton';
+import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 
 interface ClientRecord {
   id: string;
@@ -295,9 +296,7 @@ export default function AdminEmailsPage() {
         )}
 
         {!logsLoading && emailLogs.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', padding: '32px 0', margin: 0 }}>
-            Aucun email envoyé pour l&apos;instant
-          </p>
+          <AdminEmptyState title="Aucun email envoyé" description="L'historique des emails envoyés apparaîtra ici." />
         )}
 
         {emailLogs.length > 0 && (

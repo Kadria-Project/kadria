@@ -7,6 +7,8 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 import AdminCard from '@/src/components/admin/AdminCard';
 import AdminButton from '@/src/components/admin/AdminButton';
+import AdminModal from '@/src/components/admin/AdminModal';
+import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 
 interface UserRecord {
   id: string;
@@ -594,7 +596,7 @@ export default function AdminClientDetailPage() {
 
       <AdminCard style={{ marginBottom: '16px' }}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Santé artisan</p>
-        {!health && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
+        {!health && <AdminEmptyState compact title="Donnée à venir" description="Les indicateurs de santé apparaîtront ici dès qu'ils seront disponibles." />}
         {health && (
           <>
             <div style={{ marginBottom: '12px' }}>
@@ -617,7 +619,7 @@ export default function AdminClientDetailPage() {
       <AdminCard style={{ marginBottom: '16px' }}>
         <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Configuration métier</p>
         {!setupProgress && (
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Données configuration indisponibles</p>
+          <AdminEmptyState compact title="Données de configuration indisponibles" description="La progression de configuration apparaîtra ici dès qu'elle sera accessible." />
         )}
         {setupProgress && (
           <>
@@ -767,7 +769,7 @@ export default function AdminClientDetailPage() {
           <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 12px' }}>Historique admin</p>
             {historyEntries.length === 0 && (
-              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Aucune action enregistrée</p>
+              <AdminEmptyState compact title="Aucune action enregistrée" description="L'historique des actions admin apparaîtra ici." />
             )}
             {historyEntries.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -985,7 +987,7 @@ export default function AdminClientDetailPage() {
 
           <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Métriques artisan</p>
-            {!metrics && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Aucune donnée disponible</p>}
+            {!metrics && <AdminEmptyState compact title="Aucune donnée disponible" description="Les métriques apparaîtront ici dès qu'elles seront disponibles." />}
             {metrics && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1010,7 +1012,7 @@ export default function AdminClientDetailPage() {
 
           <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Valeur générée</p>
-            {!metrics?.value && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
+            {!metrics?.value && <AdminEmptyState compact title="Donnée à venir" description="La valeur générée apparaîtra ici dès qu'elle sera disponible." />}
             {metrics?.value && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1043,7 +1045,7 @@ export default function AdminClientDetailPage() {
 
           <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Usage vocal</p>
-            {!usage && <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Donnée à venir</p>}
+            {!usage && <AdminEmptyState compact title="Donnée à venir" description="Les données d'usage vocal apparaîtront ici dès qu'elles seront disponibles." />}
             {usage && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1069,7 +1071,7 @@ export default function AdminClientDetailPage() {
           <AdminCard style={{ marginBottom: '16px' }}>
             <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Derniers événements</p>
             {(!metrics?.events || metrics.events.length === 0) && (
-              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Logs à venir</p>
+              <AdminEmptyState compact title="Logs à venir" description="Les derniers événements apparaîtront ici." />
             )}
             {metrics?.events && metrics.events.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1087,89 +1089,87 @@ export default function AdminClientDetailPage() {
         </div>
       </div>
 
-      {cancelOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', maxWidth: '440px', width: '100%' }}>
-            <p style={{ fontWeight: 700, fontSize: '16px', margin: '0 0 8px' }}>Résilier l&apos;abonnement</p>
-            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 16px' }}>
-              Êtes-vous sûr ? Cette action résilie l&apos;abonnement du client.
-            </p>
-            <span style={label}>Motif de résiliation</span>
-            <textarea
-              rows={3}
-              style={{ ...inputStyle, marginBottom: '12px', resize: 'vertical', fontFamily: 'inherit' }}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Motif..."
-            />
-            <span style={label}>Date effective</span>
-            <input
-              type="date"
-              style={{ ...inputStyle, marginBottom: '12px' }}
-              value={cancelDate}
-              onChange={(e) => setCancelDate(e.target.value)}
-            />
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-2)', marginBottom: '20px' }}>
-              <input type="checkbox" checked={cancelNotify} onChange={(e) => setCancelNotify(e.target.checked)} />
-              Notifier le client par email
-            </label>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <AdminButton variant="secondary" onClick={() => setCancelOpen(false)}>Annuler</AdminButton>
-              <AdminButton variant="danger" onClick={handleCancelConfirm}>
-                Confirmer la résiliation
-              </AdminButton>
-            </div>
-          </div>
+      <AdminModal
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        title="Résilier l'abonnement"
+        description="Êtes-vous sûr ? Cette action résilie l'abonnement du client."
+        size="sm"
+        danger
+      >
+        <span style={label}>Motif de résiliation</span>
+        <textarea
+          rows={3}
+          style={{ ...inputStyle, marginBottom: '12px', resize: 'vertical', fontFamily: 'inherit' }}
+          value={cancelReason}
+          onChange={(e) => setCancelReason(e.target.value)}
+          placeholder="Motif..."
+        />
+        <span style={label}>Date effective</span>
+        <input
+          type="date"
+          style={{ ...inputStyle, marginBottom: '12px' }}
+          value={cancelDate}
+          onChange={(e) => setCancelDate(e.target.value)}
+        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-2)', marginBottom: '20px' }}>
+          <input type="checkbox" checked={cancelNotify} onChange={(e) => setCancelNotify(e.target.checked)} />
+          Notifier le client par email
+        </label>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <AdminButton variant="secondary" onClick={() => setCancelOpen(false)}>Annuler</AdminButton>
+          <AdminButton variant="danger" onClick={handleCancelConfirm}>
+            Confirmer la résiliation
+          </AdminButton>
         </div>
-      )}
+      </AdminModal>
 
-      {emailOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', maxWidth: '480px', width: '100%' }}>
-            <p style={{ fontWeight: 700, fontSize: '16px', margin: '0 0 16px' }}>Envoyer un email à {client.email}</p>
-
-            <span style={label}>Modèle rapide</span>
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              {Object.keys(EMAIL_TEMPLATES).map((name) => (
-                <button
-                  key={name}
-                  onClick={() => applyTemplate(name)}
-                  style={{
-                    ...secondaryButton,
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    ...(emailTemplate === name ? { background: 'rgba(34,197,94,0.1)', color: 'var(--accent)', border: '1px solid rgba(34,197,94,0.3)' } : {}),
-                  }}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-
-            <span style={label}>Objet</span>
-            <input
-              style={{ ...inputStyle, marginBottom: '12px' }}
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-            />
-
-            <span style={label}>Corps du message</span>
-            <textarea
-              rows={6}
-              style={{ ...inputStyle, marginBottom: '20px', resize: 'vertical', fontFamily: 'inherit' }}
-              value={emailBody}
-              onChange={(e) => setEmailBody(e.target.value)}
-            />
-
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <AdminButton variant="secondary" onClick={() => setEmailOpen(false)}>Annuler</AdminButton>
-              <AdminButton onClick={handleSendEmail} disabled={emailSending}>
-                Envoyer via Resend
-              </AdminButton>
-            </div>
-          </div>
+      <AdminModal
+        open={emailOpen}
+        onClose={() => setEmailOpen(false)}
+        title={`Envoyer un email à ${client.email}`}
+        size="lg"
+      >
+        <span style={label}>Modèle rapide</span>
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {Object.keys(EMAIL_TEMPLATES).map((name) => (
+            <button
+              key={name}
+              onClick={() => applyTemplate(name)}
+              style={{
+                ...secondaryButton,
+                padding: '6px 12px',
+                fontSize: '12px',
+                ...(emailTemplate === name ? { background: 'rgba(34,197,94,0.1)', color: 'var(--accent)', border: '1px solid rgba(34,197,94,0.3)' } : {}),
+              }}
+            >
+              {name}
+            </button>
+          ))}
         </div>
-      )}
+
+        <span style={label}>Objet</span>
+        <input
+          style={{ ...inputStyle, marginBottom: '12px' }}
+          value={emailSubject}
+          onChange={(e) => setEmailSubject(e.target.value)}
+        />
+
+        <span style={label}>Corps du message</span>
+        <textarea
+          rows={6}
+          style={{ ...inputStyle, marginBottom: '20px', resize: 'vertical', fontFamily: 'inherit' }}
+          value={emailBody}
+          onChange={(e) => setEmailBody(e.target.value)}
+        />
+
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <AdminButton variant="secondary" onClick={() => setEmailOpen(false)}>Annuler</AdminButton>
+          <AdminButton onClick={handleSendEmail} disabled={emailSending}>
+            Envoyer via Resend
+          </AdminButton>
+        </div>
+      </AdminModal>
 
       <style>{`
         @media (max-width: 1023px) {

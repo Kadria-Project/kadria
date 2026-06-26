@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Download } from 'lucide-react';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
+import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 
 interface ClientUsage {
   projectsThisMonth: number;
@@ -377,7 +378,9 @@ export default function AdminClientsPage() {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={13} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-3)' }}>Aucun artisan trouvé</td>
+                      <td colSpan={13}>
+                        <AdminEmptyState compact title="Aucun artisan trouvé" description="Aucun artisan ne correspond aux filtres actuels." />
+                      </td>
                     </tr>
                   )}
                   {filtered.map((c, i) => (
@@ -459,7 +462,7 @@ export default function AdminClientsPage() {
           {/* Mobile : cards empilées */}
           <div className="admin-clients-cards">
             {filtered.length === 0 && (
-              <p style={{ padding: '20px', textAlign: 'center', color: 'var(--text-3)' }}>Aucun artisan trouvé</p>
+              <AdminEmptyState title="Aucun artisan trouvé" description="Aucun artisan ne correspond aux filtres actuels." />
             )}
             {filtered.map((c) => (
               <div

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 import AdminCard from '@/src/components/admin/AdminCard';
+import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 
 interface DernierClient {
   id: string;
@@ -151,7 +152,9 @@ export default function AdminHomePage() {
                 <tbody>
                   {stats.derniers_clients.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-3)' }}>Aucun artisan pour le moment</td>
+                      <td colSpan={5}>
+                        <AdminEmptyState compact title="Aucun artisan pour le moment" description="Les nouvelles inscriptions apparaîtront ici." />
+                      </td>
                     </tr>
                   )}
                   {stats.derniers_clients.map((c) => (
