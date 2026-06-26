@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTemplateToPayload } from '@/src/lib/service-profile-templates'
+import { BusinessSetupWizard } from '@/src/components/BusinessSetupWizard'
 
 interface BusinessProfile {
   primaryTrade: string
@@ -228,6 +229,8 @@ export default function ProfilMetierPage() {
   const [serviceProfileForm, setServiceProfileForm] = useState<ServiceProfileForm>({ ...EMPTY_SERVICE_PROFILE_FORM })
   const [savingServiceProfile, setSavingServiceProfile] = useState(false)
   const [openServiceProfileSections, setOpenServiceProfileSections] = useState<Set<string>>(new Set(['presentation']))
+
+  const [showWizard, setShowWizard] = useState(false)
 
   const [templateTrade, setTemplateTrade] = useState(SERVICE_PROFILE_TRADES[0].value)
   const [selectedTemplateNames, setSelectedTemplateNames] = useState<Set<string>>(new Set())
@@ -582,6 +585,18 @@ export default function ProfilMetierPage() {
             )}
           </div>
         </div>
+        <button
+          onClick={() => setShowWizard(true)}
+          className="shrink-0"
+          style={{
+            background: 'var(--bg-hover)', border: '1px solid var(--border)',
+            color: 'var(--text-1)', fontWeight: 700, borderRadius: '10px',
+            padding: isMobile ? '9px 12px' : '10px 18px', fontSize: '14px',
+            cursor: 'pointer', whiteSpace: 'nowrap', marginRight: '8px',
+          }}
+        >
+          {isMobile ? '🛠️ Métier' : '🛠️ Configurer mon métier'}
+        </button>
         <button
           onClick={save}
           disabled={saving}
@@ -1498,6 +1513,22 @@ export default function ProfilMetierPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showWizard && (
+        <BusinessSetupWizard
+          existingServiceProfiles={serviceProfiles.map((sp) => ({ name: sp.name }))}
+          onClose={() => setShowWizard(false)}
+          onComplete={({ profile, importedServiceProfiles }) => {
+            if (profile) {
+              setProfile(profileFromRow(profile))
+              setHasProfile(true)
+            }
+            if (importedServiceProfiles.length > 0) {
+              setServiceProfiles((prev) => [...prev, ...(importedServiceProfiles as unknown as ServiceProfileRow[])])
+            }
+          }}
+        />
       )}
     </main>
   )
