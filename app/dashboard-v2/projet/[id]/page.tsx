@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
@@ -9,12 +9,15 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Check,
+  ChevronDown,
   ChevronRight,
   Clock,
   Eye,
   FileText as FileTextIcon,
   Lock,
   Plus,
+  Search,
 } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
@@ -62,6 +65,17 @@ interface DevisListItem {
   follow_up_disabled?: boolean;
   follow_up_disabled_at?: string | null;
 }
+
+const quickActionButtonStyle: CSSProperties = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: '999px',
+  padding: '5px 12px',
+  fontSize: '11px',
+  fontWeight: 600,
+  color: 'var(--text-2)',
+  cursor: 'pointer',
+};
 
 function formatDevisDate(value: string) {
   if (!value) return '—';
@@ -236,6 +250,11 @@ function ProjectDetail() {
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
     return () => window.clearTimeout(timeout);
   }, [followUpToast]);
+
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionSearch, setSuggestionSearch] = useState('');
+  const [selectedSuggestionLabels, setSelectedSuggestionLabels] = useState<Set<string>>(new Set());
+  const [closedSuggestionCategories, setClosedSuggestionCategories] = useState<Set<string>>(new Set());
 
 
   const [isMobile, setIsMobile] = useState(false);
@@ -708,6 +727,54 @@ function ProjectDetail() {
     artisanTrades: artisanConfig?.trades,
     businessConfig: quoteSuggestionBusinessConfig,
   });
+
+  function getSuggestionCategory(line: { label: string; source: string }): string {
+    const text = line.label.toLowerCase();
+    if (text.includes('déplacement')) return 'Déplacement';
+    if (text.includes("main d'œuvre") || text.includes('main d’œuvre')) return 'Main d’œuvre';
+    if (text.includes('fourniture')) return 'Fournitures';
+    if (text.includes('diagnostic') || text.includes('recherche')) return 'Diagnostic';
+    if (text.includes('pièce')) return 'Pièces';
+    if (line.source === 'template') return 'Modèle';
+    if (line.source === 'trade') return 'Main d’œuvre';
+    return 'Autres';
+  }
+
+  const filteredQuoteSuggestions = quoteSuggestions.filter((line) =>
+    line.label.toLowerCase().includes(suggestionSearch.trim().toLowerCase())
+  );
+  const quoteSuggestionCategories: { name: string; lines: typeof quoteSuggestions }[] = [];
+  filteredQuoteSuggestions.forEach((line) => {
+    const category = getSuggestionCategory(line);
+    let group = quoteSuggestionCategories.find((g) => g.name === category);
+    if (!group) {
+      group = { name: category, lines: [] };
+      quoteSuggestionCategories.push(group);
+    }
+    group.lines.push(line);
+  });
+
+  function addSuggestionLinesToSelection(lines: typeof quoteSuggestions) {
+    if (lines.length === 0) return;
+    setSelectedSuggestionLabels((prev) => {
+      const next = new Set(prev);
+      let added = false;
+      lines.forEach((line) => {
+        if (!next.has(line.label)) {
+          next.add(line.label);
+          added = true;
+        }
+      });
+      if (added) {
+        setFollowUpToast({
+          type: 'success',
+          message: lines.length === 1 ? 'Ligne ajoutée au devis' : 'Lignes ajoutées au devis',
+        });
+      }
+      return next;
+    });
+  }
+
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
   const showIdealFollowUp = shouldShowIdealFollowUp(project);
@@ -2207,102 +2274,250 @@ function ProjectDetail() {
                     marginTop: '12px',
                     paddingTop: '14px',
                   }}>
-                    {matchedQuoteTemplateName && (
-                      <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '0 0 6px', fontWeight: 600 }}>
-                        Modèle suggéré : {matchedQuoteTemplateName}
-                      </p>
-                    )}
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', margin: '0 0 2px' }}>
-                      Suggestions de lignes de devis
-                    </p>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
-                      Kadria vous propose une base de structure à adapter avant envoi.
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {quoteSuggestions.map((line, index) => (
-                        <div
-                          key={`${line.label}-${index}`}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '8px',
-                            background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '8px',
-                            padding: '8px 12px',
-                            fontSize: '13px',
-                          }}
-                          title={line.reason}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <span style={{ color: 'var(--text-1)' }}>{line.label}</span>
-                            {line.optional && (
-                              <span style={{
-                                fontSize: '11px',
-                                color: 'var(--text-3)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '999px',
-                                padding: '1px 8px',
-                              }}>
-                                optionnel
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                            {line.suggestedAmount !== undefined && (
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>
-                                {formatInteger(line.suggestedAmount)} € HT
-                              </span>
-                            )}
-                            {line.fromCatalog && (
-                              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                                catalogue
-                              </span>
-                            )}
-                            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                              {line.source === 'trade' ? 'métier' : line.source === 'travel' ? 'déplacement' : line.source === 'project' ? 'projet' : line.source === 'template' ? 'modèle' : 'standard'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                     <button
-                      onClick={() => {
-                        if (!canQuote) {
-                          openUpgradeModal('quoteGeneration');
-                          return;
-                        }
-                        if (!legalComplete) return;
-                        try {
-                          sessionStorage.setItem(
-                            getQuoteDraftStorageKey(id as string),
-                            JSON.stringify(buildQuoteDraftPayload(quoteSuggestions, matchedQuoteTemplateName)),
-                          );
-                        } catch {
-                          // sessionStorage indisponible : pas bloquant, le formulaire s'ouvrira vide.
-                        }
-                        router.push(`/dashboard-v2/projet/${id}/devis/new`);
-                      }}
-                      disabled={!legalComplete && canQuote}
-                      title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
+                      type="button"
+                      onClick={() => setSuggestionsOpen((v) => !v)}
                       style={{
-                        marginTop: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         width: '100%',
                         background: 'transparent',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        padding: '8px 14px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: 'var(--text-2)',
-                        cursor: !canQuote || legalComplete ? 'pointer' : 'not-allowed',
-                        opacity: !canQuote || legalComplete ? 1 : 0.4,
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left',
                       }}
                     >
-                      {!canQuote && <Lock size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
-                      Utiliser ces suggestions dans un devis
+                      <span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', display: 'block' }}>
+                          Suggestions de lignes de devis
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                          Kadria vous propose des lignes adaptées au projet.
+                        </span>
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        style={{
+                          color: 'var(--text-3)',
+                          transform: suggestionsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.15s ease',
+                          flexShrink: 0,
+                        }}
+                      />
                     </button>
+
+                    {suggestionsOpen && (
+                      <div style={{ marginTop: '12px' }}>
+                        {matchedQuoteTemplateName && (
+                          <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '0 0 8px', fontWeight: 600 }}>
+                            Modèle suggéré : {matchedQuoteTemplateName}
+                          </p>
+                        )}
+                        <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
+                          Kadria a identifié les prestations les plus probables pour ce chantier.
+                        </p>
+
+                        <div style={{ position: 'relative', marginBottom: '10px' }}>
+                          <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }} />
+                          <input
+                            type="text"
+                            value={suggestionSearch}
+                            onChange={(e) => setSuggestionSearch(e.target.value)}
+                            placeholder="Rechercher une prestation..."
+                            style={{
+                              width: '100%',
+                              padding: '7px 10px 7px 30px',
+                              fontSize: '12px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg-elevated)',
+                              color: 'var(--text-1)',
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                          <button
+                            type="button"
+                            onClick={() => addSuggestionLinesToSelection(filteredQuoteSuggestions.filter((l) => !l.optional))}
+                            style={quickActionButtonStyle}
+                          >
+                            Ajouter les suggestions principales
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addSuggestionLinesToSelection(filteredQuoteSuggestions.filter((l) => !l.optional))}
+                            style={quickActionButtonStyle}
+                          >
+                            Ajouter uniquement les indispensables
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addSuggestionLinesToSelection(filteredQuoteSuggestions)}
+                            style={quickActionButtonStyle}
+                          >
+                            Tout ajouter
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSuggestionLabels(new Set())}
+                            style={quickActionButtonStyle}
+                          >
+                            Tout retirer
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {quoteSuggestionCategories.map((category) => {
+                            const isClosed = closedSuggestionCategories.has(category.name);
+                            return (
+                              <div key={category.name}>
+                                <button
+                                  type="button"
+                                  onClick={() => setClosedSuggestionCategories((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(category.name)) next.delete(category.name);
+                                    else next.add(category.name);
+                                    return next;
+                                  })}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    padding: '2px 0',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: 'var(--text-2)',
+                                  }}
+                                >
+                                  <ChevronDown
+                                    size={12}
+                                    style={{ transform: isClosed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }}
+                                  />
+                                  {category.name}
+                                  <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>({category.lines.length})</span>
+                                </button>
+                                {!isClosed && (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '4px' }}>
+                                    {category.lines.map((line, index) => {
+                                      const isSelected = selectedSuggestionLabels.has(line.label);
+                                      return (
+                                        <div
+                                          key={`${line.label}-${index}`}
+                                          title={line.reason}
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '8px',
+                                            background: isSelected ? 'var(--accent-soft, var(--bg-elevated))' : 'var(--bg-elevated)',
+                                            border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                                            borderRadius: '8px',
+                                            padding: '6px 10px',
+                                            fontSize: '12px',
+                                            transition: 'border-color 0.15s ease, background 0.15s ease',
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => addSuggestionLinesToSelection([line])}
+                                              disabled={isSelected}
+                                              aria-label={isSelected ? 'Ligne déjà ajoutée' : 'Ajouter la ligne'}
+                                              style={{
+                                                width: '20px',
+                                                height: '20px',
+                                                borderRadius: '6px',
+                                                border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                                                background: isSelected ? 'var(--accent)' : 'transparent',
+                                                color: isSelected ? '#fff' : 'var(--text-2)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: isSelected ? 'default' : 'pointer',
+                                                flexShrink: 0,
+                                                padding: 0,
+                                              }}
+                                            >
+                                              {isSelected ? <Check size={12} /> : <Plus size={12} />}
+                                            </button>
+                                            <span style={{ color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                              {line.label}
+                                            </span>
+                                            <span style={{
+                                              fontSize: '10px',
+                                              color: 'var(--text-3)',
+                                              border: '1px solid var(--border)',
+                                              borderRadius: '999px',
+                                              padding: '1px 6px',
+                                              flexShrink: 0,
+                                            }}>
+                                              {line.optional ? 'Pertinence moyenne' : 'Pertinence élevée'}
+                                            </span>
+                                          </div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                            {line.suggestedAmount !== undefined && (
+                                              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)' }}>
+                                                {formatInteger(line.suggestedAmount)} € HT
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            if (!canQuote) {
+                              openUpgradeModal('quoteGeneration');
+                              return;
+                            }
+                            if (!legalComplete) return;
+                            const linesToUse = selectedSuggestionLabels.size > 0
+                              ? quoteSuggestions.filter((l) => selectedSuggestionLabels.has(l.label))
+                              : quoteSuggestions;
+                            try {
+                              sessionStorage.setItem(
+                                getQuoteDraftStorageKey(id as string),
+                                JSON.stringify(buildQuoteDraftPayload(linesToUse, matchedQuoteTemplateName)),
+                              );
+                            } catch {
+                              // sessionStorage indisponible : pas bloquant, le formulaire s'ouvrira vide.
+                            }
+                            router.push(`/dashboard-v2/projet/${id}/devis/new`);
+                          }}
+                          disabled={!legalComplete && canQuote}
+                          title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
+                          style={{
+                            marginTop: '12px',
+                            width: '100%',
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            padding: '8px 14px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--text-2)',
+                            cursor: !canQuote || legalComplete ? 'pointer' : 'not-allowed',
+                            opacity: !canQuote || legalComplete ? 1 : 0.4,
+                          }}
+                        >
+                          {!canQuote && <Lock size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />}
+                          Utiliser ces suggestions dans un devis
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
