@@ -65,6 +65,7 @@ import {
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
+import { computeKadriaCoach, type KadriaCoachProjectEntry } from '@/src/lib/kadria-coach';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -1525,6 +1526,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [artisanFirstName, setArtisanFirstName] = useState('');
   const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null);
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
+  const [coachCardDismissed, setCoachCardDismissed] = useState(false);
 
   const formattedToday = useMemo(() => {
     const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
@@ -1753,6 +1755,26 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         .map((project) => [project.id, project]),
     ).values(),
   );
+
+  // Coach Kadria : orchestration pure des moteurs deja calcules (Action
+  // Engine, Progression Engine, quotas, agenda). Aucun nouveau calcul.
+  const coachProjectEntries: KadriaCoachProjectEntry[] = actionEngineEntries.map(({ project, action }) => ({
+    id: project.id,
+    clientLabel: project.clientName || project.clientFirstName || 'Client',
+    action,
+    href: project.id ? `/dashboard-v2/projet/${project.id}` : undefined,
+  }));
+
+  const calendarConnected = progressRecommendations
+    ? progressRecommendations.progress.steps.find((s) => s.key === 'calendar')?.status === 'done'
+    : false;
+
+  const kadriaCoach = computeKadriaCoach({
+    projects: coachProjectEntries,
+    progression: progressRecommendations,
+    usageSummary: monthlyUsage,
+    calendarStatus: { connected: calendarConnected },
+  });
 
   const callsProjects = activeProjects.filter((project) =>
     todayTasks.some((task) => task.type === 'call' && task.projectId === project.id),
@@ -2397,6 +2419,86 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
+      {!coachCardDismissed && (
+        <div
+          style={{
+            border: '1px solid var(--accent-border, var(--border))',
+            background: 'linear-gradient(135deg, var(--bg-elevated), var(--accent-dim, var(--bg-elevated)))',
+            borderRadius: '16px',
+            padding: isMobile ? '16px' : '20px',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+            <div style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700 }}>{kadriaCoach.title}</div>
+            <button
+              onClick={() => setCoachCardDismissed(true)}
+              aria-label="Fermer"
+              style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '14px' }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ color: 'var(--text-2)', fontSize: '13px', marginBottom: '14px' }}>
+            {kadriaCoach.message}
+          </div>
+
+          {kadriaCoach.primaryAction && (
+            <div
+              style={{
+                border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 14px',
+                background: 'var(--bg-elevated)', marginBottom: '12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>{kadriaCoach.primaryAction.title}</div>
+                <div style={{ color: 'var(--text-3)', fontSize: '12px', marginTop: '2px' }}>
+                  {kadriaCoach.primaryAction.estimatedTime ? `${kadriaCoach.primaryAction.estimatedTime} · ` : ''}
+                  {kadriaCoach.primaryAction.description}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const action = kadriaCoach.primaryAction;
+                  if (!action) return;
+                  if (action.actionType === 'connect_calendar') setDashboardMode('calendar');
+                  else if (action.href) router.push(action.href);
+                }}
+                style={{
+                  background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                  borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {kadriaCoach.primaryAction.ctaLabel}
+              </button>
+            </div>
+          )}
+
+          {kadriaCoach.recommendations.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {kadriaCoach.recommendations.map((rec, idx) => (
+                <button
+                  key={`${rec.actionType}-${idx}`}
+                  onClick={() => {
+                    if (rec.actionType === 'connect_calendar') setDashboardMode('calendar');
+                    else if (rec.href) router.push(rec.href);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                    textAlign: 'left', background: 'none', border: '1px solid var(--border)', borderRadius: '8px',
+                    padding: '8px 10px', cursor: 'pointer', color: 'var(--text-2)', fontSize: '12px',
+                  }}
+                >
+                  <span>· {rec.title}</span>
+                  <span style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{rec.ctaLabel}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {showTrialEndingBanner && (
         <div
           className="mb-5 flex flex-col gap-3 rounded-2xl border border-green-500/30 bg-green-500/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between"
