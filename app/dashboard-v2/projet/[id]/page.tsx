@@ -274,6 +274,11 @@ function ProjectDetail() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  // Mode Expert / Parcours : repliés par défaut pour remonter l'Analyse
+  // Kadria plus haut dans la page (état local, pas de persistance serveur).
+  const [expertExpanded, setExpertExpanded] = useState(false);
+  const [parcoursExpanded, setParcoursExpanded] = useState(false);
+
   // Accordéons de la fiche projet mobile native (détails secondaires repliés).
   const [openMobileSections, setOpenMobileSections] = useState<Set<string>>(new Set());
   function toggleMobileSection(key: string) {
@@ -782,6 +787,27 @@ function ProjectDetail() {
   const NEXT_ACTION_CTA_HANDLER: Partial<Record<string, () => void>> = {
     schedule_appointment: () => { if (!appointment) openAppointmentModal(); },
     follow_up_quote: () => { if (latestDevis) followUpQuote(latestDevis); },
+    // Reprend le canal email/téléphone déjà utilisé ailleurs sur cette page
+    // pour contacter le client (cf. boutons "✉️ Message" / "tel:") plutôt
+    // que d'inventer une nouvelle API de demande de photos.
+    request_photos: () => {
+      if (project.clientEmail) {
+        const subject = encodeURIComponent('Photos pour votre projet');
+        const body = encodeURIComponent(
+          'Bonjour,\n\nPourriez-vous nous envoyer quelques photos de votre projet afin de mieux préparer votre devis ?\n\nMerci.'
+        );
+        window.location.href = `mailto:${project.clientEmail}?subject=${subject}&body=${body}`;
+      } else if (project.clientPhone) {
+        window.location.href = `tel:${project.clientPhone}`;
+      }
+    },
+  };
+  // Raison affichée quand le CTA n'est pas actionnable, plutôt qu'un bouton
+  // grisé silencieux (ex: "Demander photos" sans email ni téléphone client).
+  const NEXT_ACTION_CTA_DISABLED_REASON: Partial<Record<string, string>> = {
+    request_photos: project.clientEmail || project.clientPhone
+      ? undefined
+      : 'Aucun email ni téléphone client renseigné',
   };
 
   // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
@@ -1234,19 +1260,31 @@ function ProjectDetail() {
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>~{nextAction.estimatedDuration}</span>
             </div>
-            <button
-              onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
-              disabled={!NEXT_ACTION_CTA_HANDLER[nextAction.actionType]}
-              style={{
-                width: '100%', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: 700,
-                background: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'var(--accent)' : 'var(--bg)',
-                color: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? '#fff' : 'var(--text-3)',
-                border: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'none' : '1px solid var(--border)',
-                opacity: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 1 : 0.7,
-              }}
-            >
-              {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
-            </button>
+            {(() => {
+              const ctaActionable = !!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
+              return (
+                <>
+                  <button
+                    onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
+                    disabled={!ctaActionable}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: 700,
+                      background: ctaActionable ? 'var(--accent)' : 'var(--bg)',
+                      color: ctaActionable ? '#fff' : 'var(--text-3)',
+                      border: ctaActionable ? 'none' : '1px solid var(--border)',
+                      opacity: ctaActionable ? 1 : 0.7,
+                    }}
+                  >
+                    {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
+                  </button>
+                  {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
+                    <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '6px 0 0' }}>
+                      {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Résumé IA court */}
@@ -1748,28 +1786,40 @@ function ProjectDetail() {
                 Blocages : {nextAction.blockingReasons.join(' · ')}
               </p>
             )}
+            {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
+              <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '6px 0 0' }}>
+                {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]}
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
-            disabled={!NEXT_ACTION_CTA_HANDLER[nextAction.actionType]}
-            title={!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'Action pas encore disponible depuis cette carte' : undefined}
-            style={{
-              flexShrink: 0,
-              background: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'var(--accent)' : 'transparent',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? '#fff' : 'var(--text-3)',
-              cursor: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'pointer' : 'not-allowed',
-              opacity: NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 1 : 0.6,
-              width: isMobile ? '100%' : undefined,
-            }}
-          >
-            {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
-          </button>
+          {(() => {
+            const ctaActionable = !!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
+            const disabledTitle = NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]
+              || (!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'Action pas encore disponible depuis cette carte' : undefined);
+            return (
+              <button
+                type="button"
+                onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
+                disabled={!ctaActionable}
+                title={!ctaActionable ? disabledTitle : undefined}
+                style={{
+                  flexShrink: 0,
+                  background: ctaActionable ? 'var(--accent)' : 'transparent',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: ctaActionable ? '#fff' : 'var(--text-3)',
+                  cursor: ctaActionable ? 'pointer' : 'not-allowed',
+                  opacity: ctaActionable ? 1 : 0.6,
+                  width: isMobile ? '100%' : undefined,
+                }}
+              >
+                {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
+              </button>
+            );
+          })()}
         </div>
 
         {/* Centre d'actions — les actions prioritaires du dossier, toujours visibles en haut */}
@@ -1858,90 +1908,6 @@ function ProjectDetail() {
             <p style={{ fontSize: '13px', color: 'var(--text-3)', fontWeight: 600, margin: 0 }}>
               Bientôt disponible
             </p>
-          </div>
-        </div>
-
-        {/* Mode Expert — orchestrateur pur, lit les sorties déjà calculées ci-dessus
-            (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,
-            Suggestions devis) sans rien recalculer (src/lib/expert-project.ts). */}
-        <div style={{ marginBottom: '16px' }}>
-          {isMobile ? (
-            <ExpertModeAccordionMobile view={expertView} />
-          ) : (
-            <ExpertModeCardDesktop view={expertView} />
-          )}
-        </div>
-
-        {/* Timeline intelligente — uniquement des étapes appuyées sur des données réelles du dossier */}
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          padding: isMobile ? '16px' : '16px 20px',
-          marginBottom: '16px',
-        }}>
-          <p style={{
-            color: 'var(--text-3)',
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            margin: '0 0 12px',
-          }}>
-            Parcours du dossier
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {(() => {
-              const qualificationDone = !!(project.completenessScore || project.aiSummary);
-              const devisDone = !!latestDevis;
-              const steps: Array<{ label: string; detail?: string; state: 'done' | 'current' | 'todo' | 'future' }> = [
-                { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
-                { label: 'Qualification IA', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
-                {
-                  label: 'Rendez-vous',
-                  detail: appointment ? formatDateTime(appointment.start) : undefined,
-                  state: appointment ? 'done' : 'todo',
-                },
-                {
-                  label: idealActionLabel.title || analysis.nextBestAction.label,
-                  detail: project.leadStatus === 'archived' ? 'Dossier archivé' : analysis.recommendation,
-                  state: project.leadStatus === 'archived' || analysis.nextBestAction.type === 'wait' ? 'todo' : 'current',
-                },
-                {
-                  label: 'Devis',
-                  detail: devisDone ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer',
-                  state: devisDone ? (latestDevis.accepted ? 'done' : 'current') : 'todo',
-                },
-                { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
-                { label: 'Facturation', detail: 'Bientôt disponible', state: 'future' },
-                { label: "Demande d'avis Google", detail: 'Bientôt disponible', state: 'future' },
-              ];
-              return steps.map((step, i) => {
-                const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
-                const color = step.state === 'done'
-                  ? 'var(--accent)'
-                  : step.state === 'current'
-                    ? 'var(--text-1)'
-                    : step.state === 'future'
-                      ? 'var(--text-3)'
-                      : 'var(--text-2)';
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', opacity: step.state === 'future' ? 0.55 : 1 }}>
-                    <span style={{ color, fontSize: '13px', fontWeight: 700, width: '16px', flexShrink: 0 }}>{icon}</span>
-                    <div>
-                      <p style={{ color: step.state === 'current' ? 'var(--text-1)' : color, fontSize: '13px', fontWeight: step.state === 'current' ? 700 : 600, margin: 0 }}>
-                        {step.label}
-                      </p>
-                      {step.detail && (
-                        <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '2px 0 0' }}>
-                          {step.detail}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              });
-            })()}
           </div>
         </div>
 
@@ -2230,6 +2196,136 @@ function ProjectDetail() {
             </div>
           )}
         </div>
+
+        {/* Mode Expert — orchestrateur pur, lit les sorties déjà calculées ci-dessus
+            (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,
+            Suggestions devis) sans rien recalculer (src/lib/expert-project.ts).
+            Replié par défaut pour laisser plus de place à l'Analyse Kadria. */}
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
+          <button
+            type="button"
+            onClick={() => setExpertExpanded((v) => !v)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>
+                Mode Expert
+              </p>
+              {!expertExpanded && (
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
+                  Devis prêt à {expertView.quote.percent}% · {expertView.summary.nextBestAction.title}
+                </p>
+              )}
+            </div>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0, marginLeft: '12px' }}>
+              {expertExpanded ? 'Réduire' : 'Afficher le mode expert'}
+            </span>
+          </button>
+          {expertExpanded && (
+            <div style={{ padding: '0 16px 16px' }}>
+              {isMobile ? (
+                <ExpertModeAccordionMobile view={expertView} />
+              ) : (
+                <ExpertModeCardDesktop view={expertView} />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Timeline intelligente — uniquement des étapes appuyées sur des données réelles du dossier.
+            Repliée par défaut pour laisser plus de place à l'Analyse Kadria. */}
+        {(() => {
+          const qualificationDone = !!(project.completenessScore || project.aiSummary);
+          const devisDone = !!latestDevis;
+          const steps: Array<{ label: string; detail?: string; state: 'done' | 'current' | 'todo' | 'future' }> = [
+            { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
+            { label: 'Qualification IA', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
+            {
+              label: 'Rendez-vous',
+              detail: appointment ? formatDateTime(appointment.start) : undefined,
+              state: appointment ? 'done' : 'todo',
+            },
+            {
+              label: idealActionLabel.title || analysis.nextBestAction.label,
+              detail: project.leadStatus === 'archived' ? 'Dossier archivé' : analysis.recommendation,
+              state: project.leadStatus === 'archived' || analysis.nextBestAction.type === 'wait' ? 'todo' : 'current',
+            },
+            {
+              label: 'Devis',
+              detail: devisDone ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer',
+              state: devisDone ? (latestDevis.accepted ? 'done' : 'current') : 'todo',
+            },
+            { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
+            { label: 'Facturation', detail: 'Bientôt disponible', state: 'future' },
+            { label: "Demande d'avis Google", detail: 'Bientôt disponible', state: 'future' },
+          ];
+          const currentStep = steps.find((s) => s.state === 'current');
+          return (
+            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
+              <button
+                type="button"
+                onClick={() => setParcoursExpanded((v) => !v)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p style={{
+                    color: 'var(--text-3)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    margin: '0 0 2px',
+                  }}>
+                    Parcours du dossier
+                  </p>
+                  {!parcoursExpanded && (
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
+                      Étape en cours : {currentStep ? currentStep.label : 'Dossier archivé / en attente'}
+                    </p>
+                  )}
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0, marginLeft: '12px' }}>
+                  {parcoursExpanded ? 'Réduire' : 'Développer'}
+                </span>
+              </button>
+              {parcoursExpanded && (
+                <div style={{ padding: isMobile ? '0 16px 16px' : '0 20px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {steps.map((step, i) => {
+                    const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
+                    const color = step.state === 'done'
+                      ? 'var(--accent)'
+                      : step.state === 'current'
+                        ? 'var(--text-1)'
+                        : step.state === 'future'
+                          ? 'var(--text-3)'
+                          : 'var(--text-2)';
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', opacity: step.state === 'future' ? 0.55 : 1 }}>
+                        <span style={{ color, fontSize: '13px', fontWeight: 700, width: '16px', flexShrink: 0 }}>{icon}</span>
+                        <div>
+                          <p style={{ color: step.state === 'current' ? 'var(--text-1)' : color, fontSize: '13px', fontWeight: step.state === 'current' ? 700 : 600, margin: 0 }}>
+                            {step.label}
+                          </p>
+                          {step.detail && (
+                            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '2px 0 0' }}>
+                              {step.detail}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Frais de déplacement estimés — plan Performance et supérieur */}
         <div style={{
