@@ -682,7 +682,10 @@ function NewDevis() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-4" style={isMobile ? { padding: '12px' } : undefined}>
+      <main
+        className="mx-auto max-w-5xl px-6 py-8 space-y-4"
+        style={isMobile ? { padding: '12px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' } : undefined}
+      >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
@@ -1208,29 +1211,32 @@ function NewDevis() {
         {/* Section 7 — Barre d'action sticky */}
         <div style={{
           position: 'sticky',
-          bottom: '12px',
+          bottom: isMobile ? 'max(12px, env(safe-area-inset-bottom, 0px))' : '12px',
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
-          padding: '12px 16px',
+          padding: isMobile ? '16px' : '12px 16px',
           display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: isMobile ? 'stretch' : 'center',
           flexWrap: 'wrap',
-          gap: '12px',
+          gap: isMobile ? '14px' : '12px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          marginTop: isMobile ? '12px' : 0,
+          zIndex: isMobile ? 5 : 'auto',
         }}>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent)' }}>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent)', width: isMobile ? '100%' : 'auto' }}>
             Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
             <button
               onClick={() => handleSubmit('draft')}
               disabled={isSubmitting}
               style={{
                 background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-1)',
+                border: '1px solid rgba(34,197,94,0.4)',
+                color: 'var(--accent)',
                 fontWeight: 600,
                 borderRadius: '12px',
                 padding: '12px 24px',
@@ -1240,10 +1246,13 @@ function NewDevis() {
                 transition: 'border-color 150ms',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
+                width: isMobile ? '100%' : 'auto',
+                minHeight: '48px',
               }}
-              onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+              onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.borderColor = 'rgba(34,197,94,0.65)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)'; }}
             >
               {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'draft' && <Loader2 className="animate-spin" size={14} />}
@@ -1265,7 +1274,10 @@ function NewDevis() {
                 transition: 'opacity 150ms',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '8px',
+                width: isMobile ? '100%' : 'auto',
+                minHeight: '48px',
               }}
               onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.opacity = '0.9'; }}
               onMouseLeave={(e) => { if (!isSubmitting) e.currentTarget.style.opacity = '1'; }}
