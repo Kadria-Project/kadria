@@ -21,6 +21,7 @@ interface Props {
   inline?: boolean
   fullPage?: boolean
   fitParentHeight?: boolean
+  projectExperience?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ export default function ChatWidgetInline({
   inline = true,
   fullPage = false,
   fitParentHeight = false,
+  projectExperience = false,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -364,6 +366,14 @@ export default function ChatWidgetInline({
   // ── Step indicator ────────────────────────────────────────────────────────
   const step = score < 40 ? 1 : score < 70 ? 2 : score < 90 ? 3 : 4
   const stepLabel = ['', 'Projet', 'Détails', 'Coordonnées', 'Validation'][step]
+  const isProjectExperience = fullPage && projectExperience
+  const visualStep = showContactForm || readyToSave || saved
+    ? 4
+    : isPhotoMode || photos.length > 0
+      ? 3
+      : step >= 2
+        ? 2
+        : 1
 
   // ── Welcome screen ────────────────────────────────────────────────────────
   const WELCOME_OPTIONS = [
@@ -371,12 +381,29 @@ export default function ChatWidgetInline({
     'Réparation / Dépannage', 'Entretien',
     'Intervention urgente', 'Je ne sais pas encore',
   ]
+  const WELCOME_OPTION_DETAILS: Record<string, { icon: string; description: string }> = {
+    'Nouveau projet': { icon: 'Sparkles', description: 'Créer ou installer quelque chose de nouveau' },
+    'Travaux d\'amélioration': { icon: 'Layers', description: 'Moderniser, optimiser ou faire évoluer un existant' },
+    'Réparation / Dépannage': { icon: 'Wrench', description: 'Résoudre un problème existant' },
+    'Entretien': { icon: 'ShieldCheck', description: 'Entretenir pour prévenir les pannes et l usure' },
+    'Intervention urgente': { icon: 'Zap', description: 'Besoin rapide ou situation bloquante' },
+    'Je ne sais pas encore': { icon: 'Compass', description: 'Kadria vous aide à clarifier votre besoin' },
+  }
 
   // ── Container styles ──────────────────────────────────────────────────────
   const containerStyle: React.CSSProperties = fullPage ? {
-    width: '100%', height: '100dvh', borderRadius: '0',
-    border: 'none', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
+    width: '100%',
+    height: '100%',
+    borderRadius: isProjectExperience ? '28px' : '0',
+    border: isProjectExperience ? '1px solid rgba(255,255,255,0.08)' : 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    background: isProjectExperience
+      ? 'linear-gradient(180deg, rgba(24,24,27,0.98) 0%, rgba(9,9,11,0.98) 100%)'
+      : secondaryColorLocal,
+    boxShadow: isProjectExperience ? '0 28px 80px rgba(0,0,0,0.36)' : 'none',
+    fontFamily: 'system-ui, sans-serif',
   } : {
     width: '100%', height: fitParentHeight ? '100%' : '600px', borderRadius: '16px',
     border: '1px solid #27272a', display: 'flex', flexDirection: 'column',
@@ -385,7 +412,10 @@ export default function ChatWidgetInline({
 
   // ── Centered wrapper for full-page mode ──────────────────────────────────
   const centerStyle: React.CSSProperties = fullPage ? {
-    maxWidth: '760px', width: '100%', margin: '0 auto', padding: '0 24px',
+    maxWidth: isProjectExperience ? '920px' : '760px',
+    width: '100%',
+    margin: '0 auto',
+    padding: isProjectExperience ? '0 20px' : '0 24px',
   } : {}
 
   return (
@@ -395,53 +425,171 @@ export default function ChatWidgetInline({
 
         {/* Header */}
         <div style={{
-          background: secondaryColorLocal, borderBottom: '1px solid #27272a',
-          padding: '12px 16px', display: 'flex',
-          alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+          background: isProjectExperience ? 'linear-gradient(180deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 100%)' : secondaryColorLocal,
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          padding: isProjectExperience ? '18px 20px 16px' : '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: primaryColorLocal, display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: '16px', color: 'black',
-            }}>K</div>
-            <div>
-              <p style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '14px' }}>{widgetName}</p>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '12px' }}>Assistant en ligne</p>
+          <div style={{ ...centerStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              <div style={{
+                width: isProjectExperience ? '44px' : '36px',
+                height: isProjectExperience ? '44px' : '36px',
+                borderRadius: isProjectExperience ? '14px' : '50%',
+                background: isProjectExperience ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)` : primaryColorLocal,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: isProjectExperience ? '18px' : '16px',
+                color: '#04110a',
+                boxShadow: isProjectExperience ? '0 12px 28px rgba(34,197,94,0.18)' : 'none',
+                flexShrink: 0,
+              }}>K</div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14px' }}>{widgetName}</p>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: isProjectExperience ? '12.5px' : '12px' }}>
+                  {isProjectExperience ? 'Assistant de qualification guide' : 'Assistant en ligne'}
+                </p>
+              </div>
             </div>
+            {isProjectExperience && (
+              <div style={{
+                border: '1px solid rgba(34,197,94,0.2)',
+                background: 'rgba(34,197,94,0.08)',
+                color: '#dcfce7',
+                borderRadius: '999px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}>
+                Quelques questions · Transmission directe
+              </div>
+            )}
           </div>
         </div>
 
         {/* Progress bar */}
         <div style={{
-          padding: '8px 16px', background: '#09090b',
-          borderBottom: '1px solid #27272a', flexShrink: 0,
+          padding: isProjectExperience ? '16px 20px 18px' : '8px 16px',
+          background: isProjectExperience ? 'rgba(9,9,11,0.68)' : '#09090b',
+          borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
         }}>
           <div style={centerStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Votre projet</span>
-              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Étape {step} sur 4 — {stepLabel}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: isProjectExperience ? '12px' : '5px', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: isProjectExperience ? '#d4d4d8' : '#a1a1aa', fontWeight: isProjectExperience ? 600 : 400 }}>
+                {isProjectExperience ? 'Parcours de qualification' : 'Votre projet'}
+              </span>
+              <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: '#a1a1aa' }}>
+                Étape {isProjectExperience ? visualStep : step} sur 4{isProjectExperience ? '' : ` — ${stepLabel}`}
+              </span>
             </div>
-            <div style={{ height: '3px', background: '#27272a', borderRadius: '2px' }}>
+            <div style={{ height: isProjectExperience ? '6px' : '3px', background: isProjectExperience ? 'rgba(255,255,255,0.08)' : '#27272a', borderRadius: '999px', overflow: 'hidden' }}>
               <div style={{
-                height: '100%', width: `${step * 25}%`,
-                background: primaryColorLocal, borderRadius: '2px',
+                height: '100%', width: `${(isProjectExperience ? visualStep : step) * 25}%`,
+                background: isProjectExperience ? `linear-gradient(90deg, ${primaryColorLocal} 0%, #86efac 100%)` : primaryColorLocal, borderRadius: '999px',
                 transition: 'width 0.5s ease',
               }} />
             </div>
+            {isProjectExperience && (
+              <div className="project-step-grid" style={{ marginTop: '14px' }}>
+                {[
+                  { label: 'Projet', hint: 'Nature du besoin' },
+                  { label: 'Détails', hint: 'Contexte et attentes' },
+                  { label: 'Photos', hint: 'Visuels utiles' },
+                  { label: 'Coordonnées', hint: 'Transmission finale' },
+                ].map((item, index) => {
+                  const isActive = index + 1 === visualStep
+                  const isDone = index + 1 < visualStep
+                  return (
+                    <div
+                      key={item.label}
+                      style={{
+                        border: `1px solid ${isActive || isDone ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.06)'}`,
+                        background: isActive ? 'rgba(34,197,94,0.10)' : 'rgba(255,255,255,0.02)',
+                        borderRadius: '16px',
+                        padding: '12px 14px',
+                        minWidth: 0,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                        <div style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '999px',
+                          background: isActive || isDone ? primaryColorLocal : 'rgba(255,255,255,0.08)',
+                          color: isActive || isDone ? '#04110a' : '#a1a1aa',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}>
+                          {isDone ? '✓' : index + 1}
+                        </div>
+                        <span style={{ color: 'white', fontSize: '13px', fontWeight: 600 }}>{item.label}</span>
+                      </div>
+                      <p style={{ margin: 0, color: '#71717a', fontSize: '11px', lineHeight: 1.5 }}>{item.hint}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Welcome screen */}
         {showWelcome ? (
-          <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: isProjectExperience ? '28px 0 32px' : '20px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{
-                background: '#18181b', border: '1px solid #27272a',
-                borderRadius: '12px', padding: '16px', marginBottom: '16px',
+                background: isProjectExperience ? 'linear-gradient(180deg, rgba(24,24,27,0.95) 0%, rgba(15,23,18,0.92) 100%)' : '#18181b',
+                border: `1px solid ${isProjectExperience ? 'rgba(34,197,94,0.14)' : '#27272a'}`,
+                borderRadius: isProjectExperience ? '24px' : '12px',
+                padding: isProjectExperience ? '24px' : '16px',
+                marginBottom: '18px',
+                boxShadow: isProjectExperience ? '0 18px 48px rgba(0,0,0,0.24)' : 'none',
               }}>
-                {customWelcomeMessage ? (
+                {isProjectExperience ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
+                      <div style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '18px',
+                        background: 'rgba(34,197,94,0.12)',
+                        border: '1px solid rgba(34,197,94,0.25)',
+                        color: '#86efac',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '24px',
+                        flexShrink: 0,
+                      }}>
+                        ✦
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 4px', color: '#dcfce7', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                          Assistant projet Kadria
+                        </p>
+                        <h2 style={{ margin: 0, color: 'white', fontSize: '28px', lineHeight: 1.15, fontWeight: 700 }}>
+                          Décrivez votre projet
+                        </h2>
+                      </div>
+                    </div>
+                    <p style={{ margin: '0 0 10px', color: '#e4e4e7', fontSize: '15px', lineHeight: 1.7 }}>
+                      {customWelcomeMessage || 'Kadria vous guide pour transmettre une demande claire, complète et exploitable à l artisan.'}
+                    </p>
+                    <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.7 }}>
+                      Quelques questions · Pas de compte requis · Transmission directe
+                    </p>
+                  </>
+                ) : customWelcomeMessage ? (
                   <p style={{ margin: 0, color: 'white', fontSize: '15px', fontWeight: 500 }}>
                     {customWelcomeMessage}
                   </p>
@@ -456,18 +604,58 @@ export default function ChatWidgetInline({
                   </>
                 )}
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className={isProjectExperience ? 'project-choice-grid' : ''} style={!isProjectExperience ? { display: 'flex', flexWrap: 'wrap', gap: '8px' } : undefined}>
                 {WELCOME_OPTIONS.map(opt => (
-                  <button key={opt} onClick={() => {
-                    setShowWelcome(false)
-                    fetchOpener().then(() => sendMessage(opt))
-                  }}
-                    style={{
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      setShowWelcome(false)
+                      fetchOpener().then(() => sendMessage(opt))
+                    }}
+                    className={isProjectExperience ? 'project-choice-card' : ''}
+                    style={isProjectExperience ? {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: 'white',
+                      borderRadius: '22px',
+                      padding: '18px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      minHeight: '132px',
+                      transition: 'transform 0.18s ease, border-color 0.18s ease, background 0.18s ease',
+                    } : {
                       background: '#18181b', border: '1px solid #27272a',
                       color: 'white', borderRadius: '8px',
                       padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
                     }}>
-                    {opt}
+                    {isProjectExperience ? (
+                      <>
+                        <div style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '14px',
+                          background: 'rgba(34,197,94,0.08)',
+                          border: '1px solid rgba(34,197,94,0.18)',
+                          color: '#86efac',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                        }}>
+                          {WELCOME_OPTION_DETAILS[opt]?.icon || 'K'}
+                        </div>
+                        <div>
+                          <div style={{ color: 'white', fontSize: '16px', fontWeight: 650, marginBottom: '6px' }}>{opt}</div>
+                          <div style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
+                            {WELCOME_OPTION_DETAILS[opt]?.description}
+                          </div>
+                        </div>
+                      </>
+                    ) : opt}
                   </button>
                 ))}
               </div>
@@ -477,7 +665,7 @@ export default function ChatWidgetInline({
           <>
             {/* Messages */}
             <div ref={scrollRef} style={{
-              flex: 1, overflowY: 'auto', padding: fullPage ? '12px 16px' : '16px',
+              flex: 1, overflowY: 'auto', padding: fullPage ? (isProjectExperience ? '20px 0 12px' : '12px 16px') : '16px',
               display: 'flex', flexDirection: 'column',
             }}>
               <div className="chat-messages-container" style={{
@@ -490,11 +678,12 @@ export default function ChatWidgetInline({
                   justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 }}>
                   <div style={{
-                    maxWidth: '78%', padding: '10px 14px',
-                    borderRadius: msg.role === 'user' ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                    maxWidth: isProjectExperience ? '82%' : '78%', padding: isProjectExperience ? '12px 15px' : '10px 14px',
+                    borderRadius: msg.role === 'user' ? '16px 6px 16px 16px' : '6px 16px 16px 16px',
                     background: msg.role === 'user' ? primaryColorLocal : '#27272a',
                     color: msg.role === 'user' ? 'black' : 'white',
-                    fontSize: '13.5px', lineHeight: '1.6',
+                    fontSize: isProjectExperience ? '14px' : '13.5px', lineHeight: '1.7',
+                    boxShadow: isProjectExperience ? '0 10px 24px rgba(0,0,0,0.14)' : 'none',
                   }}>
                     {msg.role === 'assistant' ? (
                       <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
@@ -634,8 +823,8 @@ export default function ChatWidgetInline({
             {/* Contact form */}
             {showContactForm && !saved && (
               <div style={centerStyle}>
-                <div style={{
-                  ...(fullPage ? { padding: '0 24px' } : { padding: '0 12px' }),
+              <div style={{
+                  ...(fullPage ? { padding: isProjectExperience ? '0 20px' : '0 24px' } : { padding: '0 12px' }),
                 }}>
                   <div style={{
                     background: '#18181b',
@@ -747,7 +936,7 @@ export default function ChatWidgetInline({
               }}>
                 <div style={{
                   ...centerStyle,
-                  ...(fullPage ? { padding: '0 24px' } : {}),
+                  ...(fullPage ? { padding: isProjectExperience ? '0 20px' : '0 24px' } : {}),
                   display: 'flex', flexWrap: 'wrap', gap: '8px', paddingBottom: '10px',
                 }}>
                   {photos.map((photo, i) => (
@@ -806,12 +995,12 @@ export default function ChatWidgetInline({
             {!saved && !showContactForm && (
               <div className="chat-input-container" style={{
                 padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
-                flexShrink: 0, background: '#09090b',
+                flexShrink: 0, background: isProjectExperience ? 'rgba(9,9,11,0.86)' : '#09090b',
                 position: 'relative',
               }}>
                 <div style={{
                   ...centerStyle,
-                  ...(fullPage ? { padding: '0 24px 24px' } : {}),
+                  ...(fullPage ? { padding: isProjectExperience ? '0 20px calc(20px + env(safe-area-inset-bottom, 0px))' : '0 24px 24px' } : {}),
                   display: 'flex', gap: '8px',
                 }}>
                   <input
@@ -823,8 +1012,8 @@ export default function ChatWidgetInline({
                     placeholder={isAddressMode ? "Tapez votre adresse..." : "Écrivez votre message..."}
                     disabled={loading}
                     style={{
-                      flex: 1, background: '#18181b', border: '1px solid #3f3f46',
-                      borderRadius: '8px',
+                      flex: 1, background: '#18181b', border: `1px solid ${isProjectExperience ? 'rgba(255,255,255,0.1)' : '#3f3f46'}`,
+                      borderRadius: isProjectExperience ? '14px' : '8px',
                       padding: fullPage ? '14px 16px' : '8px 12px',
                       color: 'white', fontSize: fullPage ? '16px' : '13.5px', outline: 'none',
                     }}
@@ -843,7 +1032,7 @@ export default function ChatWidgetInline({
                   {isPhotoMode && !photosAnswered && (
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhotos}
                       style={{
-                        width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #3f3f46',
+                        width: '42px', height: '42px', borderRadius: isProjectExperience ? '14px' : '8px', border: '1px solid #3f3f46',
                         background: '#18181b', color: 'white',
                         cursor: uploadingPhotos ? 'default' : 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -854,7 +1043,7 @@ export default function ChatWidgetInline({
                   )}
                   <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
                     style={{
-                      width: '38px', height: '38px', borderRadius: '8px', border: 'none',
+                       width: '42px', height: '42px', borderRadius: isProjectExperience ? '14px' : '8px', border: 'none',
                       background: loading || !input.trim() ? '#27272a' : primaryColorLocal,
                       color: loading || !input.trim() ? '#71717a' : 'black',
                       cursor: loading || !input.trim() ? 'default' : 'pointer',
@@ -1006,7 +1195,26 @@ export default function ChatWidgetInline({
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-5px); }
         }
+        .project-step-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .project-choice-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .project-choice-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(34,197,94,0.28) !important;
+          background: linear-gradient(180deg, rgba(34,197,94,0.10) 0%, rgba(255,255,255,0.03) 100%) !important;
+        }
         @media (max-width: 640px) {
+          .project-step-grid,
+          .project-choice-grid {
+            grid-template-columns: 1fr;
+          }
           .chat-messages-container {
             max-width: 100% !important;
             padding: 0 12px !important;
