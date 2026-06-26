@@ -775,18 +775,6 @@ export default function ProfilMetierPage() {
           </div>
         </div>
         <button
-          onClick={() => setShowWizard(true)}
-          className="shrink-0"
-          style={{
-            background: 'var(--bg-hover)', border: '1px solid var(--border)',
-            color: 'var(--text-1)', fontWeight: 700, borderRadius: '10px',
-            padding: isMobile ? '9px 12px' : '10px 18px', fontSize: '14px',
-            cursor: 'pointer', whiteSpace: 'nowrap', marginRight: '8px',
-          }}
-        >
-          {isMobile ? '🛠️ Métier' : '🛠️ Configurer mon métier'}
-        </button>
-        <button
           onClick={save}
           disabled={saving}
           className="shrink-0"
