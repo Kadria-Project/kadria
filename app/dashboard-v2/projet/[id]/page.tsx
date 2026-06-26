@@ -26,7 +26,8 @@ import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendat
 import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { getQuoteFollowupState } from '@/src/lib/quote-followup';
 import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionType } from '@/src/lib/project-scoring';
-import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate } from '@/src/lib/quote-suggestions';
+import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate, type QuoteSuggestionLine } from '@/src/lib/quote-suggestions';
+import { matchProjectToServices, type ServiceMatcherBusinessProfile, type ServiceMatcherServiceProfile, type ServiceMatchResult } from '@/src/lib/service-matcher';
 import { computeNextAction } from '@/src/lib/action-engine';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -242,6 +243,8 @@ function ProjectDetail() {
       quoteTemplates?: ArtisanQuoteTemplate[];
     };
   } | null>(null);
+  const [businessProfile, setBusinessProfile] = useState<ServiceMatcherBusinessProfile | null>(null);
+  const [serviceProfiles, setServiceProfiles] = useState<ServiceMatcherServiceProfile[]>([]);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
   const [followUpToast, setFollowUpToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -330,6 +333,25 @@ function ProjectDetail() {
       .then((r) => r.json())
       .then((data) => {
         if (data.success) setArtisanConfig(data.config);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Référentiel métier (profil métier + profils de prestations) : utilisé
+  // uniquement pour enrichir les suggestions de lignes de devis ci-dessous,
+  // jamais pour le chat, le vocal ou l'Action Engine à ce stade.
+  useEffect(() => {
+    fetch('/api/artisan/business-profile')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setBusinessProfile(data.profile || null);
+      })
+      .catch(() => {});
+
+    fetch('/api/artisan/service-profiles')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setServiceProfiles(data.profiles || []);
       })
       .catch(() => {});
   }, []);
@@ -789,6 +811,58 @@ function ProjectDetail() {
     businessConfig: quoteSuggestionBusinessConfig,
   });
 
+  // Référentiel métier (profil métier + profils de prestations) : suggestions
+  // explicables, prioritaires sur les suggestions génériques. Si aucun
+  // service ne correspond, ce tableau est vide et le comportement existant
+  // (moteur générique seul) est inchangé — aucune régression.
+  const serviceMatches: ServiceMatchResult[] = matchProjectToServices(
+    {
+      trade: project.trade,
+      projectType: project.projectType,
+      aiSummary: project.aiSummary,
+      description: project.description,
+      budget: project.budget,
+      photosCount: project.photos?.length || 0,
+    },
+    businessProfile,
+    serviceProfiles,
+  );
+
+  type ReferentialSuggestionLine = QuoteSuggestionLine & {
+    fromReferential?: boolean;
+    referentialConfidence?: number;
+    referentialReasons?: string[];
+    referentialCategory?: string | null;
+  };
+
+  const referentialSuggestions: ReferentialSuggestionLine[] = [];
+  const HIGH_CONFIDENCE_THRESHOLD = 70;
+  serviceMatches.forEach((match) => {
+    const recommendedLines = match.recommendedQuoteLines as Array<{ label?: string; unitPriceHT?: number | null; vatRate?: number | null }>;
+    const baseLabel = match.serviceProfile.name;
+    const linesToAdd = recommendedLines.length > 0
+      ? recommendedLines.filter((l) => l.label && l.label.trim())
+      : [{ label: baseLabel, unitPriceHT: null, vatRate: match.vatRate }];
+
+    linesToAdd.forEach((line) => {
+      referentialSuggestions.push({
+        label: line.label || baseLabel,
+        reason: match.reasons.join(' · '),
+        source: 'project',
+        suggestedAmount: typeof line.unitPriceHT === 'number' ? line.unitPriceHT : undefined,
+        vatRate: typeof line.vatRate === 'number' ? line.vatRate : match.vatRate ?? undefined,
+        confidence: match.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'high' : match.confidence >= 40 ? 'medium' : 'low',
+        fromReferential: true,
+        referentialConfidence: match.confidence,
+        referentialReasons: match.reasons,
+        referentialCategory: match.serviceProfile.category ?? null,
+      });
+    });
+  });
+
+  // Référentiel métier en premier, suggestions génériques en fallback.
+  const allSuggestions: ReferentialSuggestionLine[] = [...referentialSuggestions, ...quoteSuggestions];
+
   function getSuggestionCategory(line: { label: string; source: string }): string {
     const text = line.label.toLowerCase();
     if (text.includes('déplacement')) return 'Déplacement';
@@ -801,12 +875,12 @@ function ProjectDetail() {
     return 'Autres';
   }
 
-  const filteredQuoteSuggestions = quoteSuggestions.filter((line) =>
+  const filteredQuoteSuggestions = allSuggestions.filter((line) =>
     line.label.toLowerCase().includes(suggestionSearch.trim().toLowerCase())
   );
-  const quoteSuggestionCategories: { name: string; lines: typeof quoteSuggestions }[] = [];
+  const quoteSuggestionCategories: { name: string; lines: typeof allSuggestions }[] = [];
   filteredQuoteSuggestions.forEach((line) => {
-    const category = getSuggestionCategory(line);
+    const category = (line as ReferentialSuggestionLine).fromReferential ? 'Référentiel métier' : getSuggestionCategory(line);
     let group = quoteSuggestionCategories.find((g) => g.name === category);
     if (!group) {
       group = { name: category, lines: [] };
@@ -814,12 +888,28 @@ function ProjectDetail() {
     }
     group.lines.push(line);
   });
+  // Le groupe "Référentiel métier" apparaît toujours en premier.
+  quoteSuggestionCategories.sort((a, b) => {
+    if (a.name === 'Référentiel métier') return -1;
+    if (b.name === 'Référentiel métier') return 1;
+    return 0;
+  });
 
+  const highConfidenceReferentialSuggestions = referentialSuggestions.filter(
+    (l) => (l.referentialConfidence || 0) >= HIGH_CONFIDENCE_THRESHOLD,
+  );
   const highConfidenceSuggestions = quoteSuggestions.filter((l) => l.confidence === 'high');
   const mediumConfidenceSuggestions = quoteSuggestions.filter((l) => l.confidence === 'medium');
-  const recommendedSuggestions = highConfidenceSuggestions.length > 0
+  const fallbackRecommendedSuggestions = highConfidenceSuggestions.length > 0
     ? highConfidenceSuggestions
     : mediumConfidenceSuggestions;
+  // "Ajouter les recommandations" ne doit jamais ajouter automatiquement les
+  // suggestions génériques : si le référentiel a au moins une correspondance
+  // à confiance élevée, on n'ajoute que celles-ci ; sinon on retombe sur le
+  // comportement générique existant (aucune régression).
+  const recommendedSuggestions = highConfidenceReferentialSuggestions.length > 0
+    ? highConfidenceReferentialSuggestions
+    : fallbackRecommendedSuggestions;
 
   function getConfidenceBadge(confidence?: 'high' | 'medium' | 'low'): { icon: string; label: string } {
     if (confidence === 'high') return { icon: '🟢', label: 'Confiance élevée' };
@@ -2809,7 +2899,7 @@ function ProjectDetail() {
                   )}
                 </div>
 
-                {quoteSuggestions.length > 0 && (
+                {allSuggestions.length > 0 && (
                   <div style={{
                     borderTop: '1px solid var(--border)',
                     marginTop: '12px',
@@ -2995,6 +3085,23 @@ function ProjectDetail() {
                                             <span style={{ color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                               {line.label}
                                             </span>
+                                            {(line as ReferentialSuggestionLine).fromReferential && (
+                                              <span
+                                                title={((line as ReferentialSuggestionLine).referentialReasons || []).join(' · ')}
+                                                style={{
+                                                  fontSize: '10px',
+                                                  fontWeight: 600,
+                                                  color: 'var(--accent)',
+                                                  border: '1px solid var(--accent)',
+                                                  borderRadius: '999px',
+                                                  padding: '1px 6px',
+                                                  flexShrink: 0,
+                                                  whiteSpace: 'nowrap',
+                                                }}
+                                              >
+                                                Référentiel métier · {(line as ReferentialSuggestionLine).referentialConfidence}%
+                                              </span>
+                                            )}
                                             <span style={{
                                               fontSize: '10px',
                                               color: 'var(--text-3)',
@@ -3032,8 +3139,8 @@ function ProjectDetail() {
                             }
                             if (!legalComplete) return;
                             const linesToUse = selectedSuggestionLabels.size > 0
-                              ? quoteSuggestions.filter((l) => selectedSuggestionLabels.has(l.label))
-                              : quoteSuggestions;
+                              ? allSuggestions.filter((l) => selectedSuggestionLabels.has(l.label))
+                              : allSuggestions;
                             try {
                               sessionStorage.setItem(
                                 getQuoteDraftStorageKey(id as string),
