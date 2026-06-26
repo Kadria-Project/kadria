@@ -71,6 +71,8 @@ export interface ActionEngineProjectInput {
     declined?: boolean
     sentAt?: string | null
   } | null
+  createdAt?: string | null
+  lastFollowUpAt?: string | null
 }
 
 function hasText(value: string | undefined | null): boolean {
@@ -370,4 +372,68 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
     priority: 'low',
     urgency: 'none',
   })
+}
+
+export type ProjectHealthColor = 'green' | 'yellow' | 'red'
+
+export interface ProjectHealth {
+  healthScore: number
+  healthLabel: string
+  healthColor: ProjectHealthColor
+}
+
+// computeProjectHealth(project, now?) : score de sante (0-100) additif et
+// explicable, base uniquement sur des signaux reellement disponibles
+// (qualification, photos, budget, coordonnees, devis, activite recente,
+// rendez-vous, anciennete). Ne remplace pas maturityScore (oriente "action a
+// faire") : la sante regarde plutot "ce dossier avance-t-il bien ?".
+export function computeProjectHealth(project: ActionEngineProjectInput, now: Date = new Date()): ProjectHealth {
+  const hasContact = hasText(project.clientPhone) || hasText(project.clientEmail)
+  const hasLocation = hasText(project.city) || hasText(project.siteAddress)
+  const hasProjectType = hasText(project.projectType) || hasText(project.trade)
+  const hasNeedDescribed =
+    hasText(project.aiSummary) ||
+    hasText(project.description) ||
+    hasText(project.details) ||
+    hasTradeAnswers(project.tradeAnswers) ||
+    hasProjectType
+  const budgetKnown = hasText(project.budget) && !isVague(project.budget)
+  const hasPhotos = !!(project.photos && project.photos.length > 0)
+  const hasAppointment = !!project.appointment
+  const qualificationComplete = hasContact && hasNeedDescribed && hasLocation
+
+  const devis = project.latestDevis || null
+  const devisExists = !!devis
+  const devisSent = !!devis?.sent
+  const devisAccepted = !!devis?.accepted
+
+  const ageDays = daysSince(project.createdAt, now)
+  const recentActivityDays = daysSince(project.lastFollowUpAt, now)
+
+  let score = 0
+  if (qualificationComplete) score += 20
+  if (hasContact) score += 10
+  if (hasPhotos) score += 10
+  if (budgetKnown) score += 15
+  if (devisAccepted) score += 15
+  else if (devisSent) score += 10
+  else if (devisExists) score += 5
+  if (hasAppointment) score += 10
+  // Activite recente : si l'info est absente, on ne penalise pas un dossier
+  // jeune (cree il y a peu) faute de signal de relance encore pertinent.
+  if (recentActivityDays !== null && recentActivityDays <= 14) score += 10
+  else if (recentActivityDays === null && ageDays !== null && ageDays <= 7) score += 10
+  if (ageDays === null || ageDays <= 30) score += 10
+  else if (ageDays <= 60) score += 5
+
+  score = clampScore(score)
+
+  const healthColor: ProjectHealthColor = score >= 70 ? 'green' : score >= 40 ? 'yellow' : 'red'
+  const healthLabel =
+    score >= 85 ? 'Très bonne santé'
+      : score >= 70 ? 'Bonne santé'
+        : score >= 40 ? 'À surveiller'
+          : 'Santé fragile'
+
+  return { healthScore: score, healthLabel, healthColor }
 }

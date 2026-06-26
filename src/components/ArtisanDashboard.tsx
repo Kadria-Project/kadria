@@ -63,6 +63,7 @@ import {
   type Task,
 } from '@/src/lib/commercial-actions';
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
+import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -135,6 +136,83 @@ type GetProjectsOutputType = {
 
 export type Project = GetProjectsOutputType['projects'][0];
 export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
+
+// Mappe un Project du dashboard vers l'input de l'Action Engine, en ne
+// reprenant que des champs reellement presents sur le projet (cf.
+// src/lib/action-engine.ts — "ne jamais inventer de donnees"). Aucun signal
+// absent du projet (ex: rendez-vous, tradeAnswers) n'est simule ici.
+function projectToActionEngineInput(p: Project): ActionEngineProjectInput {
+  const devisSent = Boolean(p.quoteSentAt) || p.status === 'Devis envoyé';
+  const devisAccepted = Boolean(p.acceptedAt) || p.status === 'Gagné';
+  const devisExists = devisSent || devisAccepted || Boolean(p.devisAmount);
+  return {
+    status: p.status,
+    clientName: p.clientName,
+    clientFirstName: p.clientFirstName,
+    clientPhone: p.clientPhone,
+    clientEmail: p.clientEmail,
+    trade: p.trade,
+    projectType: p.projectType,
+    aiSummary: p.aiSummary,
+    budget: p.budget,
+    desiredTimeline: p.desiredTimeline,
+    city: p.city,
+    siteAddress: p.siteAddress,
+    photos: p.photos,
+    completenessScore: p.completenessScore,
+    createdAt: p.createdAt,
+    lastFollowUpAt: p.lastFollowUpAt,
+    latestDevis: devisExists
+      ? {
+          sent: devisSent,
+          accepted: devisAccepted,
+          declined: p.status === 'Perdu',
+          sentAt: p.quoteSentAt || null,
+        }
+      : null,
+  };
+}
+
+const ACTION_PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+const ACTION_URGENCY_RANK: Record<string, number> = { overdue: 0, today: 1, soon: 2, none: 3 };
+const ACTION_IMPACT_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+const ACTION_TYPE_EMOJI: Record<ActionType, string> = {
+  complete_qualification: '🟡',
+  request_photos: '🟡',
+  schedule_appointment: '🟡',
+  send_quote: '🔴',
+  follow_up_quote: '🟠',
+  schedule_intervention: '🔴',
+  ask_review: '⚪',
+  monitor: '⚪',
+};
+
+const ACTION_TYPE_COUNTER_LABEL: Record<ActionType, string> = {
+  complete_qualification: 'Qualification à terminer',
+  request_photos: 'Photos à demander',
+  schedule_appointment: 'Rendez-vous à planifier',
+  send_quote: 'Devis à envoyer',
+  follow_up_quote: 'Relances',
+  schedule_intervention: 'Interventions à programmer',
+  ask_review: 'Avis clients à demander',
+  monitor: 'Surveillance',
+};
+
+function sortNextActions<T extends { action: NextAction }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const p = (ACTION_PRIORITY_RANK[a.action.priority] ?? 9) - (ACTION_PRIORITY_RANK[b.action.priority] ?? 9);
+    if (p !== 0) return p;
+    const u = (ACTION_URGENCY_RANK[a.action.urgency] ?? 9) - (ACTION_URGENCY_RANK[b.action.urgency] ?? 9);
+    if (u !== 0) return u;
+    return (ACTION_IMPACT_RANK[a.action.impact] ?? 9) - (ACTION_IMPACT_RANK[b.action.impact] ?? 9);
+  });
+}
+
+function parseDurationMinutes(duration: string): number {
+  const match = duration.match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -1300,6 +1378,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
+  const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | ActionType | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
@@ -1492,6 +1571,71 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     () => allProjects.filter((p) => p.leadStatus !== 'archived'),
     [allProjects],
   );
+
+  // Source de verite unique pour le pilotage du dashboard : chaque projet
+  // actif passe par computeNextAction / computeProjectHealth (Action Engine).
+  // Aucune regle metier propre n'est recalculee ici.
+  const actionEngineEntries = useMemo(
+    () =>
+      activeProjects
+        .filter((p) => p.status !== 'Perdu' && p.status !== 'Gagné')
+        .map((p) => {
+          const input = projectToActionEngineInput(p);
+          return { project: p, action: computeActionEngineNextAction(input), health: computeProjectHealth(input) };
+        }),
+    [activeProjects],
+  );
+
+  const sortedActionEngineEntries = useMemo(() => sortNextActions(actionEngineEntries), [actionEngineEntries]);
+
+  const filteredActionEngineEntries = useMemo(() => {
+    if (!actionEngineFilter) return sortedActionEngineEntries;
+    if (actionEngineFilter === 'critical') return sortedActionEngineEntries.filter((e) => e.action.priority === 'critical');
+    if (actionEngineFilter === 'today') return sortedActionEngineEntries.filter((e) => e.action.urgency === 'today' || e.action.urgency === 'overdue');
+    if (actionEngineFilter === 'week') return sortedActionEngineEntries.filter((e) => e.action.urgency !== 'none');
+    return sortedActionEngineEntries.filter((e) => e.action.actionType === actionEngineFilter);
+  }, [sortedActionEngineEntries, actionEngineFilter]);
+
+  const actionEngineCounters = useMemo(() => {
+    const counts: Record<ActionType, number> = {
+      complete_qualification: 0,
+      request_photos: 0,
+      schedule_appointment: 0,
+      send_quote: 0,
+      follow_up_quote: 0,
+      schedule_intervention: 0,
+      ask_review: 0,
+      monitor: 0,
+    };
+    actionEngineEntries.forEach(({ action }) => {
+      counts[action.actionType] += 1;
+    });
+    return counts;
+  }, [actionEngineEntries]);
+
+  const criticalActionsCount = actionEngineEntries.filter((e) => e.action.priority === 'critical').length;
+  const highActionsCount = actionEngineEntries.filter((e) => e.action.priority === 'high').length;
+  const averageMaturityScore = actionEngineEntries.length > 0
+    ? actionEngineEntries.reduce((sum, e) => sum + e.action.maturityScore, 0) / actionEngineEntries.length
+    : null;
+
+  const businessHealth: { label: string; color: string; emoji: string } = !actionEngineEntries.length
+    ? { label: 'Pas encore de donnees', color: 'var(--text-2)', emoji: '⚪' }
+    : criticalActionsCount > 0
+      ? { label: 'Actions urgentes', color: '#dc2626', emoji: '🔴' }
+      : highActionsCount >= 3 || (averageMaturityScore !== null && averageMaturityScore < 50)
+        ? { label: 'À surveiller', color: '#d97706', emoji: '🟡' }
+        : { label: 'En excellente santé', color: '#16a34a', emoji: '🟢' };
+
+  const todayActionTypes: ActionType[] = ['send_quote', 'follow_up_quote', 'schedule_appointment'];
+  const todayActionEntries = actionEngineEntries.filter((e) =>
+    todayActionTypes.includes(e.action.actionType) && (e.action.urgency === 'today' || e.action.urgency === 'overdue'),
+  );
+  const todayActionsByType = todayActionTypes.reduce((acc, type) => {
+    acc[type] = todayActionEntries.filter((e) => e.action.actionType === type).length;
+    return acc;
+  }, {} as Record<ActionType, number>);
+  const todayEstimatedMinutes = todayActionEntries.reduce((sum, e) => sum + parseDurationMinutes(e.action.estimatedDuration), 0);
 
   const todayCallbacks = activeProjects.filter((project) => {
     if (!project.callbackDate) return false;
@@ -2789,32 +2933,108 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showBusinessOverviewDesktop && !loading && priorityAction && (
-        <div className="mb-4">
-          <ImpactCard
-            variant="priority"
-            as="button"
-            onClick={() => router.push(`/dashboard-v2/projet/${priorityAction.projectId}`)}
-            className="flex w-full flex-col items-start gap-3 text-left sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <Bell className="h-4 w-4 shrink-0 text-[var(--impact-cta)]" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire du moment</p>
-                <p className="mt-1 truncate text-sm font-semibold text-[var(--impact-text)]">
-                  {priorityActionTitle} {priorityAction.context ? `— ${priorityAction.context}` : ''}
-                </p>
+      {showBusinessOverviewDesktop && !loading && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-bold text-[var(--text-1)]">Actions prioritaires</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { key: 'critical', label: 'Actions critiques' },
+                  { key: 'today', label: "Aujourd'hui" },
+                  { key: 'week', label: 'Cette semaine' },
+                  { key: 'follow_up_quote', label: 'Relances' },
+                  { key: 'send_quote', label: 'Devis' },
+                  { key: 'schedule_appointment', label: 'Rendez-vous' },
+                ] as const).map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setActionEngineFilter(actionEngineFilter === f.key ? null : f.key)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      actionEngineFilter === f.key
+                        ? 'border-green-500/40 bg-green-500/15 text-green-400'
+                        : 'border-[var(--border)] text-[var(--text-2)] hover:border-green-500/30'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
-              Voir le dossier <ChevronRight className="h-4 w-4" />
-            </span>
-          </ImpactCard>
-        </div>
-      )}
-      {showBusinessOverviewDesktop && !loading && !priorityAction && (
-        <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
-          <p className="text-sm text-[var(--text-2)]">Tout est à jour pour le moment.</p>
+            <div className="space-y-2">
+              {filteredActionEngineEntries.slice(0, 8).map(({ project, action }) => (
+                <button
+                  key={project.id}
+                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="text-lg shrink-0">{ACTION_TYPE_EMOJI[action.actionType]}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--text-1)]">{action.title}</p>
+                      <p className="truncate text-xs text-[var(--text-2)]">
+                        {[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-xs font-semibold text-[var(--text-2)]">{action.estimatedDuration}</span>
+                </button>
+              ))}
+              {filteredActionEngineEntries.length === 0 && (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+              <p className="font-bold text-[var(--text-1)]">Santé commerciale</p>
+              <p className="mt-2 flex items-center gap-2 text-lg font-bold" style={{ color: businessHealth.color }}>
+                <span>{businessHealth.emoji}</span> {businessHealth.label}
+              </p>
+              {averageMaturityScore !== null && (
+                <p className="mt-1 text-xs text-[var(--text-2)]">
+                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} action(s) critique(s) · {highActionsCount} action(s) prioritaire(s)
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+              <p className="font-bold text-[var(--text-1)]">Aujourd&apos;hui</p>
+              {todayActionEntries.length > 0 ? (
+                <>
+                  <ul className="mt-2 space-y-1 text-sm text-[var(--text-2)]">
+                    {todayActionsByType.send_quote > 0 && <li>Envoyer {todayActionsByType.send_quote} devis</li>}
+                    {todayActionsByType.follow_up_quote > 0 && <li>Relancer {todayActionsByType.follow_up_quote} client(s)</li>}
+                    {todayActionsByType.schedule_appointment > 0 && <li>Programmer {todayActionsByType.schedule_appointment} rendez-vous</li>}
+                  </ul>
+                  <p className="mt-2 text-xs text-[var(--text-3)]">Durée totale estimée : {todayEstimatedMinutes} minutes</p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--text-2)]">Rien d&apos;urgent identifié pour aujourd&apos;hui.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-3">
+            <p className="mb-3 font-bold text-[var(--text-1)]">Compteurs</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              {(Object.keys(ACTION_TYPE_COUNTER_LABEL) as ActionType[])
+                .filter((type) => type !== 'monitor')
+                .map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setActionEngineFilter(actionEngineFilter === type ? null : type)}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left hover:border-green-500/25"
+                  >
+                    <p className="text-xs text-[var(--text-2)]">{ACTION_TYPE_COUNTER_LABEL[type]}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{actionEngineCounters[type]}</p>
+                  </button>
+                ))}
+            </div>
+          </div>
         </div>
       )}
 
