@@ -111,11 +111,11 @@ export default function AdminHomePage() {
             <div style={{ ...kpiCard, borderTop: '3px solid #22c55e' }}>
               <p style={{ fontSize: '32px', fontWeight: 900, color: '#22c55e', margin: 0 }}>{formatEuro(stats.mrr)}/mois</p>
               <p style={{ fontSize: '13px', fontWeight: 600, margin: '8px 0 2px' }}>Revenu mensuel récurrent</p>
-              <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>{stats.actifs} clients actifs payants</p>
+              <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>{stats.actifs} artisans actifs payants</p>
             </div>
             <div style={{ ...kpiCard, borderTop: '3px solid #22c55e' }}>
               <p style={{ fontSize: '32px', fontWeight: 900, margin: 0 }}>{stats.actifs}</p>
-              <p style={{ fontSize: '13px', fontWeight: 600, margin: '8px 0 2px' }}>Clients actifs</p>
+              <p style={{ fontSize: '13px', fontWeight: 600, margin: '8px 0 2px' }}>Artisans actifs</p>
               <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>+{stats.nouveaux_ce_mois} ce mois</p>
             </div>
             <div style={{ ...kpiCard, borderTop: '3px solid #f59e0b' }}>
@@ -133,17 +133,17 @@ export default function AdminHomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }} className="admin-plan-grid">
             <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '20px' }}>
               <p style={{ fontSize: '12px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', fontWeight: 700 }}>Essentiel</p>
-              <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.essentiel} clients</p>
+              <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.essentiel} artisans</p>
               <p style={{ fontSize: '13px', color: '#a1a1aa', margin: '4px 0 0' }}>{formatEuro(stats.par_plan.essentiel * 149)}/mois</p>
             </div>
             <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '20px' }}>
               <p style={{ fontSize: '12px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', fontWeight: 700 }}>Performance</p>
-              <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.performance} clients</p>
+              <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.performance} artisans</p>
               <p style={{ fontSize: '13px', color: '#a1a1aa', margin: '4px 0 0' }}>{formatEuro(stats.par_plan.performance * 249)}/mois</p>
             </div>
             <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '20px' }}>
               <p style={{ fontSize: '12px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px', fontWeight: 700 }}>Agence</p>
-              <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.agence} clients</p>
+              <p style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>{stats.par_plan.agence} artisans</p>
               <p style={{ fontSize: '13px', color: '#a1a1aa', margin: '4px 0 0' }}>Sur devis</p>
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function AdminHomePage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #27272a' }}>
               <p style={{ fontWeight: 700, fontSize: '15px', margin: 0 }}>Dernières inscriptions</p>
               <Link href="/admin/clients" style={{ fontSize: '13px', color: '#22c55e', textDecoration: 'none' }}>
-                Voir tous les clients →
+                Voir tous les artisans →
               </Link>
             </div>
             <div style={{ overflowX: 'auto' }}>
@@ -169,7 +169,7 @@ export default function AdminHomePage() {
                 <tbody>
                   {stats.derniers_clients.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client pour le moment</td>
+                      <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun artisan pour le moment</td>
                     </tr>
                   )}
                   {stats.derniers_clients.map((c) => (

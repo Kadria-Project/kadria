@@ -369,7 +369,7 @@ export default function AdminClientsPage() {
   return (
     <div>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Clients</h1>
+        <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Artisans</h1>
         <p style={{ fontSize: '14px', color: '#a1a1aa', margin: '4px 0 0' }}>Gestion des comptes artisans</p>
       </div>
 
@@ -419,7 +419,7 @@ export default function AdminClientsPage() {
           </div>
 
           <p style={{ fontSize: '13px', color: '#a1a1aa', marginBottom: '12px' }}>
-            {filtered.length} client{filtered.length === 1 ? '' : 's'} trouvé{filtered.length === 1 ? '' : 's'}
+            {filtered.length} artisan{filtered.length === 1 ? '' : 's'} trouvé{filtered.length === 1 ? '' : 's'}
           </p>
 
           {/* Desktop : tableau cockpit */}
@@ -428,7 +428,7 @@ export default function AdminClientsPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#27272a' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Client</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Artisan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Artisan ID</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Plan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#71717a', fontWeight: 700 }}>Statut</th>
@@ -446,7 +446,7 @@ export default function AdminClientsPage() {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={13} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</td>
+                      <td colSpan={13} style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun artisan trouvé</td>
                     </tr>
                   )}
                   {filtered.map((c, i) => (
@@ -528,7 +528,7 @@ export default function AdminClientsPage() {
           {/* Mobile : cards empilées */}
           <div className="admin-clients-cards">
             {filtered.length === 0 && (
-              <p style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun client trouvé</p>
+              <p style={{ padding: '20px', textAlign: 'center', color: '#71717a' }}>Aucun artisan trouvé</p>
             )}
             {filtered.map((c) => (
               <div

@@ -197,7 +197,7 @@ export default function AdminEmailsPage() {
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Emails</h1>
         <p style={{ fontSize: '14px', color: '#a1a1aa', margin: '4px 0 0' }}>
-          Envoyez des emails à vos clients depuis Kadria
+          Envoyez des emails à vos artisans depuis Kadria
         </p>
       </div>
 
@@ -207,8 +207,8 @@ export default function AdminEmailsPage() {
         <div style={{ marginBottom: '16px' }}>
           <span style={label}>Destinataire</span>
           <select style={inputStyle} value={destinataire} onChange={(e) => setDestinataire(e.target.value)}>
-            <option value="actifs">Tous les clients actifs</option>
-            <option value="trial">Tous les clients en trial</option>
+            <option value="actifs">Tous les artisans actifs</option>
+            <option value="trial">Tous les artisans en trial</option>
             <option value="manuel">Saisir un email manuellement</option>
           </select>
           {destinataire === 'manuel' && (

@@ -19,7 +19,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Vue d'ensemble", href: '/admin', icon: LayoutDashboard },
-  { label: 'Clients', href: '/admin/clients', icon: Users },
+  { label: 'Artisans', href: '/admin/clients', icon: Users },
   { label: 'Emails', href: '/admin/emails', icon: Mail },
 ];
 

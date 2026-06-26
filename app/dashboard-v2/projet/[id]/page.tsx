@@ -1421,7 +1421,7 @@ function ProjectDetail() {
                         onClick={() => setBookingSlot(slot)}
                         className={`w-full text-left rounded-lg border p-2 text-sm ${
                           bookingSlot?.start === slot.start
-                            ? 'border-green-500 bg-green-500/10 text-[var(--text-1)]'
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
                             : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
                         }`}
                       >
@@ -1436,7 +1436,7 @@ function ProjectDetail() {
                 <button
                   onClick={confirmAppointment}
                   disabled={!bookingSlot}
-                  className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
+                  className="w-full bg-[var(--accent)] text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
                 >
                   Confirmer le rendez-vous
                 </button>
@@ -3530,7 +3530,7 @@ function ProjectDetail() {
                       onClick={() => setBookingSlot(slot)}
                       className={`w-full text-left rounded-lg border p-2 text-sm ${
                         bookingSlot?.start === slot.start
-                          ? 'border-green-500 bg-green-500/10 text-[var(--text-1)]'
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
                           : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
                       }`}
                     >
@@ -3545,7 +3545,7 @@ function ProjectDetail() {
               <button
                 onClick={confirmAppointment}
                 disabled={!bookingSlot}
-                className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
+                className="w-full bg-[var(--accent)] text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
               >
                 Confirmer le rendez-vous
               </button>

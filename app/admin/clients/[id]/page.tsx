@@ -569,7 +569,7 @@ export default function AdminClientDetailPage() {
       )}
 
       <Link href="/admin/clients" style={{ fontSize: '13px', color: '#a1a1aa', textDecoration: 'none' }}>
-        ← Retour aux clients
+        ← Retour aux artisans
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '16px 0 24px', flexWrap: 'wrap' }}>
@@ -603,7 +603,7 @@ export default function AdminClientDetailPage() {
       </div>
 
       <div style={card}>
-        <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Santé client</p>
+        <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Santé artisan</p>
         {!health && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Donnée à venir</p>}
         {health && (
           <>
@@ -700,7 +700,7 @@ export default function AdminClientDetailPage() {
               </p>
             ) : (
               <div>
-                <p style={{ ...label, marginBottom: '8px' }}>À faire avec le client</p>
+                <p style={{ ...label, marginBottom: '8px' }}>À faire avec l'artisan</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {setupProgress.steps
                     .filter((s) => s.status === 'todo')
@@ -1016,7 +1016,7 @@ export default function AdminClientDetailPage() {
           </div>
 
           <div style={card}>
-            <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Métriques client</p>
+            <p style={{ fontWeight: 700, fontSize: '15px', margin: '0 0 16px' }}>Métriques artisan</p>
             {!metrics && <p style={{ fontSize: '13px', color: '#71717a', margin: 0 }}>Aucune donnée disponible</p>}
             {metrics && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>

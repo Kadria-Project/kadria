@@ -67,6 +67,7 @@ export default function DesktopAgendaView() {
 
   const [disconnecting, setDisconnecting] = useState(false);
   const [returnMessage, setReturnMessage] = useState<string | null>(null);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -153,6 +154,7 @@ export default function DesktopAgendaView() {
   }, []);
 
   const handleDisconnect = useCallback(async () => {
+    setShowDisconnectConfirm(false);
     setDisconnecting(true);
     try {
       const response = await fetch('/api/integrations/google-calendar/disconnect', { method: 'POST' });
@@ -279,7 +281,7 @@ export default function DesktopAgendaView() {
               </button>
               <button
                 type="button"
-                onClick={handleDisconnect}
+                onClick={() => setShowDisconnectConfirm(true)}
                 disabled={disconnecting}
                 className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)] disabled:opacity-60"
               >
@@ -410,6 +412,34 @@ export default function DesktopAgendaView() {
           </div>
         )}
       </div>
+
+      {showDisconnectConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+            <p className="text-base font-bold text-[var(--text-1)]">Déconnecter Google Calendar ?</p>
+            <p className="mt-2 text-sm text-[var(--text-2)]">
+              Vos rendez-vous déjà créés resteront dans Google Calendar, mais Kadria ne pourra plus synchroniser votre agenda.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDisconnectConfirm(false)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-black disabled:opacity-60"
+              >
+                Déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

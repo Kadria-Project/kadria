@@ -612,8 +612,8 @@ function NewDevis() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: '#27272a',
-    border: '1px solid #3f3f46',
+    background: 'var(--border)',
+    border: '1px solid var(--border-soft)',
     borderRadius: '10px',
     padding: '10px 14px',
     color: 'white',
@@ -623,7 +623,7 @@ function NewDevis() {
   };
 
   const labelStyle: React.CSSProperties = {
-    color: '#a1a1aa',
+    color: 'var(--text-2)',
     fontSize: '12px',
     fontWeight: 600,
     letterSpacing: '0.06em',
@@ -633,8 +633,8 @@ function NewDevis() {
   };
 
   const sectionCard: React.CSSProperties = {
-    background: '#18181b',
-    border: '1px solid #27272a',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
     borderRadius: '16px',
     padding: '24px',
     marginBottom: '16px',
@@ -665,13 +665,13 @@ function NewDevis() {
             {!configError && missingLegalFields.length > 0 && (
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px' }}>
                 {missingLegalFields.map((field) => (
-                  <li key={field} style={{ color: '#f59e0b', fontSize: '12px', marginTop: '4px' }}>
+                  <li key={field} style={{ color: 'var(--status-callback)', fontSize: '12px', marginTop: '4px' }}>
                     {field}
                   </li>
                 ))}
               </ul>
             )}
-            <a href="/parametres" style={{ color: '#22c55e', fontWeight: 600, fontSize: '14px' }}>
+            <a href="/parametres" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '14px' }}>
               Compléter mon profil →
             </a>
           </div>
@@ -691,7 +691,7 @@ function NewDevis() {
               Retour au dossier
             </Button>
             <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '12px 0 4px' }}>Nouveau devis</h1>
-            <p style={{ color: '#71717a', fontSize: '13px', margin: 0 }}>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
               {clientName || 'Client'} — {devisNumberPreview}
             </p>
           </div>
@@ -701,9 +701,9 @@ function NewDevis() {
               disabled={!savedId && canQuote}
               title={!canQuote ? 'Disponible avec Performance' : !savedId ? 'Enregistrez le devis pour pouvoir l\'exporter en PDF' : undefined}
               style={{
-                background: '#18181b',
-                border: '1px solid #27272a',
-                color: '#a1a1aa',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
                 borderRadius: '8px',
                 padding: '8px 16px',
                 fontSize: '13px',
@@ -726,7 +726,7 @@ function NewDevis() {
             border: '1px solid rgba(220,38,38,0.3)',
             borderRadius: '10px',
             padding: '12px 16px',
-            color: '#f87171',
+            color: 'var(--status-lost)',
             fontSize: '13px',
           }}>
             {error}
@@ -740,7 +740,7 @@ function NewDevis() {
               border: '1px solid rgba(34,197,94,0.25)',
               borderRadius: '12px',
               padding: '14px 18px',
-              color: '#d4d4d8',
+              color: 'var(--text-2)',
               fontSize: '13px',
             }}
           >
@@ -753,25 +753,25 @@ function NewDevis() {
           <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Informations générales</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
                 Émetteur
               </p>
               <p style={{ color: 'white', fontSize: '14px', fontWeight: 600, margin: '0 0 4px' }}>
                 {artisanConfig?.raisonSociale || artisanConfig?.companyName}
               </p>
-              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: '0 0 2px' }}>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 2px' }}>
                 {artisanConfig?.adressePro}
               </p>
-              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: '0 0 2px' }}>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 2px' }}>
                 {artisanConfig?.cpPro} {artisanConfig?.villePro}
               </p>
-              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: '0 0 2px' }}>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 2px' }}>
                 SIRET : {artisanConfig?.siret}
               </p>
             </div>
 
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
                 Client
               </p>
               <div style={{ marginBottom: '10px' }}>
@@ -795,10 +795,10 @@ function NewDevis() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginTop: '20px', borderTop: '1px solid #27272a', paddingTop: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
             <div>
               <label style={labelStyle}>Numéro de devis</label>
-              <input style={{ ...inputStyle, color: '#71717a' }} value={devisNumberPreview} readOnly />
+              <input style={{ ...inputStyle, color: 'var(--text-3)' }} value={devisNumberPreview} readOnly />
             </div>
             <div>
               <label style={labelStyle}>Date d&apos;émission</label>
@@ -828,7 +828,7 @@ function NewDevis() {
             const activeTemplates = artisanConfig?.businessConfig?.quoteTemplates?.filter((t) => t.isActive !== false) || [];
             if (activeTemplates.length === 0) {
               return (
-                <p style={{ fontSize: '12px', color: '#71717a', margin: 0 }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
                   Aucun modèle disponible. Ajoutez-en depuis Paramètres.
                 </p>
               );
@@ -853,9 +853,9 @@ function NewDevis() {
                   onClick={applyTemplate}
                   disabled={!selectedTemplateId}
                   style={{
-                    background: selectedTemplateId ? 'rgba(34,197,94,0.1)' : '#27272a',
-                    border: selectedTemplateId ? '1px solid rgba(34,197,94,0.3)' : '1px solid #3f3f46',
-                    color: selectedTemplateId ? '#22c55e' : '#71717a',
+                    background: selectedTemplateId ? 'rgba(34,197,94,0.1)' : 'var(--border)',
+                    border: selectedTemplateId ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border-soft)',
+                    color: selectedTemplateId ? 'var(--accent)' : 'var(--text-3)',
                     borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600,
                     cursor: selectedTemplateId ? 'pointer' : 'not-allowed',
                   }}
@@ -866,12 +866,12 @@ function NewDevis() {
             );
           })()}
           {appliedTemplateName && (
-            <p style={{ fontSize: '12px', color: '#22c55e', margin: '10px 0 0' }}>
+            <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '10px 0 0' }}>
               Modèle appliqué : {appliedTemplateName}. Vérifiez et adaptez les lignes avant envoi.
             </p>
           )}
           {quoteSettingsApplied && (
-            <p style={{ fontSize: '11px', color: '#71717a', margin: '10px 0 0' }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '10px 0 0' }}>
               Paramètres de devis appliqués depuis vos préférences.
             </p>
           )}
@@ -885,7 +885,7 @@ function NewDevis() {
               <button
                 onClick={openPrestationsModal}
                 style={{
-                  background: '#27272a', border: '1px solid #3f3f46', color: '#a1a1aa',
+                  background: 'var(--border)', border: '1px solid var(--border-soft)', color: 'var(--text-2)',
                   borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
                 }}
               >
@@ -894,7 +894,7 @@ function NewDevis() {
               <button
                 onClick={addSectionLine}
                 style={{
-                  background: '#27272a', border: '1px solid #3f3f46', color: '#a1a1aa',
+                  background: 'var(--border)', border: '1px solid var(--border-soft)', color: 'var(--text-2)',
                   borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
                 }}
               >
@@ -903,7 +903,7 @@ function NewDevis() {
               <button
                 onClick={addItemLine}
                 style={{
-                  background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e',
+                  background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)',
                   borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '4px',
                 }}
@@ -920,7 +920,7 @@ function NewDevis() {
               borderRadius: '10px',
               padding: '10px 14px',
               marginBottom: '12px',
-              color: '#a1a1aa',
+              color: 'var(--text-2)',
               fontSize: '12px',
             }}>
               {prefilledTemplateName ? `Prérempli depuis le modèle : ${prefilledTemplateName}` : 'Suggestions Kadria à vérifier et adapter avant envoi.'}
@@ -932,8 +932,8 @@ function NewDevis() {
               <div
                 key={line.id}
                 style={{
-                  background: '#09090b',
-                  border: '1px solid #27272a',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
                   borderRadius: '10px',
                   padding: '12px',
                   display: 'flex',
@@ -1014,7 +1014,7 @@ function NewDevis() {
                           onChange={(e) => updateLine(line.id, { unitPrice: Number(e.target.value) })}
                         />
                         {prefilledFromSuggestions && (
-                          <p style={{ color: line.unitPrice > 0 ? '#22c55e' : '#71717a', fontSize: '11px', margin: '4px 0 0' }}>
+                          <p style={{ color: line.unitPrice > 0 ? 'var(--accent)' : 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
                             {line.unitPrice > 0 ? (line.fromCatalog ? 'Depuis votre catalogue' : 'Montant suggéré') : 'Prix à compléter'}
                           </p>
                         )}
@@ -1034,7 +1034,7 @@ function NewDevis() {
                       <div>
                         <label style={labelStyle}>Total HT</label>
                         <input
-                          style={{ ...inputStyle, color: '#22c55e', fontWeight: 600 }}
+                          style={{ ...inputStyle, color: 'var(--accent)', fontWeight: 600 }}
                           value={`${(line.quantity * line.unitPrice).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
                           readOnly
                         />
@@ -1051,24 +1051,24 @@ function NewDevis() {
         <div style={sectionCard}>
           <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Totaux</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: isMobile ? '100%' : '320px', marginLeft: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a1a1aa', fontSize: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-2)', fontSize: '14px' }}>
               <span>Total HT</span>
               <span>{totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
             </div>
             {Object.entries(tvaBreakdown)
               .filter(([, amount]) => amount > 0 || Object.keys(tvaBreakdown).length > 0)
               .map(([rate, amount]) => (
-                <div key={rate} style={{ display: 'flex', justifyContent: 'space-between', color: '#a1a1aa', fontSize: '14px' }}>
+                <div key={rate} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-2)', fontSize: '14px' }}>
                   <span>TVA ({rate}%)</span>
                   <span>{amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
                 </div>
               ))}
             <div style={{
               display: 'flex', justifyContent: 'space-between', color: 'white', fontSize: '17px', fontWeight: 700,
-              borderTop: '1px solid #27272a', paddingTop: '8px', marginTop: '4px',
+              borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '4px',
             }}>
               <span>Total TTC</span>
-              <span style={{ color: '#22c55e' }}>{totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+              <span style={{ color: 'var(--accent)' }}>{totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
             </div>
           </div>
         </div>
@@ -1119,23 +1119,23 @@ function NewDevis() {
           <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Récapitulatif du devis</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
               <p style={{ color: 'white', fontSize: '16px', fontWeight: 700, margin: 0 }}>{itemLines.length}</p>
             </div>
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total HT</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total HT</p>
               <p style={{ color: 'white', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
             </div>
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total TVA</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total TVA</p>
               <p style={{ color: 'white', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
             </div>
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total TTC</p>
-              <p style={{ color: '#22c55e', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Total TTC</p>
+              <p style={{ color: 'var(--accent)', fontSize: '16px', fontWeight: 700, margin: 0 }}>{totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: '#a1a1aa', marginBottom: recapAlerts.length > 0 ? '16px' : 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--text-2)', marginBottom: recapAlerts.length > 0 ? '16px' : 0 }}>
             <p style={{ margin: 0 }}>Validité du devis : {dateValidite || 'non renseignée'}</p>
             {depositPercent != null && (
               <p style={{ margin: 0 }}>Acompte demandé : {depositPercent}%</p>
@@ -1155,7 +1155,7 @@ function NewDevis() {
                   style={{
                     display: 'flex', alignItems: 'flex-start', gap: '8px',
                     background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
-                    borderRadius: '8px', padding: '8px 12px', color: '#f59e0b', fontSize: '12px',
+                    borderRadius: '8px', padding: '8px 12px', color: 'var(--status-callback)', fontSize: '12px',
                   }}
                 >
                   <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ marginTop: '1px' }} />
@@ -1169,23 +1169,23 @@ function NewDevis() {
         {/* Section 6 — Prévisualisation simple */}
         <div style={sectionCard}>
           <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Prévisualisation</h2>
-          <div style={{ background: '#09090b', border: '1px solid #27272a', borderRadius: '10px', padding: '16px', fontSize: '13px', color: '#d4d4d8', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', fontSize: '13px', color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Client</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Client</p>
               <p style={{ margin: 0 }}>{clientName || 'Client non renseigné'}</p>
-              {clientAddress && <p style={{ margin: 0, color: '#a1a1aa' }}>{clientAddress}</p>}
+              {clientAddress && <p style={{ margin: 0, color: 'var(--text-2)' }}>{clientAddress}</p>}
             </div>
             {objet.trim() && (
               <div>
-                <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Objet</p>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Objet</p>
                 <p style={{ margin: 0 }}>{objet}</p>
               </div>
             )}
             <div>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {lines.map((l) => (
-                  <p key={l.id} style={{ margin: 0, color: l.type === 'section' ? 'white' : '#d4d4d8', fontWeight: l.type === 'section' ? 700 : 400 }}>
+                  <p key={l.id} style={{ margin: 0, color: l.type === 'section' ? 'white' : 'var(--text-2)', fontWeight: l.type === 'section' ? 700 : 400 }}>
                     {l.type === 'section'
                       ? (l.description || 'Section sans titre')
                       : `${l.description || 'Sans description'} — ${l.quantity} ${l.unit} × ${l.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
@@ -1193,15 +1193,15 @@ function NewDevis() {
                 ))}
               </div>
             </div>
-            <div style={{ borderTop: '1px solid #27272a', paddingTop: '10px' }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
               <p style={{ margin: 0 }}>Total HT : {totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € — Total TVA : {totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € — Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
             </div>
-            {conditionsPaiement.trim() && <p style={{ margin: 0, color: '#a1a1aa' }}>Conditions de paiement : {conditionsPaiement}</p>}
-            {noteInterne.trim() && <p style={{ margin: 0, color: '#71717a', fontStyle: 'italic' }}>Note interne (non visible client) : {noteInterne}</p>}
+            {conditionsPaiement.trim() && <p style={{ margin: 0, color: 'var(--text-2)' }}>Conditions de paiement : {conditionsPaiement}</p>}
+            {noteInterne.trim() && <p style={{ margin: 0, color: 'var(--text-3)', fontStyle: 'italic' }}>Note interne (non visible client) : {noteInterne}</p>}
           </div>
         </div>
 
-        <p style={{ textAlign: 'center', color: '#71717a', fontSize: '12px', margin: 0 }}>
+        <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
           Rien n&apos;est envoyé automatiquement. Vous gardez la main jusqu&apos;à l&apos;envoi.
         </p>
 
@@ -1209,8 +1209,8 @@ function NewDevis() {
         <div style={{
           position: 'sticky',
           bottom: '12px',
-          background: '#18181b',
-          border: '1px solid #27272a',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
           borderRadius: '12px',
           padding: '12px 16px',
           display: 'flex',
@@ -1220,7 +1220,7 @@ function NewDevis() {
           gap: '12px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: '#22c55e' }}>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent)' }}>
             Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -1228,9 +1228,9 @@ function NewDevis() {
               onClick={() => handleSubmit('draft')}
               disabled={isSubmitting}
               style={{
-                background: '#18181b',
-                border: '1px solid #27272a',
-                color: '#f4f4f5',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
                 fontWeight: 600,
                 borderRadius: '12px',
                 padding: '12px 24px',
@@ -1243,7 +1243,7 @@ function NewDevis() {
                 gap: '8px',
               }}
               onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#27272a'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
             >
               {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'draft' && <Loader2 className="animate-spin" size={14} />}
@@ -1253,9 +1253,9 @@ function NewDevis() {
               onClick={() => handleSubmit('send')}
               disabled={isSubmitting}
               style={{
-                background: '#22c55e',
+                background: 'var(--accent)',
                 border: 'none',
-                color: '#09090b',
+                color: 'var(--bg)',
                 fontWeight: 700,
                 borderRadius: '12px',
                 padding: '12px 32px',
@@ -1294,8 +1294,8 @@ function NewDevis() {
         >
           <div
             style={{
-              background: '#18181b',
-              border: '1px solid #27272a',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
               borderRadius: '16px',
               padding: '24px',
               width: '100%',
@@ -1309,16 +1309,16 @@ function NewDevis() {
               <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Mes prestations</h2>
               <button
                 onClick={() => setShowPrestationsModal(false)}
-                style={{ background: 'none', border: 'none', color: '#71717a', cursor: 'pointer', padding: '4px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {loadingPrestations ? (
-              <p style={{ color: '#71717a', fontSize: '13px' }}>Chargement...</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px' }}>Chargement...</p>
             ) : prestations.length === 0 ? (
-              <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '16px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', marginBottom: '16px' }}>
                 Aucune prestation enregistrée pour le moment.
               </p>
             ) : (
@@ -1327,8 +1327,8 @@ function NewDevis() {
                   <div
                     key={p.id}
                     style={{
-                      background: '#09090b',
-                      border: '1px solid #27272a',
+                      background: 'var(--bg)',
+                      border: '1px solid var(--border)',
                       borderRadius: '10px',
                       padding: '10px 12px',
                       display: 'flex',
@@ -1341,7 +1341,7 @@ function NewDevis() {
                       <p style={{ color: 'white', fontSize: '13px', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.description}
                       </p>
-                      <p style={{ color: '#71717a', fontSize: '12px', margin: 0 }}>
+                      <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
                         {p.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € / {p.unit} — TVA {p.tvaRate}%
                       </p>
                     </div>
@@ -1349,7 +1349,7 @@ function NewDevis() {
                       <button
                         onClick={() => addPrestationAsLine(p)}
                         style={{
-                          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e',
+                          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)',
                           borderRadius: '6px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer',
                         }}
                       >
@@ -1364,8 +1364,8 @@ function NewDevis() {
               </div>
             )}
 
-            <div style={{ borderTop: '1px solid #27272a', paddingTop: '16px' }}>
-              <p style={{ color: '#71717a', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
                 Ajouter une prestation
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1405,9 +1405,9 @@ function NewDevis() {
                   onClick={createPrestation}
                   disabled={savingPrestation || !newPrestation.description.trim()}
                   style={{
-                    background: savingPrestation || !newPrestation.description.trim() ? '#27272a' : '#22c55e',
+                    background: savingPrestation || !newPrestation.description.trim() ? 'var(--border)' : 'var(--accent)',
                     border: 'none',
-                    color: savingPrestation || !newPrestation.description.trim() ? '#71717a' : 'black',
+                    color: savingPrestation || !newPrestation.description.trim() ? 'var(--text-3)' : 'black',
                     fontWeight: 600,
                     borderRadius: '8px',
                     padding: '8px 16px',
@@ -1430,25 +1430,25 @@ function NewDevis() {
             bottom: '16px',
             right: '16px',
             zIndex: 50,
-            background: '#18181b',
-            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : toast.type === 'warning' ? 'rgba(245,158,11,0.3)' : '#dc2626'}`,
+            background: 'var(--bg-elevated)',
+            border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.3)' : toast.type === 'warning' ? 'rgba(245,158,11,0.3)' : 'var(--status-lost)'}`,
             borderRadius: '12px',
             padding: '16px 20px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            color: toast.type === 'success' ? 'white' : toast.type === 'warning' ? '#f59e0b' : '#dc2626',
+            color: toast.type === 'success' ? 'white' : toast.type === 'warning' ? 'var(--status-callback)' : 'var(--status-lost)',
             fontSize: '13px',
             maxWidth: '360px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
           }}
         >
           {toast.type === 'success' ? (
-            <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
+            <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent)' }} />
           ) : toast.type === 'warning' ? (
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#f59e0b' }} />
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--status-callback)' }} />
           ) : (
-            <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#dc2626' }} />
+            <XCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--status-lost)' }} />
           )}
           <span>{toast.message}</span>
         </div>
@@ -1477,9 +1477,9 @@ function NewDevis() {
 
 function iconBtnStyle(disabled: boolean, danger?: boolean): React.CSSProperties {
   return {
-    background: '#18181b',
-    border: '1px solid #27272a',
-    color: disabled ? '#3f3f46' : danger ? '#f87171' : '#a1a1aa',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)',
+    color: disabled ? 'var(--border-soft)' : danger ? 'var(--status-lost)' : 'var(--text-2)',
     borderRadius: '6px',
     padding: '6px',
     cursor: disabled ? 'not-allowed' : 'pointer',

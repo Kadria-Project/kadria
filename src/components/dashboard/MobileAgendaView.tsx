@@ -249,6 +249,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   const [eventsError, setEventsError] = useState<string | null>(null);
 
   const [disconnecting, setDisconnecting] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [returnMessage, setReturnMessage] = useState<string | null>(null);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -339,6 +340,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   }, []);
 
   const handleDisconnect = useCallback(async () => {
+    setShowDisconnectConfirm(false);
     setDisconnecting(true);
     try {
       const response = await fetch('/api/integrations/google-calendar/disconnect', { method: 'POST' });
@@ -500,7 +502,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
               </button>
               <button
                 type="button"
-                onClick={handleDisconnect}
+                onClick={() => setShowDisconnectConfirm(true)}
                 disabled={disconnecting}
                 style={{
                   flex: 1,
@@ -842,6 +844,68 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
           ))}
         </div>
       </div>
+
+      {showDisconnectConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            zIndex: 50,
+          }}
+        >
+          <div style={{ ...card, maxWidth: '380px', width: '100%' }}>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: '0 0 8px' }}>
+              Déconnecter Google Calendar ?
+            </p>
+            <p style={{ fontSize: '13px', color: COLORS.text2, margin: '0 0 16px' }}>
+              Vos rendez-vous déjà créés resteront dans Google Calendar, mais Kadria ne pourra plus synchroniser votre agenda.
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setShowDisconnectConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: '11px 0',
+                  borderRadius: '12px',
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  color: COLORS.text1,
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                style={{
+                  flex: 1,
+                  padding: '11px 0',
+                  borderRadius: '12px',
+                  background: COLORS.accent,
+                  border: 'none',
+                  color: '#052e16',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: disconnecting ? 'default' : 'pointer',
+                  opacity: disconnecting ? 0.7 : 1,
+                }}
+              >
+                Déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
