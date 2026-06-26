@@ -7,6 +7,7 @@ import AdminCard from '@/src/components/admin/AdminCard';
 import AdminButton from '@/src/components/admin/AdminButton';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 import AdminTable from '@/src/components/admin/AdminTable';
+import LoadingTable from '@/src/components/ui/loading/LoadingTable';
 
 interface ClientRecord {
   id: string;
@@ -289,11 +290,7 @@ export default function AdminEmailsPage() {
         </div>
 
         {logsLoading && emailLogs.length === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="admin-skeleton" style={{ background: 'var(--border)', borderRadius: '8px', height: '48px' }} />
-            ))}
-          </div>
+          <LoadingTable columns={4} rows={3} style={{ border: 'none', borderRadius: 0 }} />
         )}
 
         {!logsLoading && emailLogs.length === 0 && (
@@ -349,8 +346,6 @@ export default function AdminEmailsPage() {
       <style>{`
         @keyframes admin-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .admin-spin { animation: admin-spin 1s linear infinite; }
-        @keyframes admin-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .admin-skeleton { animation: admin-pulse 1.5s ease-in-out infinite; }
       `}</style>
     </div>
   );

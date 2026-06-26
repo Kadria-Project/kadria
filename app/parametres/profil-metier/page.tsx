@@ -7,6 +7,7 @@ import { ARTISAN_TRADES } from '@/src/config/trades'
 import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTemplateToPayload } from '@/src/lib/service-profile-templates'
 import { BusinessSetupWizard } from '@/src/components/BusinessSetupWizard'
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine'
+import LoadingForm from '@/src/components/ui/loading/LoadingForm'
 
 interface BusinessProfile {
   primaryTrade: string
@@ -557,10 +558,11 @@ export default function ProfilMetierPage() {
     return (
       <div style={{
         minHeight: '100vh', background: 'var(--bg)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: 'var(--text-2)', fontFamily: 'system-ui',
+        padding: '24px', fontFamily: 'system-ui',
       }}>
-        Chargement...
+        <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+          <LoadingForm fields={5} />
+        </div>
       </div>
     )
   }

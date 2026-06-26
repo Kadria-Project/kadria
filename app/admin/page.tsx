@@ -6,6 +6,8 @@ import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBad
 import AdminCard from '@/src/components/admin/AdminCard';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 import AdminTable from '@/src/components/admin/AdminTable';
+import LoadingStats from '@/src/components/ui/loading/LoadingStats';
+import LoadingTable from '@/src/components/ui/loading/LoadingTable';
 
 interface DernierClient {
   id: string;
@@ -86,7 +88,12 @@ export default function AdminHomePage() {
         <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>Mise à jour en temps réel</p>
       </div>
 
-      {loading && <p style={{ color: 'var(--text-2)' }}>Chargement...</p>}
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <LoadingStats count={4} />
+          <LoadingTable columns={5} columnWidths={['28%', '28%', '14%', '14%', '16%']} rows={5} />
+        </div>
+      )}
       {error && <p style={{ color: 'var(--status-lost)' }}>{error}</p>}
 
       {stats && (

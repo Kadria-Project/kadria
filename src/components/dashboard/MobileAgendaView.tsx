@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Unplug,
 } from 'lucide-react';
+import LoadingSkeleton, { LoadingStyles } from '@/src/components/ui/loading/LoadingSkeleton';
 
 type Router = ReturnType<typeof useRouter>;
 
@@ -592,7 +593,23 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
           )}
 
           {eventsLoading ? (
-            <p style={{ fontSize: '13px', color: COLORS.text3, margin: 0 }}>Chargement…</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <LoadingStyles />
+              {[0, 1].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    background: COLORS.bg,
+                    border: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  <LoadingSkeleton width="55%" height="13px" style={{ marginBottom: '6px' }} />
+                  <LoadingSkeleton width="35%" height="12px" />
+                </div>
+              ))}
+            </div>
           ) : events.length === 0 ? (
             <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous à venir.</p>
           ) : (

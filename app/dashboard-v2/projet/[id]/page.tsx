@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import LoadingSkeleton from '@/src/components/ui/loading/LoadingSkeleton';
+import LoadingForm from '@/src/components/ui/loading/LoadingForm';
+import LoadingCard from '@/src/components/ui/loading/LoadingCard';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendation, type VehicleType, type ChargingType } from '@/src/config/travel';
 import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
@@ -634,8 +637,12 @@ function ProjectDetail() {
 
   if (loading) {
     return (
-      <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)] flex items-center justify-center">
-        <p className="text-[var(--text-2)]">Chargement du dossier...</p>
+      <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)]" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <LoadingSkeleton width="280px" height="24px" />
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+          <LoadingForm fields={4} />
+          <LoadingCard lines={3} />
+        </div>
       </div>
     );
   }
@@ -1279,7 +1286,7 @@ function ProjectDetail() {
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
             <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>Rendez-vous</p>
             {loadingAppointment ? (
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-3)' }}>Chargement...</p>
+              <LoadingSkeleton width="70%" height="13px" />
             ) : appointment ? (
               <div>
                 <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{formatDateTime(appointment.start)}</p>
@@ -3294,7 +3301,7 @@ function ProjectDetail() {
 
           <div style={{ padding: isMobile ? '16px' : '16px 20px' }}>
             {loadingAppointment ? (
-              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Chargement...</p>
+              <LoadingSkeleton width="70%" height="13px" />
             ) : appointment ? (
               <div>
                 <p style={{ color: 'var(--text-1)', fontSize: '14px', margin: '0 0 4px', fontWeight: 600 }}>

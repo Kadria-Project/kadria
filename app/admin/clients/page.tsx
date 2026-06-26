@@ -7,6 +7,7 @@ import { Search, Download } from 'lucide-react';
 import AdminBadge, { type AdminBadgeTone } from '@/src/components/admin/AdminBadge';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
 import AdminTable from '@/src/components/admin/AdminTable';
+import LoadingTable from '@/src/components/ui/loading/LoadingTable';
 
 interface ClientUsage {
   projectsThisMonth: number;
@@ -306,7 +307,7 @@ export default function AdminClientsPage() {
         <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>Gestion des comptes artisans</p>
       </div>
 
-      {loading && <p style={{ color: 'var(--text-2)' }}>Chargement...</p>}
+      {loading && <LoadingTable columns={6} rows={5} />}
       {error && <p style={{ color: 'var(--status-lost)' }}>{error}</p>}
 
       {clients && (

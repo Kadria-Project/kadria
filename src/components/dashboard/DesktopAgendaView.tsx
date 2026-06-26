@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CalendarDays, MapPin, RefreshCw, Unplug, FileText } from 'lucide-react';
+import LoadingSkeleton, { LoadingStyles } from '@/src/components/ui/loading/LoadingSkeleton';
 
 // Reprend exactement les routes API Google Calendar deja livrees pour la
 // version mobile (src/components/dashboard/MobileAgendaView.tsx) : aucune
@@ -389,7 +390,15 @@ export default function DesktopAgendaView() {
         ) : eventsError ? (
           <p className="text-sm text-[var(--text-2)]">{eventsError}</p>
         ) : eventsLoading ? (
-          <p className="text-sm text-[var(--text-3)]">Chargement…</p>
+          <div className="flex flex-col gap-2">
+            <LoadingStyles />
+            {[0, 1].map((i) => (
+              <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                <LoadingSkeleton width="55%" height="13px" style={{ marginBottom: '6px' }} />
+                <LoadingSkeleton width="35%" height="11px" />
+              </div>
+            ))}
+          </div>
         ) : events.length === 0 ? (
           <p className="text-sm text-[var(--text-2)]">Aucun rendez-vous à venir.</p>
         ) : (

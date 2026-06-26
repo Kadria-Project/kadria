@@ -9,6 +9,9 @@ import AdminCard from '@/src/components/admin/AdminCard';
 import AdminButton from '@/src/components/admin/AdminButton';
 import AdminModal from '@/src/components/admin/AdminModal';
 import AdminEmptyState from '@/src/components/admin/AdminEmptyState';
+import LoadingStats from '@/src/components/ui/loading/LoadingStats';
+import LoadingForm from '@/src/components/ui/loading/LoadingForm';
+import LoadingCard from '@/src/components/ui/loading/LoadingCard';
 
 interface UserRecord {
   id: string;
@@ -532,7 +535,17 @@ export default function AdminClientDetailPage() {
     }
   }
 
-  if (loading) return <p style={{ color: 'var(--text-2)' }}>Chargement...</p>;
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <LoadingStats count={3} />
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+          <LoadingForm fields={5} />
+          <LoadingCard lines={4} />
+        </div>
+      </div>
+    );
+  }
   if (error) return <p style={{ color: 'var(--status-lost)' }}>{error}</p>;
   if (!client) return null;
 
