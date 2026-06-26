@@ -129,18 +129,46 @@ function PhotosSection({ view }: { view: ExpertProjectView }) {
           <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600 }}>
             Photos nécessaires : {view.photos.required ? 'Oui' : 'Non'}
           </p>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
+          <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--text-2)' }}>
             {view.photos.currentCount} photo{view.photos.currentCount !== 1 ? 's' : ''} déjà fournie
             {view.photos.currentCount !== 1 ? 's' : ''}
           </p>
-          {view.photos.required && (
-            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-3)' }}>
-              Liste détaillée : non disponible
+          {view.photos.requestedList && view.photos.requestedList.length > 0 ? (
+            <>
+              <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>
+                Photos attendues
+              </p>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {view.photos.requestedList.map((photo) => (
+                  <li
+                    key={photo.id}
+                    title={photo.description || undefined}
+                    style={{
+                      fontSize: '13px',
+                      color: photo.required ? 'var(--text-1)' : 'var(--text-3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ color: photo.required ? 'var(--accent)' : 'var(--text-3)' }}>
+                      {photo.required ? '✓' : '○'}
+                    </span>
+                    {photo.title}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-3)' }}>
+              Aucune photo spécifique configurée.
             </p>
           )}
         </>
       ) : (
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>non disponible</p>
+        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>
+          Aucune photo spécifique configurée.
+        </p>
       )}
     </div>
   );

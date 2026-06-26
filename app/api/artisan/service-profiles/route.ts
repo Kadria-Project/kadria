@@ -6,6 +6,17 @@ function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((item) => typeof item === 'string')
 }
 
+function isPhotoRequirementArray(v: unknown): v is Array<{ id: string; title: string; description: string; required: boolean; order: number }> {
+  return Array.isArray(v) && v.every((item) =>
+    item && typeof item === 'object' &&
+    typeof (item as { id?: unknown }).id === 'string' &&
+    typeof (item as { title?: unknown }).title === 'string' &&
+    typeof (item as { description?: unknown }).description === 'string' &&
+    typeof (item as { required?: unknown }).required === 'boolean' &&
+    typeof (item as { order?: unknown }).order === 'number'
+  )
+}
+
 export async function GET() {
   try {
     const session = await getSession()
@@ -54,7 +65,11 @@ export async function POST(request: NextRequest) {
     if (body.recommendedQuoteLines !== undefined && !Array.isArray(body.recommendedQuoteLines)) {
       return NextResponse.json({ success: false, error: 'recommendedQuoteLines doit être un tableau' }, { status: 400 })
     }
+    if (body.requiredPhotosList !== undefined && !isPhotoRequirementArray(body.requiredPhotosList)) {
+      return NextResponse.json({ success: false, error: 'requiredPhotosList doit être un tableau de { id, title, description, required, order }' }, { status: 400 })
+    }
 
+    const requiredPhotosList: Array<{ id: string; title: string; description: string; required: boolean; order: number }> = body.requiredPhotosList ?? []
     const fields: Record<string, unknown> = {
       name: body.name.trim(),
       category: typeof body.category === 'string' ? body.category : null,
@@ -64,7 +79,11 @@ export async function POST(request: NextRequest) {
       detection_keywords: body.detectionKeywords ?? [],
       qualification_questions: body.qualificationQuestions ?? [],
       required_information: body.requiredInformation ?? [],
-      required_photos: !!body.requiredPhotos,
+      // Migration douce : required_photos (legacy) reste piloté manuellement
+      // si la nouvelle liste est vide ; dès qu'une liste est définie, elle
+      // devient la source de vérité et le booléen la reflète.
+      required_photos: requiredPhotosList.length > 0 ? requiredPhotosList.some((p) => p.required) : !!body.requiredPhotos,
+      required_photos_list: requiredPhotosList,
       recommended_quote_lines: body.recommendedQuoteLines ?? [],
       average_duration_minutes: typeof body.averageDurationMinutes === 'number' ? body.averageDurationMinutes : null,
       default_vat_rate: typeof body.defaultVatRate === 'number' ? body.defaultVatRate : null,

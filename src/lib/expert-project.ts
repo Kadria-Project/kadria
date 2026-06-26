@@ -22,12 +22,21 @@ import type { QuoteSuggestionLine } from '@/src/lib/quote-suggestions';
 // qui est `server-only`) pour rester utilisable côté client. Les champs sont
 // optionnels : la valeur réellement reçue par cette page (`ServiceMatcherServiceProfile`)
 // peut ne pas tous les exposer — dans ce cas, on affiche "non disponible".
+export interface ExpertPhotoRequirement {
+  id: string;
+  title: string;
+  description: string;
+  required: boolean;
+  order: number;
+}
+
 export interface ExpertReferentialServiceProfile {
   id?: string;
   name?: string;
   qualification_questions?: string[] | null;
   required_information?: string[] | null;
   required_photos?: boolean | null;
+  required_photos_list?: ExpertPhotoRequirement[] | null;
   average_duration_minutes?: number | null;
   travel_required?: boolean | null;
   appointment_recommended?: boolean | null;
@@ -75,7 +84,11 @@ export interface ExpertPhotos {
   available: boolean;
   required: boolean | null;
   currentCount: number;
-  requestedList: string[] | null;
+  requestedList: ExpertPhotoRequirement[] | null;
+  // Préparation pour le chat (non branché ici, cf. brief "Chat").
+  photosExpected: number;
+  photosReceived: number;
+  photosRemaining: number;
 }
 
 export interface ExpertQuoteCategory {
@@ -199,14 +212,35 @@ export function computeExpertProjectView(input: ExpertProjectInput): ExpertProje
     total: qualificationQuestions.length,
   };
 
-  // 3. PHOTOS — le référentiel n'expose qu'un booléen "photos requises", pas
-  // de liste nommée de photos attendues : on ne l'invente pas.
-  const photosRequired = referentialProfile ? Boolean(referentialProfile.required_photos) : null;
+  // 3. PHOTOS — si le référentiel décrit une liste structurée (preuves
+  // visuelles), on l'affiche telle quelle, jamais inventée. Sinon on
+  // retombe sur l'ancien booléen "photos requises" (compatibilité).
+  const referentialPhotosList = (referentialProfile?.required_photos_list || [])
+    .slice()
+    .sort((a, b) => a.order - b.order);
+  const photosRequired = referentialProfile
+    ? referentialPhotosList.length > 0
+      ? referentialPhotosList.some((p) => p.required)
+      : Boolean(referentialProfile.required_photos)
+    : null;
+  const currentPhotoCount = Array.isArray(project.photos) ? project.photos.length : 0;
+  // photosExpected/photosReceived/photosRemaining : préparation pour le chat
+  // (cf. brief), jamais branchée ici. Simple lecture, pas un nouveau score.
+  const photosExpected = referentialPhotosList.length > 0
+    ? referentialPhotosList.filter((p) => p.required).length
+    : photosRequired
+      ? 1
+      : 0;
+  const photosReceived = currentPhotoCount;
+  const photosRemaining = Math.max(0, photosExpected - photosReceived);
   const photos: ExpertPhotos = {
     available: referentialProfile != null,
     required: photosRequired,
-    currentCount: Array.isArray(project.photos) ? project.photos.length : 0,
-    requestedList: null,
+    currentCount: currentPhotoCount,
+    requestedList: referentialPhotosList.length > 0 ? referentialPhotosList : null,
+    photosExpected,
+    photosReceived,
+    photosRemaining,
   };
 
   // 4. DEVIS — grille fixe à 5 tranches de 20%, demandée explicitement.

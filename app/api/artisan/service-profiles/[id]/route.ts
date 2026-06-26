@@ -6,6 +6,17 @@ function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((item) => typeof item === 'string')
 }
 
+function isPhotoRequirementArray(v: unknown): v is Array<{ id: string; title: string; description: string; required: boolean; order: number }> {
+  return Array.isArray(v) && v.every((item) =>
+    item && typeof item === 'object' &&
+    typeof (item as { id?: unknown }).id === 'string' &&
+    typeof (item as { title?: unknown }).title === 'string' &&
+    typeof (item as { description?: unknown }).description === 'string' &&
+    typeof (item as { required?: unknown }).required === 'boolean' &&
+    typeof (item as { order?: unknown }).order === 'number'
+  )
+}
+
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession()
@@ -73,7 +84,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       fields.required_information = body.requiredInformation
     }
-    if (body.requiredPhotos !== undefined) fields.required_photos = !!body.requiredPhotos
+    if (body.requiredPhotosList !== undefined) {
+      if (!isPhotoRequirementArray(body.requiredPhotosList)) {
+        return NextResponse.json({ success: false, error: 'requiredPhotosList doit être un tableau de { id, title, description, required, order }' }, { status: 400 })
+      }
+      fields.required_photos_list = body.requiredPhotosList
+      // Migration douce : dès qu'une liste est fournie, elle pilote le
+      // booléen legacy ; sinon le booléen reste indépendant.
+      fields.required_photos = body.requiredPhotosList.length > 0
+        ? body.requiredPhotosList.some((p: { required: boolean }) => p.required)
+        : (body.requiredPhotos !== undefined ? !!body.requiredPhotos : false)
+    } else if (body.requiredPhotos !== undefined) {
+      fields.required_photos = !!body.requiredPhotos
+    }
 
     if (body.recommendedQuoteLines !== undefined) {
       if (!Array.isArray(body.recommendedQuoteLines)) {

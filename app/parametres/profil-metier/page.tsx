@@ -42,6 +42,14 @@ interface CatalogItem {
   is_active: boolean
 }
 
+interface ServicePhotoRequirement {
+  id: string
+  title: string
+  description: string
+  required: boolean
+  order: number
+}
+
 interface ServiceProfileRow {
   id: string
   service_catalog_id: string | null
@@ -53,6 +61,7 @@ interface ServiceProfileRow {
   qualification_questions: string[]
   required_information: string[]
   required_photos: boolean
+  required_photos_list: ServicePhotoRequirement[]
   recommended_quote_lines: Array<{ label?: string; unitPriceHT?: number | null; vatRate?: number | null }>
   average_duration_minutes: number | null
   default_vat_rate: number | null
@@ -73,6 +82,7 @@ interface ServiceProfileForm {
   qualificationQuestions: string[]
   requiredInformation: string[]
   requiredPhotos: boolean
+  requiredPhotosList: ServicePhotoRequirement[]
   recommendedQuoteLines: Array<{ label: string; unitPriceHT: string; vatRate: string }>
   averageDurationMinutes: string
   defaultVatRate: string
@@ -93,6 +103,7 @@ const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   qualificationQuestions: [],
   requiredInformation: [],
   requiredPhotos: false,
+  requiredPhotosList: [],
   recommendedQuoteLines: [],
   averageDurationMinutes: '',
   defaultVatRate: '',
@@ -101,6 +112,10 @@ const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   emergencySupported: false,
   relatedServices: [],
   internalNotes: '',
+}
+
+function newPhotoRequirementId(): string {
+  return `photo_${Math.random().toString(36).slice(2, 10)}`
 }
 
 function serviceProfileFormFromRow(row: ServiceProfileRow): ServiceProfileForm {
@@ -114,6 +129,7 @@ function serviceProfileFormFromRow(row: ServiceProfileRow): ServiceProfileForm {
     qualificationQuestions: row.qualification_questions || [],
     requiredInformation: row.required_information || [],
     requiredPhotos: row.required_photos,
+    requiredPhotosList: (row.required_photos_list || []).slice().sort((a, b) => a.order - b.order),
     recommendedQuoteLines: (row.recommended_quote_lines || []).map((l) => ({
       label: l.label || '',
       unitPriceHT: l.unitPriceHT != null ? String(l.unitPriceHT) : '',
@@ -368,6 +384,9 @@ export default function ProfilMetierPage() {
       qualificationQuestions: serviceProfileForm.qualificationQuestions,
       requiredInformation: serviceProfileForm.requiredInformation,
       requiredPhotos: serviceProfileForm.requiredPhotos,
+      requiredPhotosList: serviceProfileForm.requiredPhotosList
+        .filter((p) => p.title.trim())
+        .map((p, idx) => ({ ...p, title: p.title.trim(), order: idx })),
       recommendedQuoteLines: serviceProfileForm.recommendedQuoteLines
         .filter((l) => l.label.trim())
         .map((l) => ({
@@ -1249,7 +1268,11 @@ export default function ProfilMetierPage() {
               {serviceProfiles.map((sp) => {
                 const linkedCatalogItem = sp.service_catalog_id ? catalog.find((c) => c.id === sp.service_catalog_id) : null
                 const badges: string[] = []
-                if (sp.required_photos) badges.push('📷 Photos requises')
+                if (sp.required_photos_list && sp.required_photos_list.length > 0) {
+                  badges.push(`📷 ${sp.required_photos_list.length} photo${sp.required_photos_list.length > 1 ? 's' : ''} à demander`)
+                } else if (sp.required_photos) {
+                  badges.push('📷 Photos requises')
+                }
                 if (sp.appointment_recommended) badges.push('📅 RDV conseillé')
                 if (sp.emergency_supported) badges.push('🚨 Urgence possible')
                 if (sp.travel_required) badges.push('🚐 Déplacement requis')
@@ -1444,14 +1467,116 @@ export default function ProfilMetierPage() {
                   style={{ ...inputStyle, resize: 'vertical' }}
                 />
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={serviceProfileForm.requiredPhotos}
-                  onChange={(e) => setServiceProfileForm((p) => ({ ...p, requiredPhotos: e.target.checked }))}
-                />
-                Photos requises
-              </label>
+              <div style={fieldWrap}>
+                <label style={labelStyle}>Photos à demander</label>
+                {serviceProfileForm.requiredPhotosList.map((photo, idx) => (
+                  <div
+                    key={photo.id}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                      <input
+                        type="text"
+                        placeholder="Titre (ex : Tableau électrique)"
+                        value={photo.title}
+                        onChange={(e) => setServiceProfileForm((p) => ({
+                          ...p,
+                          requiredPhotosList: p.requiredPhotosList.map((ph, i) => (i === idx ? { ...ph, title: e.target.value } : ph)),
+                        }))}
+                        style={inputStyle}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Description (ex : Vue complète du tableau)"
+                        value={photo.description}
+                        onChange={(e) => setServiceProfileForm((p) => ({
+                          ...p,
+                          requiredPhotosList: p.requiredPhotosList.map((ph, i) => (i === idx ? { ...ph, description: e.target.value } : ph)),
+                        }))}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)', fontSize: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={photo.required}
+                          onChange={(e) => setServiceProfileForm((p) => ({
+                            ...p,
+                            requiredPhotosList: p.requiredPhotosList.map((ph, i) => (i === idx ? { ...ph, required: e.target.checked } : ph)),
+                          }))}
+                        />
+                        Obligatoire
+                      </label>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => setServiceProfileForm((p) => {
+                            const next = p.requiredPhotosList.slice()
+                            ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+                            return { ...p, requiredPhotosList: next }
+                          })}
+                          style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-2)', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.4 : 1, padding: '2px 8px', fontSize: '12px' }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === serviceProfileForm.requiredPhotosList.length - 1}
+                          onClick={() => setServiceProfileForm((p) => {
+                            const next = p.requiredPhotosList.slice()
+                            ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+                            return { ...p, requiredPhotosList: next }
+                          })}
+                          style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-2)', cursor: idx === serviceProfileForm.requiredPhotosList.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === serviceProfileForm.requiredPhotosList.length - 1 ? 0.4 : 1, padding: '2px 8px', fontSize: '12px' }}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setServiceProfileForm((p) => ({
+                            ...p,
+                            requiredPhotosList: p.requiredPhotosList.filter((_, i) => i !== idx),
+                          }))}
+                          style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '2px 8px', fontSize: '12px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setServiceProfileForm((p) => ({
+                    ...p,
+                    requiredPhotosList: [
+                      ...p.requiredPhotosList,
+                      { id: newPhotoRequirementId(), title: '', description: '', required: true, order: p.requiredPhotosList.length },
+                    ],
+                  }))}
+                  style={{
+                    width: '100%', padding: '8px', borderRadius: '8px', border: '1px dashed var(--border)',
+                    background: 'transparent', color: 'var(--text-2)', fontSize: '12px', cursor: 'pointer',
+                  }}
+                >
+                  + Ajouter une photo à demander
+                </button>
+                {serviceProfileForm.requiredPhotosList.length === 0 && (
+                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '6px 0 0' }}>
+                    Aucune photo spécifique configurée pour cette prestation.
+                  </p>
+                )}
+              </div>
             </ServiceProfileAccordion>
 
             {/* 4. Chiffrage */}

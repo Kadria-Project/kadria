@@ -1,6 +1,14 @@
 import 'server-only'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
+export interface ServicePhotoRequirement {
+  id: string
+  title: string
+  description: string
+  required: boolean
+  order: number
+}
+
 export interface ServiceProfileRow {
   id: string
   artisan_id: string
@@ -13,6 +21,7 @@ export interface ServiceProfileRow {
   qualification_questions: string[]
   required_information: string[]
   required_photos: boolean
+  required_photos_list: ServicePhotoRequirement[]
   recommended_quote_lines: unknown[]
   average_duration_minutes: number | null
   default_vat_rate: number | null

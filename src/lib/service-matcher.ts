@@ -27,6 +27,10 @@ export interface ServiceMatcherServiceProfile {
   average_duration_minutes?: number | null
   default_vat_rate?: number | null
   required_photos?: boolean | null
+  // Liste structurée du référentiel métier (preuves visuelles). Le Service
+  // Matcher ne l'interprète jamais — il se contente de la transporter pour
+  // que le Mode Expert puisse l'afficher.
+  required_photos_list?: Array<{ id: string; title: string; description: string; required: boolean; order: number }> | null
 }
 
 export interface ServiceMatcherProject {
