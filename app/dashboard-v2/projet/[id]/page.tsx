@@ -167,6 +167,22 @@ function ProjectDetail() {
   const [eventDate, setEventDate] = useState(callbackDate || '');
   const [savingEvent, setSavingEvent] = useState(false);
 
+  // --- Rendez-vous assisté (Google Calendar) ---
+  const [appointment, setAppointment] = useState<{
+    id: string;
+    start: string;
+    end: string;
+    location: string | null;
+    status: string;
+  } | null>(null);
+  const [loadingAppointment, setLoadingAppointment] = useState(false);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [appointmentSlots, setAppointmentSlots] = useState<Array<{ start: string; end: string }>>([]);
+  const [appointmentConnected, setAppointmentConnected] = useState(true);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [bookingSlot, setBookingSlot] = useState<{ start: string; end: string } | null>(null);
+  const [appointmentError, setAppointmentError] = useState<string | null>(null);
+
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({
     clientFirstName: project?.clientFirstName || '',
@@ -277,6 +293,24 @@ function ProjectDetail() {
     }
 
     if (id) loadProject();
+  }, [id]);
+
+  useEffect(() => {
+    async function loadAppointment() {
+      if (!id) return;
+      setLoadingAppointment(true);
+      try {
+        const res = await fetch(`/api/appointments/by-project?projectId=${id}`);
+        const data = await res.json();
+        if (data.success) setAppointment(data.appointment || null);
+      } catch {
+        // silencieux : l'absence de RDV n'est pas une erreur bloquante
+      } finally {
+        setLoadingAppointment(false);
+      }
+    }
+
+    loadAppointment();
   }, [id]);
 
   useEffect(() => {
@@ -531,6 +565,77 @@ function ProjectDetail() {
       alert('Erreur lors de l\'enregistrement');
     } finally {
       setSavingEvent(false);
+    }
+  }
+
+  async function openAppointmentModal() {
+    setAppointmentError(null);
+    setLoadingSlots(true);
+    setShowAppointmentModal(true);
+    try {
+      const res = await fetch(`/api/appointments/availability?projectId=${project.id}`);
+      const data = await res.json();
+      if (!data.success) {
+        setAppointmentError('Erreur Google Calendar — réessayez.');
+        setAppointmentConnected(true);
+        setAppointmentSlots([]);
+        return;
+      }
+      setAppointmentConnected(!!data.connected);
+      setAppointmentSlots(data.connected ? data.slots || [] : []);
+    } catch {
+      setAppointmentError('Erreur Google Calendar — réessayez.');
+    } finally {
+      setLoadingSlots(false);
+    }
+  }
+
+  async function refreshAppointmentSlots() {
+    setLoadingSlots(true);
+    setAppointmentError(null);
+    try {
+      const res = await fetch(`/api/appointments/availability?projectId=${project.id}`);
+      const data = await res.json();
+      if (data.success) {
+        setAppointmentConnected(!!data.connected);
+        setAppointmentSlots(data.connected ? data.slots || [] : []);
+      }
+    } catch {
+      setAppointmentError('Erreur Google Calendar — réessayez.');
+    } finally {
+      setLoadingSlots(false);
+    }
+  }
+
+  async function confirmAppointment() {
+    if (!bookingSlot) return;
+    setAppointmentError(null);
+    try {
+      const res = await fetch('/api/appointments/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          start: bookingSlot.start,
+          end: bookingSlot.end,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        if (data.error === 'slot_unavailable') {
+          setAppointmentError('Créneau indisponible entre-temps.');
+          setBookingSlot(null);
+          await refreshAppointmentSlots();
+        } else {
+          setAppointmentError('Erreur Google Calendar — réessayez.');
+        }
+        return;
+      }
+      setAppointment(data.appointment);
+      setShowAppointmentModal(false);
+      setBookingSlot(null);
+    } catch {
+      setAppointmentError('Erreur Google Calendar — réessayez.');
     }
   }
 
@@ -2253,6 +2358,66 @@ function ProjectDetail() {
           </div>
         </div>
 
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          marginBottom: '16px',
+        }}>
+          <div style={{
+            padding: isMobile ? '16px' : '16px 20px',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <h2 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>
+              Rendez-vous
+            </h2>
+          </div>
+
+          <div style={{ padding: isMobile ? '16px' : '16px 20px' }}>
+            {loadingAppointment ? (
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Chargement...</p>
+            ) : appointment ? (
+              <div>
+                <p style={{ color: 'var(--text-1)', fontSize: '14px', margin: '0 0 4px', fontWeight: 600 }}>
+                  {formatDateTime(appointment.start)}
+                </p>
+                {appointment.location && (
+                  <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 4px' }}>
+                    📍 {appointment.location}
+                  </p>
+                )}
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 8px' }}>
+                  Statut : {appointment.status}
+                </p>
+                <p style={{ color: 'var(--accent)', fontSize: '12px', margin: 0 }}>
+                  ✓ Synchronisé Google Calendar
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 10px' }}>
+                  Aucun rendez-vous planifié pour ce dossier.
+                </p>
+                <button
+                  onClick={openAppointmentModal}
+                  style={{
+                    background: 'var(--accent)',
+                    border: 'none',
+                    color: 'black',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Planifier un rendez-vous
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {!showNotes ? (
           <div style={{
@@ -2483,6 +2648,59 @@ function ProjectDetail() {
             >
               {savingRdv ? 'Enregistrement...' : 'Enregistrer le RDV'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {showAppointmentModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Planifier un rendez-vous</h2>
+              <button
+                onClick={() => { setShowAppointmentModal(false); setBookingSlot(null); setAppointmentError(null); }}
+                className="text-[var(--text-2)] hover:text-[var(--text-1)]"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingSlots ? (
+              <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+            ) : !appointmentConnected ? (
+              <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
+            ) : appointmentError ? (
+              <p className="text-sm text-red-400">{appointmentError}</p>
+            ) : appointmentSlots.length === 0 ? (
+              <p className="text-sm text-[var(--text-2)]">Aucun créneau disponible</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide">Créneaux proposés</p>
+                {appointmentSlots.map((slot) => (
+                  <button
+                    key={slot.start}
+                    onClick={() => setBookingSlot(slot)}
+                    className={`w-full text-left rounded-lg border p-2 text-sm ${
+                      bookingSlot?.start === slot.start
+                        ? 'border-green-500 bg-green-500/10 text-[var(--text-1)]'
+                        : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                    }`}
+                  >
+                    {formatDateTime(slot.start)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {appointmentConnected && appointmentSlots.length > 0 && (
+              <button
+                onClick={confirmAppointment}
+                disabled={!bookingSlot}
+                className="w-full bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
+              >
+                Confirmer le rendez-vous
+              </button>
+            )}
           </div>
         </div>
       )}
