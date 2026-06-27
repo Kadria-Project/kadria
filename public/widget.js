@@ -36,31 +36,65 @@
   // ── Styles globaux ──────────────────────────────────────────────────────
   const style = document.createElement('style')
   style.textContent = `
-    #kadria-bubble {
+    #kadria-bubble-wrap {
       position: fixed;
       bottom: 24px;
       right: 24px;
+      z-index: 999998;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-direction: row-reverse;
+    }
+    #kadria-bubble-label {
+      background: rgba(9,9,11,0.92);
+      border: 1px solid rgba(34,197,94,0.22);
+      color: #ecfdf5;
+      font: 600 12.5px system-ui, -apple-system, sans-serif;
+      padding: 8px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+      opacity: 0;
+      transform: translateX(6px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    #kadria-bubble-wrap:hover #kadria-bubble-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    #kadria-bubble {
+      position: relative;
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background: ${primaryColor};
-      border: none;
+      background: linear-gradient(145deg, ${primaryColor} 0%, #0f3d24 130%);
+      border: 1px solid rgba(255,255,255,0.14);
       cursor: pointer;
-      z-index: 999998;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.32), 0 0 0 0 rgba(34,197,94,0.45);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
       outline: none;
+      animation: kadria-pulse 3.2s ease-in-out infinite;
     }
     #kadria-bubble:hover {
-      transform: scale(1.08);
-      box-shadow: 0 6px 28px rgba(0,0,0,0.3);
+      transform: scale(1.07);
+      box-shadow: 0 10px 32px rgba(0,0,0,0.4), 0 0 0 8px rgba(34,197,94,0.12);
+      animation-play-state: paused;
+    }
+    #kadria-bubble:focus-visible {
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.5);
     }
     #kadria-bubble svg {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
+    }
+    @keyframes kadria-pulse {
+      0%, 100% { box-shadow: 0 8px 28px rgba(0,0,0,0.32), 0 0 0 0 rgba(34,197,94,0.35); }
+      50% { box-shadow: 0 8px 28px rgba(0,0,0,0.32), 0 0 0 9px rgba(34,197,94,0.08); }
     }
     #kadria-overlay {
       position: fixed;
@@ -70,12 +104,13 @@
       height: 640px;
       max-width: calc(100vw - 32px);
       max-height: calc(100vh - 120px);
-      border-radius: 20px;
+      border-radius: 22px;
       overflow: hidden;
       z-index: 999999;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      box-shadow: 0 24px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.08);
       display: none;
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      background: #09090b;
     }
     #kadria-overlay.kadria-open {
       display: block;
@@ -94,8 +129,8 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: rgba(0,0,0,0.4);
-      border: none;
+      background: rgba(9,9,11,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
       color: white;
       cursor: pointer;
       z-index: 1000000;
@@ -104,6 +139,10 @@
       justify-content: center;
       font-size: 14px;
       line-height: 1;
+      transition: background 0.15s ease;
+    }
+    #kadria-close:hover {
+      background: rgba(0,0,0,0.75);
     }
     @keyframes kadria-slide-up {
       from { opacity: 0; transform: translateY(16px) scale(0.96); }
@@ -123,15 +162,24 @@
   document.head.appendChild(style)
 
   // ── Bulle ────────────────────────────────────────────────────────────────
+  const bubbleWrap = document.createElement('div')
+  bubbleWrap.id = 'kadria-bubble-wrap'
+
+  const bubbleLabel = document.createElement('span')
+  bubbleLabel.id = 'kadria-bubble-label'
+  bubbleLabel.textContent = 'Réponse en 3 min'
+
   const bubble = document.createElement('button')
   bubble.id = 'kadria-bubble'
-  bubble.setAttribute('aria-label', 'Ouvrir le chat')
+  bubble.setAttribute('aria-label', 'Ouvrir le chat Kadria')
   bubble.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" stroke="white"
          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   `
+  bubbleWrap.appendChild(bubbleLabel)
+  bubbleWrap.appendChild(bubble)
 
   // ── Overlay ──────────────────────────────────────────────────────────────
   const overlay = document.createElement('div')
@@ -188,17 +236,17 @@
   document.addEventListener('click', e => {
     if (isOpen &&
         !overlay.contains(e.target) &&
-        !bubble.contains(e.target)) {
+        !bubbleWrap.contains(e.target)) {
       close()
     }
   })
 
   function updateBubbleColor() {
-    bubble.style.background = primaryColor
+    bubble.style.background = `linear-gradient(145deg, ${primaryColor} 0%, #0f3d24 130%)`
   }
 
   // ── Inject ───────────────────────────────────────────────────────────────
-  document.body.appendChild(bubble)
+  document.body.appendChild(bubbleWrap)
   document.body.appendChild(overlay)
 
   // Message depuis l'iframe (ex: fermer après soumission)

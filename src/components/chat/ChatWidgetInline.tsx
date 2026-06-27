@@ -390,6 +390,16 @@ export default function ChatWidgetInline({
     'Je ne sais pas encore': { icon: 'Compass', description: 'Kadria vous aide à clarifier votre besoin' },
   }
 
+  // Cartes compactes du widget (4 entrées premium). Les libellés envoyés au
+  // chat reprennent volontairement les valeurs existantes de WELCOME_OPTIONS
+  // pour ne rien changer à la détection des intentions côté /api/chat.
+  const WIDGET_QUICK_CARDS: { title: string; subtitle: string; icon: string; value: string }[] = [
+    { title: 'Dépannage', subtitle: 'Une intervention rapide', icon: '🔧', value: 'Réparation / Dépannage' },
+    { title: 'Travaux', subtitle: 'Projet, rénovation, amélioration', icon: '🏗️', value: 'Travaux d\'amélioration' },
+    { title: 'Entretien', subtitle: 'Maintenance, nettoyage ou vérification', icon: '🧹', value: 'Entretien' },
+    { title: 'Je ne sais pas encore', subtitle: 'Aidez-moi à clarifier mon besoin', icon: '🧭', value: 'Je ne sais pas encore' },
+  ]
+
   // ── Container styles ──────────────────────────────────────────────────────
   const containerStyle: React.CSSProperties = fullPage ? {
     width: '100%',
@@ -425,9 +435,11 @@ export default function ChatWidgetInline({
 
         {/* Header */}
         <div style={{
-          background: isProjectExperience ? 'linear-gradient(180deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 100%)' : secondaryColorLocal,
+          background: isProjectExperience
+            ? 'linear-gradient(180deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 100%)'
+            : 'linear-gradient(180deg, rgba(15,16,15,0.97) 0%, rgba(9,9,11,0.97) 100%)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
-          padding: isProjectExperience ? '18px 20px 16px' : '12px 16px',
+          padding: isProjectExperience ? '18px 20px 16px' : '14px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -436,23 +448,42 @@ export default function ChatWidgetInline({
           <div style={{ ...centerStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
               <div style={{
-                width: isProjectExperience ? '44px' : '36px',
-                height: isProjectExperience ? '44px' : '36px',
-                borderRadius: isProjectExperience ? '14px' : '50%',
-                background: isProjectExperience ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)` : primaryColorLocal,
+                width: isProjectExperience ? '44px' : '38px',
+                height: isProjectExperience ? '44px' : '38px',
+                borderRadius: isProjectExperience ? '14px' : '12px',
+                background: isProjectExperience
+                  ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)`
+                  : `linear-gradient(145deg, ${primaryColorLocal} 0%, #0f3d24 130%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 800,
-                fontSize: isProjectExperience ? '18px' : '16px',
-                color: '#04110a',
-                boxShadow: isProjectExperience ? '0 12px 28px rgba(34,197,94,0.18)' : 'none',
+                fontSize: isProjectExperience ? '18px' : '15px',
+                color: isProjectExperience ? '#04110a' : '#ecfdf5',
+                boxShadow: isProjectExperience ? '0 12px 28px rgba(34,197,94,0.18)' : '0 6px 18px rgba(34,197,94,0.22)',
+                border: isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)',
                 flexShrink: 0,
               }}>K</div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14px' }}>{widgetName}</p>
-                <p style={{ margin: 0, color: '#a1a1aa', fontSize: isProjectExperience ? '12.5px' : '12px' }}>
-                  {isProjectExperience ? 'Assistant de qualification guide' : 'Assistant en ligne'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{widgetName}</p>
+                  {!isProjectExperience && (
+                    <span style={{
+                      border: '1px solid rgba(34,197,94,0.22)',
+                      background: 'rgba(34,197,94,0.08)',
+                      color: '#86efac',
+                      borderRadius: '999px',
+                      padding: '2px 8px',
+                      fontSize: '10.5px',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      Réponse en 3 min
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '2px 0 0', color: '#a1a1aa', fontSize: isProjectExperience ? '12.5px' : '12px' }}>
+                  {isProjectExperience ? 'Assistant de qualification guide' : "Votre assistant de confiance pour vos travaux"}
                 </p>
               </div>
             </div>
@@ -544,67 +575,50 @@ export default function ChatWidgetInline({
         </div>
 
         {/* Welcome screen */}
-        {showWelcome ? (
-          <div style={{ flex: 1, padding: isProjectExperience ? '28px 0 32px' : '20px', overflowY: 'auto' }}>
+        {showWelcome ? isProjectExperience ? (
+          <div style={{ flex: 1, padding: '28px 0 32px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{
-                background: isProjectExperience ? 'linear-gradient(180deg, rgba(24,24,27,0.95) 0%, rgba(15,23,18,0.92) 100%)' : '#18181b',
-                border: `1px solid ${isProjectExperience ? 'rgba(34,197,94,0.14)' : '#27272a'}`,
-                borderRadius: isProjectExperience ? '24px' : '12px',
-                padding: isProjectExperience ? '24px' : '16px',
+                background: 'linear-gradient(180deg, rgba(24,24,27,0.95) 0%, rgba(15,23,18,0.92) 100%)',
+                border: '1px solid rgba(34,197,94,0.14)',
+                borderRadius: '24px',
+                padding: '24px',
                 marginBottom: '18px',
-                boxShadow: isProjectExperience ? '0 18px 48px rgba(0,0,0,0.24)' : 'none',
+                boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
               }}>
-                {isProjectExperience ? (
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
-                      <div style={{
-                        width: '52px',
-                        height: '52px',
-                        borderRadius: '18px',
-                        background: 'rgba(34,197,94,0.12)',
-                        border: '1px solid rgba(34,197,94,0.25)',
-                        color: '#86efac',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '24px',
-                        flexShrink: 0,
-                      }}>
-                        ✦
-                      </div>
-                      <div>
-                        <p style={{ margin: '0 0 4px', color: '#dcfce7', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                          Assistant projet Kadria
-                        </p>
-                        <h2 style={{ margin: 0, color: 'white', fontSize: '28px', lineHeight: 1.15, fontWeight: 700 }}>
-                          Décrivez votre projet
-                        </h2>
-                      </div>
-                    </div>
-                    <p style={{ margin: '0 0 10px', color: '#e4e4e7', fontSize: '15px', lineHeight: 1.7 }}>
-                      {customWelcomeMessage || 'Kadria vous guide pour transmettre une demande claire, complète et exploitable à l artisan.'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
+                  <div style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '18px',
+                    background: 'rgba(34,197,94,0.12)',
+                    border: '1px solid rgba(34,197,94,0.25)',
+                    color: '#86efac',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    flexShrink: 0,
+                  }}>
+                    ✦
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', color: '#dcfce7', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      Assistant projet Kadria
                     </p>
-                    <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.7 }}>
-                      Quelques questions · Pas de compte requis · Transmission directe
-                    </p>
-                  </>
-                ) : customWelcomeMessage ? (
-                  <p style={{ margin: 0, color: 'white', fontSize: '15px', fontWeight: 500 }}>
-                    {customWelcomeMessage}
-                  </p>
-                ) : (
-                  <>
-                    <p style={{ margin: '0 0 6px', color: 'white', fontSize: '15px', fontWeight: 500 }}>
-                      👋 Bienvenue ! Quel projet souhaitez-vous réaliser ?
-                    </p>
-                    <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px' }}>
-                      Décrivez simplement votre besoin. Nous vous guiderons pour constituer un dossier complet.
-                    </p>
-                  </>
-                )}
+                    <h2 style={{ margin: 0, color: 'white', fontSize: '28px', lineHeight: 1.15, fontWeight: 700 }}>
+                      Décrivez votre projet
+                    </h2>
+                  </div>
+                </div>
+                <p style={{ margin: '0 0 10px', color: '#e4e4e7', fontSize: '15px', lineHeight: 1.7 }}>
+                  {customWelcomeMessage || 'Kadria vous guide pour transmettre une demande claire, complète et exploitable à l artisan.'}
+                </p>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.7 }}>
+                  Quelques questions · Pas de compte requis · Transmission directe
+                </p>
               </div>
-              <div className={isProjectExperience ? 'project-choice-grid' : ''} style={!isProjectExperience ? { display: 'flex', flexWrap: 'wrap', gap: '8px' } : undefined}>
+              <div className="project-choice-grid">
                 {WELCOME_OPTIONS.map(opt => (
                   <button
                     key={opt}
@@ -612,8 +626,8 @@ export default function ChatWidgetInline({
                       setShowWelcome(false)
                       fetchOpener().then(() => sendMessage(opt))
                     }}
-                    className={isProjectExperience ? 'project-choice-card' : ''}
-                    style={isProjectExperience ? {
+                    className="project-choice-card"
+                    style={{
                       background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
                       border: '1px solid rgba(255,255,255,0.08)',
                       color: 'white',
@@ -626,39 +640,124 @@ export default function ChatWidgetInline({
                       gap: '10px',
                       minHeight: '132px',
                       transition: 'transform 0.18s ease, border-color 0.18s ease, background 0.18s ease',
-                    } : {
-                      background: '#18181b', border: '1px solid #27272a',
-                      color: 'white', borderRadius: '8px',
-                      padding: '8px 14px', fontSize: '13px', cursor: 'pointer',
                     }}>
-                    {isProjectExperience ? (
-                      <>
-                        <div style={{
-                          width: '42px',
-                          height: '42px',
-                          borderRadius: '14px',
-                          background: 'rgba(34,197,94,0.08)',
-                          border: '1px solid rgba(34,197,94,0.18)',
-                          color: '#86efac',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                        }}>
-                          {WELCOME_OPTION_DETAILS[opt]?.icon || 'K'}
-                        </div>
-                        <div>
-                          <div style={{ color: 'white', fontSize: '16px', fontWeight: 650, marginBottom: '6px' }}>{opt}</div>
-                          <div style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
-                            {WELCOME_OPTION_DETAILS[opt]?.description}
-                          </div>
-                        </div>
-                      </>
-                    ) : opt}
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '14px',
+                      background: 'rgba(34,197,94,0.08)',
+                      border: '1px solid rgba(34,197,94,0.18)',
+                      color: '#86efac',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                    }}>
+                      {WELCOME_OPTION_DETAILS[opt]?.icon || 'K'}
+                    </div>
+                    <div>
+                      <div style={{ color: 'white', fontSize: '16px', fontWeight: 650, marginBottom: '6px' }}>{opt}</div>
+                      <div style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
+                        {WELCOME_OPTION_DETAILS[opt]?.description}
+                      </div>
+                    </div>
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, padding: '18px 16px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{
+              background: 'linear-gradient(180deg, rgba(24,24,27,0.9) 0%, rgba(13,18,15,0.88) 100%)',
+              border: '1px solid rgba(34,197,94,0.14)',
+              borderRadius: '18px',
+              padding: '18px',
+              marginBottom: '14px',
+              boxShadow: '0 14px 36px rgba(0,0,0,0.22)',
+            }}>
+              <p style={{ margin: '0 0 6px', color: 'white', fontSize: '17px', fontWeight: 700, letterSpacing: '-0.01em' }}>
+                Parlez-moi de votre projet
+              </p>
+              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
+                {customWelcomeMessage || 'Je vous guide en quelques questions pour trouver les bons artisans, rapidement.'}
+              </p>
+            </div>
+            <div className="widget-quick-grid">
+              {WIDGET_QUICK_CARDS.map(card => (
+                <button
+                  key={card.title}
+                  onClick={() => {
+                    setShowWelcome(false)
+                    fetchOpener().then(() => sendMessage(card.value))
+                  }}
+                  className="widget-quick-card"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.015) 100%)',
+                    border: '1px solid rgba(255,255,255,0.09)',
+                    color: 'white',
+                    borderRadius: '16px',
+                    padding: '14px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minHeight: '96px',
+                    transition: 'transform 0.16s ease, border-color 0.16s ease, background 0.16s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '17px' }}>{card.icon}</span>
+                    <span style={{ color: '#52525b', fontSize: '13px' }}>→</span>
+                  </div>
+                  <div>
+                    <div style={{ color: 'white', fontSize: '13.5px', fontWeight: 650, marginBottom: '3px' }}>{card.title}</div>
+                    <div style={{ color: '#a1a1aa', fontSize: '11.5px', lineHeight: 1.5 }}>{card.subtitle}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div style={{ flex: 1 }} />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+              <input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && input.trim()) {
+                    const text = input
+                    setShowWelcome(false)
+                    fetchOpener().then(() => sendMessage(text))
+                  }
+                }}
+                placeholder="Ou décrivez directement votre besoin..."
+                style={{
+                  flex: 1, background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px', padding: '10px 12px', color: 'white', fontSize: '13px', outline: 'none',
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (!input.trim()) return
+                  const text = input
+                  setShowWelcome(false)
+                  fetchOpener().then(() => sendMessage(text))
+                }}
+                disabled={!input.trim()}
+                style={{
+                  width: '40px', height: '40px', borderRadius: '12px', border: 'none',
+                  background: input.trim() ? primaryColorLocal : '#27272a',
+                  color: input.trim() ? 'black' : '#71717a',
+                  cursor: input.trim() ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
             </div>
           </div>
         ) : (
@@ -991,6 +1090,28 @@ export default function ChatWidgetInline({
               </div>
             )}
 
+            {/* CTA vers la page complète */}
+            {!isProjectExperience && !saved && (
+              <div style={{ padding: '0 12px 8px', flexShrink: 0, background: '#09090b', textAlign: 'center' }}>
+                <a
+                  href={`/projet?artisan_id=${encodeURIComponent(artisanId)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="widget-footer-cta"
+                  style={{
+                    color: '#a1a1aa',
+                    fontSize: '11.5px',
+                    textDecoration: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,0.14)',
+                    paddingBottom: '1px',
+                    transition: 'color 0.15s ease, border-color 0.15s ease',
+                  }}
+                >
+                  Continuer sur la page complète →
+                </a>
+              </div>
+            )}
+
             {/* Input */}
             {!saved && !showContactForm && (
               <div className="chat-input-container" style={{
@@ -1209,6 +1330,20 @@ export default function ChatWidgetInline({
           transform: translateY(-2px);
           border-color: rgba(34,197,94,0.28) !important;
           background: linear-gradient(180deg, rgba(34,197,94,0.10) 0%, rgba(255,255,255,0.03) 100%) !important;
+        }
+        .widget-quick-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .widget-quick-card:hover {
+          transform: translateY(-1px);
+          border-color: rgba(34,197,94,0.26) !important;
+          background: linear-gradient(180deg, rgba(34,197,94,0.09) 0%, rgba(255,255,255,0.02) 100%) !important;
+        }
+        .widget-footer-cta:hover {
+          border-color: rgba(34,197,94,0.32) !important;
+          color: #86efac !important;
         }
         @media (max-width: 640px) {
           .project-step-grid,
