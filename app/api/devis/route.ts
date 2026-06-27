@@ -209,9 +209,12 @@ export async function POST(request: NextRequest) {
     await updateArtisanConfig(session.artisanId, { devis_compteur: numero })
 
     try {
+      // Le devis est créé en Brouillon (pas encore envoyé au client) : ne pas faire
+      // basculer le statut projet sur "Devis envoyé" ici. Ce basculement a lieu
+      // uniquement dans finalize/route.ts au moment de l'envoi réel (mode: 'send').
       const { error: projectUpdateError } = await supabaseAdmin
         .from(TABLES.projects)
-        .update({ devis_amount: Number(body.totalTTC) || 0, status: 'Devis envoyé' })
+        .update({ devis_amount: Number(body.totalTTC) || 0 })
         .eq('id', project.id)
 
       if (projectUpdateError) {

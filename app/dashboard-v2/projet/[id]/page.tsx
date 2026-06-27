@@ -1147,7 +1147,7 @@ function ProjectDetail() {
       { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
       { label: 'Qualification', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
       { label: 'Rendez-vous', detail: appointment ? formatDateTime(appointment.start) : undefined, state: appointment ? 'done' : 'todo' },
-      { label: 'Devis', detail: devisDoneMobile ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer', state: devisDoneMobile ? (latestDevis.accepted ? 'done' : 'current') : 'todo' },
+      { label: 'Devis', detail: devisDoneMobile ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer', state: devisDoneMobile ? (latestDevis.accepted ? 'done' : latestDevis.declined ? 'todo' : 'current') : 'todo' },
       { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
     ];
 
@@ -2323,7 +2323,7 @@ function ProjectDetail() {
             {
               label: 'Devis',
               detail: devisDone ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer',
-              state: devisDone ? (latestDevis.accepted ? 'done' : 'current') : 'todo',
+              state: devisDone ? (latestDevis.accepted ? 'done' : latestDevis.declined ? 'todo' : 'current') : 'todo',
             },
             { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
             { label: 'Facturation', detail: 'Bientôt disponible', state: 'future' },
