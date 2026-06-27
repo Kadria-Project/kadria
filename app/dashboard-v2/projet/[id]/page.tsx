@@ -786,7 +786,7 @@ function ProjectDetail() {
 
   // Source unique de la décision commerciale (src/lib/quote-status.ts) :
   // tous les blocs de la page (Action recommandée, cartes rapides, Analyse
-  // Kadria, Moment idéal, Gestion du dossier) doivent lire ce même état
+  // Kadria, Moment idéal, Actions et devis) doivent lire ce même état
   // plutôt que recalculer chacun leur propre condition de relance, pour
   // éviter les contradictions entre blocs.
   const decision = getProjectDecisionState(
@@ -1750,12 +1750,15 @@ function ProjectDetail() {
           </div>
         </div>
 
-        {/* Action recommandée — sortie minimale de l'Action Engine (src/lib/action-engine.ts) */}
+        {/* Action recommandée — sortie minimale de l'Action Engine (src/lib/action-engine.ts).
+            Point d'entrée principal de la fiche : mise en avant subtile (bordure
+            accent + léger halo), sans tomber dans un style "alerte". */}
         <div style={{
           background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          padding: '14px 16px',
+          border: '1px solid rgba(34,197,94,0.35)',
+          boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 4px 16px rgba(34,197,94,0.08)',
+          borderRadius: '14px',
+          padding: '16px 18px',
           marginBottom: '16px',
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
@@ -1764,10 +1767,10 @@ function ProjectDetail() {
           gap: '12px',
         }}>
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-3)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Action recommandée
             </p>
-            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-1)', margin: '0 0 2px' }}>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
               {nextAction.title}
             </p>
             <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px' }}>
@@ -1835,7 +1838,7 @@ function ProjectDetail() {
         {/* Centre d'actions — les actions prioritaires du dossier, toujours visibles en haut */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
           gap: '10px',
           marginBottom: '16px',
         }}>
@@ -1862,7 +1865,7 @@ function ProjectDetail() {
             </p>
           </button>
 
-          {/* Relance — uniquement actionnable quand decision.canFollowUpQuote
+          {/* Suivi client — uniquement actionnable quand decision.canFollowUpQuote
               est vraie, pour ne jamais contredire l'Action recommandée */}
           <button
             onClick={() => decision.canFollowUpQuote && latestDevis ? followUpQuote(latestDevis) : handleNextBestAction(latestDevis ? 'followup' : 'call')}
@@ -1878,7 +1881,7 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📞 Relance
+              📞 Suivi client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {decision.canFollowUpQuote
@@ -1889,7 +1892,7 @@ function ProjectDetail() {
             </p>
           </button>
 
-          {/* Devis */}
+          {/* Devis client */}
           <button
             onClick={() => latestDevis ? router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`) : handleNextBestAction('quote')}
             style={{
@@ -1902,39 +1905,29 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📄 Devis
+              📄 Devis client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {!latestDevis
                 ? 'Préparer un devis'
                 : decision.state === 'quote_draft'
-                  ? 'Envoyer le devis'
-                  : decision.canFollowUpQuote
-                    ? 'Relancer le devis'
-                    : 'Consulter le devis'}
+                  ? 'Reprendre le devis'
+                  : decision.state === 'quote_accepted'
+                    ? 'Devis accepté'
+                    : decision.state === 'quote_declined'
+                      ? 'Devis refusé'
+                      : decision.canFollowUpQuote
+                        ? 'Consulter / relancer'
+                        : 'Consulter le devis'}
             </p>
           </button>
-
-          {/* Intervention — pas de donnée réelle aujourd'hui, affiché honnêtement comme futur */}
-          <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            padding: '14px',
-            opacity: 0.55,
-          }}>
-            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              🛠️ Intervention
-            </p>
-            <p style={{ fontSize: '13px', color: 'var(--text-3)', fontWeight: 600, margin: 0 }}>
-              Bientôt disponible
-            </p>
-          </div>
         </div>
 
+        {/* Analyse Kadria — bloc secondaire d'aide à la lecture du dossier,
+            volontairement plus neutre que l'Action recommandée. */}
         <div style={{
           background: 'var(--bg-elevated)',
-          border: analysis.temperature === 'hot' ? '1px solid rgba(34,197,94,0.18)' : '1px solid var(--border)',
+          border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
         }}>
@@ -2026,7 +2019,6 @@ function ProjectDetail() {
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
             background: 'var(--bg-hover)',
-            borderLeft: '2px solid var(--accent)',
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             gap: '12px',
@@ -2278,163 +2270,6 @@ function ProjectDetail() {
           </div>
         )}
 
-        {/* Frais de déplacement estimés — plan Performance et supérieur */}
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          padding: isMobile ? '16px' : '16px 20px',
-          marginTop: '16px',
-          position: 'relative',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '16px' }}>🚗</span>
-            <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>
-              Frais de déplacement estimés
-            </span>
-          </div>
-          {!canTravelCost ? (
-            <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
-              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                Distance aller, aller-retour et coût de déplacement estimé (vol d&apos;oiseau).
-              </p>
-            </div>
-          ) : (() => {
-            const travelConfig = artisanConfig?.travelConfig;
-            const originAddress = travelConfig?.originAddress || artisanConfig?.address;
-            const originLat = travelConfig?.originLat;
-            const originLng = travelConfig?.originLng;
-            const siteAddress = project?.siteAddress;
-            const destLat = project?.latitude;
-            const destLng = project?.longitude;
-
-            // Cas 1 : adresse artisan absente
-            if (!originAddress) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse professionnelle manquante dans vos paramètres.
-                </p>
-              );
-            }
-            // Cas 2 : adresse artisan présente mais coordonnées absentes
-            if (originLat === undefined || originLng === undefined) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse professionnelle renseignée, mais non géocodée. Sélectionnez-la via l&apos;autocomplete dans Paramètres.
-                </p>
-              );
-            }
-            // Cas 3 : adresse chantier absente
-            if (!siteAddress) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse chantier manquante sur le dossier.
-                </p>
-              );
-            }
-            // Cas 4 : adresse chantier présente mais coordonnées absentes
-            if (destLat === null || destLat === undefined || destLng === null || destLng === undefined) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse chantier renseignée, mais coordonnées GPS manquantes. Les nouveaux dossiers doivent utiliser l&apos;adresse suggérée par l&apos;autocomplete.
-                </p>
-              );
-            }
-            if (!travelConfig?.vehicleType) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Motorisation non renseignée dans vos paramètres.
-                </p>
-              );
-            }
-            const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
-            const result = calculateTravelCost(distanceKm, {
-              vehicleType: travelConfig.vehicleType as VehicleType,
-              consumptionPer100Km: travelConfig.consumptionPer100Km,
-              chargingType: travelConfig.chargingType as ChargingType | undefined,
-              customCostPerKm: travelConfig.customCostPerKm,
-            });
-            if (!result) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Impossible de calculer le déplacement.
-                </p>
-              );
-            }
-            const recommendation = calculateTravelFeeRecommendation({
-              oneWayDistanceKm: result.distanceKm,
-              estimatedCost: result.cost,
-              minimumTravelFee: travelConfig.minimumTravelFee,
-              freeTravelRadiusKm: travelConfig.freeTravelRadiusKm,
-            });
-            return (
-              <>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller</p>
-                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKm.toFixed(1)} km</p>
-                  </div>
-                  <div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
-                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKmAR.toFixed(1)} km</p>
-                  </div>
-                  <div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé ({result.energyLabel})</p>
-                    <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>{result.cost.toFixed(2)} €</p>
-                  </div>
-                </div>
-                <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
-                  Distance géographique majorée de 10 %.
-                </p>
-                <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--bg-elevated)', borderRadius: '8px' }}>
-                  <p style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700, margin: '0 0 2px' }}>
-                    {recommendation.label}
-                  </p>
-                  <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
-                    {recommendation.isFreeZone
-                      ? 'Le chantier est dans votre zone proche. Aucun frais de déplacement spécifique n’est suggéré.'
-                      : recommendation.reason}
-                  </p>
-                  {(travelConfig.minimumTravelFee !== undefined || travelConfig.freeTravelRadiusKm !== undefined) && (
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
-                      {travelConfig.minimumTravelFee !== undefined && `Frais minimum : ${travelConfig.minimumTravelFee} €`}
-                      {travelConfig.minimumTravelFee !== undefined && travelConfig.freeTravelRadiusKm !== undefined && ' · '}
-                      {travelConfig.freeTravelRadiusKm !== undefined && `Zone sans frais : ${travelConfig.freeTravelRadiusKm} km`}
-                    </p>
-                  )}
-                </div>
-              </>
-            );
-          })()}
-          {!canTravelCost && (
-            <button
-              onClick={() => openUpgradeModal('travelCost')}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '20px',
-                padding: '6px 14px',
-                fontSize: '12px',
-                fontWeight: 600,
-                color: 'var(--accent)',
-              }}>
-                Disponible avec Performance
-              </span>
-            </button>
-          )}
-        </div>
-
         {showIdealFollowUp && (idealActionLabel.title !== 'Moment idéal pour relancer le devis' || decision.shouldShowFollowupBlock) && (
           <div style={{
             background: 'rgba(34,197,94,0.06)',
@@ -2512,7 +2347,7 @@ function ProjectDetail() {
               fontWeight: 600,
               margin: 0
             }}>
-              Gestion du dossier
+              Actions et devis
             </h2>
             {/* ID + source */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3426,6 +3261,163 @@ function ProjectDetail() {
           </div>
         </div>
 
+        {/* Frais de déplacement estimés — plan Performance et supérieur */}
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: isMobile ? '16px' : '16px 20px',
+          marginBottom: '16px',
+          position: 'relative',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '16px' }}>🚗</span>
+            <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>
+              Frais de déplacement estimés
+            </span>
+          </div>
+          {!canTravelCost ? (
+            <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                Distance aller, aller-retour et coût de déplacement estimé (vol d&apos;oiseau).
+              </p>
+            </div>
+          ) : (() => {
+            const travelConfig = artisanConfig?.travelConfig;
+            const originAddress = travelConfig?.originAddress || artisanConfig?.address;
+            const originLat = travelConfig?.originLat;
+            const originLng = travelConfig?.originLng;
+            const siteAddress = project?.siteAddress;
+            const destLat = project?.latitude;
+            const destLng = project?.longitude;
+
+            // Cas 1 : adresse artisan absente
+            if (!originAddress) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse professionnelle manquante dans vos paramètres.
+                </p>
+              );
+            }
+            // Cas 2 : adresse artisan présente mais coordonnées absentes
+            if (originLat === undefined || originLng === undefined) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse professionnelle renseignée, mais non géocodée. Sélectionnez-la via l&apos;autocomplete dans Paramètres.
+                </p>
+              );
+            }
+            // Cas 3 : adresse chantier absente
+            if (!siteAddress) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse chantier manquante sur le dossier.
+                </p>
+              );
+            }
+            // Cas 4 : adresse chantier présente mais coordonnées absentes
+            if (destLat === null || destLat === undefined || destLng === null || destLng === undefined) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Adresse chantier renseignée, mais coordonnées GPS manquantes. Les nouveaux dossiers doivent utiliser l&apos;adresse suggérée par l&apos;autocomplete.
+                </p>
+              );
+            }
+            if (!travelConfig?.vehicleType) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Motorisation non renseignée dans vos paramètres.
+                </p>
+              );
+            }
+            const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
+            const result = calculateTravelCost(distanceKm, {
+              vehicleType: travelConfig.vehicleType as VehicleType,
+              consumptionPer100Km: travelConfig.consumptionPer100Km,
+              chargingType: travelConfig.chargingType as ChargingType | undefined,
+              customCostPerKm: travelConfig.customCostPerKm,
+            });
+            if (!result) {
+              return (
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Impossible de calculer le déplacement.
+                </p>
+              );
+            }
+            const recommendation = calculateTravelFeeRecommendation({
+              oneWayDistanceKm: result.distanceKm,
+              estimatedCost: result.cost,
+              minimumTravelFee: travelConfig.minimumTravelFee,
+              freeTravelRadiusKm: travelConfig.freeTravelRadiusKm,
+            });
+            return (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKm.toFixed(1)} km</p>
+                  </div>
+                  <div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKmAR.toFixed(1)} km</p>
+                  </div>
+                  <div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé ({result.energyLabel})</p>
+                    <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>{result.cost.toFixed(2)} €</p>
+                  </div>
+                </div>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
+                  Distance géographique majorée de 10 %.
+                </p>
+                <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--bg-elevated)', borderRadius: '8px' }}>
+                  <p style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700, margin: '0 0 2px' }}>
+                    {recommendation.label}
+                  </p>
+                  <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
+                    {recommendation.isFreeZone
+                      ? 'Le chantier est dans votre zone proche. Aucun frais de déplacement spécifique n’est suggéré.'
+                      : recommendation.reason}
+                  </p>
+                  {(travelConfig.minimumTravelFee !== undefined || travelConfig.freeTravelRadiusKm !== undefined) && (
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
+                      {travelConfig.minimumTravelFee !== undefined && `Frais minimum : ${travelConfig.minimumTravelFee} €`}
+                      {travelConfig.minimumTravelFee !== undefined && travelConfig.freeTravelRadiusKm !== undefined && ' · '}
+                      {travelConfig.freeTravelRadiusKm !== undefined && `Zone sans frais : ${travelConfig.freeTravelRadiusKm} km`}
+                    </p>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+          {!canTravelCost && (
+            <button
+              onClick={() => openUpgradeModal('travelCost')}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '20px',
+                padding: '6px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--accent)',
+              }}>
+                Disponible avec Performance
+              </span>
+            </button>
+          )}
+        </div>
+
         {!showNotes ? (
           <div style={{
             background: 'var(--bg-elevated)',
@@ -3534,7 +3526,7 @@ function ProjectDetail() {
           {(() => {
             // Évènements devis consolidés depuis les données déjà chargées sur
             // cette page (devisList) — aucune donnée inventée, juste les
-            // mêmes champs déjà utilisés par "Gestion du dossier" ci-dessus.
+            // mêmes champs déjà utilisés par "Actions et devis" ci-dessus.
             const devisEvents = devisList.flatMap((devis) => {
               const items: { id: string; description: string; createdAt?: string | null; action: string }[] = [];
               if (devis.date_emission) {
