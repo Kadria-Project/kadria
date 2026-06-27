@@ -18,10 +18,14 @@ interface Props {
   artisanId?: string
   artisanName?: string
   primaryColor?: string
+  secondaryColor?: string
+  welcomeNameOverride?: string
+  welcomeMessageOverride?: string
   inline?: boolean
   fullPage?: boolean
   fitParentHeight?: boolean
   projectExperience?: boolean
+  previewMode?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,10 +79,14 @@ export default function ChatWidgetInline({
   artisanId = '',
   artisanName = "l'artisan",
   primaryColor = '#22c55e',
+  secondaryColor,
+  welcomeNameOverride,
+  welcomeMessageOverride,
   inline = true,
   fullPage = false,
   fitParentHeight = false,
   projectExperience = false,
+  previewMode = false,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -139,6 +147,17 @@ export default function ChatWidgetInline({
     }
     loadConfig()
   }, [artisanId, primaryColor])
+
+  // ── Surcharge locale (ex: aperçu temps réel dans les paramètres) ─────────
+  useEffect(() => {
+    if (secondaryColor) setSecondaryColorLocal(secondaryColor)
+  }, [secondaryColor])
+  useEffect(() => {
+    if (welcomeNameOverride) setWidgetName(welcomeNameOverride)
+  }, [welcomeNameOverride])
+  useEffect(() => {
+    if (welcomeMessageOverride) setCustomWelcomeMessage(welcomeMessageOverride)
+  }, [welcomeMessageOverride])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -329,6 +348,17 @@ export default function ChatWidgetInline({
 
   // ── Save dossier ─────────────────────────────────────────────────────────
   const saveDossier = async () => {
+    if (previewMode) {
+      setSaving(true)
+      setSaved(true)
+      setShowModal(false)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `✅ [Aperçu] Ce message simule l'envoi du dossier — aucun dossier réel n'a été créé en mode test.`
+      }])
+      setSaving(false)
+      return
+    }
     setSaving(true)
     try {
       const res = await fetch('/api/projects', {

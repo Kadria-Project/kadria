@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
+import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { getSuggestedWorkTypesForTrades, getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
 import type { ArtisanServiceCatalogItem, ArtisanQuoteTemplate, ArtisanQuoteTemplateLine, QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
@@ -27,10 +28,32 @@ const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
 ]
 
-const SETTINGS_SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }> = [
-  SECTIONS[0]!,
-  { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
-  ...SECTIONS.slice(1),
+// Groupes visuels du menu latéral des paramètres
+const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: string; icon: string; href?: string }> }> = [
+  {
+    label: 'Configuration',
+    items: [
+      SECTIONS[0]!,
+      { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
+      SECTIONS[2]!,
+      SECTIONS[3]!,
+    ],
+  },
+  {
+    label: 'Activité',
+    items: [
+      SECTIONS[4]!,
+      SECTIONS[5]!,
+      SECTIONS[1]!,
+    ],
+  },
+  {
+    label: 'Compte',
+    items: [
+      SECTIONS[6]!,
+      SECTIONS[7]!,
+    ],
+  },
 ]
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded'
@@ -361,6 +384,7 @@ export default function ParametresPage() {
 
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
   const [copied, setCopied] = useState(false)
+  const [widgetPreviewKey, setWidgetPreviewKey] = useState(0)
 
   const [isMobile, setIsMobile] = useState(false)
   useLayoutEffect(() => {
@@ -936,104 +960,58 @@ export default function ParametresPage() {
               padding: '12px',
             } : {}),
           }}>
-            {SETTINGS_SECTIONS.map(section => (
-              <button
-                key={section.id}
-                onClick={() => {
-                  if (section.href) {
-                    router.push(section.href)
-                    return
-                  }
-                  setActiveSection(section.id)
-                }}
-                style={{
-                  width: isMobile ? 'auto' : '100%',
-                  flexShrink: isMobile ? 0 : undefined,
-                  background: activeSection === section.id
-                    ? 'rgba(34,197,94,0.1)' : 'transparent',
-                  border: 'none',
-                  borderLeft: !isMobile && activeSection === section.id
-                    ? '2px solid var(--accent)' : isMobile ? 'none' : '2px solid transparent',
-                  borderBottom: isMobile && activeSection === section.id
-                    ? '2px solid var(--accent)' : isMobile ? '2px solid transparent' : undefined,
-                  color: activeSection === section.id ? 'var(--accent)' : 'var(--text-2)',
-                  borderRadius: isMobile ? '8px' : '0 8px 8px 0',
-                  padding: '10px 14px',
-                  fontSize: '14px',
-                  fontWeight: activeSection === section.id ? 600 : 400,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: isMobile ? 0 : '4px',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <span>{section.icon}</span>
-                {section.label}
-              </button>
+            {SETTINGS_GROUPS.map((group, gi) => (
+              <div key={group.label} style={isMobile ? { display: 'flex', gap: '8px' } : {}}>
+                {!isMobile && (
+                  <p style={{
+                    color: 'var(--text-3)', fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    margin: gi === 0 ? '2px 14px 6px' : '14px 14px 6px',
+                  }}>
+                    {group.label}
+                  </p>
+                )}
+                {group.items.map(section => (
+                  <button
+                    key={section.id}
+                    onClick={() => {
+                      if (section.href) {
+                        router.push(section.href)
+                        return
+                      }
+                      setActiveSection(section.id)
+                    }}
+                    style={{
+                      width: isMobile ? 'auto' : '100%',
+                      flexShrink: isMobile ? 0 : undefined,
+                      background: activeSection === section.id
+                        ? 'rgba(34,197,94,0.1)' : 'transparent',
+                      border: 'none',
+                      borderLeft: !isMobile && activeSection === section.id
+                        ? '2px solid var(--accent)' : isMobile ? 'none' : '2px solid transparent',
+                      borderBottom: isMobile && activeSection === section.id
+                        ? '2px solid var(--accent)' : isMobile ? '2px solid transparent' : undefined,
+                      color: activeSection === section.id ? 'var(--accent)' : 'var(--text-2)',
+                      borderRadius: isMobile ? '8px' : '0 8px 8px 0',
+                      padding: '10px 14px',
+                      fontSize: '14px',
+                      fontWeight: activeSection === section.id ? 600 : 400,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: isMobile ? 0 : '4px',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span>{section.icon}</span>
+                    {section.label}
+                  </button>
+                ))}
+              </div>
             ))}
-          </div>
-
-          {/* Widget preview */}
-          <div style={{
-            ...sectionCard,
-            marginTop: '0',
-            ...(isMobile ? { display: 'none' } : {}),
-          }}>
-            <p style={{
-              color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
-              letterSpacing: '0.08em', textTransform: 'uppercase',
-              margin: '0 0 12px',
-            }}>
-              Aperçu widget
-            </p>
-            <div style={{
-              background: config.secondaryColor || '#18181b',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              border: '1px solid #27272a',
-            }}>
-              <div style={{
-                background: config.primaryColor,
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
-                <div style={{
-                  width: '28px', height: '28px', borderRadius: '50%',
-                  background: 'rgba(0,0,0,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', fontWeight: 700, fontSize: '12px',
-                }}>
-                  {config.companyName?.charAt(0) || 'K'}
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'white', fontSize: '12px', fontWeight: 600 }}>
-                    {config.welcomeName || config.companyName || 'Kadria'}
-                  </p>
-                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '10px' }}>
-                    Assistant en ligne
-                  </p>
-                </div>
-              </div>
-              <div style={{ padding: '10px 14px' }}>
-                <div style={{
-                  background: '#27272a',
-                  borderRadius: '4px 10px 10px 10px',
-                  padding: '8px 10px',
-                  fontSize: '11px',
-                  color: 'white',
-                  lineHeight: 1.5,
-                }}>
-                  {config.welcomeMessage ||
-                    'Bonjour ! Je vais vous aider à structurer votre projet. Pour commencer, quel type de travaux souhaitez-vous réaliser ?'}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1251,6 +1229,52 @@ export default function ParametresPage() {
               <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
                 🎨 Mon widget
               </h2>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Tester mon widget
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
+                  Visualisez et testez le widget tel qu&apos;il apparaîtra sur votre site.
+                </p>
+                <div style={{
+                  background: '#09090b',
+                  border: '1px solid #27272a',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  height: isMobile ? '480px' : '560px',
+                }}>
+                  <ChatWidgetInline
+                    key={widgetPreviewKey}
+                    artisanId={artisanIdDisplay}
+                    artisanName={config.companyName || "l'artisan"}
+                    primaryColor={config.primaryColor}
+                    secondaryColor={config.secondaryColor}
+                    welcomeNameOverride={config.welcomeName}
+                    welcomeMessageOverride={config.welcomeMessage}
+                    fitParentHeight
+                    previewMode
+                  />
+                </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: '8px', marginTop: '12px',
+                }}>
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                    ⚠️ Les messages envoyés ici servent uniquement à tester le widget. Aucun dossier réel n&apos;est créé.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setWidgetPreviewKey(k => k + 1)}
+                    style={{
+                      background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-2)',
+                      borderRadius: '8px', padding: '6px 14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Réinitialiser la conversation
+                  </button>
+                </div>
+              </div>
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
