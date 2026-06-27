@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message { role: 'user' | 'assistant'; content: string }
-interface Dossier {
+export interface Dossier {
   clientFirstName?: string; clientName?: string
   clientPhone?: string; clientEmail?: string
   siteAddress?: string; city?: string; postalCode?: string
@@ -26,6 +26,8 @@ interface Props {
   fitParentHeight?: boolean
   projectExperience?: boolean
   previewMode?: boolean
+  onDossierChange?: (dossier: Dossier, score: number) => void
+  onArtisanNameChange?: (name: string) => void
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -87,6 +89,8 @@ export default function ChatWidgetInline({
   fitParentHeight = false,
   projectExperience = false,
   previewMode = false,
+  onDossierChange,
+  onArtisanNameChange,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -173,6 +177,18 @@ export default function ChatWidgetInline({
   useEffect(() => {
     if (readyToSave) setShowModal(true)
   }, [readyToSave])
+
+  // ── Notifie le parent du dossier courant (ex: résumé live dans /projet) ──
+  useEffect(() => {
+    onDossierChange?.(dossier, score)
+  }, [dossier, score, onDossierChange])
+
+  // ── Notifie le parent du nom de l'artisan identifié (ex: header /projet) ──
+  useEffect(() => {
+    if (artisanId && artisanId !== 'Artisan_demo' && widgetName !== 'Kadria') {
+      onArtisanNameChange?.(widgetName)
+    }
+  }, [artisanId, widgetName, onArtisanNameChange])
 
   // ── Address mode detection ───────────────────────────────────────────────
   const isAddressMode = expectedField === 'siteAddress'
@@ -801,25 +817,35 @@ export default function ChatWidgetInline({
                 ...centerStyle,
                 display: 'flex', flexDirection: 'column', gap: '10px',
               }}>
-              {messages.map((msg, i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                }}>
-                  <div style={{
-                    maxWidth: isProjectExperience ? '82%' : '78%', padding: isProjectExperience ? '12px 15px' : '10px 14px',
-                    borderRadius: msg.role === 'user' ? '16px 6px 16px 16px' : '6px 16px 16px 16px',
-                    background: msg.role === 'user' ? primaryColorLocal : '#27272a',
-                    color: msg.role === 'user' ? 'black' : 'white',
-                    fontSize: isProjectExperience ? '14px' : '13.5px', lineHeight: '1.7',
-                    boxShadow: isProjectExperience ? '0 10px 24px rgba(0,0,0,0.14)' : 'none',
+              {messages.map((msg, i) => {
+                const isExcluded = msg.role === 'assistant' &&
+                  msg.content.includes("ne fait pas partie des prestations que l'artisan souhaite traiter")
+                return (
+                  <div key={i} style={{
+                    display: 'flex',
+                    justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   }}>
-                    {msg.role === 'assistant' ? (
-                      <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                    ) : msg.content}
+                    <div style={{
+                      maxWidth: isProjectExperience ? '82%' : '78%', padding: isProjectExperience ? '12px 15px' : '10px 14px',
+                      borderRadius: msg.role === 'user' ? '16px 6px 16px 16px' : '6px 16px 16px 16px',
+                      background: msg.role === 'user' ? primaryColorLocal : isExcluded ? 'rgba(217,119,6,0.12)' : '#27272a',
+                      border: isExcluded ? '1px solid rgba(217,119,6,0.35)' : 'none',
+                      color: msg.role === 'user' ? 'black' : isExcluded ? '#fde68a' : 'white',
+                      fontSize: isProjectExperience ? '14px' : '13.5px', lineHeight: '1.7',
+                      boxShadow: isProjectExperience ? '0 10px 24px rgba(0,0,0,0.14)' : 'none',
+                    }}>
+                      {isExcluded && (
+                        <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '6px', color: '#fbbf24' }}>
+                          ⚠️ Hors périmètre
+                        </span>
+                      )}
+                      {msg.role === 'assistant' ? (
+                        <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                      ) : msg.content}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {/* Loading dots */}
               {loading && (
@@ -841,7 +867,13 @@ export default function ChatWidgetInline({
 
               {/* Photo buttons */}
               {!loading && isPhotoMode && !showContactForm && !photosAnswered && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  {isProjectExperience && (
+                    <p style={{ margin: 0, color: '#a1a1aa', fontSize: '12.5px', lineHeight: 1.5 }}>
+                      Une photo aide l'artisan à mieux comprendre votre besoin.
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingPhotos}
@@ -874,6 +906,7 @@ export default function ChatWidgetInline({
                   >
                     Passer →
                   </button>
+                  </div>
                 </div>
               )}
 
@@ -1325,7 +1358,7 @@ export default function ChatWidgetInline({
                   color: 'white', borderRadius: '10px', padding: '11px',
                   fontSize: '14px', cursor: 'pointer',
                 }}>
-                Annuler
+                {isProjectExperience ? 'Modifier mes réponses' : 'Annuler'}
               </button>
               <button onClick={saveDossier} disabled={saving}
                 style={{
@@ -1334,9 +1367,14 @@ export default function ChatWidgetInline({
                   fontWeight: 700, borderRadius: '10px', padding: '11px',
                   fontSize: '14px', cursor: saving ? 'default' : 'pointer',
                 }}>
-                {saving ? 'Envoi en cours...' : 'Envoyer le dossier →'}
+                {saving ? 'Envoi en cours...' : isProjectExperience ? 'Transmettre ma demande' : 'Envoyer le dossier →'}
               </button>
             </div>
+            {isProjectExperience && (
+              <p style={{ margin: '12px 0 0', color: '#71717a', fontSize: '12px', lineHeight: 1.5, textAlign: 'center' }}>
+                Votre demande sera envoyée à l&apos;artisan avec les informations utiles pour vous répondre.
+              </p>
+            )}
           </div>
         </div>
       )}

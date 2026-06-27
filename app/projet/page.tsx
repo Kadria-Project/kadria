@@ -1,9 +1,73 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
+import ChatWidgetInline, { type Dossier } from '@/src/components/chat/ChatWidgetInline'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
+
+const SUMMARY_LABELS: { key: keyof Dossier; label: string }[] = [
+  { key: 'projectType', label: 'Type de demande' },
+  { key: 'aiSummary', label: 'Description' },
+  { key: 'budget', label: 'Budget' },
+  { key: 'desiredTimeline', label: 'Délai' },
+]
+
+function DossierSummary({ dossier, score }: { dossier: Dossier; score: number }) {
+  const rows = SUMMARY_LABELS
+    .map((item) => ({ label: item.label, value: dossier[item.key] }))
+    .filter(
+      (row): row is { label: string; value: string } =>
+        typeof row.value === 'string' && row.value.trim().length > 0
+    )
+  const photoCount = dossier.photos?.length ?? 0
+  const hasContact = Boolean(dossier.clientPhone || dossier.clientEmail)
+
+  if (rows.length === 0 && photoCount === 0 && !hasContact) {
+    return (
+      <p style={{ margin: 0, color: '#71717a', fontSize: '13px', lineHeight: 1.6 }}>
+        Votre résumé apparaîtra ici au fil de la conversation.
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <p style={{ margin: 0, color: '#71717a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            {row.label}
+          </p>
+          <p style={{ margin: '2px 0 0', color: '#e4e4e7', fontSize: '13px', lineHeight: 1.5 }}>
+            {row.value}
+          </p>
+        </div>
+      ))}
+      {photoCount > 0 && (
+        <div>
+          <p style={{ margin: 0, color: '#71717a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Photos
+          </p>
+          <p style={{ margin: '2px 0 0', color: '#e4e4e7', fontSize: '13px', lineHeight: 1.5 }}>
+            {photoCount} photo{photoCount > 1 ? 's' : ''} ajoutée{photoCount > 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
+      {hasContact && (
+        <div>
+          <p style={{ margin: 0, color: '#71717a', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Coordonnées
+          </p>
+          <p style={{ margin: '2px 0 0', color: '#e4e4e7', fontSize: '13px', lineHeight: 1.5 }}>
+            Renseignées
+          </p>
+        </div>
+      )}
+      <div className="mt-1" style={{ height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, score))}%`, background: '#22c55e', transition: 'width 0.4s ease' }} />
+      </div>
+    </div>
+  )
+}
 
 function ProjetContent() {
   const searchParams = useSearchParams()
@@ -14,6 +78,11 @@ function ProjetContent() {
   // alors plus du tout la configuration de l'artisan (ni ses métiers, ni ses
   // travaux acceptés/refusés), quel que soit l'artisan visé.
   const artisanId = searchParams.get('artisan_id') ?? searchParams.get('artisanId') ?? ''
+
+  const [artisanName, setArtisanName] = useState('')
+  const [dossier, setDossier] = useState<Dossier>({})
+  const [score, setScore] = useState(0)
+  const [summaryOpen, setSummaryOpen] = useState(false)
 
   return (
     <main
@@ -55,10 +124,12 @@ function ProjetContent() {
             </div>
             <div>
               <p style={{ margin: 0, color: '#f4f4f5', fontSize: '15px', fontWeight: 600 }}>
-                Assistant de qualification projet
+                Assistant projet
               </p>
               <p style={{ margin: '4px 0 0', color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
-                Un parcours simple pour transmettre une demande claire, complète et exploitable à l artisan.
+                {artisanName
+                  ? `Demande transmise à ${artisanName}.`
+                  : 'Un parcours simple pour transmettre une demande claire, complète et exploitable à l artisan.'}
               </p>
             </div>
           </div>
@@ -144,6 +215,19 @@ function ProjetContent() {
                 </div>
               ))}
             </div>
+
+            <div
+              className="mt-5 hidden lg:block"
+              style={{
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+                paddingTop: '16px',
+              }}
+            >
+              <p style={{ margin: '0 0 10px', color: '#f4f4f5', fontSize: '13px', fontWeight: 600 }}>
+                Résumé de votre demande
+              </p>
+              <DossierSummary dossier={dossier} score={score} />
+            </div>
           </aside>
 
           <section className="min-h-[640px] overflow-hidden rounded-[28px] lg:min-h-[760px]">
@@ -152,9 +236,36 @@ function ProjetContent() {
               inline={true}
               fullPage={true}
               projectExperience={true}
+              onDossierChange={(d, s) => { setDossier(d); setScore(s) }}
+              onArtisanNameChange={setArtisanName}
             />
           </section>
         </div>
+
+        <details
+          className="mt-4 rounded-[20px] border p-4 lg:hidden"
+          open={summaryOpen}
+          onToggle={(e) => setSummaryOpen((e.target as HTMLDetailsElement).open)}
+          style={{
+            borderColor: 'rgba(255,255,255,0.08)',
+            background: 'rgba(7,7,9,0.72)',
+          }}
+        >
+          <summary
+            style={{
+              cursor: 'pointer',
+              color: '#f4f4f5',
+              fontSize: '13px',
+              fontWeight: 600,
+              listStyle: 'none',
+            }}
+          >
+            Résumé de votre demande
+          </summary>
+          <div className="mt-3">
+            <DossierSummary dossier={dossier} score={score} />
+          </div>
+        </details>
       </div>
     </main>
   )
