@@ -612,6 +612,8 @@ function NewDevis() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
     background: 'var(--bg)',
     border: '1px solid var(--border-soft)',
     borderRadius: '10px',
@@ -757,15 +759,15 @@ function NewDevis() {
         <div style={sectionCard}>
           <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Informations générales</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={labelStyle}>Numéro de devis</label>
               <input style={{ ...inputStyle, color: 'var(--text-3)' }} value={devisNumberPreview} readOnly />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={labelStyle}>Date d&apos;émission</label>
               <input style={inputStyle} type="date" value={dateEmission} onChange={(e) => setDateEmission(e.target.value)} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={labelStyle}>Date de validité</label>
               <input style={inputStyle} type="date" value={dateValidite} onChange={(e) => setDateValidite(e.target.value)} />
             </div>
