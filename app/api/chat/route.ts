@@ -88,13 +88,15 @@ function buildTradeQualificationContext(primaryTrade: string, coveredTrades: str
   return lines.join('\n')
 }
 
-function buildBusinessPreferencesContext(businessConfig: {
+interface ChatBusinessConfig {
   acceptedWorkTypes?: unknown
   refusedWorkTypes?: unknown
   customAcceptedWork?: unknown
   customRefusedWork?: unknown
-} | undefined): string {
-  if (!businessConfig) return ''
+}
+
+function extractWorkTypeLists(businessConfig: ChatBusinessConfig | undefined): { accepted: string[]; refused: string[] } {
+  if (!businessConfig) return { accepted: [], refused: [] }
 
   const accepted = [
     ...(Array.isArray(businessConfig.acceptedWorkTypes) ? businessConfig.acceptedWorkTypes.filter(v => typeof v === 'string') : []),
@@ -104,6 +106,79 @@ function buildBusinessPreferencesContext(businessConfig: {
     ...(Array.isArray(businessConfig.refusedWorkTypes) ? businessConfig.refusedWorkTypes.filter(v => typeof v === 'string') : []),
     ...(typeof businessConfig.customRefusedWork === 'string' && businessConfig.customRefusedWork.trim() ? [businessConfig.customRefusedWork.trim()] : []),
   ]
+
+  return { accepted, refused }
+}
+
+// Détection déterministe, indépendante du LLM, d'une demande correspondant à
+// une prestation exclue par l'artisan (cf. bug : le prompt seul ne suffit pas
+// à bloquer de façon fiable une demande exprimée sur plusieurs tours de chat).
+function normalizeWorkText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+const WORK_TEXT_STOPWORDS = new Set([
+  'de', 'du', 'des', 'la', 'le', 'les', 'un', 'une', 'et', 'ou', 'a', 'au', 'aux',
+  'en', 'sur', 'dans', 'pour', 'avec', 'non', 'oui', 'visible', 'pas',
+])
+
+function significantWords(phrase: string): string[] {
+  return normalizeWorkText(phrase)
+    .split(' ')
+    .filter(w => w.length > 2 && !WORK_TEXT_STOPWORDS.has(w))
+}
+
+export function detectExcludedWorkIntent({
+  userText,
+  conversationText,
+  refusedWorkTypes,
+  acceptedWorkTypes,
+}: {
+  userText: string
+  conversationText: string
+  refusedWorkTypes: string[]
+  acceptedWorkTypes: string[]
+}): { excluded: boolean; matchedRefusedTerm?: string } {
+  if (!refusedWorkTypes || refusedWorkTypes.length === 0) {
+    return { excluded: false }
+  }
+
+  const combinedText = normalizeWorkText([conversationText, userText].filter(Boolean).join(' '))
+  if (!combinedText) return { excluded: false }
+
+  for (const refusedTerm of refusedWorkTypes) {
+    if (typeof refusedTerm !== 'string' || !refusedTerm.trim()) continue
+    const normalizedTerm = normalizeWorkText(refusedTerm)
+    if (!normalizedTerm) continue
+
+    // Correspondance directe : la phrase exclue apparaît telle quelle.
+    if (combinedText.includes(normalizedTerm)) {
+      return { excluded: true, matchedRefusedTerm: refusedTerm }
+    }
+
+    // Correspondance par mots-clés : utile pour les échanges multi-tours où
+    // le client répond en plusieurs messages courts ("Chaudière", puis
+    // "fuite") plutôt qu'en une seule phrase contenant le terme exact.
+    const words = significantWords(refusedTerm)
+    if (words.length > 0 && words.every(w => combinedText.includes(w))) {
+      return { excluded: true, matchedRefusedTerm: refusedTerm }
+    }
+  }
+
+  // Les refus sont toujours prioritaires sur les acceptations en cas de
+  // conflit : `acceptedWorkTypes` n'est utilisé qu'en aval pour proposer des
+  // alternatives, jamais pour neutraliser un refus détecté ci-dessus.
+  void acceptedWorkTypes
+  return { excluded: false }
+}
+
+function buildBusinessPreferencesContext(businessConfig: ChatBusinessConfig | undefined): string {
+  const { accepted, refused } = extractWorkTypeLists(businessConfig)
 
   if (accepted.length === 0 && refused.length === 0) return ''
 
@@ -618,6 +693,19 @@ réaliser dès que possible. Budget estimé entre 150 et 200 €. Le prospect
 n'a pas de photos pour le moment. Adresse chantier renseignée."
 Vide uniquement si aucune information exploitable n'a encore été donnée.`
 
+// Score server-side calculé sur le dossier (fiable, pas une estimation IA).
+function computeDossierScore(dossier: Record<string, unknown>): number {
+  const scoredFields = [
+    'trade', 'projectType', 'description', 'budget',
+    'desiredTimeline', 'maturity', 'siteAddress',
+    'clientFirstName', 'clientName', 'clientPhone', 'clientEmail',
+  ]
+  const filledCount = scoredFields.filter(
+    k => dossier[k] && String(dossier[k]).trim() !== ''
+  ).length
+  return Math.min(Math.round((filledCount / 11) * 100), 100)
+}
+
 export async function POST(request: Request) {
   try {
     const client = getOpenAIClient()
@@ -629,17 +717,57 @@ export async function POST(request: Request) {
       : ''
 
     let tradeContext = ''
+    let acceptedWorkTypes: string[] = []
+    let refusedWorkTypes: string[] = []
     if (artisanId) {
       try {
         const [artisanConfig, tradeContextResolved] = await Promise.all([
           getArtisanConfig(artisanId),
           resolveArtisanTradeContext(artisanId),
         ])
+        const workTypeLists = extractWorkTypeLists(artisanConfig?.businessConfig)
+        acceptedWorkTypes = workTypeLists.accepted
+        refusedWorkTypes = workTypeLists.refused
         tradeContext = buildTradeQualificationContext(tradeContextResolved.primaryTrade, tradeContextResolved.coveredTrades)
         tradeContext += buildBusinessPreferencesContext(artisanConfig?.businessConfig)
       } catch (error) {
         console.error('[KADRIA] Failed to load artisan trades for chat context:', error)
       }
+    }
+
+    // Détection déterministe AVANT tout appel au modèle : si la demande
+    // correspond clairement à une prestation exclue, on bloque ici — le LLM
+    // ne doit jamais être seul responsable du respect des exclusions
+    // (cf. bug : le prompt seul ne suffisait pas sur des échanges multi-tours).
+    const typedMessages = messages as { role: string; content: string }[]
+    const lastUserMessage = [...typedMessages].reverse().find(m => m.role === 'user')
+    const userText = lastUserMessage?.content ?? ''
+    const conversationText = typedMessages
+      .filter(m => m.role === 'user')
+      .map(m => m.content)
+      .join(' ')
+
+    const excludedMatch = detectExcludedWorkIntent({
+      userText,
+      conversationText,
+      refusedWorkTypes,
+      acceptedWorkTypes,
+    })
+
+    if (excludedMatch.excluded) {
+      const alternativesNote = acceptedWorkTypes.length > 0
+        ? ` En revanche, l'artisan peut traiter : ${acceptedWorkTypes.join(', ')}.`
+        : ''
+      return NextResponse.json({
+        success: true,
+        reply: `Cette demande ne fait pas partie des prestations que l'artisan souhaite traiter. Je peux vous aider à formuler une autre demande correspondant à ses prestations proposées.${alternativesNote}`,
+        dossierUpdate: {},
+        completenessScore: computeDossierScore(currentDossier as Record<string, unknown>),
+        readyToSave: false,
+        aiSummary: 'Demande hors périmètre : prestation exclue par l\'artisan.',
+        expectedField: '',
+        quickReplies: acceptedWorkTypes.slice(0, 4),
+      })
     }
 
     const response = await client.chat.completions.create({
@@ -711,16 +839,7 @@ export async function POST(request: Request) {
         ? parsed.dossierUpdate
         : {}),
     } as Record<string, unknown>
-    const scoredFields: (keyof typeof mergedDossier)[] = [
-      'trade', 'projectType', 'description', 'budget',
-      'desiredTimeline', 'maturity', 'siteAddress',
-      'clientFirstName', 'clientName', 'clientPhone', 'clientEmail',
-    ]
-    const filledCount = scoredFields.filter(
-      k => mergedDossier[k] && String(mergedDossier[k]).trim() !== ''
-    ).length
-    // 11 fields, each worth ~9 pts, capped at 100
-    const computedScore = Math.min(Math.round((filledCount / 11) * 100), 100)
+    const computedScore = computeDossierScore(mergedDossier)
     // Use the higher of computed vs AI-reported score
     const finalScore = Math.max(computedScore, (parsed.completenessScore as number) ?? 0)
 
