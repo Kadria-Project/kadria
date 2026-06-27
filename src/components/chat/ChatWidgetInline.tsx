@@ -1,6 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Sparkles, Layers, Wrench, ShieldCheck, Zap, Compass } from 'lucide-react'
+
+const WELCOME_OPTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  Sparkles, Layers, Wrench, ShieldCheck, Zap, Compass,
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message { role: 'user' | 'assistant'; content: string }
@@ -573,45 +578,30 @@ export default function ChatWidgetInline({
               }} />
             </div>
             {isProjectExperience && (
-              <div className="project-step-grid" style={{ marginTop: '14px' }}>
-                {[
-                  { label: 'Projet', hint: 'Nature du besoin' },
-                  { label: 'Détails', hint: 'Contexte et attentes' },
-                  { label: 'Photos', hint: 'Visuels utiles' },
-                  { label: 'Coordonnées', hint: 'Transmission finale' },
-                ].map((item, index) => {
+              <div className="project-step-line" style={{ marginTop: '10px' }}>
+                {['Projet', 'Détails', 'Photos', 'Coordonnées'].map((label, index) => {
                   const isActive = index + 1 === visualStep
                   const isDone = index + 1 < visualStep
                   return (
-                    <div
-                      key={item.label}
-                      style={{
-                        border: `1px solid ${isActive || isDone ? 'rgba(34,197,94,0.22)' : 'rgba(255,255,255,0.06)'}`,
-                        background: isActive ? 'rgba(34,197,94,0.10)' : 'rgba(255,255,255,0.02)',
-                        borderRadius: '16px',
-                        padding: '12px 14px',
-                        minWidth: 0,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                        <div style={{
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '999px',
-                          background: isActive || isDone ? primaryColorLocal : 'rgba(255,255,255,0.08)',
-                          color: isActive || isDone ? '#04110a' : '#a1a1aa',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          flexShrink: 0,
-                        }}>
-                          {isDone ? '✓' : index + 1}
-                        </div>
-                        <span style={{ color: 'white', fontSize: '13px', fontWeight: 600 }}>{item.label}</span>
-                      </div>
-                      <p style={{ margin: 0, color: '#71717a', fontSize: '11px', lineHeight: 1.5 }}>{item.hint}</p>
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <span style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '999px',
+                        background: isActive || isDone ? primaryColorLocal : 'rgba(255,255,255,0.08)',
+                        color: isActive || isDone ? '#04110a' : '#a1a1aa',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}>
+                        {isDone ? '✓' : index + 1}
+                      </span>
+                      <span style={{ color: isActive ? 'white' : '#71717a', fontSize: '12px', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap' }}>
+                        {label}
+                      </span>
                     </div>
                   )
                 })}
@@ -622,46 +612,14 @@ export default function ChatWidgetInline({
 
         {/* Welcome screen */}
         {showWelcome ? isProjectExperience ? (
-          <div style={{ flex: 1, padding: '28px 0 32px', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: '24px 0 28px', overflowY: 'auto' }}>
             <div style={centerStyle}>
-              <div style={{
-                background: 'linear-gradient(180deg, rgba(24,24,27,0.95) 0%, rgba(15,23,18,0.92) 100%)',
-                border: '1px solid rgba(34,197,94,0.14)',
-                borderRadius: '24px',
-                padding: '24px',
-                marginBottom: '18px',
-                boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
-                  <div style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '18px',
-                    background: 'rgba(34,197,94,0.12)',
-                    border: '1px solid rgba(34,197,94,0.25)',
-                    color: '#86efac',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '24px',
-                    flexShrink: 0,
-                  }}>
-                    ✦
-                  </div>
-                  <div>
-                    <p style={{ margin: '0 0 4px', color: '#dcfce7', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                      Assistant projet Kadria
-                    </p>
-                    <h2 style={{ margin: 0, color: 'white', fontSize: '28px', lineHeight: 1.15, fontWeight: 700 }}>
-                      Décrivez votre projet
-                    </h2>
-                  </div>
-                </div>
-                <p style={{ margin: '0 0 10px', color: '#e4e4e7', fontSize: '15px', lineHeight: 1.7 }}>
-                  {customWelcomeMessage || 'Kadria vous guide pour transmettre une demande claire, complète et exploitable à l artisan.'}
-                </p>
-                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.7 }}>
-                  Quelques questions · Pas de compte requis · Transmission directe
+              <div style={{ marginBottom: '20px' }}>
+                <h2 style={{ margin: '0 0 6px', color: 'white', fontSize: '22px', lineHeight: 1.25, fontWeight: 700 }}>
+                  Quel type de demande souhaitez-vous transmettre ?
+                </h2>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13.5px', lineHeight: 1.6 }}>
+                  {customWelcomeMessage || 'Choisissez l’option la plus proche de votre besoin. Vous pourrez préciser ensuite.'}
                 </p>
               </div>
               <div className="project-choice-grid">
@@ -677,20 +635,21 @@ export default function ChatWidgetInline({
                       background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
                       border: '1px solid rgba(255,255,255,0.08)',
                       color: 'white',
-                      borderRadius: '22px',
-                      padding: '18px',
+                      borderRadius: '18px',
+                      padding: '14px 16px',
                       cursor: 'pointer',
                       textAlign: 'left',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                      minHeight: '132px',
+                      alignItems: 'center',
+                      gap: '12px',
+                      minHeight: 'auto',
                       transition: 'transform 0.18s ease, border-color 0.18s ease, background 0.18s ease',
                     }}>
                     <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '14px',
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '12px',
+                      flexShrink: 0,
                       background: 'rgba(34,197,94,0.08)',
                       border: '1px solid rgba(34,197,94,0.18)',
                       color: '#86efac',
@@ -700,14 +659,18 @@ export default function ChatWidgetInline({
                       fontSize: '12px',
                       fontWeight: 700,
                     }}>
-                      {WELCOME_OPTION_DETAILS[opt]?.icon || 'K'}
+                      {(() => {
+                        const IconComp = WELCOME_OPTION_ICONS[WELCOME_OPTION_DETAILS[opt]?.icon || '']
+                        return IconComp ? <IconComp size={18} /> : null
+                      })()}
                     </div>
-                    <div>
-                      <div style={{ color: 'white', fontSize: '16px', fontWeight: 650, marginBottom: '6px' }}>{opt}</div>
-                      <div style={{ color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: 'white', fontSize: '14.5px', fontWeight: 650, marginBottom: '2px' }}>{opt}</div>
+                      <div style={{ color: '#a1a1aa', fontSize: '12.5px', lineHeight: 1.5 }}>
                         {WELCOME_OPTION_DETAILS[opt]?.description}
                       </div>
                     </div>
+                    <span style={{ color: '#52525b', fontSize: '16px', flexShrink: 0 }}>›</span>
                   </button>
                 ))}
               </div>
@@ -1384,10 +1347,11 @@ export default function ChatWidgetInline({
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-5px); }
         }
-        .project-step-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 10px;
+        .project-step-line {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
         }
         .project-choice-grid {
           display: grid;
@@ -1414,9 +1378,13 @@ export default function ChatWidgetInline({
           color: #86efac !important;
         }
         @media (max-width: 640px) {
-          .project-step-grid,
           .project-choice-grid {
             grid-template-columns: 1fr;
+          }
+          .project-step-line {
+            gap: 10px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
           }
           .chat-messages-container {
             max-width: 100% !important;
