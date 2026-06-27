@@ -1,7 +1,7 @@
-// Centre de configuration progressif : calcule un score de préparation
-// simple et explicable à partir de données déjà déclarées par l'artisan.
-// Aucune IA, aucune donnée inventée — chaque étape est "done" ou "todo"
-// selon des champs réellement renseignés.
+// Centre de configuration progressif : calcule un score de preparation
+// simple et explicable a partir de donnees deja declarees par l'artisan.
+// Aucune IA, aucune donnee inventee : chaque etape est "done" ou "todo"
+// selon des champs reellement renseignes.
 
 export interface SetupProgressBusinessProfile {
   primaryTrade?: string | null
@@ -19,6 +19,9 @@ export interface SetupProgressArtisanConfig {
   phone?: string | null
   villePro?: string | null
   address?: string | null
+  businessConfig?: {
+    calendarMode?: string | null
+  } | null
 }
 
 export interface SetupProgressServiceProfile {
@@ -66,15 +69,16 @@ function hasValue(value: string | number | null | undefined): boolean {
 }
 
 /**
- * Calcule le score de préparation du profil métier de l'artisan. Score
- * simple : nombre d'étapes "done" / nombre total d'étapes, sans pondération
- * ni heuristique cachée — chaque étape est explicable individuellement.
+ * Calcule le score de preparation du profil metier de l'artisan. Score
+ * simple : nombre d'etapes "done" / nombre total d'etapes, sans ponderation
+ * ni heuristique cachee : chaque etape est explicable individuellement.
  */
 export function computeSetupProgress(input: ComputeSetupProgressInput): SetupProgressResult {
   const businessProfile = input.businessProfile || null
   const serviceProfiles = input.serviceProfiles || []
   const calendarIntegration = input.calendarIntegration || null
   const artisanConfig = input.artisanConfig || null
+  const calendarMode = artisanConfig?.businessConfig?.calendarMode === 'google' ? 'google' : 'kadria'
 
   const entrepriseDone =
     hasText(artisanConfig?.companyName) && hasText(artisanConfig?.phone) &&
@@ -83,35 +87,35 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
   const steps: SetupProgressStep[] = [
     {
       key: 'entreprise',
-      label: 'Entreprise renseignée',
-      description: 'Nom de l\'entreprise, téléphone et commune.',
+      label: 'Entreprise renseignee',
+      description: "Nom de l'entreprise, telephone et commune.",
       status: entrepriseDone ? 'done' : 'todo',
-      ctaLabel: 'Compléter mon entreprise',
+      ctaLabel: 'Completer mon entreprise',
       href: '/parametres/profil-metier',
       priority: 1,
     },
     {
       key: 'metier',
-      label: 'Métier principal renseigné',
-      description: 'Le métier principal permet à Kadria de qualifier vos demandes.',
+      label: 'Metier principal renseigne',
+      description: 'Le metier principal permet a Kadria de qualifier vos demandes.',
       status: hasText(businessProfile?.primaryTrade) ? 'done' : 'todo',
-      ctaLabel: 'Renseigner mon métier',
+      ctaLabel: 'Renseigner mon metier',
       href: '/parametres/profil-metier',
       priority: 2,
     },
     {
       key: 'zone',
-      label: 'Zone d\'intervention',
-      description: 'Ville de départ et rayon d\'intervention.',
+      label: "Zone d'intervention",
+      description: "Ville de depart et rayon d'intervention.",
       status: hasText(businessProfile?.baseCity) && hasValue(businessProfile?.interventionRadiusKm) ? 'done' : 'todo',
-      ctaLabel: 'Définir ma zone',
+      ctaLabel: 'Definir ma zone',
       href: '/parametres/profil-metier',
       priority: 4,
     },
     {
       key: 'tarifs',
       label: 'Tarifs de base',
-      description: 'Tarif horaire ou TVA par défaut.',
+      description: 'Tarif horaire ou TVA par defaut.',
       status: hasValue(businessProfile?.hourlyRateHt) || hasValue(businessProfile?.defaultVatRate) ? 'done' : 'todo',
       ctaLabel: 'Renseigner mes tarifs',
       href: '/parametres/profil-metier',
@@ -119,8 +123,8 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
     },
     {
       key: 'prestations',
-      label: 'Prestations configurées',
-      description: 'Au moins une fiche prestation dans votre bibliothèque.',
+      label: 'Prestations configurees',
+      description: 'Au moins une fiche prestation dans votre bibliotheque.',
       status: serviceProfiles.length > 0 ? 'done' : 'todo',
       ctaLabel: 'Configurer mes prestations',
       href: '/parametres/profil-metier',
@@ -128,17 +132,17 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
     },
     {
       key: 'calendar',
-      label: 'Google Calendar connecté',
-      description: 'Connectez votre agenda pour planifier vos rendez-vous.',
-      status: calendarIntegration?.connected ? 'done' : 'todo',
-      ctaLabel: 'Connecter Google Calendar',
+      label: 'Agenda configure',
+      description: 'Choisissez Planning Kadria ou connectez Google Calendar.',
+      status: calendarMode === 'kadria' || calendarIntegration?.connected ? 'done' : 'todo',
+      ctaLabel: 'Configurer mon agenda',
       href: '/dashboard-v2',
       priority: 7,
     },
     {
       key: 'horaires',
-      label: 'Horaires renseignés',
-      description: 'Jours travaillés et créneaux horaires habituels.',
+      label: 'Horaires renseignes',
+      description: 'Jours travailles et creneaux horaires habituels.',
       status: (businessProfile?.workingDays || []).length > 0 && hasText(businessProfile?.workStartTime) && hasText(businessProfile?.workEndTime) ? 'done' : 'todo',
       ctaLabel: 'Renseigner mes horaires',
       href: '/parametres/profil-metier',
@@ -161,12 +165,12 @@ export interface SetupProgressBandInfo {
 }
 
 /**
- * Catégorise un pourcentage déjà calculé par computeSetupProgress en bande
+ * Categorise un pourcentage deja calcule par computeSetupProgress en bande
  * d'affichage admin. Ne recalcule rien, ne fait que classer une valeur.
  */
 export function getSetupProgressBand(percent: number): SetupProgressBandInfo {
   if (percent >= 100) return { key: 'complet', label: 'Complet' }
-  if (percent >= 71) return { key: 'presque_pret', label: 'Presque prêt' }
-  if (percent >= 26) return { key: 'a_completer', label: 'À compléter' }
-  return { key: 'a_demarrer', label: 'À démarrer' }
+  if (percent >= 71) return { key: 'presque_pret', label: 'Presque pret' }
+  if (percent >= 26) return { key: 'a_completer', label: 'A completer' }
+  return { key: 'a_demarrer', label: 'A demarrer' }
 }

@@ -7,7 +7,7 @@ export async function GET() {
     const session = await getSession()
     if (!session) {
       return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
+        { success: false, error: 'Non authentifie' },
         { status: 401 }
       )
     }
@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest) {
     const session = await getSession()
     if (!session) {
       return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
+        { success: false, error: 'Non authentifie' },
         { status: 401 }
       )
     }
@@ -54,29 +54,32 @@ export async function PATCH(request: NextRequest) {
 
     if (body.devisPrefixe !== undefined && String(body.devisPrefixe).length > 6) {
       return NextResponse.json(
-        { success: false, error: 'Le préfixe de numérotation ne peut pas dépasser 6 caractères' },
+        { success: false, error: 'Le prefixe de numerotation ne peut pas depasser 6 caracteres' },
         { status: 400 }
       )
     }
 
     if (body.trades !== undefined && !Array.isArray(body.trades)) {
       return NextResponse.json(
-        { success: false, error: 'trades doit être un tableau de métiers' },
+        { success: false, error: 'trades doit etre un tableau de metiers' },
         { status: 400 }
       )
     }
 
     if (body.businessConfig !== undefined) {
       const bc = body.businessConfig
-      const isStringArrayOrUndefined = (v: unknown) =>
-        v === undefined || (Array.isArray(v) && v.every(item => typeof item === 'string'))
+      const isStringArrayOrUndefined = (value: unknown) =>
+        value === undefined || (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+      const isCalendarMode = (value: unknown) => value === undefined || value === 'kadria' || value === 'google'
+
       if (
         typeof bc !== 'object' || bc === null ||
         !isStringArrayOrUndefined(bc.acceptedWorkTypes) ||
-        !isStringArrayOrUndefined(bc.refusedWorkTypes)
+        !isStringArrayOrUndefined(bc.refusedWorkTypes) ||
+        !isCalendarMode(bc.calendarMode)
       ) {
         return NextResponse.json(
-          { success: false, error: 'businessConfig invalide : acceptedWorkTypes/refusedWorkTypes doivent être des tableaux de chaînes' },
+          { success: false, error: 'businessConfig invalide : acceptedWorkTypes/refusedWorkTypes doivent etre des tableaux de chaines et calendarMode doit etre kadria ou google' },
           { status: 400 }
         )
       }
@@ -84,21 +87,21 @@ export async function PATCH(request: NextRequest) {
       if (bc.serviceCatalog !== undefined) {
         if (!Array.isArray(bc.serviceCatalog) || bc.serviceCatalog.length > 100) {
           return NextResponse.json(
-            { success: false, error: 'businessConfig invalide : serviceCatalog doit être un tableau de 100 éléments maximum' },
+            { success: false, error: 'businessConfig invalide : serviceCatalog doit etre un tableau de 100 elements maximum' },
             { status: 400 }
           )
         }
         const isValidItem = (item: unknown) => {
           if (typeof item !== 'object' || item === null) return false
-          const i = item as Record<string, unknown>
-          if (typeof i.label !== 'string' || !i.label.trim()) return false
-          if (i.unitPriceHT !== undefined && i.unitPriceHT !== null && typeof i.unitPriceHT !== 'number') return false
-          if (i.vatRate !== undefined && typeof i.vatRate !== 'number') return false
+          const current = item as Record<string, unknown>
+          if (typeof current.label !== 'string' || !current.label.trim()) return false
+          if (current.unitPriceHT !== undefined && current.unitPriceHT !== null && typeof current.unitPriceHT !== 'number') return false
+          if (current.vatRate !== undefined && typeof current.vatRate !== 'number') return false
           return true
         }
         if (!bc.serviceCatalog.every(isValidItem)) {
           return NextResponse.json(
-            { success: false, error: 'businessConfig invalide : chaque prestation du catalogue doit avoir un libellé, et un prix/TVA numériques le cas échéant' },
+            { success: false, error: 'businessConfig invalide : chaque prestation du catalogue doit avoir un libelle, et un prix/TVA numeriques le cas echeant' },
             { status: 400 }
           )
         }
@@ -107,28 +110,28 @@ export async function PATCH(request: NextRequest) {
       if (bc.quoteTemplates !== undefined) {
         if (!Array.isArray(bc.quoteTemplates) || bc.quoteTemplates.length > 50) {
           return NextResponse.json(
-            { success: false, error: 'businessConfig invalide : quoteTemplates doit être un tableau de 50 modèles maximum' },
+            { success: false, error: 'businessConfig invalide : quoteTemplates doit etre un tableau de 50 modeles maximum' },
             { status: 400 }
           )
         }
         const isValidLine = (line: unknown) => {
           if (typeof line !== 'object' || line === null) return false
-          const l = line as Record<string, unknown>
-          if (typeof l.label !== 'string' || !l.label.trim()) return false
-          if (l.unitPriceHT !== undefined && l.unitPriceHT !== null && typeof l.unitPriceHT !== 'number') return false
-          if (l.vatRate !== undefined && typeof l.vatRate !== 'number') return false
+          const current = line as Record<string, unknown>
+          if (typeof current.label !== 'string' || !current.label.trim()) return false
+          if (current.unitPriceHT !== undefined && current.unitPriceHT !== null && typeof current.unitPriceHT !== 'number') return false
+          if (current.vatRate !== undefined && typeof current.vatRate !== 'number') return false
           return true
         }
         const isValidTemplate = (template: unknown) => {
           if (typeof template !== 'object' || template === null) return false
-          const t = template as Record<string, unknown>
-          if (typeof t.name !== 'string' || !t.name.trim()) return false
-          if (!Array.isArray(t.lines) || t.lines.length > 20) return false
-          return t.lines.every(isValidLine)
+          const current = template as Record<string, unknown>
+          if (typeof current.name !== 'string' || !current.name.trim()) return false
+          if (!Array.isArray(current.lines) || current.lines.length > 20) return false
+          return current.lines.every(isValidLine)
         }
         if (!bc.quoteTemplates.every(isValidTemplate)) {
           return NextResponse.json(
-            { success: false, error: 'businessConfig invalide : chaque modèle de devis doit avoir un nom et au plus 20 lignes valides (libellé requis, prix/TVA numériques le cas échéant)' },
+            { success: false, error: 'businessConfig invalide : chaque modele de devis doit avoir un nom et au plus 20 lignes valides (libelle requis, prix/TVA numeriques le cas echeant)' },
             { status: 400 }
           )
         }
@@ -136,8 +139,8 @@ export async function PATCH(request: NextRequest) {
 
       if (bc.quoteSettings !== undefined) {
         const qs = bc.quoteSettings
-        const isValidString = (v: unknown) => v === undefined || (typeof v === 'string' && v.length <= 1000)
-        const isOneOf = (v: unknown, values: string[]) => v === undefined || (typeof v === 'string' && values.includes(v))
+        const isValidString = (value: unknown) => value === undefined || (typeof value === 'string' && value.length <= 1000)
+        const isOneOf = (value: unknown, values: string[]) => value === undefined || (typeof value === 'string' && values.includes(value))
         if (
           typeof qs !== 'object' || qs === null ||
           (qs.defaultVatRate !== undefined && typeof qs.defaultVatRate !== 'number') ||
@@ -163,39 +166,36 @@ export async function PATCH(request: NextRequest) {
           !isOneOf(qs.travelFeeMentionMode, ['included', 'detailed', 'not_charged', 'not_applicable'])
         ) {
           return NextResponse.json(
-            { success: false, error: 'businessConfig invalide : quoteSettings contient une valeur incorrecte (type, énumération ou longueur de texte)' },
+            { success: false, error: 'businessConfig invalide : quoteSettings contient une valeur incorrecte (type, enumeration ou longueur de texte)' },
             { status: 400 }
           )
         }
       }
     }
 
-    // Mapping vers les noms de colonnes EXACTS de la table Supabase Artisan_config
     const fields: Record<string, unknown> = {}
-    if (body.companyName  !== undefined) fields['company_name']     = body.companyName
-    if (body.primaryTrade !== undefined) fields['primary_trade']    = body.primaryTrade
-    if (body.phone        !== undefined) fields['phone']            = body.phone
-    if (body.address      !== undefined) fields['address']          = body.address
-    if (body.hours        !== undefined) fields['hours']            = body.hours
-    if (body.logoUrl      !== undefined) fields['logo_url']         = body.logoUrl
-    if (body.welcomeName  !== undefined) fields['welcome_name']     = body.welcomeName
+    if (body.companyName !== undefined) fields['company_name'] = body.companyName
+    if (body.primaryTrade !== undefined) fields['primary_trade'] = body.primaryTrade
+    if (body.phone !== undefined) fields['phone'] = body.phone
+    if (body.address !== undefined) fields['address'] = body.address
+    if (body.hours !== undefined) fields['hours'] = body.hours
+    if (body.logoUrl !== undefined) fields['logo_url'] = body.logoUrl
+    if (body.welcomeName !== undefined) fields['welcome_name'] = body.welcomeName
     if (body.welcomeMessage !== undefined) fields['welcome_message'] = body.welcomeMessage
-    if (body.primaryColor !== undefined) fields['primary_color']    = body.primaryColor
+    if (body.primaryColor !== undefined) fields['primary_color'] = body.primaryColor
     if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
-    if (body.websiteUrl   !== undefined) fields['website_url']      = body.websiteUrl
+    if (body.websiteUrl !== undefined) fields['website_url'] = body.websiteUrl
 
-    // Métiers : liste multi-sélection, avec compatibilité de l'ancien champ primary_trade (mono-métier)
     if (body.trades !== undefined) {
       const cleanedTrades = (body.trades as unknown[])
-        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-        .map(v => v.trim())
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim())
       fields['trades'] = cleanedTrades
       if (cleanedTrades.length > 0 && body.primaryTrade === undefined) {
         fields['primary_trade'] = cleanedTrades[0]
       }
     }
 
-    // Informations légales
     if (body.raisonSociale !== undefined) fields['raison_sociale'] = body.raisonSociale
     if (body.formeJuridique !== undefined) fields['forme_juridique'] = body.formeJuridique
     if (body.siret !== undefined) fields['siret'] = body.siret
@@ -205,12 +205,10 @@ export async function PATCH(request: NextRequest) {
     if (body.tvaAssujetti !== undefined) fields['tva_assujetti'] = body.tvaAssujetti
     if (body.villePro !== undefined) fields['ville_pro'] = body.villePro
 
-    // Assurance
     if (body.assureur !== undefined) fields['assureur'] = body.assureur
     if (body.numAssurance !== undefined) fields['num_assurance'] = body.numAssurance
     if (body.assuranceNonRequise !== undefined) fields['assurance_non_requise'] = body.assuranceNonRequise
 
-    // Préférences devis
     if (body.devisPrefixe !== undefined) fields['devis_prefixe'] = body.devisPrefixe
     if (body.devisValidite !== undefined) fields['devis_validite'] = body.devisValidite
     if (body.devisTvaDefaut !== undefined) fields['devis_tva_defaut'] = body.devisTvaDefaut
@@ -219,34 +217,28 @@ export async function PATCH(request: NextRequest) {
     if (body.devisCompteur !== undefined) fields['devis_compteur'] = body.devisCompteur
     if (body.prestationsJson !== undefined) fields['prestations_json'] = body.prestationsJson
 
-    // Onboarding : zone d'intervention, notifications, assistant vocal
     if (body.serviceArea !== undefined) fields['service_area'] = body.serviceArea
     if (body.interventionRadius !== undefined) fields['intervention_radius'] = body.interventionRadius
     if (body.notificationEmail !== undefined) fields['notification_email'] = body.notificationEmail
     if (body.vapiEnabled !== undefined) fields['vapi_enabled'] = body.vapiEnabled
     if (body.vapiGreeting !== undefined) fields['vapi_greeting'] = body.vapiGreeting
 
-    // Véhicule & déplacements (Frais de déplacement estimés)
     if (body.travelConfig !== undefined) fields['travel_config'] = body.travelConfig
 
-    // Préférences métier (travaux acceptés / à éviter)
-    // Merge superficiel avec le businessConfig existant : un PATCH partiel
-    // (ex: onboarding qui n'envoie que acceptedWorkTypes/refusedWorkTypes) ne
-    // doit jamais effacer des champs déjà sauvegardés comme serviceCatalog.
     if (body.businessConfig !== undefined) {
       const existingConfig = await getArtisanConfig(session.artisanId)
-      const existingBusinessConfig = (existingConfig?.businessConfig && typeof existingConfig.businessConfig === 'object')
-        ? existingConfig.businessConfig as Record<string, unknown>
-        : {}
+      const existingBusinessConfig =
+        existingConfig?.businessConfig && typeof existingConfig.businessConfig === 'object'
+          ? (existingConfig.businessConfig as Record<string, unknown>)
+          : {}
       fields['business_config'] = { ...existingBusinessConfig, ...body.businessConfig }
     }
 
-    console.log('[CONFIG PATCH] Champs reçus:', Object.keys(body))
-    console.log('[CONFIG PATCH] Champs écrits Supabase:', Object.keys(fields))
+    console.log('[CONFIG PATCH] Champs recus:', Object.keys(body))
+    console.log('[CONFIG PATCH] Champs ecrits Supabase:', Object.keys(fields))
 
     await updateArtisanConfig(session.artisanId, fields)
 
-    // Identité (table Users) — champs distincts de Artisan_config
     const userFields: Record<string, unknown> = {}
     if (body.firstName !== undefined) userFields['first_name'] = body.firstName
     if (body.lastName !== undefined) userFields['last_name'] = body.lastName
