@@ -73,36 +73,33 @@ function ProgressBar({ percent, label }: { percent: number; label: string }) {
 }
 
 function RecognitionSection({ view }: { view: ExpertProjectView }) {
+  if (!view.recognition.available) return null;
   return (
     <div style={card}>
       <p style={sectionTitle}>Reconnaissance</p>
-      {view.recognition.available ? (
-        <>
-          <p style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700 }}>
-            Projet reconnu : {view.recognition.label}
-          </p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={badge('var(--badge-qualified-bg)', 'var(--badge-qualified-text)')}>
-              Confiance : {view.confidence.percent}%
-            </span>
-            <span style={badge('var(--badge-new-bg)', 'var(--badge-new-text)')}>
-              Source : {view.recognition.source}
-            </span>
-          </div>
-        </>
-      ) : (
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>non disponible</p>
-      )}
+      <p style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700 }}>
+        Projet reconnu : {view.recognition.label}
+      </p>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {!!view.confidence.percent && view.confidence.percent > 0 && (
+          <span style={badge('var(--badge-qualified-bg)', 'var(--badge-qualified-text)')}>
+            Confiance : {view.confidence.percent}%
+          </span>
+        )}
+        <span style={badge('var(--badge-new-bg)', 'var(--badge-new-text)')}>
+          Source : {view.recognition.source}
+        </span>
+      </div>
     </div>
   );
 }
 
 function QualificationSection({ view }: { view: ExpertProjectView }) {
+  if (!view.qualification.available) return null;
   return (
     <div style={card}>
       <p style={sectionTitle}>Qualification</p>
-      {view.qualification.available ? (
-        <>
+      <>
           <p style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 600 }}>
             {view.qualification.remaining === 0
               ? 'Toutes les questions ont une réponse'
@@ -133,62 +130,46 @@ function QualificationSection({ view }: { view: ExpertProjectView }) {
             ))}
           </ul>
         </>
-      ) : (
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>non disponible</p>
-      )}
     </div>
   );
 }
 
 function PhotosSection({ view }: { view: ExpertProjectView }) {
+  const hasRequestedList = !!(view.photos.requestedList && view.photos.requestedList.length > 0);
+  if (!view.photos.available || (!hasRequestedList && view.photos.currentCount === 0)) return null;
   return (
     <div style={card}>
       <p style={sectionTitle}>Photos</p>
-      {view.photos.available ? (
+      <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--text-2)' }}>
+        {view.photos.currentCount} photo{view.photos.currentCount !== 1 ? 's' : ''} déjà fournie
+        {view.photos.currentCount !== 1 ? 's' : ''}
+      </p>
+      {hasRequestedList && (
         <>
-          <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600 }}>
-            Photos nécessaires : {view.photos.required === null ? 'non précisé' : view.photos.required ? 'Oui' : 'Non'}
+          <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>
+            Photos attendues
           </p>
-          <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--text-2)' }}>
-            {view.photos.currentCount} photo{view.photos.currentCount !== 1 ? 's' : ''} déjà fournie
-            {view.photos.currentCount !== 1 ? 's' : ''}
-          </p>
-          {view.photos.requestedList && view.photos.requestedList.length > 0 ? (
-            <>
-              <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>
-                Photos attendues
-              </p>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {view.photos.requestedList.map((photo) => (
-                  <li
-                    key={photo.id}
-                    title={photo.description || undefined}
-                    style={{
-                      fontSize: '13px',
-                      color: photo.required ? 'var(--text-1)' : 'var(--text-3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <span style={{ color: photo.required ? 'var(--accent)' : 'var(--text-3)' }}>
-                      {photo.required ? '✓' : '○'}
-                    </span>
-                    {photo.title}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-3)' }}>
-              Aucune photo spécifique configurée.
-            </p>
-          )}
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {view.photos.requestedList!.map((photo) => (
+              <li
+                key={photo.id}
+                title={photo.description || undefined}
+                style={{
+                  fontSize: '13px',
+                  color: photo.required ? 'var(--text-1)' : 'var(--text-3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ color: photo.required ? 'var(--accent)' : 'var(--text-3)' }}>
+                  {photo.required ? '✓' : '○'}
+                </span>
+                {photo.title}
+              </li>
+            ))}
+          </ul>
         </>
-      ) : (
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>
-          Aucune photo spécifique configurée.
-        </p>
       )}
     </div>
   );
@@ -221,37 +202,54 @@ function QuoteSection({ view }: { view: ExpertProjectView }) {
 }
 
 function PlanningSection({ view }: { view: ExpertProjectView }) {
+  const rows: ReactElement[] = [];
+  if (view.planning.estimatedDuration) {
+    rows.push(
+      <p key="duration" style={{ margin: 0 }}>
+        Durée estimée : <strong>{view.planning.estimatedDuration}</strong>
+      </p>,
+    );
+  }
+  if (view.planning.travelRequired) {
+    rows.push(
+      <p key="travel" style={{ margin: 0 }}>
+        Déplacement : <strong>Oui</strong>
+      </p>,
+    );
+  }
+  if (view.planning.appointmentRecommended) {
+    rows.push(
+      <p key="appointment" style={{ margin: 0 }}>
+        RDV conseillé : <strong>Oui</strong>
+      </p>,
+    );
+  }
+  if (view.planning.urgent) {
+    rows.push(
+      <p key="urgent" style={{ margin: 0 }}>
+        Urgence : <strong>Oui</strong>
+      </p>,
+    );
+  }
+  if (view.planning.desiredTimeline) {
+    rows.push(
+      <p key="timeline" style={{ margin: 0 }}>
+        Délai souhaité : <strong>{view.planning.desiredTimeline}</strong>
+      </p>,
+    );
+  }
+  if (view.planning.callbackDate) {
+    rows.push(
+      <p key="callback" style={{ margin: 0 }}>
+        Date de rappel : <strong>{view.planning.callbackDate}</strong>
+      </p>,
+    );
+  }
+  if (!view.planning.available || rows.length === 0) return null;
   return (
     <div style={card}>
       <p style={sectionTitle}>Planification</p>
-      {view.planning.available ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-          <p style={{ margin: 0 }}>
-            Durée estimée : <strong>{view.planning.estimatedDuration ?? 'non disponible'}</strong>
-          </p>
-          <p style={{ margin: 0 }}>
-            Déplacement : <strong>{view.planning.travelRequired ? 'Oui' : 'Non'}</strong>
-          </p>
-          <p style={{ margin: 0 }}>
-            RDV conseillé : <strong>{view.planning.appointmentRecommended ? 'Oui' : 'Non'}</strong>
-          </p>
-          <p style={{ margin: 0 }}>
-            Urgence : <strong>{view.planning.urgent ? 'Oui' : 'Non'}</strong>
-          </p>
-          {view.planning.desiredTimeline && (
-            <p style={{ margin: 0 }}>
-              Délai souhaité : <strong>{view.planning.desiredTimeline}</strong>
-            </p>
-          )}
-          {view.planning.callbackDate && (
-            <p style={{ margin: 0 }}>
-              Date de rappel : <strong>{view.planning.callbackDate}</strong>
-            </p>
-          )}
-        </div>
-      ) : (
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>non disponible</p>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>{rows}</div>
     </div>
   );
 }
@@ -288,12 +286,16 @@ function SummarySection({ view }: { view: ExpertProjectView }) {
         border: '1px solid var(--accent)',
       }}
     >
-      <p style={sectionTitle}>Synthèse Mode Expert</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
-        {view.summary.bars.map((bar) => (
-          <ProgressBar key={bar.label} percent={bar.percent} label={bar.label} />
-        ))}
-      </div>
+      <p style={sectionTitle}>Synthèse</p>
+      {view.summary.bars.some((bar) => bar.percent > 0) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+          {view.summary.bars
+            .filter((bar) => bar.percent > 0)
+            .map((bar) => (
+              <ProgressBar key={bar.label} percent={bar.percent} label={bar.label} />
+            ))}
+        </div>
+      )}
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
         <p style={sectionTitle}>Prochaine meilleure action</p>
         <p style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 700 }}>{view.summary.nextBestAction.title}</p>
@@ -308,7 +310,7 @@ function SummarySection({ view }: { view: ExpertProjectView }) {
   );
 }
 
-const SECTIONS: Array<{ key: string; title: string; Component: (props: { view: ExpertProjectView }) => ReactElement }> = [
+const SECTIONS: Array<{ key: string; title: string; Component: (props: { view: ExpertProjectView }) => ReactElement | null }> = [
   { key: 'recognition', title: 'Reconnaissance', Component: RecognitionSection },
   { key: 'qualification', title: 'Qualification', Component: QualificationSection },
   { key: 'photos', title: 'Photos', Component: PhotosSection },
@@ -329,7 +331,7 @@ export default function ExpertModeCardDesktop({ view }: ExpertModeCardProps) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
-        <span style={badge('var(--badge-progress-bg)', 'var(--badge-progress-text)')}>Mode Expert</span>
+        <span style={badge('var(--badge-progress-bg)', 'var(--badge-progress-text)')}>Détails de l'analyse</span>
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Vue décisionnelle du projet</h2>
       </div>
       <div
@@ -360,7 +362,7 @@ export function ExpertModeAccordionMobile({ view }: ExpertModeCardProps) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', padding: '0 4px' }}>
-        <span style={badge('var(--badge-progress-bg)', 'var(--badge-progress-text)')}>Mode Expert</span>
+        <span style={badge('var(--badge-progress-bg)', 'var(--badge-progress-text)')}>Détails de l'analyse</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {SECTIONS.map(({ key, title, Component }) => {

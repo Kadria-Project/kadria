@@ -789,6 +789,57 @@ function ProjectDetail() {
         }
       : null,
   });
+
+  // Suivi commercial — uniquement des événements réels du dossier (pas de
+  // module "Bientôt disponible"). L'étape devis réutilise directement
+  // nextAction (déjà calculé avec le délai de grâce de 48h) plutôt que de
+  // redupliquer un seuil temporel qui pourrait diverger de la carte
+  // "Action recommandée".
+  type CommercialStep = { label: string; detail?: string; state: 'done' | 'current' | 'todo' };
+  const commercialQualificationDone = !!(project.completenessScore || project.aiSummary);
+  const commercialSteps: CommercialStep[] = [
+    { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
+  ];
+  if (commercialQualificationDone) {
+    commercialSteps.push({
+      label: 'Dossier qualifié',
+      detail: project.completenessScore ? `Score ${project.completenessScore}/100` : undefined,
+      state: 'done',
+    });
+  }
+  if (!latestDevis) {
+    commercialSteps.push({ label: 'Devis', detail: 'Pas encore créé', state: 'todo' });
+  } else if (latestDevis.accepted) {
+    commercialSteps.push({
+      label: 'Devis accepté',
+      detail: latestDevis.accepted_at ? formatShortDate(latestDevis.accepted_at) : `${formatMoney(latestDevis.amount)} €`,
+      state: 'done',
+    });
+  } else if (latestDevis.declined) {
+    commercialSteps.push({
+      label: 'Devis refusé',
+      detail: latestDevis.decline_reason || (latestDevis.declined_at ? formatShortDate(latestDevis.declined_at) : undefined),
+      state: 'todo',
+    });
+  } else if (!latestDevis.sent) {
+    commercialSteps.push({
+      label: 'Devis en préparation',
+      detail: `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €`,
+      state: 'current',
+    });
+  } else if (nextAction.actionType === 'monitor') {
+    commercialSteps.push({
+      label: 'Devis envoyé',
+      detail: 'En attente de réponse client',
+      state: 'current',
+    });
+  } else {
+    commercialSteps.push({
+      label: 'Relance à faire',
+      detail: nextAction.subtitle || 'Devis envoyé sans réponse',
+      state: 'current',
+    });
+  }
   const NEXT_ACTION_CTA_LABEL: Record<string, string> = {
     complete_qualification: 'Compléter',
     request_photos: 'Demander photos',
@@ -1144,15 +1195,6 @@ function ProjectDetail() {
         ? () => followUpQuote(latestDevis)
         : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
 
-    const qualificationDone = !!(project.completenessScore || project.aiSummary);
-    const devisDoneMobile = !!latestDevis;
-    const mobileTimelineSteps: Array<{ label: string; detail?: string; state: 'done' | 'current' | 'todo' | 'future' }> = [
-      { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
-      { label: 'Qualification', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
-      { label: 'Rendez-vous', detail: appointment ? formatDateTime(appointment.start) : undefined, state: appointment ? 'done' : 'todo' },
-      { label: 'Devis', detail: devisDoneMobile ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer', state: devisDoneMobile ? (latestDevis.accepted ? 'done' : latestDevis.declined ? 'todo' : 'current') : 'todo' },
-      { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
-    ];
 
     const mobileAccordions: Array<{ key: string; title: string; content: ReactNode }> = [
       {
@@ -1393,13 +1435,13 @@ function ProjectDetail() {
 
           {/* Timeline condensée */}
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Parcours</p>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Suivi commercial</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {mobileTimelineSteps.map((step, i) => {
+              {commercialSteps.map((step, i) => {
                 const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
-                const color = step.state === 'done' ? 'var(--accent)' : step.state === 'current' ? 'var(--text-1)' : step.state === 'future' ? 'var(--text-3)' : 'var(--text-2)';
+                const color = step.state === 'done' ? 'var(--accent)' : step.state === 'current' ? 'var(--text-1)' : 'var(--text-2)';
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', opacity: step.state === 'future' ? 0.5 : 1 }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                     <span style={{ color, fontSize: '12px', fontWeight: 700, width: '14px', flexShrink: 0 }}>{icon}</span>
                     <div>
                       <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: step.state === 'current' ? 'var(--text-1)' : color }}>{step.label}</p>
@@ -2267,71 +2309,10 @@ function ProjectDetail() {
           </div>
         )}
 
-        {/* Mode Expert — orchestrateur pur, lit les sorties déjà calculées ci-dessus
-            (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,
-            Suggestions devis) sans rien recalculer (src/lib/expert-project.ts).
-            Replié par défaut pour laisser plus de place à l'Analyse Kadria. */}
-        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
-          <button
-            type="button"
-            onClick={() => setExpertExpanded((v) => !v)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>
-                Mode Expert
-              </p>
-              {!expertExpanded && (
-                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
-                  Devis prêt à {expertView.quote.percent}% · {expertView.summary.nextBestAction.title}
-                </p>
-              )}
-            </div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0, marginLeft: '12px' }}>
-              {expertExpanded ? 'Réduire' : 'Afficher le mode expert'}
-            </span>
-          </button>
-          {expertExpanded && (
-            <div style={{ padding: '0 16px 16px' }}>
-              {isMobile ? (
-                <ExpertModeAccordionMobile view={expertView} />
-              ) : (
-                <ExpertModeCardDesktop view={expertView} />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Timeline intelligente — uniquement des étapes appuyées sur des données réelles du dossier.
-            Repliée par défaut pour laisser plus de place à l'Analyse Kadria. */}
+        {/* Suivi commercial — uniquement des événements réels du dossier (commercialSteps,
+            calculé une seule fois plus haut, partagé avec la vue mobile). */}
         {(() => {
-          const qualificationDone = !!(project.completenessScore || project.aiSummary);
-          const devisDone = !!latestDevis;
-          const steps: Array<{ label: string; detail?: string; state: 'done' | 'current' | 'todo' | 'future' }> = [
-            { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
-            { label: 'Qualification IA', detail: qualificationDone ? `Score ${analysis.score}/100` : undefined, state: qualificationDone ? 'done' : 'todo' },
-            {
-              label: 'Rendez-vous',
-              detail: appointment ? formatDateTime(appointment.start) : undefined,
-              state: appointment ? 'done' : 'todo',
-            },
-            {
-              label: idealActionLabel.title || analysis.nextBestAction.label,
-              detail: project.leadStatus === 'archived' ? 'Dossier archivé' : analysis.recommendation,
-              state: project.leadStatus === 'archived' || analysis.nextBestAction.type === 'wait' ? 'todo' : 'current',
-            },
-            {
-              label: 'Devis',
-              detail: devisDone ? `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €` : 'À envoyer',
-              state: devisDone ? (latestDevis.accepted ? 'done' : latestDevis.declined ? 'todo' : 'current') : 'todo',
-            },
-            { label: 'Intervention', detail: 'Bientôt disponible', state: 'future' },
-            { label: 'Facturation', detail: 'Bientôt disponible', state: 'future' },
-            { label: "Demande d'avis Google", detail: 'Bientôt disponible', state: 'future' },
-          ];
+          const steps = commercialSteps;
           const currentStep = steps.find((s) => s.state === 'current');
           return (
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
@@ -2352,7 +2333,7 @@ function ProjectDetail() {
                     textTransform: 'uppercase',
                     margin: '0 0 2px',
                   }}>
-                    Parcours du dossier
+                    Suivi commercial
                   </p>
                   {!parcoursExpanded && (
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
@@ -2372,11 +2353,9 @@ function ProjectDetail() {
                       ? 'var(--accent)'
                       : step.state === 'current'
                         ? 'var(--text-1)'
-                        : step.state === 'future'
-                          ? 'var(--text-3)'
-                          : 'var(--text-2)';
+                        : 'var(--text-2)';
                     return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', opacity: step.state === 'future' ? 0.55 : 1 }}>
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                         <span style={{ color, fontSize: '13px', fontWeight: 700, width: '16px', flexShrink: 0 }}>{icon}</span>
                         <div>
                           <p style={{ color: step.state === 'current' ? 'var(--text-1)' : color, fontSize: '13px', fontWeight: step.state === 'current' ? 700 : 600, margin: 0 }}>
@@ -2631,7 +2610,7 @@ function ProjectDetail() {
               fontWeight: 600,
               margin: 0
             }}>
-              Suivi commercial
+              Gestion du dossier
             </h2>
             {/* ID + source */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -3636,6 +3615,44 @@ function ProjectDetail() {
             </button>
           </div>
         )}
+
+        {/* Détails de l'analyse — orchestrateur pur, lit les sorties déjà calculées ci-dessus
+            (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,
+            Suggestions devis) sans rien recalculer (src/lib/expert-project.ts).
+            Contenu secondaire, replié par défaut, en bas de page. */}
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
+          <button
+            type="button"
+            onClick={() => setExpertExpanded((v) => !v)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>
+                Détails de l&apos;analyse
+              </p>
+              {!expertExpanded && (
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
+                  Voir les détails techniques utilisés par Kadria pour analyser ce dossier.
+                </p>
+              )}
+            </div>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0, marginLeft: '12px' }}>
+              {expertExpanded ? 'Réduire' : 'Afficher'}
+            </span>
+          </button>
+          {expertExpanded && (
+            <div style={{ padding: '0 16px 16px' }}>
+              {isMobile ? (
+                <ExpertModeAccordionMobile view={expertView} />
+              ) : (
+                <ExpertModeCardDesktop view={expertView} />
+              )}
+            </div>
+          )}
+        </div>
 
         <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-[var(--text-1)] mb-5">Historique du dossier</h2>
