@@ -133,6 +133,36 @@ function significantWords(phrase: string): string[] {
     .filter(w => w.length > 2 && !WORK_TEXT_STOPWORDS.has(w))
 }
 
+// Cherche, dans un texte donné, le terme (d'une liste) qui correspond le
+// mieux — par correspondance directe ou par mots-clés — et renvoie le terme
+// trouvé ainsi qu'un score de spécificité (nombre de mots significatifs du
+// terme), utilisé pour arbitrer les conflits accepté/refusé sur un même
+// message (ex. "dépannage chaudière gaz" : "chaudière gaz" doit l'emporter
+// sur le terme générique "dépannage").
+function findBestWorkTypeMatch(text: string, terms: string[]): { term: string; specificity: number } | null {
+  if (!text) return null
+  let best: { term: string; specificity: number } | null = null
+
+  for (const term of terms) {
+    if (typeof term !== 'string' || !term.trim()) continue
+    const normalizedTerm = normalizeWorkText(term)
+    if (!normalizedTerm) continue
+
+    const words = significantWords(term)
+    const matchesDirectly = text.includes(normalizedTerm)
+    const matchesByKeywords = words.length > 0 && words.every(w => text.includes(w))
+
+    if (matchesDirectly || matchesByKeywords) {
+      const specificity = Math.max(words.length, 1)
+      if (!best || specificity > best.specificity) {
+        best = { term, specificity }
+      }
+    }
+  }
+
+  return best
+}
+
 export function detectExcludedWorkIntent({
   userText,
   conversationText,
@@ -148,32 +178,51 @@ export function detectExcludedWorkIntent({
     return { excluded: false }
   }
 
-  const combinedText = normalizeWorkText([conversationText, userText].filter(Boolean).join(' '))
-  if (!combinedText) return { excluded: false }
+  // Priorité au dernier message utilisateur : une demande sur une
+  // prestation acceptée doit pouvoir débloquer le parcours même si une
+  // ancienne prestation refusée a été mentionnée plus tôt dans la
+  // conversation (cf. bug : une fois un terme refusé évoqué, il restait
+  // bloquant pour tous les tours suivants).
+  const lastMessageText = normalizeWorkText(userText)
+  if (lastMessageText) {
+    const refusedOnLastMessage = findBestWorkTypeMatch(lastMessageText, refusedWorkTypes)
+    const acceptedOnLastMessage = findBestWorkTypeMatch(lastMessageText, acceptedWorkTypes)
 
-  for (const refusedTerm of refusedWorkTypes) {
-    if (typeof refusedTerm !== 'string' || !refusedTerm.trim()) continue
-    const normalizedTerm = normalizeWorkText(refusedTerm)
-    if (!normalizedTerm) continue
-
-    // Correspondance directe : la phrase exclue apparaît telle quelle.
-    if (combinedText.includes(normalizedTerm)) {
-      return { excluded: true, matchedRefusedTerm: refusedTerm }
+    if (refusedOnLastMessage && acceptedOnLastMessage) {
+      // Conflit sur le même message : le terme le plus spécifique gagne
+      // (ex. "chaudière gaz" l'emporte sur "dépannage"). À égalité, le
+      // refus reste prioritaire par prudence.
+      return refusedOnLastMessage.specificity >= acceptedOnLastMessage.specificity
+        ? { excluded: true, matchedRefusedTerm: refusedOnLastMessage.term }
+        : { excluded: false }
     }
 
-    // Correspondance par mots-clés : utile pour les échanges multi-tours où
-    // le client répond en plusieurs messages courts ("Chaudière", puis
-    // "fuite") plutôt qu'en une seule phrase contenant le terme exact.
-    const words = significantWords(refusedTerm)
-    if (words.length > 0 && words.every(w => combinedText.includes(w))) {
-      return { excluded: true, matchedRefusedTerm: refusedTerm }
+    if (acceptedOnLastMessage) {
+      // Le dernier message correspond clairement à une prestation acceptée :
+      // on autorise la reprise du parcours, sans tenir compte de
+      // l'historique (ex. "Chaudière en panne" suivi de "installation
+      // sanitaire" doit débloquer la qualification).
+      return { excluded: false }
+    }
+
+    if (refusedOnLastMessage) {
+      return { excluded: true, matchedRefusedTerm: refusedOnLastMessage.term }
     }
   }
 
-  // Les refus sont toujours prioritaires sur les acceptations en cas de
-  // conflit : `acceptedWorkTypes` n'est utilisé qu'en aval pour proposer des
-  // alternatives, jamais pour neutraliser un refus détecté ci-dessus.
-  void acceptedWorkTypes
+  // Le dernier message ne permet pas de conclure (réponse ambiguë, courte,
+  // ou sans rapport direct avec un type de prestation) : on retombe en
+  // analyse secondaire sur l'historique complet, utile pour les échanges
+  // multi-tours ("Chaudière", puis "fuite"), mais jamais prioritaire sur un
+  // dernier message qui indiquerait une reprise sur une prestation acceptée.
+  const combinedText = normalizeWorkText([conversationText, userText].filter(Boolean).join(' '))
+  if (!combinedText) return { excluded: false }
+
+  const refusedOnHistory = findBestWorkTypeMatch(combinedText, refusedWorkTypes)
+  if (refusedOnHistory) {
+    return { excluded: true, matchedRefusedTerm: refusedOnHistory.term }
+  }
+
   return { excluded: false }
 }
 
