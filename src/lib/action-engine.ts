@@ -22,6 +22,7 @@ export type ActionType =
   | 'schedule_appointment'
   | 'send_quote'
   | 'follow_up_quote'
+  | 'review_quote_decline'
   | 'schedule_intervention'
   | 'ask_review'
   | 'monitor'
@@ -38,6 +39,11 @@ export interface NextAction {
   blockingReasons: string[]
   maturityScore: number
   confidence: ActionConfidence
+  // Date (ISO) à partir de laquelle une relance devis devient pertinente —
+  // uniquement renseignée quand un devis vient d'être envoyé (< 48h),
+  // pour que l'UI puisse afficher "Relance possible à partir du [date]"
+  // sans dupliquer le calcul du délai de grâce.
+  followUpAvailableAt?: string
 }
 
 // Reprend uniquement les champs reellement disponibles sur un projet/devis/
@@ -70,6 +76,7 @@ export interface ActionEngineProjectInput {
     accepted?: boolean
     declined?: boolean
     sentAt?: string | null
+    declineReason?: string | null
   } | null
   createdAt?: string | null
   lastFollowUpAt?: string | null
@@ -154,6 +161,7 @@ const ESTIMATED_DURATION_BY_ACTION: Record<ActionType, string> = {
   schedule_appointment: '5 min',
   send_quote: '15 min',
   follow_up_quote: '3 min',
+  review_quote_decline: '5 min',
   schedule_intervention: '10 min',
   ask_review: '2 min',
   monitor: '1 min',
@@ -165,6 +173,7 @@ const IMPACT_BY_ACTION: Record<ActionType, ActionImpact> = {
   schedule_appointment: 'medium',
   send_quote: 'high',
   follow_up_quote: 'high',
+  review_quote_decline: 'medium',
   schedule_intervention: 'high',
   ask_review: 'low',
   monitor: 'low',
@@ -241,6 +250,7 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
     description: string
     priority: ActionPriority
     urgency: ActionUrgency
+    followUpAvailableAt?: string
   }): NextAction {
     return {
       title: params.title,
@@ -254,6 +264,7 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
       blockingReasons,
       maturityScore,
       confidence,
+      followUpAvailableAt: params.followUpAvailableAt,
     }
   }
 
@@ -337,11 +348,30 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
     })
   }
 
-  // 5. Devis envoye sans reponse depuis plusieurs jours.
+  // 5. Devis refuse par le client : aucune relance, on oriente vers le motif
+  // ou un nouveau devis plutot que de retomber sur une action generique.
+  if (devisDeclined) {
+    return buildAction({
+      actionType: 'review_quote_decline',
+      title: 'Devis refusé',
+      subtitle: 'Devis refusé',
+      description: hasText(project.latestDevis?.declineReason)
+        ? `Motif du refus : ${project.latestDevis!.declineReason}`
+        : 'Le client a refusé ce devis.',
+      priority: 'medium',
+      urgency: 'none',
+    })
+  }
+
+  // 6. Devis envoye sans reponse depuis plusieurs jours.
   if (devisSent && !devisAccepted && !devisDeclined) {
     // Un devis qui vient d'etre envoye ne doit jamais declencher de relance
     // immediate : aucune action prioritaire dans les 48h suivant l'envoi.
     if (hoursSinceSent !== null && hoursSinceSent < MIN_HOURS_BEFORE_FOLLOW_UP_QUOTE) {
+      const sentAtMs = devis?.sentAt ? new Date(devis.sentAt).getTime() : null
+      const followUpAvailableAt = sentAtMs !== null && Number.isFinite(sentAtMs)
+        ? new Date(sentAtMs + MIN_HOURS_BEFORE_FOLLOW_UP_QUOTE * 60 * 60 * 1000).toISOString()
+        : undefined
       return buildAction({
         actionType: 'monitor',
         title: 'Devis envoyé',
@@ -349,21 +379,23 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
         description: 'Le devis vient d\'être envoyé : laissez au client le temps de répondre avant toute relance.',
         priority: 'low',
         urgency: 'none',
+        followUpAvailableAt,
       })
     }
-    const overdue = daysSinceSent !== null && daysSinceSent >= 5
-    const dueSoon = daysSinceSent !== null && daysSinceSent >= 3
+    // Au-dela du delai de grace : relance recommandee. Priorite normale entre
+    // 48h et 7 jours, haute au-dela de 7 jours sans reponse.
+    const overdue = daysSinceSent !== null && daysSinceSent >= 7
     return buildAction({
       actionType: 'follow_up_quote',
-      title: 'Relancer le devis',
+      title: 'Relancer le client',
       subtitle: daysSinceSent !== null ? `Envoyé depuis ${daysSinceSent} jour${daysSinceSent > 1 ? 's' : ''}` : 'Devis envoyé',
       description: 'Le devis est envoyé mais aucune réponse n\'a encore été reçue.',
-      priority: overdue ? 'critical' : 'high',
-      urgency: overdue ? 'overdue' : dueSoon ? 'today' : 'soon',
+      priority: overdue ? 'high' : 'medium',
+      urgency: overdue ? 'overdue' : 'today',
     })
   }
 
-  // 6. Devis accepte : preparer l'intervention.
+  // 7. Devis accepte : preparer l'intervention.
   if (devisAccepted) {
     return buildAction({
       actionType: 'schedule_intervention',
@@ -375,7 +407,7 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
     })
   }
 
-  // 7. Devis cree mais pas encore envoye (cas residuel, sans signal plus
+  // 8. Devis cree mais pas encore envoye (cas residuel, sans signal plus
   // specifique ci-dessus).
   if (devisExists && !devisSent) {
     return buildAction({
@@ -388,7 +420,7 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
     })
   }
 
-  // 8. Aucun signal fort.
+  // 9. Aucun signal fort.
   return buildAction({
     actionType: 'monitor',
     title: 'Surveiller le dossier',

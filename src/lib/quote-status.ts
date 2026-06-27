@@ -3,6 +3,7 @@
 // aucune nouvelle valeur de statut : se contente de lire/normaliser celles qui
 // existent déjà (Devis.statut, Devis.sent/accepted/declined, Project.status).
 import { getQuoteFollowupState, type QuoteFollowupInput } from '@/src/lib/quote-followup'
+import type { NextAction } from '@/src/lib/action-engine'
 
 export type QuoteLifecycleState = 'draft' | 'sent' | 'accepted' | 'declined' | 'unknown'
 
@@ -74,4 +75,109 @@ export function shouldShowAsPriorityAction(
   if (isProjectClosed(project)) return false
   if (isQuoteAccepted(devis) || isQuoteDeclined(devis)) return false
   return true
+}
+
+// Source unique de la décision commerciale affichée sur la fiche projet.
+// Tous les blocs (Action recommandée, cartes rapides, Analyse Kadria,
+// "Moment idéal pour relancer", Gestion du dossier, Suivi commercial)
+// doivent lire ce même état plutôt que recalculer chacun leur propre
+// condition de relance — c'est ce qui produisait des contradictions
+// (ex : un bloc dit "attendre" pendant qu'un autre propose "relancer").
+//
+// canFollowUpQuote combine volontairement DEUX gardes :
+//  - nextAction.actionType === 'follow_up_quote' : le délai de grâce
+//    48h de l'Action Engine (jamais de relance immédiate après envoi) ;
+//  - canFollowUpQuote(devis) : les règles d'éligibilité déjà éprouvées
+//    de quote-followup.ts (clos, expiré, relances désactivées, quota
+//    de relances atteint...).
+// Les deux doivent être vraies pour qu'un bouton de relance soit montré —
+// ça évite toute divergence sans modifier quote-followup.ts.
+export type ProjectDecisionStateKey =
+  | 'no_quote'
+  | 'quote_draft'
+  | 'quote_recently_sent'
+  | 'quote_followup_available'
+  | 'quote_accepted'
+  | 'quote_declined'
+  | 'won'
+  | 'lost'
+
+export interface ProjectDecision {
+  state: ProjectDecisionStateKey
+  label: string
+  primaryActionLabel: string
+  primaryActionType: NextAction['actionType']
+  canFollowUpQuote: boolean
+  shouldShowFollowupBlock: boolean
+  followUpAvailableAt?: string
+  priority: 'none' | 'low' | 'normal' | 'high'
+}
+
+function mapPriority(nextAction: NextAction): ProjectDecision['priority'] {
+  if (nextAction.priority === 'critical' || nextAction.priority === 'high') return 'high'
+  if (nextAction.priority === 'medium') return 'normal'
+  if (nextAction.urgency === 'none') return 'none'
+  return 'low'
+}
+
+export function getProjectDecisionState(
+  project: ProjectCommercialInput | null | undefined,
+  devis: QuoteLifecycleInput | null | undefined,
+  nextAction: NextAction,
+): ProjectDecision {
+  const priority = mapPriority(nextAction)
+  const base = {
+    primaryActionLabel: nextAction.title,
+    primaryActionType: nextAction.actionType,
+  }
+
+  if (project?.status === 'Perdu') {
+    return { ...base, state: 'lost', label: 'Dossier perdu', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'none' }
+  }
+
+  if (project?.status === 'Gagné' && isQuoteAccepted(devis)) {
+    return { ...base, state: 'won', label: 'Dossier gagné', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'none' }
+  }
+
+  if (isQuoteDeclined(devis)) {
+    return { ...base, state: 'quote_declined', label: 'Devis refusé', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'low' }
+  }
+
+  if (isQuoteAccepted(devis)) {
+    return { ...base, state: 'quote_accepted', label: 'Devis accepté', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority }
+  }
+
+  if (!devis || !isQuoteSent(devis)) {
+    return {
+      ...base,
+      state: devis ? 'quote_draft' : 'no_quote',
+      label: devis ? 'Devis en préparation' : 'Pas de devis',
+      canFollowUpQuote: false,
+      shouldShowFollowupBlock: false,
+      priority,
+    }
+  }
+
+  const followUpAllowed = nextAction.actionType === 'follow_up_quote' && canFollowUpQuote(devis)
+
+  if (followUpAllowed) {
+    return {
+      ...base,
+      state: 'quote_followup_available',
+      label: 'Devis envoyé — relance recommandée',
+      canFollowUpQuote: true,
+      shouldShowFollowupBlock: true,
+      priority,
+    }
+  }
+
+  return {
+    ...base,
+    state: 'quote_recently_sent',
+    label: 'Devis envoyé — en attente de réponse client',
+    canFollowUpQuote: false,
+    shouldShowFollowupBlock: false,
+    followUpAvailableAt: nextAction.followUpAvailableAt,
+    priority,
+  }
 }

@@ -32,6 +32,7 @@ import { getProjectCommercialAnalysis, buildTravelCostSignal, type NextActionTyp
 import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, getMatchedQuoteTemplateName, type ArtisanServiceCatalogItem, type ArtisanQuoteTemplate, type QuoteSuggestionLine } from '@/src/lib/quote-suggestions';
 import { matchProjectToServices, type ServiceMatcherBusinessProfile, type ServiceMatcherServiceProfile, type ServiceMatchResult } from '@/src/lib/service-matcher';
 import { computeNextAction } from '@/src/lib/action-engine';
+import { getProjectDecisionState } from '@/src/lib/quote-status';
 import { computeExpertProjectView } from '@/src/lib/expert-project';
 import ExpertModeCardDesktop, { ExpertModeAccordionMobile } from '@/src/components/expert/ExpertModeCard';
 
@@ -790,9 +791,38 @@ function ProjectDetail() {
       : null,
   });
 
+  // Source unique de la décision commerciale (src/lib/quote-status.ts) :
+  // tous les blocs de la page (Action recommandée, cartes rapides, Analyse
+  // Kadria, Moment idéal, Gestion du dossier, Suivi commercial) doivent lire
+  // ce même état plutôt que recalculer chacun leur propre condition de
+  // relance, pour éviter les contradictions entre blocs.
+  const decision = getProjectDecisionState(
+    { status: project.status },
+    latestDevis
+      ? {
+          sent: latestDevis.sent,
+          statut: latestDevis.statut,
+          accepted: latestDevis.accepted,
+          accepted_at: latestDevis.accepted_at,
+          declined: latestDevis.declined,
+          declined_at: latestDevis.declined_at,
+          decline_reason: latestDevis.decline_reason,
+          date_validite: latestDevis.date_validite,
+          quote_sent_at: latestDevis.quote_sent_at,
+          first_opened_at: latestDevis.first_opened_at,
+          last_follow_up_at: latestDevis.last_follow_up_at,
+          follow_up_count: latestDevis.follow_up_count,
+          follow_up_disabled: latestDevis.follow_up_disabled,
+          client_email: project.clientEmail,
+        }
+      : null,
+    nextAction,
+  );
+
   // Suivi commercial — uniquement des événements réels du dossier (pas de
   // module "Bientôt disponible"). L'étape devis réutilise directement
-  // nextAction (déjà calculé avec le délai de grâce de 48h) plutôt que de
+  // decision (source unique, déjà calculée avec le délai de grâce de 48h et
+  // les règles d'éligibilité de quote-followup.ts) plutôt que de
   // redupliquer un seuil temporel qui pourrait diverger de la carte
   // "Action recommandée".
   type CommercialStep = { label: string; detail?: string; state: 'done' | 'current' | 'todo' };
@@ -827,16 +857,18 @@ function ProjectDetail() {
       detail: `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €`,
       state: 'current',
     });
-  } else if (nextAction.actionType === 'monitor') {
+  } else if (decision.state === 'quote_followup_available') {
     commercialSteps.push({
       label: 'Devis envoyé',
-      detail: 'En attente de réponse client',
+      detail: `Envoyé depuis ${nextAction.subtitle || 'plusieurs jours'} — relance recommandée`,
       state: 'current',
     });
   } else {
     commercialSteps.push({
-      label: 'Relance à faire',
-      detail: nextAction.subtitle || 'Devis envoyé sans réponse',
+      label: 'Devis envoyé',
+      detail: decision.followUpAvailableAt
+        ? `En attente de réponse client. Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
+        : 'En attente de réponse client.',
       state: 'current',
     });
   }
@@ -846,6 +878,7 @@ function ProjectDetail() {
     schedule_appointment: 'Planifier',
     send_quote: 'Préparer le devis',
     follow_up_quote: 'Relancer',
+    review_quote_decline: 'Créer un nouveau devis',
     schedule_intervention: 'Programmer',
     ask_review: 'Demander un avis',
     monitor: 'Consulter',
@@ -855,7 +888,8 @@ function ProjectDetail() {
   // fausse action) tant qu'ils ne sont pas integres.
   const NEXT_ACTION_CTA_HANDLER: Partial<Record<string, () => void>> = {
     schedule_appointment: () => { if (!appointment) openAppointmentModal(); },
-    follow_up_quote: () => { if (latestDevis) followUpQuote(latestDevis); },
+    follow_up_quote: () => { if (latestDevis && decision.canFollowUpQuote) followUpQuote(latestDevis); },
+    review_quote_decline: () => { router.push(`/dashboard-v2/projet/${id}/devis/new`); },
     // Reprend le canal email/téléphone déjà utilisé ailleurs sur cette page
     // pour contacter le client (cf. boutons "✉️ Message" / "tel:") plutôt
     // que d'inventer une nouvelle API de demande de photos.
@@ -1186,13 +1220,19 @@ function ProjectDetail() {
         : latestDevis.declined
           ? 'Devis refusé'
           : latestDevis.sent
-            ? 'Devis envoyé'
+            ? decision.state === 'quote_followup_available' ? 'Devis à relancer' : 'Devis envoyé'
             : 'Devis en préparation';
-    const devisCtaLabel = !latestDevis ? 'Créer' : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined ? 'Relancer' : 'Voir';
+    const devisCtaLabel = !latestDevis
+      ? 'Créer'
+      : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined
+        ? decision.canFollowUpQuote ? 'Relancer' : 'Consulter'
+        : 'Voir';
     const devisCtaAction = !latestDevis
       ? () => handleNextBestAction('quote')
       : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined
-        ? () => followUpQuote(latestDevis)
+        ? decision.canFollowUpQuote
+          ? () => followUpQuote(latestDevis)
+          : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`)
         : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
 
 
@@ -1385,7 +1425,9 @@ function ProjectDetail() {
               { label: '✉️ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
               { label: '📅 RDV', disabled: !!appointment, onClick: () => { if (!appointment) openAppointmentModal(); } },
               { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
-              { label: '🔁 Relancer', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
+              decision.canFollowUpQuote
+                ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && followUpQuote(latestDevis) }
+                : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
             ].map((a) => (
               <button
                 key={a.label}
@@ -1920,31 +1962,36 @@ function ProjectDetail() {
             </p>
           </button>
 
-          {/* Relance */}
+          {/* Relance — uniquement actionnable quand decision.canFollowUpQuote
+              est vraie, pour ne jamais contredire l'Action recommandée */}
           <button
-            onClick={() => handleNextBestAction(latestDevis ? 'followup' : 'call')}
-            disabled={!latestDevis && !project.clientPhone}
+            onClick={() => decision.canFollowUpQuote && latestDevis ? followUpQuote(latestDevis) : handleNextBestAction(latestDevis ? 'followup' : 'call')}
+            disabled={!decision.canFollowUpQuote && !latestDevis && !project.clientPhone}
             style={{
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border)',
               borderRadius: '12px',
               padding: '14px',
               textAlign: 'left',
-              cursor: (latestDevis || project.clientPhone) ? 'pointer' : 'not-allowed',
-              opacity: (latestDevis || project.clientPhone) ? 1 : 0.5,
+              cursor: (decision.canFollowUpQuote || latestDevis || project.clientPhone) ? 'pointer' : 'not-allowed',
+              opacity: (decision.canFollowUpQuote || latestDevis || project.clientPhone) ? 1 : 0.5,
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
               📞 Relance
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
-              Relancer le client
+              {decision.canFollowUpQuote
+                ? 'Relancer le client'
+                : decision.followUpAvailableAt
+                  ? `Possible à partir du ${formatShortDate(decision.followUpAvailableAt)}`
+                  : 'Contacter le client si nécessaire'}
             </p>
           </button>
 
           {/* Devis */}
           <button
-            onClick={() => handleNextBestAction('quote')}
+            onClick={() => latestDevis ? router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`) : handleNextBestAction('quote')}
             style={{
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border)',
@@ -1958,7 +2005,13 @@ function ProjectDetail() {
               📄 Devis
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
-              {latestDevis ? 'Voir / relancer le devis' : 'Préparer un devis'}
+              {!latestDevis
+                ? 'Préparer un devis'
+                : decision.state === 'quote_draft'
+                  ? 'Envoyer le devis'
+                  : decision.canFollowUpQuote
+                    ? 'Relancer le devis'
+                    : 'Consulter le devis'}
             </p>
           </button>
 
@@ -2117,6 +2170,22 @@ function ProjectDetail() {
                 flexShrink: 0,
               }}>
                 📁 Dossier archivé
+              </span>
+            ) : analysis.nextBestAction.type === 'followup' && !decision.canFollowUpQuote ? (
+              // Le devis vient d'être envoyé ou n'est pas encore éligible à la
+              // relance (cf. decision.canFollowUpQuote, source unique) : on
+              // n'affiche jamais de bouton "Relancer" actif ici, pour ne pas
+              // contredire l'Action recommandée et la carte Devis.
+              <span style={{
+                color: 'var(--text-3)',
+                fontSize: '12px',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}>
+                {decision.followUpAvailableAt
+                  ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}`
+                  : 'En attente de réponse client'}
               </span>
             ) : analysis.nextBestAction.type !== 'wait' && (
               <button
@@ -2533,7 +2602,7 @@ function ProjectDetail() {
           )}
         </div>
 
-        {showIdealFollowUp && (
+        {showIdealFollowUp && (idealActionLabel.title !== 'Moment idéal pour relancer le devis' || decision.shouldShowFollowupBlock) && (
           <div style={{
             background: 'rgba(34,197,94,0.06)',
             border: '1px solid rgba(34,197,94,0.22)',
@@ -2906,7 +2975,7 @@ function ProjectDetail() {
                               fontSize: '12px',
                               fontWeight: 600,
                             }}>
-                              ✓ Envoyé
+                              ✓ {latestDevis && devis.id === latestDevis.id && decision.state === 'quote_followup_available' ? 'Devis à relancer' : 'Envoyé'}
                             </span>
                           ) : (
                             <span style={{
@@ -2948,6 +3017,14 @@ function ProjectDetail() {
 
                           {(() => {
                             const followupState = getQuoteFollowupState(devis);
+                            // Pour le devis courant, on recoupe l'éligibilité
+                            // quote-followup.ts avec le délai de grâce 48h de
+                            // l'Action Engine (decision.canFollowUpQuote) afin
+                            // de ne jamais afficher un bouton "Relancer" actif
+                            // alors que l'Action recommandée dit d'attendre.
+                            const effectiveCanFollowUp = latestDevis && devis.id === latestDevis.id
+                              ? decision.canFollowUpQuote
+                              : followupState.canFollowUp;
                             return devis.declined ? (
                               <button
                                 type="button"
@@ -2999,7 +3076,7 @@ function ProjectDetail() {
                             ) : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                  {followupState.canFollowUp && (
+                                  {effectiveCanFollowUp && (
                                     <button
                                       type="button"
                                       onClick={(event) => {
@@ -3059,11 +3136,13 @@ function ProjectDetail() {
                                     <span>
                                       {devis.follow_up_disabled
                                         ? 'Relances désactivées'
-                                        : followupState.canFollowUp && followupState.nextFollowupAt
+                                        : effectiveCanFollowUp && followupState.nextFollowupAt
                                           ? followupState.shouldAutoFollowUp
                                             ? `Relance prévue : ${followupState.reason}`
                                             : `Prochaine relance prévue le ${formatDevisDate(followupState.nextFollowupAt)}`
-                                          : 'Aucune relance nécessaire pour le moment'}
+                                          : latestDevis && devis.id === latestDevis.id && decision.followUpAvailableAt
+                                            ? `Relance possible à partir du ${formatDevisDate(decision.followUpAvailableAt)}`
+                                            : 'Aucune relance nécessaire pour le moment'}
                                     </span>
                                   </div>
                                 )}
