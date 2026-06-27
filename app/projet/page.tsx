@@ -7,7 +7,13 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 
 function ProjetContent() {
   const searchParams = useSearchParams()
-  const artisanId = searchParams.get('artisan_id') ?? ''
+  // Accepte les deux conventions de nommage du paramètre (`artisan_id` est la
+  // convention utilisée partout ailleurs — widget.js, /widget-embed — mais un
+  // lien de test peut utiliser `artisanId`). Sans ce repli, un mauvais nom de
+  // paramètre renvoie silencieusement une chaîne vide : /api/chat ne charge
+  // alors plus du tout la configuration de l'artisan (ni ses métiers, ni ses
+  // travaux acceptés/refusés), quel que soit l'artisan visé.
+  const artisanId = searchParams.get('artisan_id') ?? searchParams.get('artisanId') ?? ''
 
   return (
     <main
