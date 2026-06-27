@@ -547,7 +547,7 @@ export interface SupabaseDevis {
   accepted: boolean
   acceptedAt: string | null
   acceptedIp: string | null
-  quoteSentAt: string
+  quoteSentAt: string | null
   lastFollowUpAt: string | null
   followUpCount: number
   declinedAt: string | null
@@ -596,7 +596,11 @@ export function mapSupabaseDevis(row: RawRow): SupabaseDevis {
     accepted: getBoolean(row, 'accepted'),
     acceptedAt: getValue<string | null>(row, ['accepted_at'], null),
     acceptedIp: getValue<string | null>(row, ['accepted_ip'], null),
-    quoteSentAt: getString(row, 'quote_sent_at') || getString(row, 'date_emission'),
+    // Ne PAS retomber sur date_emission ici : date_emission est toujours
+    // renseignée dès la création (même en brouillon), ce qui masquerait
+    // l'absence réelle d'envoi. quoteSentAt doit rester null tant que le
+    // devis n'a pas été réellement envoyé au client.
+    quoteSentAt: getValue<string | null>(row, ['quote_sent_at'], null),
     lastFollowUpAt: getValue<string | null>(row, ['last_follow_up_at'], null),
     followUpCount: getNumber(row, 'follow_up_count'),
     declinedAt: getValue<string | null>(row, ['declined_at', 'declinedAt'], null),
