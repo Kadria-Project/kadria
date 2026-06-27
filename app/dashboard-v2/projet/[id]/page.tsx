@@ -33,8 +33,6 @@ import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, g
 import { matchProjectToServices, type ServiceMatcherBusinessProfile, type ServiceMatcherServiceProfile, type ServiceMatchResult } from '@/src/lib/service-matcher';
 import { computeNextAction } from '@/src/lib/action-engine';
 import { getProjectDecisionState } from '@/src/lib/quote-status';
-import { computeExpertProjectView } from '@/src/lib/expert-project';
-import ExpertModeCardDesktop, { ExpertModeAccordionMobile } from '@/src/components/expert/ExpertModeCard';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -274,11 +272,6 @@ function ProjectDetail() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  // Mode Expert / Parcours : repliés par défaut pour remonter l'Analyse
-  // Kadria plus haut dans la page (état local, pas de persistance serveur).
-  const [expertExpanded, setExpertExpanded] = useState(false);
-  const [parcoursExpanded, setParcoursExpanded] = useState(false);
 
   // Accordéons de la fiche projet mobile native (détails secondaires repliés).
   const [openMobileSections, setOpenMobileSections] = useState<Set<string>>(new Set());
@@ -793,9 +786,9 @@ function ProjectDetail() {
 
   // Source unique de la décision commerciale (src/lib/quote-status.ts) :
   // tous les blocs de la page (Action recommandée, cartes rapides, Analyse
-  // Kadria, Moment idéal, Gestion du dossier, Suivi commercial) doivent lire
-  // ce même état plutôt que recalculer chacun leur propre condition de
-  // relance, pour éviter les contradictions entre blocs.
+  // Kadria, Moment idéal, Gestion du dossier) doivent lire ce même état
+  // plutôt que recalculer chacun leur propre condition de relance, pour
+  // éviter les contradictions entre blocs.
   const decision = getProjectDecisionState(
     { status: project.status },
     latestDevis
@@ -819,59 +812,6 @@ function ProjectDetail() {
     nextAction,
   );
 
-  // Suivi commercial — uniquement des événements réels du dossier (pas de
-  // module "Bientôt disponible"). L'étape devis réutilise directement
-  // decision (source unique, déjà calculée avec le délai de grâce de 48h et
-  // les règles d'éligibilité de quote-followup.ts) plutôt que de
-  // redupliquer un seuil temporel qui pourrait diverger de la carte
-  // "Action recommandée".
-  type CommercialStep = { label: string; detail?: string; state: 'done' | 'current' | 'todo' };
-  const commercialQualificationDone = !!(project.completenessScore || project.aiSummary);
-  const commercialSteps: CommercialStep[] = [
-    { label: 'Demande reçue', detail: formatShortDate(project.createdAt), state: 'done' },
-  ];
-  if (commercialQualificationDone) {
-    commercialSteps.push({
-      label: 'Dossier qualifié',
-      detail: project.completenessScore ? `Score ${project.completenessScore}/100` : undefined,
-      state: 'done',
-    });
-  }
-  if (!latestDevis) {
-    commercialSteps.push({ label: 'Devis', detail: 'Pas encore créé', state: 'todo' });
-  } else if (latestDevis.accepted) {
-    commercialSteps.push({
-      label: 'Devis accepté',
-      detail: latestDevis.accepted_at ? formatShortDate(latestDevis.accepted_at) : `${formatMoney(latestDevis.amount)} €`,
-      state: 'done',
-    });
-  } else if (latestDevis.declined) {
-    commercialSteps.push({
-      label: 'Devis refusé',
-      detail: latestDevis.decline_reason || (latestDevis.declined_at ? formatShortDate(latestDevis.declined_at) : undefined),
-      state: 'todo',
-    });
-  } else if (!latestDevis.sent) {
-    commercialSteps.push({
-      label: 'Devis en préparation',
-      detail: `${latestDevis.numero} · ${formatMoney(latestDevis.amount)} €`,
-      state: 'current',
-    });
-  } else if (decision.state === 'quote_followup_available') {
-    commercialSteps.push({
-      label: 'Devis envoyé',
-      detail: `Envoyé depuis ${nextAction.subtitle || 'plusieurs jours'} — relance recommandée`,
-      state: 'current',
-    });
-  } else {
-    commercialSteps.push({
-      label: 'Devis envoyé',
-      detail: decision.followUpAvailableAt
-        ? `En attente de réponse client. Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
-        : 'En attente de réponse client.',
-      state: 'current',
-    });
-  }
   const NEXT_ACTION_CTA_LABEL: Record<string, string> = {
     complete_qualification: 'Compléter',
     request_photos: 'Demander photos',
@@ -967,26 +907,6 @@ function ProjectDetail() {
     businessProfile,
     serviceProfiles,
   );
-
-  // Mode Expert — orchestrateur pur (src/lib/expert-project.ts) : rassemble
-  // ce qui est déjà calculé ci-dessus, ne recalcule rien.
-  const expertView = computeExpertProjectView({
-    project: {
-      budget: project.budget,
-      tradeAnswers: project.tradeAnswers,
-      photos: project.photos,
-      trade: project.trade,
-      projectType: project.projectType,
-      desiredTimeline: project.desiredTimeline,
-      callbackDate: project.callbackDate,
-    },
-    analysis,
-    serviceMatches,
-    nextAction,
-    businessProfile,
-    serviceProfiles,
-    quoteSuggestions,
-  });
 
   type ReferentialSuggestionLine = QuoteSuggestionLine & {
     fromReferential?: boolean;
@@ -1473,26 +1393,6 @@ function ProjectDetail() {
             <button onClick={devisCtaAction} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
               {devisCtaLabel}
             </button>
-          </div>
-
-          {/* Timeline condensée */}
-          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
-            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Suivi commercial</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {commercialSteps.map((step, i) => {
-                const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
-                const color = step.state === 'done' ? 'var(--accent)' : step.state === 'current' ? 'var(--text-1)' : 'var(--text-2)';
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                    <span style={{ color, fontSize: '12px', fontWeight: 700, width: '14px', flexShrink: 0 }}>{icon}</span>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: step.state === 'current' ? 'var(--text-1)' : color }}>{step.label}</p>
-                      {step.detail && <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-3)' }}>{step.detail}</p>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
 
           {/* Détails secondaires en accordéons */}
@@ -2377,73 +2277,6 @@ function ProjectDetail() {
             </div>
           </div>
         )}
-
-        {/* Suivi commercial — uniquement des événements réels du dossier (commercialSteps,
-            calculé une seule fois plus haut, partagé avec la vue mobile). */}
-        {(() => {
-          const steps = commercialSteps;
-          const currentStep = steps.find((s) => s.state === 'current');
-          return (
-            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
-              <button
-                type="button"
-                onClick={() => setParcoursExpanded((v) => !v)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <p style={{
-                    color: 'var(--text-3)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    margin: '0 0 2px',
-                  }}>
-                    Suivi commercial
-                  </p>
-                  {!parcoursExpanded && (
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
-                      Étape en cours : {currentStep ? currentStep.label : 'Dossier archivé / en attente'}
-                    </p>
-                  )}
-                </div>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0, marginLeft: '12px' }}>
-                  {parcoursExpanded ? 'Réduire' : 'Développer'}
-                </span>
-              </button>
-              {parcoursExpanded && (
-                <div style={{ padding: isMobile ? '0 16px 16px' : '0 20px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {steps.map((step, i) => {
-                    const icon = step.state === 'done' ? '✓' : step.state === 'current' ? '●' : '○';
-                    const color = step.state === 'done'
-                      ? 'var(--accent)'
-                      : step.state === 'current'
-                        ? 'var(--text-1)'
-                        : 'var(--text-2)';
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                        <span style={{ color, fontSize: '13px', fontWeight: 700, width: '16px', flexShrink: 0 }}>{icon}</span>
-                        <div>
-                          <p style={{ color: step.state === 'current' ? 'var(--text-1)' : color, fontSize: '13px', fontWeight: step.state === 'current' ? 700 : 600, margin: 0 }}>
-                            {step.label}
-                          </p>
-                          {step.detail && (
-                            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '2px 0 0' }}>
-                              {step.detail}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {/* Frais de déplacement estimés — plan Performance et supérieur */}
         <div style={{
@@ -3695,54 +3528,69 @@ function ProjectDetail() {
           </div>
         )}
 
-        {/* Détails de l'analyse — orchestrateur pur, lit les sorties déjà calculées ci-dessus
-            (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,
-            Suggestions devis) sans rien recalculer (src/lib/expert-project.ts).
-            Contenu secondaire, replié par défaut, en bas de page. */}
-        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', marginBottom: '16px', overflow: 'hidden' }}>
-          <button
-            type="button"
-            onClick={() => setExpertExpanded((v) => !v)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>
-                Détails de l&apos;analyse
-              </p>
-              {!expertExpanded && (
-                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
-                  Voir les détails techniques utilisés par Kadria pour analyser ce dossier.
-                </p>
-              )}
-            </div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0, marginLeft: '12px' }}>
-              {expertExpanded ? 'Réduire' : 'Afficher'}
-            </span>
-          </button>
-          {expertExpanded && (
-            <div style={{ padding: '0 16px 16px' }}>
-              {isMobile ? (
-                <ExpertModeAccordionMobile view={expertView} />
-              ) : (
-                <ExpertModeCardDesktop view={expertView} />
-              )}
-            </div>
-          )}
-        </div>
-
         <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-[var(--text-1)] mb-5">Historique du dossier</h2>
 
           {(() => {
-            const allEvents = [...activities, {
+            // Évènements devis consolidés depuis les données déjà chargées sur
+            // cette page (devisList) — aucune donnée inventée, juste les
+            // mêmes champs déjà utilisés par "Gestion du dossier" ci-dessus.
+            const devisEvents = devisList.flatMap((devis) => {
+              const items: { id: string; description: string; createdAt?: string | null; action: string }[] = [];
+              if (devis.date_emission) {
+                items.push({
+                  id: `${devis.id}-created`,
+                  description: `Devis ${devis.numero} créé — ${formatMoney(devis.amount)} € TTC`,
+                  createdAt: devis.date_emission,
+                  action: 'DEVIS',
+                });
+              }
+              if (devis.sent && devis.quote_sent_at) {
+                items.push({
+                  id: `${devis.id}-sent`,
+                  description: `Devis ${devis.numero} envoyé — ${formatMoney(devis.amount)} € TTC`,
+                  createdAt: devis.quote_sent_at,
+                  action: 'DEVIS',
+                });
+              }
+              if (devis.follow_up_count && devis.last_follow_up_at) {
+                items.push({
+                  id: `${devis.id}-followup`,
+                  description: `Relance envoyée pour le devis ${devis.numero}`,
+                  createdAt: devis.last_follow_up_at,
+                  action: 'DEVIS',
+                });
+              }
+              if (devis.accepted) {
+                items.push({
+                  id: `${devis.id}-accepted`,
+                  description: `Devis ${devis.numero} accepté`,
+                  createdAt: devis.accepted_at,
+                  action: 'DEVIS',
+                });
+              }
+              if (devis.declined) {
+                items.push({
+                  id: `${devis.id}-declined`,
+                  description: devis.decline_reason
+                    ? `Devis ${devis.numero} refusé — Motif : ${devis.decline_reason}`
+                    : `Devis ${devis.numero} refusé`,
+                  createdAt: devis.declined_at,
+                  action: 'DEVIS',
+                });
+              }
+              return items;
+            });
+            const allEvents = [...activities, ...devisEvents, {
               id: 'creation',
               description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
               createdAt: project.createdAt,
               action: 'CREATED',
-            }];
+            }].sort((a, b) => {
+              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return timeB - timeA;
+            });
             const events = showAllHistory ? allEvents : allEvents.slice(0, 3);
 
             return (
