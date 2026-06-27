@@ -837,7 +837,9 @@ function isLostProject(p: Project): boolean {
 }
 
 function isQuoteSentProject(p: Project): boolean {
-  return p.status === 'Devis envoyé' || Boolean(p.quoteSentAt) || Boolean(p.devisAmount);
+  // devisAmount seul ne signifie pas "envoyé" : un devis brouillon a aussi un
+  // montant. Seul status === 'Devis envoyé' (ou quoteSentAt) prouve l'envoi réel.
+  return p.status === 'Devis envoyé' || Boolean(p.quoteSentAt);
 }
 
 function isArchivedProject(p: Project): boolean {

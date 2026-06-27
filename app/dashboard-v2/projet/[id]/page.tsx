@@ -1133,7 +1133,7 @@ function ProjectDetail() {
           ? 'Devis refusé'
           : latestDevis.sent
             ? 'Devis envoyé'
-            : 'Devis créé';
+            : 'Devis en préparation';
     const devisCtaLabel = !latestDevis ? 'Créer' : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined ? 'Relancer' : 'Voir';
     const devisCtaAction = !latestDevis
       ? () => handleNextBestAction('quote')

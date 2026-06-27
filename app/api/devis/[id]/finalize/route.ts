@@ -285,9 +285,15 @@ export async function POST(
       ...(sentSnapshot ? { sentSnapshotId: sentSnapshot.id } : {}),
     })
 
+    // Le projet ne doit basculer en "Devis envoyé" que lors d'un envoi réel au
+    // client (mode 'send'). Un enregistrement en brouillon ne doit pas faire
+    // bouger le statut du projet.
     const { error: projectUpdateError } = await supabaseAdmin
       .from(TABLES.projects)
-      .update({ status: 'Devis envoyé', devis_amount: devis.totalTTC })
+      .update({
+        devis_amount: devis.totalTTC,
+        ...(mode === 'send' ? { status: 'Devis envoyé' } : {}),
+      })
       .eq('id', devis.projectId)
 
     if (projectUpdateError) {
