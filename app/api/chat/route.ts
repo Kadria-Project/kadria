@@ -107,14 +107,31 @@ function buildBusinessPreferencesContext(businessConfig: {
 
   if (accepted.length === 0 && refused.length === 0) return ''
 
-  return [
+  const lines = [
     '\n\nPRÉFÉRENCES ARTISAN :',
     `Travaux recherchés : ${accepted.length > 0 ? accepted.join(', ') : 'non précisé'}`,
     `Travaux à éviter : ${refused.length > 0 ? refused.join(', ') : 'non précisé'}`,
     '\nUtilise ces informations pour mieux orienter la qualification.',
-    'Si la demande semble dans les travaux à éviter, continue poliment à qualifier, mais signale-le dans le résumé interne du dossier.',
-    'Ne refuse jamais brutalement une demande côté prospect.',
-  ].join('\n')
+  ]
+
+  if (refused.length > 0) {
+    lines.push(
+      '\nRÈGLE OBLIGATOIRE — PRESTATION EXCLUE :',
+      'Si la demande du client correspond clairement à un des travaux à éviter listés ci-dessus,',
+      'NE continue PAS la qualification normale (ne pose plus de questions métier, ne complète plus',
+      'le dossier comme une demande acceptée).',
+      'Réponds dans "reply" avec exactement ce message :',
+      '"Cette demande ne fait pas partie des prestations que l\'artisan souhaite traiter. Je peux vous aider à formuler une autre demande correspondant à ses prestations proposées."',
+      accepted.length > 0
+        ? `Si possible, propose ensuite des alternatives parmi les travaux recherchés : ${accepted.join(', ')}.`
+        : '',
+      'Dans ce cas, mets "aiSummary" à "Demande hors périmètre : prestation exclue par l\'artisan.",',
+      '"readyToSave" à false, et ne renseigne aucun champ de "dossierUpdate" pour ce message.',
+      'Cette règle d\'exclusion est prioritaire sur toutes les autres instructions de qualification.',
+    )
+  }
+
+  return lines.filter(Boolean).join('\n')
 }
 
 function getOpenAIClient() {

@@ -883,7 +883,15 @@ function ProjectDetail() {
   // Mode Expert — orchestrateur pur (src/lib/expert-project.ts) : rassemble
   // ce qui est déjà calculé ci-dessus, ne recalcule rien.
   const expertView = computeExpertProjectView({
-    project: { budget: project.budget, tradeAnswers: project.tradeAnswers, photos: project.photos },
+    project: {
+      budget: project.budget,
+      tradeAnswers: project.tradeAnswers,
+      photos: project.photos,
+      trade: project.trade,
+      projectType: project.projectType,
+      desiredTimeline: project.desiredTimeline,
+      callbackDate: project.callbackDate,
+    },
     analysis,
     serviceMatches,
     nextAction,
@@ -2211,6 +2219,50 @@ function ProjectDetail() {
             </div>
           )}
         </div>
+
+        {/* Photos du projet — galerie visible (auparavant, seul un compte
+            texte "X photo(s) jointe(s)" existait, aucune image affichée). */}
+        {project.photos && project.photos.length > 0 && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
+            marginBottom: '16px',
+          }}>
+            <p style={{
+              color: 'var(--text-3)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Photos du projet ({project.photos.length})
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(110px, 1fr))',
+              gap: '8px',
+            }}>
+              {project.photos.map((photo: { url: string; thumbnailUrl?: string; filename?: string }, i: number) => (
+                <a
+                  key={`${photo.url}-${i}`}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={photo.thumbnailUrl || photo.url}
+                    alt={photo.filename || `Photo ${i + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Mode Expert — orchestrateur pur, lit les sorties déjà calculées ci-dessus
             (Service Matcher, Action Engine, Analyse Kadria, référentiel métier,

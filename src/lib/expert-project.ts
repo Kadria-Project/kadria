@@ -54,6 +54,10 @@ export interface ExpertProjectInput {
     budget?: string | null;
     tradeAnswers?: unknown;
     photos?: unknown[] | null;
+    trade?: string | null;
+    projectType?: string | null;
+    desiredTimeline?: string | null;
+    callbackDate?: string | null;
   };
   analysis: ProjectCommercialAnalysis;
   serviceMatches: ServiceMatchResult[];
@@ -66,7 +70,7 @@ export interface ExpertProjectInput {
 export interface ExpertRecognition {
   available: boolean;
   label: string;
-  source: 'Service Matcher';
+  source: 'Service Matcher' | 'Déclaré par le client';
 }
 
 export interface ExpertConfidence {
@@ -120,6 +124,8 @@ export interface ExpertPlanning {
   travelRequired: boolean | null;
   appointmentRecommended: boolean | null;
   urgent: boolean | null;
+  desiredTimeline: string | null;
+  callbackDate: string | null;
 }
 
 export interface ExpertRisks {
@@ -197,11 +203,17 @@ export function computeExpertProjectView(input: ExpertProjectInput): ExpertProje
   const bestMatch = pickBestMatch(serviceMatches);
   const referentialProfile = findReferentialProfile(serviceProfiles, bestMatch);
 
-  // 1. RECONNAISSANCE — jamais recalculé : on relit le meilleur résultat du
-  // Service Matcher.
+  // 1. RECONNAISSANCE — priorité au meilleur résultat du Service Matcher
+  // (référentiel métier). À défaut de correspondance référentielle, on
+  // retombe sur ce que le client/le chat a déjà déclaré (project.projectType
+  // ou project.trade) plutôt que d'afficher "non disponible" alors que le
+  // dossier contient l'information.
+  const declaredLabel = (project.projectType || project.trade || '').trim();
   const recognition: ExpertRecognition = bestMatch
     ? { available: true, label: bestMatch.serviceProfile.name, source: 'Service Matcher' }
-    : { available: false, label: 'non disponible', source: 'Service Matcher' };
+    : declaredLabel
+      ? { available: true, label: declaredLabel, source: 'Déclaré par le client' }
+      : { available: false, label: 'non disponible', source: 'Service Matcher' };
 
   const confidence: ExpertConfidence = bestMatch
     ? { available: true, percent: Math.round(bestMatch.confidence) }
@@ -273,8 +285,12 @@ export function computeExpertProjectView(input: ExpertProjectInput): ExpertProje
       : 0;
   const photosReceived = currentPhotoCount;
   const photosRemaining = Math.max(0, photosExpected - photosReceived);
+  // "available" ne doit pas dépendre uniquement du référentiel métier : si
+  // des photos ont déjà été reçues, le bloc doit le montrer même sans
+  // profil de prestation correspondant (cf. bug "Aucune photo spécifique
+  // configurée" alors qu'une photo est bien présente sur le dossier).
   const photos: ExpertPhotos = {
-    available: referentialProfile != null,
+    available: referentialProfile != null || currentPhotoCount > 0,
     required: photosRequired,
     currentCount: currentPhotoCount,
     requestedList: referentialPhotosList.length > 0 ? referentialPhotosList : null,
@@ -307,9 +323,13 @@ export function computeExpertProjectView(input: ExpertProjectInput): ExpertProje
   const quotePercent = quoteCategories.reduce((sum, c) => sum + (c.done ? c.weight : 0), 0);
   const quote: ExpertQuote = { percent: quotePercent, categories: quoteCategories };
 
-  // 5. PLANIFICATION — uniquement les informations du référentiel métier.
+  // 5. PLANIFICATION — priorité aux informations du référentiel métier ;
+  // à défaut, on affiche quand même le délai souhaité / la date de rappel
+  // déjà renseignés sur le dossier plutôt que "non disponible".
+  const desiredTimeline = typeof project.desiredTimeline === 'string' ? project.desiredTimeline.trim() : '';
+  const callbackDate = typeof project.callbackDate === 'string' ? project.callbackDate.trim() : '';
   const planning: ExpertPlanning = {
-    available: referentialProfile != null,
+    available: referentialProfile != null || desiredTimeline.length > 0 || callbackDate.length > 0,
     estimatedDuration:
       referentialProfile?.average_duration_minutes != null
         ? `${referentialProfile.average_duration_minutes} min`
@@ -317,6 +337,8 @@ export function computeExpertProjectView(input: ExpertProjectInput): ExpertProje
     travelRequired: referentialProfile ? Boolean(referentialProfile.travel_required) : null,
     appointmentRecommended: referentialProfile ? Boolean(referentialProfile.appointment_recommended) : null,
     urgent: referentialProfile ? Boolean(referentialProfile.emergency_supported) : null,
+    desiredTimeline: desiredTimeline || null,
+    callbackDate: callbackDate || null,
   };
 
   // 6. RISQUES — repris tel quel de l'Action Engine.

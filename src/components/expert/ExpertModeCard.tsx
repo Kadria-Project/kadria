@@ -147,7 +147,7 @@ function PhotosSection({ view }: { view: ExpertProjectView }) {
       {view.photos.available ? (
         <>
           <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 600 }}>
-            Photos nécessaires : {view.photos.required ? 'Oui' : 'Non'}
+            Photos nécessaires : {view.photos.required === null ? 'non précisé' : view.photos.required ? 'Oui' : 'Non'}
           </p>
           <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--text-2)' }}>
             {view.photos.currentCount} photo{view.photos.currentCount !== 1 ? 's' : ''} déjà fournie
@@ -238,6 +238,16 @@ function PlanningSection({ view }: { view: ExpertProjectView }) {
           <p style={{ margin: 0 }}>
             Urgence : <strong>{view.planning.urgent ? 'Oui' : 'Non'}</strong>
           </p>
+          {view.planning.desiredTimeline && (
+            <p style={{ margin: 0 }}>
+              Délai souhaité : <strong>{view.planning.desiredTimeline}</strong>
+            </p>
+          )}
+          {view.planning.callbackDate && (
+            <p style={{ margin: 0 }}>
+              Date de rappel : <strong>{view.planning.callbackDate}</strong>
+            </p>
+          )}
         </div>
       ) : (
         <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-3)' }}>non disponible</p>

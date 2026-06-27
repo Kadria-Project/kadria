@@ -50,11 +50,31 @@ function getNullableNumber(row: RawRow | null | undefined, ...keys: string[]) {
 function getPhotos(row: RawRow | null | undefined) {
   const raw = getValue<unknown>(row, ['photos', 'Photos'], [])
 
-  if (!Array.isArray(raw)) {
-    return []
+  let list: unknown[]
+  if (Array.isArray(raw)) {
+    list = raw
+  } else if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      list = []
+    } else if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      // Chaîne JSON sérialisée (tableau ou objet unique) : on tente un parse
+      // avant de retomber sur une simple URL/liste séparée par virgules.
+      try {
+        const parsed = JSON.parse(trimmed)
+        list = Array.isArray(parsed) ? parsed : [parsed]
+      } catch {
+        list = trimmed.split(',').map((s) => s.trim()).filter(Boolean)
+      }
+    } else {
+      // URL simple, ou plusieurs URLs séparées par des virgules.
+      list = trimmed.split(',').map((s) => s.trim()).filter(Boolean)
+    }
+  } else {
+    list = []
   }
 
-  return raw
+  return list
     .map((item) => {
       if (typeof item === 'string') {
         return {
