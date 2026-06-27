@@ -684,7 +684,7 @@ function NewDevis() {
     <div className="min-h-screen bg-zinc-950 text-white">
       <main
         className="mx-auto max-w-5xl px-6 py-8 space-y-4"
-        style={isMobile ? { padding: '12px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' } : undefined}
+        style={isMobile ? { padding: '12px', paddingBottom: 'calc(220px + env(safe-area-inset-bottom, 0px))' } : undefined}
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
@@ -1208,23 +1208,37 @@ function NewDevis() {
           Rien n&apos;est envoyé automatiquement. Vous gardez la main jusqu&apos;à l&apos;envoi.
         </p>
 
-        {/* Section 7 — Barre d'action sticky */}
-        <div style={{
+        {/* Section 7 — Barre d'action (sticky desktop / fixe en bas mobile) */}
+        <div style={isMobile ? {
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'var(--bg-elevated)',
+          borderTop: '1px solid var(--border)',
+          borderRadius: 0,
+          padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: '12px',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.45)',
+          zIndex: 50,
+        } : {
           position: 'sticky',
-          bottom: isMobile ? 'max(12px, env(safe-area-inset-bottom, 0px))' : '12px',
+          bottom: '12px',
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
-          padding: isMobile ? '16px' : '12px 16px',
+          padding: '12px 16px',
           display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
+          flexDirection: 'row',
           justifyContent: 'space-between',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: 'center',
           flexWrap: 'wrap',
-          gap: isMobile ? '14px' : '12px',
+          gap: '12px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-          marginTop: isMobile ? '12px' : 0,
-          zIndex: isMobile ? 5 : 'auto',
+          marginTop: 0,
         }}>
           <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent)', width: isMobile ? '100%' : 'auto' }}>
             Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
