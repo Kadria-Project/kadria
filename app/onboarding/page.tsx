@@ -298,6 +298,18 @@ export default function OnboardingPage() {
           body: JSON.stringify({ tradeName: config.otherTrade.trim() }),
         }).catch((err) => console.error('[UNKNOWN TRADE POST]', err))
       }
+      // Écriture vers la source de vérité Profil métier (Supabase) dès
+      // l'onboarding, pour que primary_trade/covered_trades y soient
+      // renseignés sans attendre un passage par /parametres/profil-metier.
+      // Best-effort : ne bloque jamais l'onboarding si elle échoue.
+      if (effectiveTrades.length > 0) {
+        const [primaryTrade, ...coveredTrades] = effectiveTrades
+        fetch('/api/artisan/business-profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ primaryTrade, coveredTrades }),
+        }).catch((err) => console.error('[BUSINESS PROFILE WRITE-THROUGH]', err))
+      }
       return true
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde')

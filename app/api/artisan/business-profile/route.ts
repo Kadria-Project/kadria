@@ -50,6 +50,12 @@ export async function PATCH(request: NextRequest) {
       }
       fields.excluded_services = body.excludedServices
     }
+    if (body.coveredTrades !== undefined) {
+      if (!isStringArray(body.coveredTrades)) {
+        return NextResponse.json({ success: false, error: 'coveredTrades doit être un tableau de chaînes' }, { status: 400 })
+      }
+      fields.covered_trades = body.coveredTrades
+    }
 
     // 2. Zone d'intervention
     if (body.baseCity !== undefined) fields.base_city = body.baseCity

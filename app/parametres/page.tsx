@@ -196,6 +196,39 @@ export default function ParametresPage() {
   const [legalErrors, setLegalErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState('')
 
+  // Profil métier (Supabase, source de vérité) : chargé uniquement pour
+  // afficher un résumé en lecture et pour nourrir les suggestions plus bas
+  // sur cette page (types de travaux, catalogue, modèles de devis), qui
+  // restent sur cette page pour ne pas régresser leurs sections — mais ne
+  // doivent plus dépendre de l'ancien sélecteur de métiers ci-dessous.
+  const [businessProfileTrades, setBusinessProfileTrades] = useState<{ primaryTrade: string; coveredTrades: string[] } | null>(null)
+  useEffect(() => {
+    fetch('/api/artisan/business-profile')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.profile) {
+          setBusinessProfileTrades({
+            primaryTrade: typeof data.profile.primary_trade === 'string' ? data.profile.primary_trade : '',
+            coveredTrades: Array.isArray(data.profile.covered_trades) ? data.profile.covered_trades.filter((t: unknown) => typeof t === 'string') : [],
+          })
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Métiers effectifs utilisés par les suggestions de cette page (types de
+  // travaux, catalogue, modèles de devis) : priorité au Profil métier
+  // (Supabase, source de vérité), repli sur les anciens "Métiers couverts"
+  // (config.trades) tant que le Profil métier n'est pas renseigné.
+  const effectiveTradesForSuggestions = (() => {
+    const primary = businessProfileTrades?.primaryTrade?.trim()
+    const covered = businessProfileTrades?.coveredTrades || []
+    if (primary || covered.length > 0) {
+      return [primary, ...covered].filter((t): t is string => Boolean(t))
+    }
+    return config.trades
+  })()
+
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
   const [copied, setCopied] = useState(false)
 
@@ -910,57 +943,42 @@ export default function ParametresPage() {
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Métiers couverts
                 </h3>
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
-                  Sélectionnez un ou plusieurs métiers. Kadria s&apos;en sert pour mieux qualifier vos prospects.
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
+                  {businessProfileTrades?.primaryTrade ? (
+                    <>
+                      Métier principal : <strong style={{ color: 'var(--text-1)' }}>
+                        {ARTISAN_TRADES.find(t => t.value === businessProfileTrades.primaryTrade)?.label || businessProfileTrades.primaryTrade}
+                      </strong>
+                      {businessProfileTrades.coveredTrades.length > 0 && (
+                        <>
+                          {' '}· Métiers secondaires :{' '}
+                          <strong style={{ color: 'var(--text-1)' }}>
+                            {businessProfileTrades.coveredTrades
+                              .map(v => ARTISAN_TRADES.find(t => t.value === v)?.label || v)
+                              .join(', ')}
+                          </strong>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    'Aucun métier configuré pour le moment.'
+                  )}
                 </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {ARTISAN_TRADES.map(t => {
-                    const selected = config.trades.includes(t.value)
-                    return (
-                      <button
-                        key={t.value}
-                        type="button"
-                        onClick={() => setConfig(c => {
-                          const trades = selected
-                            ? c.trades.filter(v => v !== t.value)
-                            : [...c.trades, t.value]
-                          return {
-                            ...c,
-                            trades,
-                            primaryTrade: trades[0]
-                              ? (ARTISAN_TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
-                              : '',
-                            otherTrade: t.value === 'autre' && selected ? '' : c.otherTrade,
-                          }
-                        })}
-                        style={{
-                          background: selected ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
-                          border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
-                          color: selected ? 'var(--accent)' : 'var(--text-2)',
-                          borderRadius: '20px',
-                          padding: '8px 16px',
-                          fontSize: '13px',
-                          fontWeight: selected ? 600 : 400,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {selected ? '✓ ' : ''}{t.label}
-                      </button>
-                    )
-                  })}
-                </div>
-                {config.trades.includes('autre') && (
-                  <div style={{ marginTop: '14px' }}>
-                    <label style={labelStyle}>Précisez votre métier</label>
-                    <input
-                      value={config.otherTrade}
-                      onChange={e => setConfig(c => ({ ...c, otherTrade: e.target.value }))}
-                      placeholder="Ex : Ramoneur"
-                      style={inputStyle}
-                    />
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => router.push('/parametres/profil-metier')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  Configurez votre métier principal et vos domaines couverts depuis votre Profil métier →
+                </button>
               </div>
 
               <div style={sectionCard}>
@@ -970,12 +988,12 @@ export default function ParametresPage() {
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
                   Indiquez les demandes que vous souhaitez recevoir en priorité, et celles que vous préférez éviter.
                 </p>
-                {config.trades.length === 0 ? (
+                {effectiveTradesForSuggestions.length === 0 ? (
                   <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
                     Sélectionnez d&apos;abord vos métiers pour obtenir des suggestions adaptées.
                   </p>
                 ) : (() => {
-                  const suggestions = getSuggestedWorkTypesForTrades(config.trades)
+                  const suggestions = getSuggestedWorkTypesForTrades(effectiveTradesForSuggestions)
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                       <div>
@@ -1861,9 +1879,9 @@ export default function ParametresPage() {
                   Ajoutez vos prestations courantes pour préremplir plus rapidement vos devis.
                 </p>
 
-                {config.businessConfig.serviceCatalog.length === 0 && config.trades.length > 0 && (() => {
+                {config.businessConfig.serviceCatalog.length === 0 && effectiveTradesForSuggestions.length > 0 && (() => {
                   const catalogLabels = new Set(config.businessConfig.serviceCatalog.map(i => i.label.trim().toLowerCase()))
-                  const suggestions = getQuoteItemsForTrades(config.trades)
+                  const suggestions = getQuoteItemsForTrades(effectiveTradesForSuggestions)
                     .filter(label => !catalogLabels.has(label.trim().toLowerCase()))
                     .slice(0, 8)
                   if (suggestions.length === 0) return null
@@ -2014,8 +2032,8 @@ export default function ParametresPage() {
                   Créez des trames réutilisables pour vos devis fréquents.
                 </p>
 
-                {config.businessConfig.quoteTemplates.length === 0 && config.trades.length > 0 && (() => {
-                  const suggestions = config.trades.flatMap(trade => QUOTE_TEMPLATE_SUGGESTIONS[trade] || [])
+                {config.businessConfig.quoteTemplates.length === 0 && effectiveTradesForSuggestions.length > 0 && (() => {
+                  const suggestions = effectiveTradesForSuggestions.flatMap(trade => QUOTE_TEMPLATE_SUGGESTIONS[trade] || [])
                   const existingNames = new Set(config.businessConfig.quoteTemplates.map(t => t.name.trim().toLowerCase()))
                   const uniqueSuggestions = suggestions.filter((s, i, arr) =>
                     !existingNames.has(s.name.trim().toLowerCase()) &&

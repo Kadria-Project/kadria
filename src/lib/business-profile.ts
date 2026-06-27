@@ -1,5 +1,7 @@
 import 'server-only'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { getArtisanConfig } from '@/src/lib/airtable'
+import { normalizeTrades } from '@/src/config/trades'
 
 export interface ArtisanBusinessProfileRow {
   id: string
@@ -7,6 +9,7 @@ export interface ArtisanBusinessProfileRow {
   primary_trade: string | null
   specialties: string[]
   excluded_services: string[]
+  covered_trades: string[]
   base_city: string | null
   intervention_radius_km: number | null
   travel_fee_ht: number | null
@@ -149,4 +152,65 @@ export async function updateServiceCatalogItem(
   }
 
   return { row: (data as ArtisanServiceCatalogRow) || null, error: null, tableMissing: false }
+}
+
+export interface ArtisanTradeContext {
+  primaryTrade: string
+  coveredTrades: string[]
+}
+
+/**
+ * Source de vérité unique pour le métier d'un artisan, lue partout où le
+ * chat / l'assistant /projet doivent connaître le métier (et les métiers
+ * complémentaires) déclarés.
+ *
+ * Ordre de résolution :
+ * - primaryTrade : artisan_business_profile.primary_trade (Supabase, store
+ *   "Profil métier") → sinon legacy Artisan_config.primary_trade → sinon
+ *   legacy Artisan_config.trades[0] → sinon '' (aucun métier fiable, ne
+ *   JAMAIS retomber sur 'autre' ni sur un métier en dur).
+ * - coveredTrades : artisan_business_profile.covered_trades (si non vide)
+ *   → sinon legacy Artisan_config.trades (moins le primaryTrade résolu,
+ *   dédupliqué) → sinon [].
+ *
+ * Ne contient aucun cas spécial "Artisan_demo" : si un tel comportement
+ * existe ailleurs dans le code, il doit rester scopé là où il est déjà,
+ * jamais élargi ici.
+ */
+export async function resolveArtisanTradeContext(artisanId: string): Promise<ArtisanTradeContext> {
+  if (!artisanId) return { primaryTrade: '', coveredTrades: [] }
+
+  const [{ row: businessProfileRow }, legacyConfig] = await Promise.all([
+    getBusinessProfile(artisanId),
+    getArtisanConfig(artisanId).catch(() => null),
+  ])
+
+  const legacyTrades = normalizeTrades((legacyConfig as { trades?: unknown } | null)?.trades)
+  const legacyPrimaryTrade =
+    typeof (legacyConfig as { primaryTrade?: unknown } | null)?.primaryTrade === 'string'
+      ? ((legacyConfig as { primaryTrade?: string }).primaryTrade as string).trim()
+      : ''
+
+  const businessPrimaryTrade = (businessProfileRow?.primary_trade || '').trim()
+
+  const primaryTrade = businessPrimaryTrade || legacyPrimaryTrade || legacyTrades[0] || ''
+
+  const businessCoveredTrades = (businessProfileRow?.covered_trades || []).filter(
+    (t): t is string => typeof t === 'string' && t.trim().length > 0
+  )
+
+  let coveredTrades: string[]
+  if (businessCoveredTrades.length > 0) {
+    coveredTrades = businessCoveredTrades
+  } else {
+    const seen = new Set<string>()
+    coveredTrades = legacyTrades.filter((t) => {
+      if (t === primaryTrade) return false
+      if (seen.has(t)) return false
+      seen.add(t)
+      return true
+    })
+  }
+
+  return { primaryTrade, coveredTrades }
 }

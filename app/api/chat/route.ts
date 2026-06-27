@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { getArtisanConfig } from '@/src/lib/airtable'
-import { normalizeTrades } from '@/src/config/trades'
+import { resolveArtisanTradeContext } from '@/src/lib/business-profile'
 import {
   getTradeTaxonomies,
   getQualificationQuestionsForTrades,
@@ -19,8 +19,10 @@ const GENERIC_INTENT_LABELS: Record<GenericIntent, string> = {
   reparation: 'Réparation',
 }
 
-function buildTradeQualificationContext(trades: string[]): string {
-  if (!trades || trades.length === 0) return ''
+function buildTradeQualificationContext(primaryTrade: string, coveredTrades: string[] = []): string {
+  const dedupedCovered = coveredTrades.filter(t => Boolean(t) && t !== primaryTrade)
+  const trades = [primaryTrade, ...dedupedCovered].filter(Boolean)
+  if (trades.length === 0) return ''
 
   const taxonomies = getTradeTaxonomies(trades)
   if (taxonomies.length === 0) return ''
@@ -28,10 +30,17 @@ function buildTradeQualificationContext(trades: string[]): string {
   const workTypes = getWorkTypesForTrades(trades).slice(0, 8)
   const questions = getQualificationQuestionsForTrades(trades, 6)
 
+  const primaryTaxonomy = primaryTrade ? getTradeTaxonomies([primaryTrade])[0] : undefined
+  const coveredTaxonomies = getTradeTaxonomies(dedupedCovered)
+
   const lines: string[] = []
   lines.push('\n\nADAPTATION MÉTIER :')
-  lines.push('Métiers couverts par l\'artisan :')
-  taxonomies.forEach(t => lines.push(`- ${t.label}`))
+  if (primaryTaxonomy) {
+    lines.push(`Métier principal : ${primaryTaxonomy.label}`)
+  }
+  if (coveredTaxonomies.length > 0) {
+    lines.push(`Domaines complémentaires : ${coveredTaxonomies.map(t => t.label).join(', ')}`)
+  }
   if (workTypes.length > 0) {
     lines.push('\nTypes de travaux fréquents :')
     workTypes.forEach(w => lines.push(`- ${w}`))
@@ -48,6 +57,9 @@ function buildTradeQualificationContext(trades: string[]): string {
     'question générique (par exemple "intérieur ou extérieur ?"). Pose IMMÉDIATEMENT une',
     'question adaptée aux métiers de l\'artisan ci-dessus, en proposant comme quickReplies',
     'les options métier listées ci-dessous pour l\'intention concernée (max 4 + "Autre").',
+    'Le métier principal est prioritaire sur les domaines complémentaires pour choisir',
+    'quelles questions et quickReplies poser en premier : si les deux sont pertinents,',
+    'qualifie d\'abord selon le métier principal.',
     'Ne reste jamais sur une qualification générique si une qualification métier est possible.',
     'Une seule question à la fois.'
   )
@@ -602,9 +614,11 @@ export async function POST(request: Request) {
     let tradeContext = ''
     if (artisanId) {
       try {
-        const artisanConfig = await getArtisanConfig(artisanId)
-        const trades = normalizeTrades(artisanConfig?.trades)
-        tradeContext = buildTradeQualificationContext(trades)
+        const [artisanConfig, tradeContextResolved] = await Promise.all([
+          getArtisanConfig(artisanId),
+          resolveArtisanTradeContext(artisanId),
+        ])
+        tradeContext = buildTradeQualificationContext(tradeContextResolved.primaryTrade, tradeContextResolved.coveredTrades)
         tradeContext += buildBusinessPreferencesContext(artisanConfig?.businessConfig)
       } catch (error) {
         console.error('[KADRIA] Failed to load artisan trades for chat context:', error)

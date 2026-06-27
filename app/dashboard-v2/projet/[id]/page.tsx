@@ -706,6 +706,21 @@ function ProjectDetail() {
     });
   })();
 
+  // Source de vérité métier : Profil métier Supabase (primary_trade +
+  // covered_trades) en priorité, avec repli sur les métiers legacy
+  // (Artisan_config.trades) si le Profil métier n'est pas encore renseigné —
+  // même ordre de résolution que resolveArtisanTradeContext côté serveur
+  // (src/lib/business-profile.ts), recalculé ici côté client puisque cette
+  // page charge déjà les deux sources séparément.
+  const businessProfileRow = businessProfile as unknown as { primary_trade?: string | null; covered_trades?: string[] | null } | null;
+  const resolvedPrimaryTrade = (businessProfileRow?.primary_trade || '').trim() || (artisanConfig?.trades?.[0] || '');
+  const resolvedCoveredTrades = (() => {
+    const fromProfile = (businessProfileRow?.covered_trades || []).filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
+    if (fromProfile.length > 0) return fromProfile;
+    return (artisanConfig?.trades || []).filter(t => t !== resolvedPrimaryTrade);
+  })();
+  const resolvedArtisanTrades = [resolvedPrimaryTrade, ...resolvedCoveredTrades].filter(Boolean);
+
   const analysis = getProjectCommercialAnalysis({
     status: project.status,
     clientName: project.clientName,
@@ -735,7 +750,7 @@ function ProjectDetail() {
         }
       : null,
   }, {
-    artisanTrades: artisanConfig?.trades ?? [],
+    artisanTrades: resolvedArtisanTrades,
     acceptedWorkTypes: artisanConfig?.businessConfig?.acceptedWorkTypes,
     refusedWorkTypes: artisanConfig?.businessConfig?.refusedWorkTypes,
     travelSignal: travelCostSignal,
@@ -829,7 +844,7 @@ function ProjectDetail() {
   };
   const quoteSuggestions = getQuoteSuggestions({
     project: quoteSuggestionProject,
-    artisanTrades: artisanConfig?.trades,
+    artisanTrades: resolvedArtisanTrades,
     businessConfig: quoteSuggestionBusinessConfig,
     travel: travelCostSignal?.available
       ? {
@@ -844,7 +859,7 @@ function ProjectDetail() {
   // uniquement, jamais utilise pour generer un devis automatiquement.
   const matchedQuoteTemplateName = getMatchedQuoteTemplateName({
     project: quoteSuggestionProject,
-    artisanTrades: artisanConfig?.trades,
+    artisanTrades: resolvedArtisanTrades,
     businessConfig: quoteSuggestionBusinessConfig,
   });
 

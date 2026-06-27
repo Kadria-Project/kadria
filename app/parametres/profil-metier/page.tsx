@@ -12,6 +12,7 @@ import type { QualificationField, QualificationFieldType } from '@/src/lib/quali
 
 interface BusinessProfile {
   primaryTrade: string
+  coveredTrades: string[]
   specialties: string[]
   excludedServices: string[]
   baseCity: string
@@ -118,6 +119,157 @@ const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   internalNotes: '',
 }
 
+// Combobox recherchable simple (texte + liste filtrée), sans dépendance
+// externe — réutilisée pour le métier principal (sélection unique) et les
+// métiers secondaires (sélection multiple, tags retirables).
+function TradeSearchSelect({
+  options,
+  value,
+  onSelect,
+  placeholder,
+  inputStyle,
+}: {
+  options: { value: string; label: string }[]
+  value: string
+  onSelect: (value: string) => void
+  placeholder: string
+  inputStyle: React.CSSProperties
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const selectedLabel = options.find((o) => o.value === value)?.label || ''
+  const filtered = query.trim()
+    ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+    : options
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={open ? query : selectedLabel}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          if (!open) setOpen(true)
+        }}
+        onFocus={() => { setQuery(''); setOpen(true) }}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        placeholder={placeholder}
+        style={inputStyle}
+      />
+      {open && filtered.length > 0 && (
+        <div
+          style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20,
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '10px',
+            maxHeight: '220px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          }}
+        >
+          {filtered.map((o) => (
+            <div
+              key={o.value}
+              onMouseDown={(e) => { e.preventDefault(); onSelect(o.value); setQuery(''); setOpen(false) }}
+              style={{
+                padding: '9px 14px', fontSize: '13px', cursor: 'pointer',
+                color: o.value === value ? 'var(--accent)' : 'var(--text-1)',
+                background: o.value === value ? 'rgba(34,197,94,0.08)' : 'transparent',
+              }}
+            >
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TradeMultiSearchSelect({
+  options,
+  values,
+  onAdd,
+  onRemove,
+  placeholder,
+  inputStyle,
+  labelFor,
+}: {
+  options: { value: string; label: string }[]
+  values: string[]
+  onAdd: (value: string) => void
+  onRemove: (value: string) => void
+  placeholder: string
+  inputStyle: React.CSSProperties
+  labelFor: (value: string) => string
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const available = options.filter((o) => !values.includes(o.value))
+  const filtered = query.trim()
+    ? available.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+    : available
+
+  return (
+    <div>
+      <div style={{ position: 'relative' }}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          placeholder={placeholder}
+          style={inputStyle}
+        />
+        {open && filtered.length > 0 && (
+          <div
+            style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20,
+              background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '10px',
+              maxHeight: '220px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+            }}
+          >
+            {filtered.map((o) => (
+              <div
+                key={o.value}
+                onMouseDown={(e) => { e.preventDefault(); onAdd(o.value); setQuery(''); setOpen(false) }}
+                style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-1)' }}
+              >
+                {o.label}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {values.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+          {values.map((v) => (
+            <span
+              key={v}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)',
+                color: '#4ade80', borderRadius: '999px', padding: '4px 6px 4px 10px', fontSize: '12px', fontWeight: 600,
+              }}
+            >
+              {labelFor(v)}
+              <button
+                type="button"
+                onClick={() => onRemove(v)}
+                style={{
+                  background: 'transparent', border: 'none', color: '#4ade80', cursor: 'pointer',
+                  fontSize: '13px', lineHeight: 1, padding: '2px',
+                }}
+                aria-label={`Retirer ${labelFor(v)}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function newPhotoRequirementId(): string {
   return `photo_${Math.random().toString(36).slice(2, 10)}`
 }
@@ -170,6 +322,7 @@ function serviceProfileFormFromRow(row: ServiceProfileRow): ServiceProfileForm {
 
 const EMPTY_PROFILE: BusinessProfile = {
   primaryTrade: '',
+  coveredTrades: [],
   specialties: [],
   excludedServices: [],
   baseCity: '',
@@ -206,6 +359,7 @@ function profileFromRow(row: Record<string, unknown> | null): BusinessProfile {
   const asStrArr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
   return {
     primaryTrade: typeof row.primary_trade === 'string' ? row.primary_trade : '',
+    coveredTrades: asStrArr(row.covered_trades),
     specialties: asStrArr(row.specialties),
     excludedServices: asStrArr(row.excluded_services),
     baseCity: typeof row.base_city === 'string' ? row.base_city : '',
@@ -530,6 +684,31 @@ export default function ProfilMetierPage() {
     return profile.primaryTrade === 'autre' && otherTrade.trim() ? otherTrade.trim() : profile.primaryTrade
   }
 
+  // Les métiers secondaires ne doivent jamais contenir le métier principal
+  // (résolu, donc après substitution "autre" -> texte libre) ni 'autre' lui-
+  // même (pas de sens en tant que domaine complémentaire). Appliqué en
+  // continu : si le métier principal change pour une valeur déjà présente
+  // dans coveredTrades, elle est retirée automatiquement.
+  function setPrimaryTrade(nextValue: string) {
+    setProfile((p) => ({
+      ...p,
+      primaryTrade: nextValue,
+      coveredTrades: p.coveredTrades.filter((t) => t !== nextValue && t !== 'autre'),
+    }))
+  }
+
+  function addCoveredTrade(value: string) {
+    if (!value || value === 'autre') return
+    setProfile((p) => {
+      if (p.primaryTrade === value || p.coveredTrades.includes(value)) return p
+      return { ...p, coveredTrades: [...p.coveredTrades, value] }
+    })
+  }
+
+  function removeCoveredTrade(value: string) {
+    setProfile((p) => ({ ...p, coveredTrades: p.coveredTrades.filter((t) => t !== value) }))
+  }
+
   function reportUnknownTradeIfNeeded() {
     if (profile.primaryTrade === 'autre' && otherTrade.trim()) {
       fetch('/api/artisan/unknown-trade', {
@@ -542,8 +721,10 @@ export default function ProfilMetierPage() {
 
   function saveIdentiteModule() {
     reportUnknownTradeIfNeeded()
+    const effectivePrimaryTrade = getEffectivePrimaryTrade()
     return saveModule('identite', {
-      primaryTrade: getEffectivePrimaryTrade(),
+      primaryTrade: effectivePrimaryTrade,
+      coveredTrades: profile.coveredTrades.filter((t) => t !== effectivePrimaryTrade && t !== 'autre'),
       specialties: profile.specialties,
       excludedServices: profile.excludedServices,
     })
@@ -615,11 +796,13 @@ export default function ProfilMetierPage() {
     setSaveError('')
     try {
       reportUnknownTradeIfNeeded()
+      const effectivePrimaryTrade = getEffectivePrimaryTrade()
       const res = await fetch('/api/artisan/business-profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          primaryTrade: getEffectivePrimaryTrade(),
+          primaryTrade: effectivePrimaryTrade,
+          coveredTrades: profile.coveredTrades.filter((t) => t !== effectivePrimaryTrade && t !== 'autre'),
           specialties: profile.specialties,
           excludedServices: profile.excludedServices,
           baseCity: profile.baseCity,
@@ -935,21 +1118,21 @@ export default function ProfilMetierPage() {
 
         {/* 1. Identité métier */}
         <div style={sectionCard}>
-          <h3 style={{ color: 'var(--accent)', fontSize: '14px', fontWeight: 700, margin: '0 0 16px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            🪪 Identité métier
+          <h3 style={{ color: 'var(--accent)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            🪪 Profil métier
           </h3>
+          <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
+            Définissez votre métier principal, vos domaines complémentaires et les prestations que Kadria doit qualifier.
+          </p>
           <div style={fieldWrap}>
             <label style={labelStyle}>Métier principal</label>
-            <select
+            <TradeSearchSelect
+              options={[...ARTISAN_TRADES.filter((t) => t.value !== 'autre'), { value: 'autre', label: 'Autre métier...' }]}
               value={profile.primaryTrade}
-              onChange={(e) => setProfile((p) => ({ ...p, primaryTrade: e.target.value }))}
-              style={inputStyle}
-            >
-              <option value="">Sélectionner un métier</option>
-              {ARTISAN_TRADES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+              onSelect={setPrimaryTrade}
+              placeholder="Rechercher un métier..."
+              inputStyle={inputStyle}
+            />
           </div>
           {profile.primaryTrade === 'autre' && (
             <div style={fieldWrap}>
@@ -964,6 +1147,18 @@ export default function ProfilMetierPage() {
               />
             </div>
           )}
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Métiers secondaires</label>
+            <TradeMultiSearchSelect
+              options={ARTISAN_TRADES.filter((t) => t.value !== 'autre' && t.value !== profile.primaryTrade)}
+              values={profile.coveredTrades}
+              onAdd={addCoveredTrade}
+              onRemove={removeCoveredTrade}
+              placeholder="Ajouter un domaine couvert..."
+              inputStyle={inputStyle}
+              labelFor={(v) => ARTISAN_TRADES.find((t) => t.value === v)?.label || v}
+            />
+          </div>
           <div style={fieldWrap}>
             <label style={labelStyle}>Spécialités (séparées par des virgules)</label>
             <input
