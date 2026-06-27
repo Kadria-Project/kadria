@@ -7,7 +7,7 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 
 function ProjetContent() {
   const searchParams = useSearchParams()
-  const artisanId = searchParams.get('artisan_id') ?? 'Artisan_demo'
+  const artisanId = searchParams.get('artisan_id') ?? ''
 
   return (
     <main

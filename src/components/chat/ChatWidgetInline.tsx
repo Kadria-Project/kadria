@@ -72,7 +72,7 @@ async function fetchAdresses(q: string): Promise<AdresseSuggestion[]> {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ChatWidgetInline({
-  artisanId = 'Artisan_demo',
+  artisanId = '',
   artisanName = "l'artisan",
   primaryColor = '#22c55e',
   inline = true,
