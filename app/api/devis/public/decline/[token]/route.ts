@@ -81,9 +81,26 @@ export async function POST(
     const existingNote = devis.noteInterne || ''
 
     const config = await getArtisanConfig(devis.artisanId)
+
+    // Route publique sans session artisan : on charge le projet lié en amont pour
+    // pouvoir resoudre artisan_id via project.artisan_id si devis.artisan_id manquait.
+    const { data: projectRowForSnapshot, error: projectFetchForSnapshotError } = await supabaseAdmin
+      .from(TABLES.projects)
+      .select('*')
+      .eq('id', devis.projectId)
+      .limit(1)
+      .maybeSingle()
+
+    if (projectFetchForSnapshotError) {
+      console.error('[DEVIS PUBLIC DECLINE] Project fetch error (snapshot):', JSON.stringify(projectFetchForSnapshotError, null, 2))
+    }
+
+    const projectForSnapshot = projectRowForSnapshot ? mapSupabaseProject(projectRowForSnapshot) : null
+
     const declinedSnapshot = await createDeclinedDevisSnapshot({
       devis,
       config,
+      project: projectForSnapshot,
       decline: {
         declinedAt: now,
         reason: declineReason,
@@ -100,16 +117,7 @@ export async function POST(
       ...(declinedSnapshot ? { declinedSnapshotId: declinedSnapshot.id } : {}),
     })
 
-    const { data: projectRow, error: projectFetchError } = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('*')
-      .eq('id', devis.projectId)
-      .limit(1)
-      .maybeSingle()
-
-    if (projectFetchError) {
-      console.error('[DEVIS PUBLIC DECLINE] Project fetch error:', JSON.stringify(projectFetchError, null, 2))
-    }
+    const projectRow = projectRowForSnapshot
 
     let projectWasAlreadyLost = false
     if (projectRow) {

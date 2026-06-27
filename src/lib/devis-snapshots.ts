@@ -300,7 +300,12 @@ export interface DevisSnapshotRow {
 
 // Cache des colonnes réellement présentes sur devis_snapshots, pour éviter de
 // sonder la table à chaque insertion (mais sans jamais throw si la sonde échoue).
+// IMPORTANT : ce set de repli doit toujours contenir les colonnes NOT NULL réelles
+// (artisan_id notamment) — sinon une table vide forcerait un insert sans artisan_id
+// à chaque tentative, qui échouerait, qui laisserait la table vide, indéfiniment.
 let cachedColumns: Set<string> | null = null
+
+const FALLBACK_SNAPSHOT_COLUMNS = ['devis_id', 'snapshot_type', 'snapshot_json', 'created_at', 'artisan_id']
 
 async function getSnapshotTableColumns(): Promise<Set<string>> {
   if (cachedColumns) return cachedColumns
@@ -308,7 +313,7 @@ async function getSnapshotTableColumns(): Promise<Set<string>> {
   try {
     const { data, error } = await supabaseAdmin.from(SNAPSHOT_TABLE).select('*').limit(1)
     if (error || !data) {
-      cachedColumns = new Set(['devis_id', 'snapshot_type', 'snapshot_json', 'created_at'])
+      cachedColumns = new Set(FALLBACK_SNAPSHOT_COLUMNS)
       return cachedColumns
     }
 
@@ -316,15 +321,32 @@ async function getSnapshotTableColumns(): Promise<Set<string>> {
       cachedColumns = new Set(Object.keys(data[0] as Record<string, unknown>))
     } else {
       // Table vide : on ne peut pas déduire les colonnes, on retombe sur le set minimal sûr.
-      cachedColumns = new Set(['devis_id', 'snapshot_type', 'snapshot_json', 'created_at'])
+      cachedColumns = new Set(FALLBACK_SNAPSHOT_COLUMNS)
     }
 
     return cachedColumns
   } catch (error) {
     console.error('[DEVIS SNAPSHOT] Erreur sondage colonnes devis_snapshots', error)
-    cachedColumns = new Set(['devis_id', 'snapshot_type', 'snapshot_json', 'created_at'])
+    cachedColumns = new Set(FALLBACK_SNAPSHOT_COLUMNS)
     return cachedColumns
   }
+}
+
+// Résout l'artisan_id à utiliser pour un snapshot, dans l'ordre de confiance suivant :
+// 1. devis.artisan_id (source la plus fiable, fixée à la création du devis)
+// 2. project.artisan_id (projet lié, utile pour les routes publiques sans session)
+// 3. fallbackArtisanId (ex: session.artisanId pour les routes authentifiées)
+// Ne retourne jamais une chaîne vide silencieuse : retourne null si rien n'est résolu,
+// pour que l'appelant logue et abandonne l'insertion plutôt que de violer la contrainte NOT NULL.
+export function resolveDevisSnapshotArtisanId(
+  devis: DevisRecord,
+  project: SupabaseProject | null,
+  fallbackArtisanId?: string | null
+): string | null {
+  if (devis.artisanId) return devis.artisanId
+  if (project?.artisanId) return project.artisanId
+  if (fallbackArtisanId) return fallbackArtisanId
+  return null
 }
 
 export async function getExistingSnapshot(
@@ -355,8 +377,19 @@ export async function getExistingSnapshot(
 async function insertSnapshotRow(
   devis: DevisRecord,
   payload: DevisSnapshotPayload,
-  extraFields: Record<string, unknown>
+  extraFields: Record<string, unknown>,
+  resolvedArtisanId: string | null,
+  projectId: string | null
 ): Promise<DevisSnapshotRow | null> {
+  if (!resolvedArtisanId) {
+    console.error('[DEVIS SNAPSHOT] artisan_id introuvable', {
+      devisId: devis.id,
+      projectId,
+      snapshotType: payload.snapshotType,
+    })
+    return null
+  }
+
   try {
     const columns = await getSnapshotTableColumns()
 
@@ -370,7 +403,7 @@ async function insertSnapshotRow(
     if (columns.has('devis_number')) row.devis_number = devis.devisNumber
     if (columns.has('public_token')) row.public_token = devis.token
     if (columns.has('sent_to_email')) row.sent_to_email = devis.clientEmail || null
-    if (columns.has('artisan_id')) row.artisan_id = devis.artisanId
+    if (columns.has('artisan_id')) row.artisan_id = resolvedArtisanId
     if (columns.has('legal_mentions_json')) row.legal_mentions_json = payload.legalMentions
     if (columns.has('totals_json')) row.totals_json = payload.totals
     if (columns.has('client_json')) row.client_json = payload.client
@@ -401,6 +434,7 @@ export interface CreateSnapshotArgs {
   config: SupabaseArtisanConfig | null
   project?: SupabaseProject | null
   options?: { isFallback?: boolean }
+  fallbackArtisanId?: string | null
 }
 
 // Création du snapshot "sent" — idempotente : si un snapshot sent existe déjà
@@ -413,6 +447,7 @@ export async function createSentDevisSnapshot(args: CreateSnapshotArgs): Promise
     if (existing) return existing
 
     const project = args.project !== undefined ? args.project : await fetchProjectForSnapshot(devis.projectId)
+    const artisanId = resolveDevisSnapshotArtisanId(devis, project, args.fallbackArtisanId)
 
     const payload = buildDevisSnapshotPayload({
       devis,
@@ -422,7 +457,7 @@ export async function createSentDevisSnapshot(args: CreateSnapshotArgs): Promise
       isFallback: options?.isFallback,
     })
 
-    return await insertSnapshotRow(devis, payload, {})
+    return await insertSnapshotRow(devis, payload, {}, artisanId, project?.id ?? devis.projectId ?? null)
   } catch (error) {
     console.error('[DEVIS SNAPSHOT] Erreur création snapshot sent', error)
     return null
@@ -433,6 +468,7 @@ export interface CreateAcceptedSnapshotArgs {
   devis: DevisRecord
   config: SupabaseArtisanConfig | null
   project?: SupabaseProject | null
+  fallbackArtisanId?: string | null
   acceptance: {
     acceptedAt: string
     acceptedByName?: string | null
@@ -453,6 +489,7 @@ export async function createAcceptedDevisSnapshot(
     if (existing) return existing
 
     const project = args.project !== undefined ? args.project : await fetchProjectForSnapshot(devis.projectId)
+    const artisanId = resolveDevisSnapshotArtisanId(devis, project, args.fallbackArtisanId)
 
     const payload = buildDevisSnapshotPayload({
       devis,
@@ -462,12 +499,18 @@ export async function createAcceptedDevisSnapshot(
       acceptance,
     })
 
-    return await insertSnapshotRow(devis, payload, {
-      accepted_by_name: acceptance.acceptedByName ?? null,
-      accepted_by_email: acceptance.acceptedByEmail ?? null,
-      accepted_ip: acceptance.ip ?? null,
-      accepted_user_agent: acceptance.userAgent ?? null,
-    })
+    return await insertSnapshotRow(
+      devis,
+      payload,
+      {
+        accepted_by_name: acceptance.acceptedByName ?? null,
+        accepted_by_email: acceptance.acceptedByEmail ?? null,
+        accepted_ip: acceptance.ip ?? null,
+        accepted_user_agent: acceptance.userAgent ?? null,
+      },
+      artisanId,
+      project?.id ?? devis.projectId ?? null
+    )
   } catch (error) {
     console.error('[DEVIS SNAPSHOT] Erreur création snapshot accepted', error)
     return null
@@ -478,6 +521,7 @@ export interface CreateDeclinedSnapshotArgs {
   devis: DevisRecord
   config: SupabaseArtisanConfig | null
   project?: SupabaseProject | null
+  fallbackArtisanId?: string | null
   decline: {
     declinedAt: string
     reason?: string | null
@@ -497,6 +541,7 @@ export async function createDeclinedDevisSnapshot(
     if (existing) return existing
 
     const project = args.project !== undefined ? args.project : await fetchProjectForSnapshot(devis.projectId)
+    const artisanId = resolveDevisSnapshotArtisanId(devis, project, args.fallbackArtisanId)
 
     const payload = buildDevisSnapshotPayload({
       devis,
@@ -506,9 +551,13 @@ export async function createDeclinedDevisSnapshot(
       decline,
     })
 
-    return await insertSnapshotRow(devis, payload, {
-      declined_reason: decline.reason ?? null,
-    })
+    return await insertSnapshotRow(
+      devis,
+      payload,
+      { declined_reason: decline.reason ?? null },
+      artisanId,
+      project?.id ?? devis.projectId ?? null
+    )
   } catch (error) {
     console.error('[DEVIS SNAPSHOT] Erreur création snapshot declined', error)
     return null

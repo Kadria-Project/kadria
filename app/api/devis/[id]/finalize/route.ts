@@ -270,7 +270,7 @@ export async function POST(
 
   let sentSnapshot: { id: string } | null = null
   if (mode === 'send' && emailSent) {
-    sentSnapshot = await createSentDevisSnapshot({ devis, config })
+    sentSnapshot = await createSentDevisSnapshot({ devis, config, fallbackArtisanId: session.artisanId })
   }
 
   try {
@@ -278,8 +278,10 @@ export async function POST(
       pdfUrl,
       sent: mode === 'send',
       statut: newStatut,
+      // Note: quoteSentAt est le seul marqueur de date d'envoi persisté côté Devis
+      // (set-once, "premier envoi"). Il n'existe pas de colonne sent_at sur Devis —
+      // ne pas y écrire sous peine de faire échouer tout cet update (PGRST204).
       ...(mode === 'send' && !devis.quoteSentAt ? { quoteSentAt: now } : {}),
-      ...(mode === 'send' && emailSent ? { sentAt: now } : {}),
       ...(sentSnapshot ? { sentSnapshotId: sentSnapshot.id } : {}),
     })
 
@@ -295,7 +297,10 @@ export async function POST(
     console.error('[DEVIS FINALIZE] Erreur mise à jour Supabase', error)
     return NextResponse.json({
       success: false,
-      error: 'PDF généré mais la mise à jour de la base a échoué',
+      error: emailSent
+        ? "Le devis a bien été envoyé au client par email, mais la mise à jour du dossier a échoué. Vérifiez le statut du dossier."
+        : 'PDF généré mais la mise à jour de la base a échoué',
+      email_sent: emailSent,
       pdf_url: pdfUrl,
     }, { status: 207 })
   }

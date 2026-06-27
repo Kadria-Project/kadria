@@ -678,7 +678,8 @@ export function toSupabaseDevisUpdate(input: Record<string, unknown>) {
   if (input.declineReason !== undefined) row.decline_reason = input.declineReason
   if (input.followUpDisabled !== undefined) row.follow_up_disabled = input.followUpDisabled
   if (input.followUpDisabledAt !== undefined) row.follow_up_disabled_at = input.followUpDisabledAt
-  if (input.sentAt !== undefined) row.sent_at = input.sentAt
+  // Pas de colonne sent_at sur Devis (cf. quoteSentAt pour la date de premier envoi) —
+  // ne jamais écrire input.sentAt ici sous peine de PGRST204 (échec atomique de l'update).
   if (input.sentSnapshotId !== undefined) row.sent_snapshot_id = input.sentSnapshotId
   if (input.acceptedSnapshotId !== undefined) row.accepted_snapshot_id = input.acceptedSnapshotId
   if (input.declinedSnapshotId !== undefined) row.declined_snapshot_id = input.declinedSnapshotId

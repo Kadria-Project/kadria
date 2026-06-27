@@ -57,6 +57,21 @@ export async function POST(
     const now = new Date().toISOString()
     const config = await getArtisanConfig(devis.artisanId)
 
+    // Route publique sans session artisan : on charge le projet lié en amont pour
+    // pouvoir resoudre artisan_id via project.artisan_id si devis.artisan_id manquait.
+    const { data: projectRowForSnapshot, error: projectFetchForSnapshotError } = await supabaseAdmin
+      .from(TABLES.projects)
+      .select('*')
+      .eq('id', devis.projectId)
+      .limit(1)
+      .maybeSingle()
+
+    if (projectFetchForSnapshotError) {
+      console.error('[DEVIS PUBLIC ACCEPT] Project fetch error (snapshot):', JSON.stringify(projectFetchForSnapshotError, null, 2))
+    }
+
+    const projectForSnapshot = projectRowForSnapshot ? mapSupabaseProject(projectRowForSnapshot) : null
+
     // Le frontend public n'envoie pas de nom/email distinct a l'acceptation —
     // on retombe sur les coordonnees client deja connues du devis.
     const acceptedByName = devis.clientName || null
@@ -66,12 +81,18 @@ export async function POST(
     // meme si l'envoi initial n'a pas pu en creer un (mode fallback).
     const existingSentSnapshot = await getExistingSnapshot(devis.id, 'sent')
     if (!existingSentSnapshot) {
-      await createSentDevisSnapshot({ devis, config, options: { isFallback: true } })
+      await createSentDevisSnapshot({
+        devis,
+        config,
+        project: projectForSnapshot,
+        options: { isFallback: true },
+      })
     }
 
     const acceptedSnapshot = await createAcceptedDevisSnapshot({
       devis,
       config,
+      project: projectForSnapshot,
       acceptance: {
         acceptedAt: now,
         acceptedByName,
@@ -92,16 +113,7 @@ export async function POST(
       ...(acceptedSnapshot ? { acceptedSnapshotId: acceptedSnapshot.id } : {}),
     })
 
-    const { data: projectRow, error: projectFetchError } = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('*')
-      .eq('id', devis.projectId)
-      .limit(1)
-      .maybeSingle()
-
-    if (projectFetchError) {
-      console.error('[DEVIS PUBLIC ACCEPT] Project fetch error:', JSON.stringify(projectFetchError, null, 2))
-    }
+    const projectRow = projectRowForSnapshot
 
     if (projectRow) {
       const { error: projectUpdateError } = await supabaseAdmin
