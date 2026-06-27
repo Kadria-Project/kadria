@@ -136,6 +136,18 @@ function daysSince(dateValue: string | null | undefined, now: Date): number | nu
   return Math.floor(diffMs / (1000 * 60 * 60 * 24))
 }
 
+function hoursSince(dateValue: string | null | undefined, now: Date): number | null {
+  if (!hasText(dateValue)) return null
+  const parsed = new Date(dateValue as string)
+  if (Number.isNaN(parsed.getTime())) return null
+  const diffMs = now.getTime() - parsed.getTime()
+  return diffMs / (1000 * 60 * 60)
+}
+
+// Délai minimum avant de recommander une relance devis : un devis qui vient
+// d'être envoyé ne doit jamais déclencher une action prioritaire de relance.
+const MIN_HOURS_BEFORE_FOLLOW_UP_QUOTE = 48
+
 const ESTIMATED_DURATION_BY_ACTION: Record<ActionType, string> = {
   complete_qualification: '5 min',
   request_photos: '2 min',
@@ -185,6 +197,7 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
   const devisAccepted = !!devis?.accepted
   const devisDeclined = !!devis?.declined
   const daysSinceSent = devis ? daysSince(devis.sentAt, now) : null
+  const hoursSinceSent = devis ? hoursSince(devis.sentAt, now) : null
 
   const projectText = [project.trade, project.projectType, project.aiSummary, project.description, project.details]
     .filter(hasText)
@@ -326,6 +339,18 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
 
   // 5. Devis envoye sans reponse depuis plusieurs jours.
   if (devisSent && !devisAccepted && !devisDeclined) {
+    // Un devis qui vient d'etre envoye ne doit jamais declencher de relance
+    // immediate : aucune action prioritaire dans les 48h suivant l'envoi.
+    if (hoursSinceSent !== null && hoursSinceSent < MIN_HOURS_BEFORE_FOLLOW_UP_QUOTE) {
+      return buildAction({
+        actionType: 'monitor',
+        title: 'Devis envoyé',
+        subtitle: 'En attente de réponse',
+        description: 'Le devis vient d\'être envoyé : laissez au client le temps de répondre avant toute relance.',
+        priority: 'low',
+        urgency: 'none',
+      })
+    }
     const overdue = daysSinceSent !== null && daysSinceSent >= 5
     const dueSoon = daysSinceSent !== null && daysSinceSent >= 3
     return buildAction({

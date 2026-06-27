@@ -782,7 +782,10 @@ function ProjectDetail() {
           sent: latestDevis.sent,
           accepted: latestDevis.accepted,
           declined: latestDevis.declined,
-          sentAt: latestDevis.quote_sent_at || latestDevis.date_emission || null,
+          // Ne pas retomber sur date_emission : ce n'est pas la date d'envoi
+          // reelle, et cela faussait le delai de relance (48h) calcule par
+          // l'Action Engine.
+          sentAt: latestDevis.quote_sent_at || null,
         }
       : null,
   });

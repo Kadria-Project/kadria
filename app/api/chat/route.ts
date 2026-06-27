@@ -296,7 +296,10 @@ Alors :
 * Ne passe pas immédiatement à la question suivante.
 * Cherche à obtenir une précision simple.
 * Aide le client à estimer son besoin.
-* Si le client ne sait vraiment pas, considère la valeur comme "À déterminer" puis continue.
+* Si le client ne sait vraiment pas, note la valeur exacte "À définir" dans le
+  champ correspondant du dossierUpdate (budget ou desiredTimeline) puis continue.
+  Ne laisse JAMAIS le champ vide une fois la question posée : "À définir" doit
+  être écrit explicitement dans dossierUpdate.
 
 Exemples :
 
@@ -372,6 +375,19 @@ Si après 2 questions le budget reste flou, note dans le dossier une fourchette
 large par défaut basée sur le contexte (métier + ampleur du projet) et continue
 la conversation normalement. Un budget approximatif suffit pour qualifier un
 prospect — la précision excessive nuit à l'expérience client.
+
+DÉLAI SOUHAITÉ — QUESTION OBLIGATOIRE :
+
+Le délai souhaité ne doit JAMAIS rester absent du dossier. Si l'information
+n'a pas encore été donnée, pose explicitement la question :
+"Quel délai souhaitez-vous pour ce projet ? Par exemple urgent, dans le mois,
+dans les 3 mois, ou 'je ne sais pas'."
+avec quickReplies ["Dès que possible","Sous 1 mois","Sous 3 mois","Sous 6 mois","Sans urgence","Je ne sais pas"].
+
+Tu ne dois JAMAIS poser plus de 2 questions au total sur le délai. Si la
+réponse reste vague après 2 questions (ou si le client répond "je ne sais
+pas" / "pas urgent" / "pas encore décidé"), note "À définir" dans
+dossierUpdate.desiredTimeline et continue le parcours normalement.
 
 PRIORITÉ MÉTIER SUR LES CHOIX GÉNÉRIQUES :
 
@@ -675,8 +691,12 @@ pas les questions budget/délai/maturité/contact.
 
 "readyToSave" : true UNIQUEMENT quand TOUTES ces conditions :
 1. Email collecté et non vide dans dossierUpdate ou dossier existant
-2. reply contient exactement "Votre dossier est prêt 📋"
+2. Budget renseigné (valeur réelle OU "À définir") dans dossierUpdate ou dossier existant
+3. Délai souhaité renseigné (valeur réelle OU "À définir") dans dossierUpdate ou dossier existant
+4. reply contient exactement "Votre dossier est prêt 📋"
 Sinon false.
+Note : budget et délai sont aussi vérifiés côté serveur — ne mets jamais
+readyToSave à true tant que ces deux champs n'ont pas été explicitement traités.
 
 "aiSummary" : résumé professionnel court (1-3 phrases) du dossier,
 à mettre à jour DÈS QUE la conversation contient des éléments exploitables
@@ -692,6 +712,10 @@ Exemple : "Demande d'entretien annuel d'une pompe à chaleur air/air, à
 réaliser dès que possible. Budget estimé entre 150 et 200 €. Le prospect
 n'a pas de photos pour le moment. Adresse chantier renseignée."
 Vide uniquement si aucune information exploitable n'a encore été donnée.`
+
+function hasText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim() !== ''
+}
 
 // Score server-side calculé sur le dossier (fiable, pas une estimation IA).
 function computeDossierScore(dossier: Record<string, unknown>): number {
@@ -843,12 +867,22 @@ export async function POST(request: Request) {
     // Use the higher of computed vs AI-reported score
     const finalScore = Math.max(computedScore, (parsed.completenessScore as number) ?? 0)
 
+    // Détection déterministe AVANT toute confiance dans le JSON du modèle : un
+    // dossier ne doit jamais être considéré prêt si budget et délai n'ont pas
+    // été explicitement traités (renseignés OU déclarés "À définir" par le
+    // client). Le LLM ne doit pas être seul responsable de ce garde-fou (cf.
+    // bug : un dossier pouvait arriver sans budget ni délai car le prompt seul
+    // ne suffisait pas à bloquer readyToSave dans tous les cas).
+    const hasBudget = hasText(mergedDossier.budget as string | undefined)
+    const hasTimeline = hasText(mergedDossier.desiredTimeline as string | undefined)
+    const readyToSave = (parsed.readyToSave ?? false) && hasBudget && hasTimeline
+
     return NextResponse.json({
       success: true,
       reply: parsed.reply ?? '',
       dossierUpdate: parsed.dossierUpdate ?? {},
       completenessScore: finalScore,
-      readyToSave: parsed.readyToSave ?? false,
+      readyToSave,
       aiSummary: parsed.aiSummary ?? '',
       expectedField: parsed.expectedField ?? '',
       quickReplies: Array.isArray(parsed.quickReplies) ? parsed.quickReplies : [],
