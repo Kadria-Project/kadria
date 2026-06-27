@@ -291,6 +291,13 @@ export default function OnboardingPage() {
       const data = await res.json()
       if (!data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde')
       setSavedAt(Date.now())
+      if (config.trades.includes('autre') && config.otherTrade.trim()) {
+        fetch('/api/artisan/unknown-trade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tradeName: config.otherTrade.trim() }),
+        }).catch((err) => console.error('[UNKNOWN TRADE POST]', err))
+      }
       return true
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde')

@@ -262,6 +262,7 @@ export default function ProfilMetierPage() {
   // remplacé depuis le serveur (chargement, sauvegarde, wizard).
   const [specialtiesText, setSpecialtiesText] = useState('')
   const [excludedServicesText, setExcludedServicesText] = useState('')
+  const [otherTrade, setOtherTrade] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -525,9 +526,24 @@ export default function ProfilMetierPage() {
     }
   }
 
+  function getEffectivePrimaryTrade(): string {
+    return profile.primaryTrade === 'autre' && otherTrade.trim() ? otherTrade.trim() : profile.primaryTrade
+  }
+
+  function reportUnknownTradeIfNeeded() {
+    if (profile.primaryTrade === 'autre' && otherTrade.trim()) {
+      fetch('/api/artisan/unknown-trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tradeName: otherTrade.trim(), specialties: profile.specialties }),
+      }).catch((err) => console.error('[UNKNOWN TRADE POST]', err))
+    }
+  }
+
   function saveIdentiteModule() {
+    reportUnknownTradeIfNeeded()
     return saveModule('identite', {
-      primaryTrade: profile.primaryTrade,
+      primaryTrade: getEffectivePrimaryTrade(),
       specialties: profile.specialties,
       excludedServices: profile.excludedServices,
     })
@@ -598,11 +614,12 @@ export default function ProfilMetierPage() {
     setSaving(true)
     setSaveError('')
     try {
+      reportUnknownTradeIfNeeded()
       const res = await fetch('/api/artisan/business-profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          primaryTrade: profile.primaryTrade,
+          primaryTrade: getEffectivePrimaryTrade(),
           specialties: profile.specialties,
           excludedServices: profile.excludedServices,
           baseCity: profile.baseCity,
@@ -934,6 +951,19 @@ export default function ProfilMetierPage() {
               ))}
             </select>
           </div>
+          {profile.primaryTrade === 'autre' && (
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Quel est votre métier ?</label>
+              <input
+                type="text"
+                value={otherTrade}
+                onChange={(e) => setOtherTrade(e.target.value)}
+                placeholder="Précisez votre métier"
+                required
+                style={inputStyle}
+              />
+            </div>
+          )}
           <div style={fieldWrap}>
             <label style={labelStyle}>Spécialités (séparées par des virgules)</label>
             <input
