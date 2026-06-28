@@ -876,7 +876,6 @@ function ProjectDetail() {
   const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' · ');
   const budgetLabel = project.budget || 'Budget non renseigne';
   const timelineLabel = project.desiredTimeline || 'Delai non precise';
-  const quoteAmountLabel = latestDevis?.amount ? `${formatMoney(latestDevis.amount)} €` : (devisAmount ? `${formatMoney(Number(devisAmount))} €` : 'Montant non renseigne');
   const scrollToActionsAndQuote = () => {
     actionsAndQuoteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -2075,163 +2074,10 @@ function ProjectDetail() {
           })()}
         </div>
 
-        {/* Synthèse commerciale haute : résumé devis (carte de pilotage) puis
-            progression dossier en pleine largeur juste dessous. */}
+        {/* Avancement commercial en pleine largeur. */}
         {(() => {
-          const quoteStatusBadge = !latestDevis
-            ? { label: 'Aucun devis', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' }
-            : latestDevis.accepted
-              ? { label: 'Devis accepté', bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.4)', color: '#16a34a' }
-              : latestDevis.declined
-                ? { label: 'Devis refusé', bg: 'rgba(220,38,38,0.12)', border: 'rgba(220,38,38,0.35)', color: '#dc2626' }
-                : latestDevis.sent
-                  ? { label: decision.canFollowUpQuote ? 'Devis à relancer' : 'Devis envoyé', bg: 'rgba(234,88,12,0.12)', border: 'rgba(234,88,12,0.35)', color: '#ea580c' }
-                  : { label: 'Devis en préparation', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' };
-
-          const quoteDecisionLabel = !latestDevis
-            ? 'En attente'
-            : latestDevis.accepted
-              ? 'Accepté'
-              : latestDevis.declined
-                ? 'Refusé'
-                : 'En attente';
-
-          const quoteNextActionLabel = !latestDevis
-            ? 'Créer un devis'
-            : latestDevis.accepted
-              ? 'Planifier l’intervention'
-              : latestDevis.declined
-                ? 'Clarifier le besoin'
-                : !latestDevis.sent
-                  ? 'Finaliser et envoyer le devis'
-                  : decision.canFollowUpQuote
-                    ? 'Relancer le client'
-                    : 'Suivre le devis';
-
-          const quoteCardButtonLabel = !latestDevis
-            ? 'Créer le devis'
-            : latestDevis.accepted
-              ? 'Planifier la suite'
-              : !latestDevis.sent
-                ? 'Voir le devis'
-                : decision.canFollowUpQuote
-                  ? 'Relancer'
-                  : 'Voir le devis';
-
-          const quoteCardButtonAction = !latestDevis
-            ? () => handleNextBestAction('quote')
-            : latestDevis.accepted
-              ? (appointment ? scrollToActionsAndQuote : () => openAppointmentModal())
-              : decision.canFollowUpQuote
-                ? () => followUpQuote(latestDevis)
-                : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
-
           return (
             <>
-              <div style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '14px',
-                padding: isMobile ? '16px' : '22px',
-                marginBottom: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-              }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                  <div>
-                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      Résumé devis
-                    </p>
-                    <span style={{
-                      display: 'inline-flex', fontSize: '14px', fontWeight: 700,
-                      padding: '5px 14px', borderRadius: '999px',
-                      background: quoteStatusBadge.bg, border: `1px solid ${quoteStatusBadge.border}`, color: quoteStatusBadge.color,
-                    }}>
-                      {quoteStatusBadge.label}
-                    </span>
-                  </div>
-                  <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
-                    <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>Montant</p>
-                    <p style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: 'var(--text-1)' }}>{quoteAmountLabel}</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
-                  <div>
-                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Envoi</p>
-                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
-                      {!latestDevis
-                        ? 'Non envoyé'
-                        : latestDevis.quote_sent_at
-                          ? formatDevisDate(latestDevis.quote_sent_at)
-                          : (latestDevis.accepted || latestDevis.declined)
-                            ? 'Envoyé — date non disponible'
-                            : 'Pas encore envoyé'}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Ouvertures</p>
-                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
-                      {latestDevis ? `${latestDevis.opens_count || 0} ouverture(s)` : '0'}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Relance / Décision</p>
-                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
-                      {latestDevis?.accepted || latestDevis?.declined
-                        ? quoteDecisionLabel
-                        : latestDevis?.last_follow_up_at
-                          ? `Relancé le ${formatDevisDate(latestDevis.last_follow_up_at)}`
-                          : decision.followUpAvailableAt
-                            ? `Relance dès le ${formatShortDate(decision.followUpAvailableAt)}`
-                            : 'Aucune planifiée'}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Prochaine action</p>
-                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>{quoteNextActionLabel}</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={quoteCardButtonAction}
-                    style={{
-                      flex: isMobile ? '1 1 100%' : '0 0 auto',
-                      background: 'var(--accent)',
-                      border: 'none',
-                      color: '#fff',
-                      borderRadius: '10px',
-                      padding: '10px 16px',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {quoteCardButtonLabel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={scrollToActionsAndQuote}
-                    style={{
-                      flex: isMobile ? '1 1 100%' : '0 0 auto',
-                      background: 'transparent',
-                      border: '1px solid var(--border)',
-                      color: 'var(--text-1)',
-                      borderRadius: '10px',
-                      padding: '10px 16px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Aller au devis
-                  </button>
-                </div>
-              </div>
-
               <div style={{
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
