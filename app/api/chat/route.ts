@@ -922,19 +922,66 @@ export async function POST(request: Request) {
     // client). Le LLM ne doit pas être seul responsable de ce garde-fou (cf.
     // bug : un dossier pouvait arriver sans budget ni délai car le prompt seul
     // ne suffisait pas à bloquer readyToSave dans tous les cas).
-    const hasBudget = hasText(mergedDossier.budget as string | undefined)
-    const hasTimeline = hasText(mergedDossier.desiredTimeline as string | undefined)
-    const readyToSave = (parsed.readyToSave ?? false) && hasBudget && hasTimeline
+    //
+    // Vérifier seulement la présence d'un texte dans budget/desiredTimeline ne
+    // suffit pas : le modèle peut remplir ce champ sans avoir réellement posé
+    // la question (hallucination d'une valeur plausible). On vérifie donc en
+    // plus, de façon déterministe sur l'historique réel de la conversation,
+    // que la question correspondante a bel et bien été posée par l'assistant
+    // avant d'accepter la valeur comme "traitée".
+    const assistantHistoryText = (Array.isArray(messages) ? messages : [])
+      .filter((m: unknown): m is { role: string; content: string } =>
+        !!m && typeof m === 'object' && (m as any).role === 'assistant' && typeof (m as any).content === 'string')
+      .map(m => m.content)
+      .concat(typeof parsed.reply === 'string' ? [parsed.reply] : [])
+      .join(' \n ')
+      .toLowerCase()
+
+    const budgetWasAsked = assistantHistoryText.includes('budget')
+    const timelineWasAsked = ['délai', 'delai', 'urgent', 'rapidement', "dès que possible", 'des que possible']
+      .some(marker => assistantHistoryText.includes(marker))
+
+    const hasBudget = hasText(mergedDossier.budget as string | undefined) && budgetWasAsked
+    const hasTimeline = hasText(mergedDossier.desiredTimeline as string | undefined) && timelineWasAsked
+
+    let readyToSave = (parsed.readyToSave ?? false) && hasBudget && hasTimeline
+    let finalReply = typeof parsed.reply === 'string' ? parsed.reply : ''
+    let finalQuickReplies = Array.isArray(parsed.quickReplies) ? parsed.quickReplies : []
+    let finalExpectedField = typeof parsed.expectedField === 'string' ? parsed.expectedField : ''
+
+    // Verrou anti-saut d'étape : si le modèle tente de passer à une étape
+    // postérieure au budget/délai (maturité, photos, adresse, formulaire de
+    // contact) ou de finaliser le dossier, alors que budget et/ou délai ne
+    // sont pas encore traités, on intercepte la réponse : on ne renvoie
+    // JAMAIS le texte du modèle (qui pourrait annoncer une finalisation ou
+    // poser une autre question) et on force la question manquante à la
+    // place. Ce verrou porte sur le contenu envoyé au client, pas uniquement
+    // sur le booléen readyToSave.
+    const isAttemptingToMoveOn =
+      (parsed.readyToSave ?? false) === true ||
+      ['contactForm', 'siteAddress', 'photos', 'maturity'].includes(finalExpectedField)
+
+    if (isAttemptingToMoveOn && !hasBudget) {
+      finalReply = "Quel budget souhaitez-vous prévoir, même approximatif ? Vous pouvez aussi répondre 'je ne sais pas'."
+      finalQuickReplies = ['Moins de 500 €', '500 à 1 500 €', 'Plus de 1 500 €', 'Je ne sais pas']
+      finalExpectedField = 'budget'
+      readyToSave = false
+    } else if (isAttemptingToMoveOn && !hasTimeline) {
+      finalReply = "Quel délai souhaitez-vous pour ce projet ? Par exemple urgent, cette semaine, dans le mois, ou 'je ne sais pas'."
+      finalQuickReplies = ['Urgent', 'Cette semaine', 'Dans le mois', 'Je ne sais pas']
+      finalExpectedField = 'desiredTimeline'
+      readyToSave = false
+    }
 
     return NextResponse.json({
       success: true,
-      reply: parsed.reply ?? '',
+      reply: finalReply,
       dossierUpdate: parsed.dossierUpdate ?? {},
       completenessScore: finalScore,
       readyToSave,
       aiSummary: parsed.aiSummary ?? '',
-      expectedField: parsed.expectedField ?? '',
-      quickReplies: Array.isArray(parsed.quickReplies) ? parsed.quickReplies : [],
+      expectedField: finalExpectedField,
+      quickReplies: finalQuickReplies,
     })
   } catch (error) {
     console.error('[KADRIA] API error:', error)

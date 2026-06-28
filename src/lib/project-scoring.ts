@@ -361,10 +361,18 @@ export function getProjectCommercialAnalysis(
   if (hasCity) { score += 8 } else { missingInfo.push('Commune / adresse') }
   if (hasProjectType) { score += 12; strengths.push('Type de projet clair') } else { weaknesses.push('Type de projet non précisé') }
   if (hasDescription) { score += 12; strengths.push('Description détaillée') } else { weaknesses.push('Détails techniques à confirmer'); missingInfo.push('Détails techniques à confirmer') }
+  const budgetExplicitlyUndefined = hasText(project.budget) && isVague(project.budget)
+  const timelineExplicitlyUndefined = hasText(project.desiredTimeline) && isVague(project.desiredTimeline)
+
   if (budgetKnown) {
     score += 14
     strengths.push('Budget renseigné')
     if (budgetValue > 0) score += 6
+  } else if (budgetExplicitlyUndefined) {
+    // Le client a explicitement déclaré ne pas savoir : ce n'est pas une
+    // information absente, donc on ne la fait pas apparaître dans les
+    // champs manquants à compléter.
+    weaknesses.push('Budget à définir avec le client')
   } else {
     weaknesses.push('Budget non défini')
     missingInfo.push('Budget')
@@ -377,6 +385,8 @@ export function getProjectCommercialAnalysis(
     } else {
       strengths.push('Délai renseigné')
     }
+  } else if (timelineExplicitlyUndefined) {
+    weaknesses.push('Délai à définir avec le client')
   } else {
     weaknesses.push('Délai non précisé')
     missingInfo.push('Délai souhaité')

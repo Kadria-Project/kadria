@@ -110,6 +110,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // Défense en profondeur, limitée aux dossiers issus du chatbot : empêche
+    // la création d'un projet dont le budget et/ou le délai n'ont jamais été
+    // traités (renseignés ou explicitement déclarés "À définir"), même si le
+    // verrou côté /api/chat a été contourné. Ne s'applique pas à la création
+    // manuelle par l'artisan, qui n'envoie pas source: 'chat-widget'.
+    const isChatProject = input.source === 'chat-widget';
+    const hasHandledValue = (value: unknown) => typeof value === 'string' && value.trim() !== '';
+    if (isChatProject && !hasHandledValue(input.budget)) {
+      return NextResponse.json(
+        { success: false, error: 'Budget requis ou explicitement à définir.' },
+        { status: 400 },
+      );
+    }
+    if (isChatProject && !hasHandledValue(input.desiredTimeline)) {
+      return NextResponse.json(
+        { success: false, error: 'Délai souhaité requis ou explicitement à définir.' },
+        { status: 400 },
+      );
+    }
+
     if (typeof input.chatHistory === 'string' && input.chatHistory.length > 50000) {
       return NextResponse.json(
         { success: false, error: 'Historique trop long' },
