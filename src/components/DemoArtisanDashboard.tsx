@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useDemoMode } from '@/src/contexts/DemoModeContext';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import {
@@ -20,6 +21,7 @@ import {
   Send,
   Trophy,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   BarChart3,
   Bell,
@@ -40,24 +42,84 @@ import {
   CheckCircle,
   XCircle,
   Lock,
+  Sparkles,
+  Globe,
+  Timer,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
+import { useTheme } from '@/src/hooks/useTheme';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
-import { hasFeature, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { hasFeature, PLAN_DEFINITIONS, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { formatEuro, getAnnualFullPrice, getAnnualOneShotPrice } from '@/src/config/pricing';
 import {
   buildAutomaticTasks,
-  calculateOpportunityScore,
   getHotLeadMessage,
   getOpportunityBadge,
   getProjectRiskStatus,
   isHotLead,
   type Task,
 } from '@/src/lib/commercial-actions';
-import { useDemoMode } from '@/src/contexts/DemoModeContext';
+import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
+import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
+import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
+import { computeKadriaCoach, type KadriaCoachProjectEntry, type KadriaCoachResult, type CoachActionType, type CoachPriorityLevel } from '@/src/lib/kadria-coach';
 
+type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
+
+interface MonthlyUsageSummary {
+  artisanId: string;
+  periodMonth: string;
+  plan: string;
+  projects: {
+    used: number;
+    limit: number | null;
+    unlimited: boolean;
+    percent: number | null;
+    status: UsageStatus;
+  };
+  vapi: {
+    callsUsed: number;
+    callsLimit: number | null;
+    callsUnlimited: boolean;
+    callsPercent: number | null;
+    minutesUsed: number;
+    minutesLimit: number | null;
+    minutesPercent: number | null;
+    status: UsageStatus;
+  };
+  devis: {
+    used: number;
+    limit: number | null;
+    unlimited: boolean;
+    percent: number | null;
+    status: UsageStatus;
+  };
+  updatedAt?: string;
+}
+
+// DesktopAgendaView / MobileAgendaView (production) appellent reellement
+// /api/projects et l'integration Google Calendar (OAuth, disconnect, create).
+// En mode demo, aucun appel reseau reel n'est autorise : on reutilise donc
+// DemoCalendar (deja branche sur useDemoMode), comme dans l'ancien fork demo,
+// a la place des vues agenda de production.
 const DemoCalendar = dynamic(() => import('./DemoCalendar'), { ssr: false });
+
+const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardView'), { ssr: false });
+
+const MobileDossiersView = dynamic(() => import('./dashboard/MobileDossiersView'), { ssr: false });
+
+const MobileDevisView = dynamic(() => import('./dashboard/MobileDevisView'), { ssr: false });
+
+const MobilePipelineView = dynamic(() => import('./dashboard/MobilePipelineView'), { ssr: false });
+
+const MobileValueReportView = dynamic(() => import('./dashboard/MobileValueReportView'), { ssr: false });
+
+const MobileBottomNav = dynamic(
+  () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
+  { ssr: false },
+);
 
 const ProspectsLeafletMap = dynamic(
   () => import('@/src/components/ProspectsLeafletMap'),
@@ -76,17 +138,146 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
-type DashboardMode = 'all' | 'commercial' | 'calendar' | 'clients' | 'tasks';
+export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
 
 const DEMO_PLAN: PlanKey = 'performance';
 const DEMO_ARTISAN_ID = 'DEMO_ARTISAN_001';
 
-const STATUS_NORMALIZATION: Record<string, string> = {
+const DEMO_STATUS_NORMALIZATION: Record<string, string> = {
   'A rappeler': 'À rappeler',
   'Qualifie': 'Qualifié',
   'Devis envoye': 'Devis envoyé',
   'Gagne': 'Gagné',
 };
+
+function normalizeDemoStatus(status?: string) {
+  return DEMO_STATUS_NORMALIZATION[status || ''] || status || '';
+}
+
+// Adapte un DemoProject (src/lib/demo-data.ts) vers la forme attendue par ce
+// composant (memes champs que le Project de production), sans appel reseau :
+// normalise le statut et derive quelques champs optionnels (quoteSentAt,
+// opensCount) a partir des donnees demo deja presentes.
+function normalizeDemoProject(project: Project): Project {
+  const normalizedStatus = normalizeDemoStatus(project.status);
+  return {
+    ...project,
+    artisanId: project.artisanId || DEMO_ARTISAN_ID,
+    status: normalizedStatus,
+    updatedAt: project.updatedAt || project.createdAt,
+    lastInteractionAt: project.lastInteractionAt || project.callbackDate || project.createdAt,
+    quoteSentAt:
+      project.quoteSentAt || (normalizedStatus.startsWith('Devis') ? project.createdAt : project.quoteSentAt),
+    opensCount:
+      typeof project.opensCount === 'number'
+        ? project.opensCount
+        : normalizedStatus.startsWith('Devis')
+          ? 2
+          : 0,
+  };
+}
+
+// Adapte DemoCalendar (deja branche sur useDemoMode) a la place des vues
+// agenda de production (DesktopAgendaView / MobileAgendaView), qui appellent
+// reellement /api/projects et l'integration Google Calendar.
+function DemoCalendarAdapter() {
+  const { events, createEvent, updateEvent, deleteEvent } = useDemoMode();
+
+  return (
+    <DemoCalendar
+      events={events}
+      onCreateEvent={(event) =>
+        createEvent({
+          ...event,
+          projectId: event.projectId || '',
+          notes: event.notes || '',
+          status: event.status || 'Prévu',
+        })
+      }
+      onUpdateEvent={(id, fields) => updateEvent(id, fields)}
+      onDeleteEvent={deleteEvent}
+    />
+  );
+}
+
+// Mappe un Project du dashboard vers l'input de l'Action Engine, en ne
+// reprenant que des champs reellement presents sur le projet (cf.
+// src/lib/action-engine.ts — "ne jamais inventer de donnees"). Aucun signal
+// absent du projet (ex: rendez-vous, tradeAnswers) n'est simule ici.
+function projectToActionEngineInput(p: Project): ActionEngineProjectInput {
+  const devisSent = Boolean(p.quoteSentAt) || p.status === 'Devis envoyé';
+  const devisAccepted = Boolean(p.acceptedAt) || p.status === 'Gagné';
+  const devisExists = devisSent || devisAccepted || Boolean(p.devisAmount);
+  return {
+    status: p.status,
+    clientName: p.clientName,
+    clientFirstName: p.clientFirstName,
+    clientPhone: p.clientPhone,
+    clientEmail: p.clientEmail,
+    trade: p.trade,
+    projectType: p.projectType,
+    aiSummary: p.aiSummary,
+    budget: p.budget,
+    desiredTimeline: p.desiredTimeline,
+    city: p.city,
+    siteAddress: p.siteAddress,
+    photos: p.photos,
+    completenessScore: p.completenessScore,
+    createdAt: p.createdAt,
+    lastFollowUpAt: p.lastFollowUpAt,
+    latestDevis: devisExists
+      ? {
+          sent: devisSent,
+          accepted: devisAccepted,
+          declined: p.status === 'Perdu',
+          sentAt: p.quoteSentAt || null,
+        }
+      : null,
+  };
+}
+
+const ACTION_PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+const ACTION_URGENCY_RANK: Record<string, number> = { overdue: 0, today: 1, soon: 2, none: 3 };
+const ACTION_IMPACT_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+const ACTION_TYPE_EMOJI: Record<ActionType, string> = {
+  complete_qualification: '🟡',
+  request_photos: '🟡',
+  schedule_appointment: '🟡',
+  send_quote: '🔴',
+  follow_up_quote: '🟠',
+  review_quote_decline: '🟠',
+  schedule_intervention: '🔴',
+  ask_review: '⚪',
+  monitor: '⚪',
+};
+
+const ACTION_TYPE_COUNTER_LABEL: Record<ActionType, string> = {
+  complete_qualification: 'Qualification à terminer',
+  request_photos: 'Photos à demander',
+  schedule_appointment: 'Rendez-vous à planifier',
+  send_quote: 'Devis à envoyer',
+  follow_up_quote: 'Relances',
+  review_quote_decline: 'Devis refusés à traiter',
+  schedule_intervention: 'Interventions à programmer',
+  ask_review: 'Avis clients à demander',
+  monitor: 'Surveillance',
+};
+
+function sortNextActions<T extends { action: NextAction }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const p = (ACTION_PRIORITY_RANK[a.action.priority] ?? 9) - (ACTION_PRIORITY_RANK[b.action.priority] ?? 9);
+    if (p !== 0) return p;
+    const u = (ACTION_URGENCY_RANK[a.action.urgency] ?? 9) - (ACTION_URGENCY_RANK[b.action.urgency] ?? 9);
+    if (u !== 0) return u;
+    return (ACTION_IMPACT_RANK[a.action.impact] ?? 9) - (ACTION_IMPACT_RANK[b.action.impact] ?? 9);
+  });
+}
+
+function parseDurationMinutes(duration: string): number {
+  const match = duration.match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -112,50 +303,167 @@ export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   'Perdu':        { bg: 'var(--badge-lost-bg)',      color: 'var(--badge-lost-text)' },
 };
 
-function normalizeDemoStatus(status?: string) {
-  return STATUS_NORMALIZATION[status || ''] || status || '';
-}
+const COACH_PRIORITY_BADGE: Record<CoachPriorityLevel, { label: string; bg: string; color: string }> = {
+  critical: { label: 'Urgent', bg: 'rgba(220,38,38,0.12)', color: '#dc2626' },
+  high: { label: 'Important', bg: 'rgba(217,119,6,0.12)', color: '#d97706' },
+  medium: { label: 'À faire', bg: 'var(--accent-dim, rgba(34,197,94,0.12))', color: 'var(--accent)' },
+  low: { label: 'Tout est prêt', bg: 'rgba(34,197,94,0.12)', color: '#16a34a' },
+};
 
-function normalizeDemoProject(project: Project): Project {
-  const normalizedStatus = normalizeDemoStatus(project.status);
-  return {
-    ...project,
-    artisanId: project.artisanId || DEMO_ARTISAN_ID,
-    status: normalizedStatus,
-    updatedAt: project.updatedAt || project.createdAt,
-    lastInteractionAt: project.lastInteractionAt || project.callbackDate || project.createdAt,
-    quoteSentAt:
-      project.quoteSentAt || (normalizedStatus.startsWith('Devis') ? project.createdAt : project.quoteSentAt),
-    opensCount:
-      typeof project.opensCount === 'number'
-        ? project.opensCount
-        : normalizedStatus.startsWith('Devis')
-          ? 2
-          : 0,
-  };
-}
-
-function DemoCalendarAdapter() {
-  const { events, createEvent, updateEvent, deleteEvent } = useDemoMode();
+// Carte Coach Kadria compacte pour mobile : une seule action prioritaire
+// visible immediatement, sans scroll horizontal ni pave de texte. Ne
+// recalcule rien — se contente d'afficher le resultat deja produit par
+// computeKadriaCoach (cf. src/lib/kadria-coach.ts).
+function MobileCoachKadriaCard({
+  coach,
+  onDismiss,
+  onAction,
+  onViewDashboard,
+}: {
+  coach: KadriaCoachResult;
+  onDismiss: () => void;
+  onAction: (actionType: CoachActionType, href?: string) => void;
+  onViewDashboard: () => void;
+}) {
+  const badge = COACH_PRIORITY_BADGE[coach.priorityLevel];
+  const win = coach.wins[0];
+  const alert = coach.alerts[0];
 
   return (
-    <DemoCalendar
-      events={events}
-      onCreateEvent={(event) =>
-        createEvent({
-          ...event,
-          projectId: event.projectId || '',
-          notes: event.notes || '',
-          status: event.status || 'Prévu',
-        })
-      }
-      onUpdateEvent={(id, fields) => updateEvent(id, fields)}
-      onDeleteEvent={deleteEvent}
-    />
+    <div
+      style={{
+        border: '1px solid var(--accent-border, var(--border))',
+        background: 'linear-gradient(135deg, var(--bg-elevated), var(--accent-dim, var(--bg-elevated)))',
+        borderRadius: '16px',
+        padding: '14px',
+        marginBottom: '16px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <span style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, whiteSpace: 'nowrap' }}>👋 Coach Kadria</span>
+          <span
+            style={{
+              background: badge.bg, color: badge.color, fontSize: '11px', fontWeight: 700,
+              borderRadius: '999px', padding: '3px 9px', whiteSpace: 'nowrap',
+            }}
+          >
+            {badge.label}
+          </span>
+        </div>
+        <button
+          onClick={onDismiss}
+          aria-label="Fermer"
+          style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '14px', flexShrink: 0 }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div
+        style={{
+          color: 'var(--text-2)', fontSize: '12px', marginBottom: '10px',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}
+      >
+        {coach.message}
+      </div>
+
+      {coach.primaryAction ? (
+        <div
+          style={{
+            border: '1px solid var(--border)', borderRadius: '12px', padding: '12px',
+            background: 'var(--bg-elevated)', marginBottom: '10px',
+          }}
+        >
+          <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, marginBottom: '2px' }}>
+            {coach.primaryAction.title}
+          </div>
+          <div
+            style={{
+              color: 'var(--text-3)', fontSize: '12px', marginBottom: '10px',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}
+          >
+            {coach.primaryAction.estimatedTime ? `${coach.primaryAction.estimatedTime} · ` : ''}
+            {coach.primaryAction.description}
+          </div>
+          <button
+            onClick={() => onAction(coach.primaryAction!.actionType, coach.primaryAction!.href)}
+            style={{
+              width: '100%', background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+              borderRadius: '10px', padding: '12px 16px', fontSize: '14px', cursor: 'pointer',
+            }}
+          >
+            {coach.primaryAction.ctaLabel}
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            border: '1px solid var(--border)', borderRadius: '12px', padding: '12px',
+            background: 'var(--bg-elevated)', marginBottom: '10px',
+          }}
+        >
+          <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, marginBottom: '2px' }}>
+            Tout est sous contrôle.
+          </div>
+          <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '10px' }}>
+            Vos dossiers et votre configuration sont à jour.
+          </div>
+          <button
+            onClick={onViewDashboard}
+            style={{
+              width: '100%', background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-1)', fontWeight: 600,
+              borderRadius: '10px', padding: '11px 16px', fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            Voir le tableau de bord
+          </button>
+        </div>
+      )}
+
+      {coach.recommendations.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: (win || alert) ? '10px' : 0 }}>
+          {coach.recommendations.slice(0, 2).map((rec, idx) => (
+            <button
+              key={`${rec.actionType}-${idx}`}
+              onClick={() => onAction(rec.actionType, rec.href)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                textAlign: 'left', background: 'none', border: '1px solid var(--border)', borderRadius: '8px',
+                padding: '9px 10px', cursor: 'pointer', color: 'var(--text-2)', fontSize: '12px', width: '100%',
+              }}
+            >
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {rec.title}{rec.estimatedTime ? ` · ${rec.estimatedTime}` : ''}
+              </span>
+              <span style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{rec.ctaLabel}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(win || alert) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {win && (
+            <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>✓ {win.title}</div>
+          )}
+          {alert && (
+            <div style={{ color: alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#d97706' : 'var(--text-3)', fontSize: '11px' }}>
+              ⓘ {alert.title}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
 export default function DemoArtisanDashboard() {
+  // Mode demo : pas d'AuthGuard, pas de session reelle. Le plan est fige sur
+  // 'performance' (le plus haut niveau standard) pour qu'aucune fonctionnalite
+  // ne soit verrouillee (aucun cadenas bloquant dans la demo).
   return (
     <PlanProvider plan={DEMO_PLAN}>
       <Dashboard plan={DEMO_PLAN} />
@@ -193,8 +501,29 @@ function budgetScore(budget?: string): number {
   return 10;
 }
 
-export function opportunityScore(project: Project): number {
-  return calculateOpportunityScore(project);
+function getProjectAnalysisFor(project: Project, artisanTrades?: string[]) {
+  return getProjectCommercialAnalysis({
+    status: project.status,
+    clientName: project.clientName,
+    clientFirstName: project.clientFirstName,
+    clientPhone: project.clientPhone,
+    clientEmail: project.clientEmail,
+    trade: project.trade,
+    projectType: project.projectType,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+    maturity: project.maturity,
+    city: project.city,
+    siteAddress: project.siteAddress,
+    aiSummary: project.aiSummary,
+    completenessScore: project.completenessScore,
+    photos: project.photos,
+    source: project.source,
+  }, { artisanTrades: artisanTrades ?? [] });
+}
+
+export function opportunityScore(project: Project, artisanTrades?: string[]): number {
+  return getProjectAnalysisFor(project, artisanTrades).score;
 }
 
 function parseBudget(budgetStr: string): number {
@@ -213,34 +542,55 @@ export const formatAmount = (n: number) =>
     ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k €`
     : `${n} €`
 
-export function timeAgo(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+const FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+
+export function formatReceivedAt(dateLike: unknown): string {
+  if (!dateLike) return 'Date inconnue';
+  const date = new Date(dateLike as string);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+
+  const diffMs = Date.now() - date.getTime();
+
+  if (diffMs < 0) {
+    return Math.abs(diffMs) <= FUTURE_TOLERANCE_MS ? 'à l\'instant' : 'Date à vérifier';
+  }
+
   const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMins < 60) return `il y a ${diffMins}min`;
-  if (diffHours < 24) return `il y a ${diffHours}h`;
-  if (diffDays === 1) return 'hier';
-  if (diffDays < 7) return `il y a ${diffDays}j`;
-  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)}sem`;
+  if (diffMins < 1) return 'à l\'instant';
+  if (diffMins < 60) return `il y a ${diffMins} min`;
+  if (diffHours < 24) return `il y a ${diffHours} h`;
+  if (diffDays < 7) return `il y a ${diffDays} j`;
 
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function formatIsoDate(dateStr?: string): string {
-  if (!dateStr) return '—';
-  const iso = String(dateStr).slice(0, 10);
-  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return '—';
+export function getReceivedSortTimestamp(dateLike: unknown): number {
+  if (!dateLike) return 0;
+  const date = new Date(dateLike as string);
+  const time = date.getTime();
+  if (Number.isNaN(time)) return 0;
 
-  const [, year, month, day] = match;
-  const monthIndex = Number(month) - 1;
-  const monthNames = ['janv.', 'fevr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'aout', 'sept.', 'oct.', 'nov.', 'dec.'];
+  const diffMs = Date.now() - time;
+  if (diffMs < 0 && Math.abs(diffMs) > FUTURE_TOLERANCE_MS) return 0;
 
-  return `${Number(day)} ${monthNames[monthIndex] ?? year}`;
+  return time;
+}
+
+export function timeAgo(dateStr: string): string {
+  return formatReceivedAt(dateStr);
+}
+
+function ReceivedAtLabel({ dateLike, className }: { dateLike: unknown; className?: string }) {
+  const label = formatReceivedAt(dateLike);
+  const title = label === 'Date à vérifier' ? 'Date de réception incohérente ou future.' : undefined;
+  return (
+    <span className={className} title={title}>
+      {label}
+    </span>
+  );
 }
 
 function escapeCsvValue(value: unknown): string {
@@ -338,8 +688,8 @@ function sortKanbanProjects(projects: Project[], columnId: string) {
       if (priorityA !== priorityB) return priorityA - priorityB;
     }
 
-    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const dateA = getReceivedSortTimestamp(a.createdAt);
+    const dateB = getReceivedSortTimestamp(b.createdAt);
     return dateB - dateA;
   });
 }
@@ -412,19 +762,23 @@ export const DEFAULT_FILTERS: FilterState = {
   source: '',
 };
 
-export function filterProjects(projects: Project[], filters: FilterState): Project[] {
+export function filterProjects(
+  projects: Project[],
+  filters: FilterState,
+  opts: { skipStatusFilter?: boolean } = {},
+): Project[] {
   return projects.filter((p) => {
     if (filters.search) {
       const term = filters.search.toLowerCase().trim();
 
-      const searchable = [p.clientName, p.clientFirstName, p.projectType, p.trade, p.city, p.projectNumber]
+      const searchable = [p.clientName, p.clientFirstName, p.clientEmail, p.clientPhone, p.projectType, p.trade, p.city, p.projectNumber]
         .join(' ')
         .toLowerCase();
 
       if (!searchable.includes(term)) return false;
     }
 
-    if (filters.statut && p.status !== filters.statut) return false;
+    if (!opts.skipStatusFilter && filters.statut && p.status !== filters.statut) return false;
 
     if (filters.metier) {
       const trade = (p.trade || '').toLowerCase();
@@ -481,6 +835,304 @@ export function filterProjects(projects: Project[], filters: FilterState): Proje
 
     return true;
   });
+}
+
+export type ClientRelationshipStatus = 'prospect' | 'active_client' | 'to_follow_up' | 'inactive' | 'lost';
+
+export type ClientSummary = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  latestProject?: Project;
+  projects: Project[];
+  projectsCount: number;
+  quotesSentCount: number;
+  quotesAcceptedCount: number;
+  wonProjectsCount: number;
+  potentialRevenue: number;
+  wonRevenue: number;
+  relationshipStatus: ClientRelationshipStatus;
+  nextActionLabel?: string;
+  nextActionProject?: Project;
+};
+
+function normalizeKeyPart(value?: string): string {
+  return (value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function normalizePhone(value?: string): string {
+  return (value || '').replace(/[^\d]/g, '');
+}
+
+export function getClientGroupKey(p: Project): string {
+  const email = normalizeKeyPart(p.clientEmail);
+  if (email) return `email:${email}`;
+
+  const phone = normalizePhone(p.clientPhone);
+  if (phone) return `phone:${phone}`;
+
+  const name = normalizeKeyPart(`${p.clientFirstName || ''} ${p.clientName || ''}`);
+  const city = normalizeKeyPart(p.city);
+  if (name && city) return `namecity:${name}|${city}`;
+
+  if (name) return `name:${name}`;
+
+  return `id:${p.id}`;
+}
+
+function projectValueAmount(p: Project): number {
+  return p.devisAmount || parseBudget(p.budget || '');
+}
+
+function isWonProject(p: Project): boolean {
+  return p.status === 'Gagné' || Boolean(p.acceptedAt);
+}
+
+function isLostProject(p: Project): boolean {
+  return p.status === 'Perdu';
+}
+
+function isQuoteSentProject(p: Project): boolean {
+  // devisAmount seul ne signifie pas "envoyé" : un devis brouillon a aussi un
+  // montant. Seul status === 'Devis envoyé' (ou quoteSentAt) prouve l'envoi réel.
+  return p.status === 'Devis envoyé' || Boolean(p.quoteSentAt);
+}
+
+function isArchivedProject(p: Project): boolean {
+  return p.leadStatus === 'archived';
+}
+
+function computeRelationshipStatus(projects: Project[]): ClientRelationshipStatus {
+  if (projects.some((p) => isWonProject(p))) return 'active_client';
+
+  if (
+    projects.some((p) => {
+      if (isWonProject(p) || isLostProject(p) || isArchivedProject(p)) return false;
+      const risk = getProjectRiskStatus(p);
+      return risk.status === 'followUp' || risk.status === 'atRisk' || (isQuoteSentProject(p) && !p.acceptedAt);
+    })
+  ) {
+    return 'to_follow_up';
+  }
+
+  if (projects.length > 0 && projects.every((p) => isLostProject(p) || isArchivedProject(p))) return 'lost';
+
+  if (projects.some((p) => !isWonProject(p) && !isLostProject(p) && !isArchivedProject(p))) return 'prospect';
+
+  return 'inactive';
+}
+
+function computeNextAction(projects: Project[]): { label: string; project?: Project } {
+  const active = [...projects]
+    .filter((p) => !isWonProject(p) && !isLostProject(p) && !isArchivedProject(p))
+    .sort((a, b) => getReceivedSortTimestamp(b.createdAt) - getReceivedSortTimestamp(a.createdAt));
+
+  const needsFollowUp = active.find((p) => {
+    const risk = getProjectRiskStatus(p);
+    return (risk.status === 'followUp' || risk.status === 'atRisk') && isQuoteSentProject(p);
+  });
+  if (needsFollowUp) return { label: 'Relancer devis', project: needsFollowUp };
+
+  const needsQuote = active.find((p) => !isQuoteSentProject(p) && Number(p.completenessScore || 0) >= 80);
+  if (needsQuote) return { label: 'Envoyer devis', project: needsQuote };
+
+  const needsCallback = active.find((p) => p.status === 'À rappeler' || p.callbackDate);
+  if (needsCallback) return { label: 'Rappeler', project: needsCallback };
+
+  const hotUncontacted = active.find((p) => isHotLead(p));
+  if (hotUncontacted) return { label: 'Rappeler', project: hotUncontacted };
+
+  const incomplete = active.find((p) => Number(p.completenessScore || 0) < 80);
+  if (incomplete) return { label: 'Compléter dossier', project: incomplete };
+
+  return { label: 'Aucune action' };
+}
+
+export function groupProjectsByClient(projects: Project[]): ClientSummary[] {
+  const groups = new Map<string, Project[]>();
+
+  for (const p of projects) {
+    const key = getClientGroupKey(p);
+    const list = groups.get(key);
+    if (list) list.push(p);
+    else groups.set(key, [p]);
+  }
+
+  const summaries: ClientSummary[] = [];
+
+  for (const [key, groupProjects] of groups.entries()) {
+    const sorted = [...groupProjects].sort(
+      (a, b) => getReceivedSortTimestamp(b.createdAt) - getReceivedSortTimestamp(a.createdAt),
+    );
+    const latestProject = sorted[0];
+
+    const quotesSent = groupProjects.filter((p) => isQuoteSentProject(p));
+    const quotesAccepted = groupProjects.filter((p) => isWonProject(p));
+    const wonProjects = groupProjects.filter((p) => p.status === 'Gagné' || isWonProject(p));
+
+    const potentialRevenue = groupProjects
+      .filter((p) => !isWonProject(p) && !isLostProject(p))
+      .reduce((sum, p) => sum + projectValueAmount(p), 0);
+    const wonRevenue = groupProjects
+      .filter((p) => isWonProject(p))
+      .reduce((sum, p) => sum + projectValueAmount(p), 0);
+
+    const nextAction = computeNextAction(groupProjects);
+
+    summaries.push({
+      id: key,
+      name: `${latestProject.clientFirstName || ''} ${latestProject.clientName || ''}`.trim() || 'Client',
+      email: latestProject.clientEmail || undefined,
+      phone: latestProject.clientPhone || undefined,
+      city: latestProject.city || undefined,
+      latestProject,
+      projects: sorted,
+      projectsCount: groupProjects.length,
+      quotesSentCount: quotesSent.length,
+      quotesAcceptedCount: quotesAccepted.length,
+      wonProjectsCount: wonProjects.length,
+      potentialRevenue,
+      wonRevenue,
+      relationshipStatus: computeRelationshipStatus(groupProjects),
+      nextActionLabel: nextAction.label,
+      nextActionProject: nextAction.project,
+    });
+  }
+
+  return summaries;
+}
+
+export function sortClientSummaries(clients: ClientSummary[]): ClientSummary[] {
+  return [...clients].sort((a, b) => {
+    const aHasAction = a.nextActionLabel && a.nextActionLabel !== 'Aucune action' ? 1 : 0;
+    const bHasAction = b.nextActionLabel && b.nextActionLabel !== 'Aucune action' ? 1 : 0;
+    if (aHasAction !== bHasAction) return bHasAction - aHasAction;
+
+    const aDate = getReceivedSortTimestamp(a.latestProject?.createdAt);
+    const bDate = getReceivedSortTimestamp(b.latestProject?.createdAt);
+    if (aDate !== bDate) return bDate - aDate;
+
+    return b.potentialRevenue - a.potentialRevenue;
+  });
+}
+
+export const RELATION_STATUS_LABELS: Record<ClientRelationshipStatus, string> = {
+  active_client: 'Client actif',
+  to_follow_up: 'À relancer',
+  prospect: 'Prospect',
+  lost: 'Perdu',
+  inactive: 'Inactif',
+};
+
+export const RELATION_STATUS_STYLES: Record<ClientRelationshipStatus, { bg: string; color: string }> = {
+  active_client: { bg: 'var(--badge-won-bg)', color: 'var(--badge-won-text)' },
+  to_follow_up: { bg: 'var(--badge-callback-bg)', color: 'var(--badge-callback-text)' },
+  prospect: { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' },
+  lost: { bg: 'var(--badge-lost-bg)', color: 'var(--badge-lost-text)' },
+  inactive: { bg: 'var(--bg-hover)', color: 'var(--text-3)' },
+};
+
+export const RELATION_STATUS_OPTIONS: { value: ClientRelationshipStatus; label: string }[] = [
+  { value: 'active_client', label: 'Client actif' },
+  { value: 'to_follow_up', label: 'À relancer' },
+  { value: 'prospect', label: 'Prospect' },
+  { value: 'lost', label: 'Perdu' },
+  { value: 'inactive', label: 'Inactif' },
+];
+
+export type ValuePeriod = 'week' | 'month' | '30d' | 'all';
+
+export const VALUE_PERIOD_OPTIONS: { value: ValuePeriod; label: string }[] = [
+  { value: 'week', label: 'Cette semaine' },
+  { value: 'month', label: 'Ce mois' },
+  { value: '30d', label: '30 derniers jours' },
+  { value: 'all', label: 'Tout' },
+];
+
+export type ValueSourceFilter = 'all' | 'web' | 'voice' | 'manual' | 'other';
+
+export const VALUE_SOURCE_FILTER_OPTIONS: { value: ValueSourceFilter; label: string }[] = [
+  { value: 'all', label: 'Toutes les sources' },
+  { value: 'web', label: 'Site / Widget' },
+  { value: 'voice', label: 'Assistant vocal' },
+  { value: 'manual', label: 'Manuel' },
+  { value: 'other', label: 'Autre' },
+];
+
+export function normalizeValueSource(source?: string): ValueSourceFilter {
+  const src = (source || '').toLowerCase().trim();
+
+  if (!src) return 'other';
+  if (src.includes('chat') || src.includes('widget') || src.includes('site') || src.includes('web')) return 'web';
+  if (src.includes('voice') || src.includes('vapi') || src.includes('call') || src.includes('vocal')) return 'voice';
+  if (src.includes('manual') || src.includes('admin') || src.includes('manuel')) return 'manual';
+
+  return 'other';
+}
+
+export function getValuePeriodRange(period: ValuePeriod, now: Date): { start: Date; end: Date } | null {
+  if (period === 'all') return null;
+
+  const end = new Date(now);
+  const start = new Date(now);
+
+  if (period === 'week') {
+    const day = start.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diffToMonday);
+    start.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+  } else if (period === '30d') {
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+  }
+
+  return { start, end };
+}
+
+export function getPreviousValuePeriodRange(period: ValuePeriod, now: Date): { start: Date; end: Date } | null {
+  const current = getValuePeriodRange(period, now);
+
+  if (!current) return null;
+
+  if (period === 'week') {
+    const start = new Date(current.start);
+    start.setDate(start.getDate() - 7);
+    const end = new Date(current.start.getTime() - 1);
+    return { start, end };
+  }
+
+  if (period === 'month') {
+    const start = new Date(current.start.getFullYear(), current.start.getMonth() - 1, 1);
+    const end = new Date(current.start.getTime() - 1);
+    return { start, end };
+  }
+
+  const start = new Date(current.start);
+  start.setDate(start.getDate() - 30);
+  const end = new Date(current.start.getTime() - 1);
+  return { start, end };
+}
+
+export function formatValuePercentDelta(current: number, previous: number): string | null {
+  if (previous === 0) return current > 0 ? 'Nouveau vs période précédente' : null;
+
+  const delta = ((current - previous) / previous) * 100;
+  const sign = delta >= 0 ? '+' : '';
+  return `${sign}${delta.toFixed(0)}% vs période précédente`;
+}
+
+export function formatValueCountDelta(current: number, previous: number, unit: string): string | null {
+  const delta = current - previous;
+
+  if (delta === 0) return `Stable vs période précédente`;
+
+  const sign = delta > 0 ? '+' : '';
+  return `${sign}${delta} ${unit} vs période précédente`;
 }
 
 export type KpiPeriod = '7d' | '30d' | '90d' | '1y';
@@ -620,6 +1272,25 @@ export function buildSparklineData(projects: Project[], period: KpiPeriod): { la
       })
       .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0),
   }));
+}
+
+// Picks a handful of evenly-spaced labels (first, middle points, last) from the
+// sparkline data's existing `label` field so the axis stays readable without
+// overcrowding it with one label per data point.
+export function sampleSparklineLabels(data: { label: string; value: number }[], maxLabels = 5): string[] {
+  if (data.length === 0) return [];
+  if (data.length <= maxLabels) return data.map((d) => d.label);
+
+  const indices = new Set<number>();
+  const last = data.length - 1;
+
+  for (let i = 0; i < maxLabels; i++) {
+    indices.add(Math.round((i / (maxLabels - 1)) * last));
+  }
+
+  return Array.from(indices)
+    .sort((a, b) => a - b)
+    .map((i) => data[i].label);
 }
 
 function useCountUp(target: number, durationMs = 800): number {
@@ -785,19 +1456,22 @@ function navButtonStyle(active: boolean): React.CSSProperties {
   };
 }
 
+function parseAccountDate(value: string | null): Date | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateFR(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}`;
+}
+
 function Dashboard({ plan }: { plan: PlanKey }) {
   const router = useRouter();
-  const {
-    projects,
-    events,
-    theme,
-    setTheme,
-    updateProjectStatus,
-    createEvent,
-  } = useDemoMode();
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [setTheme, theme]);
+  const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
   const canExportPdf = hasFeature(plan, 'pdfExports');
   const canExportMonthlyReport = hasFeature(plan, 'monthlyPdfReport');
   const canUseKanban = hasFeature(plan, 'kanbanView');
@@ -808,6 +1482,39 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const canAccessFeature = (feature: PlanFeatureKey) => hasFeature(plan, feature);
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
+  const planChangeCtaLabel = plan === 'essentiel' ? 'Mettre à niveau' : plan === 'performance' ? 'Changer d\'offre' : 'Gérer mon offre';
+
+  const [accountStatus, setAccountStatus] = useState<{
+    status: string | null;
+    billingStatus: string | null;
+    trialEndDate: string | null;
+  } | null>(null);
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+  const [continueTrialLoading, setContinueTrialLoading] = useState(false);
+
+  const isSubscriptionActive = accountStatus
+    ? accountStatus.status?.toLowerCase() === 'actif' || accountStatus.billingStatus === 'active'
+    : false;
+  const isTrialActive = Boolean(
+    accountStatus &&
+    !isSubscriptionActive &&
+    (accountStatus.status?.toLowerCase() === 'trial' || accountStatus.billingStatus === 'trialing'),
+  );
+  const trialEndDateObj = isTrialActive ? parseAccountDate(accountStatus?.trialEndDate ?? null) : null;
+  const trialEndDateFR = trialEndDateObj ? formatDateFR(trialEndDateObj) : null;
+  const trialHoursLeft = trialEndDateObj ? (trialEndDateObj.getTime() - Date.now()) / (1000 * 60 * 60) : null;
+  const showTrialEndingBanner =
+    isTrialActive && !trialBannerDismissed && trialHoursLeft !== null && trialHoursLeft <= 48 && trialHoursLeft > -24;
+
+  // Mode demo : aucun vrai paiement Stripe. On simule simplement l'action
+  // pour ne jamais appeler /api/stripe/checkout.
+  const continueWithPerformance = async () => {
+    setContinueTrialLoading(true);
+    setTimeout(() => {
+      setContinueTrialLoading(false);
+      showToast('Action simulée — aucune donnée réelle modifiée.');
+    }, 400);
+  };
 
   const user = {
     email: 'demo@kadria.local',
@@ -815,39 +1522,94 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     role: 'User',
   };
 
+  const {
+    projects: demoProjects,
+    events: demoEvents,
+    artisan: demoArtisan,
+    updateProjectStatus,
+    updateProjectFields,
+    createEvent: demoCreateEvent,
+  } = useDemoMode();
+
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [valuePeriod, setValuePeriod] = useState<ValuePeriod>('all');
+  const [valueSourceFilter, setValueSourceFilter] = useState<ValueSourceFilter>('all');
+  const [preferencesReady, setPreferencesReady] = useState(false);
   const [todayLabel, setTodayLabel] = useState("Aujourd'hui");
 
   useEffect(() => {
-    setTodayLabel(
-      new Date().toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      }),
-    );
+    try {
+      const rawFilters = localStorage.getItem('kadria_filters');
+      if (rawFilters) {
+        const parsed = JSON.parse(rawFilters);
+        const isExpired = !parsed.timestamp || Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000;
+        if (!isExpired && parsed.filters) {
+          const restoredFilters = { ...DEFAULT_FILTERS, ...parsed.filters };
+          setFilters(restoredFilters);
+          setSearchInput(restoredFilters.search || '');
+        }
+      }
+
+      const savedPeriod = localStorage.getItem('kadria_kpi_period');
+      if (savedPeriod === '7d' || savedPeriod === '30d' || savedPeriod === '90d' || savedPeriod === '1y') {
+        setKpiPeriod(savedPeriod);
+      }
+
+      const savedViewMode = localStorage.getItem('kadria_view_mode');
+      if (savedViewMode === 'list' || savedViewMode === 'kanban') {
+        setViewMode(savedViewMode);
+      }
+
+      const savedPanel = localStorage.getItem('kadria_dashboard_panels');
+      if (savedPanel === 'pipeline' || savedPanel === 'chantiers') {
+        setOpenPanel(savedPanel);
+      }
+    } catch {
+      // Ignore invalid persisted dashboard preferences.
+    } finally {
+      setTodayLabel(
+        new Date().toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }),
+      );
+      setPreferencesReady(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+    localStorage.setItem('kadria_filters', JSON.stringify({ filters, timestamp: Date.now() }));
+  }, [filters, preferencesReady]);
 
   const [kpiPeriod, setKpiPeriod] = useState<KpiPeriod>('30d');
 
   const setPeriod = (period: KpiPeriod) => {
     if (!canViewKpiTrends) return;
     setKpiPeriod(period);
+    localStorage.setItem('kadria_kpi_period', period);
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | null>(null);
-  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('all');
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
+  const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | ActionType | null>(null);
+  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
+  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null);
+  const [monthlyUsageLoading, setMonthlyUsageLoading] = useState(true);
+  const [monthlyUsageError, setMonthlyUsageError] = useState(false);
+  const monthlyUsageSectionRef = useRef<HTMLDivElement>(null);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
@@ -860,16 +1622,20 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const setView = (mode: 'list' | 'kanban') => {
     if (mode === 'kanban' && !canUseKanban) return;
     setViewMode(mode);
+    localStorage.setItem('kadria_view_mode', mode);
   };
 
   useEffect(() => {
     if (viewMode === 'kanban' && !canUseKanban) {
       setViewMode('list');
+      localStorage.setItem('kadria_view_mode', 'list');
     }
   }, [canUseKanban, viewMode]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     setAllProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
+    // Mode demo : la mutation passe uniquement par DemoModeContext (etat local,
+    // aucun appel reseau reel).
     updateProjectStatus(id, newStatus);
   };
 
@@ -885,57 +1651,137 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       return;
     }
 
-    setOpenPanel((prev) => (prev === panel ? null : panel));
+    setOpenPanel((prev) => {
+      const next = prev === panel ? null : panel;
+      localStorage.setItem('kadria_dashboard_panels', next ?? '');
+      return next;
+    });
   };
 
   useEffect(() => {
     if ((openPanel === 'pipeline' && !canViewPipeline) || (openPanel === 'chantiers' && !canViewGeoProjects)) {
       setOpenPanel(null);
+      localStorage.setItem('kadria_dashboard_panels', '');
     }
   }, [canViewGeoProjects, canViewPipeline, openPanel]);
 
-  const logout = async () => {
+  // Mode demo : pas de vraie session a detruire, on retourne simplement vers
+  // la page d'accueil de la demo (aucun appel reseau reel).
+  const logout = () => {
     router.push('/demo');
   };
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const normalizedProjects = projects.map((project) => normalizeDemoProject(project as Project));
+  // Mode demo : les projets/evenements viennent uniquement de DemoModeContext
+  // (localStorage), jamais d'un appel reseau. On normalise le statut des
+  // projets demo pour correspondre exactement aux statuts attendus par les
+  // composants de production (cf. normalizeDemoProject ci-dessus).
+  const loadData = useCallback(() => {
+    setAllProjects(demoProjects.map((p) => normalizeDemoProject(p as unknown as Project)));
 
-      setAllProjects(normalizedProjects);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
 
-      {
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
+    const overdue = demoEvents.filter((e: any) => {
+      if (e.status === 'Fait') return false;
+      const eventDate = new Date(e.date);
+      return eventDate < now && !e.date?.startsWith(todayStr);
+    });
 
-        const overdue = events.filter((e: any) => {
-          if (e.status === 'Fait') return false; // Exclut les événements validés
-          const eventDate = new Date(e.date);
-          return eventDate < now && !e.date?.startsWith(todayStr);
-        });
+    const today = demoEvents.filter((e: any) => {
+      if (e.status === 'Fait') return false;
+      return e.date?.startsWith(todayStr);
+    });
 
-        const today = events.filter((e: any) => {
-          if (e.status === 'Fait') return false;
-          return e.date?.startsWith(todayStr);
-        });
+    setOverdueEvents(overdue);
+    setTodayEvents(today);
+    setLoading(false);
+  }, [demoProjects, demoEvents]);
 
-        setOverdueEvents(overdue);
-        setTodayEvents(today);
-      }
-    } catch (error) {
-      console.error('LOAD_DASHBOARD_ERROR', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [events, projects]);
+  // Mode demo : aucun appel reseau vers /api/usage/monthly. On construit un
+  // mock local genereux (statut 'ok' partout, aucun quota bloquant) pour que
+  // la section Suivi mensuel d'usage reste affichee avec des donnees realistes.
+  useEffect(() => {
+    setMonthlyUsageLoading(true);
+    setMonthlyUsageError(false);
+
+    const mockUsage: MonthlyUsageSummary = {
+      artisanId: DEMO_ARTISAN_ID,
+      periodMonth: new Date().toISOString().slice(0, 7),
+      plan: DEMO_PLAN,
+      projects: { used: demoProjects.length, limit: null, unlimited: true, percent: null, status: 'ok' },
+      vapi: {
+        callsUsed: 18,
+        callsLimit: null,
+        callsUnlimited: true,
+        callsPercent: null,
+        minutesUsed: 96,
+        minutesLimit: null,
+        minutesPercent: null,
+        status: 'ok',
+      },
+      devis: { used: 6, limit: null, unlimited: true, percent: null, status: 'ok' },
+      updatedAt: new Date().toISOString(),
+    };
+
+    setMonthlyUsage(mockUsage);
+    setAccountStatus({ status: 'actif', billingStatus: 'active', trialEndDate: null });
+    setMonthlyUsageLoading(false);
+  }, [demoProjects.length]);
+
+  const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
+  const [artisanTrades, setArtisanTrades] = useState<string[]>([]);
+  const [artisanFirstName, setArtisanFirstName] = useState('');
+  const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null);
+  const [setupCardDismissed, setSetupCardDismissed] = useState(false);
+  const [coachCardDismissed, setCoachCardDismissed] = useState(false);
+
+  const formattedToday = useMemo(() => {
+    const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }, []);
+
+  // Mode demo : artisan/config simule a partir de DEMO_ARTISAN (aucun appel
+  // reseau). L'onboarding est toujours considere comme termine puisque la
+  // demo doit demarrer directement sur un compte "pret".
+  useEffect(() => {
+    setOnboardingIncomplete(false);
+    setArtisanTrades(demoArtisan.primaryTrade ? [demoArtisan.primaryTrade] : []);
+    setArtisanFirstName(demoArtisan.welcomeName?.split(' ')[0] || '');
+  }, [demoArtisan]);
+
+  // Mode demo : business-profile / service-profiles / integration calendrier
+  // sont simules avec des valeurs "tout est configure" pour que
+  // computeProgressRecommendations produise un resultat realiste (100%) sans
+  // appeler /api/artisan/business-profile, /api/artisan/service-profiles ni
+  // /api/integrations/google-calendar/status.
+  useEffect(() => {
+    setProgressRecommendations(
+      computeProgressRecommendations({
+        businessProfile: {
+          primaryTrade: demoArtisan.primaryTrade,
+          baseCity: demoArtisan.address,
+          interventionRadiusKm: 30,
+          hourlyRateHt: 45,
+          defaultVatRate: 10,
+          workingDays: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'],
+          workStartTime: '08:00',
+          workEndTime: '18:00',
+        },
+        serviceProfiles: [{ id: 'demo-service-1' }],
+        calendarIntegration: { connected: true },
+        artisanConfig: {
+          companyName: demoArtisan.companyName,
+          phone: demoArtisan.phone,
+          villePro: demoArtisan.address,
+          address: demoArtisan.address,
+          businessConfig: { calendarMode: 'manuel' },
+        },
+      })
+    );
+  }, [demoArtisan]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadData();
-    }, 150);
-
-    return () => window.clearTimeout(timeoutId);
+    loadData();
   }, [loadData]);
 
   const updateFilter = (key: keyof FilterState, value: string) => {
@@ -955,7 +1801,78 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const todayKey = today.toISOString().slice(0, 10);
   const now = today.getTime();
 
-  const todayCallbacksOnly = allProjects.filter((project) => {
+  const activeProjects = useMemo(
+    () => allProjects.filter((p) => p.leadStatus !== 'archived'),
+    [allProjects],
+  );
+
+  // Source de verite unique pour le pilotage du dashboard : chaque projet
+  // actif passe par computeNextAction / computeProjectHealth (Action Engine).
+  // Aucune regle metier propre n'est recalculee ici.
+  const actionEngineEntries = useMemo(
+    () =>
+      activeProjects
+        .filter((p) => p.status !== 'Perdu' && p.status !== 'Gagné')
+        .map((p) => {
+          const input = projectToActionEngineInput(p);
+          return { project: p, action: computeActionEngineNextAction(input), health: computeProjectHealth(input) };
+        }),
+    [activeProjects],
+  );
+
+  const sortedActionEngineEntries = useMemo(() => sortNextActions(actionEngineEntries), [actionEngineEntries]);
+
+  const filteredActionEngineEntries = useMemo(() => {
+    if (!actionEngineFilter) return sortedActionEngineEntries;
+    if (actionEngineFilter === 'critical') return sortedActionEngineEntries.filter((e) => e.action.priority === 'critical');
+    if (actionEngineFilter === 'today') return sortedActionEngineEntries.filter((e) => e.action.urgency === 'today' || e.action.urgency === 'overdue');
+    if (actionEngineFilter === 'week') return sortedActionEngineEntries.filter((e) => e.action.urgency !== 'none');
+    return sortedActionEngineEntries.filter((e) => e.action.actionType === actionEngineFilter);
+  }, [sortedActionEngineEntries, actionEngineFilter]);
+
+  const actionEngineCounters = useMemo(() => {
+    const counts: Record<ActionType, number> = {
+      complete_qualification: 0,
+      request_photos: 0,
+      schedule_appointment: 0,
+      send_quote: 0,
+      follow_up_quote: 0,
+      review_quote_decline: 0,
+      schedule_intervention: 0,
+      ask_review: 0,
+      monitor: 0,
+    };
+    actionEngineEntries.forEach(({ action }) => {
+      counts[action.actionType] += 1;
+    });
+    return counts;
+  }, [actionEngineEntries]);
+
+  const criticalActionsCount = actionEngineEntries.filter((e) => e.action.priority === 'critical').length;
+  const highActionsCount = actionEngineEntries.filter((e) => e.action.priority === 'high').length;
+  const averageMaturityScore = actionEngineEntries.length > 0
+    ? actionEngineEntries.reduce((sum, e) => sum + e.action.maturityScore, 0) / actionEngineEntries.length
+    : null;
+
+  const businessHealth: { label: string; color: string; emoji: string } = !actionEngineEntries.length
+    ? { label: 'Pas encore de donnees', color: 'var(--text-2)', emoji: '⚪' }
+    : criticalActionsCount > 0
+      ? { label: 'Actions urgentes', color: '#dc2626', emoji: '🔴' }
+      : highActionsCount >= 3 || (averageMaturityScore !== null && averageMaturityScore < 50)
+        ? { label: 'À surveiller', color: '#d97706', emoji: '🟡' }
+        : { label: 'En excellente santé', color: '#16a34a', emoji: '🟢' };
+
+  const todayActionTypes: ActionType[] = ['send_quote', 'follow_up_quote', 'schedule_appointment'];
+  const todayActionEntries = actionEngineEntries.filter((e) =>
+    todayActionTypes.includes(e.action.actionType) && (e.action.urgency === 'today' || e.action.urgency === 'overdue'),
+  );
+  const todayActionsByType = todayActionTypes.reduce((acc, type) => {
+    acc[type] = todayActionEntries.filter((e) => e.action.actionType === type).length;
+    return acc;
+  }, {} as Record<ActionType, number>);
+  const todayEstimatedMinutes = todayActionEntries.reduce((sum, e) => sum + parseDurationMinutes(e.action.estimatedDuration), 0);
+
+  const todayCallbacks = activeProjects.filter((project) => {
     if (!project.callbackDate) return false;
 
     const callbackKey = String(project.callbackDate).slice(0, 10);
@@ -963,7 +1880,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     return callbackKey === todayKey;
   });
 
-  const overdueCallbacksOnly = allProjects.filter((project) => {
+  const overdueCallbacks = activeProjects.filter((project) => {
     if (!project.callbackDate) return false;
     if (project.status === 'Gagné' || project.status === 'Perdu') return false;
 
@@ -971,26 +1888,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
     return !Number.isNaN(callbackTime) && callbackTime < now;
   });
-
-  // Inclut aussi les projets liés à un événement calendrier en retard / du jour,
-  // pour rester cohérent avec les compteurs overdueCount / todayCount (basés sur les événements).
-  const overdueEventProjectIds = new Set(overdueEvents.map((e: any) => e.projectId).filter(Boolean));
-  const todayEventProjectIds = new Set(todayEvents.map((e: any) => e.projectId).filter(Boolean));
-
-  const overdueCallbacks = Array.from(
-    new Map(
-      [...overdueCallbacksOnly, ...allProjects.filter((p) => p.id && overdueEventProjectIds.has(p.id))]
-        .map((project) => [project.id, project]),
-    ).values(),
-  );
-
-  const todayCallbacksFromEvents = allProjects.filter((p) => p.id && todayEventProjectIds.has(p.id));
-
-  const todayCallbacks = Array.from(
-    new Map(
-      [...todayCallbacksOnly, ...todayCallbacksFromEvents].map((project) => [project.id, project]),
-    ).values(),
-  );
 
   const overdueCount = overdueEvents.length;
   const todayCount = todayEvents.length;
@@ -1005,28 +1902,41 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     { label: 'Gagné', value: allProjects.filter((p) => p.status === 'Gagné').length },
   ];
 
-  const topOpportunities = [...allProjects]
+  const topOpportunities = [...activeProjects]
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
-    .sort((a, b) => opportunityScore(b) - opportunityScore(a))
+    .sort((a, b) => opportunityScore(b, artisanTrades) - opportunityScore(a, artisanTrades))
     .slice(0, 5);
 
-  const hotLeads = allProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
-  const riskProjects = allProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
-  const todayTasks = buildAutomaticTasks(allProjects).filter((task) => {
+  const hotLeads = activeProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
+  const riskProjects = activeProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
+  const todayTasks = buildAutomaticTasks(activeProjects).filter((task) => {
     const due = new Date(task.dueDate);
     return !Number.isNaN(due.getTime()) && due <= new Date(Date.now() + 24 * 60 * 60 * 1000);
   });
 
   const filteredProjects = useMemo(
-    () => filterProjects(allProjects, filters),
-    [allProjects, filters],
+    () => filterProjects(dashboardMode === 'clients' ? allProjects : activeProjects, filters, { skipStatusFilter: dashboardMode === 'clients' }),
+    [allProjects, activeProjects, filters, dashboardMode],
+  );
+
+  const clientSummaries = useMemo(
+    () => groupProjectsByClient(filteredProjects),
+    [filteredProjects],
+  );
+
+  const displayedClients = useMemo(
+    () =>
+      sortClientSummaries(
+        filters.statut ? clientSummaries.filter((c) => c.relationshipStatus === filters.statut) : clientSummaries,
+      ),
+    [clientSummaries, filters.statut],
   );
 
   const sortedProjects = useMemo(
     () =>
       [...filteredProjects].sort((a, b) => {
-        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        const da = getReceivedSortTimestamp(a.createdAt);
+        const db = getReceivedSortTimestamp(b.createdAt);
 
         return db - da;
       }),
@@ -1039,6 +1949,36 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         .filter((project) => project.id)
         .map((project) => [project.id, project]),
     ).values(),
+  );
+
+  // Coach Kadria : orchestration pure des moteurs deja calcules (Action
+  // Engine, Progression Engine, quotas, agenda). Aucun nouveau calcul.
+  const coachProjectEntries: KadriaCoachProjectEntry[] = actionEngineEntries.map(({ project, action }) => ({
+    id: project.id,
+    clientLabel: project.clientName || project.clientFirstName || 'Client',
+    action,
+    href: project.id ? `/dashboard-v2/projet/${project.id}` : undefined,
+  }));
+
+  const calendarConnected = progressRecommendations
+    ? progressRecommendations.progress.steps.find((s) => s.key === 'calendar')?.status === 'done'
+    : false;
+
+  const kadriaCoach = computeKadriaCoach({
+    projects: coachProjectEntries,
+    progression: progressRecommendations,
+    usageSummary: monthlyUsage,
+    calendarStatus: { connected: calendarConnected },
+  });
+
+  const callsProjects = activeProjects.filter((project) =>
+    todayTasks.some((task) => task.type === 'call' && task.projectId === project.id),
+  );
+  const quotesProjects = activeProjects.filter((project) =>
+    todayTasks.some((task) => task.type === 'quote' && task.projectId === project.id),
+  );
+  const followupsProjects = activeProjects.filter((project) =>
+    todayTasks.some((task) => (task.type === 'followUp' || task.type === 'email') && task.projectId === project.id),
   );
 
   const displayedProjects =
@@ -1054,7 +1994,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               ? topOpportunities
               : quickFilter === 'priority'
                 ? priorityProjects
-                : sortedProjects;
+                : quickFilter === 'calls'
+                  ? callsProjects
+                  : quickFilter === 'quotes'
+                    ? quotesProjects
+                    : quickFilter === 'followups'
+                      ? followupsProjects
+                      : sortedProjects;
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -1067,6 +2013,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     setFilters(DEFAULT_FILTERS);
     setSearchInput('');
     document.getElementById('project-list-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const goToCommercialFilter = (value: 'calls' | 'quotes' | 'followups') => {
+    setDashboardMode('commercial');
+    applyQuickFilter(value);
   };
 
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -1095,11 +2046,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
   };
 
+  // Mode demo : la tache est creee uniquement dans DemoModeContext (etat
+  // local), jamais via /api/events.
   const createFollowUpTask = async (project: { id: string; clientFirstName?: string; clientName?: string }) => {
     try {
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      createEvent({
+      demoCreateEvent({
         title: `Rappeler ${[project.clientFirstName, project.clientName].filter(Boolean).join(' ')}`.trim() || 'Rappeler le prospect',
         date: `${today}T09:00:00`,
         type: 'Rappel',
@@ -1147,33 +2100,33 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     }
 
     setExportMenuOpen(false);
-    showToast(type === 'monthly' ? 'Mode demo : rapport PDF simule.' : 'Mode demo : export PDF simule.');
+    showToast('✓ PDF en cours de génération...');
 
     try {
+      // Mode demo : aucun appel reseau vers /api/export/pdf. On genere un HTML
+      // factice localement et on l'ouvre dans un nouvel onglet (meme UX que la
+      // production, sans backend reel).
+      const projectsForExport = type === 'monthly' ? allProjects : filteredProjects;
+      const dateStr = format(new Date(), 'dd/MM/yyyy');
+      const rowsHtml = projectsForExport
+        .map(
+          (p: any) =>
+            `<tr><td>${p.projectNumber || ''}</td><td>${[p.clientFirstName, p.clientName].filter(Boolean).join(' ')}</td><td>${p.status || ''}</td><td>${p.trade || ''}</td></tr>`
+        )
+        .join('');
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Export Kadria (demo)</title>
+        <style>body{font-family:sans-serif;padding:24px;}table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left;}</style>
+        </head><body>
+        <h1>Export ${type === 'monthly' ? 'mensuel' : 'dossiers'} — ${dateStr}</h1>
+        <p>${activeFilterLabels.join(', ')}</p>
+        <table><thead><tr><th>N°</th><th>Client</th><th>Statut</th><th>Métier</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+        <p style="margin-top:24px;color:#888;">Document généré en mode démo — aucune donnée réelle.</p>
+        </body></html>`;
       const win = window.open('', '_blank');
-      if (!win) return;
-      const projectCount = type === 'monthly' ? allProjects.length : filteredProjects.length;
-      win.document.write(`
-        <html lang="fr">
-          <head>
-            <title>Export demo Kadria</title>
-            <style>
-              body { font-family: Inter, Arial, sans-serif; background: #09090b; color: #f4f4f5; padding: 32px; }
-              .card { max-width: 680px; margin: 40px auto; border: 1px solid #27272a; border-radius: 20px; padding: 28px; background: #111113; }
-              h1 { margin: 0 0 12px; font-size: 28px; }
-              p { color: #a1a1aa; line-height: 1.6; }
-            </style>
-          </head>
-          <body>
-            <div class="card">
-              <h1>Export demo Kadria</h1>
-              <p>Cette prévisualisation simule l'export ${type === 'monthly' ? 'du rapport mensuel' : 'PDF'} sans appel réseau.</p>
-              <p>${projectCount} dossier(s) seraient inclus avec les filtres actuels.</p>
-            </div>
-          </body>
-        </html>
-      `);
-      win.document.close();
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      }
     } catch (error) {
       console.error('EXPORT_PDF_ERROR', error);
       showToast('✗ Erreur lors de l’export', true);
@@ -1214,20 +2167,16 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   );
 
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
-  const primaryHotLead = hotLeads.find((project) => opportunityScore(project) >= 80 || Number(project.completenessScore || 0) >= 100);
-  const primaryHotLeadName = primaryHotLead
-    ? [primaryHotLead.clientFirstName, primaryHotLead.clientName].filter(Boolean).join(' ') || 'Dossier prioritaire'
-    : '';
-  const primaryHotLeadReason = primaryHotLead && Number(primaryHotLead.completenessScore || 0) >= 100
-    ? 'dossier pret a chiffrer'
-    : primaryHotLead
-      ? getHotLeadMessage(primaryHotLead).replace(/^.* a /, '').replace(/^.* montre /, '')
-      : '';
-  const showBusinessOverview = dashboardMode === 'all' || dashboardMode === 'commercial';
-  const showTasksOverview = dashboardMode === 'all' || dashboardMode === 'tasks';
-  const showCommercialWorkspace = dashboardMode === 'all' || dashboardMode === 'commercial';
+  const showValueOverview = dashboardMode === 'value';
+  const showBusinessOverview = dashboardMode === 'commercial';
+  const showTasksOverview = dashboardMode === 'tasks';
+  const showCommercialWorkspace = dashboardMode === 'commercial';
   const showClientsWorkspace = dashboardMode === 'clients';
   const showCalendarWorkspace = dashboardMode === 'calendar';
+  const showCalendarWorkspaceDesktop = showCalendarWorkspace && !isMobile;
+  const showPipelineWorkspace = dashboardMode === 'pipeline';
+  const showValueReportWorkspace = dashboardMode === 'value-report';
+  const showBusinessOverviewDesktop = showBusinessOverview && !isMobile;
 
 
   const kpiCards: {
@@ -1299,7 +2248,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       alert: relanceCount > 0,
     },
     {
-      label: 'Dossiers en risque',
+      label: 'Opportunités à sécuriser',
       value: riskProjects.length,
       delta: null,
       icon: AlertTriangle,
@@ -1318,207 +2267,979 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     },
   ];
 
+  // --- Vue "Valeur générée par Kadria" — calculs V1 sans nouvelle API ---
+  // Règles métriques figées : CA potentiel = tous les projets sauf Gagné/Perdu ;
+  // CA gagné = projets Gagné + devis acceptés (acceptedAt), sans double comptage ;
+  // devis acceptés = acceptedAt renseigné (avec fallback statut Gagné, seul signal
+  // disponible sur les projets tant que le détail des devis n'est pas chargé ici).
+  const canSeeAdvancedValueDashboard = canAccessFeature('advancedValueDashboard');
+  const projectValue = (p: Project) => p.devisAmount || parseBudget(p.budget || '');
+  const isAcceptedValueProject = (p: Project) => p.status === 'Gagné' || Boolean(p.acceptedAt);
+
+  // Le filtre source détaillé est réservé Performance+ ; en Essentiel, on ignore la
+  // sélection et on retombe sur "Toutes les sources".
+  const effectiveValueSourceFilter: ValueSourceFilter = canSeeAdvancedValueDashboard ? valueSourceFilter : 'all';
+  const valuePeriodRange = getValuePeriodRange(valuePeriod, today);
+  const valuePreviousPeriodRange = getPreviousValuePeriodRange(valuePeriod, today);
+
+  const matchesValuePeriod = (p: Project, range: { start: Date; end: Date } | null) => {
+    if (!range) return true;
+    if (!p.createdAt) return false;
+
+    const created = new Date(p.createdAt);
+
+    // Date invalide ou future incohérente : exclue des périodes limitées.
+    if (Number.isNaN(created.getTime()) || created.getTime() > now + 24 * 60 * 60 * 1000) return false;
+
+    return created >= range.start && created <= range.end;
+  };
+
+  const matchesValueSource = (p: Project) =>
+    effectiveValueSourceFilter === 'all' || normalizeValueSource(p.source) === effectiveValueSourceFilter;
+
+  const valueFilteredProjects = activeProjects.filter(
+    (p) => matchesValuePeriod(p, valuePeriodRange) && matchesValueSource(p),
+  );
+  const valuePreviousFilteredProjects = valuePreviousPeriodRange
+    ? activeProjects.filter((p) => matchesValuePeriod(p, valuePreviousPeriodRange) && matchesValueSource(p))
+    : [];
+  const valueFilteredIds = new Set(valueFilteredProjects.map((p) => p.id));
+  const hasValueData = valueFilteredProjects.length > 0;
+
+  const wonProjects = valueFilteredProjects.filter(isAcceptedValueProject);
+  const openValueProjects = valueFilteredProjects.filter((p) => !isAcceptedValueProject(p) && p.status !== 'Perdu');
+  const valueCaEnCours = openValueProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const valueCaGagne = wonProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const valueDevisEnvoyesCount = valueFilteredProjects.filter((p) => p.status === 'Devis envoyé').length;
+  const valueDevisAcceptesCount = wonProjects.length;
+  const valueTauxConversion = valueDevisEnvoyesCount > 0
+    ? (valueDevisAcceptesCount / valueDevisEnvoyesCount) * 100
+    : null;
+  const valueNouveauxCount = valueFilteredProjects.filter((p) => p.status === 'Nouveau').length;
+  const valueARappelerCount = valueFilteredProjects.filter((p) => p.status === 'À rappeler').length;
+  const valueARelancerCount = valueFilteredProjects.filter((p) => p.status === 'A relancer').length;
+
+  // Comparaison période précédente (V1) : uniquement disponible si une période
+  // limitée est sélectionnée — "Tout" n'a pas de période précédente comparable.
+  const previousWonProjects = valuePreviousFilteredProjects.filter(isAcceptedValueProject);
+  const previousOpenProjects = valuePreviousFilteredProjects.filter((p) => !isAcceptedValueProject(p) && p.status !== 'Perdu');
+  const previousCaEnCours = previousOpenProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const previousCaGagne = previousWonProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const previousDevisEnvoyesCount = valuePreviousFilteredProjects.filter((p) => p.status === 'Devis envoyé').length;
+  const previousDevisAcceptesCount = previousWonProjects.length;
+  const previousDossiersCount = valuePreviousFilteredProjects.length;
+
+  const valueComparisons = {
+    dossiers: formatValueCountDelta(valueFilteredProjects.length, previousDossiersCount, 'dossier(s)'),
+    caEnCours: formatValuePercentDelta(valueCaEnCours, previousCaEnCours),
+    caGagne: formatValuePercentDelta(valueCaGagne, previousCaGagne),
+    devisEnvoyes: formatValueCountDelta(valueDevisEnvoyesCount, previousDevisEnvoyesCount, 'devis'),
+    devisAcceptes: formatValueCountDelta(valueDevisAcceptesCount, previousDevisAcceptesCount, 'devis'),
+  };
+
+  // Alerte "devis sans réponse" V1 : seuil fixe (10 jours) défini dans
+  // getProjectRiskStatus. À terme, ce seuil devra être configurable par artisan.
+  const staleQuoteProjects = valueFilteredProjects.filter((p) => {
+    const risk = getProjectRiskStatus(p);
+    return risk.status === 'followUp' && risk.reason.startsWith('Devis envoye');
+  });
+  const incompleteValueProjects = valueFilteredProjects.filter((p) => {
+    const risk = getProjectRiskStatus(p);
+    return risk.status === 'followUp' && risk.reason.startsWith('Dossier incomplet');
+  });
+  const valueHotLeads = valueFilteredProjects.filter(
+    (p) => p.status !== 'Gagné' && p.status !== 'Perdu' && isHotLead(p),
+  );
+  const uncontactedHotLeads = valueHotLeads.filter((p) => !p.lastFollowUpAt);
+  const pendingSentQuoteProjects = valueFilteredProjects.filter((p) => p.status === 'Devis envoyé' && !p.acceptedAt);
+  const valueQuotesProjects = quotesProjects.filter((p) => valueFilteredIds.has(p.id));
+
+  type ValueAction = { key: string; title: string; client: string; context: string; projectId: string };
+  const valueActions: ValueAction[] = [];
+  const seenValueActionProjects = new Set<string>();
+  const pushValueAction = (project: Project, title: string, context: string) => {
+    if (!project?.id || seenValueActionProjects.has(project.id)) return;
+    seenValueActionProjects.add(project.id);
+    valueActions.push({
+      key: `${project.id}-${title}`,
+      title,
+      client: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier',
+      context,
+      projectId: project.id,
+    });
+  };
+  // Alertes/opportunités avancées (devis sans réponse, opportunités chaudes) réservées Performance+.
+  if (canSeeAdvancedValueDashboard) {
+    staleQuoteProjects.forEach((p) => {
+      const amount = projectValue(p);
+      pushValueAction(
+        p,
+        'Devis à relancer',
+        `${amount > 0 ? `${formatCurrency(amount)} en attente · ` : ''}Devis envoyé depuis ${getProjectRiskStatus(p).daysWithoutAction ?? '—'} j sans réponse`,
+      );
+    });
+  }
+  valueQuotesProjects.forEach((p) => {
+    const amount = projectValue(p);
+    pushValueAction(p, 'Devis à envoyer', amount > 0 ? `Budget estimé ${formatCurrency(amount)}` : 'Budget non renseigné');
+  });
+  todayCallbacks
+    .filter((p) => valueFilteredIds.has(p.id))
+    .forEach((p) => pushValueAction(p, "Rappel prévu aujourd'hui", 'Rappel programmé ce jour'));
+  if (canSeeAdvancedValueDashboard) {
+    uncontactedHotLeads.forEach((p) => {
+      const amount = projectValue(p);
+      pushValueAction(
+        p,
+        'Opportunité chaude',
+        amount > 0 ? `${getHotLeadMessage(p)} · ${formatCurrency(amount)} potentiel` : getHotLeadMessage(p),
+      );
+    });
+  }
+  incompleteValueProjects.forEach((p) => {
+    const amount = projectValue(p);
+    pushValueAction(
+      p,
+      'Dossier incomplet',
+      amount > 0 ? `Informations manquantes · budget estimé ${formatCurrency(amount)}` : 'Informations manquantes — budget non renseigné',
+    );
+  });
+  const topValueActions = valueActions.slice(0, canSeeAdvancedValueDashboard ? 5 : 3);
+
+  const priorityAction = valueActions[0] || null;
+  const priorityActionTitle = priorityAction
+    ? priorityAction.title === 'Devis à relancer'
+      ? `Relancer le devis de ${priorityAction.client}`
+      : priorityAction.title === 'Devis à envoyer'
+        ? `Envoyer le devis à ${priorityAction.client}`
+        : priorityAction.title === "Rappel prévu aujourd'hui"
+          ? `Rappeler ${priorityAction.client}`
+          : priorityAction.title === 'Opportunité chaude'
+            ? `Relancer ${priorityAction.client} — opportunité chaude`
+            : `Compléter le dossier de ${priorityAction.client}`
+    : 'Tout est à jour pour le moment';
+
+  // "Valeur en attente" V1 : argent potentiellement récupérable à court terme,
+  // sans double comptage (devis envoyés en attente englobe les devis sans réponse).
+  const pendingQuoteValue = pendingSentQuoteProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const staleQuoteValue = staleQuoteProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const hotLeadPendingValue = uncontactedHotLeads.reduce((sum, p) => sum + projectValue(p), 0);
+  const quotesToSendValue = valueQuotesProjects.reduce((sum, p) => sum + projectValue(p), 0);
+  const totalPendingValue = pendingQuoteValue + hotLeadPendingValue + quotesToSendValue;
+
+  const qualifiedValueCount = valueFilteredProjects.filter((p) => Number(p.completenessScore || 0) >= 100).length;
+  const preparedQuotesValueCount = valueFilteredProjects.filter((p) => p.status === 'Devis envoyé' || Boolean(p.devisAmount)).length;
+  const handledFollowUpsValueCount = valueFilteredProjects.filter((p) => p.lastFollowUpAt).length;
+  const estimatedMinutesSaved = qualifiedValueCount * 8 + preparedQuotesValueCount * 5 + handledFollowUpsValueCount * 5;
+  const estimatedHoursSaved = Math.floor(estimatedMinutesSaved / 60);
+  const estimatedRemMinutesSaved = estimatedMinutesSaved % 60;
+
+  const valueSourceStats = SOURCE_OPTIONS.map((opt) => {
+    const sourceProjects = valueFilteredProjects.filter((p) => {
+      const src = (p.source || '').toLowerCase();
+      if (opt.value === 'chat') return src.includes('chat');
+      if (opt.value === 'voice') return src.includes('voice') || src.includes('vocal') || src.includes('call');
+      if (opt.value === 'manual') return src.includes('manual') || src.includes('manuel');
+      return false;
+    });
+    return {
+      label: opt.label,
+      count: sourceProjects.length,
+      amount: sourceProjects.reduce((sum, p) => sum + projectValue(p), 0),
+    };
+  }).filter((s) => s.count > 0);
+  const mostValuableSource = valueSourceStats.length > 0
+    ? [...valueSourceStats].sort((a, b) => b.amount - a.amount)[0]
+    : null;
+
+  const NAV_ITEMS: { mode: DashboardMode; label: string; icon: typeof Euro }[] = [
+    { mode: 'value', label: 'Valeur générée', icon: Euro },
+    { mode: 'commercial', label: 'Suivi commercial', icon: Target },
+    { mode: 'calendar', label: 'Calendrier', icon: CalendarDays },
+    { mode: 'clients', label: 'Mes clients', icon: FolderOpen },
+    { mode: 'tasks', label: 'Mes taches a faire', icon: CheckCircle },
+  ];
+
   return (
-    <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', padding: isMobile ? '16px 14px 32px' : '24px 32px 40px', overflowX: 'hidden' }}>
-      {/* Header */}
-      <div
-        style={{
-          padding: 0,
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          justifyContent: 'space-between',
-          alignItems: isMobile ? 'stretch' : 'flex-start',
-          marginBottom: '24px',
-          gap: '16px',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: 'var(--accent)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 700, letterSpacing: '1px', margin: '0 0 6px' }}>
-            Kadria Pro
-          </p>
-
-          <h1 style={{ color: 'var(--text-1)', fontSize: '32px', fontWeight: 700, margin: '0 0 6px' }}>
-            Tableau de bord
-          </h1>
-
-          <p style={{ color: 'var(--text-3)', fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>
-            {todayLabel}
-          </p>
-        </div>
-
-        {isMobile ? (
-          <div style={{ width: '100%', position: 'relative' }}>
-            <button
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-1)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                gap: '8px',
-              }}
-            >
-              <span>☰ Menu</span>
-              <span>{theme === 'dark' ? '🌙' : '☀️'}</span>
-            </button>
-
-            {mobileMenuOpen && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  marginTop: '8px',
-                  padding: '12px',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                }}
-              >
-                {[
-                  { mode: 'all' as const, label: 'Vue complete' },
-                  { mode: 'commercial' as const, label: 'Suivi commercial' },
-                  { mode: 'calendar' as const, label: 'Calendrier' },
-                  { mode: 'clients' as const, label: 'Mes clients' },
-                  { mode: 'tasks' as const, label: 'Mes taches a faire' },
-                ].map((item) => (
-                  <button
-                    key={item.mode}
-                    type="button"
-                    onClick={() => {
-                      setDashboardMode(item.mode);
-                      setQuickFilter(null);
-                      setMobileMenuOpen(false);
-                    }}
-                    style={navButtonStyle(dashboardMode === item.mode)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-
-                <button
-                  onClick={toggleTheme}
-                  style={{
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-2)',
-                    borderRadius: '8px',
-                    padding: '9px 12px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    textAlign: 'left',
-                  }}
-                >
-                  {theme === 'dark' ? '☀️ Thème clair' : '🌙 Thème sombre'}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/demo-dashboard/onboarding');
-                  }}
-                  style={{
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-2)',
-                    borderRadius: '8px',
-                    padding: '9px 14px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                  }}
-                >
-                  ⚙️ Mon profil
-                </button>
-
-                <button
-                  onClick={logout}
-                  className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
-                  style={{ padding: '9px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}
-                >
-                  <LogOut className="w-4 h-4" /> Déconnexion
-                </button>
+    <div className="dashboard-shell" style={{ minHeight: '100vh', background: 'var(--bg)', display: isMobile ? 'block' : 'flex', overflowX: 'hidden' }}>
+      {!isMobile && (
+        <aside
+          className="sticky top-0 flex h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg-elevated)] py-6"
+          style={{
+            background: 'color-mix(in srgb, var(--bg-elevated) 92%, #050607 8%)',
+            width: sidebarCollapsed ? '76px' : '252px',
+            paddingLeft: sidebarCollapsed ? '10px' : '16px',
+            paddingRight: sidebarCollapsed ? '10px' : '16px',
+            transition: 'width 0.2s ease, padding 0.2s ease',
+            overflow: 'hidden',
+          }}
+        >
+        <div className="flex h-full flex-col">
+          <div className={`mb-8 flex items-center shrink-0 ${sidebarCollapsed ? 'flex-col gap-3 px-0' : 'justify-between px-2'}`}>
+            {sidebarCollapsed ? (
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-400">K</p>
+            ) : (
+              <div className="min-w-0 pr-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-extrabold text-[var(--text-1)]">KADRIA</span>
+                  <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-400">PRO</span>
+                </div>
+                <div className="mt-3 text-base font-semibold text-[var(--text-1)]">
+                  {artisanFirstName ? `Bonjour ${artisanFirstName}` : 'Bonjour'}
+                </div>
+                <div className="mt-1 text-sm text-[var(--text-3)]">
+                  {formattedToday}
+                </div>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              aria-label={sidebarCollapsed ? 'Déployer le menu' : 'Réduire le menu'}
+              title={sidebarCollapsed ? 'Déployer le menu' : 'Réduire le menu'}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
           </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: 'auto' }}>
-            {[
-              { mode: 'all' as const, label: 'Vue complete' },
-              { mode: 'commercial' as const, label: 'Suivi commercial' },
-              { mode: 'calendar' as const, label: 'Calendrier' },
-              { mode: 'clients' as const, label: 'Mes clients' },
-              { mode: 'tasks' as const, label: 'Mes taches a faire' },
-            ].map((item) => (
-              <button
-                key={item.mode}
-                type="button"
-                onClick={() => {
-                  setDashboardMode(item.mode);
-                  setQuickFilter(null);
-                }}
-                style={navButtonStyle(dashboardMode === item.mode)}
+
+          <nav className={`flex flex-1 flex-col gap-1 overflow-y-auto ${sidebarCollapsed ? 'items-center' : ''}`}>
+            {NAV_ITEMS.map((item) => {
+              const isActive = dashboardMode === item.mode;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.mode}
+                  type="button"
+                  onClick={() => {
+                    setDashboardMode(item.mode);
+                    setQuickFilter(null);
+                  }}
+                  title={item.label}
+                  aria-label={item.label}
+                  className={
+                    sidebarCollapsed
+                      ? `flex h-10 w-10 items-center justify-center rounded-xl border transition-colors duration-150 ${
+                          isActive
+                            ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                            : 'border-transparent text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
+                        }`
+                      : `flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors duration-150 ${
+                          isActive
+                            ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                            : 'border-transparent text-[var(--text-2)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]'
+                        }`
+                  }
+                  style={isActive && !sidebarCollapsed ? { boxShadow: 'inset 3px 0 0 0 var(--accent)' } : undefined}
+                >
+                  <Icon className="h-[18px] w-[18px] shrink-0" />
+                  {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
+
+          {isTrialActive && trialEndDateFR && (
+            sidebarCollapsed ? (
+              <div
+                className="mb-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500/10 text-green-400"
+                title={`Essai gratuit Performance jusqu'au ${trialEndDateFR}`}
               >
-                {item.label}
-              </button>
-            ))}
+                <Sparkles className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="mb-2 shrink-0 rounded-xl border border-green-500/30 bg-green-500/[0.08] px-3 py-2.5">
+                <p className="text-xs font-semibold text-green-400">Vous testez Kadria Performance</p>
+                <p className="mt-0.5 text-xs text-[var(--text-2)]">Essai gratuit jusqu&apos;au {trialEndDateFR}</p>
+              </div>
+            )
+          )}
+
+          <div className={`mt-auto flex shrink-0 flex-col gap-2 border-t border-[var(--border)] pt-4 ${sidebarCollapsed ? 'items-center' : ''}`}>
+            <button
+              onClick={() => setPlanModalOpen(true)}
+              title={planChangeCtaLabel}
+              aria-label={planChangeCtaLabel}
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] text-[var(--accent)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-2.5 text-sm font-semibold text-[var(--accent)]'
+              }
+            >
+              <Sparkles className="w-4 h-4" /> {!sidebarCollapsed && planChangeCtaLabel}
+            </button>
+
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-2)',
-                borderRadius: '8px',
-                padding: '9px 12px',
-                cursor: 'pointer',
-                fontSize: '14px',
-              }}
+              aria-label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]'
+              }
             >
-              {theme === 'dark' ? '☀️' : '🌙'}
+              {theme === 'dark' ? '☀️' : '🌙'} {!sidebarCollapsed && (theme === 'dark' ? 'Thème clair' : 'Thème sombre')}
             </button>
 
             <button
-              onClick={() => router.push('/demo-dashboard/onboarding')}
-              style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-2)',
-                borderRadius: '8px',
-                padding: '9px 14px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-              }}
+              onClick={() => router.push('/parametres')}
+              title="Mon profil"
+              aria-label="Mon profil"
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-[var(--text-2)]'
+              }
             >
-              ⚙️ Mon profil
+              ⚙️ {!sidebarCollapsed && 'Mon profil'}
             </button>
 
             <button
               onClick={logout}
               title="Déconnexion"
-              className="bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-2)] rounded-lg"
-              style={{ padding: '9px 12px', cursor: 'pointer' }}
+              aria-label="Déconnexion"
+              className={
+                sidebarCollapsed
+                  ? 'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                  : 'flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2.5 text-sm text-[var(--text-2)]'
+              }
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" /> {!sidebarCollapsed && 'Déconnexion'}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+        </aside>
+      )}
+
+      <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
+      {!coachCardDismissed && isMobile && (
+        <MobileCoachKadriaCard
+          coach={kadriaCoach}
+          onDismiss={() => setCoachCardDismissed(true)}
+          onAction={(actionType, href) => {
+            if (actionType === 'connect_calendar') setDashboardMode('calendar');
+            else if (href) router.push(href);
+          }}
+          onViewDashboard={() => setDashboardMode('value')}
+        />
+      )}
+      {!coachCardDismissed && !isMobile && (
+        <div
+          style={{
+            border: '1px solid var(--accent-border, var(--border))',
+            background: 'linear-gradient(135deg, var(--bg-elevated), var(--accent-dim, var(--bg-elevated)))',
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+            <div style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700 }}>{kadriaCoach.title}</div>
+            <button
+              onClick={() => setCoachCardDismissed(true)}
+              aria-label="Fermer"
+              style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '14px' }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ color: 'var(--text-2)', fontSize: '13px', marginBottom: '14px' }}>
+            {kadriaCoach.message}
+          </div>
+
+          {kadriaCoach.primaryAction && (
+            <div
+              style={{
+                border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 14px',
+                background: 'var(--bg-elevated)', marginBottom: '12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>{kadriaCoach.primaryAction.title}</div>
+                <div style={{ color: 'var(--text-3)', fontSize: '12px', marginTop: '2px' }}>
+                  {kadriaCoach.primaryAction.estimatedTime ? `${kadriaCoach.primaryAction.estimatedTime} · ` : ''}
+                  {kadriaCoach.primaryAction.description}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const action = kadriaCoach.primaryAction;
+                  if (!action) return;
+                  if (action.actionType === 'connect_calendar') setDashboardMode('calendar');
+                  else if (action.href) router.push(action.href);
+                }}
+                style={{
+                  background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                  borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {kadriaCoach.primaryAction.ctaLabel}
+              </button>
+            </div>
+          )}
+
+          {kadriaCoach.recommendations.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {kadriaCoach.recommendations.map((rec, idx) => (
+                <button
+                  key={`${rec.actionType}-${idx}`}
+                  onClick={() => {
+                    if (rec.actionType === 'connect_calendar') setDashboardMode('calendar');
+                    else if (rec.href) router.push(rec.href);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                    textAlign: 'left', background: 'none', border: '1px solid var(--border)', borderRadius: '8px',
+                    padding: '8px 10px', cursor: 'pointer', color: 'var(--text-2)', fontSize: '12px',
+                  }}
+                >
+                  <span>· {rec.title}</span>
+                  <span style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{rec.ctaLabel}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {showTrialEndingBanner && (
+        <div
+          className="mb-5 flex flex-col gap-3 rounded-2xl border border-green-500/30 bg-green-500/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500/10 text-green-400">
+              <Clock className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-1)]">Votre essai se termine bientôt.</p>
+              <p className="mt-0.5 text-sm text-[var(--text-2)]">Continuez avec Performance ou choisissez une offre adaptée.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={continueWithPerformance}
+              disabled={continueTrialLoading}
+              className="inline-flex items-center justify-center rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-green-400 disabled:opacity-60"
+            >
+              {continueTrialLoading ? '...' : 'Continuer avec Performance'}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/tarifs')}
+              className="inline-flex items-center justify-center rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
+            >
+              Voir les offres
+            </button>
+            <button
+              type="button"
+              aria-label="Fermer"
+              onClick={() => setTrialBannerDismissed(true)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      {onboardingIncomplete && (
+        <div
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.3)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+          }}
+        >
+          <span style={{ color: 'var(--text-2)', fontSize: '13px' }}>
+            Finalisez votre configuration pour mieux qualifier vos prospects.
+          </span>
+          <button
+            onClick={() => router.push('/onboarding')}
+            style={{
+              background: 'var(--accent)',
+              border: 'none',
+              color: 'black',
+              fontWeight: 600,
+              borderRadius: '8px',
+              padding: '7px 14px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Reprendre l&apos;onboarding
+          </button>
+        </div>
+      )}
+      {progressRecommendations && progressRecommendations.progress.percent < 100 && !setupCardDismissed && (
+        <div
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: isMobile ? '14px' : '18px',
+            marginBottom: '20px',
+            background: 'var(--bg-elevated)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+            <div>
+              <div style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>
+                🚀 Centre de progression
+              </div>
+              <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                {progressRecommendations.globalMessage}
+              </div>
+            </div>
+            <div style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+              {progressRecommendations.progress.percent}%
+            </div>
+          </div>
+
+          <div style={{ height: '6px', borderRadius: '4px', background: 'var(--border)', overflow: 'hidden', marginBottom: '8px' }}>
+            <div style={{ height: '100%', width: `${progressRecommendations.progress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+          </div>
+
+          <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '14px' }}>
+            Encore environ {progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+            {progressRecommendations.nextSteps.slice(0, 3).map((s) => (
+              <div
+                key={s.key}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                  border: '1px solid var(--border)', borderRadius: '10px', padding: '8px 10px', background: 'var(--bg-elevated)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <span style={{ fontSize: '16px' }}>{s.icon}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>{s.title}</div>
+                    <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                      {s.estimatedTime} · ✓ {s.benefits[0]}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => (s.key === 'calendar' ? setDashboardMode('calendar') : router.push(s.href))}
+                  style={{
+                    background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                    borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {s.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {pathname.startsWith('/parametres') && progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (
+        <div
+          style={{
+            border: '1px solid rgba(34,197,94,0.3)',
+            background: 'rgba(34,197,94,0.08)',
+            borderRadius: '14px',
+            padding: isMobile ? '14px' : '18px',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
+            <div>
+              <div style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>
+                🎉 Votre entreprise est prête.
+              </div>
+              <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                Toutes les fonctionnalités de Kadria peuvent désormais fonctionner à leur plein potentiel.
+              </div>
+            </div>
+            <button
+              onClick={() => setSetupCardDismissed(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '14px' }}
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+            <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Profil métier</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Prestations</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Tarifs</span>
+            <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Agenda</span>
+          </div>
+          <button
+            onClick={() => router.push('/parametres/profil-metier')}
+            style={{
+              background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+              borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer',
+            }}
+          >
+            Découvrir les prochaines fonctionnalités
+          </button>
+        </div>
+      )}
+      {isMobile && dashboardMode === 'value' ? (
+        <MobileDashboardView
+          firstName={artisanFirstName}
+          artisanTrades={artisanTrades}
+          priorityProjects={priorityProjects}
+          topOpportunities={topOpportunities}
+          hotLeads={hotLeads}
+          riskProjects={riskProjects}
+          todayTasks={todayTasks}
+          pipelineSteps={pipelineSteps}
+          kpiCards={kpiCards}
+          router={router}
+          dashboardMode={dashboardMode}
+          setDashboardMode={setDashboardMode}
+          setFilters={setFilters}
+          applyQuickFilter={applyQuickFilter}
+          goToCommercialFilter={goToCommercialFilter}
+          resetFilters={resetFilters}
+          showToast={showToast}
+        />
+      ) : (
+      <>
+      {/* Vue "Valeur générée par Kadria" — vue par défaut */}
+      {showValueOverview && !loading && (
+        <div className="flex flex-col gap-6">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6">
+            <h2 className="text-2xl font-bold text-[var(--text-1)]">Valeur générée par Kadria</h2>
+            <p className="mt-1 text-sm text-[var(--text-2)]">
+              Suivez les demandes captées, les opportunités en cours et le chiffre d&apos;affaires généré grâce à Kadria.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                {VALUE_PERIOD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setValuePeriod(opt.value)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                      valuePeriod === opt.value
+                        ? 'bg-green-500 text-zinc-950'
+                        : 'bg-[var(--bg-hover)] text-[var(--text-2)] hover:text-[var(--text-1)]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {canSeeAdvancedValueDashboard ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {VALUE_SOURCE_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setValueSourceFilter(opt.value)}
+                      className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                        valueSourceFilter === opt.value
+                          ? 'bg-[var(--text-1)] text-[var(--bg)]'
+                          : 'bg-[var(--bg-hover)] text-[var(--text-2)] hover:text-[var(--text-1)]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('advancedValueDashboard')}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-sm font-semibold text-[var(--text-2)] hover:text-[var(--text-1)]"
+                >
+                  <Lock className="h-3.5 w-3.5 text-green-500" />
+                  Analyse par source avec Performance
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!hasValueData && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <p className="text-sm text-[var(--text-2)]">Aucune donnée sur cette période.</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[
+              { label: 'CA potentiel en cours', value: formatCurrency(valueCaEnCours), icon: Euro, borderColor: 'var(--accent)', delta: valueComparisons.caEnCours },
+              { label: 'CA gagné', value: formatCurrency(valueCaGagne), icon: Trophy, borderColor: '#15803d', delta: valueComparisons.caGagne },
+              { label: 'Dossiers captés', value: String(valueFilteredProjects.length), icon: FolderOpen, borderColor: '#2563eb', delta: valueComparisons.dossiers },
+              { label: 'Devis envoyés', value: String(valueDevisEnvoyesCount), icon: Send, borderColor: '#7c3aed', delta: valueComparisons.devisEnvoyes },
+              { label: 'Devis acceptés', value: String(valueDevisAcceptesCount), icon: CheckCircle, borderColor: '#22c55e', delta: valueComparisons.devisAcceptes },
+              ...(canSeeAdvancedValueDashboard
+                ? [{ label: 'Taux de conversion', value: valueTauxConversion !== null ? `${valueTauxConversion.toFixed(1)}%` : '—', icon: Target, borderColor: '#d97706', delta: null as string | null }]
+                : []),
+            ].map((card) => (
+              <div
+                key={card.label}
+                className="flex min-h-[100px] flex-col gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-4 sm:px-5 sm:py-5"
+                style={{ borderTopWidth: '2px', borderTopColor: card.borderColor }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-3)] text-[13px]">{card.label}</span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-500">
+                    <card.icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <span className="text-2xl font-bold tracking-tight text-[var(--text-1)] sm:text-[28px]">{card.value}</span>
+                {card.delta && <span className="text-xs font-medium text-[var(--text-3)]">{card.delta}</span>}
+              </div>
+            ))}
+          </div>
+
+          {/* Sparkline CA potentiel */}
+          {!loading && (
+            <FeatureGate feature="kpiTrends" requiredPlan="performance">
+              <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-[var(--text-1)]">Évolution du CA potentiel</p>
+                    <p className="text-sm text-[var(--text-2)]">
+                      {kpiPeriod === '7d'
+                        ? 'Sur les 7 derniers jours'
+                        : kpiPeriod === '30d'
+                          ? 'Sur les 30 derniers jours'
+                          : kpiPeriod === '90d'
+                            ? 'Sur les 3 derniers mois'
+                            : 'Sur les 12 derniers mois'}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-500 sm:text-sm">
+                    {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
+                  </span>
+                </div>
+
+                {kpiPeriodData.sparkline.length < 2 || kpiPeriodData.sparkline.every((d) => d.value === 0) ? (
+                  <p className="mt-3 text-sm text-[var(--text-3)]">
+                    Pas encore assez de données pour afficher une évolution.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mt-3">
+                      <Sparkline data={kpiPeriodData.sparkline} height={isMobile ? 56 : 80} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      {sampleSparklineLabels(kpiPeriodData.sparkline).map((lbl, i) => (
+                        <span key={i} className="text-[11px] text-[var(--text-3)]">
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </FeatureGate>
+          )}
+
+          {canSeeAdvancedValueDashboard && totalPendingValue > 0 ? (
+            <ImpactCard variant="money">
+              <p className="text-base font-bold text-[var(--impact-text)]">Valeur en attente</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--impact-text)]">
+                {formatCurrency(totalPendingValue)} en attente
+              </p>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-[var(--impact-subcard-border)] bg-[var(--impact-subcard-bg)] px-4 py-3">
+                  <p className="text-xs text-[var(--impact-text-soft)]">Devis à relancer</p>
+                  <p className="mt-1 text-base font-bold text-[var(--impact-text)]">
+                    {staleQuoteProjects.length} devis{staleQuoteValue > 0 ? ` · ${formatCurrency(staleQuoteValue)}` : ''}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[var(--impact-subcard-border)] bg-[var(--impact-subcard-bg)] px-4 py-3">
+                  <p className="text-xs text-[var(--impact-text-soft)]">Opportunités chaudes non traitées</p>
+                  <p className="mt-1 text-base font-bold text-[var(--impact-text)]">
+                    {uncontactedHotLeads.length} dossier(s){hotLeadPendingValue > 0 ? ` · ${formatCurrency(hotLeadPendingValue)}` : ''}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[var(--impact-subcard-border)] bg-[var(--impact-subcard-bg)] px-4 py-3">
+                  <p className="text-xs text-[var(--impact-text-soft)]">Devis à envoyer</p>
+                  <p className="mt-1 text-base font-bold text-[var(--impact-text)]">
+                    {valueQuotesProjects.length} dossier(s){quotesToSendValue > 0 ? ` · ${formatCurrency(quotesToSendValue)}` : ''}
+                  </p>
+                </div>
+              </div>
+            </ImpactCard>
+          ) : (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <p className="text-base font-bold text-[var(--text-1)]">Valeur en attente</p>
+              {canSeeAdvancedValueDashboard ? (
+                <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">— en attente</p>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm text-[var(--text-2)]">
+                    Kadria suit déjà les devis envoyés et les dossiers en cours. Passez à Performance pour voir le détail des montants récupérables à court terme.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openUpgradeModal('advancedValueDashboard')}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
+                  >
+                    Passer à Performance
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
+              <button
+                onClick={() => setDashboardMode('tasks')}
+                className="text-sm font-semibold text-[var(--accent)] hover:underline"
+              >
+                Voir toutes les tâches
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-[var(--text-3)]">
+              Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.
+            </p>
+            <div className="mt-3 space-y-2">
+              {topValueActions.map((action, index) =>
+                index === 0 ? (
+                  <ImpactCard
+                    key={action.key}
+                    variant="priority"
+                    as="button"
+                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                    className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{action.title} — {action.client}</p>
+                      <p className="text-xs text-[var(--impact-text-soft)]">{action.context}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
+                      Voir le dossier <ChevronRight className="h-4 w-4" />
+                    </span>
+                  </ImpactCard>
+                ) : (
+                  <button
+                    key={action.key}
+                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                    className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
+                    title={action.title === 'Devis à relancer' ? 'Devis envoyé sans réponse du client.' : undefined}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
+                      <p className="text-xs text-[var(--text-2)]">{action.context}</p>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-green-400">
+                      Voir le dossier <ChevronRight className="h-4 w-4" />
+                    </span>
+                  </button>
+                )
+              )}
+              {topValueActions.length === 0 && (
+                <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour le moment.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+            <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+              <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
+              <ActionSummary icon={Send} label="devis à envoyer" value={valueQuotesProjects.length} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
+              {canSeeAdvancedValueDashboard && (
+                <>
+                  <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
+                  <ActionSummary icon={Bell} label="opportunités chaudes" value={valueHotLeads.length} onClick={() => setDashboardMode('commercial')} />
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 lg:flex-row">
+            <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <div className="flex items-center gap-2">
+                <Timer className="h-4 w-4 text-green-400" />
+                <p className="text-base font-bold text-[var(--text-1)]">Temps estimé économisé</p>
+              </div>
+              <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">
+                {estimatedHoursSaved > 0 ? `${estimatedHoursSaved} h ${estimatedRemMinutesSaved} min` : `${estimatedRemMinutesSaved} min`}
+              </p>
+              {canSeeAdvancedValueDashboard ? (
+                <div className="mt-2 space-y-1 text-xs text-[var(--text-3)]">
+                  <p>Qualification automatique : {qualifiedValueCount * 8} min ({qualifiedValueCount} dossier(s))</p>
+                  <p>Devis préparés : {preparedQuotesValueCount * 5} min ({preparedQuotesValueCount} devis)</p>
+                  <p>Relances suivies : {handledFollowUpsValueCount * 5} min ({handledFollowUpsValueCount} relance(s))</p>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-[var(--text-3)]">
+                  8 min économisées par dossier qualifié automatiquement, 5 min par relance/devis préparé.
+                </p>
+              )}
+              <p className="mt-2 text-xs text-[var(--text-3)]">
+                Estimation indicative basée sur les actions traitées par Kadria.
+              </p>
+            </div>
+
+            {canSeeAdvancedValueDashboard ? (
+              valueSourceStats.length > 0 && (
+                <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-green-400" />
+                    <p className="text-base font-bold text-[var(--text-1)]">Sources des demandes</p>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {valueSourceStats.map((s) => (
+                      <div key={s.label} className="flex items-center justify-between text-sm">
+                        <span className="text-[var(--text-2)]">{s.label}</span>
+                        <span className="font-semibold text-[var(--text-1)]">
+                          {s.count}{s.amount > 0 ? ` · ${formatCurrency(s.amount)}` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {mostValuableSource && mostValuableSource.amount > 0 && (
+                    <p className="mt-3 text-xs font-semibold text-green-400">
+                      Source la plus rentable : {mostValuableSource.label}
+                    </p>
+                  )}
+                </div>
+              )
+            ) : (
+              <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-green-400" />
+                  <p className="text-base font-bold text-[var(--text-1)]">Analyse avancée disponible avec Performance</p>
+                </div>
+                <p className="mt-2 text-sm text-[var(--text-2)]">
+                  Kadria suit déjà les principaux indicateurs de votre activité. Identifiez vos sources les plus rentables, vos devis sans réponse et les opportunités à plus fort potentiel en passant à Performance.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openUpgradeModal('advancedValueDashboard')}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
+                >
+                  Passer à Performance
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Barre période */}
-      {showBusinessOverview && (
+      {showBusinessOverviewDesktop && (
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-[var(--text-2)]">Période analysée · {periodLabel}</p>
 
@@ -1548,7 +3269,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* KPIs */}
-      {showBusinessOverview && (
+      {showBusinessOverviewDesktop && (
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
@@ -1586,66 +3307,186 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {showBusinessOverview && !loading && (
-        <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
-              <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
-            </div>
-
-            <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-3xl lg:grid-cols-4">
-              <PriorityMetric
-                label="Opportunites prioritaires"
-                value={topOpportunities.length}
-                active={quickFilter === 'opportunities'}
-                onClick={() => applyQuickFilter('opportunities')}
-              />
-              <PriorityMetric
-                label="Relances a effectuer"
-                value={relanceCount}
-                active={quickFilter === 'relance'}
-                onClick={() => applyQuickFilter('relance')}
-              />
-              <PriorityMetric
-                label="Dossiers en risque"
-                value={riskProjects.length}
-                active={quickFilter === 'risk'}
-                onClick={() => applyQuickFilter('risk')}
-              />
-              <PriorityMetric
-                label="Prospects chauds"
-                value={hotLeads.length}
-                active={quickFilter === 'hot'}
-                onClick={() => applyQuickFilter('hot')}
-              />
-            </div>
-
-            <button
-              onClick={() => applyQuickFilter('priority')}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
+      {showBusinessOverviewDesktop && (
+        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
+          {!loading && (
+            <FeatureGate
+              feature="topAiOpportunities"
+              requiredPlan="performance"
+              title="Priorités intelligentes disponibles avec Performance"
+              message="Passez au plan Performance pour débloquer les priorités du jour : opportunités prioritaires, relances à effectuer, dossiers en risque et prospects chauds."
+              className="lg:flex-[70] lg:basis-[70%]"
             >
-              Voir les priorites
-            </button>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
+                    <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
+                  </div>
+
+                  <button
+                    onClick={() => canAccessFeature('topAiOpportunities') ? applyQuickFilter('priority') : openUpgradeModal('topAiOpportunities')}
+                    className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
+                  >
+                    Voir les priorites
+                  </button>
+                </div>
+
+                {canAccessFeature('topAiOpportunities') ? (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <PriorityMetric
+                      label="Opportunites prioritaires"
+                      value={topOpportunities.length}
+                      active={quickFilter === 'opportunities'}
+                      onClick={() => applyQuickFilter('opportunities')}
+                    />
+                    <PriorityMetric
+                      label="Relances a effectuer"
+                      value={relanceCount}
+                      active={quickFilter === 'relance'}
+                      onClick={() => applyQuickFilter('relance')}
+                    />
+                    <PriorityMetric
+                      label="Opportunités à sécuriser"
+                      value={riskProjects.length}
+                      active={quickFilter === 'risk'}
+                      onClick={() => applyQuickFilter('risk')}
+                    />
+                    <PriorityMetric
+                      label="Prospects chauds"
+                      value={hotLeads.length}
+                      active={quickFilter === 'hot'}
+                      onClick={() => applyQuickFilter('hot')}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {['Opportunites prioritaires', 'Relances a effectuer', 'Opportunités à sécuriser', 'Prospects chauds'].map((label) => (
+                      <div
+                        key={label}
+                        className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left"
+                      >
+                        <p className="text-xs text-[var(--text-2)]">{label}</p>
+                        <p className="mt-1 flex items-center gap-1 text-lg font-bold text-[var(--text-1)]">
+                          ••
+                          <Lock className="h-3.5 w-3.5 text-green-500" />
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </FeatureGate>
+          )}
+
+          <div className="lg:flex-[30] lg:basis-[30%]" ref={monthlyUsageSectionRef}>
+            <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
           </div>
         </div>
       )}
 
-      {showBusinessOverview && !loading && primaryHotLead && (
-        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.04] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <Bell className="h-4 w-4 shrink-0 text-green-400" />
-            <p className="truncate text-sm text-[var(--text-1)]">
-              <span className="font-semibold text-green-400">Prospect chaud :</span>{' '}
-              {primaryHotLeadName} - {primaryHotLeadReason}
-            </p>
+      {showBusinessOverviewDesktop && !loading && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-bold text-[var(--text-1)]">Actions prioritaires</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { key: 'critical', label: 'Actions critiques' },
+                  { key: 'today', label: "Aujourd'hui" },
+                  { key: 'week', label: 'Cette semaine' },
+                  { key: 'follow_up_quote', label: 'Relances' },
+                  { key: 'send_quote', label: 'Devis' },
+                  { key: 'schedule_appointment', label: 'Rendez-vous' },
+                ] as const).map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setActionEngineFilter(actionEngineFilter === f.key ? null : f.key)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      actionEngineFilter === f.key
+                        ? 'border-green-500/40 bg-green-500/15 text-green-400'
+                        : 'border-[var(--border)] text-[var(--text-2)] hover:border-green-500/30'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {filteredActionEngineEntries.slice(0, 8).map(({ project, action }) => (
+                <button
+                  key={project.id}
+                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="text-lg shrink-0">{ACTION_TYPE_EMOJI[action.actionType]}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--text-1)]">{action.title}</p>
+                      <p className="truncate text-xs text-[var(--text-2)]">
+                        {[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-xs font-semibold text-[var(--text-2)]">{action.estimatedDuration}</span>
+                </button>
+              ))}
+              {filteredActionEngineEntries.length === 0 && (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
+                </div>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => router.push(`/demo-dashboard/projet/${primaryHotLead.id}`)}
-            className="w-full rounded-lg border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-3 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-dim)] sm:w-auto"
-          >
-            Voir
-          </button>
+
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+              <p className="font-bold text-[var(--text-1)]">Santé commerciale</p>
+              <p className="mt-2 flex items-center gap-2 text-lg font-bold" style={{ color: businessHealth.color }}>
+                <span>{businessHealth.emoji}</span> {businessHealth.label}
+              </p>
+              {averageMaturityScore !== null && (
+                <p className="mt-1 text-xs text-[var(--text-2)]">
+                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} action(s) critique(s) · {highActionsCount} action(s) prioritaire(s)
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+              <p className="font-bold text-[var(--text-1)]">Aujourd&apos;hui</p>
+              {todayActionEntries.length > 0 ? (
+                <>
+                  <ul className="mt-2 space-y-1 text-sm text-[var(--text-2)]">
+                    {todayActionsByType.send_quote > 0 && <li>Envoyer {todayActionsByType.send_quote} devis</li>}
+                    {todayActionsByType.follow_up_quote > 0 && <li>Relancer {todayActionsByType.follow_up_quote} client(s)</li>}
+                    {todayActionsByType.schedule_appointment > 0 && <li>Programmer {todayActionsByType.schedule_appointment} rendez-vous</li>}
+                  </ul>
+                  <p className="mt-2 text-xs text-[var(--text-3)]">Durée totale estimée : {todayEstimatedMinutes} minutes</p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--text-2)]">Rien d&apos;urgent identifié pour aujourd&apos;hui.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-3">
+            <p className="mb-3 font-bold text-[var(--text-1)]">Compteurs</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              {(Object.keys(ACTION_TYPE_COUNTER_LABEL) as ActionType[])
+                .filter((type) => type !== 'monitor')
+                .map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setActionEngineFilter(actionEngineFilter === type ? null : type)}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left hover:border-green-500/25"
+                  >
+                    <p className="text-xs text-[var(--text-2)]">{ACTION_TYPE_COUNTER_LABEL[type]}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{actionEngineCounters[type]}</p>
+                  </button>
+                ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1654,28 +3495,59 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[var(--text-1)]">Mes actions du jour</p>
-                <p className="text-sm text-[var(--text-2)]">Taches triees par priorite puis echeance.</p>
+                <p className="font-bold text-[var(--text-1)]">À traiter maintenant</p>
+                <p className="text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
               </div>
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} />
-              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} />
-              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} />
+              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} onClick={() => goToCommercialFilter('calls')} />
+              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} onClick={() => goToCommercialFilter('followups')} />
             </div>
+            <p className="mt-2 text-xs text-[var(--text-3)]">Cliquer pour filtrer le suivi commercial</p>
             <div className="mt-4 space-y-2">
-              {todayTasks.slice(0, 4).map((task) => {
+              {todayTasks.slice(0, 5).map((task, index) => {
                 const project = allProjects.find((p) => p.id === task.projectId);
+                const amount = project ? projectValue(project) : 0;
+                const amountLabel = amount > 0
+                  ? task.type === 'followUp' || task.type === 'email'
+                    ? `${formatCurrency(amount)} en attente`
+                    : `Budget estime ${formatCurrency(amount)}`
+                  : null;
+                const clientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier';
+
+                if (index === 0) {
+                  return (
+                    <ImpactCard
+                      key={task.id}
+                      variant="priority"
+                      as="button"
+                      onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                      className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{task.title} — {clientLabel}</p>
+                        {amountLabel && <p className="text-xs text-[var(--impact-text-soft)]">{amountLabel}</p>}
+                      </div>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
+                        Voir le dossier <ChevronRight className="h-4 w-4" />
+                      </span>
+                    </ImpactCard>
+                  );
+                }
+
                 return (
                   <button
                     key={task.id}
-                    onClick={() => router.push(`/demo-dashboard/projet/${task.projectId}`)}
+                    onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
                     className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
-                      <p className="text-xs text-[var(--text-2)]">{[project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier'}</p>
+                      <p className="text-xs text-[var(--text-2)]">{clientLabel}</p>
+                      {amountLabel && <p className="text-xs text-green-400">{amountLabel}</p>}
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
                       {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
@@ -1683,14 +3555,28 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   </button>
                 );
               })}
+              {todayTasks.length === 0 && (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
+                  <p className="text-sm font-semibold text-[var(--text-1)]">Aucune action urgente pour le moment.</p>
+                  <p className="mt-1 text-xs text-[var(--text-2)]">Les prochains dossiers a traiter apparaitront ici.</p>
+                </div>
+              )}
             </div>
+            {todayTasks.length > 0 && (
+              <button
+                onClick={() => setDashboardMode('commercial')}
+                className="mt-3 text-sm font-semibold text-[var(--accent)] hover:underline"
+              >
+                Voir toutes les actions
+              </button>
+            )}
           </div>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="mb-4 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <div>
-                <p className="font-bold text-[var(--text-1)]">Dossiers en risque</p>
+                <p className="font-bold text-[var(--text-1)]">Opportunités à sécuriser</p>
                 <p className="text-sm text-[var(--text-2)]">Actions rapides recommandees.</p>
               </div>
             </div>
@@ -1708,7 +3594,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
-                        onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
+                        onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
                         style={{
                           background: 'var(--accent-dim)',
                           border: '1px solid var(--accent-border)',
@@ -1773,38 +3659,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {/* Sparkline CA potentiel */}
-      {showBusinessOverview && !loading && (
-        <FeatureGate feature="kpiTrends" requiredPlan="performance">
-        <div className="mb-6 w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="font-bold text-[var(--text-1)]">Évolution du CA potentiel</p>
-              <p className="text-sm text-[var(--text-2)]">
-                {kpiPeriod === '7d'
-                  ? 'Sur les 7 derniers jours'
-                  : kpiPeriod === '30d'
-                    ? 'Sur les 30 derniers jours'
-                    : kpiPeriod === '90d'
-                      ? 'Sur les 3 derniers mois'
-                      : 'Sur les 12 derniers mois'}
-              </p>
-            </div>
-
-            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs text-green-500 sm:text-sm">
-              {formatCurrency(kpiPeriodData.current.caPotentiel)} sur la période
-            </span>
-          </div>
-
-          <div className="mt-3">
-            <Sparkline data={kpiPeriodData.sparkline} height={isMobile ? 56 : 80} />
-          </div>
-        </div>
-        </FeatureGate>
-      )}
-
       {/* Alertes */}
-      {showBusinessOverview && !loading && (overdueCount > 0 || todayCount > 0) && (
+      {showBusinessOverviewDesktop && !loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {overdueCount > 0 && (
             <div
@@ -1902,33 +3758,56 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showCalendarWorkspace && (
+      {showCalendarWorkspaceDesktop && (
         <FeatureGate feature="calendar" requiredPlan="performance">
-          <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-base font-bold text-[var(--text-1)]">Calendrier Kadria</p>
-                <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Utilisez le calendrier integre de Kadria. La synchronisation Google Calendar reste optionnelle.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCalendarModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-green-500/30 bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/[0.08]"
-              >
-                <CalendarDays className="h-4 w-4" />
-                Synchroniser mon agenda
-              </button>
-            </div>
-
+          <div className="mb-6">
+            {/* Mode demo : DesktopAgendaView appelle reellement /api/projects et
+                l'OAuth Google Calendar. On utilise DemoCalendarAdapter (etat
+                local DemoModeContext) a la place. */}
             <DemoCalendarAdapter />
           </div>
         </FeatureGate>
       )}
 
-      {(showCommercialWorkspace || showClientsWorkspace) && (
+      {isMobile && showClientsWorkspace && (
+        <MobileDossiersView projects={sortedProjects} router={router} />
+      )}
+
+      {isMobile && showCommercialWorkspace && (
+        <MobileDevisView projects={sortedProjects} router={router} />
+      )}
+
+      {isMobile && showPipelineWorkspace && (
+        <MobilePipelineView projects={sortedProjects} router={router} />
+      )}
+
+      {isMobile && showCalendarWorkspace && (
+        // Mode demo : MobileAgendaView appelle reellement /api/projects et
+        // l'OAuth Google Calendar. On utilise DemoCalendarAdapter a la place.
+        <DemoCalendarAdapter />
+      )}
+
+      {isMobile && showValueReportWorkspace && (
+        <MobileValueReportView
+          projects={sortedProjects}
+          topOpportunities={topOpportunities}
+          hotLeads={hotLeads}
+          valueCaEnCours={valueCaEnCours}
+          valueCaGagne={valueCaGagne}
+          valueDevisEnvoyesCount={valueDevisEnvoyesCount}
+          valueDevisAcceptesCount={valueDevisAcceptesCount}
+          valueTauxConversion={valueTauxConversion}
+          qualifiedValueCount={qualifiedValueCount}
+          preparedQuotesValueCount={preparedQuotesValueCount}
+          handledFollowUpsValueCount={handledFollowUpsValueCount}
+          estimatedHoursSaved={estimatedHoursSaved}
+          estimatedRemMinutesSaved={estimatedRemMinutesSaved}
+        />
+      )}
+
+      {(showCommercialWorkspace || showClientsWorkspace) &&
+        !(isMobile && showClientsWorkspace) &&
+        !(isMobile && showCommercialWorkspace) && (
       <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (
@@ -1953,20 +3832,22 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 {canAccessFeature('topAiOpportunities') ? topOpportunities.map((project, index) => (
                   <button
                     key={project.id}
-                    onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
+                    onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
                       className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
                       index === 0
-                        ? 'border-green-500/25 bg-green-500/[0.02]'
+                        ? IMPACT_CARD_BASE_CLASSES
                         : 'border-[var(--border)] bg-[var(--bg-elevated)]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="bg-green-500/20 text-green-400 text-xs rounded px-2 py-0.5 font-bold">
+                      <span className={`text-xs rounded px-2 py-0.5 font-bold ${
+                        index === 0 ? 'bg-[var(--impact-badge-bg)] text-[var(--impact-badge-text)]' : 'bg-green-500/20 text-green-400'
+                      }`}>
                         #{index + 1}
                       </span>
 
-                      <span className="text-green-400 font-bold text-sm">
-                        {opportunityScore(project)}/100
+                      <span className={`font-bold text-sm ${index === 0 ? 'text-[var(--impact-cta)]' : 'text-green-400'}`}>
+                        {opportunityScore(project, artisanTrades)}/100
                       </span>
                     </div>
 
@@ -1982,7 +3863,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                     <div className="flex flex-col gap-2">
                       {(() => {
-                        const badge = getOpportunityBadge(opportunityScore(project));
+                        const badge = getOpportunityBadge(opportunityScore(project, artisanTrades));
                         return (
                           <span
                             className="rounded-full border px-2.5 py-1 text-xs font-semibold"
@@ -1998,7 +3879,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       </span>
                     </div>
 
-                    <span className="mt-auto text-sm font-semibold text-green-400">Voir le dossier</span>
+                    <span className={`mt-auto text-sm font-semibold ${
+                      index === 0 ? 'text-[var(--impact-cta)]' : 'text-green-400'
+                    }`}>Voir le dossier</span>
                   </button>
                 )) : Array.from({ length: 3 }).map((_, index) => (
                   <button
@@ -2034,38 +3917,51 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <>
           {/* ZONE 2 — Toggles */}
           <div>
-            <div className="relative my-2 border-t border-[var(--border)]">
+            <div className="relative my-8 border-t border-[var(--border)]">
               <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg)] px-4 text-xs uppercase tracking-[0.08em] text-[var(--text-2)]">
                 Analyses détaillées
               </span>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="contents">
               <button
                 onClick={() => togglePanel('pipeline')}
-                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
-                  openPanel === 'pipeline'
-                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
-                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                aria-label={!canAccessFeature('commercialPipeline') ? 'Pipeline commerciale — disponible avec Performance' : undefined}
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 backdrop-blur-[1px] transition-colors duration-200 sm:px-5 ${
+                  !canAccessFeature('commercialPipeline')
+                    ? 'cursor-pointer border-dashed border-[var(--border)] bg-[var(--bg-elevated)]/55 opacity-80 hover:bg-[var(--bg-elevated)]/70'
+                    : openPanel === 'pipeline'
+                      ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                      : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <BarChart3
-                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'pipeline' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
+                    className={`h-[22px] w-[22px] shrink-0 ${
+                      !canAccessFeature('commercialPipeline')
+                        ? 'text-[var(--text-3)]'
+                        : openPanel === 'pipeline'
+                          ? 'text-green-400'
+                          : 'text-[var(--text-2)]'
+                    }`}
                   />
 
                   <div className="flex flex-col text-left">
-                    <span className="text-[15px] font-bold text-[var(--text-1)]">Pipeline commerciale</span>
+                    <span className={`text-[15px] font-bold ${!canAccessFeature('commercialPipeline') ? 'text-[var(--text-2)]' : 'text-[var(--text-1)]'}`}>
+                      Pipeline commerciale
+                    </span>
                     <span className="text-xs text-[var(--text-2)]">
-                      {pipelineSteps.length} étapes · {allProjects.length} dossiers
+                      {!canAccessFeature('commercialPipeline')
+                        ? 'Vue Kanban complète'
+                        : `${pipelineSteps.length} étapes · ${allProjects.length} dossiers`}
                     </span>
                   </div>
                 </div>
 
                 {!canAccessFeature('commercialPipeline') ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
-                    <Lock className="h-3 w-3 text-green-500" />
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[11px] font-semibold text-green-500">
+                    <Lock className="h-3 w-3" />
                     Performance
                   </span>
                 ) : (
@@ -2081,28 +3977,41 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <div className="contents">
               <button
                 onClick={() => togglePanel('chantiers')}
-                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-colors duration-200 sm:px-5 ${
-                  openPanel === 'chantiers'
-                    ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
-                    : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
+                aria-label={!canAccessFeature('geoProjects') ? 'Chantiers géolocalisés — disponible avec Performance' : undefined}
+                className={`flex min-h-20 items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 backdrop-blur-[1px] transition-colors duration-200 sm:px-5 ${
+                  !canAccessFeature('geoProjects')
+                    ? 'cursor-pointer border-dashed border-[var(--border)] bg-[var(--bg-elevated)]/55 opacity-80 hover:bg-[var(--bg-elevated)]/70'
+                    : openPanel === 'chantiers'
+                      ? 'border-green-500 bg-green-500/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.25)]'
+                      : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-green-500/25 hover:bg-green-500/[0.04]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <MapPin
-                    className={`h-[22px] w-[22px] shrink-0 ${openPanel === 'chantiers' ? 'text-green-400' : 'text-[var(--text-2)]'}`}
+                    className={`h-[22px] w-[22px] shrink-0 ${
+                      !canAccessFeature('geoProjects')
+                        ? 'text-[var(--text-3)]'
+                        : openPanel === 'chantiers'
+                          ? 'text-green-400'
+                          : 'text-[var(--text-2)]'
+                    }`}
                   />
 
                   <div className="flex flex-col text-left">
-                    <span className="text-[15px] font-bold text-[var(--text-1)]">Chantiers géolocalisés</span>
+                    <span className={`text-[15px] font-bold ${!canAccessFeature('geoProjects') ? 'text-[var(--text-2)]' : 'text-[var(--text-1)]'}`}>
+                      Chantiers géolocalisés
+                    </span>
                     <span className="text-xs text-[var(--text-2)]">
-                      Vue géographique · {sortedProjects.slice(0, 8).length} points
+                      {!canAccessFeature('geoProjects')
+                        ? 'Vue géographique des chantiers'
+                        : `Vue géographique · ${sortedProjects.slice(0, 8).length} points`}
                     </span>
                   </div>
                 </div>
 
                 {!canAccessFeature('geoProjects') ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text-2)]">
-                    <Lock className="h-3 w-3 text-green-500" />
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[11px] font-semibold text-green-500">
+                    <Lock className="h-3 w-3" />
                     Performance
                   </span>
                 ) : (
@@ -2204,7 +4113,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                  <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <ProspectsLeafletMap
                     projects={sortedProjects.slice(0, 8)}
-                    onSelectProject={(projectId) => router.push(`/demo-dashboard/projet/${projectId}`)}
+                    onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
                   />
                 </div>
               </div>
@@ -2220,7 +4129,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
                 <p className="text-base font-bold text-[var(--text-1)]">Mes clients</p>
                 <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Base clients avec les informations utiles pour rappeler, suivre et retrouver un dossier.
+                  Suivez vos clients, leur historique, leur valeur et les prochaines actions à réaliser.
                 </p>
               </div>
             )}
@@ -2280,17 +4189,23 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Tous les statuts" />
+                  <SelectValue placeholder={showClientsWorkspace ? 'Toutes les relations' : 'Tous les statuts'} />
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="all">{showClientsWorkspace ? 'Toutes les relations' : 'Tous les statuts'}</SelectItem>
 
-                  {STATUS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} style={{ color: BADGE_STYLES[o.value]?.color }}>
-                      ● {o.label}
-                    </SelectItem>
-                  ))}
+                  {showClientsWorkspace
+                    ? RELATION_STATUS_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ color: RELATION_STATUS_STYLES[o.value]?.color }}>
+                          ● {o.label}
+                        </SelectItem>
+                      ))
+                    : STATUS_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ color: BADGE_STYLES[o.value]?.color }}>
+                          ● {o.label}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
 
@@ -2399,7 +4314,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <FilterPill label={`Recherche: ${filters.search}`} onRemove={() => { setSearchInput(''); updateFilter('search', ''); }} />
                 )}
                 {filters.statut && (
-                  <FilterPill label={`Statut: ${filters.statut}`} onRemove={() => updateFilter('statut', '')} />
+                  <FilterPill
+                    label={`Statut: ${showClientsWorkspace ? RELATION_STATUS_LABELS[filters.statut as ClientRelationshipStatus] ?? filters.statut : filters.statut}`}
+                    onRemove={() => updateFilter('statut', '')}
+                  />
                 )}
                 {filters.metier && (
                   <FilterPill label={`Métier: ${filters.metier}`} onRemove={() => updateFilter('metier', '')} />
@@ -2433,9 +4351,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-[var(--text-2)]">
-                {hasActiveFilters
-                  ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
-                  : `${displayedProjects.length} dossier(s) trouvé(s)`}
+                {showClientsWorkspace
+                  ? `${displayedClients.length} client(s) trouvé(s)`
+                  : hasActiveFilters
+                    ? `${displayedProjects.length} dossier(s) sur ${allProjects.length} total`
+                    : `${displayedProjects.length} dossier(s) trouvé(s)`}
               </p>
 
               {showCommercialWorkspace && (
@@ -2567,10 +4487,16 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         : quickFilter === 'hot'
                           ? 'Prospects chauds'
                           : quickFilter === 'risk'
-                            ? 'Dossiers en risque'
+                            ? 'Opportunités à sécuriser'
                             : quickFilter === 'opportunities'
                               ? 'Opportunites prioritaires'
-                              : 'Priorites du jour'}
+                              : quickFilter === 'calls'
+                                ? 'Appels à effectuer'
+                                : quickFilter === 'quotes'
+                                  ? 'Devis à envoyer'
+                                  : quickFilter === 'followups'
+                                    ? 'Relances à faire'
+                                    : 'Priorites du jour'}
                   </span>
                 </p>
 
@@ -2586,17 +4512,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   <Skeleton key={i} className="h-20 rounded-xl bg-[var(--bg-hover)]" />
                 ))}
               </div>
-            ) : displayedProjects.length === 0 ? (
+            ) : (showClientsWorkspace ? displayedClients.length === 0 : displayedProjects.length === 0) ? (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-8 text-center sm:p-16">
                 <SearchX className="w-10 h-10 text-[var(--text-3)] mx-auto mb-3" />
-                <p className="font-bold text-[var(--text-1)]">Aucun dossier trouvé</p>
+                <p className="font-bold text-[var(--text-1)]">{showClientsWorkspace ? 'Aucun client trouvé' : 'Aucun dossier trouvé'}</p>
 
                 <p className="text-[var(--text-2)] mt-1">
-                  {filters.search
-                    ? `Aucun résultat pour '${filters.search}'`
-                    : filters.statut
-                      ? `Aucun dossier avec le statut '${filters.statut}'`
-                      : 'Essayez d’élargir vos critères de recherche'}
+                  {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups'
+                    ? 'Aucun dossier dans cette catégorie.'
+                    : filters.search
+                      ? `Aucun résultat pour '${filters.search}'`
+                      : filters.statut
+                        ? showClientsWorkspace
+                          ? `Aucun client avec le statut '${RELATION_STATUS_LABELS[filters.statut as ClientRelationshipStatus] ?? filters.statut}'`
+                          : `Aucun dossier avec le statut '${filters.statut}'`
+                        : 'Essayez d’élargir vos critères de recherche'}
                 </p>
 
                 {hasActiveFilters && (
@@ -2610,7 +4540,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 )}
               </div>
             ) : showClientsWorkspace ? (
-              <ClientList projects={displayedProjects} router={router} />
+              <ClientPortfolioList clients={displayedClients} router={router} />
             ) : viewMode === 'kanban' ? (
               <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
             ) : (
@@ -2618,6 +4548,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
           </div>
       </div>
+      )}
+      {isMobile && <div style={{ height: '76px' }} />}
+      </>
+      )}
+      {isMobile && dashboardMode !== 'value' && (
+        <MobileBottomNav
+          dashboardMode={dashboardMode}
+          setDashboardMode={setDashboardMode}
+          goToCommercialFilter={goToCommercialFilter}
+          onFabClick={() => setDashboardMode('value')}
+          onMenuClick={() => setDashboardMode('value')}
+        />
       )}
 
       <div
@@ -2657,6 +4599,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           onClose={() => setUpgradeFeature(null)}
         />
       )}
+
+      {planModalOpen && (
+        <PlanChangeModal currentPlan={plan} onClose={() => setPlanModalOpen(false)} />
+      )}
+      </div>
     </div>
   );
 }
@@ -2689,16 +4636,14 @@ export function ProjectList({
         <div
           key={p.id}
           className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
-          onClick={() => router.push(`/demo-dashboard/projet/${p.id}`)}
+          onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
             <span className="col-span-1 text-[var(--text-3)] font-mono">
               {String(p.id).slice(0, 6)}
             </span>
 
-            <span className="col-span-1 text-[var(--text-2)]">
-              {p.createdAt ? timeAgo(p.createdAt) : '—'}
-            </span>
+            <ReceivedAtLabel dateLike={p.createdAt} className="col-span-1 text-[var(--text-2)]" />
 
             <span className="col-span-2 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
@@ -2766,9 +4711,7 @@ export function ProjectList({
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-[var(--text-3)]">
-                {p.createdAt ? timeAgo(p.createdAt) : formatIsoDate(p.createdAt)}
-              </span>
+              <ReceivedAtLabel dateLike={p.createdAt} className="text-xs text-[var(--text-3)]" />
               <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-400">
                 Voir le dossier
                 <ChevronRight className="h-4 w-4" />
@@ -2904,7 +4847,7 @@ function KanbanCard({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
+      onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
       className={`cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
         isClosed ? 'bg-[var(--bg-hover)]/40' : ''
       } ${isDragging ? 'opacity-50' : ''}`}
@@ -2932,7 +4875,7 @@ function KanbanCard({
           Score: {score}%
         </span>
 
-        <span className="ml-auto text-xs text-[var(--text-3)]">{project.createdAt ? timeAgo(project.createdAt) : '—'}</span>
+        <ReceivedAtLabel dateLike={project.createdAt} className="ml-auto text-xs text-[var(--text-3)]" />
       </div>
     </div>
   );
@@ -2950,68 +4893,118 @@ export function FilterPill({ label, onRemove }: { label: string; onRemove: () =>
   );
 }
 
-function ClientList({
-  projects,
+function formatShortDate(dateLike?: string): string {
+  if (!dateLike) return '—';
+  const d = new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function ClientPortfolioList({
+  clients,
   router,
 }: {
-  projects: Project[];
+  clients: ClientSummary[];
   router: ReturnType<typeof useRouter>;
 }) {
+  const openClient = (c: ClientSummary) => {
+    const target = c.nextActionProject?.id || c.latestProject?.id || c.projects[0]?.id;
+    if (target) router.push(`/dashboard-v2/projet/${target}`);
+  };
+
   return (
     <div>
       <div
         className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
         style={{ fontSize: '11px', padding: '10px 16px' }}
       >
-        <span className="col-span-3">Client</span>
-        <span className="col-span-3">Contact</span>
-        <span className="col-span-2">Ville</span>
-        <span className="col-span-2">Dernier projet</span>
-        <span className="col-span-1">Statut</span>
+        <span className="col-span-2">Client</span>
+        <span className="col-span-2">Contact</span>
+        <span className="col-span-2">Dernière demande</span>
+        <span className="col-span-2">Historique</span>
+        <span className="col-span-2">Valeur client</span>
+        <span className="col-span-1">Prochaine action</span>
         <span className="col-span-1"></span>
       </div>
 
-      {projects.map((p) => (
+      {clients.map((c) => (
         <div
-          key={p.id}
+          key={c.id}
           className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
-          onClick={() => router.push(`/demo-dashboard/projet/${p.id}`)}
+          onClick={() => openClient(c)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
-            <span className="col-span-3 flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
-                {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+            <span className="col-span-2 min-w-0">
+              <span className="flex items-center gap-2 font-medium text-[var(--text-1)] truncate">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
+                  {c.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                </span>
+                <span className="truncate">{c.name}</span>
               </span>
-              {p.clientFirstName} {p.clientName}
+              <span className="mt-1 block text-xs text-[var(--text-3)] truncate">{c.city || 'Ville non renseignée'}</span>
+              <span className="mt-1 inline-block"><RelationBadge status={c.relationshipStatus} /></span>
             </span>
 
-            <span className="col-span-3 min-w-0 text-[var(--text-2)]">
-              <span className="block truncate">{p.clientEmail || 'Email non renseigne'}</span>
-              <span className="block truncate text-xs text-[var(--text-3)]">{p.clientPhone || 'Telephone non renseigne'}</span>
+            <span className="col-span-2 min-w-0 text-[var(--text-2)]">
+              <span className="block truncate">{c.email || 'Email non renseigné'}</span>
+              <span className="block truncate text-xs text-[var(--text-3)]">{c.phone || 'Téléphone non renseigné'}</span>
             </span>
 
-            <span className="col-span-2 text-[var(--text-2)] truncate">{p.city || 'Ville non renseignee'}</span>
-            <span className="col-span-2 text-[var(--text-2)] truncate">{p.projectType || p.trade || 'Projet'}</span>
-            <span className="col-span-1"><StatusBadge status={p.status} /></span>
+            <span className="col-span-2 min-w-0 text-[var(--text-2)]">
+              <span className="block truncate">{c.latestProject?.projectType || c.latestProject?.trade || 'Projet'}</span>
+              <span className="block text-xs text-[var(--text-3)]">{formatShortDate(c.latestProject?.createdAt)}</span>
+              <span className="mt-1 inline-block"><StatusBadge status={c.latestProject?.status} /></span>
+            </span>
+
+            <span className="col-span-2 text-[var(--text-2)] truncate">
+              {c.projectsCount} dossier(s) / {c.quotesSentCount} devis envoyé(s) / {c.quotesAcceptedCount} gagné(s)
+            </span>
+
+            <span className="col-span-2 text-[var(--text-2)] truncate">
+              {c.wonRevenue > 0 || c.potentialRevenue > 0
+                ? [
+                    c.wonRevenue > 0 ? `Gagné : ${formatCurrency(c.wonRevenue)}` : null,
+                    c.potentialRevenue > 0 ? `Potentiel : ${formatCurrency(c.potentialRevenue)}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' / ')
+                : '—'}
+            </span>
+
+            <span className="col-span-1 text-[var(--text-2)] truncate">{c.nextActionLabel || 'Aucune action'}</span>
             <span className="col-span-1 text-right"><ChevronRight className="w-4 h-4 text-[var(--text-2)] inline" /></span>
           </div>
 
-          <div className="md:hidden flex items-center gap-3">
+          <div className="md:hidden flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
-              {`${p.clientFirstName?.[0] || ''}${p.clientName?.[0] || ''}`.toUpperCase() || '?'}
+              {c.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?'}
             </span>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm text-[var(--text-1)]">
-                  {p.clientFirstName} {p.clientName}
-                </span>
-                <StatusBadge status={p.status} />
+                <span className="font-medium text-sm text-[var(--text-1)]">{c.name}</span>
+                <RelationBadge status={c.relationshipStatus} />
               </div>
 
               <div className="mt-1 text-xs text-[var(--text-2)]">
-                <p className="truncate">{p.clientEmail || p.clientPhone || 'Contact non renseigne'}</p>
-                <p className="truncate">{p.city || 'Ville non renseignee'} - {p.projectType || p.trade || 'Projet'}</p>
+                <p className="truncate">{c.email || c.phone || 'Contact non renseigné'}</p>
+                <p className="truncate">
+                  {c.latestProject?.projectType || c.latestProject?.trade || 'Projet'} · {formatShortDate(c.latestProject?.createdAt)}
+                </p>
+                <p className="truncate">
+                  {c.projectsCount} dossier(s) / {c.quotesSentCount} devis envoyé(s) / {c.quotesAcceptedCount} gagné(s)
+                </p>
+                <p className="truncate">
+                  {c.wonRevenue > 0 || c.potentialRevenue > 0
+                    ? [
+                        c.wonRevenue > 0 ? `Gagné : ${formatCurrency(c.wonRevenue)}` : null,
+                        c.potentialRevenue > 0 ? `Potentiel : ${formatCurrency(c.potentialRevenue)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' / ')
+                    : '—'}
+                </p>
+                <p className="mt-1 font-medium text-[var(--text-1)]">{c.nextActionLabel || 'Aucune action'}</p>
               </div>
             </div>
 
@@ -3020,6 +5013,26 @@ function ClientList({
         </div>
       ))}
     </div>
+  );
+}
+
+function RelationBadge({ status }: { status: ClientRelationshipStatus }) {
+  const style = RELATION_STATUS_STYLES[status];
+
+  return (
+    <span
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderRadius: '20px',
+        padding: '2px 10px',
+        fontSize: '11px',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {RELATION_STATUS_LABELS[status]}
+    </span>
   );
 }
 
@@ -3060,14 +5073,537 @@ function PriorityMetric({ label, value, onClick, active }: { label: string; valu
   );
 }
 
-function ActionSummary({ icon: Icon, label, value }: { icon: typeof PhoneCall; label: string; value: number }) {
+const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
+  ok: 'OK',
+  warning: 'Proche limite',
+  limit_reached: 'Limite atteinte',
+  exceeded: 'Dépassé',
+};
+
+const USAGE_STATUS_STYLES: Record<UsageStatus, { background: string; border: string; color: string }> = {
+  ok: { background: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)', color: 'var(--accent)' },
+  warning: { background: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', color: '#f59e0b' },
+  limit_reached: { background: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.3)', color: '#f97316' },
+  exceeded: { background: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)', color: '#ef4444' },
+};
+
+function combineUsageStatusUi(a: UsageStatus, b: UsageStatus): UsageStatus {
+  const order: UsageStatus[] = ['ok', 'warning', 'limit_reached', 'exceeded'];
+  return order[Math.max(order.indexOf(a), order.indexOf(b))];
+}
+
+function UsageStatusBadge({ status }: { status: UsageStatus }) {
+  const style = USAGE_STATUS_STYLES[status];
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+    <span
+      className="rounded-full border px-3 py-1 text-xs font-semibold"
+      style={{ background: style.background, borderColor: style.border, color: style.color }}
+    >
+      {USAGE_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function UsageMiniBar({ percent, status }: { percent: number | null; status: UsageStatus }) {
+  const style = USAGE_STATUS_STYLES[status];
+  const width = percent === null ? 0 : Math.min(100, Math.max(0, percent));
+  return (
+    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-[var(--bg-hover)]">
+      {percent !== null && (
+        <div className="h-full rounded-full" style={{ width: `${width}%`, background: style.color }} />
+      )}
+    </div>
+  );
+}
+
+function UsageRow({ label, value, percent, status }: { label: string; value: string; percent: number | null; status: UsageStatus }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-[var(--text-3)]">{label}</p>
+        <p className="text-xs font-semibold text-[var(--text-1)]">{value}</p>
+      </div>
+      <UsageMiniBar percent={percent} status={status} />
+    </div>
+  );
+}
+
+function MonthlyUsageCard({
+  usage,
+  loading,
+  error,
+  isMobile,
+}: {
+  usage: MonthlyUsageSummary | null;
+  loading: boolean;
+  error: boolean;
+  isMobile: boolean;
+}) {
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+        <Skeleton className="h-20 rounded-xl bg-[var(--bg-hover)]" />
+      </div>
+    );
+  }
+
+  if (error || !usage) {
+    return (
+      <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+        <p className="text-xs font-semibold text-[var(--text-2)]">Utilisation</p>
+        <p className="mt-2 text-sm text-[var(--text-3)]">Indisponible pour le moment.</p>
+      </div>
+    );
+  }
+
+  const globalStatus = combineUsageStatusUi(usage.projects.status, usage.vapi.status);
+
+  const projectsLabel = usage.projects.unlimited
+    ? `${usage.projects.used} / Illimité`
+    : `${usage.projects.used} / ${usage.projects.limit ?? 0}`;
+
+  const callsLabel = usage.vapi.callsUnlimited
+    ? `${usage.vapi.callsUsed} / Illimité`
+    : usage.vapi.callsLimit === 0
+      ? 'Non inclus'
+      : `${usage.vapi.callsUsed} / ${usage.vapi.callsLimit}`;
+
+  const minutesLabel = usage.vapi.minutesLimit === null
+    ? `${usage.vapi.minutesUsed} min / Non limité`
+    : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
+
+  const devisLabel = usage.devis.unlimited
+    ? `${usage.devis.used} / Illimité`
+    : `${usage.devis.used} / ${usage.devis.limit ?? 0}`;
+
+  return (
+    <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-[var(--text-1)]">Utilisation du mois</p>
+        <UsageStatusBadge status={globalStatus} />
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3">
+        <UsageRow label="Dossiers" value={projectsLabel} percent={usage.projects.unlimited ? null : usage.projects.percent} status={usage.projects.status} />
+        <UsageRow label="Devis" value={devisLabel} percent={usage.devis.unlimited ? null : usage.devis.percent} status={usage.devis.status} />
+        <UsageRow label="Appels vocaux" value={callsLabel} percent={usage.vapi.callsUnlimited ? null : usage.vapi.callsPercent} status={usage.vapi.status} />
+        <UsageRow label="Minutes" value={minutesLabel} percent={usage.vapi.minutesPercent} status={usage.vapi.status} />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setDetailOpen(true)}
+        className="mt-4 text-xs font-semibold text-[var(--accent)] hover:underline"
+      >
+        Voir le détail
+      </button>
+
+      {detailOpen && (
+        <MonthlyUsageDetailModal usage={usage} onClose={() => setDetailOpen(false)} isMobile={isMobile} />
+      )}
+    </div>
+  );
+}
+
+function MonthlyUsageDetailModal({
+  usage,
+  onClose,
+  isMobile,
+}: {
+  usage: MonthlyUsageSummary;
+  onClose: () => void;
+  isMobile: boolean;
+}) {
+  const projectsLabel = usage.projects.unlimited
+    ? `${usage.projects.used} / Illimité`
+    : `${usage.projects.used} / ${usage.projects.limit ?? 0}`;
+
+  const callsLabel = usage.vapi.callsUnlimited
+    ? `${usage.vapi.callsUsed} / Illimité`
+    : usage.vapi.callsLimit === 0
+      ? 'Non inclus'
+      : `${usage.vapi.callsUsed} / ${usage.vapi.callsLimit}`;
+
+  const minutesLabel = usage.vapi.minutesLimit === null
+    ? `${usage.vapi.minutesUsed} min / Non limité`
+    : `${usage.vapi.minutesUsed} / ${usage.vapi.minutesLimit} min`;
+
+  const devisLabel = usage.devis.unlimited
+    ? `${usage.devis.used} / Illimité`
+    : `${usage.devis.used} / ${usage.devis.limit ?? 0}`;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full rounded-t-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:max-w-md sm:rounded-2xl ${isMobile ? '' : ''}`}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-base font-bold text-[var(--text-1)]">Utilisation du mois</p>
+          <button type="button" onClick={onClose} className="text-sm text-[var(--text-3)] hover:text-[var(--text-1)]">
+            Fermer
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--text-3)]">
+          <span>Période : {usage.periodMonth}</span>
+          <span>·</span>
+          <span>Plan : {usage.plan}</span>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--text-3)]">Dossiers</p>
+              <UsageStatusBadge status={usage.projects.status} />
+            </div>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{projectsLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--text-3)]">Devis</p>
+              <UsageStatusBadge status={usage.devis.status} />
+            </div>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{devisLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[var(--text-3)]">Appels vocaux</p>
+              <UsageStatusBadge status={usage.vapi.status} />
+            </div>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{callsLabel}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <p className="text-xs text-[var(--text-3)]">Minutes vocales</p>
+            <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{minutesLabel}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionSummary({
+  icon: Icon,
+  label,
+  value,
+  onClick,
+}: {
+  icon: typeof PhoneCall;
+  label: string;
+  value: number;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
       <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--bg-hover)] text-green-400">
         <Icon className="h-4 w-4" />
       </div>
       <p className="text-2xl font-bold text-[var(--text-1)]">{value}</p>
       <p className="text-xs text-[var(--text-2)]">{label}</p>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4 text-left transition-colors hover:border-green-500/40 hover:bg-green-500/[0.04] active:scale-[0.98]"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">{content}</div>;
+}
+
+export const IMPACT_CARD_BASE_CLASSES =
+  'border border-[var(--impact-border)] bg-[image:var(--impact-bg)] shadow-[var(--impact-glow)]';
+
+function ImpactCard({
+  variant = 'priority',
+  children,
+  className = '',
+  as: Component = 'div',
+  onClick,
+}: {
+  variant?: 'priority' | 'insight' | 'money' | 'success';
+  children: ReactNode;
+  className?: string;
+  as?: 'div' | 'button';
+  onClick?: () => void;
+}) {
+  const Tag = Component as any;
+
+  return (
+    <Tag
+      type={Component === 'button' ? 'button' : undefined}
+      onClick={onClick}
+      className={`rounded-2xl p-4 sm:p-5 ${IMPACT_CARD_BASE_CLASSES} ${className}`}
+      data-impact-variant={variant}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+const PLAN_FEATURE_HIGHLIGHTS: Record<PlanKey, string[]> = {
+  essentiel: [
+    '50 dossiers / mois',
+    'Assistant web de qualification',
+    'Création automatique de dossiers projet',
+    'Tableau de bord artisan',
+    'Fiche projet détaillée',
+    'Suivi commercial simple',
+    'Base clients',
+    '10 devis / mois',
+    '10 appels vocaux / mois',
+    'Accès limité aux fonctions avancées',
+    'Site vitrine en option : +300 € HT une fois',
+  ],
+  performance: [
+    'Dossiers illimités',
+    'Devis illimités',
+    'Assistant web de qualification',
+    'Assistant vocal inclus',
+    '150 appels vocaux / mois',
+    'Tableau de bord complet',
+    'Valeur générée par Kadria',
+    'Suivi commercial avancé',
+    'Pipeline commercial',
+    'Priorités et actions à faire',
+    'Relances devis',
+    'Devis PDF / envoi / acceptation / refus',
+    'Catalogue de prestations',
+    'Modèles de devis',
+    'Frais de déplacement / estimation',
+    'Base clients enrichie',
+    'Reporting avancé',
+    'Site vitrine en option : +300 € HT une fois',
+  ],
+  entreprise: [
+    'Tout Performance',
+    'Site vitrine inclus',
+    'Multi-utilisateurs',
+    'Multi-numéros',
+    'Quotas vocaux renforcés : 400 appels / mois',
+    'Accompagnement prioritaire',
+    'Configuration avancée',
+    'Suivi adapté au contexte client',
+    'Offre ajustable selon volume et besoins spécifiques',
+  ],
+};
+
+const PLAN_POSITIONING: Record<PlanKey, string> = {
+  essentiel: 'Pour démarrer avec une base claire de qualification et de suivi.',
+  performance: 'L’offre recommandée pour capter, qualifier, suivre et convertir plus de demandes.',
+  entreprise: 'Pour les équipes artisanales qui veulent centraliser plusieurs utilisateurs, plusieurs numéros et plus de volume.',
+};
+
+const PLAN_ANNUAL_PITCH: Partial<Record<PlanKey, string>> = {
+  essentiel: `${formatEuro(getAnnualOneShotPrice('essentiel', 'annualOneShot'))} € / an au lieu de ${getAnnualFullPrice('essentiel')} €`,
+  performance: `${formatEuro(getAnnualOneShotPrice('performance', 'annualOneShot'))} € / an au lieu de ${getAnnualFullPrice('performance')} €`,
+};
+
+function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClose: () => void }) {
+  const [requestState, setRequestState] = useState<Record<string, 'idle' | 'loading' | 'sent' | 'error'>>({});
+
+  const candidatePlans: PlanKey[] = currentPlan === 'essentiel'
+    ? ['performance', 'entreprise']
+    : currentPlan === 'performance'
+      ? ['essentiel', 'entreprise']
+      : ['performance'];
+
+  // Affiché chaque fois qu'une offre inférieure est disponible (downgrade possible).
+  const canDowngrade = candidatePlans.some((p) => PLAN_DEFINITIONS[p].rank < PLAN_DEFINITIONS[currentPlan].rank);
+
+  // Mode demo : aucun appel reseau vers /api/billing/upgrade-request. On simule
+  // simplement la demande de changement d'offre.
+  const requestChange = async (targetPlan: PlanKey) => {
+    setRequestState((prev) => ({ ...prev, [targetPlan]: 'loading' }));
+    // 'sent' declenche l'affichage du message de confirmation simule dans le
+    // rendu de la modale (cf. JSX ci-dessous) — pas besoin de toast ici, ce
+    // composant n'a pas acces a showToast (defini dans Dashboard).
+    setTimeout(() => {
+      setRequestState((prev) => ({ ...prev, [targetPlan]: 'sent' }));
+    }, 400);
+  };
+
+  // Mode demo : aucun appel reseau vers /api/stripe/checkout. On simule le
+  // passage a l'offre Performance sans redirection reelle.
+  const goToPerformanceCheckout = async () => {
+    setRequestState((prev) => ({ ...prev, performance: 'loading' }));
+    setTimeout(() => {
+      setRequestState((prev) => ({ ...prev, performance: 'sent' }));
+    }, 400);
+  };
+
+  const ctaLabel = (targetPlan: PlanKey): string => {
+    if (targetPlan === 'performance') return 'Passer à Performance';
+    if (targetPlan === 'essentiel') return 'Demander le passage à Essentiel';
+    if (targetPlan === 'entreprise') return 'Demander l\'offre Agence';
+    return 'Demander le changement';
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto">
+      <div className="w-full max-w-6xl rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] max-h-[90vh] overflow-y-auto sm:p-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-green-500">Changer d&apos;offre</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Comparez les offres Kadria</h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              Choisissez le niveau adapté à votre volume de demandes, vos devis et votre organisation.
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Mensuel sans engagement · Annuel comptant -15 % · Site vitrine en option ou inclus selon l&apos;offre
+            </p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-lg p-1 text-zinc-500 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {canDowngrade && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+            Certaines fonctionnalités peuvent être verrouillées si vous repassez sur une offre inférieure.
+          </p>
+        )}
+
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {(['essentiel', 'performance', 'entreprise'] as PlanKey[]).map((planKey) => {
+            const isCurrent = planKey === currentPlan;
+            const def = PLAN_DEFINITIONS[planKey];
+            const isCandidate = candidatePlans.includes(planKey);
+            const state = requestState[planKey] || 'idle';
+            const isPerformanceEmphasis = planKey === 'performance' && !isCurrent;
+
+            return (
+              <div
+                key={planKey}
+                className={`flex flex-col gap-4 rounded-2xl border p-5 sm:p-6 ${
+                  isCurrent
+                    ? 'border-green-500/40 bg-green-500/[0.04]'
+                    : isPerformanceEmphasis
+                      ? 'border-green-500/25 bg-green-500/[0.02]'
+                      : 'border-zinc-800 bg-zinc-900/40'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-lg font-bold text-white">{def.label}</p>
+                  {isCurrent ? (
+                    <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
+                      Votre offre actuelle
+                    </span>
+                  ) : planKey === 'performance' ? (
+                    <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-400">
+                      Recommandé
+                    </span>
+                  ) : planKey === 'entreprise' ? (
+                    <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300">
+                      Sur devis possible
+                    </span>
+                  ) : null}
+                </div>
+
+                <p className="text-sm text-zinc-400">{PLAN_POSITIONING[planKey]}</p>
+
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    {planKey === 'essentiel' && '149 €/mois'}
+                    {planKey === 'performance' && '249 €/mois'}
+                    {planKey === 'entreprise' && '499 €/mois ou sur devis'}
+                  </p>
+                  {PLAN_ANNUAL_PITCH[planKey] && (
+                    <p className="mt-0.5 text-xs text-zinc-500">{PLAN_ANNUAL_PITCH[planKey]}</p>
+                  )}
+                </div>
+
+                <p className="text-xs text-zinc-500">
+                  {def.monthlyProjectLimit ? `${def.monthlyProjectLimit} dossiers / mois` : 'Dossiers illimités'}
+                </p>
+
+                <ul className="flex flex-col gap-2 text-sm text-zinc-300">
+                  {PLAN_FEATURE_HIGHLIGHTS[planKey].map((line) => (
+                    <li key={line} className="flex items-start gap-2">
+                      <span className="mt-0.5 text-green-500">•</span>
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {!isCurrent && isCandidate && planKey === 'performance' && (
+                  <button
+                    type="button"
+                    disabled={state === 'loading' || state === 'sent'}
+                    onClick={goToPerformanceCheckout}
+                    className="mt-auto inline-flex min-h-10 items-center justify-center rounded-md bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] disabled:opacity-60"
+                  >
+                    {state === 'loading' ? 'Redirection...' : ctaLabel(planKey)}
+                  </button>
+                )}
+
+                {!isCurrent && isCandidate && planKey !== 'performance' && (
+                  <button
+                    type="button"
+                    disabled={state === 'loading' || state === 'sent'}
+                    onClick={() => requestChange(planKey)}
+                    className="mt-auto inline-flex min-h-10 items-center justify-center rounded-md bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform duration-150 hover:scale-[1.02] disabled:opacity-60"
+                  >
+                    {state === 'loading'
+                      ? 'Envoi...'
+                      : state === 'sent'
+                        ? 'Demande envoyée'
+                        : ctaLabel(planKey)}
+                  </button>
+                )}
+
+                {!isCurrent && isCandidate && state === 'error' && (
+                  <p className="text-xs text-red-400">Erreur lors de l&apos;envoi, réessayez.</p>
+                )}
+
+                {!isCurrent && !isCandidate && currentPlan === 'entreprise' && (
+                  <a
+                    href="mailto:contact@kadria.fr"
+                    className="mt-auto inline-flex min-h-10 items-center justify-center rounded-md border border-zinc-700 px-4 py-2 text-sm font-semibold text-white hover:border-zinc-500"
+                  >
+                    Contacter Kadria
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {currentPlan === 'entreprise' && (
+          <p className="mt-4 text-sm text-zinc-400">
+            Vous êtes déjà sur l&apos;offre la plus complète. Pour toute question sur votre offre actuelle, contactez l&apos;équipe Kadria.
+          </p>
+        )}
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <a
+            href="/tarifs"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+          >
+            Voir la page tarifs
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md px-4 py-3 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
