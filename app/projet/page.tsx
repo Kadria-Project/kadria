@@ -97,7 +97,7 @@ function ProjetContent() {
     >
       <div className="mx-auto flex min-h-dvh w-full max-w-[1080px] flex-col px-4 pb-6 pt-4 sm:px-6 lg:px-8">
         <header
-          className="mb-4 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 backdrop-blur"
+          className="mb-3 flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5 backdrop-blur sm:mb-4 sm:py-3"
           style={{
             borderColor: 'rgba(255,255,255,0.08)',
             background: 'rgba(7,7,9,0.72)',
@@ -110,8 +110,17 @@ function ProjetContent() {
               <p style={{ margin: 0, color: '#f4f4f5', fontSize: '13.5px', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Assistant projet
               </p>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '12px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p
+                className="hidden sm:block"
+                style={{ margin: 0, color: '#a1a1aa', fontSize: '12px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
                 {artisanName ? `Demande transmise à ${artisanName}` : 'Aucun compte requis'}
+              </p>
+              <p
+                className="sm:hidden"
+                style={{ margin: 0, color: '#a1a1aa', fontSize: '12px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {artisanName ? `Transmis à ${artisanName}` : 'Sans compte'}
               </p>
             </div>
           </div>

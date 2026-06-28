@@ -623,7 +623,7 @@ export default function ChatWidgetInline({
           <div className="project-welcome-wrap" style={{ flex: 1, padding: '24px 0 28px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{ marginBottom: '20px' }}>
-                <h2 style={{ margin: '0 0 6px', color: 'white', fontSize: '22px', lineHeight: 1.25, fontWeight: 700 }}>
+                <h2 className="project-welcome-title" style={{ margin: '0 0 6px', color: 'white', fontSize: '22px', lineHeight: 1.25, fontWeight: 700 }}>
                   Quel type de demande souhaitez-vous transmettre ?
                 </h2>
                 <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13.5px', lineHeight: 1.6 }}>
@@ -1414,6 +1414,10 @@ export default function ChatWidgetInline({
           }
           .project-welcome-wrap {
             padding: 14px 0 20px !important;
+          }
+          .project-welcome-title {
+            font-size: 18px !important;
+            margin-bottom: 4px !important;
           }
           .project-choice-card {
             padding: 11px 13px !important;
