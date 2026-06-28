@@ -779,7 +779,7 @@ export default function ParametresPage() {
             ← Retour
           </button>
           <div className="flex min-w-0 items-baseline gap-2">
-            <KadriaLogo size="sm" theme="dark" noLink />
+            <KadriaLogo size="sm" theme={theme === 'light' ? 'light' : 'dark'} noLink />
             {!isMobile && (
               <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
                 · Configuration
