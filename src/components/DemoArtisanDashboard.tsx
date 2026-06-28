@@ -1527,6 +1527,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     projects: demoProjects,
     events: demoEvents,
     artisan: demoArtisan,
+    createProject: createDemoProject,
     updateProjectStatus,
     updateProjectFields,
     createEvent: demoCreateEvent,
@@ -2729,7 +2730,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/tarifs')}
+              onClick={() => showToast('Action simulée — aucune donnée réelle modifiée.')}
               className="inline-flex items-center justify-center rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
             >
               Voir les offres
@@ -2907,6 +2908,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           goToCommercialFilter={goToCommercialFilter}
           resetFilters={resetFilters}
           showToast={showToast}
+          getProjectHref={(projectId) => `/demo-dashboard/projet/${projectId}`}
+          settingsHref="/demo-parametres"
+          onSupportClick={() => showToast('Action simulée — aucune donnée réelle modifiée.')}
+          onSubscriptionClick={() => showToast('Action simulée — aucune donnée réelle modifiée.')}
+          createProject={(form) => {
+            const createdProject = createDemoProject(form);
+            showToast('Action simulée — aucune donnée réelle modifiée.');
+            return { success: true, projectId: createdProject.id };
+          }}
         />
       ) : (
       <>
@@ -3771,15 +3781,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {isMobile && showClientsWorkspace && (
-        <MobileDossiersView projects={sortedProjects} router={router} />
+        <MobileDossiersView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/demo-dashboard/projet/${projectId}`} />
       )}
 
       {isMobile && showCommercialWorkspace && (
-        <MobileDevisView projects={sortedProjects} router={router} />
+        <MobileDevisView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/demo-dashboard/projet/${projectId}`} />
       )}
 
       {isMobile && showPipelineWorkspace && (
-        <MobilePipelineView projects={sortedProjects} router={router} />
+        <MobilePipelineView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/demo-dashboard/projet/${projectId}`} />
       )}
 
       {isMobile && showCalendarWorkspace && (
@@ -5591,7 +5601,7 @@ function PlanChangeModal({ currentPlan, onClose }: { currentPlan: PlanKey; onClo
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <a
-            href="/tarifs"
+            href="/demo"
             className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-zinc-700 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
           >
             Voir la page tarifs

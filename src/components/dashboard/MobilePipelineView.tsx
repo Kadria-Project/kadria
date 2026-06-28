@@ -95,14 +95,15 @@ function matchesChip(p: Project, chip: QuickChip): boolean {
 export interface MobilePipelineViewProps {
   projects: Project[];
   router: Router;
+  getProjectHref: (projectId: string) => string;
 }
 
-export default function MobilePipelineView({ projects, router }: MobilePipelineViewProps) {
+export default function MobilePipelineView({ projects, router, getProjectHref }: MobilePipelineViewProps) {
   const [search, setSearch] = useState('');
   const [chip, setChip] = useState<QuickChip>('all');
 
   const openProject = (id?: string) => {
-    if (id) router.push(`/dashboard-v2/projet/${id}`);
+    if (id) router.push(getProjectHref(id));
   };
 
   const recap = useMemo(() => {

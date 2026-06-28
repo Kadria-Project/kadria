@@ -150,14 +150,15 @@ function matchesChip(p: Project, chip: QuickChip): boolean {
 export interface MobileDevisViewProps {
   projects: Project[];
   router: Router;
+  getProjectHref: (projectId: string) => string;
 }
 
-export default function MobileDevisView({ projects, router }: MobileDevisViewProps) {
+export default function MobileDevisView({ projects, router, getProjectHref }: MobileDevisViewProps) {
   const [search, setSearch] = useState('');
   const [chip, setChip] = useState<QuickChip>('all');
 
   const openProject = (id?: string) => {
-    if (id) router.push(`/dashboard-v2/projet/${id}`);
+    if (id) router.push(getProjectHref(id));
   };
 
   const devisProjects = useMemo(() => projects.filter(isDevisRelevant), [projects]);

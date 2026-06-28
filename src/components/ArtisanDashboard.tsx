@@ -2875,6 +2875,17 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           goToCommercialFilter={goToCommercialFilter}
           resetFilters={resetFilters}
           showToast={showToast}
+          getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`}
+          settingsHref="/parametres"
+          onSubscriptionClick={() => router.push('/abonnement')}
+          onSupportClick={() => { window.location.href = 'mailto:contact@kadria.fr'; }}
+          createProject={(form) =>
+            fetch('/api/projects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(form),
+            }).then((res) => res.json())
+          }
         />
       ) : (
       <>
@@ -3736,15 +3747,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {isMobile && showClientsWorkspace && (
-        <MobileDossiersView projects={sortedProjects} router={router} />
+        <MobileDossiersView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
       )}
 
       {isMobile && showCommercialWorkspace && (
-        <MobileDevisView projects={sortedProjects} router={router} />
+        <MobileDevisView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
       )}
 
       {isMobile && showPipelineWorkspace && (
-        <MobilePipelineView projects={sortedProjects} router={router} />
+        <MobilePipelineView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
       )}
 
       {isMobile && showCalendarWorkspace && (

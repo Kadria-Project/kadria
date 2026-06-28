@@ -12,6 +12,12 @@ interface DemoModeContextValue {
   artisan: DemoArtisan;
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
+  createProject: (project: {
+    clientName: string;
+    clientPhone: string;
+    clientEmail: string;
+    siteAddress: string;
+  }) => DemoProject;
   updateProjectStatus: (id: string, status: string) => void;
   updateProjectFields: (id: string, fields: Partial<DemoProject>) => void;
   updateProjectNote: (id: string, note: string) => void;
@@ -38,6 +44,49 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(nextTheme);
     setArtisan((current) => ({ ...current, theme: nextTheme }));
   }, []);
+
+  const createProject = useCallback((projectInput: {
+    clientName: string;
+    clientPhone: string;
+    clientEmail: string;
+    siteAddress: string;
+  }) => {
+    const now = new Date().toISOString();
+    const trimmedName = projectInput.clientName.trim();
+    const [clientFirstName = 'Client', ...restName] = trimmedName.split(/\s+/).filter(Boolean);
+    const clientName = restName.join(' ') || 'Demo';
+    const nextIndex = projects.length + 1;
+    const createdProject: DemoProject = {
+      id: `demo_local_${Date.now()}`,
+      projectNumber: `DEV-2026-${String(nextIndex).padStart(3, '0')}`,
+      clientFirstName,
+      clientName,
+      clientPhone: projectInput.clientPhone.trim(),
+      clientEmail: projectInput.clientEmail.trim(),
+      siteAddress: projectInput.siteAddress.trim(),
+      city: '',
+      postalCode: '',
+      trade: artisan.primaryTrade || 'Projet',
+      projectType: 'Projet a qualifier',
+      budget: '',
+      desiredTimeline: '',
+      maturity: 'A qualifier',
+      aiSummary: 'Nouveau dossier cree en mode demo. Aucune donnee reelle n a ete enregistree.',
+      completenessScore: 42,
+      status: 'Nouveau',
+      source: 'demo-mobile',
+      devisAmount: null,
+      photos: [],
+      createdAt: now,
+      updatedAt: now,
+      lastInteractionAt: now,
+      callbackDate: null,
+      notes: '',
+    };
+
+    setProjects((current) => [createdProject, ...current]);
+    return createdProject;
+  }, [artisan.primaryTrade, projects.length]);
 
   const updateProjectStatus = useCallback((id: string, status: string) => {
     setProjects((current) => current.map((project) => (project.id === id ? { ...project, status } : project)));
@@ -84,6 +133,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       artisan,
       theme,
       setTheme,
+      createProject,
       updateProjectStatus,
       updateProjectFields,
       updateProjectNote,
@@ -93,7 +143,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       deleteEvent,
       updateArtisanConfig,
     }),
-    [artisan, createEvent, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus],
+    [artisan, createEvent, createProject, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

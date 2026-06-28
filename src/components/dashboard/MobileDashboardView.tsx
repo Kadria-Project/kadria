@@ -74,6 +74,16 @@ export interface MobileDashboardViewProps {
   goToCommercialFilter: (value: 'calls' | 'quotes' | 'followups') => void;
   resetFilters: () => void;
   showToast: (message: string, error?: boolean) => void;
+  getProjectHref: (projectId: string) => string;
+  settingsHref: string;
+  onSubscriptionClick: () => void;
+  onSupportClick: () => void;
+  createProject: (project: {
+    clientName: string;
+    clientPhone: string;
+    clientEmail: string;
+    siteAddress: string;
+  }) => Promise<{ success: boolean; projectId?: string; error?: string; project?: { id?: string } }> | { success: boolean; projectId?: string; error?: string; project?: { id?: string } };
 }
 
 function clientLabel(p: Project): string {
@@ -186,6 +196,11 @@ export default function MobileDashboardView({
   goToCommercialFilter,
   resetFilters,
   showToast,
+  getProjectHref,
+  settingsHref,
+  onSubscriptionClick,
+  onSupportClick,
+  createProject,
 }: MobileDashboardViewProps) {
   const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -193,7 +208,7 @@ export default function MobileDashboardView({
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ clientName: '', clientPhone: '', clientEmail: '', siteAddress: '' });
 
-  const openProject = (projectId: string) => router.push(`/dashboard-v2/projet/${projectId}`);
+  const openProject = (projectId: string) => router.push(getProjectHref(projectId));
 
   const actionRows = buildActionRows(priorityProjects, todayTasks, riskProjects, hotLeads);
 
@@ -215,18 +230,14 @@ export default function MobileDashboardView({
     }
     setCreating(true);
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
+      const data = await createProject(form);
       if (data?.success) {
         showToast('Dossier créé');
         setCreateOpen(false);
         setFabOpen(false);
         setForm({ clientName: '', clientPhone: '', clientEmail: '', siteAddress: '' });
-        router.push(data.project?.id ? `/dashboard-v2/projet/${data.project.id}` : '/dashboard-v2');
+        const createdProjectId = data.projectId || data.project?.id;
+        if (createdProjectId) router.push(getProjectHref(createdProjectId));
       } else {
         showToast(data?.error || 'Erreur lors de la création', true);
       }
@@ -665,19 +676,22 @@ export default function MobileDashboardView({
                 icon={CreditCard}
                 title="Mon abonnement"
                 description="Facturation et gestion Stripe"
-                onClick={() => { setMoreOpen(false); router.push('/abonnement'); }}
+                onClick={() => {
+                  setMoreOpen(false);
+                  onSubscriptionClick();
+                }}
               />
               <MenuRow
                 icon={Settings}
                 title="Paramètres"
                 description="Préférences de votre compte"
-                onClick={() => { setMoreOpen(false); router.push('/parametres'); }}
+                onClick={() => { setMoreOpen(false); router.push(settingsHref); }}
               />
               <MenuRow
                 icon={LifeBuoy}
                 title="Support"
                 description="contact@kadria.fr"
-                onClick={() => { setMoreOpen(false); window.location.href = 'mailto:contact@kadria.fr'; }}
+                onClick={() => { setMoreOpen(false); onSupportClick(); }}
               />
             </div>
           </div>

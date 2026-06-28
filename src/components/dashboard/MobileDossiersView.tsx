@@ -126,14 +126,15 @@ function matchesChip(p: Project, chip: QuickChip): boolean {
 export interface MobileDossiersViewProps {
   projects: Project[];
   router: Router;
+  getProjectHref: (projectId: string) => string;
 }
 
-export default function MobileDossiersView({ projects, router }: MobileDossiersViewProps) {
+export default function MobileDossiersView({ projects, router, getProjectHref }: MobileDossiersViewProps) {
   const [search, setSearch] = useState('');
   const [chip, setChip] = useState<QuickChip>('all');
 
   const openProject = (id?: string) => {
-    if (id) router.push(`/dashboard-v2/projet/${id}`);
+    if (id) router.push(getProjectHref(id));
   };
 
   const filtered = useMemo(() => {
