@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type DemoAccessForm = {
   firstName: string
@@ -63,6 +63,7 @@ export default function DemoAccessPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [reason, setReason] = useState('')
 
   function update<K extends keyof DemoAccessForm>(key: K, value: DemoAccessForm[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -92,6 +93,11 @@ export default function DemoAccessPage() {
       setSubmitting(false)
     }
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setReason(params.get('reason') || '')
+  }, [])
 
   const inputClassName = 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-green-500'
 
@@ -135,6 +141,18 @@ export default function DemoAccessPage() {
           </section>
 
           <section className="rounded-[28px] border border-zinc-800 bg-zinc-900/80 p-6 sm:p-8">
+            {reason ? (
+              <div className="mb-6 rounded-2xl border border-green-500/20 bg-green-500/[0.08] p-4 text-sm leading-7 text-zinc-200">
+                {reason === 'demo_access_required'
+                  ? 'La demonstration complete est accessible sur demande.'
+                  : reason === 'demo_access_expired'
+                    ? "Votre acces demo a expire. La demonstration complete est accessible sur demande."
+                    : reason === 'demo_access_revoked'
+                      ? "Cet acces demo a ete revoque. La demonstration complete est accessible sur demande."
+                      : "Ce lien demo n'est pas valide. La demonstration complete est accessible sur demande."}
+              </div>
+            ) : null}
+
             {!submitted ? (
               <>
                 <div className="mb-6">

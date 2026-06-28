@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
+import { DEMO_ACCESS_COOKIE, verifyDemoAccessSessionToken } from '@/src/lib/demo-access'
 
 function getAuthSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
@@ -33,6 +34,57 @@ type AccessTokenPayload = {
   billingStatus?: unknown
 }
 
+type DemoAccessRow = {
+  id?: string
+  status?: string | null
+  expires_at?: string | null
+  revoked_at?: string | null
+  access_token_hash?: string | null
+}
+
+function redirectToDemoAccess(request: NextRequest, reason: string) {
+  const url = new URL('/demo/acces', request.url)
+  url.searchParams.set('reason', reason)
+  const response = NextResponse.redirect(url)
+  response.cookies.delete(DEMO_ACCESS_COOKIE)
+  return response
+}
+
+function parseIsoDate(value?: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+async function fetchDemoAccessRow(requestId: string): Promise<DemoAccessRow | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
+
+  if (!supabaseUrl || !supabaseSecretKey || !requestId) {
+    return null
+  }
+
+  const params = new URLSearchParams({
+    select: 'id,status,expires_at,revoked_at,access_token_hash',
+  })
+  params.append('id', `eq.${requestId}`)
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/demo_access_requests?${params.toString()}`, {
+    headers: {
+      apikey: supabaseSecretKey,
+      Authorization: `Bearer ${supabaseSecretKey}`,
+    },
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  const rows = (await response.json().catch(() => [])) as DemoAccessRow[]
+  return rows[0] || null
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -41,6 +93,43 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith('/api/devis/public/')) {
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/demo-dashboard') || pathname.startsWith('/demo-parametres')) {
+    const token = request.cookies.get(DEMO_ACCESS_COOKIE)?.value
+
+    if (!token) {
+      return redirectToDemoAccess(request, 'demo_access_required')
+    }
+
+    const session = await verifyDemoAccessSessionToken(token)
+    if (!session?.requestId || !session.tokenHash) {
+      return redirectToDemoAccess(request, 'demo_access_required')
+    }
+
+    const row = await fetchDemoAccessRow(session.requestId)
+    if (!row?.id) {
+      return redirectToDemoAccess(request, 'demo_access_invalid')
+    }
+
+    if (row.access_token_hash !== session.tokenHash) {
+      return redirectToDemoAccess(request, 'demo_access_invalid')
+    }
+
+    if (row.revoked_at || row.status === 'revoked') {
+      return redirectToDemoAccess(request, 'demo_access_revoked')
+    }
+
+    const expiresAt = parseIsoDate(row.expires_at)
+    if (!expiresAt || expiresAt.getTime() <= Date.now() || row.status === 'expired') {
+      return redirectToDemoAccess(request, 'demo_access_expired')
+    }
+
+    if (row.status !== 'approved') {
+      return redirectToDemoAccess(request, 'demo_access_required')
+    }
+
     return NextResponse.next()
   }
 
@@ -113,5 +202,16 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard-v2', '/dashboard-v2/:path*', '/onboarding', '/login', '/admin', '/admin/:path*'],
+  matcher: [
+    '/dashboard-v2',
+    '/dashboard-v2/:path*',
+    '/onboarding',
+    '/login',
+    '/admin',
+    '/admin/:path*',
+    '/demo-dashboard',
+    '/demo-dashboard/:path*',
+    '/demo-parametres',
+    '/demo-parametres/:path*',
+  ],
 }
