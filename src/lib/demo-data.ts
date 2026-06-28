@@ -154,6 +154,43 @@ export const DEMO_SETTINGS_CONFIGURATION = {
     priorityZones: ['Rouen centre', 'Bois-Guillaume', 'Mont-Saint-Aignan', 'Sotteville-les-Rouen'],
     excludedZones: ['Paris intra-muros', 'Le Havre port', 'Interventions hors Normandie'],
   },
+  widget: {
+    enabled: true,
+    artisanId: 'Artisan_demo',
+    scriptUrl: '<script src="https://kadria.fr/widget.js" data-artisan-id="Artisan_demo"></script>',
+    welcomeMessage:
+      "Bonjour, je suis l'assistant de AB Elec. Decrivez votre besoin, je vais preparer un dossier clair pour l'artisan.",
+    responseTone: 'Professionnel',
+    requestedFields: ['Type de projet', 'Description', 'Budget', 'Delai', 'Ville', 'Photos', 'Coordonnees'],
+    activeChannels: ['Site web', 'Lien projet', 'Widget embarque'],
+  },
+  catalogue: {
+    enabled: true,
+    pricingMode: 'Catalogue prestations',
+    services: [
+      { id: 'service_001', title: 'Depannage electrique', priceLabel: 'A partir de 90 EUR', enabled: true },
+      { id: 'service_002', title: 'Remplacement tableau electrique', priceLabel: 'A partir de 850 EUR', enabled: true },
+      { id: 'service_003', title: 'Installation borne de recharge', priceLabel: 'A partir de 1 290 EUR', enabled: true },
+      { id: 'service_004', title: 'Mise aux normes electrique', priceLabel: 'Sur devis', enabled: true },
+      { id: 'service_005', title: 'Renovation electrique complete', priceLabel: 'Sur devis', enabled: false },
+      { id: 'service_006', title: 'Eclairage exterieur', priceLabel: 'A partir de 350 EUR', enabled: true },
+    ],
+    defaultVat: '20 %',
+    quoteValidityDays: '30 jours',
+    depositRate: '30 %',
+    paymentTerms: 'Acompte a la commande, solde a reception',
+    quoteMentions:
+      'Devis etabli sur la base des informations transmises. Une visite technique peut etre necessaire avant validation definitive.',
+  },
+  appearance: {
+    primaryColor: '#22c55e',
+    visualMode: 'Sombre',
+    logoLabel: 'AB Elec',
+    displayName: 'AB Elec',
+    buttonColor: '#22c55e',
+    accentColor: '#16a34a',
+    toneStyle: 'Premium',
+  },
 } as const;
 
 export const DEMO_PROJECTS: DemoProject[] = [

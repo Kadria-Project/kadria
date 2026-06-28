@@ -75,6 +75,39 @@ type DemoSettingsState = {
     priorityZones: string[];
     excludedZones: string[];
   };
+  widget: {
+    enabled: boolean;
+    artisanId: string;
+    scriptUrl: string;
+    welcomeMessage: string;
+    responseTone: string;
+    requestedFields: string[];
+    activeChannels: string[];
+  };
+  catalogue: {
+    enabled: boolean;
+    pricingMode: string;
+    services: Array<{
+      id: string;
+      title: string;
+      priceLabel: string;
+      enabled: boolean;
+    }>;
+    defaultVat: string;
+    quoteValidityDays: string;
+    depositRate: string;
+    paymentTerms: string;
+    quoteMentions: string;
+  };
+  appearance: {
+    primaryColor: string;
+    visualMode: string;
+    logoLabel: string;
+    displayName: string;
+    buttonColor: string;
+    accentColor: string;
+    toneStyle: string;
+  };
 };
 
 const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
@@ -132,6 +165,13 @@ const SERVICE_OPTIONS = [
   'Mise en securite',
   'Modernisation eclairage',
 ];
+const WIDGET_TONE_OPTIONS = ['Professionnel', 'Direct', 'Chaleureux'];
+const WIDGET_QUESTION_OPTIONS = ['Type de projet', 'Description', 'Budget', 'Delai', 'Ville', 'Photos', 'Coordonnees'];
+const WIDGET_CHANNEL_OPTIONS = ['Site web', 'Lien projet', 'Widget embarque'];
+const CATALOG_PRICING_OPTIONS = ['Estimation simple', 'Catalogue prestations', 'Devis assiste'];
+const APPEARANCE_MODE_OPTIONS = ['Sombre', 'Clair', 'Automatique'];
+const APPEARANCE_TONE_OPTIONS = ['Sobre', 'Premium', 'Terrain'];
+const COLOR_PRESETS = ['#22c55e', '#16a34a', '#0f766e', '#f59e0b', '#3b82f6'];
 
 const INITIAL_SETTINGS: DemoSettingsState = JSON.parse(
   JSON.stringify({
@@ -140,6 +180,9 @@ const INITIAL_SETTINGS: DemoSettingsState = JSON.parse(
     contact: DEMO_SETTINGS_CONFIGURATION.contact,
     legal: DEMO_SETTINGS_CONFIGURATION.legal,
     travel: DEMO_SETTINGS_CONFIGURATION.travel,
+    widget: DEMO_SETTINGS_CONFIGURATION.widget,
+    catalogue: DEMO_SETTINGS_CONFIGURATION.catalogue,
+    appearance: DEMO_SETTINGS_CONFIGURATION.appearance,
   })
 );
 
@@ -388,6 +431,62 @@ function TagSelector({
   );
 }
 
+function StatusBadge({ active, label }: { active: boolean; label: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        borderRadius: '999px',
+        border: active ? '1px solid rgba(34,197,94,0.28)' : '1px solid var(--border)',
+        background: active ? 'rgba(34,197,94,0.12)' : 'var(--bg-hover)',
+        color: active ? 'var(--accent)' : 'var(--text-2)',
+        padding: '8px 12px',
+        fontSize: '12px',
+        fontWeight: 700,
+      }}
+    >
+      <span
+        style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '999px',
+          background: active ? 'var(--accent)' : '#71717a',
+        }}
+      />
+      {label}
+    </span>
+  );
+}
+
+function ColorSwatch({
+  active,
+  color,
+  onClick,
+}: {
+  active: boolean;
+  color: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Choisir ${color}`}
+      style={{
+        width: '38px',
+        height: '38px',
+        borderRadius: '12px',
+        border: active ? '2px solid #fff' : '1px solid var(--border)',
+        background: color,
+        boxShadow: active ? `0 0 0 2px ${color}` : 'none',
+        cursor: 'pointer',
+      }}
+    />
+  );
+}
+
 function PlaceholderSection({
   body,
   kicker,
@@ -424,6 +523,7 @@ export default function DemoParametresPage() {
   const [activeSection, setActiveSection] = useState<DemoSectionKey>('entreprise');
   const [settings, setSettings] = useState<DemoSettingsState>(createInitialSettings);
   const [saveState, setSaveState] = useState<SettingsSaveState>('idle');
+  const [widgetScriptCopied, setWidgetScriptCopied] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(
     'Mode demo - ces informations sont fictives et ne sont pas enregistrees.'
   );
@@ -469,6 +569,27 @@ export default function DemoParametresPage() {
     setSettings((current) => ({ ...current, travel: { ...current.travel, [key]: value } }));
   };
 
+  const updateWidgetField = <K extends keyof DemoSettingsState['widget']>(
+    key: K,
+    value: DemoSettingsState['widget'][K]
+  ) => {
+    setSettings((current) => ({ ...current, widget: { ...current.widget, [key]: value } }));
+  };
+
+  const updateCatalogueField = <K extends keyof DemoSettingsState['catalogue']>(
+    key: K,
+    value: DemoSettingsState['catalogue'][K]
+  ) => {
+    setSettings((current) => ({ ...current, catalogue: { ...current.catalogue, [key]: value } }));
+  };
+
+  const updateAppearanceField = <K extends keyof DemoSettingsState['appearance']>(
+    key: K,
+    value: DemoSettingsState['appearance'][K]
+  ) => {
+    setSettings((current) => ({ ...current, appearance: { ...current.appearance, [key]: value } }));
+  };
+
   const toggleProfileArrayValue = (
     key: 'secondaryTrades' | 'offeredServices' | 'clientTypes' | 'priorityRequests' | 'filteredRequests',
     value: string
@@ -500,6 +621,68 @@ export default function DemoParametresPage() {
     });
   };
 
+  const toggleWidgetArrayValue = (key: 'requestedFields' | 'activeChannels', value: string) => {
+    setSettings((current) => {
+      const values = current.widget[key];
+      const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+      return {
+        ...current,
+        widget: {
+          ...current.widget,
+          [key]: nextValues,
+        },
+      };
+    });
+  };
+
+  const updateCatalogueService = (
+    serviceId: string,
+    field: 'title' | 'priceLabel' | 'enabled',
+    value: string | boolean
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      catalogue: {
+        ...current.catalogue,
+        services: current.catalogue.services.map((service) =>
+          service.id === serviceId ? { ...service, [field]: value } : service
+        ),
+      },
+    }));
+  };
+
+  const addCatalogueService = () => {
+    setSettings((current) => ({
+      ...current,
+      catalogue: {
+        ...current.catalogue,
+        services: [
+          ...current.catalogue.services,
+          {
+            id: `service_${Date.now()}`,
+            title: 'Nouvelle prestation demo',
+            priceLabel: 'A partir de 490 EUR',
+            enabled: true,
+          },
+        ],
+      },
+    }));
+    setStatusMessage('Prestation ajoutee localement - aucune donnee reelle enregistree.');
+  };
+
+  const copyWidgetScript = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(settings.widget.scriptUrl);
+      }
+      setWidgetScriptCopied(true);
+      setStatusMessage('Script copie localement - action de demonstration uniquement.');
+      window.setTimeout(() => setWidgetScriptCopied(false), 2200);
+    } catch {
+      setStatusMessage("Copie simulee - l'environnement demo n'autorise pas de copie systeme.");
+    }
+  };
+
   const save = () => {
     setSaveState('saving');
     setStatusMessage('Simulation en cours...');
@@ -512,6 +695,7 @@ export default function DemoParametresPage() {
   const reset = () => {
     setSettings(createInitialSettings());
     setSaveState('idle');
+    setWidgetScriptCopied(false);
     setStatusMessage("Configuration reinitialisee localement - l'etat initial demo est restaure.");
   };
 
@@ -756,13 +940,403 @@ export default function DemoParametresPage() {
     </div>
   );
 
+  const renderWidgetSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Mon widget</h2>
+
+      <DemoSectionCard
+        title="Assistant web"
+        description="Mode demo - ces reglages ne sont pas enregistres et servent uniquement a illustrer la configuration artisan."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <ToggleField
+            label="Statut du widget"
+            subtitle={settings.widget.enabled ? 'Widget actif sur les canaux demo.' : 'Widget mis en pause localement.'}
+            checked={settings.widget.enabled}
+            onChange={(value) => updateWidgetField('enabled', value)}
+          />
+          <Field label="Artisan ID" value={settings.widget.artisanId} onChange={(value) => updateWidgetField('artisanId', value)} />
+          <SelectField
+            label="Ton de reponse"
+            value={settings.widget.responseTone}
+            onChange={(value) => updateWidgetField('responseTone', value)}
+            options={WIDGET_TONE_OPTIONS}
+          />
+        </div>
+        <TextareaField
+          label="Message d'accueil"
+          rows={4}
+          value={settings.widget.welcomeMessage}
+          onChange={(value) => updateWidgetField('welcomeMessage', value)}
+        />
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Integration" description="Le script ci-dessous reste purement demonstratif et ne declenche aucun chargement externe depuis cette page.">
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <TextareaField
+            label="URL d'integration"
+            rows={3}
+            value={settings.widget.scriptUrl}
+            onChange={(value) => updateWidgetField('scriptUrl', value)}
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={copyWidgetScript}
+              style={{
+                background: widgetScriptCopied ? 'rgba(34,197,94,0.16)' : 'transparent',
+                border: '1px solid rgba(34,197,94,0.28)',
+                color: widgetScriptCopied ? 'var(--accent)' : 'var(--text-2)',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {widgetScriptCopied ? 'Script copie' : 'Copier le script'}
+            </button>
+            <StatusBadge active={settings.widget.enabled} label={settings.widget.enabled ? 'Widget active' : 'Widget desactive'} />
+          </div>
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Qualification" description="Questions et canaux simulant la configuration d'un assistant commercial deja bien cadre.">
+        <div style={{ display: 'grid', gap: '18px' }}>
+          <TagSelector
+            label="Questions a demander"
+            options={WIDGET_QUESTION_OPTIONS}
+            selected={settings.widget.requestedFields}
+            onToggle={(value) => toggleWidgetArrayValue('requestedFields', value)}
+          />
+          <TagSelector
+            label="Canaux actifs"
+            options={WIDGET_CHANNEL_OPTIONS}
+            selected={settings.widget.activeChannels}
+            onToggle={(value) => toggleWidgetArrayValue('activeChannels', value)}
+          />
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Preview widget" description="Apercu visuel local pour verifier le ton, le badge demo et la hierarchie de l'assistant.">
+        <div
+          style={{
+            borderRadius: '18px',
+            border: '1px solid rgba(34,197,94,0.18)',
+            background: 'linear-gradient(180deg, rgba(24,24,27,0.98), rgba(9,9,11,0.95))',
+            padding: '18px',
+            maxWidth: '360px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div>
+              <p style={{ margin: 0, color: '#f4f4f5', fontSize: '14px', fontWeight: 700 }}>{settings.appearance.displayName}</p>
+              <p style={{ margin: '4px 0 0', color: '#a1a1aa', fontSize: '12px' }}>{settings.widget.responseTone} · assistant web</p>
+            </div>
+            <StatusBadge active label="Demo" />
+          </div>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '14px',
+              padding: '14px',
+              marginBottom: '12px',
+            }}
+          >
+            <p style={{ margin: 0, color: '#e4e4e7', fontSize: '13px', lineHeight: 1.7 }}>{settings.widget.welcomeMessage}</p>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.03)',
+              padding: '12px 14px',
+            }}
+          >
+            <span style={{ color: '#71717a', fontSize: '13px' }}>Decrivez votre projet...</span>
+            <span
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '999px',
+                background: settings.appearance.buttonColor,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#09090b',
+                fontWeight: 800,
+                fontSize: '12px',
+              }}
+            >
+              OK
+            </span>
+          </div>
+        </div>
+      </DemoSectionCard>
+    </div>
+  );
+
+  const renderCatalogueSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Catalogue & devis</h2>
+
+      <DemoSectionCard title="Configuration catalogue" description="Le catalogue demo permet d'activer des prestations, d'ajuster les prix et de simuler l'ajout d'une nouvelle ligne.">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <ToggleField
+            label="Catalogue active"
+            subtitle="Affiche des prestations preconfigurees dans les parcours de demonstration."
+            checked={settings.catalogue.enabled}
+            onChange={(value) => updateCatalogueField('enabled', value)}
+          />
+          <SelectField
+            label="Mode de chiffrage"
+            value={settings.catalogue.pricingMode}
+            onChange={(value) => updateCatalogueField('pricingMode', value)}
+            options={CATALOG_PRICING_OPTIONS}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gap: '12px' }}>
+          {settings.catalogue.services.map((service) => (
+            <div
+              key={service.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '12px',
+                alignItems: 'end',
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: '14px',
+              }}
+            >
+              <Field
+                label="Prestation"
+                value={service.title}
+                onChange={(value) => updateCatalogueService(service.id, 'title', value)}
+              />
+              <Field
+                label="Tarif affiche"
+                value={service.priceLabel}
+                onChange={(value) => updateCatalogueService(service.id, 'priceLabel', value)}
+              />
+              <ToggleField
+                label={service.enabled ? 'Activee' : 'Masquee'}
+                checked={service.enabled}
+                onChange={(value) => updateCatalogueService(service.id, 'enabled', value)}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: '16px' }}>
+          <button
+            type="button"
+            onClick={addCatalogueService}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(34,197,94,0.28)',
+              color: 'var(--accent)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Ajouter une prestation simulee
+          </button>
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Parametres devis" description="Aucun PDF, email ou mutation reelle n'est declenche. Les valeurs servent uniquement a la demonstration.">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <Field label="TVA par defaut" value={settings.catalogue.defaultVat} onChange={(value) => updateCatalogueField('defaultVat', value)} />
+          <Field
+            label="Validite devis"
+            value={settings.catalogue.quoteValidityDays}
+            onChange={(value) => updateCatalogueField('quoteValidityDays', value)}
+          />
+          <Field label="Acompte conseille" value={settings.catalogue.depositRate} onChange={(value) => updateCatalogueField('depositRate', value)} />
+          <Field
+            label="Conditions paiement"
+            value={settings.catalogue.paymentTerms}
+            onChange={(value) => updateCatalogueField('paymentTerms', value)}
+          />
+        </div>
+        <TextareaField
+          label="Mentions devis fictives"
+          rows={4}
+          value={settings.catalogue.quoteMentions}
+          onChange={(value) => updateCatalogueField('quoteMentions', value)}
+        />
+      </DemoSectionCard>
+    </div>
+  );
+
+  const renderAppearanceSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Apparence</h2>
+
+      <DemoSectionCard title="Identite visuelle" description="La personnalisation ci-dessous reste locale et permet d'illustrer un rendu premium cote prospect.">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <Field label="Nom affiche" value={settings.appearance.displayName} onChange={(value) => updateAppearanceField('displayName', value)} />
+          <SelectField
+            label="Mode visuel"
+            value={settings.appearance.visualMode}
+            onChange={(value) => updateAppearanceField('visualMode', value)}
+            options={APPEARANCE_MODE_OPTIONS}
+          />
+          <SelectField
+            label="Style de ton"
+            value={settings.appearance.toneStyle}
+            onChange={(value) => updateAppearanceField('toneStyle', value)}
+            options={APPEARANCE_TONE_OPTIONS}
+          />
+          <Field label="Logo entreprise" value={settings.appearance.logoLabel} onChange={(value) => updateAppearanceField('logoLabel', value)} />
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+          {COLOR_PRESETS.map((color) => (
+            <ColorSwatch
+              key={color}
+              color={color}
+              active={settings.appearance.primaryColor === color}
+              onClick={() => {
+                updateAppearanceField('primaryColor', color);
+                updateAppearanceField('buttonColor', color);
+              }}
+            />
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Couleur principale" value={settings.appearance.primaryColor} onChange={(value) => updateAppearanceField('primaryColor', value)} />
+          <Field label="Couleur bouton principal" value={settings.appearance.buttonColor} onChange={(value) => updateAppearanceField('buttonColor', value)} />
+          <Field label="Couleur accent" value={settings.appearance.accentColor} onChange={(value) => updateAppearanceField('accentColor', value)} />
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Logo et rendu demo" description="Le changement de logo est simule localement, sans upload ni integration externe.">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'center' }}>
+          <div
+            style={{
+              width: '108px',
+              height: '108px',
+              borderRadius: '24px',
+              background: `linear-gradient(135deg, ${settings.appearance.primaryColor}, ${settings.appearance.accentColor})`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#09090b',
+              fontWeight: 800,
+              fontSize: '24px',
+            }}
+          >
+            {settings.appearance.logoLabel}
+          </div>
+          <div style={{ display: 'grid', gap: '10px' }}>
+            <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+              Apercu logo demo pour illustrer l'identite visible dans le widget et les parcours prospect.
+            </p>
+            <button
+              type="button"
+              onClick={() => setStatusMessage('Changement de logo simule - aucun upload reel effectue.')}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                color: 'var(--text-2)',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Changer le logo
+            </button>
+          </div>
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Preview apparence" description="Mini apercu du widget, du CTA et d'un badge de projet pour verifier les reglages choisis.">
+        <div style={{ display: 'grid', gap: '14px', maxWidth: '380px' }}>
+          <div
+            style={{
+              background: settings.appearance.visualMode === 'Clair' ? '#f4f4f5' : '#09090b',
+              color: settings.appearance.visualMode === 'Clair' ? '#18181b' : '#f4f4f5',
+              border: '1px solid var(--border)',
+              borderRadius: '18px',
+              padding: '18px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <strong>{settings.appearance.displayName}</strong>
+              <span
+                style={{
+                  borderRadius: '999px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  background: `${settings.appearance.primaryColor}22`,
+                  color: settings.appearance.primaryColor,
+                }}
+              >
+                {settings.appearance.toneStyle}
+              </span>
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: '13px', lineHeight: 1.6, opacity: 0.86 }}>
+              Interface {settings.appearance.visualMode.toLowerCase()} avec CTA personnalise pour vos prospects.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                style={{
+                  background: settings.appearance.buttonColor,
+                  color: '#09090b',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                }}
+              >
+                Demarrer
+              </button>
+              <span
+                style={{
+                  borderRadius: '999px',
+                  padding: '8px 10px',
+                  border: `1px solid ${settings.appearance.accentColor}`,
+                  color: settings.appearance.accentColor,
+                  fontSize: '12px',
+                  fontWeight: 700,
+                }}
+              >
+                Score projet 92
+              </span>
+            </div>
+          </div>
+        </div>
+      </DemoSectionCard>
+    </div>
+  );
+
   const renderSection = () => {
     if (activeSection === 'entreprise') return renderEntrepriseSection();
     if (activeSection === 'profil-metier') return renderProfileSection();
     if (activeSection === 'contact') return renderContactSection();
     if (activeSection === 'legal') return renderLegalSection();
     if (activeSection === 'vehicule') return renderTravelSection();
-    if (activeSection === 'widget') {
+    if (activeSection === 'widget') return renderWidgetSection();
+    if (activeSection === 'catalogue') return renderCatalogueSection();
+    if (activeSection === 'apparence') return renderAppearanceSection();
+    if (false) {
       return (
         <PlaceholderSection
           title="🎨 Mon widget"
@@ -771,7 +1345,7 @@ export default function DemoParametresPage() {
         />
       );
     }
-    if (activeSection === 'catalogue') {
+    if (false) {
       return (
         <PlaceholderSection
           title="📒 Catalogue & devis"
@@ -780,7 +1354,7 @@ export default function DemoParametresPage() {
         />
       );
     }
-    if (activeSection === 'apparence') {
+    if (false) {
       return (
         <PlaceholderSection
           title="🌓 Apparence"
