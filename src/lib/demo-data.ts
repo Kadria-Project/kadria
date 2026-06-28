@@ -191,6 +191,48 @@ export const DEMO_SETTINGS_CONFIGURATION = {
     accentColor: '#16a34a',
     toneStyle: 'Premium',
   },
+  offer: {
+    currentPlan: 'Performance',
+    status: 'Actif',
+    price: '249 EUR/mois',
+    renewalDate: '15 juillet 2026',
+    quotas: {
+      projects: { label: 'Dossiers crees', used: 18, limitLabel: 'Illimite', tone: 'included' },
+      quotes: { label: 'Devis', used: 7, limitLabel: 'Illimite', tone: 'included' },
+      voiceCalls: { label: 'Appels vocaux', used: 42, limit: 150, tone: 'warning' },
+      voiceMinutes: { label: 'Minutes vocales', used: 96, unit: 'min', tone: 'neutral' },
+      pdfExport: { label: 'Export PDF', status: 'Inclus', tone: 'included' },
+      pipeline: { label: 'Pipeline commercial', status: 'Inclus', tone: 'included' },
+      priorities: { label: 'Priorites du jour', status: 'Inclus', tone: 'included' },
+      followUps: { label: 'Relances', status: 'Bientot', tone: 'soon' },
+    },
+    features: [
+      'Assistant chat web',
+      'Qualification metier',
+      'Score commercial',
+      'Vue liste',
+      'Vue Kanban / pipeline',
+      'Devis illimites',
+      'Assistant vocal avec quota',
+      'Export PDF',
+      'Opportunites prioritaires',
+      'Dashboard mobile',
+      'Parametres metier',
+      'Catalogue prestations',
+      'Apparence widget',
+    ],
+    planComparison: [
+      { name: 'Essentiel', summary: 'Pour demarrer', highlight: false },
+      { name: 'Performance', summary: 'Plan actuel / recommande', highlight: true },
+      { name: 'Agence', summary: 'Pour equipes et reseaux', highlight: false },
+    ],
+    siteAddon: {
+      title: 'Site vitrine cle en main',
+      monthlyPrice: '+50 EUR/mois avec engagement 6 mois',
+      oneShotPrice: 'ou 300 EUR une fois',
+      availability: 'Disponible avec Essentiel et Performance',
+    },
+  },
 } as const;
 
 export const DEMO_PROJECTS: DemoProject[] = [

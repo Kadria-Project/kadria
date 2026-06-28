@@ -108,6 +108,34 @@ type DemoSettingsState = {
     accentColor: string;
     toneStyle: string;
   };
+  offer: {
+    currentPlan: string;
+    status: string;
+    price: string;
+    renewalDate: string;
+    quotas: {
+      projects: { label: string; used: number; limitLabel: string; tone: string };
+      quotes: { label: string; used: number; limitLabel: string; tone: string };
+      voiceCalls: { label: string; used: number; limit: number; tone: string };
+      voiceMinutes: { label: string; used: number; unit: string; tone: string };
+      pdfExport: { label: string; status: string; tone: string };
+      pipeline: { label: string; status: string; tone: string };
+      priorities: { label: string; status: string; tone: string };
+      followUps: { label: string; status: string; tone: string };
+    };
+    features: string[];
+    planComparison: Array<{
+      name: string;
+      summary: string;
+      highlight: boolean;
+    }>;
+    siteAddon: {
+      title: string;
+      monthlyPrice: string;
+      oneShotPrice: string;
+      availability: string;
+    };
+  };
 };
 
 const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
@@ -183,6 +211,7 @@ const INITIAL_SETTINGS: DemoSettingsState = JSON.parse(
     widget: DEMO_SETTINGS_CONFIGURATION.widget,
     catalogue: DEMO_SETTINGS_CONFIGURATION.catalogue,
     appearance: DEMO_SETTINGS_CONFIGURATION.appearance,
+    offer: DEMO_SETTINGS_CONFIGURATION.offer,
   })
 );
 
@@ -487,6 +516,78 @@ function ColorSwatch({
   );
 }
 
+function MetricPill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: 'included' | 'neutral' | 'soon';
+}) {
+  const palette =
+    tone === 'included'
+      ? {
+          background: 'rgba(34,197,94,0.12)',
+          border: '1px solid rgba(34,197,94,0.28)',
+          color: 'var(--accent)',
+        }
+      : tone === 'soon'
+        ? {
+            background: 'rgba(245,158,11,0.12)',
+            border: '1px solid rgba(245,158,11,0.28)',
+            color: '#fbbf24',
+          }
+        : {
+            background: 'var(--bg-hover)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-2)',
+          };
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        borderRadius: '999px',
+        padding: '6px 10px',
+        fontSize: '12px',
+        fontWeight: 700,
+        ...palette,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function ProgressBar({
+  tone = 'var(--accent)',
+  value,
+}: {
+  tone?: string;
+  value: number;
+}) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '8px',
+        borderRadius: '999px',
+        background: 'rgba(255,255,255,0.06)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          width: `${Math.max(0, Math.min(100, value))}%`,
+          height: '100%',
+          borderRadius: '999px',
+          background: tone,
+        }}
+      />
+    </div>
+  );
+}
+
 function PlaceholderSection({
   body,
   kicker,
@@ -681,6 +782,10 @@ export default function DemoParametresPage() {
     } catch {
       setStatusMessage("Copie simulee - l'environnement demo n'autorise pas de copie systeme.");
     }
+  };
+
+  const triggerOfferCta = (label: string) => {
+    setStatusMessage(`Action simulee - aucune facturation reelle ni donnee modifiee. (${label})`);
   };
 
   const save = () => {
@@ -1327,6 +1432,273 @@ export default function DemoParametresPage() {
     </div>
   );
 
+  const renderOfferSection = () => {
+    const voiceCallsUsage = Math.round(
+      (settings.offer.quotas.voiceCalls.used / settings.offer.quotas.voiceCalls.limit) * 100
+    );
+
+    return (
+      <div>
+        <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Offre & quotas</h2>
+
+        <DemoSectionCard
+          title="Plan actuel"
+          description="Mode demo - cette section illustre un plan Performance fictif sans aucune facturation reelle."
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '16px',
+              alignItems: 'start',
+            }}
+          >
+            <div
+              style={{
+                borderRadius: '16px',
+                border: '1px solid rgba(34,197,94,0.24)',
+                background: 'linear-gradient(180deg, rgba(34,197,94,0.08), rgba(9,9,11,0.18))',
+                padding: '18px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <StatusBadge active label={settings.offer.status} />
+                <MetricPill label="Demo" tone="included" />
+              </div>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Plan</p>
+              <p style={{ margin: '4px 0 8px', fontSize: '24px', fontWeight: 800 }}>{settings.offer.currentPlan}</p>
+              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '14px' }}>{settings.offer.price}</p>
+              <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: '13px' }}>
+                Renouvellement fictif : {settings.offer.renewalDate}
+              </p>
+              <p style={{ margin: '12px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                Mode demo - aucune facturation reelle.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => triggerOfferCta('Gerer mon abonnement')}
+                style={{
+                  background: 'var(--accent)',
+                  color: '#09090b',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '11px 14px',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Gerer mon abonnement
+              </button>
+              <button
+                type="button"
+                onClick={() => triggerOfferCta('Voir les options')}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  padding: '11px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Voir les options
+              </button>
+              <button
+                type="button"
+                onClick={() => triggerOfferCta('Contacter Kadria')}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px',
+                  padding: '11px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Contacter Kadria
+              </button>
+            </div>
+          </div>
+        </DemoSectionCard>
+
+        <DemoSectionCard title="Quotas du mois" description="Apercu d'usage fictif pour contextualiser le plan Performance cote artisan.">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.projects.label}</p>
+              <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: 800 }}>
+                {settings.offer.quotas.projects.used} / {settings.offer.quotas.projects.limitLabel}
+              </p>
+              <div style={{ marginTop: '12px' }}>
+                <MetricPill label="Inclus" tone="included" />
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.quotes.label}</p>
+              <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: 800 }}>
+                {settings.offer.quotas.quotes.used} / {settings.offer.quotas.quotes.limitLabel}
+              </p>
+              <div style={{ marginTop: '12px' }}>
+                <MetricPill label="Inclus" tone="included" />
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.voiceCalls.label}</p>
+                <MetricPill label={`${voiceCallsUsage}%`} tone="soon" />
+              </div>
+              <p style={{ margin: '0 0 10px', fontSize: '18px', fontWeight: 800 }}>
+                {settings.offer.quotas.voiceCalls.used} / {settings.offer.quotas.voiceCalls.limit}
+              </p>
+              <ProgressBar value={voiceCallsUsage} tone="#f59e0b" />
+            </div>
+
+            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.voiceMinutes.label}</p>
+              <p style={{ margin: '6px 0 12px', fontSize: '18px', fontWeight: 800 }}>
+                {settings.offer.quotas.voiceMinutes.used} {settings.offer.quotas.voiceMinutes.unit}
+              </p>
+              <ProgressBar value={64} tone="#22c55e" />
+            </div>
+
+            {[settings.offer.quotas.pdfExport, settings.offer.quotas.pipeline, settings.offer.quotas.priorities, settings.offer.quotas.followUps].map((item) => (
+              <div
+                key={item.label}
+                style={{
+                  background: 'var(--bg-hover)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{item.label}</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '16px', fontWeight: 700 }}>{item.status}</p>
+                </div>
+                <MetricPill label={item.status} tone={item.tone as 'included' | 'neutral' | 'soon'} />
+              </div>
+            ))}
+          </div>
+        </DemoSectionCard>
+
+        <DemoSectionCard title="Fonctionnalites incluses" description="Vue synthese des avantages visibles par un artisan sur le plan Performance.">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+            {settings.offer.features.map((feature) => (
+              <div
+                key={feature}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: 'var(--bg-hover)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                }}
+              >
+                <span
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '999px',
+                    background: 'rgba(34,197,94,0.18)',
+                    color: 'var(--accent)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  ✓
+                </span>
+                <span style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>{feature}</span>
+              </div>
+            ))}
+          </div>
+        </DemoSectionCard>
+
+        <DemoSectionCard title="Comparaison rapide" description="Repere simple pour contextualiser le plan actuel, sans refaire toute la page tarifs.">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+            {settings.offer.planComparison.map((plan) => (
+              <div
+                key={plan.name}
+                style={{
+                  background: plan.highlight ? 'rgba(34,197,94,0.10)' : 'var(--bg-hover)',
+                  border: plan.highlight ? '1px solid rgba(34,197,94,0.28)' : '1px solid var(--border)',
+                  borderRadius: '14px',
+                  padding: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
+                  <p style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>{plan.name}</p>
+                  {plan.highlight && <MetricPill label="Actuel" tone="included" />}
+                </div>
+                <p style={{ margin: '10px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                  {plan.summary}
+                </p>
+              </div>
+            ))}
+          </div>
+        </DemoSectionCard>
+
+        <DemoSectionCard title="Add-on site vitrine" description="Option presentee localement dans la demo, sans aucune demande ni facturation reelle.">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '16px',
+              alignItems: 'start',
+            }}
+          >
+            <div>
+              <p style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>{settings.offer.siteAddon.title}</p>
+              <p style={{ margin: '10px 0 0', color: 'var(--text-2)', fontSize: '14px' }}>{settings.offer.siteAddon.monthlyPrice}</p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '14px' }}>{settings.offer.siteAddon.oneShotPrice}</p>
+              <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: '13px' }}>{settings.offer.siteAddon.availability}</p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => triggerOfferCta("Demander l'option site")}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--accent)',
+                  border: '1px solid rgba(34,197,94,0.28)',
+                  borderRadius: '10px',
+                  padding: '11px 14px',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Demander l'option site
+              </button>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.6 }}>
+                Action simulee - aucune demande reelle envoyee.
+              </p>
+            </div>
+          </div>
+        </DemoSectionCard>
+      </div>
+    );
+  };
+
   const renderSection = () => {
     if (activeSection === 'entreprise') return renderEntrepriseSection();
     if (activeSection === 'profil-metier') return renderProfileSection();
@@ -1336,6 +1708,7 @@ export default function DemoParametresPage() {
     if (activeSection === 'widget') return renderWidgetSection();
     if (activeSection === 'catalogue') return renderCatalogueSection();
     if (activeSection === 'apparence') return renderAppearanceSection();
+    return renderOfferSection();
     if (false) {
       return (
         <PlaceholderSection
