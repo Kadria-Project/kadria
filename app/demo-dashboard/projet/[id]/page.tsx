@@ -507,6 +507,31 @@ function ProjectDetail() {
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
+  const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
+  const projectLabel = project.projectType || project.trade || 'Projet';
+  const score = Number(project.completenessScore || 0);
+  const projectIdentityItems = [
+    { label: 'Reference', value: project.projectNumber || project.id || 'Non renseignee' },
+    { label: 'Metier', value: project.trade || 'Non renseigne' },
+    { label: 'Budget', value: project.budget || 'Non renseigne' },
+    { label: 'Delai', value: project.desiredTimeline || 'Non renseigne' },
+    { label: 'Ville', value: project.city || 'Non renseignee' },
+    { label: 'Source', value: project.source || 'Demo Kadria' },
+  ];
+  const clientIdentityItems = [
+    { label: 'Nom', value: clientLabel },
+    { label: 'Telephone', value: project.clientPhone || 'Non renseigne' },
+    { label: 'Email', value: project.clientEmail || 'Non renseigne' },
+    { label: 'Adresse chantier', value: project.siteAddress || 'Non renseignee' },
+    { label: 'Maturite', value: project.maturity || 'A qualifier' },
+    { label: 'Cree le', value: formatShortDate(project.createdAt) },
+  ];
+  const actionPriority =
+    score >= 90 ? 'Priorite haute' : score >= 75 ? 'Priorite moyenne' : 'Priorite a qualifier';
+  const actionSummary =
+    followUpTime.lastInteractionDate
+      ? `Dernier echange le ${formatShortDate(followUpTime.lastInteractionDate)}`
+      : 'Aucun echange date dans la demo';
 
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
@@ -631,18 +656,18 @@ function ProjectDetail() {
             <div>
               <h1 style={{
                 color: 'var(--text-1)',
-                fontSize: isMobile ? '22px' : '24px',
+                fontSize: isMobile ? '24px' : '28px',
                 fontWeight: 700,
                 margin: '0 0 4px',
               }}>
-                {project.clientFirstName} {project.clientName}
+                {projectLabel}
               </h1>
               <p style={{
                 color: 'var(--text-2)',
                 fontSize: '14px',
                 margin: 0,
               }}>
-                {project.trade} · {project.city}
+                {clientLabel} · {project.trade || 'Projet'} · {project.city || 'Ville non renseignee'}
               </p>
             </div>
             {/* Statut */}
@@ -679,7 +704,55 @@ function ProjectDetail() {
                   {project.status || 'Nouveau'}
                 </span>
               </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{
+                  background: 'var(--bg)',
+                  color: 'var(--text-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '999px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}>
+                  Score {formatInteger(score)}/100
+                </span>
+                <span style={{
+                  background: verdict.bg,
+                  color: verdict.color,
+                  border: `1px solid ${verdict.border}`,
+                  borderRadius: '999px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                }}>
+                  {verdict.label}
+                </span>
+              </div>
             </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            marginTop: '12px',
+          }}>
+            {[project.projectNumber, project.maturity, project.budget, project.source].filter(Boolean).map((item) => (
+              <span
+                key={item}
+                style={{
+                  background: 'var(--bg)',
+                  color: 'var(--text-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '999px',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                }}
+              >
+                {item}
+              </span>
+            ))}
           </div>
 
           {/* Séparateur */}
@@ -772,53 +845,186 @@ function ProjectDetail() {
         </div>
 
         <div style={{
-          background: 'rgba(34,197,94,0.06)',
-          border: '1px solid rgba(34,197,94,0.22)',
-          borderRadius: '14px',
-          padding: isMobile ? '16px' : '16px 20px',
+          background: 'var(--bg-elevated)',
+          border: '1px solid rgba(34,197,94,0.24)',
+          boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 8px 28px rgba(34,197,94,0.08)',
+          borderRadius: '16px',
+          padding: isMobile ? '16px' : '18px 20px',
           marginBottom: '16px',
           display: 'flex',
           justifyContent: 'space-between',
           gap: '16px',
           flexWrap: 'wrap',
+          alignItems: isMobile ? 'flex-start' : 'center',
         }}>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{
               color: 'var(--accent)',
               fontSize: '11px',
               fontWeight: 700,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              margin: '0 0 8px',
+              margin: '0 0 6px',
             }}>
-              Moment idéal de relance
+              Action recommandee
             </p>
-            <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
-              {followUpTime.primarySlot}
+            <p style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700, margin: '0 0 4px' }}>
+              {recommendation}
             </p>
             <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
-              {followUpTime.secondarySlot}
+              {followUpTime.primarySlot} · {followUpTime.secondarySlot}
             </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '999px',
+                border: '1px solid var(--border)',
+                color: score >= 90 ? 'var(--accent)' : score >= 75 ? '#f59e0b' : 'var(--text-2)',
+              }}>
+                {actionPriority}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                {actionSummary}
+              </span>
+            </div>
           </div>
 
-          <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
-            <p style={{ margin: '0 0 4px' }}>
-              Dernier échange :{' '}
-              <span style={{ color: 'var(--text-1)' }}>
-                {followUpTime.lastInteractionDate
-                  ? formatShortDate(followUpTime.lastInteractionDate)
-                  : 'Non renseigné'}
-              </span>
-            </p>
-            <p style={{ margin: 0 }}>
-              Sans interaction :{' '}
-              <span style={{ color: 'var(--text-1)' }}>
-                {followUpTime.daysWithoutInteraction === null
-                  ? 'Non renseigné'
-                  : `${followUpTime.daysWithoutInteraction} jour(s)`}
-              </span>
+          <div style={{ minWidth: isMobile ? '100%' : '220px', width: isMobile ? '100%' : undefined }}>
+            <button
+              type="button"
+              onClick={() => setShowCallback(true)}
+              style={{
+                width: '100%',
+                background: 'var(--accent)',
+                color: '#0b0f0d',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Planifier la prochaine action
+            </button>
+            <p style={{ margin: '8px 0 0', color: 'var(--text-3)', fontSize: '11px' }}>
+              Simulation locale uniquement - aucune donnee reelle modifiee.
             </p>
           </div>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+          gap: '16px',
+          marginBottom: '16px',
+        }}>
+          <section style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: isMobile ? '16px' : '16px 20px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '12px',
+              alignItems: 'center',
+            }}>
+              <div>
+                <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Fiche projet
+                </p>
+                <h2 style={{ margin: 0, color: 'var(--text-1)', fontSize: '16px', fontWeight: 700 }}>
+                  Informations principales
+                </h2>
+              </div>
+              <span style={{
+                fontSize: '11px',
+                color: 'var(--text-2)',
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                borderRadius: '999px',
+                padding: '4px 10px',
+              }}>
+                {formatInteger(score)}% complet
+              </span>
+            </div>
+            <div style={{ padding: isMobile ? '16px' : '16px 20px', display: 'grid', gap: '12px' }}>
+              {projectIdentityItems.map((item) => (
+                <div key={item.label} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '6px', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{item.label}</span>
+                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, textAlign: isMobile ? 'left' : 'right' }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: isMobile ? '16px' : '16px 20px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '12px',
+              alignItems: 'center',
+            }}>
+              <div>
+                <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Client
+                </p>
+                <h2 style={{ margin: 0, color: 'var(--text-1)', fontSize: '16px', fontWeight: 700 }}>
+                  Coordonnees et contexte
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setContactForm({
+                    clientFirstName: project.clientFirstName || '',
+                    clientName: project.clientName || '',
+                    clientPhone: project.clientPhone || '',
+                    clientEmail: project.clientEmail || '',
+                    siteAddress: project.siteAddress || '',
+                  });
+                  setEditingContact(true);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-2)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Modifier
+              </button>
+            </div>
+            <div style={{ padding: isMobile ? '16px' : '16px 20px', display: 'grid', gap: '12px' }}>
+              {clientIdentityItems.map((item) => (
+                <div key={item.label} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '6px', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{item.label}</span>
+                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, textAlign: isMobile ? 'left' : 'right' }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
 
         <div style={{
@@ -1351,30 +1557,32 @@ function ProjectDetail() {
               </span>
             </div>
             {/* Badge verdict */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: verdict.bg,
-              border: `1px solid ${verdict.border}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-            }}>
-              <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{
-                color: verdict.color,
+                color: 'var(--text-2)',
                 fontSize: '12px',
-                fontWeight: 700
+                fontWeight: 600,
               }}>
-                {verdict.label}
+                {formatInteger(score)}/100
               </span>
-              <span style={{
-                color: verdict.color,
-                fontSize: '11px',
-                opacity: 0.8,
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: verdict.bg,
+                border: `1px solid ${verdict.border}`,
+                borderRadius: '20px',
+                padding: '4px 12px',
               }}>
-                — {verdict.description}
-              </span>
+                <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+                <span style={{
+                  color: verdict.color,
+                  fontSize: '12px',
+                  fontWeight: 700
+                }}>
+                  {verdict.label}
+                </span>
+              </div>
             </div>
           </div>
 
