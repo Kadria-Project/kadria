@@ -152,6 +152,20 @@ function validateLegalConfig(config: LegalConfig): Record<string, string> {
   return errors
 }
 
+// Normalise les champs spécialités/prestations exclues du Profil métier,
+// stockés en tableau côté Supabase mais parfois saisis/édités sous forme de
+// texte séparé par des virgules — accepte les deux formats sans dupliquer
+// la donnée.
+function toReadonlyList(value: string | string[] | null | undefined): string[] {
+  if (Array.isArray(value)) {
+    return value.map((v) => v.trim()).filter((v) => v.length > 0)
+  }
+  if (typeof value === 'string') {
+    return value.split(',').map((v) => v.trim()).filter((v) => v.length > 0)
+  }
+  return []
+}
+
 function WorkTypeReadOnlyChips({ values, accent }: { values: string[]; accent: 'green' | 'red' }) {
   const accentColor = accent === 'green' ? '#4ade80' : '#f87171'
   const accentBg = accent === 'green' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
@@ -258,6 +272,10 @@ export default function ParametresPage() {
   // restent sur cette page pour ne pas régresser leurs sections — mais ne
   // doivent plus dépendre de l'ancien sélecteur de métiers ci-dessous.
   const [businessProfileTrades, setBusinessProfileTrades] = useState<{ primaryTrade: string; coveredTrades: string[] } | null>(null)
+  // Spécialités / prestations exclues du Profil métier (Supabase, source de
+  // vérité) : réutilisées en lecture seule pour les blocs "Types de travaux
+  // acceptés/refusés" ci-dessous afin de ne pas dupliquer la donnée.
+  const [businessProfileWorkTypes, setBusinessProfileWorkTypes] = useState<{ specialties: string[]; excludedServices: string[] } | null>(null)
   useEffect(() => {
     fetch('/api/artisan/business-profile')
       .then((r) => r.json())
@@ -266,6 +284,10 @@ export default function ParametresPage() {
           setBusinessProfileTrades({
             primaryTrade: typeof data.profile.primary_trade === 'string' ? data.profile.primary_trade : '',
             coveredTrades: Array.isArray(data.profile.covered_trades) ? data.profile.covered_trades.filter((t: unknown) => typeof t === 'string') : [],
+          })
+          setBusinessProfileWorkTypes({
+            specialties: toReadonlyList(data.profile.specialties),
+            excludedServices: toReadonlyList(data.profile.excluded_services),
           })
         }
       })
@@ -1006,11 +1028,11 @@ export default function ParametresPage() {
                   Types de travaux acceptés
                 </h3>
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
-                  {config.businessConfig.acceptedWorkTypes.length === 0
+                  {(businessProfileWorkTypes?.specialties.length || 0) === 0
                     ? 'Aucun type de travaux accepté configuré'
-                    : 'Ces éléments sont gérés depuis votre profil métier afin de garder une configuration cohérente.'}
+                    : 'Ces éléments correspondent aux spécialités renseignées dans votre profil métier.'}
                 </p>
-                <WorkTypeReadOnlyChips values={config.businessConfig.acceptedWorkTypes} accent="green" />
+                <WorkTypeReadOnlyChips values={businessProfileWorkTypes?.specialties || []} accent="green" />
                 <button
                   type="button"
                   onClick={() => router.push('/parametres/profil-metier')}
@@ -1022,7 +1044,7 @@ export default function ParametresPage() {
                     fontWeight: 600,
                     cursor: 'pointer',
                     padding: 0,
-                    marginTop: config.businessConfig.acceptedWorkTypes.length > 0 ? '12px' : 0,
+                    marginTop: (businessProfileWorkTypes?.specialties.length || 0) > 0 ? '12px' : 0,
                   }}
                 >
                   Modifier dans le profil métier →
@@ -1034,11 +1056,11 @@ export default function ParametresPage() {
                   Types de travaux refusés
                 </h3>
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
-                  {config.businessConfig.refusedWorkTypes.length === 0
+                  {(businessProfileWorkTypes?.excludedServices.length || 0) === 0
                     ? 'Aucun type de travaux refusé configuré'
-                    : 'Ces éléments sont gérés depuis votre profil métier afin de garder une configuration cohérente.'}
+                    : 'Ces éléments correspondent aux prestations exclues renseignées dans votre profil métier.'}
                 </p>
-                <WorkTypeReadOnlyChips values={config.businessConfig.refusedWorkTypes} accent="red" />
+                <WorkTypeReadOnlyChips values={businessProfileWorkTypes?.excludedServices || []} accent="red" />
                 <button
                   type="button"
                   onClick={() => router.push('/parametres/profil-metier')}
@@ -1050,7 +1072,7 @@ export default function ParametresPage() {
                     fontWeight: 600,
                     cursor: 'pointer',
                     padding: 0,
-                    marginTop: config.businessConfig.refusedWorkTypes.length > 0 ? '12px' : 0,
+                    marginTop: (businessProfileWorkTypes?.excludedServices.length || 0) > 0 ? '12px' : 0,
                   }}
                 >
                   Modifier dans le profil métier →
