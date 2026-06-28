@@ -721,6 +721,172 @@ export const DEMO_EVENTS: DemoEvent[] = [
   },
 ];
 
+// ── Helpers partages devis (extraits de app/demo-dashboard/projet/[id]/page.tsx
+// pour etre reutilises par les nouvelles routes devis demo : detail et
+// creation. Logique inchangee, simple deplacement pour eviter la duplication
+// entre la fiche projet et les routes dediees. ────────────────────────────
+export function buildFallbackQuoteBuilder(project: Partial<DemoProject> & { id?: string } | null | undefined): DemoQuoteBuilder {
+  const clientName = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client demo';
+  const cityLabel = [project?.postalCode, project?.city].filter(Boolean).join(' ');
+
+  return {
+    quoteNumber: project?.projectNumber?.replace('DEV-', 'DEVIS-') || `DEVIS-${project?.id || 'DEMO'}`,
+    clientName,
+    projectTitle: project?.projectType || project?.trade || 'Projet',
+    siteAddress: [project?.siteAddress, cityLabel].filter(Boolean).join(', ') || 'Adresse chantier non renseignee',
+    validityDays: 30,
+    defaultVat: 20,
+    depositPercent: 30,
+    paymentTerms: 'Acompte a la validation, solde a la reception des travaux.',
+    clientNote:
+      'Ce devis est etabli sur la base des informations transmises. Une visite technique peut etre necessaire avant validation definitive.',
+    lines: [
+      {
+        id: `fallback_${project?.id || 'demo'}_001`,
+        label: project?.trade ? `Intervention ${project.trade.toLowerCase()}` : 'Prestation principale',
+        quantity: 1,
+        unit: 'forfait',
+        unitPriceHt: Number((project as { quote?: { amount?: number | null } })?.quote?.amount || project?.devisAmount || 850),
+        vatRate: 20,
+        enabled: true,
+      },
+    ],
+  };
+}
+
+export function normalizeQuoteBuilder(project: DemoProject | null | undefined): DemoQuoteBuilder {
+  const fallback = buildFallbackQuoteBuilder(project);
+  const builder = project?.quoteBuilder;
+
+  return {
+    ...fallback,
+    ...builder,
+    lines:
+      builder?.lines?.length
+        ? builder.lines.map((line: DemoQuoteBuilderLine) => ({
+            ...line,
+            enabled: line.enabled !== false,
+          }))
+        : fallback.lines,
+  };
+}
+
+export function computeQuoteBuilderSummary(lines: DemoQuoteBuilderLine[], depositPercent: number) {
+  const enabledLines = lines.filter((line) => line.enabled !== false);
+  const totalHt = enabledLines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPriceHt || 0), 0);
+  const totalVat = enabledLines.reduce(
+    (sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPriceHt || 0) * (Number(line.vatRate || 0) / 100),
+    0
+  );
+  const totalTtc = totalHt + totalVat;
+  const depositAmount = totalTtc * (Number(depositPercent || 0) / 100);
+  const balanceAmount = totalTtc - depositAmount;
+
+  return {
+    enabledLines,
+    totalHt,
+    totalVat,
+    totalTtc,
+    depositAmount,
+    balanceAmount,
+  };
+}
+
+// Statut/badge devis derive de project.quote (ou fallback sur project.status)
+// — extrait de buildDemoDevisList dans la fiche projet pour etre reutilise
+// par les routes devis dediees sans dupliquer la logique de derivation.
+export interface DemoDevisListItem {
+  id: string;
+  numero: string;
+  token?: string;
+  amount: number;
+  sent: boolean;
+  statut: string;
+  pdf_url: string | null;
+  date_emission: string;
+  date_validite: string;
+  client_email: string;
+  opens_count: number;
+  last_opened_date: string | null;
+  accepted: boolean;
+  accepted_at: string | null;
+  quote_sent_at?: string;
+  last_follow_up_at?: string | null;
+  follow_up_count?: number;
+  declined?: boolean;
+  declined_at?: string | null;
+  decline_reason?: string | null;
+  follow_up_disabled?: boolean;
+}
+
+const DEMO_STATUS_NORMALIZATION: Record<string, string> = {
+  'A rappeler': 'À rappeler',
+  'Qualifie': 'Qualifié',
+  'Devis envoye': 'Devis envoyé',
+  'Gagne': 'Gagné',
+};
+
+function normalizeDemoStatus(status?: string | null) {
+  return DEMO_STATUS_NORMALIZATION[status || ''] || status || 'Nouveau';
+}
+
+export function buildDemoDevisList(project: DemoProject | null | undefined): DemoDevisListItem[] {
+  if (!project) return [];
+  const quote = project.quote;
+  const normalizedStatus = normalizeDemoStatus(project.status);
+  const shouldHaveQuote =
+    quote?.status && quote.status !== 'none'
+      ? true
+      : normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' || Number(project.devisAmount || 0) > 0;
+  if (!shouldHaveQuote) return [];
+
+  const amount = Number(quote?.amount ?? project.devisAmount ?? 0) || 8600;
+  const sent = quote?.status === 'sent' || quote?.status === 'opened' || quote?.status === 'accepted' || quote?.status === 'declined';
+  const accepted = quote?.status === 'accepted' || normalizedStatus === 'Gagné';
+  const declined = quote?.status === 'declined' || normalizedStatus === 'Perdu';
+  const quoteSentAt = quote?.sentAt || project.quoteSentAt || (sent ? project.createdAt : undefined);
+  const openedCount = typeof quote?.openedCount === 'number' ? quote.openedCount : project.opensCount || 0;
+  const openedAt = quote?.openedAt || (openedCount > 0 ? project.createdAt : null);
+  const validUntil = quote?.validUntil || project.createdAt;
+
+  const statut =
+    quote?.status === 'draft'
+      ? 'Brouillon'
+      : quote?.status === 'accepted'
+        ? 'Accepté'
+        : quote?.status === 'declined'
+          ? 'Refusé'
+          : sent
+            ? 'Envoyé'
+            : 'Brouillon';
+
+  return [
+    {
+      id: `demo-devis-${project.id}`,
+      numero: project.projectNumber?.replace('DEV-', 'DEVIS-') || 'DEVIS-DEMO-001',
+      token: `demo-${project.id}`,
+      amount,
+      sent,
+      statut,
+      pdf_url: null,
+      date_emission: quoteSentAt || project.createdAt,
+      date_validite: validUntil,
+      client_email: project.clientEmail || '',
+      opens_count: openedCount,
+      last_opened_date: openedAt,
+      accepted,
+      accepted_at: accepted ? (project.followUp?.date || openedAt || quoteSentAt || project.createdAt) : null,
+      quote_sent_at: quoteSentAt,
+      last_follow_up_at: project.followUp?.status !== 'none' && project.followUp?.status !== 'planned' ? project.followUp?.date : null,
+      follow_up_count: project.followUp?.status === 'done' ? 1 : project.followUp?.status === 'late' ? 1 : 0,
+      declined,
+      declined_at: declined ? (project.followUp?.date || openedAt || quoteSentAt || project.createdAt) : null,
+      decline_reason: quote?.declineReason || null,
+      follow_up_disabled: false,
+    },
+  ];
+}
+
 export function computeDemoKPIs(projects: DemoProject[]) {
   const parseBudget = (budget: string) => {
     const matches = budget.match(/\d+[\s\d]*/g);

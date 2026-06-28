@@ -20,6 +20,7 @@ import { hasFeature, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
 import type { DemoQuoteBuilder, DemoQuoteBuilderLine } from '@/src/lib/demo-data';
+import { buildDemoDevisList as buildDemoDevisListFromData, normalizeQuoteBuilder, computeQuoteBuilderSummary } from '@/src/lib/demo-data';
 import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
@@ -187,60 +188,7 @@ function buildDemoArtisanConfig(artisan: ReturnType<typeof useDemoMode>['artisan
 }
 
 function buildDemoDevisList(project: any): DevisListItem[] {
-  if (!project) return [];
-  const quote = project.quote;
-  const normalizedStatus = normalizeDemoStatus(project.status);
-  const shouldHaveQuote =
-    quote?.status && quote.status !== 'none'
-      ? true
-      : normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' || Number(project.devisAmount || 0) > 0;
-  if (!shouldHaveQuote) return [];
-
-  const amount = Number(quote?.amount ?? project.devisAmount ?? 0) || 8600;
-  const sent = quote?.status === 'sent' || quote?.status === 'opened' || quote?.status === 'accepted' || quote?.status === 'declined';
-  const accepted = quote?.status === 'accepted' || normalizedStatus === 'Gagné';
-  const declined = quote?.status === 'declined' || normalizedStatus === 'Perdu';
-  const quoteSentAt = quote?.sentAt || project.quoteSentAt || (sent ? project.createdAt : undefined);
-  const openedCount = typeof quote?.openedCount === 'number' ? quote.openedCount : project.opensCount || 0;
-  const openedAt = quote?.openedAt || (openedCount > 0 ? project.createdAt : null);
-  const validUntil = quote?.validUntil || project.createdAt;
-
-  const statut =
-    quote?.status === 'draft'
-      ? 'Brouillon'
-      : quote?.status === 'accepted'
-        ? 'Accepté'
-        : quote?.status === 'declined'
-          ? 'Refusé'
-          : sent
-            ? 'Envoyé'
-            : 'Brouillon';
-
-  return [
-    {
-      id: `demo-devis-${project.id}`,
-      numero: project.projectNumber?.replace('DEV-', 'DEVIS-') || 'DEVIS-DEMO-001',
-      token: `demo-${project.id}`,
-      amount,
-      sent,
-      statut,
-      pdf_url: null,
-      date_emission: quoteSentAt || project.createdAt,
-      date_validite: validUntil,
-      client_email: project.clientEmail || '',
-      opens_count: openedCount,
-      last_opened_date: openedAt,
-      accepted,
-      accepted_at: accepted ? (project.followUp?.date || openedAt || quoteSentAt || project.createdAt) : null,
-      quote_sent_at: quoteSentAt,
-      last_follow_up_at: project.followUp?.status !== 'none' && project.followUp?.status !== 'planned' ? project.followUp?.date : null,
-      follow_up_count: project.followUp?.status === 'done' ? 1 : project.followUp?.status === 'late' ? 1 : 0,
-      declined,
-      declined_at: declined ? (project.followUp?.date || openedAt || quoteSentAt || project.createdAt) : null,
-      decline_reason: quote?.declineReason || null,
-      follow_up_disabled: false,
-    },
-  ];
+  return buildDemoDevisListFromData(project) as DevisListItem[];
 }
 
 function buildDemoActivities(project: any, events: any[]) {
@@ -371,7 +319,6 @@ function ProjectDetail() {
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const quoteSectionRef = useRef<HTMLDivElement>(null);
-  const scrollToQuoteSection = () => quoteSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const [openMobileSections, setOpenMobileSections] = useState<Set<string>>(new Set());
   const toggleMobileSection = (key: string) =>
     setOpenMobileSections((current) => {
@@ -964,6 +911,15 @@ function ProjectDetail() {
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
   const latestDevis = devisList[0] || null;
+  // Navigation devis demo — route vers la creation si aucun devis n'existe
+  // encore pour ce dossier, sinon vers la fiche detail du devis existant.
+  const goToDevis = () => {
+    if (latestDevis) {
+      router.push(`/demo-dashboard/projet/${project.id}/devis/${latestDevis.id}`);
+    } else {
+      router.push(`/demo-dashboard/projet/${project.id}/devis/new`);
+    }
+  };
   // Moteurs metier prod (src/lib/project-scoring.ts, action-engine.ts,
   // quote-status.ts) branches sur les mocks demo via DevisListItem, qui
   // reprend deja les noms de champs Supabase utilises par la fiche prod
@@ -1137,8 +1093,8 @@ function ProjectDetail() {
 
   // Fiche projet mobile demo — reproduit 1:1 la structure/hierarchie de la
   // branche mobile prod (app/dashboard-v2/projet/[id]/page.tsx), avec des
-  // actions demo-safe (pas d appel reel, pas de navigation vers une route
-  // devis qui n existe pas en demo).
+  // actions demo-safe (pas d appel reel ; la navigation vers les routes
+  // /devis/new et /devis/[devisId] est locale, aucune donnee reelle).
   if (isMobile) {
     const sourceLabel = getSourceLabel(project.source);
     const projectTitleMobile = getProjectHeadline(project);
@@ -1152,7 +1108,7 @@ function ProjectDetail() {
         return {
           title: 'Clôturer le dossier',
           ctaLabel: 'Clôturer le dossier',
-          onClick: scrollToQuoteSection,
+          onClick: goToDevis,
           meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
         };
       }
@@ -1160,7 +1116,7 @@ function ProjectDetail() {
         return {
           title: 'Planifier l’intervention chantier',
           ctaLabel: project.appointment ? 'Voir le rendez-vous' : 'Planifier l’intervention',
-          onClick: project.appointment ? scrollToQuoteSection : () => setShowRdvModal(true),
+          onClick: project.appointment ? goToDevis : () => setShowRdvModal(true),
           meta: project.appointment
             ? `Rendez-vous prévu le ${formatDateTime(project.appointment.start)}.`
             : 'Le devis est accepté : proposez un créneau d’intervention et préparez le passage en production.',
@@ -1171,7 +1127,7 @@ function ProjectDetail() {
         return {
           title: 'Compléter le budget',
           ctaLabel: 'Contacter le client',
-          onClick: scrollToQuoteSection,
+          onClick: goToDevis,
           meta: 'Le besoin est identifié, mais le budget manque pour préparer un devis fiable.',
         };
       }
@@ -1188,7 +1144,7 @@ function ProjectDetail() {
         return {
           title: 'Créer le devis',
           ctaLabel: 'Créer un devis',
-          onClick: scrollToQuoteSection,
+          onClick: goToDevis,
           meta: 'Le dossier contient assez d’éléments pour préparer une première proposition.',
         };
       }
@@ -1196,7 +1152,7 @@ function ProjectDetail() {
         return {
           title: 'Finaliser et envoyer le devis',
           ctaLabel: 'Voir le devis',
-          onClick: scrollToQuoteSection,
+          onClick: goToDevis,
           meta: 'Le devis existe déjà mais attend encore un envoi au client.',
         };
       }
@@ -1214,7 +1170,7 @@ function ProjectDetail() {
         return {
           title: 'Suivre le devis envoyé',
           ctaLabel: 'Voir le devis',
-          onClick: scrollToQuoteSection,
+          onClick: goToDevis,
           meta: decision.followUpAvailableAt
             ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
             : 'Le devis a été envoyé, gardez la conversation ouverte.',
@@ -1223,7 +1179,7 @@ function ProjectDetail() {
       return {
         title: 'Clarifier le besoin',
         ctaLabel: 'Appeler le client',
-        onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else scrollToQuoteSection(); },
+        onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else goToDevis(); },
         meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
       };
     })();
@@ -1264,12 +1220,12 @@ function ProjectDetail() {
         ? decision.canFollowUpQuote ? 'Relancer' : 'Consulter'
         : 'Voir';
     const devisCtaAction = !latestDevis
-      ? () => scrollToQuoteSection()
+      ? () => goToDevis()
       : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined
         ? decision.canFollowUpQuote
           ? () => followUpQuote(latestDevis)
-          : () => scrollToQuoteSection()
-        : () => scrollToQuoteSection();
+          : () => goToDevis()
+        : () => goToDevis();
 
     const mobileAccordions: Array<{ key: string; title: string; content: React.ReactNode }> = [
       {
@@ -1335,15 +1291,22 @@ function ProjectDetail() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {devisList.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun document</p>}
             {devisList.map((d) => (
-              <a
+              <button
                 key={d.id}
-                href={d.pdf_url || undefined}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: '13px', color: d.pdf_url ? 'var(--accent)' : 'var(--text-3)', pointerEvents: d.pdf_url ? 'auto' : 'none' }}
+                type="button"
+                onClick={() => router.push(`/demo-dashboard/projet/${project.id}/devis/${d.id}`)}
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--accent)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
               >
                 📄 Devis {d.numero} — {formatMoney(d.amount)} €
-              </a>
+              </button>
             ))}
           </div>
         ),
@@ -1503,7 +1466,7 @@ function ProjectDetail() {
               { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
               decision.canFollowUpQuote
                 ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && followUpQuote(latestDevis) }
-                : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else scrollToQuoteSection(); } },
+                : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else goToDevis(); } },
             ].map((a) => (
               <button
                 key={a.label}
@@ -2085,7 +2048,7 @@ function ProjectDetail() {
               return {
                 title: 'Clôturer le dossier',
                 ctaLabel: 'Clôturer le dossier',
-                onClick: scrollToQuoteSection,
+                onClick: goToDevis,
                 meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
               };
             }
@@ -2093,7 +2056,7 @@ function ProjectDetail() {
               return {
                 title: 'Planifier l’intervention chantier',
                 ctaLabel: project.appointment ? 'Voir le rendez-vous' : 'Planifier l’intervention',
-                onClick: project.appointment ? scrollToQuoteSection : () => setShowRdvModal(true),
+                onClick: project.appointment ? goToDevis : () => setShowRdvModal(true),
                 meta: project.appointment
                   ? `Rendez-vous prévu le ${formatDateTime(project.appointment.start)}.`
                   : 'Le devis est accepté : proposez un créneau d’intervention et préparez le passage en production.',
@@ -2104,7 +2067,7 @@ function ProjectDetail() {
               return {
                 title: 'Compléter le budget',
                 ctaLabel: 'Contacter le client',
-                onClick: scrollToQuoteSection,
+                onClick: goToDevis,
                 meta: 'Le besoin est identifié, mais le budget manque pour préparer un devis fiable.',
               };
             }
@@ -2129,7 +2092,7 @@ function ProjectDetail() {
               return {
                 title: 'Finaliser et envoyer le devis',
                 ctaLabel: 'Voir le devis',
-                onClick: scrollToQuoteSection,
+                onClick: goToDevis,
                 meta: 'Le devis existe déjà mais attend encore un envoi au client.',
               };
             }
@@ -2147,7 +2110,7 @@ function ProjectDetail() {
               return {
                 title: 'Suivre le devis envoyé',
                 ctaLabel: 'Voir le devis',
-                onClick: scrollToQuoteSection,
+                onClick: goToDevis,
                 meta: decision.followUpAvailableAt
                   ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
                   : 'Le devis a été envoyé, gardez la conversation ouverte.',
@@ -2156,7 +2119,7 @@ function ProjectDetail() {
             return {
               title: 'Clarifier le besoin',
               ctaLabel: 'Appeler le client',
-              onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else scrollToQuoteSection(); },
+              onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else goToDevis(); },
               meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
             };
           })();
@@ -2403,7 +2366,7 @@ function ProjectDetail() {
               Suggestions de lignes de devis
             </p>
             <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px' }}>
-              Catalogue de démonstration — Kadria propose des lignes adaptées au métier du dossier.
+              Kadria vous propose des lignes adaptées au projet (catalogue de démonstration).
             </p>
             <div style={{ display: 'grid', gap: '8px' }}>
               {DEMO_QUOTE_SUGGESTIONS_CATALOG.map((line) => (
@@ -2808,7 +2771,7 @@ function ProjectDetail() {
                     return;
                   }
                   if (!legalComplete) return;
-                  updateDemoQuoteStatus('draft');
+                  router.push(`/demo-dashboard/projet/${project.id}/devis/new`);
                 }}
                 disabled={!legalComplete && canQuote}
                 title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
@@ -2845,7 +2808,7 @@ function ProjectDetail() {
                   {devisList.map((devis) => (
                     <div
                       key={devis.id}
-                      onClick={() => { const win = window.open('', '_blank'); if (win) { win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${devis.numero}</title><style>body{font-family:Inter,Arial,sans-serif;background:#0b0f0d;color:#f4f4f5;padding:40px;line-height:1.5} .card{max-width:760px;margin:0 auto;border:1px solid rgba(63,63,70,.8);border-radius:24px;background:#111315;padding:32px} .muted{color:#a1a1aa} .accent{color:#22c55e} .row{display:flex;justify-content:space-between;gap:24px;margin:12px 0}</style></head><body><div class="card"><p class="accent" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">Kadria Demo</p><h1 style="margin:8px 0 0;font-size:32px">${devis.numero}</h1><p class="muted">Aper?u du devis de d?monstration</p><div class="row"><span>Client</span><strong>${project.clientFirstName || ''} ${project.clientName || ''}</strong></div><div class="row"><span>Projet</span><strong>${project.projectType || 'Projet'}</strong></div><div class="row"><span>Montant</span><strong>${formatMoney(devis.amount)} ?</strong></div><div class="row"><span>Statut</span><strong>${devis.statut}</strong></div></div></body></html>`); win.document.close(); } }}
+                      onClick={() => router.push(`/demo-dashboard/projet/${project.id}/devis/${devis.id}`)}
                       style={{
                         background: 'var(--bg-elevated)',
                         border: '1px solid var(--border)',
@@ -3780,73 +3743,6 @@ function TimelineIcon({ action }: { action?: string }) {
       <ArrowRight className="w-3 h-3 text-[var(--text-1)]" />
     </span>
   );
-}
-
-function buildFallbackQuoteBuilder(project: any): DemoQuoteBuilder {
-  const clientName = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client demo';
-  const cityLabel = [project?.postalCode, project?.city].filter(Boolean).join(' ');
-
-  return {
-    quoteNumber: project?.projectNumber?.replace('DEV-', 'DEVIS-') || `DEVIS-${project?.id || 'DEMO'}`,
-    clientName,
-    projectTitle: project?.projectType || project?.trade || 'Projet',
-    siteAddress: [project?.siteAddress, cityLabel].filter(Boolean).join(', ') || 'Adresse chantier non renseignee',
-    validityDays: 30,
-    defaultVat: 20,
-    depositPercent: 30,
-    paymentTerms: 'Acompte a la validation, solde a la reception des travaux.',
-    clientNote:
-      'Ce devis est etabli sur la base des informations transmises. Une visite technique peut etre necessaire avant validation definitive.',
-    lines: [
-      {
-        id: `fallback_${project?.id || 'demo'}_001`,
-        label: project?.trade ? `Intervention ${project.trade.toLowerCase()}` : 'Prestation principale',
-        quantity: 1,
-        unit: 'forfait',
-        unitPriceHt: Number(project?.quote?.amount || project?.devisAmount || 850),
-        vatRate: 20,
-        enabled: true,
-      },
-    ],
-  };
-}
-
-function normalizeQuoteBuilder(project: any): DemoQuoteBuilder {
-  const fallback = buildFallbackQuoteBuilder(project);
-  const builder = project?.quoteBuilder;
-
-  return {
-    ...fallback,
-    ...builder,
-    lines:
-      builder?.lines?.length
-        ? builder.lines.map((line: DemoQuoteBuilderLine) => ({
-            ...line,
-            enabled: line.enabled !== false,
-          }))
-        : fallback.lines,
-  };
-}
-
-function computeQuoteBuilderSummary(lines: DemoQuoteBuilderLine[], depositPercent: number) {
-  const enabledLines = lines.filter((line) => line.enabled !== false);
-  const totalHt = enabledLines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPriceHt || 0), 0);
-  const totalVat = enabledLines.reduce(
-    (sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPriceHt || 0) * (Number(line.vatRate || 0) / 100),
-    0
-  );
-  const totalTtc = totalHt + totalVat;
-  const depositAmount = totalTtc * (Number(depositPercent || 0) / 100);
-  const balanceAmount = totalTtc - depositAmount;
-
-  return {
-    enabledLines,
-    totalHt,
-    totalVat,
-    totalTtc,
-    depositAmount,
-    balanceAmount,
-  };
 }
 
 function getIndicators(project: any) {
