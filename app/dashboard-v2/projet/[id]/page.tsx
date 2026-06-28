@@ -989,93 +989,104 @@ function ProjectDetail() {
   const scrollToActionsAndQuote = () => {
     actionsAndQuoteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const quoteSummaryLabel = !latestDevis
-    ? 'Aucun devis'
-    : latestDevis.accepted
-      ? 'Devis accepte'
-      : latestDevis.declined
-        ? 'Devis refuse'
-        : latestDevis.sent
-          ? decision.canFollowUpQuote
-            ? 'Devis a relancer'
-            : 'Devis envoye'
-          : 'Devis en preparation';
   const recommendedAction = (() => {
     if (project.status === 'Perdu' || decision.state === 'quote_declined') {
       return {
-        title: 'Archivez le dossier ou notez le motif de refus.',
-        ctaLabel: 'Cloturer le dossier',
+        title: 'Clôturer le dossier',
+        ctaLabel: 'Clôturer le dossier',
         onClick: scrollToActionsAndQuote,
-        meta: latestDevis?.decline_reason || 'Motif de refus a consigner si besoin.',
+        meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
       };
     }
     if (project.status === 'Gagné' || decision.state === 'quote_accepted') {
       return {
-        title: 'Planifiez la suite du chantier.',
-        ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier la prochaine action',
+        title: 'Planifier l’intervention chantier',
+        ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier l’intervention',
         onClick: appointment ? scrollToActionsAndQuote : () => { if (!appointment) openAppointmentModal(); },
-        meta: appointment ? `Rendez-vous prevu le ${formatDateTime(appointment.start)}` : 'Passez en phase chantier avec un prochain rendez-vous.',
+        meta: appointment
+          ? `Rendez-vous prévu le ${formatDateTime(appointment.start)}.`
+          : 'Le devis est accepté : proposez un créneau d’intervention et préparez le passage en production.',
+      };
+    }
+    const budgetMissing = nextAction.blockingReasons.includes('Budget absent');
+    if (!latestDevis && budgetMissing) {
+      return {
+        title: 'Compléter le budget',
+        ctaLabel: 'Contacter le client',
+        onClick: scrollToActionsAndQuote,
+        meta: 'Le besoin est identifié, mais le budget manque pour préparer un devis fiable.',
+      };
+    }
+    const appointmentMissing = nextAction.blockingReasons.includes('Rendez-vous non planifié');
+    if (!latestDevis && appointmentMissing) {
+      return {
+        title: 'Planifier un rendez-vous',
+        ctaLabel: 'Planifier',
+        onClick: () => { if (!appointment) openAppointmentModal(); },
+        meta: 'Un échange ou une visite permettra de verrouiller les derniers éléments avant chiffrage.',
       };
     }
     if (!latestDevis) {
       return {
-        title: 'Preparez un devis ou contactez le prospect pour confirmer les derniers elements.',
-        ctaLabel: 'Preparer un devis',
+        title: 'Créer le devis',
+        ctaLabel: 'Créer un devis',
         onClick: () => handleNextBestAction('quote'),
-        meta: nextAction.blockingReasons.length > 0 ? nextAction.blockingReasons.join(' · ') : 'Le dossier est pret a etre chiffre.',
+        meta: 'Le dossier contient assez d’éléments pour préparer une première proposition.',
       };
     }
     if (!latestDevis.sent) {
       return {
-        title: 'Finalisez le devis et envoyez-le au client.',
+        title: 'Finaliser et envoyer le devis',
         ctaLabel: 'Voir le devis',
         onClick: () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`),
-        meta: 'Le devis existe deja mais attend encore un envoi au client.',
+        meta: 'Le devis existe déjà mais attend encore un envoi au client.',
       };
     }
     if (decision.canFollowUpQuote) {
       return {
-        title: 'Relancez le client pendant que le projet est encore chaud.',
+        title: 'Relancer le devis',
         ctaLabel: 'Relancer le client',
         onClick: () => followUpQuote(latestDevis),
-        meta: latestDevis.opens_count > 0 ? `Devis ouvert ${latestDevis.opens_count} fois` : 'Devis envoye, en attente de retour.',
+        meta: latestDevis.opens_count > 0
+          ? `Le devis a été consulté ${latestDevis.opens_count} fois. Relancez le client pendant que le projet est encore chaud.`
+          : 'Le devis a été envoyé. Relancez le client pendant que le projet est encore chaud.',
       };
     }
     if (latestDevis.sent) {
       return {
-        title: 'Relancez le client pendant que le projet est encore chaud.',
+        title: 'Suivre le devis envoyé',
         ctaLabel: 'Voir le devis',
         onClick: () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`),
         meta: decision.followUpAvailableAt
-          ? `Relance possible a partir du ${formatShortDate(decision.followUpAvailableAt)}`
-          : 'Le devis a ete envoye, gardez la conversation ouverte.',
+          ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
+          : 'Le devis a été envoyé, gardez la conversation ouverte.',
       };
     }
     return {
-      title: 'Prenez contact pour affiner les besoins et proposer une prochaine etape.',
-      ctaLabel: 'Planifier la prochaine action',
-      onClick: scrollToActionsAndQuote,
-      meta: nextAction.description,
+      title: 'Clarifier le besoin',
+      ctaLabel: 'Appeler le client',
+      onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else scrollToActionsAndQuote(); },
+      meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
     };
   })();
   const commercialTimeline = [
-    { id: 'received', label: 'Dossier recu', done: Boolean(project.createdAt) },
-    { id: 'qualified', label: 'Dossier qualifie', done: project.status !== 'Nouveau' },
-    { id: 'draft', label: 'Devis prepare', done: Boolean(latestDevis) },
-    { id: 'sent', label: 'Devis envoye', done: Boolean(latestDevis?.sent) },
+    { id: 'received', label: 'Reçu', done: Boolean(project.createdAt) },
+    { id: 'qualified', label: 'Qualifié', done: project.status !== 'Nouveau' },
+    { id: 'draft', label: 'Préparé', done: Boolean(latestDevis) },
+    { id: 'sent', label: 'Envoyé', done: Boolean(latestDevis?.sent) },
     {
       id: 'followup',
-      label: 'Devis ouvert / relance',
+      label: 'Ouvert / relance',
       done: Boolean((latestDevis?.opens_count || 0) > 0 || latestDevis?.last_follow_up_at || decision.canFollowUpQuote),
     },
     {
       id: 'decision',
-      label: 'Decision client',
+      label: 'Décision',
       done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
     },
     {
       id: 'outcome',
-      label: 'Chantier gagne / perdu',
+      label: 'Gagné / perdu',
       done: project.status === 'Gagné' || project.status === 'Perdu',
     },
   ];
@@ -2183,150 +2194,244 @@ function ProjectDetail() {
           })()}
         </div>
 
-        {/* Synthèse commerciale haute : résumé devis + progression dossier */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 1.4fr)',
-          gap: '12px',
-          marginBottom: '16px',
-        }}>
-          <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '14px',
-            padding: isMobile ? '16px' : '18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}>
-            <div>
-              <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Résumé devis
-              </p>
-              <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                {quoteSummaryLabel}
-              </p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-              <div>
-                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Montant</p>
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>{quoteAmountLabel}</p>
-              </div>
-              <div>
-                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Envoi</p>
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
-                  {!latestDevis
-                    ? 'Non envoyé'
-                    : latestDevis.quote_sent_at
-                      ? formatDevisDate(latestDevis.quote_sent_at)
-                      : (latestDevis.accepted || latestDevis.declined)
-                        ? 'Envoyé — date non disponible'
-                        : 'Pas encore envoyé'}
-                </p>
-              </div>
-              <div>
-                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Ouvertures</p>
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
-                  {latestDevis ? `${latestDevis.opens_count || 0} ouverture(s)` : 'Aucune'}
-                </p>
-              </div>
-              <div>
-                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Relance</p>
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
-                  {latestDevis?.last_follow_up_at
-                    ? formatDevisDate(latestDevis.last_follow_up_at)
-                    : decision.followUpAvailableAt
-                      ? formatShortDate(decision.followUpAvailableAt)
-                      : 'Aucune planifiée'}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={scrollToActionsAndQuote}
-              style={{
-                alignSelf: isMobile ? 'stretch' : 'flex-start',
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                color: 'var(--text-1)',
-                borderRadius: '10px',
-                padding: '10px 14px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Aller au devis
-            </button>
-          </div>
+        {/* Synthèse commerciale haute : résumé devis (carte de pilotage) puis
+            progression dossier en pleine largeur juste dessous. */}
+        {(() => {
+          const quoteStatusBadge = !latestDevis
+            ? { label: 'Aucun devis', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' }
+            : latestDevis.accepted
+              ? { label: 'Devis accepté', bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.4)', color: '#16a34a' }
+              : latestDevis.declined
+                ? { label: 'Devis refusé', bg: 'rgba(220,38,38,0.12)', border: 'rgba(220,38,38,0.35)', color: '#dc2626' }
+                : latestDevis.sent
+                  ? { label: decision.canFollowUpQuote ? 'Devis à relancer' : 'Devis envoyé', bg: 'rgba(234,88,12,0.12)', border: 'rgba(234,88,12,0.35)', color: '#ea580c' }
+                  : { label: 'Devis en préparation', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' };
 
-          <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '14px',
-            padding: isMobile ? '16px' : '18px',
-          }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Timeline commerciale
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(7, minmax(0, 1fr))',
-              gap: '10px',
-            }}>
-              {commercialTimeline.map((step, index) => (
-                <div
-                  key={step.id}
-                  style={{
-                    display: 'flex',
-                    flexDirection: isMobile ? 'row' : 'column',
-                    alignItems: isMobile ? 'center' : 'flex-start',
-                    gap: '8px',
-                  }}
-                >
-                  <div style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}>
+          const quoteDecisionLabel = !latestDevis
+            ? 'En attente'
+            : latestDevis.accepted
+              ? 'Accepté'
+              : latestDevis.declined
+                ? 'Refusé'
+                : 'En attente';
+
+          const quoteNextActionLabel = !latestDevis
+            ? 'Créer un devis'
+            : latestDevis.accepted
+              ? 'Planifier l’intervention'
+              : latestDevis.declined
+                ? 'Clarifier le besoin'
+                : !latestDevis.sent
+                  ? 'Finaliser et envoyer le devis'
+                  : decision.canFollowUpQuote
+                    ? 'Relancer le client'
+                    : 'Suivre le devis';
+
+          const quoteCardButtonLabel = !latestDevis
+            ? 'Créer le devis'
+            : latestDevis.accepted
+              ? 'Planifier la suite'
+              : !latestDevis.sent
+                ? 'Voir le devis'
+                : decision.canFollowUpQuote
+                  ? 'Relancer'
+                  : 'Voir le devis';
+
+          const quoteCardButtonAction = !latestDevis
+            ? () => handleNextBestAction('quote')
+            : latestDevis.accepted
+              ? (appointment ? scrollToActionsAndQuote : () => openAppointmentModal())
+              : decision.canFollowUpQuote
+                ? () => followUpQuote(latestDevis)
+                : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
+
+          return (
+            <>
+              <div style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: isMobile ? '16px' : '22px',
+                marginBottom: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      Résumé devis
+                    </p>
                     <span style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '999px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      background: step.done ? 'rgba(34,197,94,0.18)' : 'var(--bg)',
-                      border: `1px solid ${step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)'}`,
-                      color: step.done ? 'var(--accent)' : 'var(--text-3)',
-                      flexShrink: 0,
+                      display: 'inline-flex', fontSize: '14px', fontWeight: 700,
+                      padding: '5px 14px', borderRadius: '999px',
+                      background: quoteStatusBadge.bg, border: `1px solid ${quoteStatusBadge.border}`, color: quoteStatusBadge.color,
                     }}>
-                      {index + 1}
+                      {quoteStatusBadge.label}
                     </span>
-                    {!isMobile && index < commercialTimeline.length - 1 && (
-                      <span style={{
-                        flex: 1,
-                        height: '1px',
-                        background: step.done ? 'rgba(34,197,94,0.28)' : 'var(--border)',
-                      }} />
-                    )}
                   </div>
-                  <p style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    color: step.done ? 'var(--text-1)' : 'var(--text-3)',
-                    fontWeight: step.done ? 600 : 500,
-                  }}>
-                    {step.label}
-                  </p>
+                  <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                    <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>Montant</p>
+                    <p style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: 'var(--text-1)' }}>{quoteAmountLabel}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Envoi</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {!latestDevis
+                        ? 'Non envoyé'
+                        : latestDevis.quote_sent_at
+                          ? formatDevisDate(latestDevis.quote_sent_at)
+                          : (latestDevis.accepted || latestDevis.declined)
+                            ? 'Envoyé — date non disponible'
+                            : 'Pas encore envoyé'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Ouvertures</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {latestDevis ? `${latestDevis.opens_count || 0} ouverture(s)` : '0'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Relance / Décision</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {latestDevis?.accepted || latestDevis?.declined
+                        ? quoteDecisionLabel
+                        : latestDevis?.last_follow_up_at
+                          ? `Relancé le ${formatDevisDate(latestDevis.last_follow_up_at)}`
+                          : decision.followUpAvailableAt
+                            ? `Relance dès le ${formatShortDate(decision.followUpAvailableAt)}`
+                            : 'Aucune planifiée'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Prochaine action</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>{quoteNextActionLabel}</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={quoteCardButtonAction}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '0 0 auto',
+                      background: 'var(--accent)',
+                      border: 'none',
+                      color: '#fff',
+                      borderRadius: '10px',
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {quoteCardButtonLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={scrollToActionsAndQuote}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '0 0 auto',
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-1)',
+                      borderRadius: '10px',
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Aller au devis
+                  </button>
+                </div>
+              </div>
+
+              <div style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: isMobile ? '16px' : '22px',
+                marginBottom: '16px',
+              }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 18px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Avancement commercial
+                </p>
+                <div style={{
+                  display: isMobile ? 'flex' : 'grid',
+                  flexDirection: isMobile ? 'column' : undefined,
+                  gridTemplateColumns: isMobile ? undefined : 'repeat(7, minmax(0, 1fr))',
+                  gap: isMobile ? '10px' : '6px',
+                }}>
+                  {commercialTimeline.map((step, index) => {
+                    const isCurrent = !step.done && commercialTimeline.slice(0, index).every((s) => s.done);
+                    return (
+                      <div
+                        key={step.id}
+                        style={{
+                          display: 'flex',
+                          flexDirection: isMobile ? 'row' : 'column',
+                          alignItems: isMobile ? 'center' : 'stretch',
+                          gap: '10px',
+                        }}
+                      >
+                        <div style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}>
+                          <span style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '999px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            background: step.done ? 'rgba(34,197,94,0.18)' : isCurrent ? 'rgba(234,88,12,0.14)' : 'var(--bg)',
+                            border: `2px solid ${step.done ? 'rgba(34,197,94,0.5)' : isCurrent ? '#ea580c' : 'var(--border)'}`,
+                            color: step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)',
+                            flexShrink: 0,
+                          }}>
+                            {step.done ? '✓' : index + 1}
+                          </span>
+                          {!isMobile && index < commercialTimeline.length - 1 && (
+                            <span style={{
+                              flex: 1,
+                              height: '2px',
+                              background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)',
+                            }} />
+                          )}
+                        </div>
+                        <p style={{
+                          margin: isMobile ? 0 : '10px 0 0',
+                          fontSize: '12px',
+                          color: step.done ? 'var(--text-1)' : isCurrent ? '#ea580c' : 'var(--text-3)',
+                          fontWeight: step.done || isCurrent ? 700 : 500,
+                          lineHeight: 1.3,
+                        }}>
+                          {step.label}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p style={{ margin: '16px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
+                  Étape actuelle : {(() => {
+                    const current = commercialTimeline.find((s) => !s.done) || commercialTimeline[commercialTimeline.length - 1];
+                    return `${current.label} — ${recommendedAction.title.charAt(0).toLowerCase()}${recommendedAction.title.slice(1)}.`;
+                  })()}
+                </p>
+              </div>
+            </>
+          );
+        })()}
 
         <div style={{
           display: 'grid',
