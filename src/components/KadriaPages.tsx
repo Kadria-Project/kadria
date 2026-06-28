@@ -3720,10 +3720,10 @@ export function LandingRoutePage() {
                 </div>
 
                 <Link
-                  href="/demo-dashboard"
+                  href="/demo/acces"
                   className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-green-500 transition-colors hover:bg-green-500/10"
                 >
-                  Voir un exemple de conversation →
+                  Demander un acces demo →
                 </Link>
               </div>
             )}
@@ -4635,8 +4635,8 @@ export function PricingRoutePage() {
                 Réserver une démonstration
               </Link>
             </div>
-            <Link href="/demo-dashboard" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
-              👁 Voir un exemple de dossier
+            <Link href="/demo/acces" className="mt-4 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+              👁 Demander a voir un exemple de dossier
             </Link>
           </div>
         </section>
@@ -4666,7 +4666,7 @@ export function DemoRoutePage() {
           <LeadCard />
         </div>
         <div className="mt-10 text-center">
-          <PrimaryLink href="/demo-dashboard">Ouvrir le dashboard demo</PrimaryLink>
+          <PrimaryLink href="/demo/acces">Demander un acces demo</PrimaryLink>
         </div>
       </main>
       <ChatWidget artisanId="Artisan_demo" />
