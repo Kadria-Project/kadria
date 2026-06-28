@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { createMagicToken, createToken } from '@/src/lib/auth-utils'
+import { createCheckoutIntentToken } from '@/src/lib/auth-utils'
 import { TABLES } from '@/src/lib/airtable'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { normalizePlan, getPlanLabel } from '@/src/config/plans'
@@ -11,10 +11,6 @@ function getResendClient() {
     throw new Error('Missing RESEND_API_KEY')
   }
   return new Resend(apiKey)
-}
-
-function formatDateOnly(date: Date) {
-  return date.toISOString().split('T')[0]
 }
 
 function buildArtisanId() {
@@ -81,8 +77,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const trialEndDate = formatDateOnly(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
-    const subscriptionStart = formatDateOnly(new Date())
     const artisanId = buildArtisanId()
 
     const { error: userError } = await supabaseAdmin
@@ -94,11 +88,11 @@ export async function POST(request: NextRequest) {
         company_name: company,
         role: 'Artisan',
         plan: getPlanLabel(validatedPlan),
-        statut: 'Trial',
-        trial_end_date: trialEndDate,
-        subscription_start: subscriptionStart,
+        statut: 'pending_payment',
+        billing_status: 'pending_payment',
         artisan_id: artisanId,
         phone: phone || '',
+        notes_admin: 'Inscription en attente de validation Stripe - CB non saisie / paiement non finalisé',
       })
 
     if (userError) {
@@ -141,79 +135,33 @@ export async function POST(request: NextRequest) {
 
     createdConfigArtisanId = artisanId
 
-    const magicToken = await createMagicToken(normalizedEmail)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://kadria-beta.vercel.app'
-    const magicUrl = `${baseUrl}/api/auth/verify?token=${magicToken}`
-
-    await resend.emails.send({
-      from: 'Kadria <connexion@kadria.fr>',
-      to: normalizedEmail,
-      subject: 'Bienvenue sur Kadria - Accédez à votre espace',
-      html: `
-        <div style="font-family:system-ui;max-width:500px;margin:0 auto;padding:40px 20px;background:#09090b;color:white;">
-          <h1 style="margin:0 0 24px;">
-            <span style="color:#22c55e">K</span><span style="color:white">adria</span>
-          </h1>
-          <h2 style="color:white;font-size:20px;margin:0 0 12px;font-weight:600;">
-            Bienvenue ${firstName} !
-          </h2>
-          <p style="color:#a1a1aa;line-height:1.6;margin:0 0 24px;">
-            Votre espace Kadria Pro pour <strong style="color:white">${company}</strong> est prêt.
-            Cliquez sur le bouton ci-dessous pour y accéder.<br/>
-            Ce lien expire dans <strong style="color:white">10 minutes</strong>.
-          </p>
-          <a href="${magicUrl}"
-             style="display:inline-block;background:#22c55e;color:black;font-weight:700;border-radius:10px;padding:14px 28px;font-size:16px;text-decoration:none;">
-            Accéder à mon espace →
-          </a>
-          <p style="color:#52525b;font-size:12px;margin:24px 0 0;line-height:1.6;">
-            Si vous n'avez pas demandé ce lien, ignorez cet email.<br/>
-            Lien valable une seule fois pendant 10 minutes.
-          </p>
-        </div>
-      `,
-    })
-
     await resend.emails.send({
       from: 'Kadria <notifications@kadria.fr>',
       to: 'contact@kadria.fr',
-      subject: `Nouvelle inscription : ${company}`,
+      subject: `Nouvelle inscription en attente de paiement : ${company}`,
       html: `
         <div style="font-family:system-ui;max-width:500px;margin:0 auto;padding:20px;">
-          <h2>Nouvelle inscription Kadria</h2>
+          <h2>Nouvelle inscription Kadria en attente de paiement</h2>
           <p><strong>Entreprise :</strong> ${company}</p>
           <p><strong>Nom :</strong> ${firstName} ${lastName}</p>
           <p><strong>Email :</strong> ${normalizedEmail}</p>
           <p><strong>Téléphone :</strong> ${phone || '-'}</p>
           <p><strong>Métier :</strong> ${trade}</p>
           <p><strong>Artisan ID :</strong> ${artisanId}</p>
+          <p><strong>Statut :</strong> pending_payment</p>
+          <p><strong>Note :</strong> CB non saisie / paiement non finalisé</p>
         </div>
       `,
     })
 
-    const sessionToken = await createToken({
-      id: artisanId,
-      email: normalizedEmail,
+    const checkoutToken = await createCheckoutIntentToken({
       artisanId,
-      companyName: company,
-      primaryColor: '#22c55e',
-      role: 'Artisan',
+      email: normalizedEmail,
       plan: normalizePlan(validatedPlan),
-      statut: 'Trial',
-      firstName,
-      lastName,
+      interval: interval === 'yearly' ? 'yearly' : 'monthly',
     })
 
-    const response = NextResponse.json({ success: true })
-    response.cookies.set('kadria-auth', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    })
-
-    return response
+    return NextResponse.json({ success: true, checkoutToken })
   } catch (error) {
     const serializedError = serializeError(error)
     console.error('[REGISTER] Error:', serializedError)

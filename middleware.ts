@@ -11,6 +11,28 @@ function getAuthSecret(): Uint8Array {
   return new TextEncoder().encode(secret)
 }
 
+function normalizeAccessValue(value: unknown): string {
+  return String(value || '').trim().toLowerCase()
+}
+
+function canAccessPlatformFromToken(payload: { role?: unknown; statut?: unknown; billing_status?: unknown; billingStatus?: unknown }) {
+  const role = normalizeAccessValue(payload.role)
+  const statut = normalizeAccessValue(payload.statut)
+  const billingStatus = normalizeAccessValue(payload.billing_status ?? payload.billingStatus)
+
+  if (role === 'admin') return true
+  if (billingStatus === 'active' || billingStatus === 'trialing') return true
+  if (statut === 'actif' && !billingStatus) return true
+  return false
+}
+
+type AccessTokenPayload = {
+  role?: unknown
+  statut?: unknown
+  billing_status?: unknown
+  billingStatus?: unknown
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -56,7 +78,13 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, getAuthSecret())
+      const { payload } = await jwtVerify(token, getAuthSecret())
+      if (!canAccessPlatformFromToken(payload as AccessTokenPayload)) {
+        const loginUrl = new URL('/register?payment=required', request.url)
+        const response = NextResponse.redirect(loginUrl)
+        response.cookies.delete('kadria-auth')
+        return response
+      }
       return NextResponse.next()
     } catch {
       const loginUrl = new URL('/login', request.url)
@@ -71,8 +99,10 @@ export async function middleware(request: NextRequest) {
     const token = request.cookies.get('kadria-auth')?.value
     if (token) {
       try {
-        await jwtVerify(token, getAuthSecret())
-        return NextResponse.redirect(new URL('/dashboard-v2', request.url))
+        const { payload } = await jwtVerify(token, getAuthSecret())
+        if (canAccessPlatformFromToken(payload as AccessTokenPayload)) {
+          return NextResponse.redirect(new URL('/dashboard-v2', request.url))
+        }
       } catch {
         // Token invalide, laisse passer
       }

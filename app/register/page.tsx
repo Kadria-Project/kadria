@@ -22,6 +22,8 @@ function RegisterPageContent() {
   const searchParams = useSearchParams()
   const selectedPlan = resolveSelectedPlan(searchParams.get('plan'))
   const selectedInterval = resolveSelectedInterval(searchParams.get('interval'))
+  const checkoutStatus = searchParams.get('checkout')
+  const paymentRequired = searchParams.get('payment') === 'required'
 
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -71,8 +73,11 @@ function RegisterPageContent() {
           const checkoutRes = await fetch('/api/stripe/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ plan: selectedPlan, interval: selectedInterval }),
+            body: JSON.stringify({
+              plan: selectedPlan,
+              interval: selectedInterval,
+              checkoutToken: data.checkoutToken,
+            }),
           })
           const checkoutData = await checkoutRes.json().catch(() => null)
 
@@ -120,8 +125,31 @@ function RegisterPageContent() {
   }
 
   const selectedPlanLabel = getPlanLabel(selectedPlan as PlanKey)
+  const showCheckoutSuccess = checkoutStatus === 'success'
+  const showCheckoutCancel = checkoutStatus === 'cancel'
+  const completionTitle = showCheckoutSuccess
+    ? 'Vérifiez votre email'
+    : paymentRequired
+      ? 'Paiement requis avant accès'
+      : 'Inscription en attente'
+  const completionMessage = showCheckoutSuccess
+    ? 'Si Stripe a bien confirmé votre checkout, votre compte va être activé et vous recevrez un magic link pour accéder à votre espace Kadria.'
+    : paymentRequired
+      ? 'Votre compte reste bloqué tant que Stripe n’a pas confirmé le checkout.'
+      : 'Votre inscription est enregistrée, mais aucun accès plateforme n’est possible avant validation Stripe.'
+  const nextSteps = showCheckoutSuccess
+    ? [
+        'Attendez la confirmation Stripe côté Kadria',
+        'Ouvrez l’email de connexion reçu de Kadria',
+        'Cliquez sur le lien pour accéder à votre espace',
+      ]
+    : [
+        'Reprenez le checkout Stripe pour valider votre essai',
+        'Aucun magic link n’est envoyé tant que le paiement n’est pas confirmé',
+        'Une fois Stripe validé, vous recevrez votre lien d’accès par email',
+      ]
 
-  if (done) {
+  if (showCheckoutSuccess || showCheckoutCancel || paymentRequired || done) {
     return (
       <main style={{
         minHeight: '100vh',
@@ -141,14 +169,16 @@ function RegisterPageContent() {
           padding: '40px 32px',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🎉</div>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>
+            {showCheckoutSuccess ? '📩' : showCheckoutCancel || checkoutFailed ? '⏳' : '🔒'}
+          </div>
           <h1 style={{
             color: 'white',
             fontSize: '24px',
             fontWeight: 700,
             margin: '0 0 12px',
           }}>
-            Compte créé !
+            {completionTitle}
           </h1>
           <p style={{
             color: '#a1a1aa',
@@ -156,11 +186,9 @@ function RegisterPageContent() {
             lineHeight: 1.7,
             margin: '0 0 24px',
           }}>
-            Un email vous a été envoyé à<br />
-            <strong style={{ color: 'white' }}>{form.email}</strong><br />
-            avec un lien pour accéder à votre espace.
+            {completionMessage}
           </p>
-          {checkoutFailed && (
+          {(checkoutFailed || showCheckoutCancel || paymentRequired) && (
             <div style={{
               background: 'rgba(248,113,113,0.08)',
               border: '1px solid rgba(248,113,113,0.3)',
@@ -170,8 +198,7 @@ function RegisterPageContent() {
               marginBottom: '16px',
             }}>
               <p style={{ color: '#f87171', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>
-                Votre compte a été créé, mais le démarrage de l&apos;essai Stripe a échoué.
-                Vous pourrez réessayer depuis les paramètres.
+                Aucun magic link d&apos;accès n&apos;est envoyé avant validation Stripe. Sans paiement confirmé, aucun accès à l&apos;espace Kadria n&apos;est autorisé.
               </p>
             </div>
           )}
@@ -197,9 +224,9 @@ function RegisterPageContent() {
               margin: 0,
               paddingLeft: '20px',
             }}>
-              <li>Ouvrez l&apos;email reçu de Kadria</li>
-              <li>Cliquez sur le lien pour accéder à votre espace</li>
-              <li>Configurez votre assistant en quelques minutes</li>
+              {nextSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
             </ul>
           </div>
           <p style={{ color: '#52525b', fontSize: '12px', margin: '20px 0 0' }}>

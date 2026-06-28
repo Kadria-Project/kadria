@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanByEmail, getArtisanConfig } from '@/src/lib/airtable'
-import { verifyMagicToken, createToken } from '@/src/lib/auth-utils'
+import { verifyMagicToken, createToken, canAccessPlatformAccount } from '@/src/lib/auth-utils'
 import { normalizePlan } from '@/src/lib/plans'
 
 export async function GET(request: NextRequest) {
@@ -24,6 +24,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/error?error=AccessDenied', request.url))
     }
 
+    const billingStatus = (artisan as { billingStatus?: string }).billingStatus
+
+    if (!canAccessPlatformAccount({
+      role: artisan.role,
+      statut: artisan.statut,
+      billingStatus,
+    })) {
+      return NextResponse.redirect(new URL('/register?payment=required', request.url))
+    }
+
     // Crée le cookie de session
     const sessionToken = await createToken({
       id: artisan.id,
@@ -34,6 +44,7 @@ export async function GET(request: NextRequest) {
       role: artisan.role || '',
       plan: normalizePlan(artisan.plan || 'Performance'),
       statut: artisan.statut || '',
+      billingStatus: billingStatus || '',
       firstName: artisan.firstName || '',
       lastName: artisan.lastName || '',
     })

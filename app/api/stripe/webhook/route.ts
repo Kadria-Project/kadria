@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
+import { sendPlatformMagicLinkEmail } from '@/src/lib/auth-utils'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getStripeClient, getPriceToPlanMap, StripeNotConfiguredError } from '@/src/lib/stripe'
 
@@ -33,6 +34,32 @@ async function updateUsersRow(
   }
 
   throw new Error('No match key (artisanId/customerId) to update Users row')
+}
+
+async function getUserForMagicLink(match: { artisanId?: string | null; customerId?: string | null }) {
+  if (match.artisanId) {
+    const { data, error } = await supabaseAdmin
+      .from('Users')
+      .select('email, first_name, company_name, statut, billing_status')
+      .eq('artisan_id', match.artisanId)
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    return data
+  }
+
+  if (match.customerId) {
+    const { data, error } = await supabaseAdmin
+      .from('Users')
+      .select('email, first_name, company_name, statut, billing_status')
+      .eq('stripe_customer_id', match.customerId)
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    return data
+  }
+
+  return null
 }
 
 function statutForSubscriptionStatus(status: Stripe.Subscription.Status): string | undefined {
@@ -122,7 +149,9 @@ export async function POST(request: Request) {
           typeof checkoutSession.subscription === 'string'
             ? checkoutSession.subscription
             : checkoutSession.subscription?.id
-        const artisanId = checkoutSession.metadata?.artisan_id
+        const artisanId = checkoutSession.metadata?.artisan_id || checkoutSession.metadata?.artisanId
+
+        const userBeforeUpdate = await getUserForMagicLink({ artisanId, customerId })
 
         const patch: Record<string, unknown> = {}
         if (customerId) patch.stripe_customer_id = customerId
@@ -132,7 +161,22 @@ export async function POST(request: Request) {
           Object.assign(patch, subscriptionToPatch(subscription))
         }
 
+        patch.notes_admin = 'Paiement Stripe validé - accès activé'
+
         await updateUsersRow({ artisanId, customerId }, patch)
+
+        const wasPendingPayment =
+          String(userBeforeUpdate?.statut || '').trim().toLowerCase() === 'pending_payment'
+          || String(userBeforeUpdate?.billing_status || '').trim().toLowerCase() === 'pending_payment'
+
+        const user = await getUserForMagicLink({ artisanId, customerId })
+        if (wasPendingPayment && user?.email) {
+          await sendPlatformMagicLinkEmail({
+            email: String(user.email),
+            firstName: typeof user.first_name === 'string' ? user.first_name : undefined,
+            companyName: typeof user.company_name === 'string' ? user.company_name : undefined,
+          })
+        }
         break
       }
 
@@ -141,7 +185,7 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId =
           typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id
-        const artisanId = subscription.metadata?.artisan_id
+        const artisanId = subscription.metadata?.artisan_id || subscription.metadata?.artisanId
 
         await updateUsersRow({ artisanId, customerId }, subscriptionToPatch(subscription))
         break
@@ -151,7 +195,7 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId =
           typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id
-        const artisanId = subscription.metadata?.artisan_id
+        const artisanId = subscription.metadata?.artisan_id || subscription.metadata?.artisanId
 
         await updateUsersRow(
           { artisanId, customerId },
@@ -161,6 +205,7 @@ export async function POST(request: Request) {
             statut: 'Résilié',
             stripe_subscription_id: null,
             stripe_price_id: null,
+            notes_admin: 'Abonnement résilié côté Stripe',
           },
         )
         break
@@ -170,9 +215,13 @@ export async function POST(request: Request) {
         const invoice = event.data.object as Stripe.Invoice
         const customerId =
           typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
-        const artisanId = invoice.metadata?.artisan_id
+        const artisanId = invoice.metadata?.artisan_id || invoice.metadata?.artisanId
 
-        const patch: Record<string, unknown> = { billing_status: 'active', statut: 'Actif' }
+        const patch: Record<string, unknown> = {
+          billing_status: 'active',
+          statut: 'Actif',
+          notes_admin: 'Paiement Stripe confirmé',
+        }
 
         const priceRef = invoice.lines?.data?.[0]?.pricing?.price_details?.price
         const lineItemPriceId = typeof priceRef === 'string' ? priceRef : priceRef?.id
@@ -190,9 +239,15 @@ export async function POST(request: Request) {
         const invoice = event.data.object as Stripe.Invoice
         const customerId =
           typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
-        const artisanId = invoice.metadata?.artisan_id
+        const artisanId = invoice.metadata?.artisan_id || invoice.metadata?.artisanId
 
-        await updateUsersRow({ artisanId, customerId }, { billing_status: 'past_due' })
+        await updateUsersRow(
+          { artisanId, customerId },
+          {
+            billing_status: 'past_due',
+            notes_admin: 'Paiement Stripe en échec - accès bloqué',
+          },
+        )
         break
       }
 
