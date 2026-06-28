@@ -19,6 +19,7 @@ import { hasFeature, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
 import type { DemoQuoteBuilder, DemoQuoteBuilderLine } from '@/src/lib/demo-data';
+import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -973,7 +974,7 @@ function ProjectDetail() {
               ? 'Planifier le chantier'
               : 'Creer une nouvelle proposition';
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
-  const projectLabel = project.projectType || project.trade || 'Projet';
+  const projectLabel = getProjectHeadline(project);
   const score = Number(project.completenessScore || 0);
   const projectIdentityItems = [
     { label: 'Reference', value: project.projectNumber || project.id || 'Non renseignee' },
