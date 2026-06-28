@@ -152,6 +152,32 @@ function formatMoney(value?: number | null) {
   return MONEY_FORMATTER.format(Number(value || 0));
 }
 
+function getProjectHeadline(project: any) {
+  const directTitle = [
+    project?.projectTitle,
+    project?.projectType,
+    project?.service,
+    project?.need,
+    project?.besoin,
+    project?.title,
+  ].find((value) => typeof value === 'string' && value.trim().length > 0);
+
+  if (directTitle) return directTitle;
+  if (project?.trade && project?.city) return `${project.trade} - ${project.city}`;
+  return project?.trade || 'Projet a qualifier';
+}
+
+function getSourceLabel(source?: string | null) {
+  const normalized = (source || '').trim().toLowerCase();
+  if (!normalized) return 'Source inconnue';
+  if (normalized === 'voice') return 'Demande vocale';
+  if (normalized === 'chat-widget') return 'Widget Kadria';
+  if (normalized === 'widget') return 'Widget Kadria';
+  if (normalized === 'manual') return 'Saisie manuelle';
+  if (normalized === 'email') return 'Demande email';
+  return source || 'Source inconnue';
+}
+
 export default function ProjectDetailPage() {
   return (
     <AuthGuard>
@@ -174,6 +200,7 @@ function ProjectDetail() {
   const [callbackDate, setCallbackDate] = useState('');
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const actionsAndQuoteRef = useRef<HTMLDivElement>(null);
   // --- Rendez-vous assisté (Google Calendar) ---
   const [appointment, setAppointment] = useState<{
     id: string;
@@ -856,6 +883,107 @@ function ProjectDetail() {
   // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
   // calculées à la demande, jamais persistées, basées sur les mêmes signaux
   // que l'analyse Kadria ci-dessus (métier, projet, déplacement).
+  const projectTitle = getProjectHeadline(project);
+  const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
+  const sourceLabel = getSourceLabel(project.source);
+  const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' · ');
+  const budgetLabel = project.budget || 'Budget non renseigne';
+  const timelineLabel = project.desiredTimeline || 'Delai non precise';
+  const quoteAmountLabel = latestDevis?.amount ? `${formatMoney(latestDevis.amount)} €` : (devisAmount ? `${formatMoney(Number(devisAmount))} €` : 'Montant non renseigne');
+  const scrollToActionsAndQuote = () => {
+    actionsAndQuoteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const quoteSummaryLabel = !latestDevis
+    ? 'Aucun devis'
+    : latestDevis.accepted
+      ? 'Devis accepte'
+      : latestDevis.declined
+        ? 'Devis refuse'
+        : latestDevis.sent
+          ? decision.canFollowUpQuote
+            ? 'Devis a relancer'
+            : 'Devis envoye'
+          : 'Devis en preparation';
+  const recommendedAction = (() => {
+    if (project.status === 'Perdu' || decision.state === 'quote_declined') {
+      return {
+        title: 'Archivez le dossier ou notez le motif de refus.',
+        ctaLabel: 'Cloturer le dossier',
+        onClick: scrollToActionsAndQuote,
+        meta: latestDevis?.decline_reason || 'Motif de refus a consigner si besoin.',
+      };
+    }
+    if (project.status === 'Gagné' || decision.state === 'quote_accepted') {
+      return {
+        title: 'Planifiez la suite du chantier.',
+        ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier la prochaine action',
+        onClick: appointment ? scrollToActionsAndQuote : () => { if (!appointment) openAppointmentModal(); },
+        meta: appointment ? `Rendez-vous prevu le ${formatDateTime(appointment.start)}` : 'Passez en phase chantier avec un prochain rendez-vous.',
+      };
+    }
+    if (!latestDevis) {
+      return {
+        title: 'Preparez un devis ou contactez le prospect pour confirmer les derniers elements.',
+        ctaLabel: 'Preparer un devis',
+        onClick: () => handleNextBestAction('quote'),
+        meta: nextAction.blockingReasons.length > 0 ? nextAction.blockingReasons.join(' · ') : 'Le dossier est pret a etre chiffre.',
+      };
+    }
+    if (!latestDevis.sent) {
+      return {
+        title: 'Finalisez le devis et envoyez-le au client.',
+        ctaLabel: 'Voir le devis',
+        onClick: () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`),
+        meta: 'Le devis existe deja mais attend encore un envoi au client.',
+      };
+    }
+    if (decision.canFollowUpQuote) {
+      return {
+        title: 'Relancez le client pendant que le projet est encore chaud.',
+        ctaLabel: 'Relancer le client',
+        onClick: () => followUpQuote(latestDevis),
+        meta: latestDevis.opens_count > 0 ? `Devis ouvert ${latestDevis.opens_count} fois` : 'Devis envoye, en attente de retour.',
+      };
+    }
+    if (latestDevis.sent) {
+      return {
+        title: 'Relancez le client pendant que le projet est encore chaud.',
+        ctaLabel: 'Voir le devis',
+        onClick: () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`),
+        meta: decision.followUpAvailableAt
+          ? `Relance possible a partir du ${formatShortDate(decision.followUpAvailableAt)}`
+          : 'Le devis a ete envoye, gardez la conversation ouverte.',
+      };
+    }
+    return {
+      title: 'Prenez contact pour affiner les besoins et proposer une prochaine etape.',
+      ctaLabel: 'Planifier la prochaine action',
+      onClick: scrollToActionsAndQuote,
+      meta: nextAction.description,
+    };
+  })();
+  const commercialTimeline = [
+    { id: 'received', label: 'Dossier recu', done: Boolean(project.createdAt) },
+    { id: 'qualified', label: 'Dossier qualifie', done: project.status !== 'Nouveau' },
+    { id: 'draft', label: 'Devis prepare', done: Boolean(latestDevis) },
+    { id: 'sent', label: 'Devis envoye', done: Boolean(latestDevis?.sent) },
+    {
+      id: 'followup',
+      label: 'Devis ouvert / relance',
+      done: Boolean((latestDevis?.opens_count || 0) > 0 || latestDevis?.last_follow_up_at || decision.canFollowUpQuote),
+    },
+    {
+      id: 'decision',
+      label: 'Decision client',
+      done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
+    },
+    {
+      id: 'outcome',
+      label: 'Chantier gagne / perdu',
+      done: project.status === 'Gagné' || project.status === 'Perdu',
+    },
+  ];
+
   const quoteSuggestionProject = {
     trade: project.trade,
     projectType: project.projectType,
@@ -1266,7 +1394,7 @@ function ProjectDetail() {
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {clientLabel}
+              {projectTitle}
             </p>
             <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-3)' }}>
               {project.status || 'Nouveau'} · Maturité {nextAction.maturityScore}/100
@@ -1280,8 +1408,8 @@ function ProjectDetail() {
             <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', margin: '0 0 6px' }}>
               Action recommandée
             </p>
-            <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>{nextAction.title}</p>
-            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>{nextAction.description}</p>
+            <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>{recommendedAction.title}</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>{recommendedAction.meta}</p>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
               <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)' }}>
                 Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
@@ -1289,11 +1417,11 @@ function ProjectDetail() {
               <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>~{nextAction.estimatedDuration}</span>
             </div>
             {(() => {
-              const ctaActionable = !!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
+              const ctaActionable = !!recommendedAction.onClick && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
               return (
                 <>
                   <button
-                    onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
+                    onClick={recommendedAction.onClick}
                     disabled={!ctaActionable}
                     style={{
                       width: '100%', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: 700,
@@ -1303,7 +1431,7 @@ function ProjectDetail() {
                       opacity: ctaActionable ? 1 : 0.7,
                     }}
                   >
-                    {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
+                      {recommendedAction.ctaLabel}
                   </button>
                   {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
                     <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '6px 0 0' }}>
@@ -1610,14 +1738,14 @@ function ProjectDetail() {
                 fontWeight: 700,
                 margin: '0 0 4px',
               }}>
-                {project.clientFirstName} {project.clientName}
+                {projectTitle}
               </h1>
               <p style={{
                 color: 'var(--text-2)',
                 fontSize: '14px',
                 margin: 0,
               }}>
-                {project.trade} · {project.city}
+                {heroSubtitle}
               </p>
             </div>
             {/* Statut */}
@@ -1654,7 +1782,64 @@ function ProjectDetail() {
                   {project.status || 'Nouveau'}
                 </span>
               </div>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+                justifyContent: isMobile ? 'flex-start' : 'flex-end',
+              }}>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  background: 'rgba(34,197,94,0.08)',
+                  border: '1px solid rgba(34,197,94,0.2)',
+                  color: 'var(--text-2)',
+                }}>
+                  Score {nextAction.maturityScore}/100
+                </span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-2)',
+                }}>
+                  {verdict.label}
+                </span>
+              </div>
             </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            marginBottom: '16px',
+          }}>
+            {[
+              `Budget ${budgetLabel}`,
+              `Délai ${timelineLabel}`,
+              `Source ${sourceLabel}`,
+            ].map((badge) => (
+              <span
+                key={badge}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '5px 10px',
+                  borderRadius: '999px',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-2)',
+                }}
+              >
+                {badge}
+              </span>
+            ))}
           </div>
 
           {/* Séparateur */}
@@ -1771,10 +1956,10 @@ function ProjectDetail() {
               Action recommandée
             </p>
             <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
-              {nextAction.title}
+              {recommendedAction.title}
             </p>
             <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px' }}>
-              {nextAction.description}
+              {recommendedAction.meta}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
               <span style={{
@@ -1806,13 +1991,13 @@ function ProjectDetail() {
             )}
           </div>
           {(() => {
-            const ctaActionable = !!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
+            const ctaActionable = !!recommendedAction.onClick && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
             const disabledTitle = NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]
-              || (!NEXT_ACTION_CTA_HANDLER[nextAction.actionType] ? 'Action pas encore disponible depuis cette carte' : undefined);
+              || (!recommendedAction.onClick ? 'Action pas encore disponible depuis cette carte' : undefined);
             return (
               <button
                 type="button"
-                onClick={() => NEXT_ACTION_CTA_HANDLER[nextAction.actionType]?.()}
+                onClick={recommendedAction.onClick}
                 disabled={!ctaActionable}
                 title={!ctaActionable ? disabledTitle : undefined}
                 style={{
@@ -1829,13 +2014,151 @@ function ProjectDetail() {
                   width: isMobile ? '100%' : undefined,
                 }}
               >
-                {NEXT_ACTION_CTA_LABEL[nextAction.actionType] || 'Consulter'}
+                {recommendedAction.ctaLabel}
               </button>
             );
           })()}
         </div>
 
-        {/* Centre d'actions — les actions prioritaires du dossier, toujours visibles en haut */}
+        {/* Synthèse commerciale haute : résumé devis + progression dossier */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 1.4fr)',
+          gap: '12px',
+          marginBottom: '16px',
+        }}>
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: isMobile ? '16px' : '18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+          }}>
+            <div>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Résumé devis
+              </p>
+              <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+                {quoteSummaryLabel}
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Montant</p>
+                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>{quoteAmountLabel}</p>
+              </div>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Envoi</p>
+                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                  {latestDevis?.quote_sent_at ? formatDevisDate(latestDevis.quote_sent_at) : 'Pas encore envoyé'}
+                </p>
+              </div>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Ouvertures</p>
+                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                  {latestDevis ? `${latestDevis.opens_count || 0} ouverture(s)` : 'Aucune'}
+                </p>
+              </div>
+              <div>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Relance</p>
+                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                  {latestDevis?.last_follow_up_at
+                    ? formatDevisDate(latestDevis.last_follow_up_at)
+                    : decision.followUpAvailableAt
+                      ? formatShortDate(decision.followUpAvailableAt)
+                      : 'Aucune planifiée'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={scrollToActionsAndQuote}
+              style={{
+                alignSelf: isMobile ? 'stretch' : 'flex-start',
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Aller au devis
+            </button>
+          </div>
+
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: isMobile ? '16px' : '18px',
+          }}>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Timeline commerciale
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(7, minmax(0, 1fr))',
+              gap: '10px',
+            }}>
+              {commercialTimeline.map((step, index) => (
+                <div
+                  key={step.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'row' : 'column',
+                    alignItems: isMobile ? 'center' : 'flex-start',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <span style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '999px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      background: step.done ? 'rgba(34,197,94,0.18)' : 'var(--bg)',
+                      border: `1px solid ${step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)'}`,
+                      color: step.done ? 'var(--accent)' : 'var(--text-3)',
+                      flexShrink: 0,
+                    }}>
+                      {index + 1}
+                    </span>
+                    {!isMobile && index < commercialTimeline.length - 1 && (
+                      <span style={{
+                        flex: 1,
+                        height: '1px',
+                        background: step.done ? 'rgba(34,197,94,0.28)' : 'var(--border)',
+                      }} />
+                    )}
+                  </div>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: step.done ? 'var(--text-1)' : 'var(--text-3)',
+                    fontWeight: step.done ? 600 : 500,
+                  }}>
+                    {step.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
@@ -2324,7 +2647,7 @@ function ProjectDetail() {
           </div>
         )}
 
-        <div style={{
+        <div ref={actionsAndQuoteRef} style={{
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderRadius: '16px',
