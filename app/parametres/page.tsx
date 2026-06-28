@@ -7,7 +7,7 @@ import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
 import { ARTISAN_TRADES } from '@/src/config/trades'
-import { getSuggestedWorkTypesForTrades, getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
+import { getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
 import type { ArtisanServiceCatalogItem, ArtisanQuoteTemplate, ArtisanQuoteTemplateLine, QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
 import {
   VehicleType,
@@ -152,132 +152,35 @@ function validateLegalConfig(config: LegalConfig): Record<string, string> {
   return errors
 }
 
-function WorkTypeMultiSelect({
-  values, onAdd, onRemove, options, placeholder, accent, inputStyle,
-}: {
-  values: string[]
-  onAdd: (value: string) => void
-  onRemove: (value: string) => void
-  options: string[]
-  placeholder: string
-  accent: 'green' | 'red'
-  inputStyle: React.CSSProperties
-}) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-
-  const available = options.filter(o => !values.includes(o))
-  const q = query.trim().toLowerCase()
-  const filtered = q ? available.filter(o => o.toLowerCase().includes(q)) : available
-  const canAddFree = q.length > 0
-    && !values.some(v => v.toLowerCase() === q)
-    && !options.some(o => o.toLowerCase() === q)
-
+function WorkTypeReadOnlyChips({ values, accent }: { values: string[]; accent: 'green' | 'red' }) {
   const accentColor = accent === 'green' ? '#4ade80' : '#f87171'
   const accentBg = accent === 'green' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
   const accentBorder = accent === 'green' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'
 
-  const handleAdd = (value: string) => {
-    const trimmed = value.trim()
-    if (!trimmed) return
-    onAdd(trimmed)
-    setQuery('')
-    setOpen(false)
-  }
+  if (values.length === 0) return null
 
   return (
-    <div>
-      <div style={{ position: 'relative' }}>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && canAddFree) {
-              e.preventDefault()
-              handleAdd(query)
-            }
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+      {values.map((v) => (
+        <span
+          key={v}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            background: accentBg,
+            border: `1px solid ${accentBorder}`,
+            color: accentColor,
+            borderRadius: '999px',
+            padding: '4px 10px',
+            fontSize: '12px',
+            fontWeight: 600,
+            maxWidth: '100%',
+            overflowWrap: 'anywhere',
           }}
-          placeholder={placeholder}
-          style={inputStyle}
-        />
-        {open && (filtered.length > 0 || canAddFree) && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 4px)',
-              left: 0,
-              right: 0,
-              zIndex: 20,
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              maxHeight: '240px',
-              overflowY: 'auto',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-            }}
-          >
-            {filtered.map((o) => (
-              <div
-                key={o}
-                onMouseDown={(e) => { e.preventDefault(); handleAdd(o) }}
-                style={{ padding: '10px 14px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-1)' }}
-              >
-                {o}
-              </div>
-            ))}
-            {canAddFree && (
-              <div
-                onMouseDown={(e) => { e.preventDefault(); handleAdd(query) }}
-                style={{
-                  padding: '10px 14px',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  color: accentColor,
-                  fontWeight: 600,
-                  borderTop: filtered.length > 0 ? '1px solid var(--border)' : 'none',
-                }}
-              >
-                + Ajouter « {query.trim()} »
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {values.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-          {values.map((v) => (
-            <span
-              key={v}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: accentBg,
-                border: `1px solid ${accentBorder}`,
-                color: accentColor,
-                borderRadius: '999px',
-                padding: '4px 6px 4px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                maxWidth: '100%',
-              }}
-            >
-              <span style={{ overflowWrap: 'anywhere' }}>{v}</span>
-              <button
-                type="button"
-                onClick={() => onRemove(v)}
-                style={{ background: 'transparent', border: 'none', color: accentColor, cursor: 'pointer', fontSize: '13px', lineHeight: 1, padding: '2px', flexShrink: 0 }}
-                aria-label={`Retirer ${v}`}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+        >
+          {v}
+        </span>
+      ))}
     </div>
   )
 }
@@ -566,61 +469,8 @@ export default function ParametresPage() {
     }
   }
 
-  // ── Types de travaux souhaités : anti-doublon entre acceptés / à éviter ──
-  const [workTypeNotice, setWorkTypeNotice] = useState('')
-
-  const showWorkTypeNotice = (message: string) => {
-    setWorkTypeNotice(message)
-    setTimeout(() => setWorkTypeNotice(''), 4000)
-  }
-
-  const addAcceptedWorkType = (value: string) => {
-    const trimmed = value.trim()
-    if (!trimmed) return
-    const wasRefused = config.businessConfig.refusedWorkTypes.includes(trimmed)
-    setConfig(c => ({
-      ...c,
-      businessConfig: {
-        ...c.businessConfig,
-        acceptedWorkTypes: c.businessConfig.acceptedWorkTypes.includes(trimmed)
-          ? c.businessConfig.acceptedWorkTypes
-          : [...c.businessConfig.acceptedWorkTypes, trimmed],
-        refusedWorkTypes: c.businessConfig.refusedWorkTypes.filter(v => v !== trimmed),
-      },
-    }))
-    if (wasRefused) showWorkTypeNotice(`« ${trimmed} » a été retiré des travaux à éviter.`)
-  }
-
-  const removeAcceptedWorkType = (value: string) => {
-    setConfig(c => ({
-      ...c,
-      businessConfig: { ...c.businessConfig, acceptedWorkTypes: c.businessConfig.acceptedWorkTypes.filter(v => v !== value) },
-    }))
-  }
-
-  const addRefusedWorkType = (value: string) => {
-    const trimmed = value.trim()
-    if (!trimmed) return
-    const wasAccepted = config.businessConfig.acceptedWorkTypes.includes(trimmed)
-    setConfig(c => ({
-      ...c,
-      businessConfig: {
-        ...c.businessConfig,
-        refusedWorkTypes: c.businessConfig.refusedWorkTypes.includes(trimmed)
-          ? c.businessConfig.refusedWorkTypes
-          : [...c.businessConfig.refusedWorkTypes, trimmed],
-        acceptedWorkTypes: c.businessConfig.acceptedWorkTypes.filter(v => v !== trimmed),
-      },
-    }))
-    if (wasAccepted) showWorkTypeNotice(`« ${trimmed} » a été retiré des travaux acceptés.`)
-  }
-
-  const removeRefusedWorkType = (value: string) => {
-    setConfig(c => ({
-      ...c,
-      businessConfig: { ...c.businessConfig, refusedWorkTypes: c.businessConfig.refusedWorkTypes.filter(v => v !== value) },
-    }))
-  }
+  // Les types de travaux acceptés/refusés sont en lecture seule sur cette
+  // page : leur édition se fait désormais uniquement depuis le Profil métier.
 
   // ── Catalogue de prestations (V1) ──────────────────────────────────────
   // Stocke dans businessConfig.serviceCatalog (JSONB existant), sauvegarde
@@ -1153,71 +1003,58 @@ export default function ParametresPage() {
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Types de travaux souhaités
+                  Types de travaux acceptés
                 </h3>
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
-                  Indiquez les demandes que vous souhaitez recevoir en priorité, et celles que vous préférez éviter.
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
+                  {config.businessConfig.acceptedWorkTypes.length === 0
+                    ? 'Aucun type de travaux accepté configuré'
+                    : 'Ces éléments sont gérés depuis votre profil métier afin de garder une configuration cohérente.'}
                 </p>
-                {workTypeNotice && (
-                  <p style={{
-                    color: '#86efac',
-                    background: 'rgba(34,197,94,0.08)',
-                    border: '1px solid rgba(34,197,94,0.18)',
-                    borderRadius: '10px',
-                    padding: '8px 12px',
-                    fontSize: '12px',
-                    margin: '0 0 14px',
-                  }}>
-                    {workTypeNotice}
-                  </p>
-                )}
-                {effectiveTradesForSuggestions.length === 0 ? (
-                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                    Sélectionnez d&apos;abord vos métiers pour obtenir des suggestions adaptées.
-                  </p>
-                ) : (() => {
-                  const suggestions = getSuggestedWorkTypesForTrades(effectiveTradesForSuggestions)
-                  const workTypeOptions = Array.from(new Set([
-                    ...suggestions,
-                    ...config.businessConfig.acceptedWorkTypes,
-                    ...config.businessConfig.refusedWorkTypes,
-                  ]))
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                      <div>
-                        <label style={labelStyle}>Travaux acceptés / recherchés</label>
-                        <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 8px' }}>
-                          Sélectionnez les demandes que vous souhaitez recevoir en priorité.
-                        </p>
-                        <WorkTypeMultiSelect
-                          values={config.businessConfig.acceptedWorkTypes}
-                          onAdd={addAcceptedWorkType}
-                          onRemove={removeAcceptedWorkType}
-                          options={workTypeOptions}
-                          placeholder="Rechercher ou ajouter une prestation…"
-                          accent="green"
-                          inputStyle={inputStyle}
-                        />
-                      </div>
+                <WorkTypeReadOnlyChips values={config.businessConfig.acceptedWorkTypes} accent="green" />
+                <button
+                  type="button"
+                  onClick={() => router.push('/parametres/profil-metier')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0,
+                    marginTop: config.businessConfig.acceptedWorkTypes.length > 0 ? '12px' : 0,
+                  }}
+                >
+                  Modifier dans le profil métier →
+                </button>
+              </div>
 
-                      <div>
-                        <label style={labelStyle}>Travaux à éviter</label>
-                        <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 8px' }}>
-                          Indiquez les demandes que vous ne souhaitez pas recevoir ou qualifier.
-                        </p>
-                        <WorkTypeMultiSelect
-                          values={config.businessConfig.refusedWorkTypes}
-                          onAdd={addRefusedWorkType}
-                          onRemove={removeRefusedWorkType}
-                          options={workTypeOptions}
-                          placeholder="Rechercher ou ajouter une prestation à éviter…"
-                          accent="red"
-                          inputStyle={inputStyle}
-                        />
-                      </div>
-                    </div>
-                  )
-                })()}
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Types de travaux refusés
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
+                  {config.businessConfig.refusedWorkTypes.length === 0
+                    ? 'Aucun type de travaux refusé configuré'
+                    : 'Ces éléments sont gérés depuis votre profil métier afin de garder une configuration cohérente.'}
+                </p>
+                <WorkTypeReadOnlyChips values={config.businessConfig.refusedWorkTypes} accent="red" />
+                <button
+                  type="button"
+                  onClick={() => router.push('/parametres/profil-metier')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0,
+                    marginTop: config.businessConfig.refusedWorkTypes.length > 0 ? '12px' : 0,
+                  }}
+                >
+                  Modifier dans le profil métier →
+                </button>
               </div>
 
             </div>
