@@ -129,6 +129,10 @@ export default function ChatWidgetInline({
   const [secondaryColorLocal, setSecondaryColorLocal] = useState('#09090b')
   const [widgetName, setWidgetName] = useState('Kadria')
   const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
+  // Détection viewport mobile : limitée à l'écran d'accueil de /projet
+  // (isProjectExperience) afin de proposer une entrée à 4 choix inspirée du
+  // widget, sans toucher au rendu desktop ni au widget embarqué.
+  const [isProjectMobileViewport, setIsProjectMobileViewport] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -418,6 +422,16 @@ export default function ChatWidgetInline({
   const step = score < 40 ? 1 : score < 70 ? 2 : score < 90 ? 3 : 4
   const stepLabel = ['', 'Projet', 'Détails', 'Coordonnées', 'Validation'][step]
   const isProjectExperience = fullPage && projectExperience
+
+  // ── Détection mobile (écran d'accueil /projet uniquement) ────────────────
+  useEffect(() => {
+    if (!isProjectExperience) return
+    const check = () => setIsProjectMobileViewport(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [isProjectExperience])
+
   const visualStep = showContactForm || readyToSave || saved
     ? 4
     : isPhotoMode || photos.length > 0
@@ -619,7 +633,66 @@ export default function ChatWidgetInline({
         </div>
 
         {/* Welcome screen */}
-        {showWelcome ? isProjectExperience ? (
+        {showWelcome ? isProjectExperience ? isProjectMobileViewport ? (
+          <div className="project-welcome-wrap project-mobile-welcome-wrap" style={{ flex: 1, padding: '20px 0 24px', overflowY: 'auto' }}>
+            <div style={centerStyle}>
+              <div style={{ marginBottom: '16px' }}>
+                <h2 className="project-welcome-title" style={{ margin: '0 0 6px', color: 'white', fontSize: '20px', lineHeight: 1.25, fontWeight: 700 }}>
+                  Parlez-moi de votre projet
+                </h2>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.5 }}>
+                  {customWelcomeMessage || 'Kadria vous guide en quelques questions pour transmettre une demande claire à l’artisan.'}
+                </p>
+              </div>
+              <div className="project-mobile-quick-grid">
+                {WIDGET_QUICK_CARDS.map(card => (
+                  <button
+                    key={card.title}
+                    onClick={() => {
+                      setShowWelcome(false)
+                      fetchOpener().then(() => sendMessage(card.value))
+                    }}
+                    className="project-mobile-quick-card"
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: 'white',
+                      borderRadius: '16px',
+                      padding: '14px 12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      transition: 'transform 0.18s ease, border-color 0.18s ease, background 0.18s ease',
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '10px',
+                        flexShrink: 0,
+                        background: 'rgba(34,197,94,0.08)',
+                        border: '1px solid rgba(34,197,94,0.18)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '15px',
+                      }}>
+                        {card.icon}
+                      </div>
+                      <span style={{ color: '#52525b', fontSize: '16px', flexShrink: 0 }}>›</span>
+                    </div>
+                    <div>
+                      <div style={{ color: 'white', fontSize: '13.5px', fontWeight: 650, marginBottom: '2px' }}>{card.title}</div>
+                      <div style={{ color: '#a1a1aa', fontSize: '11.5px', lineHeight: 1.4 }}>{card.subtitle}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
           <div className="project-welcome-wrap" style={{ flex: 1, padding: '24px 0 28px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{ marginBottom: '20px' }}>
@@ -1384,6 +1457,16 @@ export default function ChatWidgetInline({
         .widget-footer-cta:hover {
           border-color: rgba(34,197,94,0.32) !important;
           color: #86efac !important;
+        }
+        .project-mobile-quick-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .project-mobile-quick-card:hover {
+          transform: translateY(-1px);
+          border-color: rgba(34,197,94,0.26) !important;
+          background: linear-gradient(180deg, rgba(34,197,94,0.09) 0%, rgba(255,255,255,0.02) 100%) !important;
         }
         @media (max-width: 640px) {
           .project-choice-grid {
