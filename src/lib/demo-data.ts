@@ -62,6 +62,19 @@ export const DEMO_ARTISAN = {
   hours: 'Lun-Ven 8h-18h',
 };
 
+export const DEMO_SETTINGS_PROFILE = {
+  companyName: 'AB Elec',
+  artisanId: 'Artisan_demo',
+  mainTrade: 'Electricite generale',
+  secondaryTrades: ['Borne de recharge', 'Tableau electrique', 'Renovation'],
+  phone: '06 12 34 56 78',
+  email: 'contact@ab-elec-demo.fr',
+  city: 'Rouen',
+  interventionArea: 'Rouen et 30 km autour',
+  address: '12 rue des Artisans, 76000 Rouen',
+  plan: 'performance',
+};
+
 export const DEMO_PROJECTS: DemoProject[] = [
   {
     id: 'demo_001',

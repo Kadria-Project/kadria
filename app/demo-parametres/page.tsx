@@ -1,227 +1,336 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, Bell, Briefcase, MessageSquare, Palette, RotateCcw, Save, ShieldCheck, Smartphone } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  SettingsPageShell,
+  type SettingsSaveState,
+  type SettingsShellGroup,
+} from '@/src/components/settings/SettingsPageShell';
+import { DEMO_SETTINGS_PROFILE } from '@/src/lib/demo-data';
 
 type DemoSettingsState = {
   companyName: string;
-  ownerName: string;
-  email: string;
-  phone: string;
+  mainTrade: string;
   city: string;
-  primaryTrade: string;
-  coverageArea: string;
-  projectTypes: string;
-  welcomeMessage: string;
-  tone: 'Professionnel' | 'Direct' | 'Rassurant';
-  autoQualification: boolean;
-  askPhotos: boolean;
-  askBudget: boolean;
-  hotLeadAlerts: boolean;
-  quoteReminder: boolean;
-  dailySummary: boolean;
-  primaryColor: string;
-  widgetDisplayName: string;
+  interventionArea: string;
+  phone: string;
+  email: string;
 };
+
+const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
+  {
+    label: 'Configuration',
+    items: [
+      { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
+      { id: 'profil-metier', label: 'Profil metier', icon: '🛠️' },
+      { id: 'contact', label: 'Coordonnees', icon: '📍' },
+      { id: 'legal', label: 'Infos legales', icon: '📋' },
+      { id: 'vehicule', label: 'Deplacements', icon: '🚗' },
+    ],
+  },
+  {
+    label: 'Activite',
+    items: [
+      { id: 'widget', label: 'Mon widget', icon: '🎨' },
+      { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
+      { id: 'apparence', label: 'Apparence', icon: '🌓' },
+    ],
+  },
+  {
+    label: 'Compte',
+    items: [{ id: 'offre', label: 'Offre & quotas', icon: '💳' }],
+  },
+];
 
 const INITIAL_SETTINGS: DemoSettingsState = {
-  companyName: 'AB Elec',
-  ownerName: 'Alexandre Bernard',
-  email: 'contact@ab-elec-demo.fr',
-  phone: '02 35 00 00 00',
-  city: 'Rouen',
-  primaryTrade: 'Electricite',
-  coverageArea: 'Rouen + 30 km',
-  projectTypes: 'depannage, renovation electrique, borne de recharge',
-  welcomeMessage: "Bonjour, je suis l'assistant AB Elec. Decrivez votre besoin et je prepare un dossier qualifie.",
-  tone: 'Professionnel',
-  autoQualification: true,
-  askPhotos: true,
-  askBudget: true,
-  hotLeadAlerts: true,
-  quoteReminder: true,
-  dailySummary: false,
-  primaryColor: '#22c55e',
-  widgetDisplayName: 'AB Elec',
+  companyName: DEMO_SETTINGS_PROFILE.companyName,
+  mainTrade: DEMO_SETTINGS_PROFILE.mainTrade,
+  city: DEMO_SETTINGS_PROFILE.city,
+  interventionArea: DEMO_SETTINGS_PROFILE.interventionArea,
+  phone: DEMO_SETTINGS_PROFILE.phone,
+  email: DEMO_SETTINGS_PROFILE.email,
 };
 
-function SectionCard({ title, icon: Icon, children }: { title: string; icon: typeof Briefcase; children: React.ReactNode }) {
+function DemoSectionCard({
+  children,
+  description,
+  title,
+}: {
+  children: ReactNode;
+  description?: string;
+  title: string;
+}) {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-green-500/20 bg-green-500/10 text-green-400">
-          <Icon className="h-5 w-5" />
-        </div>
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </section>
-  );
-}
-
-function Field({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean }) {
-  const className = 'w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-green-500/40';
-  return (
-    <label className="block space-y-2">
-      <span className="text-sm font-medium text-zinc-300">{label}</span>
-      {multiline ? (
-        <textarea className={`${className} min-h-[112px] resize-y`} value={value} onChange={(e) => onChange(e.target.value)} />
-      ) : (
-        <input className={className} value={value} onChange={(e) => onChange(e.target.value)} />
-      )}
-    </label>
-  );
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-left transition hover:border-green-500/30"
+    <div
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '16px',
+      }}
     >
-      <span className="text-sm font-medium text-zinc-200">{label}</span>
-      <span className={`inline-flex h-7 w-12 items-center rounded-full p-1 transition ${checked ? 'bg-green-500' : 'bg-zinc-700'}`}>
-        <span className={`h-5 w-5 rounded-full bg-white transition ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
-      </span>
-    </button>
+      <h3 style={{ margin: '0 0 6px', fontSize: '15px', color: 'var(--accent)' }}>{title}</h3>
+      {description && (
+        <p style={{ margin: '0 0 16px', color: 'var(--text-3)', fontSize: '13px', lineHeight: 1.6 }}>
+          {description}
+        </p>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <label style={{ color: 'var(--text-2)', fontSize: '12px', fontWeight: 600 }}>{label}</label>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={{
+          width: '100%',
+          background: 'var(--bg-hover)',
+          border: '1px solid var(--border)',
+          borderRadius: '10px',
+          padding: '11px 12px',
+          color: 'var(--text-1)',
+          fontSize: '14px',
+          outline: 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+function PlaceholderSection({
+  body,
+  kicker,
+  title,
+}: {
+  body: string;
+  kicker: string;
+  title: string;
+}) {
+  return (
+    <>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>{title}</h2>
+      <DemoSectionCard
+        title={kicker}
+        description="Section de demonstration - contenu detaille traite dans le prochain lot."
+      >
+        <div
+          style={{
+            borderRadius: '14px',
+            border: '1px dashed rgba(34,197,94,0.24)',
+            background: 'linear-gradient(180deg, rgba(34,197,94,0.08), rgba(9,9,11,0.18))',
+            padding: '18px',
+          }}
+        >
+          <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '14px', lineHeight: 1.7 }}>{body}</p>
+        </div>
+      </DemoSectionCard>
+    </>
   );
 }
 
 export default function DemoParametresPage() {
   const router = useRouter();
+  const [activeSection, setActiveSection] = useState('entreprise');
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SettingsSaveState>('idle');
+  const [statusMessage, setStatusMessage] = useState<string | null>(
+    'Mode demo - aucune donnee reelle enregistree. Les sauvegardes sont simulees localement.'
+  );
+
+  useEffect(() => {
+    if (saveState !== 'saved') return;
+    const timeout = window.setTimeout(() => setSaveState('idle'), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [saveState]);
 
   const updateField = <K extends keyof DemoSettingsState>(key: K, value: DemoSettingsState[K]) => {
     setSettings((current) => ({ ...current, [key]: value }));
   };
 
+  const save = () => {
+    setSaveState('saving');
+    setStatusMessage('Simulation en cours...');
+    window.setTimeout(() => {
+      setSaveState('saved');
+      setStatusMessage('Action simulee - aucune donnee reelle modifiee.');
+    }, 450);
+  };
+
+  const renderSection = () => {
+    if (activeSection === 'entreprise') {
+      return (
+        <div>
+          <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🏢 Mon entreprise</h2>
+
+          <DemoSectionCard
+            title="Identite"
+            description="Base mock de l'entreprise de demonstration, editee localement dans cette session."
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: '14px',
+              }}
+            >
+              <Field label="Nom de l'entreprise" value={settings.companyName} onChange={(value) => updateField('companyName', value)} />
+              <Field label="Metier principal" value={settings.mainTrade} onChange={(value) => updateField('mainTrade', value)} />
+              <Field label="Ville" value={settings.city} onChange={(value) => updateField('city', value)} />
+              <Field
+                label="Zone d'intervention"
+                value={settings.interventionArea}
+                onChange={(value) => updateField('interventionArea', value)}
+              />
+              <Field label="Telephone" value={settings.phone} onChange={(value) => updateField('phone', value)} />
+              <Field label="Email" value={settings.email} onChange={(value) => updateField('email', value)} />
+            </div>
+          </DemoSectionCard>
+
+          <DemoSectionCard
+            title="Resume demo"
+            description="Cette carte sert de point d'ancrage visuel pour rapprocher la structure de la page demo du rendu production."
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '12px',
+              }}
+            >
+              {[
+                { label: 'Artisan ID', value: DEMO_SETTINGS_PROFILE.artisanId },
+                { label: 'Adresse', value: DEMO_SETTINGS_PROFILE.address },
+                { label: 'Plan', value: DEMO_SETTINGS_PROFILE.plan },
+                { label: 'Specialites', value: DEMO_SETTINGS_PROFILE.secondaryTrades.join(', ') },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '14px',
+                  }}
+                >
+                  <p style={{ margin: '0 0 6px', color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {item.label}
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '13px', lineHeight: 1.6 }}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </DemoSectionCard>
+        </div>
+      );
+    }
+
+    if (activeSection === 'profil-metier') {
+      return (
+        <PlaceholderSection
+          title="🛠️ Profil metier"
+          kicker="Configuration metier"
+          body="La navigation, le layout et le rendu de carte sont en place. Les champs metier detailles, prestations et exclusions seront raccordes dans le lot 3B."
+        />
+      );
+    }
+
+    if (activeSection === 'contact') {
+      return (
+        <PlaceholderSection
+          title="📍 Coordonnees"
+          kicker="Coordonnees de l'entreprise"
+          body="Le shell reproduit deja la structure de section production. Les champs complets d'adresse, geolocalisation et validations seront ajoutes dans le lot suivant."
+        />
+      );
+    }
+
+    if (activeSection === 'legal') {
+      return (
+        <PlaceholderSection
+          title="📋 Infos legales"
+          kicker="Informations legales"
+          body="La zone est reservee pour les donnees juridiques, assurance et numerotation. Ce lot garde uniquement la structure visuelle sans aucune mutation reelle."
+        />
+      );
+    }
+
+    if (activeSection === 'vehicule') {
+      return (
+        <PlaceholderSection
+          title="🚗 Deplacements"
+          kicker="Parametres de deplacement"
+          body="Le lot 3A pose la section et la carte de contenu. Les reglages kilometriques et calculs avances de deplacement restent volontairement hors scope pour l'instant."
+        />
+      );
+    }
+
+    if (activeSection === 'widget') {
+      return (
+        <PlaceholderSection
+          title="🎨 Mon widget"
+          kicker="Shell widget"
+          body="Le shell de demonstration prepare la future integration du test widget, des couleurs et des messages d'accueil, sans embarquer encore la logique avancee du widget production."
+        />
+      );
+    }
+
+    if (activeSection === 'catalogue') {
+      return (
+        <PlaceholderSection
+          title="📒 Catalogue & devis"
+          kicker="Catalogue et modeles"
+          body="La section est visible et navigable. Le catalogue, les suggestions et les modeles de devis seront traites dans le lot 3C sans toucher aux mutations ni aux API reelles."
+        />
+      );
+    }
+
+    if (activeSection === 'apparence') {
+      return (
+        <PlaceholderSection
+          title="🌓 Apparence"
+          kicker="Theme et presentation"
+          body="Cette zone accueillera ensuite les reglages de theme et les preferences d'affichage. Dans ce lot, seul le shell premium et responsive est pose."
+        />
+      );
+    }
+
+    return (
+      <PlaceholderSection
+        title="💳 Offre & quotas"
+        kicker="Compte de demonstration"
+        body="Le shell accueille deja la section Compte. Les compteurs et CTA d'abonnement resteront simules et sans lien production quand le contenu detaille sera branche."
+      />
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.14),transparent_55%),rgba(24,24,27,0.92)] p-5 sm:p-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => router.push('/demo-dashboard')}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-green-500/30 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Retour
-              </button>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-green-400">Parametres de demonstration</p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Mon profil demo</h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
-                  Tous les reglages ci-dessous sont modifiables localement pendant la session. Aucune donnee reelle n'est ecrite et tout revient a l'etat initial apres rafraichissement.
-                </p>
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-2 self-start rounded-full border border-green-500/25 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-300">
-              <ShieldCheck className="h-4 w-4" />
-              Mode demo - aucune donnee reelle enregistree
-            </div>
-          </div>
-
-          {feedback && (
-            <div className="rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-              {feedback}
-            </div>
-          )}
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          <SectionCard title="Profil artisan" icon={Briefcase}>
-            <Field label="Nom entreprise" value={settings.companyName} onChange={(value) => updateField('companyName', value)} />
-            <Field label="Nom responsable" value={settings.ownerName} onChange={(value) => updateField('ownerName', value)} />
-            <Field label="Email" value={settings.email} onChange={(value) => updateField('email', value)} />
-            <Field label="Telephone" value={settings.phone} onChange={(value) => updateField('phone', value)} />
-            <Field label="Ville" value={settings.city} onChange={(value) => updateField('city', value)} />
-          </SectionCard>
-
-          <SectionCard title="Activite" icon={Briefcase}>
-            <Field label="Metier principal" value={settings.primaryTrade} onChange={(value) => updateField('primaryTrade', value)} />
-            <Field label="Zone d'intervention" value={settings.coverageArea} onChange={(value) => updateField('coverageArea', value)} />
-            <Field label="Types de projets" value={settings.projectTypes} onChange={(value) => updateField('projectTypes', value)} multiline />
-          </SectionCard>
-
-          <SectionCard title="Assistant commercial" icon={MessageSquare}>
-            <Field label="Message d'accueil" value={settings.welcomeMessage} onChange={(value) => updateField('welcomeMessage', value)} multiline />
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-zinc-300">Ton</span>
-              <select
-                className="w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-green-500/40"
-                value={settings.tone}
-                onChange={(e) => updateField('tone', e.target.value as DemoSettingsState['tone'])}
-              >
-                <option>Professionnel</option>
-                <option>Direct</option>
-                <option>Rassurant</option>
-              </select>
-            </label>
-            <Toggle label="Qualification automatique" checked={settings.autoQualification} onChange={(value) => updateField('autoQualification', value)} />
-            <Toggle label="Demander des photos" checked={settings.askPhotos} onChange={(value) => updateField('askPhotos', value)} />
-            <Toggle label="Demander le budget" checked={settings.askBudget} onChange={(value) => updateField('askBudget', value)} />
-          </SectionCard>
-
-          <SectionCard title="Notifications" icon={Bell}>
-            <Toggle label="Prevenir quand un dossier est chaud" checked={settings.hotLeadAlerts} onChange={(value) => updateField('hotLeadAlerts', value)} />
-            <Toggle label="Rappel devis" checked={settings.quoteReminder} onChange={(value) => updateField('quoteReminder', value)} />
-            <Toggle label="Resume quotidien" checked={settings.dailySummary} onChange={(value) => updateField('dailySummary', value)} />
-          </SectionCard>
-        </div>
-
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-          <SectionCard title="Apparence / integration" icon={Palette}>
-            <Field label="Couleur principale" value={settings.primaryColor} onChange={(value) => updateField('primaryColor', value)} />
-            <Field label="Nom affiche dans le widget" value={settings.widgetDisplayName} onChange={(value) => updateField('widgetDisplayName', value)} />
-          </SectionCard>
-
-          <SectionCard title="Previsualisation simple du widget" icon={Smartphone}>
-            <div className="rounded-[28px] border border-white/10 bg-zinc-950/90 p-4">
-              <div className="mx-auto max-w-[280px] rounded-[26px] border border-white/10 bg-zinc-900 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
-                <div className="rounded-2xl p-4" style={{ backgroundColor: settings.primaryColor }}>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-black/70">Widget Kadria</p>
-                  <p className="mt-1 text-lg font-semibold text-black">{settings.widgetDisplayName}</p>
-                </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-zinc-200">
-                  {settings.welcomeMessage}
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-zinc-400">
-                  <span>Ton: {settings.tone}</span>
-                  <span>{settings.askPhotos ? 'Photos demandees' : 'Photos optionnelles'}</span>
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => setFeedback('Modifications simulees - aucune donnee reelle enregistree.')}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-500 px-5 py-3 text-sm font-semibold text-black transition hover:bg-green-400"
-          >
-            <Save className="h-4 w-4" />
-            Enregistrer les modifications
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSettings(INITIAL_SETTINGS);
-              setFeedback("Configuration reinitialisee localement - l'etat initial demo est restaure.");
-            }}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-green-500/30 hover:text-white"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Reinitialiser
-          </button>
-        </div>
-      </div>
-    </div>
+    <SettingsPageShell
+      mode="demo"
+      activeSection={activeSection}
+      groups={DEMO_SETTINGS_GROUPS}
+      onSectionChange={setActiveSection}
+      onBack={() => router.push('/demo-dashboard')}
+      onSave={save}
+      saveState={saveState}
+      statusMessage={statusMessage}
+    >
+      {renderSection()}
+    </SettingsPageShell>
   );
 }
