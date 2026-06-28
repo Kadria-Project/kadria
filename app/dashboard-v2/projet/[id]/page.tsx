@@ -1393,12 +1393,28 @@ function ProjectDetail() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <p style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {projectTitle}
             </p>
-            <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-3)' }}>
-              {project.status || 'Nouveau'} · Maturité {nextAction.maturityScore}/100
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {clientLabel} · {project.city || 'Ville non renseignée'} · {sourceLabel}
             </p>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: `1px solid ${statusStyles[project.status]?.border || 'var(--border)'}`, color: statusStyles[project.status]?.text || 'var(--text-2)', background: statusStyles[project.status]?.bg || 'transparent' }}>
+                {project.status || 'Nouveau'}
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+                Maturité {nextAction.maturityScore}/100
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)' }}>
+                Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+              </span>
+              {nextAction.urgency !== 'none' && (
+                <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.urgency === 'overdue' ? '#dc2626' : nextAction.urgency === 'today' ? '#ea580c' : 'var(--text-2)' }}>
+                  {nextAction.urgency === 'overdue' ? 'En retard' : nextAction.urgency === 'today' ? "Aujourd'hui" : 'Bientôt'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1450,6 +1466,35 @@ function ProjectDetail() {
             <p style={{ margin: 0 }}>Urgence : {project.desiredTimeline || 'Non renseignée'}</p>
             <p style={{ margin: 0 }}>Budget : {project.budget || 'Non renseigné'}</p>
             <p style={{ margin: 0 }}>Localisation : {project.siteAddress || project.city || 'Non renseignée'}</p>
+            <p style={{ margin: 0 }}>Devis : {devisStatusLabel}{latestDevis?.amount ? ` (${formatMoney(latestDevis.amount)} €)` : ''}</p>
+            <p style={{ margin: 0 }}>RDV : {appointment ? formatDateTime(appointment.start) : 'Non planifié'}</p>
+          </div>
+
+          {/* Avancement commercial */}
+          <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', overflow: 'hidden' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Avancement</p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2px', overflowX: 'hidden' }}>
+              {commercialTimeline.map((step, idx) => {
+                const isCurrent = !step.done && commercialTimeline.slice(0, idx).every((s) => s.done);
+                const color = step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)';
+                return (
+                  <div key={step.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      {idx > 0 && <div style={{ flex: 1, height: '2px', background: step.done ? 'var(--accent)' : 'var(--border)' }} />}
+                      <div style={{
+                        width: '14px', height: '14px', borderRadius: '50%', flexShrink: 0,
+                        background: step.done ? 'var(--accent)' : 'var(--bg)',
+                        border: `2px solid ${color}`,
+                      }} />
+                      {idx < commercialTimeline.length - 1 && <div style={{ flex: 1, height: '2px', background: step.done ? 'var(--accent)' : 'var(--border)' }} />}
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '9px', textAlign: 'center', color, lineHeight: 1.2, wordBreak: 'break-word' }}>
+                      {step.label}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Blocages */}
@@ -1517,7 +1562,29 @@ function ProjectDetail() {
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
             <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>Devis</p>
             <p style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>{devisStatusLabel}</p>
-            {latestDevis && <p style={{ margin: '0 0 8px', fontSize: '12px', color: 'var(--text-2)' }}>{formatMoney(latestDevis.amount)} €</p>}
+            {latestDevis && <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-2)' }}>{formatMoney(latestDevis.amount)} €</p>}
+            <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>
+              {!latestDevis
+                ? 'Aucune proposition envoyée pour le moment.'
+                : latestDevis.accepted
+                  ? `Accepté le ${formatShortDate(latestDevis.accepted_at)}`
+                  : latestDevis.declined
+                    ? `Refusé le ${formatShortDate(latestDevis.declined_at)}`
+                    : latestDevis.sent
+                      ? `Envoyé le ${formatShortDate(latestDevis.quote_sent_at)}${latestDevis.opens_count ? ` · Ouvert ${latestDevis.opens_count} fois` : ''}`
+                      : 'Devis brouillon, pas encore envoyé.'}
+            </p>
+            <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'var(--text-3)' }}>
+              {!latestDevis
+                ? 'Prochaine action : créer le devis.'
+                : latestDevis.accepted
+                  ? 'Prochaine action : planifier la suite du chantier.'
+                  : latestDevis.declined
+                    ? 'Prochaine action : clôturer ou clarifier le besoin.'
+                    : latestDevis.sent
+                      ? `Prochaine action : ${decision.canFollowUpQuote ? 'relancer le client' : 'attendre la réponse'}.`
+                      : 'Prochaine action : finaliser et envoyer le devis.'}
+            </p>
             <button onClick={devisCtaAction} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
               {devisCtaLabel}
             </button>
