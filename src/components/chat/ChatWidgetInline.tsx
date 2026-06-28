@@ -64,6 +64,15 @@ function renderMarkdown(text: string): string {
     .replace(/\n/g, '<br/>')
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!match) return `rgba(34,197,94,${alpha})`
+  const r = parseInt(match[1], 16)
+  const g = parseInt(match[2], 16)
+  const b = parseInt(match[3], 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 // ─── Address autocomplete ─────────────────────────────────────────────────────
 interface AdresseSuggestion { label: string; city: string; postcode: string; latitude: number | null; longitude: number | null }
 
@@ -533,37 +542,35 @@ export default function ChatWidgetInline({
                 fontWeight: 800,
                 fontSize: isProjectExperience ? '18px' : '15px',
                 color: isProjectExperience ? '#04110a' : '#ecfdf5',
-                boxShadow: isProjectExperience ? '0 12px 28px rgba(34,197,94,0.18)' : '0 6px 18px rgba(34,197,94,0.22)',
+                boxShadow: isProjectExperience ? `0 12px 28px ${hexToRgba(primaryColorLocal, 0.18)}` : `0 6px 18px ${hexToRgba(primaryColorLocal, 0.22)}`,
                 border: isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)',
                 flexShrink: 0,
               }}>K</div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{widgetName}</p>
-                  {!isProjectExperience && (
-                    <span style={{
-                      border: '1px solid rgba(34,197,94,0.22)',
-                      background: 'rgba(34,197,94,0.08)',
-                      color: '#86efac',
-                      borderRadius: '999px',
-                      padding: '2px 8px',
-                      fontSize: '10.5px',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      Réponse en 3 min
-                    </span>
-                  )}
+                  <span style={{
+                    border: `1px solid ${hexToRgba(primaryColorLocal, 0.22)}`,
+                    background: hexToRgba(primaryColorLocal, 0.08),
+                    color: '#86efac',
+                    borderRadius: '999px',
+                    padding: '2px 8px',
+                    fontSize: '10.5px',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    Réponse en 3 min
+                  </span>
                 </div>
                 <p style={{ margin: '2px 0 0', color: '#a1a1aa', fontSize: isProjectExperience ? '12.5px' : '12px' }}>
-                  {isProjectExperience ? 'Assistant de qualification guide' : "Votre assistant de confiance pour vos travaux"}
+                  Votre assistant de confiance pour vos travaux
                 </p>
               </div>
             </div>
             {isProjectExperience && (
               <div style={{
-                border: '1px solid rgba(34,197,94,0.2)',
-                background: 'rgba(34,197,94,0.08)',
+                border: `1px solid ${hexToRgba(primaryColorLocal, 0.2)}`,
+                background: hexToRgba(primaryColorLocal, 0.08),
                 color: '#dcfce7',
                 borderRadius: '999px',
                 padding: '8px 12px',
@@ -648,7 +655,7 @@ export default function ChatWidgetInline({
                   Parlez-moi de votre projet
                 </h2>
                 <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.5 }}>
-                  {customWelcomeMessage || 'Kadria vous guide en quelques questions pour transmettre une demande claire à l’artisan.'}
+                  {customWelcomeMessage || 'Je vous guide en quelques questions pour transmettre une demande claire à l’artisan.'}
                 </p>
               </div>
               <div className="project-mobile-quick-grid">
@@ -679,8 +686,8 @@ export default function ChatWidgetInline({
                         height: '32px',
                         borderRadius: '10px',
                         flexShrink: 0,
-                        background: 'rgba(34,197,94,0.08)',
-                        border: '1px solid rgba(34,197,94,0.18)',
+                        background: hexToRgba(primaryColorLocal, 0.08),
+                        border: `1px solid ${hexToRgba(primaryColorLocal, 0.18)}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -696,6 +703,45 @@ export default function ChatWidgetInline({
                     </div>
                   </button>
                 ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                <input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && input.trim()) {
+                      const text = input
+                      setShowWelcome(false)
+                      fetchOpener().then(() => sendMessage(text))
+                    }
+                  }}
+                  placeholder="Ou décrivez directement votre besoin..."
+                  style={{
+                    flex: 1, background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '12px', padding: '10px 12px', color: 'white', fontSize: '13px', outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (!input.trim()) return
+                    const text = input
+                    setShowWelcome(false)
+                    fetchOpener().then(() => sendMessage(text))
+                  }}
+                  disabled={!input.trim()}
+                  style={{
+                    width: '40px', height: '40px', borderRadius: '12px', border: 'none',
+                    background: input.trim() ? primaryColorLocal : '#27272a',
+                    color: input.trim() ? 'black' : '#71717a',
+                    cursor: input.trim() ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -738,8 +784,8 @@ export default function ChatWidgetInline({
                       height: '38px',
                       borderRadius: '12px',
                       flexShrink: 0,
-                      background: 'rgba(34,197,94,0.08)',
-                      border: '1px solid rgba(34,197,94,0.18)',
+                      background: hexToRgba(primaryColorLocal, 0.08),
+                      border: `1px solid ${hexToRgba(primaryColorLocal, 0.18)}`,
                       color: '#86efac',
                       display: 'flex',
                       alignItems: 'center',
@@ -768,7 +814,7 @@ export default function ChatWidgetInline({
           <div style={{ flex: 1, padding: '18px 16px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{
               background: 'linear-gradient(180deg, rgba(24,24,27,0.9) 0%, rgba(13,18,15,0.88) 100%)',
-              border: '1px solid rgba(34,197,94,0.14)',
+              border: `1px solid ${hexToRgba(primaryColorLocal, 0.14)}`,
               borderRadius: '18px',
               padding: '18px',
               marginBottom: '14px',
@@ -778,7 +824,7 @@ export default function ChatWidgetInline({
                 Parlez-moi de votre projet
               </p>
               <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
-                {customWelcomeMessage || 'Je vous guide en quelques questions pour trouver les bons artisans, rapidement.'}
+                {customWelcomeMessage || 'Je vous guide en quelques questions pour transmettre une demande claire à l’artisan.'}
               </p>
             </div>
             <div className="widget-quick-grid">
@@ -1448,8 +1494,8 @@ export default function ChatWidgetInline({
         }
         .project-choice-card:hover {
           transform: translateY(-2px);
-          border-color: rgba(34,197,94,0.28) !important;
-          background: linear-gradient(180deg, rgba(34,197,94,0.10) 0%, rgba(255,255,255,0.03) 100%) !important;
+          border-color: ${hexToRgba(primaryColorLocal, 0.28)} !important;
+          background: linear-gradient(180deg, ${hexToRgba(primaryColorLocal, 0.10)} 0%, rgba(255,255,255,0.03) 100%) !important;
         }
         .widget-quick-grid {
           display: grid;
@@ -1458,11 +1504,11 @@ export default function ChatWidgetInline({
         }
         .widget-quick-card:hover {
           transform: translateY(-1px);
-          border-color: rgba(34,197,94,0.26) !important;
-          background: linear-gradient(180deg, rgba(34,197,94,0.09) 0%, rgba(255,255,255,0.02) 100%) !important;
+          border-color: ${hexToRgba(primaryColorLocal, 0.26)} !important;
+          background: linear-gradient(180deg, ${hexToRgba(primaryColorLocal, 0.09)} 0%, rgba(255,255,255,0.02) 100%) !important;
         }
         .widget-footer-cta:hover {
-          border-color: rgba(34,197,94,0.32) !important;
+          border-color: ${hexToRgba(primaryColorLocal, 0.32)} !important;
           color: #86efac !important;
         }
         .project-mobile-quick-grid {
@@ -1472,8 +1518,8 @@ export default function ChatWidgetInline({
         }
         .project-mobile-quick-card:hover {
           transform: translateY(-1px);
-          border-color: rgba(34,197,94,0.26) !important;
-          background: linear-gradient(180deg, rgba(34,197,94,0.09) 0%, rgba(255,255,255,0.02) 100%) !important;
+          border-color: ${hexToRgba(primaryColorLocal, 0.26)} !important;
+          background: linear-gradient(180deg, ${hexToRgba(primaryColorLocal, 0.09)} 0%, rgba(255,255,255,0.02) 100%) !important;
         }
         @media (max-width: 640px) {
           .project-choice-grid {

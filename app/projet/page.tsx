@@ -118,19 +118,19 @@ function ProjetContent() {
             <KadriaLogo size="sm" theme="dark" noLink />
             <div className="min-w-0">
               <p style={{ margin: 0, color: '#f4f4f5', fontSize: '13.5px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                Assistant projet
+                {artisanName || 'Assistant projet'}
               </p>
               <p
                 className="hidden sm:block"
                 style={{ margin: 0, color: '#a1a1aa', fontSize: '12px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
-                {artisanName ? `Demande transmise à ${artisanName}` : 'Aucun compte requis'}
+                {artisanName ? 'Votre assistant de confiance pour vos travaux' : 'Aucun compte requis'}
               </p>
               <p
                 className="sm:hidden"
                 style={{ margin: 0, color: '#a1a1aa', fontSize: '12px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
-                {artisanName ? `Transmis à ${artisanName}` : 'Sans compte'}
+                {artisanName ? 'Votre assistant de confiance' : 'Sans compte'}
               </p>
             </div>
           </div>
@@ -152,7 +152,7 @@ function ProjetContent() {
         </header>
 
         <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start">
-          <section className="min-h-[640px] overflow-hidden rounded-[24px] lg:min-h-[760px] lg:order-1">
+          <section className="min-h-[420px] sm:min-h-[640px] overflow-hidden rounded-[24px] lg:min-h-[760px] lg:order-1">
             <ChatWidgetInline
               artisanId={artisanId}
               inline={true}
