@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
-import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
+import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
 import type { DemoQuoteBuilder, DemoQuoteBuilderLine } from '@/src/lib/demo-data';
 import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
@@ -45,6 +45,18 @@ const DEMO_STATUS_NORMALIZATION: Record<string, string> = {
   'Devis envoye': 'Devis envoyé',
   'Gagne': 'Gagné',
 };
+
+// Catalogue statique pour le bloc "Suggestions de lignes de devis" en démo —
+// version allégée du moteur prod (src/lib/quote-suggestions.ts), qui dépend
+// de profils métier/référentiel Supabase non disponibles ici. Lecture seule :
+// le clic affiche un toast simulé, aucune ligne n'est ajoutée à un devis réel.
+const DEMO_QUOTE_SUGGESTIONS_CATALOG: { id: string; label: string; unitPriceHt: number }[] = [
+  { id: 'demo_suggestion_depose', label: 'Dépose des équipements existants', unitPriceHt: 420 },
+  { id: 'demo_suggestion_fourniture', label: 'Fourniture du matériel principal', unitPriceHt: 1850 },
+  { id: 'demo_suggestion_pose', label: 'Pose et raccordements', unitPriceHt: 980 },
+  { id: 'demo_suggestion_finitions', label: 'Finitions et nettoyage de chantier', unitPriceHt: 260 },
+  { id: 'demo_suggestion_mise_en_service', label: 'Mise en service et contrôle', unitPriceHt: 150 },
+];
 
 interface DevisListItem {
   id: string;
@@ -1039,6 +1051,12 @@ function ProjectDetail() {
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
+  // Bloc "moment ideal pour relancer/contacter" — memes helpers que prod
+  // (src/lib/commercial-actions.ts), alimentes par les memes signaux
+  // (analysis.nextBestAction.type, decision.shouldShowFollowupBlock) deja
+  // calcules ci-dessus dans ce fichier.
+  const showIdealFollowUp = shouldShowIdealFollowUp(project);
+  const idealActionLabel = getIdealActionLabel(project, analysis.nextBestAction.type);
   // Statut devis affiche derive de decision.label/decision.state
   // (quote-status.ts) plutot que d une logique locale dupliquee — la prod
   // reste la source de verite sur le cycle de vie du devis.
@@ -1050,22 +1068,28 @@ function ProjectDetail() {
     channel: 'email',
     reason: 'Aucune relance necessaire',
   };
-  const quoteTimeline = [
-    { id: 'qualified', label: 'Dossier qualifie', done: true },
-    { id: 'draft', label: 'Devis prepare', done: decision.state !== 'no_quote' },
-    { id: 'sent', label: 'Devis envoye', done: !!latestDevis?.sent },
-    // Pas d equivalent direct dans decision.state (qui ne distingue pas
-    // "ouvert" d "envoye") : on garde le signal local d ouverture du devis.
-    { id: 'opened', label: 'Devis ouvert par le client', done: !!project.quote?.openedCount },
+  // Avancement commercial — stepper unique partage par la section "Actions
+  // et devis" et le bloc "Avancement commercial" (ex Lot C7 : supprime la
+  // duplication avec l ancien quoteTimeline a 6 etapes).
+  const commercialTimeline = [
+    { id: 'received', label: 'Reçu', done: Boolean(project.createdAt) },
+    { id: 'qualified', label: 'Qualifié', done: project.status !== 'Nouveau' },
+    { id: 'draft', label: 'Préparé', done: Boolean(latestDevis) },
+    { id: 'sent', label: 'Envoyé', done: Boolean(latestDevis?.sent) },
     {
       id: 'followup',
-      label: 'Relance prevue',
-      done: followUpState.status === 'planned' || followUpState.status === 'late' || followUpState.status === 'done',
+      label: 'Ouvert / relance',
+      done: Boolean((latestDevis?.opens_count || 0) > 0 || latestDevis?.last_follow_up_at || decision.canFollowUpQuote),
     },
     {
       id: 'decision',
-      label: 'Decision client',
-      done: ['quote_accepted', 'quote_declined', 'won', 'lost'].includes(decision.state),
+      label: 'Décision',
+      done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
+    },
+    {
+      id: 'outcome',
+      label: 'Gagné / perdu',
+      done: project.status === 'Gagné' || project.status === 'Perdu',
     },
   ];
   // Prochaine action commerciale = celle deja calculee par l Action Engine
@@ -1953,6 +1977,104 @@ function ProjectDetail() {
           </div>
         </div>
 
+        {/* Photos du projet — galerie visible, mirroir du bloc desktop prod
+            (app/dashboard-v2/projet/[id]/page.tsx, "Photos du projet"). */}
+        {project.photos && project.photos.length > 0 && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
+            marginBottom: '16px',
+          }}>
+            <p style={{
+              color: 'var(--text-3)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Photos du projet ({project.photos.length})
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(110px, 1fr))',
+              gap: '8px',
+            }}>
+              {project.photos.map((photo: { url: string; thumbnailUrl?: string }, i: number) => (
+                <a
+                  key={`${photo.url}-${i}`}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={photo.thumbnailUrl || photo.url}
+                    alt={`Photo ${i + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showIdealFollowUp && (idealActionLabel.title !== 'Moment idéal pour relancer le devis' || decision.shouldShowFollowupBlock) && (
+          <div style={{
+            background: 'rgba(34,197,94,0.06)',
+            border: '1px solid rgba(34,197,94,0.22)',
+            borderRadius: '14px',
+            padding: isMobile ? '16px' : '16px 20px',
+            marginBottom: '16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '16px',
+            flexWrap: 'wrap',
+          }}>
+            <div>
+              <p style={{
+                color: 'var(--accent)',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                margin: '0 0 8px',
+              }}>
+                {idealActionLabel.title}
+              </p>
+              <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
+                {idealActionLabel.mainSlot}
+              </p>
+              {idealActionLabel.secondarySlot && (
+                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
+                  {idealActionLabel.secondarySlot}
+                </p>
+              )}
+            </div>
+
+            <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
+              <p style={{ margin: '0 0 4px' }}>
+                Dernier échange :{' '}
+                <span style={{ color: 'var(--text-1)' }}>
+                  {followUpTime.lastInteractionDate
+                    ? formatShortDate(followUpTime.lastInteractionDate)
+                    : 'Non renseigné'}
+                </span>
+              </p>
+              <p style={{ margin: 0 }}>
+                Sans interaction :{' '}
+                <span style={{ color: 'var(--text-1)' }}>
+                  {followUpTime.daysWithoutInteraction === null
+                    ? 'Non renseigné'
+                    : `${followUpTime.daysWithoutInteraction} jour(s)`}
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
+
         {(() => {
           // Résumé devis + Avancement commercial — mirroir du bloc desktop
           // prod (app/dashboard-v2/projet/[id]/page.tsx, lignes ~2080-2312).
@@ -2045,27 +2167,6 @@ function ProjectDetail() {
               meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
             };
           })();
-          const commercialTimeline = [
-            { id: 'received', label: 'Reçu', done: Boolean(project.createdAt) },
-            { id: 'qualified', label: 'Qualifié', done: project.status !== 'Nouveau' },
-            { id: 'draft', label: 'Préparé', done: Boolean(latestDevis) },
-            { id: 'sent', label: 'Envoyé', done: Boolean(latestDevis?.sent) },
-            {
-              id: 'followup',
-              label: 'Ouvert / relance',
-              done: Boolean((latestDevis?.opens_count || 0) > 0 || latestDevis?.last_follow_up_at || decision.canFollowUpQuote),
-            },
-            {
-              id: 'decision',
-              label: 'Décision',
-              done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
-            },
-            {
-              id: 'outcome',
-              label: 'Gagné / perdu',
-              done: project.status === 'Gagné' || project.status === 'Perdu',
-            },
-          ];
 
           const quoteStatusBadge = !latestDevis
             ? { label: 'Aucun devis', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' }
@@ -2474,12 +2575,99 @@ function ProjectDetail() {
             </div>
           </div>
 
+          {/* Suggestions de lignes de devis — version démo allégée du bloc
+              prod (src/lib/quote-suggestions.ts + service profiles + modele
+              de devis matché), trop couplé à des données métier (référentiel
+              Supabase, profils de prestations) pour être repris à l'identique
+              en démo. On reprend ici la même structure visuelle (catalogue +
+              clic = ajout) avec un petit catalogue statique, en lecture
+              seule : le clic affiche un toast simulé, aucune ligne n'est
+              réellement ajoutée au devis démo. */}
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
+            <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Suggestions de lignes de devis
+            </p>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px' }}>
+              Catalogue de démonstration — Kadria propose des lignes adaptées au métier du dossier.
+            </p>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {DEMO_QUOTE_SUGGESTIONS_CATALOG.map((line) => (
+                <button
+                  key={line.id}
+                  type="button"
+                  onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée — aucune donnée réelle modifiée.' })}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>{line.label}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {formatMoney(line.unitPriceHt)} € HT
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Frais de déplacement — version démo statique du bloc prod
+              (haversineDistanceKm/calculateTravelCost dans
+              app/dashboard-v2/projet/[id]/page.tsx), qui dépend d'une
+              géocodification réelle de l'adresse artisan/chantier (Supabase)
+              absente en démo. On affiche ici des chiffres fixes avec un
+              libellé explicite "Simulation démo" plutôt que de brancher un
+              faux calcul de distance. */}
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '16px' }}>🚗</span>
+              <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>
+                Frais de déplacement estimés
+              </span>
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--text-3)',
+                border: '1px solid var(--border)',
+                borderRadius: '999px',
+                padding: '2px 8px',
+              }}>
+                Simulation démo
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller</p>
+                <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>18.4 km</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
+                <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>36.8 km</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé</p>
+                <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>14.30 €</p>
+              </div>
+            </div>
+            <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
+              Données fictives à but de démonstration — aucune géolocalisation réelle n&apos;est effectuée en mode démo.
+            </p>
+          </div>
+
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
             <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Timeline devis
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(6, minmax(0, 1fr))', gap: '12px' }}>
-              {quoteTimeline.map((step, index) => (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(7, minmax(0, 1fr))', gap: '12px' }}>
+              {commercialTimeline.map((step, index) => (
                 <div key={step.id} style={{ display: 'flex', gap: '10px', alignItems: isMobile ? 'flex-start' : 'center' }}>
                   <div
                     style={{
@@ -2503,6 +2691,50 @@ function ProjectDetail() {
                     {step.label}
                   </span>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Suggestions de lignes de devis — équivalent démo simplifié du
+              service matcher prod (src/lib/quote-suggestions.ts,
+              getQuoteSuggestions + référentiel métier). Catalogue figé,
+              aucune logique de confiance/référentiel réelle : juste un
+              aperçu visuel cliquable qui déclenche le toast démo existant. */}
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
+            <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Suggestions de lignes de devis
+            </p>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px' }}>
+              Catalogue démo — Kadria propose des lignes adaptées au métier ({project.trade || 'général'}).
+            </p>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {[
+                { label: 'Forfait déplacement et diagnostic', price: 60 },
+                { label: 'Dépose des équipements existants', price: 180 },
+                { label: 'Fourniture matériel standard', price: 420 },
+                { label: 'Pose et raccordements', price: 350 },
+                { label: 'Mise en service et contrôle', price: 90 },
+              ].map((line) => (
+                <button
+                  key={line.label}
+                  type="button"
+                  onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée — aucune donnée réelle modifiée.' })}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '12px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>{line.label}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{line.price} € HT</span>
+                </button>
               ))}
             </div>
           </div>
