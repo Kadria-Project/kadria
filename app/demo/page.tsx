@@ -59,7 +59,7 @@ export default function DemoPage() {
             title="Assistant chat"
             text="Testez le parcours de qualification côté prospect : questions métier, budget, délai, coordonnées et création de dossier simulée."
             cta="Tester l'assistant"
-            onClick={() => router.push('/projet?artisanId=Artisan_demo')}
+            onClick={() => router.push('/projet?artisanId=Artisan_demo&demoMode=true')}
           />
         </section>
 

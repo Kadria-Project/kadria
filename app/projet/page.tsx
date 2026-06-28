@@ -87,6 +87,7 @@ function ProjetContent() {
   // alors plus du tout la configuration de l'artisan (ni ses métiers, ni ses
   // travaux acceptés/refusés), quel que soit l'artisan visé.
   const artisanId = searchParams.get('artisan_id') ?? searchParams.get('artisanId') ?? ''
+  const demoMode = searchParams.get('demoMode') === 'true'
 
   const [artisanName, setArtisanName] = useState('')
   const [dossier, setDossier] = useState<Dossier>({})
@@ -158,6 +159,7 @@ function ProjetContent() {
               inline={true}
               fullPage={true}
               projectExperience={true}
+              demoMode={demoMode}
               onDossierChange={(d, s) => { setDossier(d); setScore(s) }}
               onArtisanNameChange={setArtisanName}
               onPrimaryColorChange={setAccentColor}

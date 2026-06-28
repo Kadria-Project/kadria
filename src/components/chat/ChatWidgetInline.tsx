@@ -31,6 +31,7 @@ interface Props {
   fitParentHeight?: boolean
   projectExperience?: boolean
   previewMode?: boolean
+  demoMode?: boolean
   onDossierChange?: (dossier: Dossier, score: number) => void
   onArtisanNameChange?: (name: string) => void
   onPrimaryColorChange?: (color: string) => void
@@ -104,6 +105,7 @@ export default function ChatWidgetInline({
   fitParentHeight = false,
   projectExperience = false,
   previewMode = false,
+  demoMode = false,
   onDossierChange,
   onArtisanNameChange,
   onPrimaryColorChange,
@@ -362,6 +364,16 @@ export default function ChatWidgetInline({
   const uploadPhotos = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setUploadingPhotos(true)
+    if (demoMode) {
+      setPhotos(prev => [
+        ...prev,
+        ...Array.from(files).map((file, i) => ({ url: URL.createObjectURL(file), publicId: `demo_${Date.now()}_${i}` })),
+      ])
+      await sendMessage(`J'ai ajouté ${files.length} photo(s) à mon dossier.`)
+      setPhotosAnswered(true)
+      setUploadingPhotos(false)
+      return
+    }
     try {
       const formData = new FormData()
       Array.from(files).forEach(file => formData.append('files', file))
@@ -385,7 +397,7 @@ export default function ChatWidgetInline({
     } finally {
       setUploadingPhotos(false)
     }
-  }, [sendMessage])
+  }, [sendMessage, demoMode])
 
   // ── Save dossier ─────────────────────────────────────────────────────────
   const saveDossier = async () => {
@@ -400,11 +412,25 @@ export default function ChatWidgetInline({
       setSaving(false)
       return
     }
+    if (demoMode) {
+      setSaving(true)
+      setSaved(true)
+      setShowModal(false)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Dossier simulé créé. En production, l'artisan recevrait une fiche projet complète dans son tableau de bord.`
+      }])
+      setSaving(false)
+      return
+    }
     setSaving(true)
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(demoMode ? { 'X-Demo-Mode': 'true' } : {}),
+        },
         body: JSON.stringify({
           ...dossier,
           completenessScore: score,
@@ -414,6 +440,7 @@ export default function ChatWidgetInline({
           photos: photos.map(p => p.url),
           photoCount: photos.length,
           tradeAnswers: dossier.tradeAnswers || [],
+          demoMode,
         }),
       })
       const data = await res.json()
@@ -561,6 +588,20 @@ export default function ChatWidgetInline({
                   }}>
                     Réponse en 3 min
                   </span>
+                  {demoMode && (
+                    <span style={{
+                      border: '1px solid rgba(245,158,11,0.3)',
+                      background: 'rgba(245,158,11,0.1)',
+                      color: '#fbbf24',
+                      borderRadius: '999px',
+                      padding: '2px 8px',
+                      fontSize: '10.5px',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      Mode démo — aucune donnée réelle enregistrée
+                    </span>
+                  )}
                 </div>
                 <p style={{ margin: '2px 0 0', color: '#a1a1aa', fontSize: isProjectExperience ? '12.5px' : '12px' }}>
                   Votre assistant de confiance pour vos travaux

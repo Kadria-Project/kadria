@@ -89,6 +89,15 @@ export async function POST(request: Request) {
   try {
     const input = await request.json();
 
+    const isDemoMode = input.demoMode === true || request.headers.get('X-Demo-Mode') === 'true';
+    if (isDemoMode) {
+      return NextResponse.json({
+        success: true,
+        recordId: `demo_${Math.random().toString(36).slice(2, 10)}`,
+        demo: true,
+      });
+    }
+
     const artisanId =
       typeof input.artisanId === 'string' && input.artisanId.trim()
         ? input.artisanId.trim()
