@@ -88,40 +88,41 @@ type ActionRow = {
   projectId: string;
 };
 
+// Ordre de priorité produit du Centre d'actions : un même dossier ne doit
+// afficher qu'une seule action, la plus importante selon cet ordre.
+const ACTION_PRIORITY = {
+  send_quote: 100,
+  quote_followup: 90,
+  call_back: 80,
+  hot_prospect: 70,
+  complete_project: 60,
+} as const;
+
 function buildActionRows(
   priorityProjects: Project[],
   todayTasks: Task[],
   riskProjects: Project[],
   hotLeads: Project[],
 ): ActionRow[] {
-  const rows: ActionRow[] = [];
-  const seen = new Set<string>();
+  const candidates: ActionRow[] = [];
 
-  const push = (row: ActionRow) => {
-    const dedupeKey = `${row.projectId}-${row.icon}`;
-    if (seen.has(dedupeKey)) return;
-    seen.add(dedupeKey);
-    rows.push(row);
+  const addCandidate = (projectId: string | undefined, priority: number, icon: string, text: string, key: string) => {
+    if (!projectId) return;
+    candidates.push({ key, icon, text, urgency: priority, projectId });
   };
+
+  for (const task of todayTasks) {
+    const project = priorityProjects.find((p) => p.id === task.projectId);
+    if (!project || task.type !== 'quote') continue;
+    addCandidate(project.id, ACTION_PRIORITY.send_quote, '🔴', `Envoyer le devis — ${clientLabel(project)}`, `quote-${project.id}`);
+  }
 
   for (const project of riskProjects) {
     const risk = getProjectRiskStatus(project as any);
     if (risk.status === 'atRisk') {
-      push({
-        key: `risk-${project.id}`,
-        icon: '🔴',
-        text: `Devis en risque — ${clientLabel(project)}`,
-        urgency: 100,
-        projectId: project.id!,
-      });
+      addCandidate(project.id, ACTION_PRIORITY.quote_followup, '🔴', `Devis en risque — ${clientLabel(project)}`, `risk-${project.id}`);
     } else if (risk.status === 'followUp') {
-      push({
-        key: `followup-${project.id}`,
-        icon: '🟠',
-        text: `Relancer ${clientLabel(project)}`,
-        urgency: 80,
-        projectId: project.id!,
-      });
+      addCandidate(project.id, ACTION_PRIORITY.quote_followup, '🟠', `Relancer ${clientLabel(project)}`, `followup-${project.id}`);
     }
   }
 
@@ -129,43 +130,27 @@ function buildActionRows(
     const project = priorityProjects.find((p) => p.id === task.projectId);
     if (!project) continue;
     if (task.type === 'call') {
-      push({
-        key: `call-${project.id}`,
-        icon: '📞',
-        text: `Rappeler — ${clientLabel(project)}`,
-        urgency: task.priority === 'high' ? 95 : 60,
-        projectId: project.id!,
-      });
-    } else if (task.type === 'quote') {
-      push({
-        key: `quote-${project.id}`,
-        icon: '🔴',
-        text: `Envoyer le devis — ${clientLabel(project)}`,
-        urgency: task.priority === 'high' ? 90 : 65,
-        projectId: project.id!,
-      });
+      addCandidate(project.id, ACTION_PRIORITY.call_back, '📞', `Rappeler — ${clientLabel(project)}`, `call-${project.id}`);
     } else if (task.type === 'followUp' || task.type === 'email') {
-      push({
-        key: `task-followup-${project.id}`,
-        icon: '🟠',
-        text: `Relancer ${clientLabel(project)}`,
-        urgency: 55,
-        projectId: project.id!,
-      });
+      addCandidate(project.id, ACTION_PRIORITY.quote_followup, '🟠', `Relancer ${clientLabel(project)}`, `task-followup-${project.id}`);
     }
   }
 
   for (const project of hotLeads) {
-    push({
-      key: `hot-${project.id}`,
-      icon: '🟢',
-      text: `Nouveau prospect chaud — ${clientLabel(project)}`,
-      urgency: 50,
-      projectId: project.id!,
-    });
+    addCandidate(project.id, ACTION_PRIORITY.hot_prospect, '🟢', `Nouveau prospect chaud — ${clientLabel(project)}`, `hot-${project.id}`);
   }
 
-  return rows.sort((a, b) => b.urgency - a.urgency).slice(0, 6);
+  // 1 dossier = 1 action : on ne garde que la candidate la plus prioritaire
+  // par projet (project.id, l'identifiant le plus fiable disponible ici).
+  const bestByProject = new Map<string, ActionRow>();
+  for (const candidate of candidates) {
+    const existing = bestByProject.get(candidate.projectId);
+    if (!existing || candidate.urgency > existing.urgency) {
+      bestByProject.set(candidate.projectId, candidate);
+    }
+  }
+
+  return Array.from(bestByProject.values()).sort((a, b) => b.urgency - a.urgency).slice(0, 6);
 }
 
 const cardBase: React.CSSProperties = {
