@@ -1953,7 +1953,358 @@ function ProjectDetail() {
           </div>
         </div>
 
+        {(() => {
+          // Résumé devis + Avancement commercial — mirroir du bloc desktop
+          // prod (app/dashboard-v2/projet/[id]/page.tsx, lignes ~2080-2312).
+          // Remplace l'ancienne mega-carte "Construction du devis" qui
+          // n'existe pas en prod (éditeur de lignes inline inventé pour la
+          // démo). L'idée d'un éditeur de devis inline reste une piste à
+          // proposer pour la prod plus tard — voir le rapport de ce lot.
+          const quoteAmountLabel = latestDevis?.amount
+            ? `${formatMoney(latestDevis.amount)} €`
+            : devisAmount
+              ? `${formatMoney(Number(devisAmount))} €`
+              : 'Montant non renseigné';
+          const recommendedAction = (() => {
+            if (project.status === 'Perdu' || decision.state === 'quote_declined') {
+              return {
+                title: 'Clôturer le dossier',
+                ctaLabel: 'Clôturer le dossier',
+                onClick: scrollToQuoteSection,
+                meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
+              };
+            }
+            if (project.status === 'Gagné' || decision.state === 'quote_accepted') {
+              return {
+                title: 'Planifier l’intervention chantier',
+                ctaLabel: project.appointment ? 'Voir le rendez-vous' : 'Planifier l’intervention',
+                onClick: project.appointment ? scrollToQuoteSection : () => setShowRdvModal(true),
+                meta: project.appointment
+                  ? `Rendez-vous prévu le ${formatDateTime(project.appointment.start)}.`
+                  : 'Le devis est accepté : proposez un créneau d’intervention et préparez le passage en production.',
+              };
+            }
+            const budgetMissing = nextAction.blockingReasons.includes('Budget absent');
+            if (!latestDevis && budgetMissing) {
+              return {
+                title: 'Compléter le budget',
+                ctaLabel: 'Contacter le client',
+                onClick: scrollToQuoteSection,
+                meta: 'Le besoin est identifié, mais le budget manque pour préparer un devis fiable.',
+              };
+            }
+            const appointmentMissing = nextAction.blockingReasons.includes('Rendez-vous non planifié');
+            if (!latestDevis && appointmentMissing) {
+              return {
+                title: 'Planifier un rendez-vous',
+                ctaLabel: 'Planifier',
+                onClick: () => setShowRdvModal(true),
+                meta: 'Un échange ou une visite permettra de verrouiller les derniers éléments avant chiffrage.',
+              };
+            }
+            if (!latestDevis) {
+              return {
+                title: 'Créer le devis',
+                ctaLabel: 'Créer un devis',
+                onClick: () => updateDemoQuoteStatus('draft', 'Action simulée — aucune donnée réelle modifiée.'),
+                meta: 'Le dossier contient assez d’éléments pour préparer une première proposition.',
+              };
+            }
+            if (!latestDevis.sent) {
+              return {
+                title: 'Finaliser et envoyer le devis',
+                ctaLabel: 'Voir le devis',
+                onClick: scrollToQuoteSection,
+                meta: 'Le devis existe déjà mais attend encore un envoi au client.',
+              };
+            }
+            if (decision.canFollowUpQuote) {
+              return {
+                title: 'Relancer le devis',
+                ctaLabel: 'Relancer le client',
+                onClick: () => followUpQuote(latestDevis),
+                meta: latestDevis.opens_count > 0
+                  ? `Le devis a été consulté ${latestDevis.opens_count} fois. Relancez le client pendant que le projet est encore chaud.`
+                  : 'Le devis a été envoyé. Relancez le client pendant que le projet est encore chaud.',
+              };
+            }
+            if (latestDevis.sent) {
+              return {
+                title: 'Suivre le devis envoyé',
+                ctaLabel: 'Voir le devis',
+                onClick: scrollToQuoteSection,
+                meta: decision.followUpAvailableAt
+                  ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
+                  : 'Le devis a été envoyé, gardez la conversation ouverte.',
+              };
+            }
+            return {
+              title: 'Clarifier le besoin',
+              ctaLabel: 'Appeler le client',
+              onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else scrollToQuoteSection(); },
+              meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
+            };
+          })();
+          const commercialTimeline = [
+            { id: 'received', label: 'Reçu', done: Boolean(project.createdAt) },
+            { id: 'qualified', label: 'Qualifié', done: project.status !== 'Nouveau' },
+            { id: 'draft', label: 'Préparé', done: Boolean(latestDevis) },
+            { id: 'sent', label: 'Envoyé', done: Boolean(latestDevis?.sent) },
+            {
+              id: 'followup',
+              label: 'Ouvert / relance',
+              done: Boolean((latestDevis?.opens_count || 0) > 0 || latestDevis?.last_follow_up_at || decision.canFollowUpQuote),
+            },
+            {
+              id: 'decision',
+              label: 'Décision',
+              done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
+            },
+            {
+              id: 'outcome',
+              label: 'Gagné / perdu',
+              done: project.status === 'Gagné' || project.status === 'Perdu',
+            },
+          ];
+
+          const quoteStatusBadge = !latestDevis
+            ? { label: 'Aucun devis', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' }
+            : latestDevis.accepted
+              ? { label: 'Devis accepté', bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.4)', color: '#16a34a' }
+              : latestDevis.declined
+                ? { label: 'Devis refusé', bg: 'rgba(220,38,38,0.12)', border: 'rgba(220,38,38,0.35)', color: '#dc2626' }
+                : latestDevis.sent
+                  ? { label: decision.canFollowUpQuote ? 'Devis à relancer' : 'Devis envoyé', bg: 'rgba(234,88,12,0.12)', border: 'rgba(234,88,12,0.35)', color: '#ea580c' }
+                  : { label: 'Devis en préparation', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.35)', color: 'var(--text-2)' };
+
+          const quoteDecisionLabel = !latestDevis
+            ? 'En attente'
+            : latestDevis.accepted
+              ? 'Accepté'
+              : latestDevis.declined
+                ? 'Refusé'
+                : 'En attente';
+
+          const quoteNextActionLabel = !latestDevis
+            ? 'Créer un devis'
+            : latestDevis.accepted
+              ? 'Planifier l’intervention'
+              : latestDevis.declined
+                ? 'Clarifier le besoin'
+                : !latestDevis.sent
+                  ? 'Finaliser et envoyer le devis'
+                  : decision.canFollowUpQuote
+                    ? 'Relancer le client'
+                    : 'Suivre le devis';
+
+          const quoteCardButtonLabel = !latestDevis
+            ? 'Créer le devis'
+            : latestDevis.accepted
+              ? 'Planifier la suite'
+              : !latestDevis.sent
+                ? 'Voir le devis'
+                : decision.canFollowUpQuote
+                  ? 'Relancer'
+                  : 'Voir le devis';
+
+          const quoteCardButtonAction = !latestDevis
+            ? () => updateDemoQuoteStatus('draft', 'Action simulée — aucune donnée réelle modifiée.')
+            : latestDevis.accepted
+              ? (project.appointment ? scrollToQuoteSection : () => setShowRdvModal(true))
+              : decision.canFollowUpQuote
+                ? () => followUpQuote(latestDevis)
+                : scrollToQuoteSection;
+
+          return (
+            <>
+              <div style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: isMobile ? '16px' : '22px',
+                marginBottom: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      Résumé devis
+                    </p>
+                    <span style={{
+                      display: 'inline-flex', fontSize: '14px', fontWeight: 700,
+                      padding: '5px 14px', borderRadius: '999px',
+                      background: quoteStatusBadge.bg, border: `1px solid ${quoteStatusBadge.border}`, color: quoteStatusBadge.color,
+                    }}>
+                      {quoteStatusBadge.label}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                    <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>Montant</p>
+                    <p style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: 'var(--text-1)' }}>{quoteAmountLabel}</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: '16px' }}>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Envoi</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {!latestDevis
+                        ? 'Non envoyé'
+                        : latestDevis.quote_sent_at
+                          ? formatDevisDate(latestDevis.quote_sent_at)
+                          : (latestDevis.accepted || latestDevis.declined)
+                            ? 'Envoyé — date non disponible'
+                            : 'Pas encore envoyé'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Ouvertures</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {latestDevis ? `${latestDevis.opens_count || 0} ouverture(s)` : '0'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Relance / Décision</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {latestDevis?.accepted || latestDevis?.declined
+                        ? quoteDecisionLabel
+                        : latestDevis?.last_follow_up_at
+                          ? `Relancé le ${formatDevisDate(latestDevis.last_follow_up_at)}`
+                          : decision.followUpAvailableAt
+                            ? `Relance dès le ${formatShortDate(decision.followUpAvailableAt)}`
+                            : 'Aucune planifiée'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontSize: '11px', color: 'var(--text-3)' }}>Prochaine action</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-1)', fontWeight: 600 }}>{quoteNextActionLabel}</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={quoteCardButtonAction}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '0 0 auto',
+                      background: 'var(--accent)',
+                      border: 'none',
+                      color: '#fff',
+                      borderRadius: '10px',
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {quoteCardButtonLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={scrollToQuoteSection}
+                    style={{
+                      flex: isMobile ? '1 1 100%' : '0 0 auto',
+                      background: 'transparent',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-1)',
+                      borderRadius: '10px',
+                      padding: '10px 16px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Aller au devis
+                  </button>
+                </div>
+              </div>
+
+              <div style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: isMobile ? '16px' : '22px',
+                marginBottom: '16px',
+              }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 18px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Avancement commercial
+                </p>
+                <div style={{
+                  display: isMobile ? 'flex' : 'grid',
+                  flexDirection: isMobile ? 'column' : undefined,
+                  gridTemplateColumns: isMobile ? undefined : 'repeat(7, minmax(0, 1fr))',
+                  gap: isMobile ? '10px' : '6px',
+                }}>
+                  {commercialTimeline.map((step, index) => {
+                    const isCurrent = !step.done && commercialTimeline.slice(0, index).every((s) => s.done);
+                    return (
+                      <div
+                        key={step.id}
+                        style={{
+                          display: 'flex',
+                          flexDirection: isMobile ? 'row' : 'column',
+                          alignItems: isMobile ? 'center' : 'stretch',
+                          gap: '10px',
+                        }}
+                      >
+                        <div style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}>
+                          <span style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '999px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            background: step.done ? 'rgba(34,197,94,0.18)' : isCurrent ? 'rgba(234,88,12,0.14)' : 'var(--bg)',
+                            border: `2px solid ${step.done ? 'rgba(34,197,94,0.5)' : isCurrent ? '#ea580c' : 'var(--border)'}`,
+                            color: step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)',
+                            flexShrink: 0,
+                          }}>
+                            {step.done ? '✓' : index + 1}
+                          </span>
+                          {!isMobile && index < commercialTimeline.length - 1 && (
+                            <span style={{
+                              flex: 1,
+                              height: '2px',
+                              background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)',
+                            }} />
+                          )}
+                        </div>
+                        <p style={{
+                          margin: isMobile ? 0 : '10px 0 0',
+                          fontSize: '12px',
+                          color: step.done ? 'var(--text-1)' : isCurrent ? '#ea580c' : 'var(--text-3)',
+                          fontWeight: step.done || isCurrent ? 700 : 500,
+                          lineHeight: 1.3,
+                        }}>
+                          {step.label}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p style={{ margin: '16px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
+                  Étape actuelle : {(() => {
+                    const current = commercialTimeline.find((s) => !s.done) || commercialTimeline[commercialTimeline.length - 1];
+                    return `${current.label} — ${recommendedAction.title.charAt(0).toLowerCase()}${recommendedAction.title.slice(1)}.`;
+                  })()}
+                </p>
+              </div>
+            </>
+          );
+        })()}
+
         <section
+          ref={quoteSectionRef}
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border)',
@@ -1965,11 +2316,11 @@ function ProjectDetail() {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', marginBottom: '18px' }}>
             <div>
               <p style={{ margin: '0 0 6px', color: 'var(--accent)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Construction du devis
+                Actions et devis
               </p>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Base modifiable avant envoi</h2>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>{quoteStatusLabel}</h2>
               <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-                Mode demo - tous les boutons ci-dessous sont simulés localement. Aucun devis réel, email ou PDF officiel n&apos;est envoyé.
+                Mode démo - toutes les actions ci-dessous sont simulées localement. Aucun devis réel, email ou PDF officiel n&apos;est envoyé.
               </p>
             </div>
             <span
@@ -2097,291 +2448,29 @@ function ProjectDetail() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    Base du devis
-                  </p>
-                  <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px' }}>
-                    Champs pre-remplis et modifiables localement.
-                  </p>
-                </div>
-                <span style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700 }}>
-                  {quoteSummary.enabledLines.length} ligne{quoteSummary.enabledLines.length > 1 ? 's' : ''} active{quoteSummary.enabledLines.length > 1 ? 's' : ''}
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
-                {[
-                  { label: 'Numero devis', value: quoteBuilderForm.quoteNumber, key: 'quoteNumber' as const, type: 'text' },
-                  { label: 'Client', value: quoteBuilderForm.clientName, key: 'clientName' as const, type: 'text' },
-                  { label: 'Projet', value: quoteBuilderForm.projectTitle, key: 'projectTitle' as const, type: 'text' },
-                  { label: 'Adresse chantier', value: quoteBuilderForm.siteAddress, key: 'siteAddress' as const, type: 'text' },
-                ].map((field) => (
-                  <label key={field.key} style={{ display: 'grid', gap: '6px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{field.label}</span>
-                    <input
-                      type={field.type}
-                      value={field.value}
-                      onChange={(event) => updateQuoteBuilderField(field.key, event.target.value)}
-                      style={{
-                        width: '100%',
-                        background: 'var(--bg-elevated)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '10px',
-                        padding: '10px 12px',
-                        color: 'var(--text-1)',
-                        fontSize: '14px',
-                        outline: 'none',
-                      }}
-                    />
-                  </label>
-                ))}
-
-                <label style={{ display: 'grid', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Validite (jours)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={quoteBuilderForm.validityDays}
-                    onChange={(event) => updateQuoteBuilderField('validityDays', Number(event.target.value || 0))}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: 'var(--text-1)',
-                      fontSize: '14px',
-                      outline: 'none',
-                    }}
-                  />
-                </label>
-
-                <label style={{ display: 'grid', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>TVA par defaut (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={quoteBuilderForm.defaultVat}
-                    onChange={(event) => updateQuoteBuilderField('defaultVat', Number(event.target.value || 0))}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: 'var(--text-1)',
-                      fontSize: '14px',
-                      outline: 'none',
-                    }}
-                  />
-                </label>
-
-                <label style={{ display: 'grid', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Acompte conseille (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={quoteBuilderForm.depositPercent}
-                    onChange={(event) => updateQuoteBuilderField('depositPercent', Number(event.target.value || 0))}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: 'var(--text-1)',
-                      fontSize: '14px',
-                      outline: 'none',
-                    }}
-                  />
-                </label>
-
-                <label style={{ display: 'grid', gap: '6px', gridColumn: isMobile ? undefined : '1 / -1' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Conditions de paiement</span>
-                  <textarea
-                    value={quoteBuilderForm.paymentTerms}
-                    onChange={(event) => updateQuoteBuilderField('paymentTerms', event.target.value)}
-                    rows={2}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: 'var(--text-1)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      resize: 'vertical',
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.12), rgba(34,197,94,0.03))', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '16px', padding: '18px', display: 'grid', gap: '12px' }}>
-              <div>
-                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Resume financier
-                </p>
-                <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px' }}>
-                  Recalcul local en direct selon les lignes actives.
-                </p>
-              </div>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                {[
-                  ['Total HT', `${formatMoney(quoteSummary.totalHt)} EUR`],
-                  ['TVA', `${formatMoney(quoteSummary.totalVat)} EUR`],
-                  ['Acompte', `${formatMoney(quoteSummary.depositAmount)} EUR`],
-                  ['Solde estime', `${formatMoney(quoteSummary.balanceAmount)} EUR`],
-                ].map(([label, value]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '14px' }}>
-                    <span style={{ color: 'var(--text-3)' }}>{label}</span>
-                    <strong style={{ color: 'var(--text-1)' }}>{value}</strong>
-                  </div>
-                ))}
-              </div>
-              <div style={{ borderRadius: '14px', background: 'rgba(9,15,13,0.55)', border: '1px solid rgba(34,197,94,0.22)', padding: '14px 16px' }}>
-                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Total TTC</p>
-                <p style={{ margin: '6px 0 0', color: 'var(--text-1)', fontSize: '30px', fontWeight: 800 }}>
-                  {formatMoney(quoteSummary.totalTtc)} EUR
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '14px' }}>
-              <div>
-                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Lignes proposees
-                </p>
-                <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px' }}>
-                  Libelles, quantites, unites, prix HT et TVA restent modifiables localement.
-                </p>
-              </div>
-              <button type="button" onClick={addQuoteBuilderLine} style={demoActionButtonStyle('secondary')}>
-                <Plus size={14} />
-                Ajouter une ligne
+            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Actions devis
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
+              <button type="button" onClick={() => updateDemoQuoteStatus('draft', 'Brouillon simulé — aucune donnée réelle modifiée.')} style={demoActionButtonStyle('secondary')}>
+                {latestDevis ? 'Reprendre le devis' : 'Créer un devis'}
               </button>
-            </div>
-
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {quoteBuilderLines.map((line, index) => (
-                <div key={line.id} style={{ border: line.enabled === false ? '1px dashed var(--border)' : '1px solid var(--border)', borderRadius: '14px', padding: '14px', background: line.enabled === false ? 'rgba(24,24,27,0.4)' : 'var(--bg-elevated)', opacity: line.enabled === false ? 0.65 : 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
-                    <span style={{ color: 'var(--text-2)', fontSize: '12px', fontWeight: 700 }}>Ligne {index + 1}</span>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => toggleQuoteBuilderLine(line.id)} style={demoActionButtonStyle('secondary')}>
-                        {line.enabled === false ? 'Reactiver' : 'Desactiver'}
-                      </button>
-                      {quoteBuilderLines.length > 1 && (
-                        <button type="button" onClick={() => removeQuoteBuilderLine(line.id)} style={demoActionButtonStyle('danger')}>
-                          Supprimer
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 2fr) repeat(4, minmax(0, 1fr))', gap: '10px' }}>
-                    <label style={{ display: 'grid', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Libelle</span>
-                      <input
-                        type="text"
-                        value={line.label}
-                        onChange={(event) => updateQuoteBuilderLine(line.id, 'label', event.target.value)}
-                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Quantite</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.1"
-                        value={line.quantity}
-                        onChange={(event) => updateQuoteBuilderLine(line.id, 'quantity', Number(event.target.value || 0))}
-                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Unite</span>
-                      <input
-                        type="text"
-                        value={line.unit}
-                        onChange={(event) => updateQuoteBuilderLine(line.id, 'unit', event.target.value)}
-                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Prix HT</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={line.unitPriceHt}
-                        onChange={(event) => updateQuoteBuilderLine(line.id, 'unitPriceHt', Number(event.target.value || 0))}
-                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>TVA (%)</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.1"
-                        value={line.vatRate}
-                        onChange={(event) => updateQuoteBuilderLine(line.id, 'vatRate', Number(event.target.value || 0))}
-                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
-                      />
-                    </label>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <p style={{ margin: '0 0 10px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Note client
-              </p>
-              <textarea
-                value={quoteBuilderForm.clientNote}
-                onChange={(event) => updateQuoteBuilderField('clientNote', event.target.value)}
-                rows={5}
-                style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 14px', color: 'var(--text-1)', fontSize: '14px', outline: 'none', resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Actions devis
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
-                <button type="button" onClick={() => updateDemoQuoteStatus('draft', 'Brouillon simule - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('secondary')}>
-                  Enregistrer le brouillon
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('sent', 'Envoi simule - aucun email reel envoye.')} style={demoActionButtonStyle('primary')}>
-                  Simuler l envoi au client
-                </button>
-                <button type="button" onClick={openDemoPdfPreview} style={demoActionButtonStyle('secondary')}>
-                  Exporter PDF fictif
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('accepted', 'Acceptation simulee - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('success')}>
-                  Marquer comme accepte
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('declined', 'Refus simule - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('danger')}>
-                  Marquer comme refuse
-                </button>
-                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis || !decision.canFollowUpQuote} style={demoActionButtonStyle('primary', !latestDevis || !decision.canFollowUpQuote)}>
-                  Relancer le client
-                </button>
-              </div>
+              <button type="button" onClick={scrollToQuoteSection} style={demoActionButtonStyle('primary')} disabled={!latestDevis}>
+                Voir le devis
+              </button>
+              <button type="button" onClick={openDemoPdfPreview} style={demoActionButtonStyle('secondary')}>
+                Exporter PDF
+              </button>
+              <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis || !decision.canFollowUpQuote} style={demoActionButtonStyle('primary', !latestDevis || !decision.canFollowUpQuote)}>
+                Relancer
+              </button>
+              <button type="button" onClick={() => updateDemoQuoteStatus('accepted', 'Acceptation simulée — aucune donnée réelle modifiée.')} style={demoActionButtonStyle('success')}>
+                Marquer comme accepté
+              </button>
+              <button type="button" onClick={() => updateDemoQuoteStatus('declined', 'Refus simulé — aucune donnée réelle modifiée.')} style={demoActionButtonStyle('danger')}>
+                Marquer comme refusé
+              </button>
             </div>
           </div>
 
@@ -2418,59 +2507,28 @@ function ProjectDetail() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: '16px' }}>
-            <div ref={quoteSectionRef} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Actions devis simulées
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
-                <button type="button" onClick={() => updateDemoQuoteStatus('draft')} style={demoActionButtonStyle('secondary')}>
-                  Préparer un devis
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('draft')} style={demoActionButtonStyle('secondary')}>
-                  Modifier le devis
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('sent')} style={demoActionButtonStyle('primary')}>
-                  Envoyer le devis
-                </button>
-                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis || !decision.canFollowUpQuote} style={demoActionButtonStyle('primary', !latestDevis || !decision.canFollowUpQuote)}>
-                  Relancer le client
-                </button>
-                <button type="button" onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée - aucun PDF réel n’a été généré.' })} style={demoActionButtonStyle('secondary')}>
-                  Exporter PDF
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('accepted')} style={demoActionButtonStyle('success')}>
-                  Marquer comme accepté
-                </button>
-                <button type="button" onClick={() => updateDemoQuoteStatus('declined')} style={demoActionButtonStyle('danger')}>
-                  Marquer comme refusé
-                </button>
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Suivi commercial
-              </p>
-              <div style={{ display: 'grid', gap: '10px' }}>
-                {(project.activity || []).slice(0, 5).map((item: any) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{item.label}</p>
-                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>{formatDateTime(item.date)}</p>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase' }}>{item.kind}</span>
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Suivi commercial
+            </p>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {(project.activity || []).slice(0, 5).map((item: any) => (
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{item.label}</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>{formatDateTime(item.date)}</p>
                   </div>
-                ))}
-              </div>
-              <div style={{ display: 'grid', gap: '10px', marginTop: '14px' }}>
-                <button type="button" onClick={markFollowUpDone} style={demoActionButtonStyle('secondary')}>
-                  Relance effectuée
-                </button>
-                <button type="button" onClick={planNextFollowUp} style={demoActionButtonStyle('secondary')}>
-                  Planifier une relance
-                </button>
-              </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase' }}>{item.kind}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gap: '10px', marginTop: '14px' }}>
+              <button type="button" onClick={markFollowUpDone} style={demoActionButtonStyle('secondary')}>
+                Relance effectuée
+              </button>
+              <button type="button" onClick={planNextFollowUp} style={demoActionButtonStyle('secondary')}>
+                Planifier une relance
+              </button>
             </div>
           </div>
         </section>
