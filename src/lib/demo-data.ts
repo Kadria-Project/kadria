@@ -69,6 +69,11 @@ export interface DemoProject {
   maturity: string;
   aiSummary: string;
   tradeAnswers?: unknown[];
+  // Rendez-vous (visite technique) eventuellement planifie pour ce dossier.
+  // Reprend la forme attendue par action-engine.ts (appointment.start) afin
+  // de permettre a computeNextAction() de distinguer RDV absent / planifie /
+  // passe, sans dupliquer cette logique localement.
+  appointment?: { start: string } | null;
   completenessScore: number;
   status: string;
   source: string;
@@ -369,6 +374,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
     desiredTimeline: 'Sous 2 semaines',
     maturity: 'Urgent',
     aiSummary: 'Fuite constatee sur toiture en tuiles, intervention urgente necessaire. Bonne disponibilite du client.',
+    appointment: { start: '2026-07-02T09:00:00.000Z' },
     completenessScore: 95,
     status: 'Qualifie',
     source: 'voice',
@@ -429,6 +435,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
     desiredTimeline: 'Sous 1 semaine',
     maturity: 'Pret a demarrer',
     aiSummary: 'Chauffe-eau en panne, besoin clair, decisionnaire identifie et attente d un devis rapide avant validation.',
+    appointment: { start: '2026-06-20T14:00:00.000Z' },
     completenessScore: 88,
     status: 'Devis envoye',
     source: 'chat-widget',
@@ -652,6 +659,7 @@ export const DEMO_PROJECTS: DemoProject[] = [
     desiredTimeline: 'Sous 1 mois',
     maturity: 'RDV non confirme',
     aiSummary: "Renovation complete d'une cuisine de 12m2. Rendez-vous propose mais jamais confirme par la cliente, dossier a relancer en urgence.",
+    appointment: { start: '2026-06-19T15:00:00.000Z' },
     completenessScore: 80,
     status: 'A rappeler',
     source: 'chat-widget',

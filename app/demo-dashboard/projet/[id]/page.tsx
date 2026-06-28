@@ -23,7 +23,7 @@ import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction } from '@/src/lib/action-engine';
-import { getProjectDecisionState } from '@/src/lib/quote-status';
+import { getProjectDecisionState, type ProjectDecisionStateKey } from '@/src/lib/quote-status';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -275,26 +275,20 @@ function buildDemoActivities(project: any, events: any[]) {
   return timeline.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 }
 
-function getDemoQuoteStatusLabel(project: any, devis?: DevisListItem | null) {
-  if (devis?.accepted) return 'Devis accepté';
-  if (devis?.declined) return 'Devis refusé';
-  if (project?.quote?.status === 'opened') return 'Devis ouvert';
-  if (devis?.sent) return 'Devis envoyé';
-  if (project?.quote?.status === 'draft') return 'Devis préparé';
-  return 'Aucun devis';
-}
-
-function getQuoteStatusAppearance(statusLabel: string) {
-  if (statusLabel.includes('accepté')) {
+// Apparence du badge statut devis derivee de decision.state (quote-status.ts)
+// plutot que d un matching de sous-chaines sur le libelle affiche — evite
+// toute divergence si decision.label change de formulation.
+function getQuoteStatusAppearance(state: ProjectDecisionStateKey) {
+  if (state === 'quote_accepted' || state === 'won') {
     return { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' };
   }
-  if (statusLabel.includes('refusé')) {
+  if (state === 'quote_declined' || state === 'lost') {
     return { bg: 'rgba(220,38,38,0.15)', text: '#dc2626', border: 'rgba(220,38,38,0.3)' };
   }
-  if (statusLabel.includes('ouvert') || statusLabel.includes('envoyé')) {
+  if (state === 'quote_recently_sent' || state === 'quote_followup_available') {
     return { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' };
   }
-  if (statusLabel.includes('préparé')) {
+  if (state === 'quote_draft') {
     return { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b', border: 'rgba(245,158,11,0.3)' };
   }
   return { bg: 'rgba(63,63,70,0.35)', text: 'var(--text-2)', border: 'var(--border)' };
@@ -987,7 +981,7 @@ function ProjectDetail() {
     siteAddress: project.siteAddress,
     photos: project.photos,
     completenessScore: project.completenessScore,
-    appointment: null,
+    appointment: project.appointment ?? null,
     latestDevis: latestDevis
       ? {
           sent: latestDevis.sent,
@@ -1023,8 +1017,11 @@ function ProjectDetail() {
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
-  const quoteStatusLabel = getDemoQuoteStatusLabel(project, latestDevis);
-  const quoteStatusStyle = getQuoteStatusAppearance(quoteStatusLabel);
+  // Statut devis affiche derive de decision.label/decision.state
+  // (quote-status.ts) plutot que d une logique locale dupliquee — la prod
+  // reste la source de verite sur le cycle de vie du devis.
+  const quoteStatusLabel = decision.label;
+  const quoteStatusStyle = getQuoteStatusAppearance(decision.state);
   const followUpState = project.followUp || {
     status: 'none',
     date: null,
@@ -1033,8 +1030,10 @@ function ProjectDetail() {
   };
   const quoteTimeline = [
     { id: 'qualified', label: 'Dossier qualifie', done: true },
-    { id: 'draft', label: 'Devis prepare', done: project.quote?.status && project.quote.status !== 'none' },
+    { id: 'draft', label: 'Devis prepare', done: decision.state !== 'no_quote' },
     { id: 'sent', label: 'Devis envoye', done: !!latestDevis?.sent },
+    // Pas d equivalent direct dans decision.state (qui ne distingue pas
+    // "ouvert" d "envoye") : on garde le signal local d ouverture du devis.
     { id: 'opened', label: 'Devis ouvert par le client', done: !!project.quote?.openedCount },
     {
       id: 'followup',
@@ -1044,21 +1043,13 @@ function ProjectDetail() {
     {
       id: 'decision',
       label: 'Decision client',
-      done: quoteStatusLabel === 'Devis accepté' || quoteStatusLabel === 'Devis refusé',
+      done: ['quote_accepted', 'quote_declined', 'won', 'lost'].includes(decision.state),
     },
   ];
-  const nextCommercialAction =
-    quoteStatusLabel === 'Aucun devis'
-      ? 'Preparer un devis'
-      : quoteStatusLabel === 'Devis préparé'
-        ? 'Envoyer le devis'
-        : quoteStatusLabel === 'Devis ouvert'
-          ? 'Relancer le client'
-          : quoteStatusLabel === 'Devis envoyé'
-            ? 'Suivre l ouverture du devis'
-            : quoteStatusLabel === 'Devis accepté'
-              ? 'Planifier le chantier'
-              : 'Creer une nouvelle proposition';
+  // Prochaine action commerciale = celle deja calculee par l Action Engine
+  // (nextAction.title, expose par decision.primaryActionLabel) plutot qu un
+  // mapping local sur le libelle de statut devis.
+  const nextCommercialAction = decision.primaryActionLabel;
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
   const projectLabel = getProjectHeadline(project);
   const score = Number(project.completenessScore || 0);
@@ -1078,12 +1069,25 @@ function ProjectDetail() {
     { label: 'Maturite', value: project.maturity || 'A qualifier' },
     { label: 'Cree le', value: formatShortDate(project.createdAt) },
   ];
+  // Priorite affichee derivee de nextAction.priority (Action Engine) plutot
+  // que du score local de completude — le libelle reste identique, seul le
+  // signal source change.
   const actionPriority =
-    score >= 90 ? 'Priorite haute' : score >= 75 ? 'Priorite moyenne' : 'Priorite a qualifier';
+    nextAction.priority === 'critical' || nextAction.priority === 'high'
+      ? 'Priorite haute'
+      : nextAction.priority === 'medium'
+        ? 'Priorite moyenne'
+        : 'Priorite a qualifier';
+  // S il existe un motif bloquant identifie par l Action Engine, on le
+  // montre en priorite : c est l information la plus actionnable. Sinon on
+  // retombe sur le dernier echange connu (signal local, sans equivalent
+  // dans NextAction).
   const actionSummary =
-    followUpTime.lastInteractionDate
-      ? `Dernier echange le ${formatShortDate(followUpTime.lastInteractionDate)}`
-      : 'Aucun echange date dans la demo';
+    nextAction.blockingReasons.length > 0
+      ? nextAction.blockingReasons[0]
+      : followUpTime.lastInteractionDate
+        ? `Dernier echange le ${formatShortDate(followUpTime.lastInteractionDate)}`
+        : 'Aucun echange date dans la demo';
 
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
@@ -1956,7 +1960,7 @@ function ProjectDetail() {
                 padding: '3px 10px',
                 borderRadius: '999px',
                 border: '1px solid var(--border)',
-                color: score >= 90 ? 'var(--accent)' : score >= 75 ? '#f59e0b' : 'var(--text-2)',
+                color: nextAction.priority === 'critical' || nextAction.priority === 'high' ? 'var(--accent)' : nextAction.priority === 'medium' ? '#f59e0b' : 'var(--text-2)',
               }}>
                 {actionPriority}
               </span>
