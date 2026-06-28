@@ -2390,32 +2390,6 @@ function ProjectDetail() {
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
-            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Actions devis
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
-              <button type="button" onClick={() => updateDemoQuoteStatus('draft', 'Brouillon simulé — aucune donnée réelle modifiée.')} style={demoActionButtonStyle('secondary')}>
-                {latestDevis ? 'Reprendre le devis' : 'Créer un devis'}
-              </button>
-              <button type="button" onClick={scrollToQuoteSection} style={demoActionButtonStyle('primary')} disabled={!latestDevis}>
-                Voir le devis
-              </button>
-              <button type="button" onClick={openDemoPdfPreview} style={demoActionButtonStyle('secondary')}>
-                Exporter PDF
-              </button>
-              <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis || !decision.canFollowUpQuote} style={demoActionButtonStyle('primary', !latestDevis || !decision.canFollowUpQuote)}>
-                Relancer
-              </button>
-              <button type="button" onClick={() => updateDemoQuoteStatus('accepted', 'Acceptation simulée — aucune donnée réelle modifiée.')} style={demoActionButtonStyle('success')}>
-                Marquer comme accepté
-              </button>
-              <button type="button" onClick={() => updateDemoQuoteStatus('declined', 'Refus simulé — aucune donnée réelle modifiée.')} style={demoActionButtonStyle('danger')}>
-                Marquer comme refusé
-              </button>
-            </div>
-          </div>
-
           {/* Suggestions de lignes de devis — version démo allégée du bloc
               prod (src/lib/quote-suggestions.ts + service profiles + modele
               de devis matché), trop couplé à des données métier (référentiel
@@ -2459,107 +2433,6 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Frais de déplacement — version démo statique du bloc prod
-              (haversineDistanceKm/calculateTravelCost dans
-              app/dashboard-v2/projet/[id]/page.tsx), qui dépend d'une
-              géocodification réelle de l'adresse artisan/chantier (Supabase)
-              absente en démo. On affiche ici des chiffres fixes avec un
-              libellé explicite "Simulation démo" plutôt que de brancher un
-              faux calcul de distance. */}
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '16px' }}>🚗</span>
-              <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>
-                Frais de déplacement estimés
-              </span>
-              <span style={{
-                marginLeft: 'auto',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: 'var(--text-3)',
-                border: '1px solid var(--border)',
-                borderRadius: '999px',
-                padding: '2px 8px',
-              }}>
-                Simulation démo
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller</p>
-                <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>18.4 km</p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
-                <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>36.8 km</p>
-              </div>
-              <div>
-                <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé</p>
-                <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>14.30 €</p>
-              </div>
-            </div>
-            <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
-              Données fictives à but de démonstration — aucune géolocalisation réelle n&apos;est effectuée en mode démo.
-            </p>
-          </div>
-
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
-            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Timeline devis
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(7, minmax(0, 1fr))', gap: '12px' }}>
-              {commercialTimeline.map((step, index) => (
-                <div key={step.id} style={{ display: 'flex', gap: '10px', alignItems: isMobile ? 'flex-start' : 'center' }}>
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '999px',
-                      flexShrink: 0,
-                      background: step.done ? 'rgba(34,197,94,0.16)' : 'var(--bg-hover)',
-                      color: step.done ? 'var(--accent)' : 'var(--text-3)',
-                      border: step.done ? '1px solid rgba(34,197,94,0.28)' : '1px solid var(--border)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {step.done ? '✓' : index + 1}
-                  </div>
-                  <span style={{ fontSize: '13px', color: step.done ? 'var(--text-1)' : 'var(--text-2)', lineHeight: 1.5 }}>
-                    {step.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Suivi commercial
-            </p>
-            <div style={{ display: 'grid', gap: '10px' }}>
-              {(project.activity || []).slice(0, 5).map((item: any) => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{item.label}</p>
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>{formatDateTime(item.date)}</p>
-                  </div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase' }}>{item.kind}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gap: '10px', marginTop: '14px' }}>
-              <button type="button" onClick={markFollowUpDone} style={demoActionButtonStyle('secondary')}>
-                Relance effectuée
-              </button>
-              <button type="button" onClick={planNextFollowUp} style={demoActionButtonStyle('secondary')}>
-                Planifier une relance
-              </button>
-            </div>
-          </div>
         </section>
 
         <div style={{
@@ -3660,7 +3533,7 @@ function ProjectDetail() {
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Nouveau rendez-vous</h2>
+              <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Planifier un rendez-vous</h2>
 
               <button
                 onClick={() => setShowRdvModal(false)}

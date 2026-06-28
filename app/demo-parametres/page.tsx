@@ -146,20 +146,22 @@ const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
       { id: 'profil-metier', label: 'Profil metier', icon: '🛠️' },
       { id: 'contact', label: 'Coordonnees', icon: '📍' },
       { id: 'legal', label: 'Infos legales', icon: '📋' },
-      { id: 'vehicule', label: 'Deplacements', icon: '🚗' },
     ],
   },
   {
     label: 'Activite',
     items: [
-      { id: 'widget', label: 'Mon widget', icon: '🎨' },
+      { id: 'vehicule', label: 'Deplacements', icon: '🚗' },
       { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
-      { id: 'apparence', label: 'Apparence', icon: '🌓' },
+      { id: 'widget', label: 'Mon widget', icon: '🎨' },
     ],
   },
   {
     label: 'Compte',
-    items: [{ id: 'offre', label: 'Offre & quotas', icon: '💳' }],
+    items: [
+      { id: 'apparence', label: 'Apparence', icon: '🌓' },
+      { id: 'offre', label: 'Offre & quotas', icon: '💳' },
+    ],
   },
 ];
 
@@ -1106,23 +1108,6 @@ export default function DemoParametresPage() {
         </div>
       </DemoSectionCard>
 
-      <DemoSectionCard title="Qualification" description="Questions et canaux simulant la configuration d'un assistant commercial deja bien cadre.">
-        <div style={{ display: 'grid', gap: '18px' }}>
-          <TagSelector
-            label="Questions a demander"
-            options={WIDGET_QUESTION_OPTIONS}
-            selected={settings.widget.requestedFields}
-            onToggle={(value) => toggleWidgetArrayValue('requestedFields', value)}
-          />
-          <TagSelector
-            label="Canaux actifs"
-            options={WIDGET_CHANNEL_OPTIONS}
-            selected={settings.widget.activeChannels}
-            onToggle={(value) => toggleWidgetArrayValue('activeChannels', value)}
-          />
-        </div>
-      </DemoSectionCard>
-
       <DemoSectionCard title="Preview widget" description="Apercu visuel local pour verifier le ton, le badge demo et la hierarchie de l'assistant.">
         <div
           style={{
@@ -1289,154 +1274,47 @@ export default function DemoParametresPage() {
     <div>
       <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Apparence</h2>
 
-      <DemoSectionCard title="Identite visuelle" description="La personnalisation ci-dessous reste locale et permet d'illustrer un rendu premium cote prospect.">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
-          <Field label="Nom affiche" value={settings.appearance.displayName} onChange={(value) => updateAppearanceField('displayName', value)} />
-          <SelectField
-            label="Mode visuel"
-            value={settings.appearance.visualMode}
-            onChange={(value) => updateAppearanceField('visualMode', value)}
-            options={APPEARANCE_MODE_OPTIONS}
-          />
-          <SelectField
-            label="Style de ton"
-            value={settings.appearance.toneStyle}
-            onChange={(value) => updateAppearanceField('toneStyle', value)}
-            options={APPEARANCE_TONE_OPTIONS}
-          />
-          <Field label="Logo entreprise" value={settings.appearance.logoLabel} onChange={(value) => updateAppearanceField('logoLabel', value)} />
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
-          {COLOR_PRESETS.map((color) => (
-            <ColorSwatch
-              key={color}
-              color={color}
-              active={settings.appearance.primaryColor === color}
-              onClick={() => {
-                updateAppearanceField('primaryColor', color);
-                updateAppearanceField('buttonColor', color);
-              }}
-            />
-          ))}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-          <Field label="Couleur principale" value={settings.appearance.primaryColor} onChange={(value) => updateAppearanceField('primaryColor', value)} />
-          <Field label="Couleur bouton principal" value={settings.appearance.buttonColor} onChange={(value) => updateAppearanceField('buttonColor', value)} />
-          <Field label="Couleur accent" value={settings.appearance.accentColor} onChange={(value) => updateAppearanceField('accentColor', value)} />
-        </div>
-      </DemoSectionCard>
-
-      <DemoSectionCard title="Logo et rendu demo" description="Le changement de logo est simule localement, sans upload ni integration externe.">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'center' }}>
-          <div
-            style={{
-              width: '108px',
-              height: '108px',
-              borderRadius: '24px',
-              background: `linear-gradient(135deg, ${settings.appearance.primaryColor}, ${settings.appearance.accentColor})`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#09090b',
-              fontWeight: 800,
-              fontSize: '24px',
-            }}
-          >
-            {settings.appearance.logoLabel}
-          </div>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-              Apercu logo demo pour illustrer l'identite visible dans le widget et les parcours prospect.
-            </p>
+      <DemoSectionCard title="Theme du dashboard" description="Choisissez l'apparence de votre espace de travail Kadria. Ce reglage n'affecte que votre dashboard, pas le widget visible par vos prospects.">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
+          {[
+            { value: 'Sombre', label: 'Sombre', icon: '🌙', preview: { bg: '#09090b', card: '#18181b', text: '#f4f4f5' } },
+            { value: 'Clair', label: 'Clair', icon: '☀️', preview: { bg: '#fafafa', card: '#ffffff', text: '#18181b' } },
+          ].map((opt) => (
             <button
+              key={opt.value}
               type="button"
-              onClick={() => setStatusMessage('Changement de logo simule - aucun upload reel effectue.')}
+              onClick={() => updateAppearanceField('visualMode', opt.value)}
               style={{
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                color: 'var(--text-2)',
-                borderRadius: '10px',
-                padding: '10px 14px',
-                fontSize: '13px',
-                fontWeight: 700,
+                flex: 1,
+                minWidth: '160px',
+                background: opt.preview.bg,
+                border: settings.appearance.visualMode === opt.value ? '2px solid var(--accent)' : '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: '20px',
                 cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'border-color 0.2s',
               }}
             >
-              Changer le logo
+              <div style={{ background: opt.preview.card, border: '1px solid rgba(128,128,128,0.15)', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+                <div style={{ width: '60%', height: '8px', background: opt.preview.text, opacity: 0.8, borderRadius: '4px', marginBottom: '6px' }} />
+                <div style={{ width: '40%', height: '8px', background: opt.preview.text, opacity: 0.4, borderRadius: '4px' }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>{opt.icon}</span>
+                <span style={{ color: opt.preview.text, fontWeight: 600, fontSize: '14px' }}>{opt.label}</span>
+                {settings.appearance.visualMode === opt.value && (
+                  <span style={{ marginLeft: 'auto', color: 'var(--accent)', fontSize: '12px' }}>✓ Actif</span>
+                )}
+              </div>
             </button>
-          </div>
-        </div>
-      </DemoSectionCard>
-
-      <DemoSectionCard title="Preview apparence" description="Mini apercu du widget, du CTA et d'un badge de projet pour verifier les reglages choisis.">
-        <div style={{ display: 'grid', gap: '14px', maxWidth: '380px' }}>
-          <div
-            style={{
-              background: settings.appearance.visualMode === 'Clair' ? '#f4f4f5' : '#09090b',
-              color: settings.appearance.visualMode === 'Clair' ? '#18181b' : '#f4f4f5',
-              border: '1px solid var(--border)',
-              borderRadius: '18px',
-              padding: '18px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <strong>{settings.appearance.displayName}</strong>
-              <span
-                style={{
-                  borderRadius: '999px',
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  background: `${settings.appearance.primaryColor}22`,
-                  color: settings.appearance.primaryColor,
-                }}
-              >
-                {settings.appearance.toneStyle}
-              </span>
-            </div>
-            <p style={{ margin: '0 0 14px', fontSize: '13px', lineHeight: 1.6, opacity: 0.86 }}>
-              Interface {settings.appearance.visualMode.toLowerCase()} avec CTA personnalise pour vos prospects.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                style={{
-                  background: settings.appearance.buttonColor,
-                  color: '#09090b',
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '10px 14px',
-                  fontWeight: 700,
-                }}
-              >
-                Demarrer
-              </button>
-              <span
-                style={{
-                  borderRadius: '999px',
-                  padding: '8px 10px',
-                  border: `1px solid ${settings.appearance.accentColor}`,
-                  color: settings.appearance.accentColor,
-                  fontSize: '12px',
-                  fontWeight: 700,
-                }}
-              >
-                Score projet 92
-              </span>
-            </div>
-          </div>
+          ))}
         </div>
       </DemoSectionCard>
     </div>
   );
 
   const renderOfferSection = () => {
-    const voiceCallsUsage = Math.round(
-      (settings.offer.quotas.voiceCalls.used / settings.offer.quotas.voiceCalls.limit) * 100
-    );
-
     return (
       <div>
         <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Offre & quotas</h2>
@@ -1493,208 +1371,38 @@ export default function DemoParametresPage() {
               >
                 Gerer mon abonnement
               </button>
-              <button
-                type="button"
-                onClick={() => triggerOfferCta('Voir les options')}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--text-2)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  padding: '11px 14px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Voir les options
-              </button>
-              <button
-                type="button"
-                onClick={() => triggerOfferCta('Contacter Kadria')}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--text-2)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px',
-                  padding: '11px 14px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Contacter Kadria
-              </button>
             </div>
           </div>
         </DemoSectionCard>
 
-        <DemoSectionCard title="Quotas du mois" description="Apercu d'usage fictif pour contextualiser le plan Performance cote artisan.">
+        <DemoSectionCard title="Utilisation du mois" description="Apercu d'usage fictif pour contextualiser le plan Performance cote artisan.">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
-              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.projects.label}</p>
-              <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: 800 }}>
+            <div>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Dossiers</p>
+              <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                 {settings.offer.quotas.projects.used} / {settings.offer.quotas.projects.limitLabel}
               </p>
-              <div style={{ marginTop: '12px' }}>
-                <MetricPill label="Inclus" tone="included" />
-              </div>
             </div>
-
-            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
-              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.quotes.label}</p>
-              <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: 800 }}>
-                {settings.offer.quotas.quotes.used} / {settings.offer.quotas.quotes.limitLabel}
-              </p>
-              <div style={{ marginTop: '12px' }}>
-                <MetricPill label="Inclus" tone="included" />
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
-                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.voiceCalls.label}</p>
-                <MetricPill label={`${voiceCallsUsage}%`} tone="soon" />
-              </div>
-              <p style={{ margin: '0 0 10px', fontSize: '18px', fontWeight: 800 }}>
+            <div>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Appels vocaux</p>
+              <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                 {settings.offer.quotas.voiceCalls.used} / {settings.offer.quotas.voiceCalls.limit}
               </p>
-              <ProgressBar value={voiceCallsUsage} tone="#f59e0b" />
             </div>
-
-            <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px' }}>
-              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{settings.offer.quotas.voiceMinutes.label}</p>
-              <p style={{ margin: '6px 0 12px', fontSize: '18px', fontWeight: 800 }}>
+            <div>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Minutes vocales</p>
+              <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                 {settings.offer.quotas.voiceMinutes.used} {settings.offer.quotas.voiceMinutes.unit}
               </p>
-              <ProgressBar value={64} tone="#22c55e" />
-            </div>
-
-            {[settings.offer.quotas.pdfExport, settings.offer.quotas.pipeline, settings.offer.quotas.priorities, settings.offer.quotas.followUps].map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  background: 'var(--bg-hover)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '14px',
-                  padding: '16px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>{item.label}</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '16px', fontWeight: 700 }}>{item.status}</p>
-                </div>
-                <MetricPill label={item.status} tone={item.tone as 'included' | 'neutral' | 'soon'} />
-              </div>
-            ))}
-          </div>
-        </DemoSectionCard>
-
-        <DemoSectionCard title="Fonctionnalites incluses" description="Vue synthese des avantages visibles par un artisan sur le plan Performance.">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
-            {settings.offer.features.map((feature) => (
-              <div
-                key={feature}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  background: 'var(--bg-hover)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                }}
-              >
-                <span
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '999px',
-                    background: 'rgba(34,197,94,0.18)',
-                    color: 'var(--accent)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    flexShrink: 0,
-                  }}
-                >
-                  ✓
-                </span>
-                <span style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>{feature}</span>
-              </div>
-            ))}
-          </div>
-        </DemoSectionCard>
-
-        <DemoSectionCard title="Comparaison rapide" description="Repere simple pour contextualiser le plan actuel, sans refaire toute la page tarifs.">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-            {settings.offer.planComparison.map((plan) => (
-              <div
-                key={plan.name}
-                style={{
-                  background: plan.highlight ? 'rgba(34,197,94,0.10)' : 'var(--bg-hover)',
-                  border: plan.highlight ? '1px solid rgba(34,197,94,0.28)' : '1px solid var(--border)',
-                  borderRadius: '14px',
-                  padding: '16px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
-                  <p style={{ margin: 0, fontSize: '15px', fontWeight: 800 }}>{plan.name}</p>
-                  {plan.highlight && <MetricPill label="Actuel" tone="included" />}
-                </div>
-                <p style={{ margin: '10px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-                  {plan.summary}
-                </p>
-              </div>
-            ))}
-          </div>
-        </DemoSectionCard>
-
-        <DemoSectionCard title="Add-on site vitrine" description="Option presentee localement dans la demo, sans aucune demande ni facturation reelle.">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '16px',
-              alignItems: 'start',
-            }}
-          >
-            <div>
-              <p style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>{settings.offer.siteAddon.title}</p>
-              <p style={{ margin: '10px 0 0', color: 'var(--text-2)', fontSize: '14px' }}>{settings.offer.siteAddon.monthlyPrice}</p>
-              <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '14px' }}>{settings.offer.siteAddon.oneShotPrice}</p>
-              <p style={{ margin: '10px 0 0', color: 'var(--text-3)', fontSize: '13px' }}>{settings.offer.siteAddon.availability}</p>
-            </div>
-
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <button
-                type="button"
-                onClick={() => triggerOfferCta("Demander l'option site")}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--accent)',
-                  border: '1px solid rgba(34,197,94,0.28)',
-                  borderRadius: '10px',
-                  padding: '11px 14px',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                Demander l'option site
-              </button>
-              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.6 }}>
-                Action simulee - aucune demande reelle envoyee.
-              </p>
             </div>
           </div>
         </DemoSectionCard>
+
+        <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
+          <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+            Ces compteurs se reinitialisent automatiquement chaque mois. Aucune action n&apos;est requise de votre part.
+          </p>
+        </div>
       </div>
     );
   };
@@ -1757,24 +1465,6 @@ export default function DemoParametresPage() {
       statusMessage={statusMessage}
     >
       {renderSection()}
-      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '8px' }}>
-        <button
-          type="button"
-          onClick={reset}
-          style={{
-            background: 'transparent',
-            border: '1px solid var(--border)',
-            color: 'var(--text-2)',
-            borderRadius: '10px',
-            padding: '10px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Reinitialiser les donnees demo
-        </button>
-      </div>
     </SettingsPageShell>
   );
 }
