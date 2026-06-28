@@ -75,6 +75,87 @@ export const DEMO_SETTINGS_PROFILE = {
   plan: 'performance',
 };
 
+export const DEMO_SETTINGS_CONFIGURATION = {
+  entreprise: {
+    companyName: 'AB Elec',
+    artisanId: 'Artisan_demo',
+    mainTrade: 'Electricite generale',
+    slogan: 'Electricite, depannage et renovation a Rouen',
+    description:
+      'AB Elec accompagne les particuliers et professionnels pour les depannages electriques, renovations, mises aux normes, tableaux electriques et bornes de recharge.',
+    interventionArea: 'Rouen et 30 km autour',
+    foundedYear: '2018',
+    teamSize: 'Artisan independant',
+    activityStatus: 'Actif',
+  },
+  profile: {
+    mainTrade: 'Electricite generale',
+    secondaryTrades: [
+      'Depannage electrique',
+      'Tableau electrique',
+      'Mise aux normes',
+      'Borne de recharge',
+      'Renovation electrique',
+      'Eclairage exterieur',
+    ],
+    offeredServices: [
+      'Diagnostic et recherche de panne',
+      'Remplacement de tableau',
+      'Creation de circuits',
+      'Installation de borne IRVE',
+      'Mise en securite',
+    ],
+    clientTypes: ['Particuliers', 'Petits commerces', 'Syndics / coproprietes'],
+    acceptsEmergencies: true,
+    priorityRequests: [
+      'Panne totale',
+      'Tableau dangereux',
+      'Projet avec budget confirme',
+      'Demande urgente sous 7 jours',
+    ],
+    filteredRequests: [
+      'Petits depannages hors zone',
+      'Demandes sans budget ni delai',
+      'Chantiers multi-lots trop vagues',
+    ],
+  },
+  contact: {
+    contactName: 'Alexandre Bernard',
+    phone: '06 12 34 56 78',
+    email: 'contact@ab-elec-demo.fr',
+    address: '12 rue des Artisans',
+    city: 'Rouen',
+    postalCode: '76000',
+    website: 'https://ab-elec-demo.fr',
+    callHours: 'Lun-Ven 8h30-18h30',
+    preferredChannel: 'Telephone',
+    contactMessage:
+      'Bonjour, laissez-nous quelques details sur votre besoin et vos disponibilites. Nous vous rappelons rapidement pour qualifier votre projet.',
+  },
+  legal: {
+    companyLegalName: 'AB Elec SASU',
+    siret: '85214796300018',
+    vatNumber: 'FR52852147963',
+    decennialInsuranceEnabled: true,
+    insurerName: 'MMA Pro Batiment',
+    policyNumber: 'DEC-ROUEN-2026-1482',
+    quoteMentions:
+      'Devis valable 30 jours. Intervention planifiee apres validation ecrite du client et versement de l accompte si applicable.',
+    paymentTerms: '40% a la commande, solde a la reception. Paiement par virement ou cheque.',
+  },
+  travel: {
+    departureAddress: '12 rue des Artisans, 76000 Rouen',
+    radiusKm: '30',
+    standardFee: '39',
+    vehiclePowertrain: 'Diesel utilitaire',
+    estimatedConsumption: '7.2',
+    travelCostEnabled: true,
+    minimumIntervention: '120',
+    priorityZones: ['Rouen centre', 'Bois-Guillaume', 'Mont-Saint-Aignan', 'Sotteville-les-Rouen'],
+    excludedZones: ['Paris intra-muros', 'Le Havre port', 'Interventions hors Normandie'],
+  },
+} as const;
+
 export const DEMO_PROJECTS: DemoProject[] = [
   {
     id: 'demo_001',

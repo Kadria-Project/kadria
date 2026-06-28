@@ -8,15 +8,73 @@ import {
   type SettingsSaveState,
   type SettingsShellGroup,
 } from '@/src/components/settings/SettingsPageShell';
-import { DEMO_SETTINGS_PROFILE } from '@/src/lib/demo-data';
+import { DEMO_SETTINGS_CONFIGURATION } from '@/src/lib/demo-data';
+
+type DemoSectionKey =
+  | 'entreprise'
+  | 'profil-metier'
+  | 'contact'
+  | 'legal'
+  | 'vehicule'
+  | 'widget'
+  | 'catalogue'
+  | 'apparence'
+  | 'offre';
 
 type DemoSettingsState = {
-  companyName: string;
-  mainTrade: string;
-  city: string;
-  interventionArea: string;
-  phone: string;
-  email: string;
+  entreprise: {
+    companyName: string;
+    artisanId: string;
+    mainTrade: string;
+    slogan: string;
+    description: string;
+    interventionArea: string;
+    foundedYear: string;
+    teamSize: string;
+    activityStatus: string;
+  };
+  profile: {
+    mainTrade: string;
+    secondaryTrades: string[];
+    offeredServices: string[];
+    clientTypes: string[];
+    acceptsEmergencies: boolean;
+    priorityRequests: string[];
+    filteredRequests: string[];
+  };
+  contact: {
+    contactName: string;
+    phone: string;
+    email: string;
+    address: string;
+    city: string;
+    postalCode: string;
+    website: string;
+    callHours: string;
+    preferredChannel: string;
+    contactMessage: string;
+  };
+  legal: {
+    companyLegalName: string;
+    siret: string;
+    vatNumber: string;
+    decennialInsuranceEnabled: boolean;
+    insurerName: string;
+    policyNumber: string;
+    quoteMentions: string;
+    paymentTerms: string;
+  };
+  travel: {
+    departureAddress: string;
+    radiusKm: string;
+    standardFee: string;
+    vehiclePowertrain: string;
+    estimatedConsumption: string;
+    travelCostEnabled: boolean;
+    minimumIntervention: string;
+    priorityZones: string[];
+    excludedZones: string[];
+  };
 };
 
 const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
@@ -44,14 +102,50 @@ const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
   },
 ];
 
-const INITIAL_SETTINGS: DemoSettingsState = {
-  companyName: DEMO_SETTINGS_PROFILE.companyName,
-  mainTrade: DEMO_SETTINGS_PROFILE.mainTrade,
-  city: DEMO_SETTINGS_PROFILE.city,
-  interventionArea: DEMO_SETTINGS_PROFILE.interventionArea,
-  phone: DEMO_SETTINGS_PROFILE.phone,
-  email: DEMO_SETTINGS_PROFILE.email,
-};
+const CLIENT_TYPE_OPTIONS = ['Particuliers', 'Petits commerces', 'Syndics / coproprietes', 'Bureaux'];
+const PROFILE_OPTIONS = [
+  'Depannage electrique',
+  'Tableau electrique',
+  'Mise aux normes',
+  'Borne de recharge',
+  'Renovation electrique',
+  'Eclairage exterieur',
+];
+const PRIORITY_OPTIONS = [
+  'Panne totale',
+  'Tableau dangereux',
+  'Projet avec budget confirme',
+  'Demande urgente sous 7 jours',
+  'Visite technique planifiee',
+];
+const FILTER_OPTIONS = [
+  'Petits depannages hors zone',
+  'Demandes sans budget ni delai',
+  'Chantiers multi-lots trop vagues',
+  'Interventions le week-end hors urgence',
+];
+const SERVICE_OPTIONS = [
+  'Diagnostic et recherche de panne',
+  'Remplacement de tableau',
+  'Creation de circuits',
+  'Installation de borne IRVE',
+  'Mise en securite',
+  'Modernisation eclairage',
+];
+
+const INITIAL_SETTINGS: DemoSettingsState = JSON.parse(
+  JSON.stringify({
+    entreprise: DEMO_SETTINGS_CONFIGURATION.entreprise,
+    profile: DEMO_SETTINGS_CONFIGURATION.profile,
+    contact: DEMO_SETTINGS_CONFIGURATION.contact,
+    legal: DEMO_SETTINGS_CONFIGURATION.legal,
+    travel: DEMO_SETTINGS_CONFIGURATION.travel,
+  })
+);
+
+function createInitialSettings(): DemoSettingsState {
+  return JSON.parse(JSON.stringify(INITIAL_SETTINGS));
+}
 
 function DemoSectionCard({
   children,
@@ -113,6 +207,187 @@ function Field({
   );
 }
 
+function TextareaField({
+  label,
+  onChange,
+  rows = 4,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  rows?: number;
+  value: string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <label style={{ color: 'var(--text-2)', fontSize: '12px', fontWeight: 600 }}>{label}</label>
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={{
+          width: '100%',
+          resize: 'vertical',
+          background: 'var(--bg-hover)',
+          border: '1px solid var(--border)',
+          borderRadius: '10px',
+          padding: '11px 12px',
+          color: 'var(--text-1)',
+          fontSize: '14px',
+          outline: 'none',
+          lineHeight: 1.6,
+        }}
+      />
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: string[];
+  value: string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <label style={{ color: 'var(--text-2)', fontSize: '12px', fontWeight: 600 }}>{label}</label>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        style={{
+          width: '100%',
+          background: 'var(--bg-hover)',
+          border: '1px solid var(--border)',
+          borderRadius: '10px',
+          padding: '11px 12px',
+          color: 'var(--text-1)',
+          fontSize: '14px',
+          outline: 'none',
+        }}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ToggleField({
+  checked,
+  label,
+  onChange,
+  subtitle,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (value: boolean) => void;
+  subtitle?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      style={{
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px',
+        background: 'var(--bg-hover)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '14px 16px',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      <div>
+        <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 600 }}>{label}</p>
+        {subtitle && <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px' }}>{subtitle}</p>}
+      </div>
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          width: '46px',
+          height: '26px',
+          background: checked ? 'var(--accent)' : '#3f3f46',
+          borderRadius: '999px',
+          padding: '3px',
+          transition: 'all 0.2s',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            width: '20px',
+            height: '20px',
+            background: '#fff',
+            borderRadius: '50%',
+            transform: checked ? 'translateX(20px)' : 'translateX(0)',
+            transition: 'transform 0.2s',
+          }}
+        />
+      </span>
+    </button>
+  );
+}
+
+function TagSelector({
+  label,
+  options,
+  selected,
+  onToggle,
+  subtitle,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  subtitle?: string;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div>
+        <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px', fontWeight: 600 }}>{label}</p>
+        {subtitle && <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px' }}>{subtitle}</p>}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        {options.map((option) => {
+          const active = selected.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onToggle(option)}
+              style={{
+                background: active ? 'rgba(34,197,94,0.12)' : 'var(--bg-hover)',
+                color: active ? 'var(--accent)' : 'var(--text-2)',
+                border: active ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
+                borderRadius: '999px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderSection({
   body,
   kicker,
@@ -146,11 +421,11 @@ function PlaceholderSection({
 
 export default function DemoParametresPage() {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState('entreprise');
-  const [settings, setSettings] = useState(INITIAL_SETTINGS);
+  const [activeSection, setActiveSection] = useState<DemoSectionKey>('entreprise');
+  const [settings, setSettings] = useState<DemoSettingsState>(createInitialSettings);
   const [saveState, setSaveState] = useState<SettingsSaveState>('idle');
   const [statusMessage, setStatusMessage] = useState<string | null>(
-    'Mode demo - aucune donnee reelle enregistree. Les sauvegardes sont simulees localement.'
+    'Mode demo - ces informations sont fictives et ne sont pas enregistrees.'
   );
 
   useEffect(() => {
@@ -159,8 +434,70 @@ export default function DemoParametresPage() {
     return () => window.clearTimeout(timeout);
   }, [saveState]);
 
-  const updateField = <K extends keyof DemoSettingsState>(key: K, value: DemoSettingsState[K]) => {
-    setSettings((current) => ({ ...current, [key]: value }));
+  const updateEntrepriseField = <K extends keyof DemoSettingsState['entreprise']>(
+    key: K,
+    value: DemoSettingsState['entreprise'][K]
+  ) => {
+    setSettings((current) => ({ ...current, entreprise: { ...current.entreprise, [key]: value } }));
+  };
+
+  const updateProfileField = <K extends keyof DemoSettingsState['profile']>(
+    key: K,
+    value: DemoSettingsState['profile'][K]
+  ) => {
+    setSettings((current) => ({ ...current, profile: { ...current.profile, [key]: value } }));
+  };
+
+  const updateContactField = <K extends keyof DemoSettingsState['contact']>(
+    key: K,
+    value: DemoSettingsState['contact'][K]
+  ) => {
+    setSettings((current) => ({ ...current, contact: { ...current.contact, [key]: value } }));
+  };
+
+  const updateLegalField = <K extends keyof DemoSettingsState['legal']>(
+    key: K,
+    value: DemoSettingsState['legal'][K]
+  ) => {
+    setSettings((current) => ({ ...current, legal: { ...current.legal, [key]: value } }));
+  };
+
+  const updateTravelField = <K extends keyof DemoSettingsState['travel']>(
+    key: K,
+    value: DemoSettingsState['travel'][K]
+  ) => {
+    setSettings((current) => ({ ...current, travel: { ...current.travel, [key]: value } }));
+  };
+
+  const toggleProfileArrayValue = (
+    key: 'secondaryTrades' | 'offeredServices' | 'clientTypes' | 'priorityRequests' | 'filteredRequests',
+    value: string
+  ) => {
+    setSettings((current) => {
+      const values = current.profile[key];
+      const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+      return {
+        ...current,
+        profile: {
+          ...current.profile,
+          [key]: nextValues,
+        },
+      };
+    });
+  };
+
+  const toggleTravelArrayValue = (key: 'priorityZones' | 'excludedZones', value: string) => {
+    setSettings((current) => {
+      const values = current.travel[key];
+      const nextValues = values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+      return {
+        ...current,
+        travel: {
+          ...current.travel,
+          [key]: nextValues,
+        },
+      };
+    });
   };
 
   const save = () => {
@@ -172,114 +509,259 @@ export default function DemoParametresPage() {
     }, 450);
   };
 
-  const renderSection = () => {
-    if (activeSection === 'entreprise') {
-      return (
-        <div>
-          <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🏢 Mon entreprise</h2>
+  const reset = () => {
+    setSettings(createInitialSettings());
+    setSaveState('idle');
+    setStatusMessage("Configuration reinitialisee localement - l'etat initial demo est restaure.");
+  };
 
-          <DemoSectionCard
-            title="Identite"
-            description="Base mock de l'entreprise de demonstration, editee localement dans cette session."
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '14px',
-              }}
-            >
-              <Field label="Nom de l'entreprise" value={settings.companyName} onChange={(value) => updateField('companyName', value)} />
-              <Field label="Metier principal" value={settings.mainTrade} onChange={(value) => updateField('mainTrade', value)} />
-              <Field label="Ville" value={settings.city} onChange={(value) => updateField('city', value)} />
-              <Field
-                label="Zone d'intervention"
-                value={settings.interventionArea}
-                onChange={(value) => updateField('interventionArea', value)}
-              />
-              <Field label="Telephone" value={settings.phone} onChange={(value) => updateField('phone', value)} />
-              <Field label="Email" value={settings.email} onChange={(value) => updateField('email', value)} />
-            </div>
-          </DemoSectionCard>
+  const renderEntrepriseSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🏢 Mon entreprise</h2>
 
-          <DemoSectionCard
-            title="Resume demo"
-            description="Cette carte sert de point d'ancrage visuel pour rapprocher la structure de la page demo du rendu production."
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '12px',
-              }}
-            >
-              {[
-                { label: 'Artisan ID', value: DEMO_SETTINGS_PROFILE.artisanId },
-                { label: 'Adresse', value: DEMO_SETTINGS_PROFILE.address },
-                { label: 'Plan', value: DEMO_SETTINGS_PROFILE.plan },
-                { label: 'Specialites', value: DEMO_SETTINGS_PROFILE.secondaryTrades.join(', ') },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  style={{
-                    background: 'var(--bg)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                  }}
-                >
-                  <p style={{ margin: '0 0 6px', color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    {item.label}
-                  </p>
-                  <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '13px', lineHeight: 1.6 }}>{item.value}</p>
-                </div>
-              ))}
-            </div>
-          </DemoSectionCard>
+      <DemoSectionCard
+        title="Identite de l'entreprise"
+        description="Section de demonstration inspiree de la configuration production. Toutes les modifications restent locales."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Nom de l'entreprise" value={settings.entreprise.companyName} onChange={(value) => updateEntrepriseField('companyName', value)} />
+          <Field label="Artisan ID" value={settings.entreprise.artisanId} onChange={(value) => updateEntrepriseField('artisanId', value)} />
+          <Field label="Metier principal" value={settings.entreprise.mainTrade} onChange={(value) => updateEntrepriseField('mainTrade', value)} />
+          <Field label="Slogan court" value={settings.entreprise.slogan} onChange={(value) => updateEntrepriseField('slogan', value)} />
+          <Field
+            label="Zone d'intervention"
+            value={settings.entreprise.interventionArea}
+            onChange={(value) => updateEntrepriseField('interventionArea', value)}
+          />
+          <Field label="Annee de creation" value={settings.entreprise.foundedYear} onChange={(value) => updateEntrepriseField('foundedYear', value)} />
+          <SelectField
+            label="Taille"
+            value={settings.entreprise.teamSize}
+            onChange={(value) => updateEntrepriseField('teamSize', value)}
+            options={['Artisan independant', 'Equipe de 2 a 5', 'PME locale']}
+          />
+          <SelectField
+            label="Statut d'activite"
+            value={settings.entreprise.activityStatus}
+            onChange={(value) => updateEntrepriseField('activityStatus', value)}
+            options={['Actif', 'En developpement', 'Plein regime']}
+          />
         </div>
-      );
-    }
+      </DemoSectionCard>
 
-    if (activeSection === 'profil-metier') {
-      return (
-        <PlaceholderSection
-          title="🛠️ Profil metier"
-          kicker="Configuration metier"
-          body="La navigation, le layout et le rendu de carte sont en place. Les champs metier detailles, prestations et exclusions seront raccordes dans le lot 3B."
+      <DemoSectionCard
+        title="Presentation"
+        description="Texte de presentation utilise pour donner un rendu realiste a la demo."
+      >
+        <TextareaField
+          label="Description de l'activite"
+          rows={5}
+          value={settings.entreprise.description}
+          onChange={(value) => updateEntrepriseField('description', value)}
         />
-      );
-    }
+      </DemoSectionCard>
+    </div>
+  );
 
-    if (activeSection === 'contact') {
-      return (
-        <PlaceholderSection
-          title="📍 Coordonnees"
-          kicker="Coordonnees de l'entreprise"
-          body="Le shell reproduit deja la structure de section production. Les champs complets d'adresse, geolocalisation et validations seront ajoutes dans le lot suivant."
+  const renderProfileSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🛠️ Profil metier</h2>
+
+      <DemoSectionCard
+        title="Positionnement metier"
+        description="Le profil metier demo montre un artisan electricien deja bien configure, avec des priorites commerciales credibles."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+          <Field label="Metier principal" value={settings.profile.mainTrade} onChange={(value) => updateProfileField('mainTrade', value)} />
+          <ToggleField
+            label="Urgences acceptees"
+            subtitle="Active le traitement prioritaire des demandes critiques."
+            checked={settings.profile.acceptsEmergencies}
+            onChange={(value) => updateProfileField('acceptsEmergencies', value)}
+          />
+        </div>
+
+        <TagSelector
+            label="Metiers secondaires"
+            options={PROFILE_OPTIONS}
+            selected={settings.profile.secondaryTrades}
+            onToggle={(value) => toggleProfileArrayValue('secondaryTrades', value)}
+          />
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Prestations et typologie de clients" description="Selections mock cliquables localement, sans aucun appel externe.">
+        <div style={{ display: 'grid', gap: '18px' }}>
+          <TagSelector
+            label="Prestations proposees"
+            options={SERVICE_OPTIONS}
+            selected={settings.profile.offeredServices}
+            onToggle={(value) => toggleProfileArrayValue('offeredServices', value)}
+          />
+          <TagSelector
+            label="Types de clients"
+            options={CLIENT_TYPE_OPTIONS}
+            selected={settings.profile.clientTypes}
+            onToggle={(value) => toggleProfileArrayValue('clientTypes', value)}
+          />
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Demandes a prioriser" description="Aide l'assistant demo a afficher un profil d'artisan reactif et qualifie.">
+        <div style={{ display: 'grid', gap: '18px' }}>
+          <TagSelector
+            label="Priorites commerciales"
+            options={PRIORITY_OPTIONS}
+            selected={settings.profile.priorityRequests}
+            onToggle={(value) => toggleProfileArrayValue('priorityRequests', value)}
+          />
+          <TagSelector
+            label="Demandes a filtrer"
+            options={FILTER_OPTIONS}
+            selected={settings.profile.filteredRequests}
+            onToggle={(value) => toggleProfileArrayValue('filteredRequests', value)}
+          />
+        </div>
+      </DemoSectionCard>
+    </div>
+  );
+
+  const renderContactSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>📍 Coordonnees</h2>
+
+      <DemoSectionCard
+        title="Coordonnees principales"
+        description="Tous les champs sont editables localement pour simuler un compte artisan complet."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Nom du contact principal" value={settings.contact.contactName} onChange={(value) => updateContactField('contactName', value)} />
+          <Field label="Telephone" value={settings.contact.phone} onChange={(value) => updateContactField('phone', value)} />
+          <Field label="Email" value={settings.contact.email} onChange={(value) => updateContactField('email', value)} />
+          <Field label="Adresse entreprise" value={settings.contact.address} onChange={(value) => updateContactField('address', value)} />
+          <Field label="Ville" value={settings.contact.city} onChange={(value) => updateContactField('city', value)} />
+          <Field label="Code postal" value={settings.contact.postalCode} onChange={(value) => updateContactField('postalCode', value)} />
+          <Field label="Site web" value={settings.contact.website} onChange={(value) => updateContactField('website', value)} />
+          <Field label="Horaires d'appel" value={settings.contact.callHours} onChange={(value) => updateContactField('callHours', value)} />
+          <SelectField
+            label="Canal prefere"
+            value={settings.contact.preferredChannel}
+            onChange={(value) => updateContactField('preferredChannel', value)}
+            options={['Telephone', 'Email', 'SMS', 'Email puis rappel']}
+          />
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Message de prise de contact" description="Microcopy visible en demo pour montrer le niveau de finition du profil.">
+        <TextareaField
+          label="Message de prise de contact"
+          rows={4}
+          value={settings.contact.contactMessage}
+          onChange={(value) => updateContactField('contactMessage', value)}
         />
-      );
-    }
+      </DemoSectionCard>
+    </div>
+  );
 
-    if (activeSection === 'legal') {
-      return (
-        <PlaceholderSection
-          title="📋 Infos legales"
-          kicker="Informations legales"
-          body="La zone est reservee pour les donnees juridiques, assurance et numerotation. Ce lot garde uniquement la structure visuelle sans aucune mutation reelle."
-        />
-      );
-    }
+  const renderLegalSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>📋 Infos legales</h2>
 
-    if (activeSection === 'vehicule') {
-      return (
-        <PlaceholderSection
-          title="🚗 Deplacements"
-          kicker="Parametres de deplacement"
-          body="Le lot 3A pose la section et la carte de contenu. Les reglages kilometriques et calculs avances de deplacement restent volontairement hors scope pour l'instant."
-        />
-      );
-    }
+      <DemoSectionCard
+        title="Informations legales"
+        description="Toutes les valeurs ci-dessous sont fictives mais plausibles pour une demonstration premium."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Raison sociale" value={settings.legal.companyLegalName} onChange={(value) => updateLegalField('companyLegalName', value)} />
+          <Field label="SIRET fictif" value={settings.legal.siret} onChange={(value) => updateLegalField('siret', value)} />
+          <Field label="TVA intracom fictive" value={settings.legal.vatNumber} onChange={(value) => updateLegalField('vatNumber', value)} />
+          <Field label="Nom assureur" value={settings.legal.insurerName} onChange={(value) => updateLegalField('insurerName', value)} />
+          <Field label="Numero de police" value={settings.legal.policyNumber} onChange={(value) => updateLegalField('policyNumber', value)} />
+        </div>
+      </DemoSectionCard>
 
+      <DemoSectionCard title="Assurance et mentions devis" description="Parametres juridiques mockes, modifiables localement sans ecriture reelle.">
+        <div style={{ display: 'grid', gap: '16px' }}>
+          <ToggleField
+            label="Assurance decennale activee"
+            subtitle="Active l'affichage de la couverture sur les devis demo."
+            checked={settings.legal.decennialInsuranceEnabled}
+            onChange={(value) => updateLegalField('decennialInsuranceEnabled', value)}
+          />
+          <TextareaField
+            label="Mentions devis"
+            rows={4}
+            value={settings.legal.quoteMentions}
+            onChange={(value) => updateLegalField('quoteMentions', value)}
+          />
+          <TextareaField
+            label="Conditions de paiement"
+            rows={3}
+            value={settings.legal.paymentTerms}
+            onChange={(value) => updateLegalField('paymentTerms', value)}
+          />
+        </div>
+      </DemoSectionCard>
+    </div>
+  );
+
+  const renderTravelSection = () => (
+    <div>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🚗 Deplacements</h2>
+
+      <DemoSectionCard
+        title="Base de calcul locale"
+        description="Aucun calcul externe ni appel API. Les valeurs ci-dessous sont purement demonstratives."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Adresse de depart" value={settings.travel.departureAddress} onChange={(value) => updateTravelField('departureAddress', value)} />
+          <Field label="Rayon d'intervention (km)" value={settings.travel.radiusKm} onChange={(value) => updateTravelField('radiusKm', value)} />
+          <Field label="Frais standards (EUR)" value={settings.travel.standardFee} onChange={(value) => updateTravelField('standardFee', value)} />
+          <Field label="Minimum d'intervention (EUR)" value={settings.travel.minimumIntervention} onChange={(value) => updateTravelField('minimumIntervention', value)} />
+          <SelectField
+            label="Motorisation"
+            value={settings.travel.vehiclePowertrain}
+            onChange={(value) => updateTravelField('vehiclePowertrain', value)}
+            options={['Diesel utilitaire', 'Essence utilitaire', 'Electrique', 'Hybride']}
+          />
+          <Field
+            label="Consommation estimee"
+            value={settings.travel.estimatedConsumption}
+            onChange={(value) => updateTravelField('estimatedConsumption', value)}
+          />
+        </div>
+      </DemoSectionCard>
+
+      <DemoSectionCard title="Activation et couverture" description="Les zones prioritaires et exclues sont configurables localement dans la demo.">
+        <div style={{ display: 'grid', gap: '18px' }}>
+          <ToggleField
+            label="Cout de deplacement active"
+            subtitle="Permet d'afficher un comportement metier plausible sans calcul reel."
+            checked={settings.travel.travelCostEnabled}
+            onChange={(value) => updateTravelField('travelCostEnabled', value)}
+          />
+          <TagSelector
+            label="Zones prioritaires"
+            options={['Rouen centre', 'Bois-Guillaume', 'Mont-Saint-Aignan', 'Sotteville-les-Rouen', 'Grand-Quevilly']}
+            selected={settings.travel.priorityZones}
+            onToggle={(value) => toggleTravelArrayValue('priorityZones', value)}
+          />
+          <TagSelector
+            label="Zones exclues"
+            options={['Paris intra-muros', 'Le Havre port', 'Interventions hors Normandie', 'Chantiers > 50 km']}
+            selected={settings.travel.excludedZones}
+            onToggle={(value) => toggleTravelArrayValue('excludedZones', value)}
+          />
+        </div>
+      </DemoSectionCard>
+    </div>
+  );
+
+  const renderSection = () => {
+    if (activeSection === 'entreprise') return renderEntrepriseSection();
+    if (activeSection === 'profil-metier') return renderProfileSection();
+    if (activeSection === 'contact') return renderContactSection();
+    if (activeSection === 'legal') return renderLegalSection();
+    if (activeSection === 'vehicule') return renderTravelSection();
     if (activeSection === 'widget') {
       return (
         <PlaceholderSection
@@ -289,7 +771,6 @@ export default function DemoParametresPage() {
         />
       );
     }
-
     if (activeSection === 'catalogue') {
       return (
         <PlaceholderSection
@@ -299,7 +780,6 @@ export default function DemoParametresPage() {
         />
       );
     }
-
     if (activeSection === 'apparence') {
       return (
         <PlaceholderSection
@@ -309,7 +789,6 @@ export default function DemoParametresPage() {
         />
       );
     }
-
     return (
       <PlaceholderSection
         title="💳 Offre & quotas"
@@ -324,13 +803,31 @@ export default function DemoParametresPage() {
       mode="demo"
       activeSection={activeSection}
       groups={DEMO_SETTINGS_GROUPS}
-      onSectionChange={setActiveSection}
+      onSectionChange={(id) => setActiveSection(id as DemoSectionKey)}
       onBack={() => router.push('/demo-dashboard')}
       onSave={save}
       saveState={saveState}
       statusMessage={statusMessage}
     >
       {renderSection()}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '8px' }}>
+        <button
+          type="button"
+          onClick={reset}
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            color: 'var(--text-2)',
+            borderRadius: '10px',
+            padding: '10px 16px',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Reinitialiser les donnees demo
+        </button>
+      </div>
     </SettingsPageShell>
   );
 }
