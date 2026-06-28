@@ -68,6 +68,7 @@ export interface DemoProject {
   desiredTimeline: string;
   maturity: string;
   aiSummary: string;
+  tradeAnswers?: unknown[];
   completenessScore: number;
   status: string;
   source: string;

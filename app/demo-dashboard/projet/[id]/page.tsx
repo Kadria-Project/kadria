@@ -20,6 +20,10 @@ import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
 import type { DemoQuoteBuilder, DemoQuoteBuilderLine } from '@/src/lib/demo-data';
 import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
+import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
+import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
+import { computeNextAction } from '@/src/lib/action-engine';
+import { getProjectDecisionState } from '@/src/lib/quote-status';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -931,12 +935,94 @@ function ProjectDetail() {
   }
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
-  const verdict = getVerdict(project);
-  const recommendation = getRecommendation(project);
+  const latestDevis = devisList[0] || null;
+  // Moteurs metier prod (src/lib/project-scoring.ts, action-engine.ts,
+  // quote-status.ts) branches sur les mocks demo via DevisListItem, qui
+  // reprend deja les noms de champs Supabase utilises par la fiche prod
+  // (statut, accepted_at, decline_reason...). Seul first_opened_at n'a pas
+  // d'equivalent demo direct : mappe depuis last_opened_date.
+  const analysis = getProjectCommercialAnalysis({
+    status: project.status,
+    clientName: project.clientName,
+    clientFirstName: project.clientFirstName,
+    clientPhone: project.clientPhone,
+    clientEmail: project.clientEmail,
+    trade: project.trade,
+    projectType: project.projectType,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+    maturity: project.maturity,
+    city: project.city,
+    siteAddress: project.siteAddress,
+    aiSummary: project.aiSummary,
+    tradeAnswers: project.tradeAnswers,
+    completenessScore: project.completenessScore,
+    photos: project.photos,
+    source: project.source,
+    latestDevis: latestDevis
+      ? {
+          sent: latestDevis.sent,
+          accepted: latestDevis.accepted,
+          declined: latestDevis.declined,
+          declineReason: latestDevis.decline_reason,
+          opensCount: latestDevis.opens_count,
+          lastFollowUpAt: latestDevis.last_follow_up_at,
+        }
+      : null,
+  });
+  const verdict = getVerdictDisplay(analysis.temperature, analysis.temperatureLabel);
+  const nextAction = computeNextAction({
+    status: project.status,
+    clientName: project.clientName,
+    clientFirstName: project.clientFirstName,
+    clientPhone: project.clientPhone,
+    clientEmail: project.clientEmail,
+    trade: project.trade,
+    projectType: project.projectType,
+    aiSummary: project.aiSummary,
+    tradeAnswers: project.tradeAnswers,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+    city: project.city,
+    siteAddress: project.siteAddress,
+    photos: project.photos,
+    completenessScore: project.completenessScore,
+    appointment: null,
+    latestDevis: latestDevis
+      ? {
+          sent: latestDevis.sent,
+          accepted: latestDevis.accepted,
+          declined: latestDevis.declined,
+          sentAt: latestDevis.quote_sent_at || null,
+        }
+      : null,
+  });
+  const decision = getProjectDecisionState(
+    { status: project.status },
+    latestDevis
+      ? {
+          sent: latestDevis.sent,
+          statut: latestDevis.statut,
+          accepted: latestDevis.accepted,
+          accepted_at: latestDevis.accepted_at,
+          declined: latestDevis.declined,
+          declined_at: latestDevis.declined_at,
+          decline_reason: latestDevis.decline_reason,
+          date_validite: latestDevis.date_validite,
+          quote_sent_at: latestDevis.quote_sent_at,
+          first_opened_at: latestDevis.last_opened_date,
+          last_follow_up_at: latestDevis.last_follow_up_at,
+          follow_up_count: latestDevis.follow_up_count,
+          follow_up_disabled: latestDevis.follow_up_disabled,
+          client_email: project.clientEmail,
+        }
+      : null,
+    nextAction,
+  );
+  const recommendation = nextAction.description;
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
-  const latestDevis = devisList[0] || null;
   const quoteStatusLabel = getDemoQuoteStatusLabel(project, latestDevis);
   const quoteStatusStyle = getQuoteStatusAppearance(quoteStatusLabel);
   const followUpState = project.followUp || {
@@ -1736,7 +1822,7 @@ function ProjectDetail() {
                 <button type="button" onClick={() => updateDemoQuoteStatus('declined', 'Refus simule - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('danger')}>
                   Marquer comme refuse
                 </button>
-                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis} style={demoActionButtonStyle('primary', !latestDevis)}>
+                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis || !decision.canFollowUpQuote} style={demoActionButtonStyle('primary', !latestDevis || !decision.canFollowUpQuote)}>
                   Relancer le client
                 </button>
               </div>
@@ -1791,7 +1877,7 @@ function ProjectDetail() {
                 <button type="button" onClick={() => updateDemoQuoteStatus('sent')} style={demoActionButtonStyle('primary')}>
                   Envoyer le devis
                 </button>
-                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis} style={demoActionButtonStyle('primary', !latestDevis)}>
+                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis || !decision.canFollowUpQuote} style={demoActionButtonStyle('primary', !latestDevis || !decision.canFollowUpQuote)}>
                   Relancer le client
                 </button>
                 <button type="button" onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée - aucun PDF réel n’a été généré.' })} style={demoActionButtonStyle('secondary')}>
@@ -3180,47 +3266,6 @@ function TimelineIcon({ action }: { action?: string }) {
   );
 }
 
-function getVerdict(project: any) {
-  const score = project.completenessScore || 0;
-  const maturity = project.maturity || '';
-  const budget = project.budget || '';
-  const timeline = project.desiredTimeline || '';
-
-  const isHot = score >= 80 &&
-    (maturity.includes('Prêt') || maturity.includes('urgent')) &&
-    !budget.includes('sais pas') &&
-    (timeline.includes('possible') || timeline.includes('1 mois'));
-
-  const isCold = score < 60 ||
-    budget.includes('sais pas') ||
-    maturity.includes('renseigne');
-
-  if (isHot) return {
-    label: 'Prospect chaud',
-    color: 'var(--accent)',
-    bg: 'rgba(34,197,94,0.15)',
-    border: 'rgba(34,197,94,0.25)',
-    icon: '🔥',
-    description: 'Budget défini, délai court, prêt à démarrer'
-  };
-  if (isCold) return {
-    label: 'Prospect froid',
-    color: '#b91c1c',
-    bg: 'rgba(220,38,38,0.10)',
-    border: 'rgba(220,38,38,0.2)',
-    icon: '❄️',
-    description: 'Budget flou ou projet peu défini'
-  };
-  return {
-    label: 'Prospect tiède',
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.15)',
-    border: 'rgba(245,158,11,0.3)',
-    icon: '⚡',
-    description: 'Quelques informations manquantes'
-  };
-}
-
 function buildFallbackQuoteBuilder(project: any): DemoQuoteBuilder {
   const clientName = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client demo';
   const cityLabel = [project?.postalCode, project?.city].filter(Boolean).join(' ');
@@ -3286,26 +3331,6 @@ function computeQuoteBuilderSummary(lines: DemoQuoteBuilderLine[], depositPercen
     depositAmount,
     balanceAmount,
   };
-}
-
-function getRecommendation(project: any) {
-  const maturity = project.maturity || '';
-  const timeline = project.desiredTimeline || '';
-  const budget = project.budget || '';
-
-  if (maturity.includes('Prêt') || maturity.includes('urgent')) {
-    return "Ce prospect est prêt à démarrer. Rappel recommandé dans les 24h pour maximiser vos chances de conversion.";
-  }
-  if (timeline.includes('possible') || timeline.includes('1 mois')) {
-    return "Le délai est court. Prenez contact rapidement pour proposer une visite technique avant qu'il ne contacte un concurrent.";
-  }
-  if (budget.includes('sais pas')) {
-    return "Le budget n'est pas défini. Proposez une fourchette lors du premier contact pour qualifier davantage.";
-  }
-  if (maturity.includes('renseigne') || maturity.includes('compare')) {
-    return "Ce prospect est en phase de comparaison. Envoyez un devis rapide et différenciez-vous par la réactivité.";
-  }
-  return "Prenez contact pour affiner les besoins et proposer une visite technique.";
 }
 
 function getIndicators(project: any) {
