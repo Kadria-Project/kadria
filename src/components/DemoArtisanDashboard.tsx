@@ -142,6 +142,7 @@ export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 't
 
 const DEMO_PLAN: PlanKey = 'performance';
 const DEMO_ARTISAN_ID = 'DEMO_ARTISAN_001';
+const getDemoProjectHref = (projectId?: string | null) => (projectId ? `/demo-dashboard/projet/${projectId}` : undefined);
 
 const DEMO_STATUS_NORMALIZATION: Record<string, string> = {
   'A rappeler': 'À rappeler',
@@ -1957,7 +1958,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     id: project.id,
     clientLabel: project.clientName || project.clientFirstName || 'Client',
     action,
-    href: project.id ? `/dashboard-v2/projet/${project.id}` : undefined,
+    href: getDemoProjectHref(project.id),
   }));
 
   const calendarConnected = progressRecommendations
@@ -2583,7 +2584,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </button>
 
             <button
-              onClick={() => router.push('/parametres')}
+              onClick={() => router.push('/demo-parametres')}
               title="Mon profil"
               aria-label="Mon profil"
               className={
@@ -2763,7 +2764,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             Finalisez votre configuration pour mieux qualifier vos prospects.
           </span>
           <button
-            onClick={() => router.push('/onboarding')}
+            onClick={() => router.push('/demo-dashboard/onboarding')}
             style={{
               background: 'var(--accent)',
               border: 'none',
@@ -2844,7 +2845,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           </div>
         </div>
       )}
-      {pathname.startsWith('/parametres') && progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (
+      {pathname.startsWith('/demo-parametres') && progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (
         <div
           style={{
             border: '1px solid rgba(34,197,94,0.3)',
@@ -2877,7 +2878,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Agenda</span>
           </div>
           <button
-            onClick={() => router.push('/parametres/profil-metier')}
+            onClick={() => router.push('/demo-parametres')}
             style={{
               background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
               borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer',
@@ -3116,7 +3117,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     key={action.key}
                     variant="priority"
                     as="button"
-                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                    onClick={() => router.push(`/demo-dashboard/projet/${action.projectId}`)}
                     className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
@@ -3131,7 +3132,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 ) : (
                   <button
                     key={action.key}
-                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
+                    onClick={() => router.push(`/demo-dashboard/projet/${action.projectId}`)}
                     className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                     title={action.title === 'Devis à relancer' ? 'Devis envoyé sans réponse du client.' : undefined}
                   >
@@ -3417,7 +3418,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               {filteredActionEngineEntries.slice(0, 8).map(({ project, action }) => (
                 <button
                   key={project.id}
-                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                  onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25"
                 >
                   <div className="flex min-w-0 items-center gap-3">
@@ -3523,7 +3524,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       key={task.id}
                       variant="priority"
                       as="button"
-                      onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                      onClick={() => router.push(`/demo-dashboard/projet/${task.projectId}`)}
                       className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
@@ -3541,7 +3542,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 return (
                   <button
                     key={task.id}
-                    onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                    onClick={() => router.push(`/demo-dashboard/projet/${task.projectId}`)}
                     className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
@@ -3594,7 +3595,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
-                        onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                        onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
                         style={{
                           background: 'var(--accent-dim)',
                           border: '1px solid var(--accent-border)',
@@ -3832,7 +3833,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 {canAccessFeature('topAiOpportunities') ? topOpportunities.map((project, index) => (
                   <button
                     key={project.id}
-                    onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                    onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
                       className={`flex flex-col gap-3 rounded-2xl border p-4 text-left transition-transform duration-200 hover:-translate-y-0.5 sm:p-5 ${
                       index === 0
                         ? IMPACT_CARD_BASE_CLASSES
@@ -4113,7 +4114,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                  <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <ProspectsLeafletMap
                     projects={sortedProjects.slice(0, 8)}
-                    onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+                    onSelectProject={(projectId) => router.push(`/demo-dashboard/projet/${projectId}`)}
                   />
                 </div>
               </div>
@@ -4636,7 +4637,7 @@ export function ProjectList({
         <div
           key={p.id}
           className="border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] transition-colors duration-100 px-4 py-3 md:p-0 cursor-pointer"
-          onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
+          onClick={() => router.push(`/demo-dashboard/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
             <span className="col-span-1 text-[var(--text-3)] font-mono">
@@ -4847,7 +4848,7 @@ function KanbanCard({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+      onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
       className={`cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-green-500/30 ${
         isClosed ? 'bg-[var(--bg-hover)]/40' : ''
       } ${isDragging ? 'opacity-50' : ''}`}
@@ -4909,7 +4910,7 @@ function ClientPortfolioList({
 }) {
   const openClient = (c: ClientSummary) => {
     const target = c.nextActionProject?.id || c.latestProject?.id || c.projects[0]?.id;
-    if (target) router.push(`/dashboard-v2/projet/${target}`);
+    if (target) router.push(`/demo-dashboard/projet/${target}`);
   };
 
   return (
