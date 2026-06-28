@@ -425,6 +425,7 @@ export default function ChatWidgetInline({
       : step >= 2
         ? 2
         : 1
+  const PROJECT_STEP_LABELS = ['Projet', 'Détails', 'Photos', 'Coordonnées']
 
   // ── Welcome screen ────────────────────────────────────────────────────────
   const WELCOME_OPTIONS = [
@@ -485,7 +486,7 @@ export default function ChatWidgetInline({
       <div style={containerStyle}>
 
         {/* Header */}
-        <div style={{
+        <div className={isProjectExperience ? 'project-mobile-hide-header' : undefined} style={{
           background: isProjectExperience
             ? 'linear-gradient(180deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 100%)'
             : 'linear-gradient(180deg, rgba(15,16,15,0.97) 0%, rgba(9,9,11,0.97) 100%)',
@@ -556,13 +557,20 @@ export default function ChatWidgetInline({
         </div>
 
         {/* Progress bar */}
-        <div style={{
+        <div className={isProjectExperience ? 'project-progress-wrap' : undefined} style={{
           padding: isProjectExperience ? '16px 20px 18px' : '8px 16px',
           background: isProjectExperience ? 'rgba(9,9,11,0.68)' : '#09090b',
           borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
         }}>
           <div style={centerStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: isProjectExperience ? '12px' : '5px', gap: '10px', flexWrap: 'wrap' }}>
+            {isProjectExperience && (
+              <div className="project-progress-compact-row" style={{ display: 'none', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#d4d4d8', fontWeight: 600 }}>
+                  Étape {visualStep}/4 · {PROJECT_STEP_LABELS[visualStep - 1]}
+                </span>
+              </div>
+            )}
+            <div className={isProjectExperience ? 'project-progress-full-row' : undefined} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: isProjectExperience ? '12px' : '5px', gap: '10px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: isProjectExperience ? '#d4d4d8' : '#a1a1aa', fontWeight: isProjectExperience ? 600 : 400 }}>
                 {isProjectExperience ? 'Parcours de qualification' : 'Votre projet'}
               </span>
@@ -579,7 +587,7 @@ export default function ChatWidgetInline({
             </div>
             {isProjectExperience && (
               <div className="project-step-line" style={{ marginTop: '10px' }}>
-                {['Projet', 'Détails', 'Photos', 'Coordonnées'].map((label, index) => {
+                {PROJECT_STEP_LABELS.map((label, index) => {
                   const isActive = index + 1 === visualStep
                   const isDone = index + 1 < visualStep
                   return (
@@ -612,7 +620,7 @@ export default function ChatWidgetInline({
 
         {/* Welcome screen */}
         {showWelcome ? isProjectExperience ? (
-          <div style={{ flex: 1, padding: '24px 0 28px', overflowY: 'auto' }}>
+          <div className="project-welcome-wrap" style={{ flex: 1, padding: '24px 0 28px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{ marginBottom: '20px' }}>
                 <h2 style={{ margin: '0 0 6px', color: 'white', fontSize: '22px', lineHeight: 1.25, fontWeight: 700 }}>
@@ -645,7 +653,7 @@ export default function ChatWidgetInline({
                       minHeight: 'auto',
                       transition: 'transform 0.18s ease, border-color 0.18s ease, background 0.18s ease',
                     }}>
-                    <div style={{
+                    <div className="project-choice-icon" style={{
                       width: '38px',
                       height: '38px',
                       borderRadius: '12px',
@@ -1381,11 +1389,6 @@ export default function ChatWidgetInline({
           .project-choice-grid {
             grid-template-columns: 1fr;
           }
-          .project-step-line {
-            gap: 10px;
-            overflow-x: auto;
-            flex-wrap: nowrap;
-          }
           .chat-messages-container {
             max-width: 100% !important;
             padding: 0 12px !important;
@@ -1393,6 +1396,37 @@ export default function ChatWidgetInline({
           .chat-input-container {
             max-width: 100% !important;
             padding: 12px !important;
+          }
+          .project-mobile-hide-header {
+            display: none !important;
+          }
+          .project-progress-wrap {
+            padding: 10px 16px 12px !important;
+          }
+          .project-progress-full-row {
+            display: none !important;
+          }
+          .project-progress-compact-row {
+            display: flex !important;
+          }
+          .project-step-line {
+            display: none !important;
+          }
+          .project-welcome-wrap {
+            padding: 14px 0 20px !important;
+          }
+          .project-choice-card {
+            padding: 11px 13px !important;
+            gap: 10px !important;
+            border-radius: 16px !important;
+          }
+          .project-choice-icon {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 10px !important;
+          }
+          .project-choice-grid {
+            gap: 9px !important;
           }
         }
       `}</style>
