@@ -2695,50 +2695,6 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Suggestions de lignes de devis — équivalent démo simplifié du
-              service matcher prod (src/lib/quote-suggestions.ts,
-              getQuoteSuggestions + référentiel métier). Catalogue figé,
-              aucune logique de confiance/référentiel réelle : juste un
-              aperçu visuel cliquable qui déclenche le toast démo existant. */}
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
-            <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Suggestions de lignes de devis
-            </p>
-            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px' }}>
-              Catalogue démo — Kadria propose des lignes adaptées au métier ({project.trade || 'général'}).
-            </p>
-            <div style={{ display: 'grid', gap: '8px' }}>
-              {[
-                { label: 'Forfait déplacement et diagnostic', price: 60 },
-                { label: 'Dépose des équipements existants', price: 180 },
-                { label: 'Fourniture matériel standard', price: 420 },
-                { label: 'Pose et raccordements', price: 350 },
-                { label: 'Mise en service et contrôle', price: 90 },
-              ].map((line) => (
-                <button
-                  key={line.label}
-                  type="button"
-                  onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée — aucune donnée réelle modifiée.' })}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '12px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>{line.label}</span>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>{line.price} € HT</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
             <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Suivi commercial
