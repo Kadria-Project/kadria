@@ -29,6 +29,29 @@ export interface DemoActivityItem {
   kind: 'project' | 'quote' | 'followup' | 'decision';
 }
 
+export interface DemoQuoteBuilderLine {
+  id: string;
+  label: string;
+  quantity: number;
+  unit: string;
+  unitPriceHt: number;
+  vatRate: number;
+  enabled?: boolean;
+}
+
+export interface DemoQuoteBuilder {
+  quoteNumber: string;
+  clientName: string;
+  projectTitle: string;
+  siteAddress: string;
+  validityDays: number;
+  defaultVat: number;
+  depositPercent: number;
+  paymentTerms: string;
+  clientNote: string;
+  lines: DemoQuoteBuilderLine[];
+}
+
 export interface DemoProject {
   id: string;
   projectNumber: string;
@@ -60,6 +83,7 @@ export interface DemoProject {
   quote?: DemoQuoteState;
   followUp?: DemoFollowUpState;
   activity?: DemoActivityItem[];
+  quoteBuilder?: DemoQuoteBuilder;
 }
 
 export interface DemoEvent {
@@ -309,6 +333,24 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 'demo_001_qualified', label: 'Dossier qualifie avec photos fournies', date: '2026-06-20T11:10:00.000Z', kind: 'project' },
       { id: 'demo_001_followup', label: 'Relance de qualification planifiee', date: '2026-06-29T10:30:00.000Z', kind: 'followup' },
     ],
+    quoteBuilder: {
+      quoteNumber: 'DEV-2026-001',
+      clientName: 'Marie Leroy',
+      projectTitle: 'Renovation salle de bain',
+      siteAddress: '8 rue Victor Hugo, 69003 Lyon 3e',
+      validityDays: 30,
+      defaultVat: 20,
+      depositPercent: 30,
+      paymentTerms: 'Acompte a la validation, solde a la reception des travaux.',
+      clientNote:
+        'Base de devis preparee a partir des photos et des informations transmises. Une visite technique permettra de confirmer les finitions et le planning.',
+      lines: [
+        { id: 'demo_001_line_001', label: 'Depose des equipements existants', quantity: 1, unit: 'forfait', unitPriceHt: 420, vatRate: 20, enabled: true },
+        { id: 'demo_001_line_002', label: 'Fourniture douche et receveur', quantity: 1, unit: 'ensemble', unitPriceHt: 2290, vatRate: 20, enabled: true },
+        { id: 'demo_001_line_003', label: 'Meuble vasque et robinetterie', quantity: 1, unit: 'ensemble', unitPriceHt: 1380, vatRate: 20, enabled: true },
+        { id: 'demo_001_line_004', label: 'Pose, raccordements et finitions', quantity: 1, unit: 'forfait', unitPriceHt: 2640, vatRate: 20, enabled: true },
+      ],
+    },
   },
   {
     id: 'demo_002',
@@ -351,27 +393,45 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 'demo_002_draft', label: 'Devis prepare en brouillon', date: '2026-06-20T09:45:00.000Z', kind: 'quote' },
       { id: 'demo_002_followup', label: 'Appel de validation prevu aujourd hui', date: '2026-06-28T16:00:00.000Z', kind: 'followup' },
     ],
+    quoteBuilder: {
+      quoteNumber: 'DEV-2026-002',
+      clientName: 'Jean-Pierre Martin',
+      projectTitle: 'Refection toiture',
+      siteAddress: '22 allee des Tilleuls, 44000 Nantes',
+      validityDays: 21,
+      defaultVat: 10,
+      depositPercent: 35,
+      paymentTerms: '35% a la commande, solde a la fin du chantier apres controle.',
+      clientNote:
+        'Devis prepare a partir du diagnostic initial. Une verification sur toiture pourra ajuster la quantite de tuiles et les reprises de zinguerie.',
+      lines: [
+        { id: 'demo_002_line_001', label: 'Mise en securite et acces toiture', quantity: 1, unit: 'forfait', unitPriceHt: 380, vatRate: 10, enabled: true },
+        { id: 'demo_002_line_002', label: 'Remplacement tuiles et ecran sous-toiture', quantity: 42, unit: 'm2', unitPriceHt: 185, vatRate: 10, enabled: true },
+        { id: 'demo_002_line_003', label: 'Reprises de zinguerie', quantity: 1, unit: 'forfait', unitPriceHt: 950, vatRate: 10, enabled: true },
+        { id: 'demo_002_line_004', label: 'Nettoyage et evacuation', quantity: 1, unit: 'forfait', unitPriceHt: 420, vatRate: 10, enabled: true },
+      ],
+    },
   },
   {
     id: 'demo_003',
     projectNumber: 'DEV-2026-003',
-    clientFirstName: 'Claire',
-    clientName: 'Petit',
-    clientPhone: '06 45 67 89 01',
-    clientEmail: 'cj.petit@email.fr',
-    siteAddress: '5 chemin des Vignes',
-    city: 'Lyon 6e',
-    postalCode: '69006',
-    trade: 'Renovation globale',
-    projectType: 'Renovation complete appartement',
-    budget: '80 000 - 100 000 EUR',
-    desiredTimeline: 'Sous 3 mois',
-    maturity: 'En reflexion avancee',
-    aiSummary: "Renovation complete d'un appartement de 90m2. Couple en comparaison de devis, niveau de maturite eleve.",
-    completenessScore: 97,
+    clientFirstName: 'Laurent',
+    clientName: 'Dubois',
+    clientPhone: '06 78 90 12 34',
+    clientEmail: 'laurent.dubois@email.fr',
+    siteAddress: '17 avenue Foch',
+    city: 'Rouen',
+    postalCode: '76000',
+    trade: 'Plomberie',
+    projectType: 'Remplacement chauffe-eau',
+    budget: '1 000 - 3 000 EUR',
+    desiredTimeline: 'Sous 1 semaine',
+    maturity: 'Pret a demarrer',
+    aiSummary: 'Chauffe-eau en panne, besoin clair, decisionnaire identifie et attente d un devis rapide avant validation.',
+    completenessScore: 88,
     status: 'Devis envoye',
     source: 'chat-widget',
-    devisAmount: 88000,
+    devisAmount: 1776,
     photos: [
       {
         url: 'https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=900&auto=format&fit=crop',
@@ -384,10 +444,10 @@ export const DEMO_PROJECTS: DemoProject[] = [
     ],
     createdAt: '2026-06-18T14:00:00.000Z',
     callbackDate: null,
-    notes: 'Devis envoye le 18/06, relance recommandee avant le 25/06.',
+    notes: 'Devis envoye le 18/06, relance recommandee avant la fin de semaine si le client ne confirme pas.',
     quote: {
       status: 'opened',
-      amount: 88000,
+      amount: 1776,
       sentAt: '2026-06-18T16:40:00.000Z',
       openedAt: '2026-06-19T09:20:00.000Z',
       openedCount: 2,
@@ -406,6 +466,24 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 'demo_003_quote_opened', label: 'Le client a ouvert le devis', date: '2026-06-19T09:20:00.000Z', kind: 'quote' },
       { id: 'demo_003_followup', label: 'Relance commerciale depassee', date: '2026-06-25T10:00:00.000Z', kind: 'followup' },
     ],
+    quoteBuilder: {
+      quoteNumber: 'DEV-2026-006',
+      clientName: 'Laurent Dubois',
+      projectTitle: 'Remplacement chauffe-eau',
+      siteAddress: '17 avenue Foch, Rouen',
+      validityDays: 30,
+      defaultVat: 20,
+      depositPercent: 30,
+      paymentTerms: 'Acompte a la validation, solde a la reception des travaux.',
+      clientNote:
+        'Ce devis est etabli sur la base des informations transmises. Une visite technique peut etre necessaire avant validation definitive.',
+      lines: [
+        { id: 'demo_003_line_001', label: 'Depose ancien chauffe-eau', quantity: 1, unit: 'forfait', unitPriceHt: 180, vatRate: 20, enabled: true },
+        { id: 'demo_003_line_002', label: 'Fourniture chauffe-eau 200L', quantity: 1, unit: 'unite', unitPriceHt: 790, vatRate: 20, enabled: true },
+        { id: 'demo_003_line_003', label: 'Pose et raccordement', quantity: 1, unit: 'forfait', unitPriceHt: 420, vatRate: 20, enabled: true },
+        { id: 'demo_003_line_004', label: 'Mise en service et controle', quantity: 1, unit: 'forfait', unitPriceHt: 90, vatRate: 20, enabled: true },
+      ],
+    },
   },
   {
     id: 'demo_004',
@@ -451,6 +529,24 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 'demo_004_quote_opened', label: 'Devis consulte par le client', date: '2026-06-16T08:45:00.000Z', kind: 'quote' },
       { id: 'demo_004_quote_accepted', label: 'Devis accepte par le client', date: '2026-06-17T09:30:00.000Z', kind: 'decision' },
     ],
+    quoteBuilder: {
+      quoteNumber: 'DEV-2026-004',
+      clientName: 'Ahmed Benali',
+      projectTitle: 'Remise aux normes tableau electrique',
+      siteAddress: '14 rue de la Republique, 75011 Paris',
+      validityDays: 30,
+      defaultVat: 20,
+      depositPercent: 30,
+      paymentTerms: 'Acompte de 30% a la commande, solde a la livraison du chantier.',
+      clientNote:
+        'Le devis reprend les remarques faites lors de l echange telephonique. Une visite de confirmation pourra ajuster la longueur des gaines et accessoires.',
+      lines: [
+        { id: 'demo_004_line_001', label: 'Depose tableau existant', quantity: 1, unit: 'forfait', unitPriceHt: 280, vatRate: 20, enabled: true },
+        { id: 'demo_004_line_002', label: 'Fourniture tableau et protections', quantity: 1, unit: 'ensemble', unitPriceHt: 1460, vatRate: 20, enabled: true },
+        { id: 'demo_004_line_003', label: 'Recablage et reperage', quantity: 1, unit: 'forfait', unitPriceHt: 980, vatRate: 20, enabled: true },
+        { id: 'demo_004_line_004', label: 'Essais et attestation de mise en securite', quantity: 1, unit: 'forfait', unitPriceHt: 780, vatRate: 20, enabled: true },
+      ],
+    },
   },
   {
     id: 'demo_005',
@@ -496,6 +592,23 @@ export const DEMO_PROJECTS: DemoProject[] = [
       { id: 'demo_005_quote_sent', label: 'Devis simplifie envoye', date: '2026-06-13T10:00:00.000Z', kind: 'quote' },
       { id: 'demo_005_quote_declined', label: 'Devis refuse par le client', date: '2026-06-14T09:00:00.000Z', kind: 'decision' },
     ],
+    quoteBuilder: {
+      quoteNumber: 'DEV-2026-005',
+      clientName: 'Sophie Fontaine',
+      projectTitle: 'Entretien jardin',
+      siteAddress: '3 impasse des Lilas, 33000 Bordeaux',
+      validityDays: 15,
+      defaultVat: 20,
+      depositPercent: 20,
+      paymentTerms: 'Paiement comptant a la fin de l intervention.',
+      clientNote:
+        'Estimation indicative pour un passage ponctuel. Le devis pourra etre ajuste selon le volume de dechets verts et l acces au jardin.',
+      lines: [
+        { id: 'demo_005_line_001', label: 'Tonte et debroussaillage', quantity: 1, unit: 'forfait', unitPriceHt: 240, vatRate: 20, enabled: true },
+        { id: 'demo_005_line_002', label: 'Taille des haies', quantity: 12, unit: 'ml', unitPriceHt: 18, vatRate: 20, enabled: true },
+        { id: 'demo_005_line_003', label: 'Evacuation des dechets verts', quantity: 1, unit: 'forfait', unitPriceHt: 95, vatRate: 20, enabled: true },
+      ],
+    },
   },
   {
     id: 'demo_006',

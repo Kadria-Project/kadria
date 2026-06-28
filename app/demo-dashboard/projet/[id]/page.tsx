@@ -18,6 +18,7 @@ import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { getBestFollowUpTime } from '@/src/lib/commercial-actions';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
+import type { DemoQuoteBuilder, DemoQuoteBuilderLine } from '@/src/lib/demo-data';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -69,6 +70,8 @@ type DemoProjectActivity = {
   createdAt: string;
   action: string;
 };
+
+type QuoteBuilderFormState = Omit<DemoQuoteBuilder, 'lines'>;
 
 function formatDevisDate(value: string) {
   if (!value) return '—';
@@ -371,6 +374,18 @@ function ProjectDetail() {
     project?.devisAmount ? String(project.devisAmount) : ''
   );
   const [savingDevis, setSavingDevis] = useState(false);
+  const [quoteBuilderForm, setQuoteBuilderForm] = useState<QuoteBuilderFormState>({
+    quoteNumber: '',
+    clientName: '',
+    projectTitle: '',
+    siteAddress: '',
+    validityDays: 30,
+    defaultVat: 20,
+    depositPercent: 30,
+    paymentTerms: '',
+    clientNote: '',
+  });
+  const [quoteBuilderLines, setQuoteBuilderLines] = useState<DemoQuoteBuilderLine[]>([]);
   const [plan] = useState<PlanKey>(DEMO_PLAN);
   const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const canQuote = hasFeature(plan, 'quoteGeneration');
@@ -442,7 +457,21 @@ function ProjectDetail() {
     setNote(normalizedProject.internalNotes || '');
     setCallbackDate(normalizedProject.callbackDate || '');
     setShowCallback(!!normalizedProject.callbackDate);
-    setDevisAmount(normalizedProject.devisAmount ? String(normalizedProject.devisAmount) : '');
+    const initialQuoteBuilder = normalizeQuoteBuilder(normalizedProject);
+    const { totalTtc } = computeQuoteBuilderSummary(initialQuoteBuilder.lines, initialQuoteBuilder.depositPercent);
+    setQuoteBuilderForm({
+      quoteNumber: initialQuoteBuilder.quoteNumber,
+      clientName: initialQuoteBuilder.clientName,
+      projectTitle: initialQuoteBuilder.projectTitle,
+      siteAddress: initialQuoteBuilder.siteAddress,
+      validityDays: initialQuoteBuilder.validityDays,
+      defaultVat: initialQuoteBuilder.defaultVat,
+      depositPercent: initialQuoteBuilder.depositPercent,
+      paymentTerms: initialQuoteBuilder.paymentTerms,
+      clientNote: initialQuoteBuilder.clientNote,
+    });
+    setQuoteBuilderLines(initialQuoteBuilder.lines);
+    setDevisAmount(String(Number((normalizedProject.devisAmount ?? totalTtc).toFixed(2))));
     setArtisanConfig(buildDemoArtisanConfig(artisan));
     setDevisList(buildDemoDevisList(normalizedProject));
     setActivities(buildDemoActivities(normalizedProject, events));
@@ -490,6 +519,7 @@ function ProjectDetail() {
           ...(current.activity || []),
         ],
         lastInteractionAt: sentAt,
+        quoteBuilder: buildCurrentQuoteBuilderPayload(),
       }), 'Action simulée - aucun devis réel n’a été envoyé.');
     } catch (error) {
       setFollowUpToast({
@@ -512,10 +542,142 @@ function ProjectDetail() {
     setFollowUpToast({ type: 'success', message });
   }
 
-  function updateDemoQuoteStatus(nextStatus: 'draft' | 'sent' | 'opened' | 'accepted' | 'declined') {
+  const quoteSummary = useMemo(
+    () => computeQuoteBuilderSummary(quoteBuilderLines, quoteBuilderForm.depositPercent),
+    [quoteBuilderForm.depositPercent, quoteBuilderLines]
+  );
+
+  function updateQuoteBuilderField<Key extends keyof QuoteBuilderFormState>(key: Key, value: QuoteBuilderFormState[Key]) {
+    setQuoteBuilderForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateQuoteBuilderLine<Key extends keyof DemoQuoteBuilderLine>(
+    lineId: string,
+    key: Key,
+    value: DemoQuoteBuilderLine[Key]
+  ) {
+    setQuoteBuilderLines((current) =>
+      current.map((line) => (line.id === lineId ? { ...line, [key]: value } : line))
+    );
+  }
+
+  function addQuoteBuilderLine() {
+    setQuoteBuilderLines((current) => [
+      ...current,
+      {
+        id: `line_${Date.now()}`,
+        label: 'Nouvelle prestation',
+        quantity: 1,
+        unit: 'forfait',
+        unitPriceHt: 0,
+        vatRate: quoteBuilderForm.defaultVat || 20,
+        enabled: true,
+      },
+    ]);
+  }
+
+  function removeQuoteBuilderLine(lineId: string) {
+    setQuoteBuilderLines((current) => current.filter((line) => line.id !== lineId));
+  }
+
+  function toggleQuoteBuilderLine(lineId: string) {
+    setQuoteBuilderLines((current) =>
+      current.map((line) =>
+        line.id === lineId
+          ? {
+              ...line,
+              enabled: line.enabled === false,
+            }
+          : line
+      )
+    );
+  }
+
+  function buildCurrentQuoteBuilderPayload() {
+    return {
+      ...quoteBuilderForm,
+      lines: quoteBuilderLines,
+    };
+  }
+
+  function openDemoPdfPreview() {
+    if (!canExportPdf) {
+      openUpgradeModal('pdfExports');
+      return;
+    }
+
+    const preview = devisList[0] || buildDemoDevisList({ ...project, devisAmount: Number(quoteSummary.totalTtc.toFixed(2)) })[0];
+    if (!preview) return;
+
+    const raisonSociale = artisanConfig?.raisonSociale || 'Kadria Demo';
+    const htmlRows = quoteSummary.enabledLines
+      .map((line) => {
+        const lineTotalHt = Number(line.quantity || 0) * Number(line.unitPriceHt || 0);
+        return `<tr><td>${line.label}</td><td>${line.quantity} ${line.unit}</td><td>${Number(line.vatRate || 0)}%</td><td style="text-align:right">${formatMoney(lineTotalHt)} EUR</td></tr>`;
+      })
+      .join('');
+
+    const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${preview.numero}</title><style>
+      body{font-family:Inter,Arial,sans-serif;background:#fff;color:#18181b;padding:40px;line-height:1.5}
+      .card{max-width:860px;margin:0 auto;border:1px solid #e4e4e7;border-radius:16px;padding:32px}
+      .muted{color:#71717a}
+      .accent{color:#16a34a}
+      .row{display:flex;justify-content:space-between;gap:24px;margin:10px 0;border-bottom:1px solid #f4f4f5;padding-bottom:8px}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+      table{width:100%;border-collapse:collapse;margin-top:16px}
+      th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #f4f4f5;font-size:14px}
+      .summary{margin-top:20px;display:grid;gap:8px;justify-content:end}
+      .summary-row{display:flex;justify-content:space-between;gap:24px;min-width:280px}
+      .summary-row.total{font-size:18px;font-weight:700}
+      .watermark{position:fixed;top:40%;left:10%;font-size:64px;color:rgba(22,163,74,.08);transform:rotate(-25deg);font-weight:800;letter-spacing:.1em}
+      @media print { .watermark{display:none} }
+    </style></head><body>
+      <div class="watermark">APERCU DEMO</div>
+      <div class="card">
+        <div class="header">
+          <div>
+            <p class="accent" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0">${raisonSociale}</p>
+            <p class="muted" style="margin:4px 0 0;font-size:13px">${artisanConfig?.adressePro || ''}</p>
+          </div>
+          <div style="text-align:right">
+            <h1 style="margin:0;font-size:28px">${quoteBuilderForm.quoteNumber}</h1>
+            <p class="muted" style="margin:4px 0 0">Valable ${quoteBuilderForm.validityDays} jours</p>
+          </div>
+        </div>
+        <div class="row"><span>Client</span><strong>${quoteBuilderForm.clientName}</strong></div>
+        <div class="row"><span>Adresse chantier</span><strong>${quoteBuilderForm.siteAddress}</strong></div>
+        <div class="row"><span>Projet</span><strong>${quoteBuilderForm.projectTitle}</strong></div>
+        <div class="row"><span>Conditions de paiement</span><strong>${quoteBuilderForm.paymentTerms}</strong></div>
+        <table>
+          <thead><tr><th>Designation</th><th>Quantite</th><th>TVA</th><th style="text-align:right">Montant HT</th></tr></thead>
+          <tbody>${htmlRows}</tbody>
+        </table>
+        <div class="summary">
+          <div class="summary-row"><span>Total HT</span><strong>${formatMoney(quoteSummary.totalHt)} EUR</strong></div>
+          <div class="summary-row"><span>TVA</span><strong>${formatMoney(quoteSummary.totalVat)} EUR</strong></div>
+          <div class="summary-row total"><span>Total TTC</span><strong>${formatMoney(quoteSummary.totalTtc)} EUR</strong></div>
+          <div class="summary-row"><span>Acompte ${quoteBuilderForm.depositPercent}%</span><strong>${formatMoney(quoteSummary.depositAmount)} EUR</strong></div>
+        </div>
+        <p class="muted" style="margin-top:24px;font-size:12px">${quoteBuilderForm.clientNote}</p>
+        <p class="muted" style="margin-top:20px;font-size:12px">Document de demonstration genere par Kadria - non valable comme devis officiel.</p>
+      </div>
+    </body></html>`;
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 500);
+    }
+    setFollowUpToast({ type: 'success', message: 'Export PDF simule - aucun fichier reel genere.' });
+  }
+
+  function updateDemoQuoteStatus(
+    nextStatus: 'draft' | 'sent' | 'opened' | 'accepted' | 'declined',
+    successMessage = 'Action simulee - aucune donnee reelle modifiee.'
+  ) {
     const now = new Date().toISOString();
     syncLocalQuoteState((current) => {
-      const currentAmount = Number(devisAmount || current.devisAmount || current.quote?.amount || 2490);
+      const currentAmount = Number(quoteSummary.totalTtc.toFixed(2)) || Number(devisAmount || current.devisAmount || current.quote?.amount || 2490);
       const baseQuote = current.quote || {
         status: 'none',
         amount: currentAmount,
@@ -547,7 +709,7 @@ function ProjectDetail() {
               : baseQuote.openedCount || 0,
         validUntil:
           nextStatus === 'sent' || nextStatus === 'opened' || nextStatus === 'accepted' || nextStatus === 'declined'
-            ? baseQuote.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            ? baseQuote.validUntil || new Date(Date.now() + Number(quoteBuilderForm.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString()
             : baseQuote.validUntil,
         declineReason:
           nextStatus === 'declined'
@@ -614,6 +776,7 @@ function ProjectDetail() {
         status: nextProjectStatus,
         devisAmount: currentAmount,
         quote: nextQuote,
+        quoteBuilder: buildCurrentQuoteBuilderPayload(),
         followUp: nextFollowUp,
         lastInteractionAt: now,
         activity: [nextActivityEntry, ...(current.activity || [])],
@@ -1159,9 +1322,9 @@ function ProjectDetail() {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', marginBottom: '18px' }}>
             <div>
               <p style={{ margin: '0 0 6px', color: 'var(--accent)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Devis & relances
+                Construction du devis
               </p>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Cycle commercial du dossier</h2>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Base modifiable avant envoi</h2>
               <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
                 Mode demo - tous les boutons ci-dessous sont simulés localement. Aucun devis réel, email ou PDF officiel n&apos;est envoyé.
               </p>
@@ -1287,6 +1450,294 @@ function ProjectDetail() {
                     {followUpState.reason}
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Base du devis
+                  </p>
+                  <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px' }}>
+                    Champs pre-remplis et modifiables localement.
+                  </p>
+                </div>
+                <span style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700 }}>
+                  {quoteSummary.enabledLines.length} ligne{quoteSummary.enabledLines.length > 1 ? 's' : ''} active{quoteSummary.enabledLines.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+                {[
+                  { label: 'Numero devis', value: quoteBuilderForm.quoteNumber, key: 'quoteNumber' as const, type: 'text' },
+                  { label: 'Client', value: quoteBuilderForm.clientName, key: 'clientName' as const, type: 'text' },
+                  { label: 'Projet', value: quoteBuilderForm.projectTitle, key: 'projectTitle' as const, type: 'text' },
+                  { label: 'Adresse chantier', value: quoteBuilderForm.siteAddress, key: 'siteAddress' as const, type: 'text' },
+                ].map((field) => (
+                  <label key={field.key} style={{ display: 'grid', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{field.label}</span>
+                    <input
+                      type={field.type}
+                      value={field.value}
+                      onChange={(event) => updateQuoteBuilderField(field.key, event.target.value)}
+                      style={{
+                        width: '100%',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        color: 'var(--text-1)',
+                        fontSize: '14px',
+                        outline: 'none',
+                      }}
+                    />
+                  </label>
+                ))}
+
+                <label style={{ display: 'grid', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Validite (jours)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={quoteBuilderForm.validityDays}
+                    onChange={(event) => updateQuoteBuilderField('validityDays', Number(event.target.value || 0))}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      color: 'var(--text-1)',
+                      fontSize: '14px',
+                      outline: 'none',
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>TVA par defaut (%)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={quoteBuilderForm.defaultVat}
+                    onChange={(event) => updateQuoteBuilderField('defaultVat', Number(event.target.value || 0))}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      color: 'var(--text-1)',
+                      fontSize: '14px',
+                      outline: 'none',
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Acompte conseille (%)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={quoteBuilderForm.depositPercent}
+                    onChange={(event) => updateQuoteBuilderField('depositPercent', Number(event.target.value || 0))}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      color: 'var(--text-1)',
+                      fontSize: '14px',
+                      outline: 'none',
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: 'grid', gap: '6px', gridColumn: isMobile ? undefined : '1 / -1' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Conditions de paiement</span>
+                  <textarea
+                    value={quoteBuilderForm.paymentTerms}
+                    onChange={(event) => updateQuoteBuilderField('paymentTerms', event.target.value)}
+                    rows={2}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      color: 'var(--text-1)',
+                      fontSize: '14px',
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.12), rgba(34,197,94,0.03))', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '16px', padding: '18px', display: 'grid', gap: '12px' }}>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Resume financier
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px' }}>
+                  Recalcul local en direct selon les lignes actives.
+                </p>
+              </div>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {[
+                  ['Total HT', `${formatMoney(quoteSummary.totalHt)} EUR`],
+                  ['TVA', `${formatMoney(quoteSummary.totalVat)} EUR`],
+                  ['Acompte', `${formatMoney(quoteSummary.depositAmount)} EUR`],
+                  ['Solde estime', `${formatMoney(quoteSummary.balanceAmount)} EUR`],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '14px' }}>
+                    <span style={{ color: 'var(--text-3)' }}>{label}</span>
+                    <strong style={{ color: 'var(--text-1)' }}>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderRadius: '14px', background: 'rgba(9,15,13,0.55)', border: '1px solid rgba(34,197,94,0.22)', padding: '14px 16px' }}>
+                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Total TTC</p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-1)', fontSize: '30px', fontWeight: 800 }}>
+                  {formatMoney(quoteSummary.totalTtc)} EUR
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <div>
+                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Lignes proposees
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px' }}>
+                  Libelles, quantites, unites, prix HT et TVA restent modifiables localement.
+                </p>
+              </div>
+              <button type="button" onClick={addQuoteBuilderLine} style={demoActionButtonStyle('secondary')}>
+                <Plus size={14} />
+                Ajouter une ligne
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {quoteBuilderLines.map((line, index) => (
+                <div key={line.id} style={{ border: line.enabled === false ? '1px dashed var(--border)' : '1px solid var(--border)', borderRadius: '14px', padding: '14px', background: line.enabled === false ? 'rgba(24,24,27,0.4)' : 'var(--bg-elevated)', opacity: line.enabled === false ? 0.65 : 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-2)', fontSize: '12px', fontWeight: 700 }}>Ligne {index + 1}</span>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => toggleQuoteBuilderLine(line.id)} style={demoActionButtonStyle('secondary')}>
+                        {line.enabled === false ? 'Reactiver' : 'Desactiver'}
+                      </button>
+                      {quoteBuilderLines.length > 1 && (
+                        <button type="button" onClick={() => removeQuoteBuilderLine(line.id)} style={demoActionButtonStyle('danger')}>
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 2fr) repeat(4, minmax(0, 1fr))', gap: '10px' }}>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Libelle</span>
+                      <input
+                        type="text"
+                        value={line.label}
+                        onChange={(event) => updateQuoteBuilderLine(line.id, 'label', event.target.value)}
+                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
+                      />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Quantite</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        value={line.quantity}
+                        onChange={(event) => updateQuoteBuilderLine(line.id, 'quantity', Number(event.target.value || 0))}
+                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
+                      />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Unite</span>
+                      <input
+                        type="text"
+                        value={line.unit}
+                        onChange={(event) => updateQuoteBuilderLine(line.id, 'unit', event.target.value)}
+                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
+                      />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>Prix HT</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={line.unitPriceHt}
+                        onChange={(event) => updateQuoteBuilderLine(line.id, 'unitPriceHt', Number(event.target.value || 0))}
+                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
+                      />
+                    </label>
+                    <label style={{ display: 'grid', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>TVA (%)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        value={line.vatRate}
+                        onChange={(event) => updateQuoteBuilderLine(line.id, 'vatRate', Number(event.target.value || 0))}
+                        style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <p style={{ margin: '0 0 10px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Note client
+              </p>
+              <textarea
+                value={quoteBuilderForm.clientNote}
+                onChange={(event) => updateQuoteBuilderField('clientNote', event.target.value)}
+                rows={5}
+                style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px 14px', color: 'var(--text-1)', fontSize: '14px', outline: 'none', resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Actions devis
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
+                <button type="button" onClick={() => updateDemoQuoteStatus('draft', 'Brouillon simule - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('secondary')}>
+                  Enregistrer le brouillon
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('sent', 'Envoi simule - aucun email reel envoye.')} style={demoActionButtonStyle('primary')}>
+                  Simuler l envoi au client
+                </button>
+                <button type="button" onClick={openDemoPdfPreview} style={demoActionButtonStyle('secondary')}>
+                  Exporter PDF fictif
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('accepted', 'Acceptation simulee - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('success')}>
+                  Marquer comme accepte
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('declined', 'Refus simule - aucune donnee reelle modifiee.')} style={demoActionButtonStyle('danger')}>
+                  Marquer comme refuse
+                </button>
+                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis} style={demoActionButtonStyle('primary', !latestDevis)}>
+                  Relancer le client
+                </button>
               </div>
             </div>
           </div>
@@ -2766,6 +3217,73 @@ function getVerdict(project: any) {
     border: 'rgba(245,158,11,0.3)',
     icon: '⚡',
     description: 'Quelques informations manquantes'
+  };
+}
+
+function buildFallbackQuoteBuilder(project: any): DemoQuoteBuilder {
+  const clientName = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client demo';
+  const cityLabel = [project?.postalCode, project?.city].filter(Boolean).join(' ');
+
+  return {
+    quoteNumber: project?.projectNumber?.replace('DEV-', 'DEVIS-') || `DEVIS-${project?.id || 'DEMO'}`,
+    clientName,
+    projectTitle: project?.projectType || project?.trade || 'Projet',
+    siteAddress: [project?.siteAddress, cityLabel].filter(Boolean).join(', ') || 'Adresse chantier non renseignee',
+    validityDays: 30,
+    defaultVat: 20,
+    depositPercent: 30,
+    paymentTerms: 'Acompte a la validation, solde a la reception des travaux.',
+    clientNote:
+      'Ce devis est etabli sur la base des informations transmises. Une visite technique peut etre necessaire avant validation definitive.',
+    lines: [
+      {
+        id: `fallback_${project?.id || 'demo'}_001`,
+        label: project?.trade ? `Intervention ${project.trade.toLowerCase()}` : 'Prestation principale',
+        quantity: 1,
+        unit: 'forfait',
+        unitPriceHt: Number(project?.quote?.amount || project?.devisAmount || 850),
+        vatRate: 20,
+        enabled: true,
+      },
+    ],
+  };
+}
+
+function normalizeQuoteBuilder(project: any): DemoQuoteBuilder {
+  const fallback = buildFallbackQuoteBuilder(project);
+  const builder = project?.quoteBuilder;
+
+  return {
+    ...fallback,
+    ...builder,
+    lines:
+      builder?.lines?.length
+        ? builder.lines.map((line: DemoQuoteBuilderLine) => ({
+            ...line,
+            enabled: line.enabled !== false,
+          }))
+        : fallback.lines,
+  };
+}
+
+function computeQuoteBuilderSummary(lines: DemoQuoteBuilderLine[], depositPercent: number) {
+  const enabledLines = lines.filter((line) => line.enabled !== false);
+  const totalHt = enabledLines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPriceHt || 0), 0);
+  const totalVat = enabledLines.reduce(
+    (sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPriceHt || 0) * (Number(line.vatRate || 0) / 100),
+    0
+  );
+  const totalTtc = totalHt + totalVat;
+  const depositAmount = totalTtc * (Number(depositPercent || 0) / 100);
+  const balanceAmount = totalTtc - depositAmount;
+
+  return {
+    enabledLines,
+    totalHt,
+    totalVat,
+    totalTtc,
+    depositAmount,
+    balanceAmount,
   };
 }
 
