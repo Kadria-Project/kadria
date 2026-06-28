@@ -5,6 +5,15 @@ import { useSearchParams } from 'next/navigation'
 import ChatWidgetInline, { type Dossier } from '@/src/components/chat/ChatWidgetInline'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 
+function hexToRgba(hex: string, alpha: number): string {
+  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!match) return `rgba(34,197,94,${alpha})`
+  const r = parseInt(match[1], 16)
+  const g = parseInt(match[2], 16)
+  const b = parseInt(match[3], 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 const SUMMARY_LABELS: { key: keyof Dossier; label: string }[] = [
   { key: 'projectType', label: 'Type de demande' },
   { key: 'aiSummary', label: 'Description' },
@@ -12,7 +21,7 @@ const SUMMARY_LABELS: { key: keyof Dossier; label: string }[] = [
   { key: 'desiredTimeline', label: 'Délai' },
 ]
 
-function DossierSummary({ dossier, score }: { dossier: Dossier; score: number }) {
+function DossierSummary({ dossier, score, accentColor }: { dossier: Dossier; score: number; accentColor: string }) {
   const rows = SUMMARY_LABELS
     .map((item) => ({ label: item.label, value: dossier[item.key] }))
     .filter(
@@ -63,7 +72,7 @@ function DossierSummary({ dossier, score }: { dossier: Dossier; score: number })
         </div>
       )}
       <div className="mt-1" style={{ height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, score))}%`, background: '#22c55e', transition: 'width 0.4s ease' }} />
+        <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, score))}%`, background: accentColor, transition: 'width 0.4s ease' }} />
       </div>
     </div>
   )
@@ -83,6 +92,7 @@ function ProjetContent() {
   const [dossier, setDossier] = useState<Dossier>({})
   const [score, setScore] = useState(0)
   const [summaryOpen, setSummaryOpen] = useState(false)
+  const [accentColor, setAccentColor] = useState('#22c55e')
 
   return (
     <main
@@ -126,8 +136,8 @@ function ProjetContent() {
           </div>
           <span
             style={{
-              border: '1px solid rgba(34,197,94,0.18)',
-              background: 'rgba(34,197,94,0.08)',
+              border: `1px solid ${hexToRgba(accentColor, 0.18)}`,
+              background: hexToRgba(accentColor, 0.08),
               color: '#dcfce7',
               borderRadius: '999px',
               padding: '6px 10px',
@@ -150,6 +160,7 @@ function ProjetContent() {
               projectExperience={true}
               onDossierChange={(d, s) => { setDossier(d); setScore(s) }}
               onArtisanNameChange={setArtisanName}
+              onPrimaryColorChange={setAccentColor}
             />
           </section>
 
@@ -163,7 +174,7 @@ function ProjetContent() {
             <p style={{ margin: '0 0 10px', color: '#f4f4f5', fontSize: '12.5px', fontWeight: 600 }}>
               Résumé de votre demande
             </p>
-            <DossierSummary dossier={dossier} score={score} />
+            <DossierSummary dossier={dossier} score={score} accentColor={accentColor} />
           </aside>
         </div>
 
@@ -188,7 +199,7 @@ function ProjetContent() {
             Résumé de votre demande
           </summary>
           <div className="mt-3">
-            <DossierSummary dossier={dossier} score={score} />
+            <DossierSummary dossier={dossier} score={score} accentColor={accentColor} />
           </div>
         </details>
       </div>

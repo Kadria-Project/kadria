@@ -13,6 +13,7 @@
 
   // Config par défaut
   let primaryColor = '#22c55e'
+  let secondaryColor = ''
   let isOpen = false
 
   // Charge la config artisan
@@ -21,9 +22,10 @@
     .then(data => {
       if (data.success && data.config) {
         primaryColor = data.config.primaryColor || '#22c55e'
+        secondaryColor = data.config.secondaryColor || ''
         updateBubbleColor()
         // Met à jour l'iframe src avec la couleur
-        const iframeSrc = `${baseUrl}/widget-embed?artisan_id=${artisanId}&primary_color=${encodeURIComponent(primaryColor)}`
+        const iframeSrc = `${baseUrl}/widget-embed?artisan_id=${artisanId}&primary_color=${encodeURIComponent(primaryColor)}${secondaryColor ? `&secondary_color=${encodeURIComponent(secondaryColor)}` : ''}`
         iframe.setAttribute('data-src', iframeSrc)
         // Si l'iframe est déjà chargée, recharge avec la bonne couleur
         if (iframe.src && iframe.src !== '') {

@@ -33,6 +33,7 @@ interface Props {
   previewMode?: boolean
   onDossierChange?: (dossier: Dossier, score: number) => void
   onArtisanNameChange?: (name: string) => void
+  onPrimaryColorChange?: (color: string) => void
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,6 +97,7 @@ export default function ChatWidgetInline({
   previewMode = false,
   onDossierChange,
   onArtisanNameChange,
+  onPrimaryColorChange,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -144,7 +146,7 @@ export default function ChatWidgetInline({
       setPrimaryColorLocal(primaryColor)
     }
     const loadConfig = async () => {
-      if (!artisanId || artisanId === 'Artisan_demo') return
+      if (!artisanId) return
       try {
         const res = await fetch(`/api/artisan/public-config?artisan_id=${artisanId}`)
         const data = await res.json()
@@ -198,6 +200,11 @@ export default function ChatWidgetInline({
       onArtisanNameChange?.(widgetName)
     }
   }, [artisanId, widgetName, onArtisanNameChange])
+
+  // ── Notifie le parent de la couleur artisan résolue (ex: accents /projet) ──
+  useEffect(() => {
+    onPrimaryColorChange?.(primaryColorLocal)
+  }, [primaryColorLocal, onPrimaryColorChange])
 
   // ── Address mode detection ───────────────────────────────────────────────
   const isAddressMode = expectedField === 'siteAddress'
@@ -923,8 +930,8 @@ export default function ChatWidgetInline({
                     disabled={uploadingPhotos}
                     style={{
                       background: '#18181b',
-                      border: '1px solid #22c55e',
-                      color: '#22c55e',
+                      border: `1px solid ${primaryColorLocal}`,
+                      color: primaryColorLocal,
                       borderRadius: '20px',
                       padding: '8px 16px',
                       fontSize: '13px',
@@ -1044,7 +1051,7 @@ export default function ChatWidgetInline({
                   }}>
                     <p style={{
                       margin: '0 0 4px',
-                      color: '#22c55e',
+                      color: primaryColorLocal,
                       fontSize: '11px',
                       fontWeight: 600,
                       letterSpacing: '0.08em',
@@ -1115,7 +1122,7 @@ export default function ChatWidgetInline({
                         await sendMessage(summary)
                       }}
                       style={{
-                        background: '#22c55e',
+                        background: primaryColorLocal,
                         border: 'none',
                         color: 'black',
                         fontWeight: 700,
@@ -1180,8 +1187,8 @@ export default function ChatWidgetInline({
                   onClick={() => setShowModal(true)}
                   style={{
                     background: 'transparent',
-                    border: '1px solid #22c55e',
-                    color: '#22c55e',
+                    border: `1px solid ${primaryColorLocal}`,
+                    color: primaryColorLocal,
                     borderRadius: '10px',
                     padding: '8px 20px',
                     fontSize: '13px',

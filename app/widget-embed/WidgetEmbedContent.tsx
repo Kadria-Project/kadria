@@ -5,8 +5,9 @@ import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
 
 export default function WidgetEmbedContent() {
   const searchParams = useSearchParams()
-  const artisanId = searchParams.get('artisan_id') || ''
+  const artisanId = searchParams.get('artisan_id') || searchParams.get('artisanId') || ''
   const primaryColor = searchParams.get('primary_color') || undefined
+  const secondaryColor = searchParams.get('secondary_color') || undefined
 
   return (
     <main style={{
@@ -22,6 +23,7 @@ export default function WidgetEmbedContent() {
         inline={true}
         fullPage={true}
         primaryColor={primaryColor}
+        secondaryColor={secondaryColor}
       />
     </main>
   )
