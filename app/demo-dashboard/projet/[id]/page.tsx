@@ -57,7 +57,18 @@ interface DevisListItem {
   quote_sent_at?: string;
   last_follow_up_at?: string | null;
   follow_up_count?: number;
+  declined?: boolean;
+  declined_at?: string | null;
+  decline_reason?: string | null;
+  follow_up_disabled?: boolean;
 }
+
+type DemoProjectActivity = {
+  id: string;
+  description: string;
+  createdAt: string;
+  action: string;
+};
 
 function formatDevisDate(value: string) {
   if (!value) return '—';
@@ -145,36 +156,78 @@ function buildDemoArtisanConfig(artisan: ReturnType<typeof useDemoMode>['artisan
 
 function buildDemoDevisList(project: any): DevisListItem[] {
   if (!project) return [];
+  const quote = project.quote;
   const normalizedStatus = normalizeDemoStatus(project.status);
-  const shouldHaveQuote = normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' || Number(project.devisAmount || 0) > 0;
+  const shouldHaveQuote =
+    quote?.status && quote.status !== 'none'
+      ? true
+      : normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' || Number(project.devisAmount || 0) > 0;
   if (!shouldHaveQuote) return [];
+
+  const amount = Number(quote?.amount ?? project.devisAmount ?? 0) || 8600;
+  const sent = quote?.status === 'sent' || quote?.status === 'opened' || quote?.status === 'accepted' || quote?.status === 'declined';
+  const accepted = quote?.status === 'accepted' || normalizedStatus === 'Gagné';
+  const declined = quote?.status === 'declined' || normalizedStatus === 'Perdu';
+  const quoteSentAt = quote?.sentAt || project.quoteSentAt || (sent ? project.createdAt : undefined);
+  const openedCount = typeof quote?.openedCount === 'number' ? quote.openedCount : project.opensCount || 0;
+  const openedAt = quote?.openedAt || (openedCount > 0 ? project.createdAt : null);
+  const validUntil = quote?.validUntil || project.createdAt;
+
+  const statut =
+    quote?.status === 'draft'
+      ? 'Brouillon'
+      : quote?.status === 'accepted'
+        ? 'Accepté'
+        : quote?.status === 'declined'
+          ? 'Refusé'
+          : sent
+            ? 'Envoyé'
+            : 'Brouillon';
 
   return [
     {
       id: `demo-devis-${project.id}`,
       numero: project.projectNumber?.replace('DEV-', 'DEVIS-') || 'DEVIS-DEMO-001',
       token: `demo-${project.id}`,
-      amount: Number(project.devisAmount || 0) || 8600,
-      sent: normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné',
-      statut: normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' ? 'Envoyé' : 'Brouillon',
+      amount,
+      sent,
+      statut,
       pdf_url: null,
-      date_emission: project.createdAt,
-      date_validite: project.createdAt,
+      date_emission: quoteSentAt || project.createdAt,
+      date_validite: validUntil,
       client_email: project.clientEmail || '',
-      opens_count: normalizedStatus === 'Devis envoyé' ? 2 : normalizedStatus === 'Gagné' ? 3 : 0,
-      last_opened_date: normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' ? project.createdAt : null,
-      accepted: normalizedStatus === 'Gagné',
-      accepted_at: normalizedStatus === 'Gagné' ? project.createdAt : null,
-      quote_sent_at: normalizedStatus === 'Devis envoyé' || normalizedStatus === 'Gagné' ? project.createdAt : undefined,
-      last_follow_up_at: null,
-      follow_up_count: 0,
+      opens_count: openedCount,
+      last_opened_date: openedAt,
+      accepted,
+      accepted_at: accepted ? (project.followUp?.date || openedAt || quoteSentAt || project.createdAt) : null,
+      quote_sent_at: quoteSentAt,
+      last_follow_up_at: project.followUp?.status !== 'none' && project.followUp?.status !== 'planned' ? project.followUp?.date : null,
+      follow_up_count: project.followUp?.status === 'done' ? 1 : project.followUp?.status === 'late' ? 1 : 0,
+      declined,
+      declined_at: declined ? (project.followUp?.date || openedAt || quoteSentAt || project.createdAt) : null,
+      decline_reason: quote?.declineReason || null,
+      follow_up_disabled: false,
     },
   ];
 }
 
 function buildDemoActivities(project: any, events: any[]) {
   if (!project) return [];
+  const activityFromProject: DemoProjectActivity[] = (project.activity || []).map((item: any) => ({
+    id: item.id,
+    description: item.label,
+    createdAt: item.date,
+    action:
+      item.kind === 'quote'
+        ? 'DEVIS'
+        : item.kind === 'followup'
+          ? 'CALLBACK_UPDATED'
+          : item.kind === 'decision'
+            ? 'STATUS_UPDATED'
+            : 'CREATED',
+  }));
   const timeline = [
+    ...activityFromProject,
     {
       id: `created-${project.id}`,
       description: `Dossier créé - ${project.status || 'Nouveau'}`,
@@ -212,6 +265,55 @@ function buildDemoActivities(project: any, events: any[]) {
   ];
 
   return timeline.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+}
+
+function getDemoQuoteStatusLabel(project: any, devis?: DevisListItem | null) {
+  if (devis?.accepted) return 'Devis accepté';
+  if (devis?.declined) return 'Devis refusé';
+  if (project?.quote?.status === 'opened') return 'Devis ouvert';
+  if (devis?.sent) return 'Devis envoyé';
+  if (project?.quote?.status === 'draft') return 'Devis préparé';
+  return 'Aucun devis';
+}
+
+function getQuoteStatusAppearance(statusLabel: string) {
+  if (statusLabel.includes('accepté')) {
+    return { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' };
+  }
+  if (statusLabel.includes('refusé')) {
+    return { bg: 'rgba(220,38,38,0.15)', text: '#dc2626', border: 'rgba(220,38,38,0.3)' };
+  }
+  if (statusLabel.includes('ouvert') || statusLabel.includes('envoyé')) {
+    return { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' };
+  }
+  if (statusLabel.includes('préparé')) {
+    return { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b', border: 'rgba(245,158,11,0.3)' };
+  }
+  return { bg: 'rgba(63,63,70,0.35)', text: 'var(--text-2)', border: 'var(--border)' };
+}
+
+function demoActionButtonStyle(
+  tone: 'primary' | 'secondary' | 'success' | 'danger',
+  disabled = false
+) {
+  const palette =
+    tone === 'primary'
+      ? { background: 'var(--accent)', color: '#09090b', border: 'none' }
+      : tone === 'success'
+        ? { background: 'rgba(21,128,61,0.16)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.28)' }
+        : tone === 'danger'
+          ? { background: 'rgba(220,38,38,0.12)', color: '#f87171', border: '1px solid rgba(220,38,38,0.24)' }
+          : { background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--border)' };
+
+  return {
+    ...palette,
+    borderRadius: '10px',
+    padding: '10px 14px',
+    fontSize: '13px',
+    fontWeight: 700,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.45 : 1,
+  } as const;
 }
 
 export default function ProjectDetailPage() {
@@ -368,18 +470,27 @@ function ProjectDetail() {
         notes: 'Relance de devis envoyée en mode démo',
         status: 'Prévu',
       });
-      setDevisList((prev) =>
-        prev.map((item) =>
-          item.id === devis.id
-            ? {
-                ...item,
-                last_follow_up_at: sentAt,
-                follow_up_count: (item.follow_up_count || 0) + 1,
-              }
-            : item
-        )
-      );
-      setFollowUpToast({ type: 'success', message: 'Relance envoyée en mode démo' });
+      syncLocalQuoteState((current) => ({
+        ...current,
+        followUp: {
+          ...(current.followUp || { status: 'done', date: sentAt, channel: 'email', reason: 'Relance devis' }),
+          status: 'done',
+          date: sentAt,
+          reason: 'Relance commerciale effectuée après envoi du devis',
+        },
+        quote: current.quote
+          ? {
+              ...current.quote,
+              openedCount: Math.max(current.quote.openedCount || 0, 1),
+              openedAt: current.quote.openedAt || sentAt,
+            }
+          : current.quote,
+        activity: [
+          { id: `demo_followup_sent_${Date.now()}`, label: 'Relance envoyée pour le devis (démo)', date: sentAt, kind: 'followup' },
+          ...(current.activity || []),
+        ],
+        lastInteractionAt: sentAt,
+      }), 'Action simulée - aucun devis réel n’a été envoyé.');
     } catch (error) {
       setFollowUpToast({
         type: 'error',
@@ -388,6 +499,160 @@ function ProjectDetail() {
     } finally {
       setFollowingUpDevisId(null);
     }
+  }
+
+  function syncLocalQuoteState(mutator: (current: any) => any, message: string) {
+    setProject((current: any) => {
+      if (!current) return current;
+      const next = mutator(current);
+      setDevisList(buildDemoDevisList(next));
+      setActivities(buildDemoActivities(next, events));
+      return next;
+    });
+    setFollowUpToast({ type: 'success', message });
+  }
+
+  function updateDemoQuoteStatus(nextStatus: 'draft' | 'sent' | 'opened' | 'accepted' | 'declined') {
+    const now = new Date().toISOString();
+    syncLocalQuoteState((current) => {
+      const currentAmount = Number(devisAmount || current.devisAmount || current.quote?.amount || 2490);
+      const baseQuote = current.quote || {
+        status: 'none',
+        amount: currentAmount,
+        sentAt: null,
+        openedAt: null,
+        openedCount: 0,
+        validUntil: null,
+        declineReason: null,
+      };
+      const nextQuote = {
+        ...baseQuote,
+        amount: currentAmount,
+        status: nextStatus,
+        sentAt:
+          nextStatus === 'sent' || nextStatus === 'opened' || nextStatus === 'accepted' || nextStatus === 'declined'
+            ? baseQuote.sentAt || now
+            : baseQuote.sentAt,
+        openedAt:
+          nextStatus === 'opened' || nextStatus === 'accepted' || nextStatus === 'declined'
+            ? baseQuote.openedAt || now
+            : nextStatus === 'sent'
+              ? null
+              : baseQuote.openedAt,
+        openedCount:
+          nextStatus === 'opened' || nextStatus === 'accepted' || nextStatus === 'declined'
+            ? Math.max(baseQuote.openedCount || 0, 1)
+            : nextStatus === 'sent'
+              ? 0
+              : baseQuote.openedCount || 0,
+        validUntil:
+          nextStatus === 'sent' || nextStatus === 'opened' || nextStatus === 'accepted' || nextStatus === 'declined'
+            ? baseQuote.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            : baseQuote.validUntil,
+        declineReason:
+          nextStatus === 'declined'
+            ? baseQuote.declineReason || 'Projet reporte ou arbitrage budgetaire client'
+            : nextStatus === 'accepted'
+              ? null
+              : baseQuote.declineReason || null,
+      };
+
+      const nextProjectStatus =
+        nextStatus === 'accepted'
+          ? 'Gagné'
+          : nextStatus === 'declined'
+            ? 'Perdu'
+            : nextStatus === 'sent' || nextStatus === 'opened'
+              ? 'Devis envoyé'
+              : current.status === 'Nouveau'
+                ? 'Qualifié'
+                : current.status;
+
+      const nextFollowUp =
+        nextStatus === 'sent' || nextStatus === 'opened'
+          ? {
+              ...(current.followUp || { channel: 'email', reason: 'Suivi devis', status: 'planned', date: null }),
+              status: nextStatus === 'opened' ? 'late' : 'planned',
+              date: new Date(Date.now() + (nextStatus === 'opened' ? -2 : 2) * 24 * 60 * 60 * 1000).toISOString(),
+              channel: current.followUp?.channel || 'email',
+              reason:
+                nextStatus === 'opened'
+                  ? 'Devis ouvert sans decision client'
+                  : 'Verification de bonne reception du devis',
+            }
+          : nextStatus === 'accepted'
+            ? {
+                ...(current.followUp || { channel: 'phone', reason: 'Validation chantier', status: 'done', date: null }),
+                status: 'done',
+                date: now,
+                channel: 'phone',
+                reason: 'Validation client recue',
+              }
+            : nextStatus === 'declined'
+              ? {
+                  ...(current.followUp || { channel: 'email', reason: 'Projet refuse', status: 'none', date: null }),
+                  status: 'none',
+                  date: null,
+                  channel: 'email',
+                  reason: 'Aucune relance complementaire necessaire',
+                }
+              : current.followUp;
+
+      const nextActivityEntry =
+        nextStatus === 'accepted'
+          ? { id: `demo_quote_accept_${Date.now()}`, label: 'Devis marqué comme accepté (démo)', date: now, kind: 'decision' }
+          : nextStatus === 'declined'
+            ? { id: `demo_quote_decline_${Date.now()}`, label: 'Devis marqué comme refusé (démo)', date: now, kind: 'decision' }
+            : nextStatus === 'sent'
+              ? { id: `demo_quote_sent_${Date.now()}`, label: 'Devis envoyé au client (démo)', date: now, kind: 'quote' }
+              : nextStatus === 'opened'
+                ? { id: `demo_quote_opened_${Date.now()}`, label: 'Devis ouvert par le client (démo)', date: now, kind: 'quote' }
+                : { id: `demo_quote_draft_${Date.now()}`, label: 'Devis préparé en brouillon (démo)', date: now, kind: 'quote' };
+
+      return {
+        ...current,
+        status: nextProjectStatus,
+        devisAmount: currentAmount,
+        quote: nextQuote,
+        followUp: nextFollowUp,
+        lastInteractionAt: now,
+        activity: [nextActivityEntry, ...(current.activity || [])],
+      };
+    }, 'Action simulée - aucun devis réel n’a été envoyé.');
+  }
+
+  function markFollowUpDone() {
+    const now = new Date().toISOString();
+    syncLocalQuoteState((current) => ({
+      ...current,
+      followUp: {
+        ...(current.followUp || { channel: 'phone', reason: 'Relance commerciale', status: 'done', date: now }),
+        status: 'done',
+        date: now,
+      },
+      lastInteractionAt: now,
+      activity: [
+        { id: `demo_followup_done_${Date.now()}`, label: 'Relance commerciale effectuée (démo)', date: now, kind: 'followup' },
+        ...(current.activity || []),
+      ],
+    }), 'Action simulée - relance marquée comme effectuée localement.');
+  }
+
+  function planNextFollowUp() {
+    const nextDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    syncLocalQuoteState((current) => ({
+      ...current,
+      followUp: {
+        ...(current.followUp || { channel: 'email', reason: 'Suivi commercial', status: 'planned', date: nextDate }),
+        status: 'planned',
+        date: nextDate,
+      },
+      callbackDate: nextDate,
+      activity: [
+        { id: `demo_followup_planned_${Date.now()}`, label: 'Nouvelle relance planifiée (démo)', date: nextDate, kind: 'followup' },
+        ...(current.activity || []),
+      ],
+    }), 'Action simulée - prochaine relance planifiée localement.');
   }
 
   const legalComplete = !!(
@@ -507,6 +772,43 @@ function ProjectDetail() {
   const indicators = getIndicators(project);
   const summary = getStructuredSummary(project);
   const followUpTime = getBestFollowUpTime(project);
+  const latestDevis = devisList[0] || null;
+  const quoteStatusLabel = getDemoQuoteStatusLabel(project, latestDevis);
+  const quoteStatusStyle = getQuoteStatusAppearance(quoteStatusLabel);
+  const followUpState = project.followUp || {
+    status: 'none',
+    date: null,
+    channel: 'email',
+    reason: 'Aucune relance necessaire',
+  };
+  const quoteTimeline = [
+    { id: 'qualified', label: 'Dossier qualifie', done: true },
+    { id: 'draft', label: 'Devis prepare', done: project.quote?.status && project.quote.status !== 'none' },
+    { id: 'sent', label: 'Devis envoye', done: !!latestDevis?.sent },
+    { id: 'opened', label: 'Devis ouvert par le client', done: !!project.quote?.openedCount },
+    {
+      id: 'followup',
+      label: 'Relance prevue',
+      done: followUpState.status === 'planned' || followUpState.status === 'late' || followUpState.status === 'done',
+    },
+    {
+      id: 'decision',
+      label: 'Decision client',
+      done: quoteStatusLabel === 'Devis accepté' || quoteStatusLabel === 'Devis refusé',
+    },
+  ];
+  const nextCommercialAction =
+    quoteStatusLabel === 'Aucun devis'
+      ? 'Preparer un devis'
+      : quoteStatusLabel === 'Devis préparé'
+        ? 'Envoyer le devis'
+        : quoteStatusLabel === 'Devis ouvert'
+          ? 'Relancer le client'
+          : quoteStatusLabel === 'Devis envoyé'
+            ? 'Suivre l ouverture du devis'
+            : quoteStatusLabel === 'Devis accepté'
+              ? 'Planifier le chantier'
+              : 'Creer une nouvelle proposition';
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
   const projectLabel = project.projectType || project.trade || 'Projet';
   const score = Number(project.completenessScore || 0);
@@ -595,6 +897,7 @@ function ProjectDetail() {
                 win.document.close();
                 setTimeout(() => win.print(), 500);
               }
+              setFollowUpToast({ type: 'success', message: 'Action simulée - aucun PDF réel n’a été généré.' });
             }}
             style={{
               background: 'var(--bg-elevated)',
@@ -843,6 +1146,240 @@ function ProjectDetail() {
             </button>
           </div>
         </div>
+
+        <section
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '18px',
+            padding: isMobile ? '18px 16px' : '22px',
+            marginBottom: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', marginBottom: '18px' }}>
+            <div>
+              <p style={{ margin: '0 0 6px', color: 'var(--accent)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Devis & relances
+              </p>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>Cycle commercial du dossier</h2>
+              <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                Mode demo - tous les boutons ci-dessous sont simulés localement. Aucun devis réel, email ou PDF officiel n&apos;est envoyé.
+              </p>
+            </div>
+            <span
+              style={{
+                background: 'rgba(34,197,94,0.12)',
+                color: 'var(--accent)',
+                border: '1px solid rgba(34,197,94,0.24)',
+                borderRadius: '999px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 700,
+              }}
+            >
+              Demo
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Statut devis</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '20px', fontWeight: 800 }}>{quoteStatusLabel}</p>
+                </div>
+                <span
+                  style={{
+                    background: quoteStatusStyle.bg,
+                    color: quoteStatusStyle.text,
+                    border: `1px solid ${quoteStatusStyle.border}`,
+                    borderRadius: '999px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {quoteStatusLabel}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Montant</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: 700 }}>
+                    {latestDevis ? `${formatMoney(latestDevis.amount)} €` : 'Non renseigné'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Date d&apos;envoi</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
+                    {latestDevis?.quote_sent_at ? formatMediumDate(latestDevis.quote_sent_at) : 'Pas encore envoyé'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Dernière ouverture</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
+                    {latestDevis?.last_opened_date ? formatMediumDate(latestDevis.last_opened_date) : 'Aucune ouverture'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Ouvertures</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
+                    {latestDevis?.opens_count || 0} fois
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Validité</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
+                    {latestDevis?.date_validite ? formatMediumDate(latestDevis.date_validite) : '30 jours'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Prochaine action</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>{nextCommercialAction}</p>
+                </div>
+              </div>
+
+              {latestDevis?.decline_reason && (
+                <div style={{ borderRadius: '12px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.18)', padding: '12px 14px' }}>
+                  <p style={{ margin: 0, color: '#fca5a5', fontSize: '12px', fontWeight: 700 }}>Motif de refus</p>
+                  <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                    {latestDevis.decline_reason}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <p style={{ margin: '0 0 12px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Relance commerciale
+              </p>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Statut</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '16px', fontWeight: 700 }}>
+                    {followUpState.status === 'late'
+                      ? 'Relance en retard'
+                      : followUpState.status === 'today'
+                        ? 'Relance aujourd hui'
+                        : followUpState.status === 'planned'
+                          ? 'Relance a venir'
+                          : followUpState.status === 'done'
+                            ? 'Relance effectuee'
+                            : 'Aucune relance'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Date</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
+                    {followUpState.date ? formatDateTime(followUpState.date) : 'Non planifiée'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Canal conseillé</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
+                    {followUpState.channel === 'phone' ? 'Appel' : 'Email'}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Raison</p>
+                  <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.6 }}>
+                    {followUpState.reason}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Timeline devis
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(6, minmax(0, 1fr))', gap: '12px' }}>
+              {quoteTimeline.map((step, index) => (
+                <div key={step.id} style={{ display: 'flex', gap: '10px', alignItems: isMobile ? 'flex-start' : 'center' }}>
+                  <div
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '999px',
+                      flexShrink: 0,
+                      background: step.done ? 'rgba(34,197,94,0.16)' : 'var(--bg-hover)',
+                      color: step.done ? 'var(--accent)' : 'var(--text-3)',
+                      border: step.done ? '1px solid rgba(34,197,94,0.28)' : '1px solid var(--border)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {step.done ? '✓' : index + 1}
+                  </div>
+                  <span style={{ fontSize: '13px', color: step.done ? 'var(--text-1)' : 'var(--text-2)', lineHeight: 1.5 }}>
+                    {step.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: '16px' }}>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Actions devis simulées
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
+                <button type="button" onClick={() => updateDemoQuoteStatus('draft')} style={demoActionButtonStyle('secondary')}>
+                  Préparer un devis
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('draft')} style={demoActionButtonStyle('secondary')}>
+                  Modifier le devis
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('sent')} style={demoActionButtonStyle('primary')}>
+                  Envoyer le devis
+                </button>
+                <button type="button" onClick={() => latestDevis && followUpQuote(latestDevis)} disabled={!latestDevis} style={demoActionButtonStyle('primary', !latestDevis)}>
+                  Relancer le client
+                </button>
+                <button type="button" onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée - aucun PDF réel n’a été généré.' })} style={demoActionButtonStyle('secondary')}>
+                  Exporter PDF
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('accepted')} style={demoActionButtonStyle('success')}>
+                  Marquer comme accepté
+                </button>
+                <button type="button" onClick={() => updateDemoQuoteStatus('declined')} style={demoActionButtonStyle('danger')}>
+                  Marquer comme refusé
+                </button>
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
+              <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Suivi commercial
+              </p>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {(project.activity || []).slice(0, 5).map((item: any) => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{item.label}</p>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>{formatDateTime(item.date)}</p>
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase' }}>{item.kind}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gap: '10px', marginTop: '14px' }}>
+                <button type="button" onClick={markFollowUpDone} style={demoActionButtonStyle('secondary')}>
+                  Relance effectuée
+                </button>
+                <button type="button" onClick={planNextFollowUp} style={demoActionButtonStyle('secondary')}>
+                  Planifier une relance
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div style={{
           background: 'var(--bg-elevated)',
@@ -1217,12 +1754,7 @@ function ProjectDetail() {
                     return;
                   }
                   if (!legalComplete) return;
-                  const generatedQuote = devisList[0] || buildDemoDevisList({ ...project, devisAmount: Number(devisAmount || project.devisAmount || 8600), status: project.status || 'Devis envoyé' })[0];
-                  if (generatedQuote) {
-                    setDevisList((current) => (current.length > 0 ? current : [generatedQuote]));
-                    setProject((current: any) => (current ? { ...current, devisAmount: generatedQuote.amount } : current));
-                    setFollowUpToast({ type: 'success', message: 'Devis de démonstration généré' });
-                  }
+                  updateDemoQuoteStatus('draft');
                 }}
                 disabled={!legalComplete && canQuote}
                 title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}

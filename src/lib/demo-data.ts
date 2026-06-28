@@ -5,6 +5,30 @@ export interface DemoPhoto {
   thumbnailUrl: string;
 }
 
+export interface DemoQuoteState {
+  status: 'draft' | 'sent' | 'opened' | 'accepted' | 'declined' | 'none';
+  amount: number | null;
+  sentAt?: string | null;
+  openedAt?: string | null;
+  openedCount?: number;
+  validUntil?: string | null;
+  declineReason?: string | null;
+}
+
+export interface DemoFollowUpState {
+  status: 'today' | 'late' | 'planned' | 'done' | 'none';
+  date: string | null;
+  channel: 'phone' | 'email';
+  reason: string;
+}
+
+export interface DemoActivityItem {
+  id: string;
+  label: string;
+  date: string;
+  kind: 'project' | 'quote' | 'followup' | 'decision';
+}
+
 export interface DemoProject {
   id: string;
   projectNumber: string;
@@ -33,6 +57,9 @@ export interface DemoProject {
   opensCount?: number;
   callbackDate: string | null;
   notes: string;
+  quote?: DemoQuoteState;
+  followUp?: DemoFollowUpState;
+  activity?: DemoActivityItem[];
 }
 
 export interface DemoEvent {
@@ -265,6 +292,23 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-20T09:30:00.000Z',
     callbackDate: '2026-06-21T10:00:00.000Z',
     notes: 'Cliente tres reactive, visite technique a proposer rapidement.',
+    quote: {
+      status: 'none',
+      amount: null,
+      validUntil: null,
+      openedCount: 0,
+    },
+    followUp: {
+      status: 'planned',
+      date: '2026-06-29T10:30:00.000Z',
+      channel: 'phone',
+      reason: 'Projet chaud a qualifier avant preparation du devis',
+    },
+    activity: [
+      { id: 'demo_001_received', label: 'Demande recue via le widget', date: '2026-06-20T09:30:00.000Z', kind: 'project' },
+      { id: 'demo_001_qualified', label: 'Dossier qualifie avec photos fournies', date: '2026-06-20T11:10:00.000Z', kind: 'project' },
+      { id: 'demo_001_followup', label: 'Relance de qualification planifiee', date: '2026-06-29T10:30:00.000Z', kind: 'followup' },
+    ],
   },
   {
     id: 'demo_002',
@@ -290,6 +334,23 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-20T06:15:00.000Z',
     callbackDate: null,
     notes: 'Priorite haute avant prochaine pluie.',
+    quote: {
+      status: 'draft',
+      amount: 16400,
+      validUntil: '2026-07-20T06:15:00.000Z',
+      openedCount: 0,
+    },
+    followUp: {
+      status: 'today',
+      date: '2026-06-28T16:00:00.000Z',
+      channel: 'phone',
+      reason: 'Valider la visite toiture avant envoi du devis',
+    },
+    activity: [
+      { id: 'demo_002_received', label: 'Demande recue en urgence', date: '2026-06-20T06:15:00.000Z', kind: 'project' },
+      { id: 'demo_002_draft', label: 'Devis prepare en brouillon', date: '2026-06-20T09:45:00.000Z', kind: 'quote' },
+      { id: 'demo_002_followup', label: 'Appel de validation prevu aujourd hui', date: '2026-06-28T16:00:00.000Z', kind: 'followup' },
+    ],
   },
   {
     id: 'demo_003',
@@ -324,6 +385,27 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-18T14:00:00.000Z',
     callbackDate: null,
     notes: 'Devis envoye le 18/06, relance recommandee avant le 25/06.',
+    quote: {
+      status: 'opened',
+      amount: 88000,
+      sentAt: '2026-06-18T16:40:00.000Z',
+      openedAt: '2026-06-19T09:20:00.000Z',
+      openedCount: 2,
+      validUntil: '2026-07-18T16:40:00.000Z',
+    },
+    followUp: {
+      status: 'late',
+      date: '2026-06-25T10:00:00.000Z',
+      channel: 'email',
+      reason: 'Devis ouvert 2 fois sans retour client',
+    },
+    activity: [
+      { id: 'demo_003_received', label: 'Demande complete recue', date: '2026-06-18T14:00:00.000Z', kind: 'project' },
+      { id: 'demo_003_qualified', label: 'Dossier qualifie par l assistant', date: '2026-06-18T14:30:00.000Z', kind: 'project' },
+      { id: 'demo_003_quote_sent', label: 'Devis envoye au client', date: '2026-06-18T16:40:00.000Z', kind: 'quote' },
+      { id: 'demo_003_quote_opened', label: 'Le client a ouvert le devis', date: '2026-06-19T09:20:00.000Z', kind: 'quote' },
+      { id: 'demo_003_followup', label: 'Relance commerciale depassee', date: '2026-06-25T10:00:00.000Z', kind: 'followup' },
+    ],
   },
   {
     id: 'demo_004',
@@ -349,6 +431,26 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-15T11:30:00.000Z',
     callbackDate: null,
     notes: 'Chantier planifie la semaine prochaine.',
+    quote: {
+      status: 'accepted',
+      amount: 4200,
+      sentAt: '2026-06-15T17:15:00.000Z',
+      openedAt: '2026-06-16T08:45:00.000Z',
+      openedCount: 3,
+      validUntil: '2026-07-15T17:15:00.000Z',
+    },
+    followUp: {
+      status: 'done',
+      date: '2026-06-17T09:30:00.000Z',
+      channel: 'phone',
+      reason: 'Validation finale avant planification du chantier',
+    },
+    activity: [
+      { id: 'demo_004_received', label: 'Demande recue avec urgence vente', date: '2026-06-15T11:30:00.000Z', kind: 'project' },
+      { id: 'demo_004_quote_sent', label: 'Devis envoye et explique au telephone', date: '2026-06-15T17:15:00.000Z', kind: 'quote' },
+      { id: 'demo_004_quote_opened', label: 'Devis consulte par le client', date: '2026-06-16T08:45:00.000Z', kind: 'quote' },
+      { id: 'demo_004_quote_accepted', label: 'Devis accepte par le client', date: '2026-06-17T09:30:00.000Z', kind: 'decision' },
+    ],
   },
   {
     id: 'demo_005',
@@ -374,6 +476,26 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-12T16:45:00.000Z',
     callbackDate: null,
     notes: 'La cliente a choisi un autre prestataire.',
+    quote: {
+      status: 'declined',
+      amount: 890,
+      sentAt: '2026-06-13T10:00:00.000Z',
+      openedAt: '2026-06-13T18:10:00.000Z',
+      openedCount: 1,
+      validUntil: '2026-07-13T10:00:00.000Z',
+      declineReason: 'Budget reporte et choix d un autre prestataire',
+    },
+    followUp: {
+      status: 'none',
+      date: null,
+      channel: 'email',
+      reason: 'Aucune relance supplementaire necessaire',
+    },
+    activity: [
+      { id: 'demo_005_received', label: 'Demande recue pour entretien ponctuel', date: '2026-06-12T16:45:00.000Z', kind: 'project' },
+      { id: 'demo_005_quote_sent', label: 'Devis simplifie envoye', date: '2026-06-13T10:00:00.000Z', kind: 'quote' },
+      { id: 'demo_005_quote_declined', label: 'Devis refuse par le client', date: '2026-06-14T09:00:00.000Z', kind: 'decision' },
+    ],
   },
   {
     id: 'demo_006',
