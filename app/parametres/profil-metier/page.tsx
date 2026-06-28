@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
+import { TradeSearchSelect } from '@/src/components/TradeSearchSelect'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { SERVICE_PROFILE_TRADES, SERVICE_PROFILE_TEMPLATES, serviceProfileTemplateToPayload } from '@/src/lib/service-profile-templates'
 import { BusinessSetupWizard } from '@/src/components/BusinessSetupWizard'
@@ -117,70 +118,6 @@ const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   emergencySupported: false,
   relatedServices: [],
   internalNotes: '',
-}
-
-// Combobox recherchable simple (texte + liste filtrée), sans dépendance
-// externe — réutilisée pour le métier principal (sélection unique) et les
-// métiers secondaires (sélection multiple, tags retirables).
-function TradeSearchSelect({
-  options,
-  value,
-  onSelect,
-  placeholder,
-  inputStyle,
-}: {
-  options: { value: string; label: string }[]
-  value: string
-  onSelect: (value: string) => void
-  placeholder: string
-  inputStyle: React.CSSProperties
-}) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const selectedLabel = options.find((o) => o.value === value)?.label || ''
-  const filtered = query.trim()
-    ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
-    : options
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <input
-        type="text"
-        value={open ? query : selectedLabel}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          if (!open) setOpen(true)
-        }}
-        onFocus={() => { setQuery(''); setOpen(true) }}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
-        placeholder={placeholder}
-        style={inputStyle}
-      />
-      {open && filtered.length > 0 && (
-        <div
-          style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20,
-            background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '10px',
-            maxHeight: '220px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-          }}
-        >
-          {filtered.map((o) => (
-            <div
-              key={o.value}
-              onMouseDown={(e) => { e.preventDefault(); onSelect(o.value); setQuery(''); setOpen(false) }}
-              style={{
-                padding: '9px 14px', fontSize: '13px', cursor: 'pointer',
-                color: o.value === value ? 'var(--accent)' : 'var(--text-1)',
-                background: o.value === value ? 'rgba(34,197,94,0.08)' : 'transparent',
-              }}
-            >
-              {o.label}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
 
 function TradeMultiSearchSelect({

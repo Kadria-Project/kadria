@@ -3,21 +3,9 @@
 import { Suspense, useState, CSSProperties } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
+import { TradeSearchSelect } from '@/src/components/TradeSearchSelect'
+import { ARTISAN_TRADES } from '@/src/config/trades'
 import { normalizePlan, getPlanLabel, type PlanKey } from '@/src/config/plans'
-
-const TRADES = [
-  'Plombier',
-  'Électricien',
-  'Chauffagiste',
-  'Menuisier',
-  'Peintre',
-  'Maçon',
-  'Carreleur',
-  'Couvreur',
-  'Serrurier',
-  'Paysagiste',
-  'Autre',
-]
 
 type RegisterInterval = 'monthly' | 'yearly'
 
@@ -47,6 +35,10 @@ function RegisterPageContent() {
     company: '',
     trade: '',
   })
+  // Valeur (slug) sélectionnée dans le sélecteur métier searchable — le
+  // formulaire continue d'envoyer le label métier dans form.trade pour ne
+  // pas modifier le contrat attendu par /api/auth/register.
+  const [tradeValue, setTradeValue] = useState('')
 
   function update(key: string, value: string) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -352,16 +344,17 @@ function RegisterPageContent() {
 
           <div style={{ marginBottom: '24px' }}>
             <label style={labelStyle}>Métier *</label>
-            <select
-              value={form.trade}
-              onChange={e => update('trade', e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Sélectionnez votre métier</option>
-              {TRADES.map(trade => (
-                <option key={trade} value={trade}>{trade}</option>
-              ))}
-            </select>
+            <TradeSearchSelect
+              options={ARTISAN_TRADES}
+              value={tradeValue}
+              onSelect={(value) => {
+                setTradeValue(value)
+                const label = ARTISAN_TRADES.find(t => t.value === value)?.label || value
+                update('trade', label)
+              }}
+              placeholder="Rechercher votre métier"
+              inputStyle={inputStyle}
+            />
           </div>
 
           {error && (
