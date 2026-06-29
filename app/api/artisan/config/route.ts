@@ -22,6 +22,7 @@ export async function GET() {
         firstName: user?.firstName || '',
         lastName: user?.lastName || '',
         email: user?.email || '',
+        plan: session.plan,
       },
     })
   } catch (error) {
@@ -187,6 +188,17 @@ export async function PATCH(request: NextRequest) {
     if (body.websiteUrl !== undefined) fields['website_url'] = body.websiteUrl
     if (body.assistantAvatarType !== undefined) fields['assistant_avatar_type'] = body.assistantAvatarType
     if (body.assistantAvatarUrl !== undefined) fields['assistant_avatar_url'] = body.assistantAvatarUrl
+
+    // Marque blanche du widget : reservee aux plans Performance/Agence.
+    // session.plan provient de getSession(), qui revalide deja le plan reel
+    // cote serveur (cf. src/lib/auth-utils.ts) — on ne fait jamais confiance
+    // a une valeur envoyee par le front pour activer cette fonctionnalite.
+    const planAllowsWhiteLabel = session.plan === 'performance' || session.plan === 'entreprise'
+    if (body.whiteLabelEnabled !== undefined) {
+      fields['white_label_enabled'] = planAllowsWhiteLabel ? Boolean(body.whiteLabelEnabled) : false
+    }
+    if (body.widgetBrandName !== undefined) fields['widget_brand_name'] = body.widgetBrandName
+    if (body.widgetBrandLogoUrl !== undefined) fields['widget_brand_logo_url'] = body.widgetBrandLogoUrl
 
     if (body.trades !== undefined) {
       const cleanedTrades = (body.trades as unknown[])

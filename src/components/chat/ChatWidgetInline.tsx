@@ -39,6 +39,9 @@ interface Props {
   assistantAvatarType?: string
   assistantAvatarUrl?: string
   logoUrl?: string
+  whiteLabelEnabled?: boolean
+  widgetBrandName?: string
+  widgetBrandLogoUrl?: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -116,6 +119,9 @@ export default function ChatWidgetInline({
   assistantAvatarType,
   assistantAvatarUrl,
   logoUrl,
+  whiteLabelEnabled,
+  widgetBrandName,
+  widgetBrandLogoUrl,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -152,6 +158,12 @@ export default function ChatWidgetInline({
   const [assistantAvatarTypeLocal, setAssistantAvatarTypeLocal] = useState('kadria_default')
   const [assistantAvatarUrlLocal, setAssistantAvatarUrlLocal] = useState('')
   const [logoUrlLocal, setLogoUrlLocal] = useState('')
+  // Marque blanche du header (réservée Performance/Agence, vérifiée côté
+  // serveur dans /api/artisan/public-config — voir resolution ci-dessous).
+  const [whiteLabelEnabledLocal, setWhiteLabelEnabledLocal] = useState(false)
+  const [widgetBrandNameLocal, setWidgetBrandNameLocal] = useState('')
+  const [widgetBrandLogoUrlLocal, setWidgetBrandLogoUrlLocal] = useState('')
+  const [brandLogoFailed, setBrandLogoFailed] = useState(false)
   // Détection viewport mobile : limitée à l'écran d'accueil de /projet
   // (isProjectExperience) afin de proposer une entrée à 4 choix inspirée du
   // widget, sans toucher au rendu desktop ni au widget embarqué.
@@ -179,6 +191,9 @@ export default function ChatWidgetInline({
           if (data.config.assistantAvatarType) setAssistantAvatarTypeLocal(data.config.assistantAvatarType)
           if (data.config.assistantAvatarUrl) setAssistantAvatarUrlLocal(data.config.assistantAvatarUrl)
           if (data.config.logoUrl) setLogoUrlLocal(data.config.logoUrl)
+          if (data.config.whiteLabelEnabled !== undefined) setWhiteLabelEnabledLocal(Boolean(data.config.whiteLabelEnabled))
+          if (data.config.widgetBrandName) setWidgetBrandNameLocal(data.config.widgetBrandName)
+          if (data.config.widgetBrandLogoUrl) setWidgetBrandLogoUrlLocal(data.config.widgetBrandLogoUrl)
         }
       } catch (e) {
         console.error('Config load error:', e)
@@ -206,6 +221,18 @@ export default function ChatWidgetInline({
   useEffect(() => {
     if (logoUrl !== undefined) setLogoUrlLocal(logoUrl)
   }, [logoUrl])
+  useEffect(() => {
+    if (whiteLabelEnabled !== undefined) setWhiteLabelEnabledLocal(whiteLabelEnabled)
+  }, [whiteLabelEnabled])
+  useEffect(() => {
+    if (widgetBrandName !== undefined) setWidgetBrandNameLocal(widgetBrandName)
+  }, [widgetBrandName])
+  useEffect(() => {
+    if (widgetBrandLogoUrl !== undefined) {
+      setWidgetBrandLogoUrlLocal(widgetBrandLogoUrl)
+      setBrandLogoFailed(false)
+    }
+  }, [widgetBrandLogoUrl])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -488,6 +515,18 @@ export default function ChatWidgetInline({
   const stepLabel = ['', 'Projet', 'Détails', 'Coordonnées', 'Validation'][step]
   const isProjectExperience = fullPage && projectExperience
 
+  // ── Résolution du branding du header (marque blanche Performance/Agence) ──
+  // Ordre de résolution : logo de marque blanche > logo entreprise (logoUrl)
+  // > nom de marque blanche > nom/companyName courant (widgetName, "Kadria"
+  // par défaut). Quand whiteLabelEnabledLocal est false/absent, le
+  // comportement reste strictement inchangé (branding Kadria existant).
+  const resolvedBrandLogoUrl = whiteLabelEnabledLocal
+    ? (widgetBrandLogoUrlLocal || logoUrlLocal || '')
+    : ''
+  const resolvedBrandName = whiteLabelEnabledLocal
+    ? (widgetBrandNameLocal || widgetName)
+    : widgetName
+
   // ── Détection mobile (écran d'accueil /projet uniquement) ────────────────
   useEffect(() => {
     if (!isProjectExperience) return
@@ -578,25 +617,43 @@ export default function ChatWidgetInline({
         }}>
           <div style={{ ...centerStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-              <AssistantAvatarBubble
-                size={isProjectExperience ? 44 : 38}
-                borderRadius={isProjectExperience ? '14px' : '12px'}
-                assistantAvatarType={assistantAvatarTypeLocal}
-                assistantAvatarUrl={assistantAvatarUrlLocal}
-                logoUrl={logoUrlLocal}
-                primaryColor={primaryColorLocal}
-                fallbackGradient={isProjectExperience
-                  ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)`
-                  : `linear-gradient(145deg, ${primaryColorLocal} 0%, #0f3d24 130%)`}
-                fontSize={isProjectExperience ? '18px' : '15px'}
-                fontWeight={800}
-                textColor={isProjectExperience ? '#04110a' : '#ecfdf5'}
-                boxShadow={isProjectExperience ? `0 12px 28px ${hexToRgba(primaryColorLocal, 0.18)}` : `0 6px 18px ${hexToRgba(primaryColorLocal, 0.22)}`}
-                border={isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)'}
-              />
+              {resolvedBrandLogoUrl && !brandLogoFailed ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolvedBrandLogoUrl}
+                  alt={resolvedBrandName}
+                  onError={() => setBrandLogoFailed(true)}
+                  style={{
+                    width: isProjectExperience ? '44px' : '38px',
+                    height: isProjectExperience ? '44px' : '38px',
+                    borderRadius: isProjectExperience ? '14px' : '12px',
+                    objectFit: 'contain',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <AssistantAvatarBubble
+                  size={isProjectExperience ? 44 : 38}
+                  borderRadius={isProjectExperience ? '14px' : '12px'}
+                  assistantAvatarType={assistantAvatarTypeLocal}
+                  assistantAvatarUrl={assistantAvatarUrlLocal}
+                  logoUrl={logoUrlLocal}
+                  primaryColor={primaryColorLocal}
+                  fallbackGradient={isProjectExperience
+                    ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)`
+                    : `linear-gradient(145deg, ${primaryColorLocal} 0%, #0f3d24 130%)`}
+                  fontSize={isProjectExperience ? '18px' : '15px'}
+                  fontWeight={800}
+                  textColor={isProjectExperience ? '#04110a' : '#ecfdf5'}
+                  boxShadow={isProjectExperience ? `0 12px 28px ${hexToRgba(primaryColorLocal, 0.18)}` : `0 6px 18px ${hexToRgba(primaryColorLocal, 0.22)}`}
+                  border={isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)'}
+                />
+              )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{widgetName}</p>
+                  <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{resolvedBrandName}</p>
                   <span style={{
                     border: `1px solid ${hexToRgba(primaryColorLocal, 0.22)}`,
                     background: hexToRgba(primaryColorLocal, 0.08),

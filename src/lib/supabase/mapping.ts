@@ -178,6 +178,9 @@ export interface SupabaseArtisanConfig {
   businessConfig: Record<string, unknown>
   assistantAvatarType: string
   assistantAvatarUrl: string
+  whiteLabelEnabled: boolean
+  widgetBrandName: string
+  widgetBrandLogoUrl: string
 }
 
 export interface SupabaseProject {
@@ -285,6 +288,9 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     businessConfig: getValue<Record<string, unknown>>(row, ['business_config', 'Business Config'], {}),
     assistantAvatarType: getString(row, 'assistant_avatar_type', 'Assistant Avatar Type') || 'kadria_default',
     assistantAvatarUrl: getString(row, 'assistant_avatar_url', 'Assistant Avatar URL'),
+    whiteLabelEnabled: getBoolean(row, 'white_label_enabled', 'White Label Enabled'),
+    widgetBrandName: getString(row, 'widget_brand_name', 'Widget Brand Name'),
+    widgetBrandLogoUrl: getString(row, 'widget_brand_logo_url', 'Widget Brand Logo URL'),
   }
 }
 

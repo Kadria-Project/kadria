@@ -222,6 +222,9 @@ export const DEMO_SETTINGS_CONFIGURATION = {
     responseTone: 'Professionnel',
     requestedFields: ['Type de projet', 'Description', 'Budget', 'Delai', 'Ville', 'Photos', 'Coordonnees'],
     activeChannels: ['Site web', 'Lien projet', 'Widget embarque'],
+    whiteLabelEnabled: false,
+    widgetBrandName: '',
+    widgetBrandLogoUrl: '',
   },
   catalogue: {
     enabled: true,

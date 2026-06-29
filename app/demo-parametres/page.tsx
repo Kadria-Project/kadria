@@ -86,6 +86,9 @@ type DemoSettingsState = {
     responseTone: string;
     requestedFields: string[];
     activeChannels: string[];
+    whiteLabelEnabled: boolean;
+    widgetBrandName: string;
+    widgetBrandLogoUrl: string;
   };
   catalogue: {
     enabled: boolean;
@@ -1192,6 +1195,49 @@ export default function DemoParametresPage() {
         </div>
       </DemoSectionCard>
 
+      <DemoSectionCard
+        title="Marque blanche"
+        description="Affichez votre propre marque dans l'assistant, à la place du branding Kadria."
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+          <span
+            style={{
+              background: 'rgba(34,197,94,0.12)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              color: '#4ade80',
+              borderRadius: '999px',
+              padding: '2px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+            }}
+          >
+            Performance
+          </span>
+          <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+            Fonctionnalite demo simulee localement, aucune ecriture reelle.
+          </span>
+        </div>
+        <div style={{ display: 'grid', gap: '14px' }}>
+          <ToggleField
+            label="Activer la marque blanche"
+            subtitle={settings.widget.whiteLabelEnabled ? 'Votre marque remplace le branding Kadria dans l\'apercu ci-dessous.' : 'Branding Kadria affiche par defaut.'}
+            checked={settings.widget.whiteLabelEnabled}
+            onChange={(value) => updateWidgetField('whiteLabelEnabled', value)}
+          />
+          <Field
+            label="Nom affiche dans le widget"
+            value={settings.widget.widgetBrandName}
+            onChange={(value) => updateWidgetField('widgetBrandName', value)}
+          />
+          <Field
+            label="Logo de la marque (URL)"
+            value={settings.widget.widgetBrandLogoUrl}
+            onChange={(value) => updateWidgetField('widgetBrandLogoUrl', value)}
+          />
+        </div>
+      </DemoSectionCard>
+
       <DemoSectionCard title="Preview widget" description="Apercu visuel local pour verifier le ton, le badge demo et la hierarchie de l'assistant.">
         <div
           style={{
@@ -1204,7 +1250,11 @@ export default function DemoParametresPage() {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div>
-              <p style={{ margin: 0, color: '#f4f4f5', fontSize: '14px', fontWeight: 700 }}>{settings.appearance.displayName}</p>
+              <p style={{ margin: 0, color: '#f4f4f5', fontSize: '14px', fontWeight: 700 }}>
+                {settings.widget.whiteLabelEnabled && settings.widget.widgetBrandName
+                  ? settings.widget.widgetBrandName
+                  : settings.appearance.displayName}
+              </p>
               <p style={{ margin: '4px 0 0', color: '#a1a1aa', fontSize: '12px' }}>{settings.widget.responseTone} · assistant web</p>
             </div>
             <StatusBadge active label="Demo" />

@@ -212,6 +212,7 @@ export default function ParametresPage() {
     firstName: '',
     lastName: '',
     email: '',
+    plan: 'essentiel' as string,
     primaryTrade: '',
     trades: [] as string[],
     otherTrade: '',
@@ -229,6 +230,9 @@ export default function ParametresPage() {
     primaryColor: '#22c55e',
     secondaryColor: '#18181b',
     websiteUrl: '',
+    whiteLabelEnabled: false,
+    widgetBrandName: '',
+    widgetBrandLogoUrl: '',
     raisonSociale: '',
     formeJuridique: '',
     siret: '',
@@ -335,6 +339,7 @@ export default function ParametresPage() {
             firstName: data.config.firstName || '',
             lastName: data.config.lastName || '',
             email: data.config.email || '',
+            plan: data.config.plan || 'essentiel',
             primaryTrade: data.config.primaryTrade || '',
             trades: rawTrades,
             otherTrade: customTrade,
@@ -352,6 +357,9 @@ export default function ParametresPage() {
             primaryColor: data.config.primaryColor || '#22c55e',
             secondaryColor: data.config.secondaryColor || '#18181b',
             websiteUrl: data.config.websiteUrl || '',
+            whiteLabelEnabled: Boolean(data.config.whiteLabelEnabled),
+            widgetBrandName: data.config.widgetBrandName || '',
+            widgetBrandLogoUrl: data.config.widgetBrandLogoUrl || '',
             raisonSociale: data.config.raisonSociale || '',
             formeJuridique: data.config.formeJuridique || '',
             siret: data.config.siret || '',
@@ -1233,6 +1241,9 @@ export default function ParametresPage() {
                     assistantAvatarType={config.assistantAvatarType}
                     assistantAvatarUrl={config.assistantAvatarUrl}
                     logoUrl={config.logoUrl}
+                    whiteLabelEnabled={config.plan === 'performance' || config.plan === 'entreprise' ? config.whiteLabelEnabled : false}
+                    widgetBrandName={config.widgetBrandName}
+                    widgetBrandLogoUrl={config.widgetBrandLogoUrl}
                     fitParentHeight
                     previewMode
                   />
@@ -1386,6 +1397,131 @@ export default function ParametresPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Marque blanche — réservée aux plans Performance/Agence */}
+              <div style={sectionCard}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--accent)' }}>
+                    Marque blanche
+                  </h3>
+                  <span style={{
+                    background: 'rgba(34,197,94,0.12)',
+                    border: '1px solid rgba(34,197,94,0.3)',
+                    color: '#4ade80',
+                    borderRadius: '999px',
+                    padding: '2px 10px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                  }}>
+                    Performance
+                  </span>
+                </div>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Affichez votre propre marque dans l&apos;assistant, à la place du branding Kadria.
+                </p>
+
+                {config.plan !== 'performance' && config.plan !== 'entreprise' ? (
+                  <div style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px dashed var(--border)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                  }}>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px' }}>
+                      🔒 Cette fonctionnalité est réservée aux plans <strong>Performance</strong> et <strong>Agence</strong>.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection('offre')}
+                      style={{
+                        alignSelf: 'flex-start',
+                        background: 'var(--accent)',
+                        border: 'none',
+                        color: '#09090b',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Passer au plan Performance
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={config.whiteLabelEnabled}
+                        onChange={e => setConfig(c => ({ ...c, whiteLabelEnabled: e.target.checked }))}
+                      />
+                      Activer la marque blanche
+                    </label>
+
+                    <div>
+                      <label style={labelStyle}>Nom affiché dans le widget</label>
+                      <input
+                        value={config.widgetBrandName}
+                        onChange={e => setConfig(c => ({ ...c, widgetBrandName: e.target.value }))}
+                        placeholder="Ma Marque"
+                        disabled={!config.whiteLabelEnabled}
+                        style={{ ...inputStyle, opacity: config.whiteLabelEnabled ? 1 : 0.6 }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Logo de la marque (URL)</label>
+                      <input
+                        value={config.widgetBrandLogoUrl}
+                        onChange={e => setConfig(c => ({ ...c, widgetBrandLogoUrl: e.target.value }))}
+                        placeholder="https://exemple.com/logo.png"
+                        disabled={!config.whiteLabelEnabled}
+                        style={{ ...inputStyle, opacity: config.whiteLabelEnabled ? 1 : 0.6 }}
+                      />
+                      {config.widgetBrandLogoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={config.widgetBrandLogoUrl}
+                          alt="Aperçu du logo de marque"
+                          style={{ marginTop: '8px', height: '32px', maxWidth: '160px', objectFit: 'contain' }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                      )}
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      background: 'var(--bg-hover)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                    }}>
+                      {config.whiteLabelEnabled && config.widgetBrandLogoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={config.widgetBrandLogoUrl}
+                          alt=""
+                          style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'contain' }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                      ) : null}
+                      <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>
+                        {config.whiteLabelEnabled && (config.widgetBrandName || config.widgetBrandLogoUrl)
+                          ? (config.widgetBrandName || 'Votre marque')
+                          : 'Kadria'}
+                      </span>
+                      <span style={{ color: 'var(--text-3)', fontSize: '11px' }}>Aperçu du header</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Code d'intégration */}
