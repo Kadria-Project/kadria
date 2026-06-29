@@ -933,6 +933,18 @@ export default function ParametresPage() {
                     />
                   </div>
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
+                    <label style={labelStyle}>Nom de l&apos;assistant dans le widget</label>
+                    <input
+                      value={config.welcomeName}
+                      onChange={e => setConfig(c => ({ ...c, welcomeName: e.target.value }))}
+                      placeholder="Assistant Martin Rénovation"
+                      style={inputStyle}
+                    />
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
+                      Affiché dans le header du widget à la place de &quot;Kadria&quot; (remplacé par la marque blanche si elle est activée).
+                    </p>
+                  </div>
+                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
                     <label style={labelStyle}>URL du logo</label>
                     <input
                       value={config.logoUrl}
@@ -1367,22 +1379,10 @@ export default function ParametresPage() {
                   Message d&apos;accueil
                 </h3>
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
-                  Personnalise le premier message affiché au prospect.
+                  Personnalisez le premier message affiché au prospect.
                   Le moteur de qualification Kadria reste identique.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Nom affiché dans le widget</label>
-                    <input
-                      value={config.welcomeName}
-                      onChange={e => setConfig(c => ({ ...c, welcomeName: e.target.value }))}
-                      placeholder="Assistant Martin Rénovation"
-                      style={inputStyle}
-                    />
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                      Affiché dans le header du widget à la place de &quot;Kadria&quot;
-                    </p>
-                  </div>
                   <div>
                     <label style={labelStyle}>Message d&apos;accueil personnalisé</label>
                     <textarea
