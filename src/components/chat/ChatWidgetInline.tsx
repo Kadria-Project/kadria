@@ -36,6 +36,7 @@ interface Props {
   onDossierChange?: (dossier: Dossier, score: number) => void
   onArtisanNameChange?: (name: string) => void
   onPrimaryColorChange?: (color: string) => void
+  onBrandingChange?: (branding: { isWhiteLabelActive: boolean; brandLabel: string; brandLogoUrl: string }) => void
   assistantAvatarType?: string
   assistantAvatarUrl?: string
   logoUrl?: string
@@ -55,7 +56,7 @@ interface Props {
 //   - sinon → toujours "KADRIA"
 // `welcomeName` (nom de l'assistant conversationnel) n'intervient JAMAIS ici.
 const WHITE_LABEL_PLANS = new Set(['performance', 'entreprise'])
-function resolveWidgetBranding({
+export function resolveWidgetBranding({
   whiteLabelEnabled,
   plan,
   widgetBrandName,
@@ -155,6 +156,7 @@ export default function ChatWidgetInline({
   onDossierChange,
   onArtisanNameChange,
   onPrimaryColorChange,
+  onBrandingChange,
   assistantAvatarType,
   assistantAvatarUrl,
   logoUrl,
@@ -576,7 +578,11 @@ export default function ChatWidgetInline({
   // entreprise pour l'image, nom de marque > companyName > "Kadria" pour le
   // texte. Sinon, toujours "Kadria" — jamais welcomeName/widgetName, qui
   // reste réservé au nom de l'assistant conversationnel.
-  const { brandLogoUrl: resolvedBrandLogoUrl, brandLabel: resolvedBrandName } = resolveWidgetBranding({
+  const {
+    isWhiteLabelActive: resolvedIsWhiteLabelActive,
+    brandLogoUrl: resolvedBrandLogoUrl,
+    brandLabel: resolvedBrandName,
+  } = resolveWidgetBranding({
     whiteLabelEnabled: whiteLabelEnabledLocal,
     plan: planLocal,
     widgetBrandName: widgetBrandNameLocal,
@@ -584,6 +590,17 @@ export default function ChatWidgetInline({
     companyName: companyNameLocal,
     logoUrl: logoUrlLocal,
   })
+
+  // ── Notifie le parent du branding résolu (ex: header externe /projet) ────
+  // Même règle, même valeurs que le header interne ci-dessus — évite de
+  // dupliquer un second fetch /api/artisan/public-config côté page.
+  useEffect(() => {
+    onBrandingChange?.({
+      isWhiteLabelActive: resolvedIsWhiteLabelActive,
+      brandLabel: resolvedBrandName,
+      brandLogoUrl: resolvedBrandLogoUrl,
+    })
+  }, [resolvedIsWhiteLabelActive, resolvedBrandName, resolvedBrandLogoUrl, onBrandingChange])
 
   // ── Détection mobile (écran d'accueil /projet uniquement) ────────────────
   useEffect(() => {

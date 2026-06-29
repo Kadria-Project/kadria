@@ -94,6 +94,12 @@ function ProjetContent() {
   const [score, setScore] = useState(0)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [accentColor, setAccentColor] = useState('#22c55e')
+  // Branding du header externe (logo Kadria/marque blanche) — résolu par
+  // ChatWidgetInline (resolveWidgetBranding) selon whiteLabelEnabled + plan,
+  // exactement comme le header interne du widget, pour éviter un second
+  // fetch /api/artisan/public-config et garantir une règle unique.
+  const [branding, setBranding] = useState({ isWhiteLabelActive: false, brandLabel: '', brandLogoUrl: '' })
+  const [brandLogoFailed, setBrandLogoFailed] = useState(false)
 
   return (
     <main
@@ -116,7 +122,41 @@ function ProjetContent() {
           }}
         >
           <div className="flex min-w-0 items-center gap-3">
-            <KadriaLogo size="sm" theme="dark" noLink />
+            {branding.isWhiteLabelActive && branding.brandLogoUrl && !brandLogoFailed ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={branding.brandLogoUrl}
+                alt={branding.brandLabel || 'Marque'}
+                onError={() => setBrandLogoFailed(true)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '10px',
+                  objectFit: 'contain',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  flexShrink: 0,
+                }}
+              />
+            ) : branding.isWhiteLabelActive && (branding.brandLabel || '').trim().length > 0 ? (
+              <span
+                style={{
+                  color: '#f4f4f5',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '160px',
+                  flexShrink: 0,
+                }}
+              >
+                {branding.brandLabel}
+              </span>
+            ) : (
+              <KadriaLogo size="sm" theme="dark" noLink />
+            )}
             <div className="min-w-0">
               <p style={{ margin: 0, color: '#f4f4f5', fontSize: '13.5px', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 {artisanName || 'Assistant projet'}
@@ -163,6 +203,12 @@ function ProjetContent() {
               onDossierChange={(d, s) => { setDossier(d); setScore(s) }}
               onArtisanNameChange={setArtisanName}
               onPrimaryColorChange={setAccentColor}
+              onBrandingChange={(b) => {
+                setBranding((prev) => {
+                  if (prev.brandLogoUrl !== b.brandLogoUrl) setBrandLogoFailed(false)
+                  return b
+                })
+              }}
             />
           </section>
 
