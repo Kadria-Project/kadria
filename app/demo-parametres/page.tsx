@@ -1156,11 +1156,54 @@ export default function DemoParametresPage() {
         </div>
 
         {settings.entreprise.assistantAvatarType === 'custom_upload' && (
-          <Field
-            label="URL de l'image"
-            value={settings.entreprise.assistantAvatarUrl}
-            onChange={(value) => updateEntrepriseField('assistantAvatarUrl', value)}
-          />
+          <div style={{ maxWidth: '420px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {settings.entreprise.assistantAvatarUrl && (
+                <AssistantAvatarBubble
+                  assistantAvatarType="custom_upload"
+                  assistantAvatarUrl={settings.entreprise.assistantAvatarUrl}
+                  size={40}
+                />
+              )}
+              <label
+                style={{
+                  padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                  border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                  color: 'var(--text-2)', cursor: 'pointer',
+                }}
+              >
+                Importer une image
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    // Demo : aucune ecriture reelle, aucun upload. On genere
+                    // juste une preview locale temporaire avec une object URL.
+                    const localUrl = URL.createObjectURL(file);
+                    updateEntrepriseField('assistantAvatarUrl', localUrl);
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => updateEntrepriseField('assistantAvatarUrl', '')}
+                style={{
+                  padding: '6px 12px', borderRadius: '8px', fontSize: '12px',
+                  border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                  color: 'var(--text-2)', cursor: 'pointer',
+                }}
+              >
+                Reinitialiser
+              </button>
+            </div>
+            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+              Simulation demo : aucun fichier n&apos;est envoye, l&apos;apercu est local et temporaire.
+            </p>
+          </div>
         )}
 
         {settings.entreprise.assistantAvatarType === 'preset' && (
@@ -1230,11 +1273,60 @@ export default function DemoParametresPage() {
             value={settings.widget.widgetBrandName}
             onChange={(value) => updateWidgetField('widgetBrandName', value)}
           />
-          <Field
-            label="Logo de la marque (URL)"
-            value={settings.widget.widgetBrandLogoUrl}
-            onChange={(value) => updateWidgetField('widgetBrandLogoUrl', value)}
-          />
+          <div style={{ maxWidth: '420px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '6px' }}>
+              Logo de la marque
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {settings.widget.widgetBrandLogoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={settings.widget.widgetBrandLogoUrl}
+                  alt="Apercu du logo de marque"
+                  style={{ height: '32px', maxWidth: '160px', objectFit: 'contain' }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              <label
+                style={{
+                  padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                  border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                  color: 'var(--text-2)', cursor: 'pointer',
+                }}
+              >
+                Importer un logo marque blanche
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    // Demo : aucune ecriture reelle, aucun upload. Preview locale uniquement.
+                    const localUrl = URL.createObjectURL(file);
+                    updateWidgetField('widgetBrandLogoUrl', localUrl);
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {settings.widget.widgetBrandLogoUrl && (
+                <button
+                  type="button"
+                  onClick={() => updateWidgetField('widgetBrandLogoUrl', '')}
+                  style={{
+                    padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
+                    border: '1px solid var(--border)', background: 'transparent',
+                    color: 'var(--text-3)', cursor: 'pointer',
+                  }}
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
+            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+              Simulation demo : aucun fichier n&apos;est envoye, l&apos;apercu est local et temporaire.
+            </p>
+          </div>
         </div>
       </DemoSectionCard>
 

@@ -207,6 +207,8 @@ export default function ParametresPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploadingTarget, setUploadingTarget] = useState<null | 'company_logo' | 'assistant_avatar' | 'white_label_logo'>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [config, setConfig] = useState({
     companyName: '',
     firstName: '',
@@ -502,6 +504,49 @@ export default function ParametresPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const uploadBrandingImage = async (
+    file: File,
+    target: 'company_logo' | 'assistant_avatar' | 'white_label_logo'
+  ): Promise<string | null> => {
+    setUploadingTarget(target)
+    setUploadError(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('target', target)
+      const res = await fetch('/api/uploads/artisan-branding', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (!data.success || !data.url) {
+        throw new Error(data.error || "Erreur lors de l'import de l'image")
+      }
+      return data.url as string
+    } catch (error) {
+      console.error('[PARAMETRES UPLOAD]', error)
+      setUploadError(error instanceof Error ? error.message : "Erreur lors de l'import de l'image")
+      return null
+    } finally {
+      setUploadingTarget(null)
+    }
+  }
+
+  const handleCompanyLogoFile = async (file: File) => {
+    const url = await uploadBrandingImage(file, 'company_logo')
+    if (url) setConfig(c => ({ ...c, logoUrl: url }))
+  }
+
+  const handleAssistantAvatarFile = async (file: File) => {
+    const url = await uploadBrandingImage(file, 'assistant_avatar')
+    if (url) setConfig(c => ({ ...c, assistantAvatarType: 'custom_upload', assistantAvatarUrl: url }))
+  }
+
+  const handleWhiteLabelLogoFile = async (file: File) => {
+    const url = await uploadBrandingImage(file, 'white_label_logo')
+    if (url) setConfig(c => ({ ...c, widgetBrandLogoUrl: url }))
   }
 
   // Les types de travaux acceptés/refusés sont en lecture seule sur cette
@@ -945,24 +990,61 @@ export default function ParametresPage() {
                     </p>
                   </div>
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>URL du logo</label>
-                    <input
-                      value={config.logoUrl}
-                      onChange={e => setConfig(c => ({ ...c, logoUrl: e.target.value }))}
-                      placeholder="https://monsite.fr/logo.png"
-                      style={inputStyle}
-                    />
-                    {config.logoUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={config.logoUrl}
-                        alt="Logo preview"
+                    <label style={labelStyle}>Logo de l&apos;entreprise</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      {config.logoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={config.logoUrl}
+                          alt="Logo entreprise"
+                          style={{
+                            height: '40px', maxWidth: '120px',
+                            objectFit: 'contain', borderRadius: '6px',
+                            border: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '4px',
+                          }}
+                          onError={e => (e.currentTarget.style.display = 'none')}
+                        />
+                      )}
+                      <label
                         style={{
-                          marginTop: '8px', height: '40px',
-                          objectFit: 'contain', borderRadius: '6px',
+                          padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                          border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                          color: 'var(--text-2)', cursor: uploadingTarget === 'company_logo' ? 'default' : 'pointer',
+                          opacity: uploadingTarget === 'company_logo' ? 0.6 : 1,
                         }}
-                        onError={e => (e.currentTarget.style.display = 'none')}
-                      />
+                      >
+                        {uploadingTarget === 'company_logo' ? 'Import en cours...' : config.logoUrl ? 'Remplacer' : 'Importer un logo'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          disabled={uploadingTarget === 'company_logo'}
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (file) handleCompanyLogoFile(file)
+                            e.target.value = ''
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      {config.logoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setConfig(c => ({ ...c, logoUrl: '' }))}
+                          style={{
+                            padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
+                            border: '1px solid var(--border)', background: 'transparent',
+                            color: 'var(--text-3)', cursor: 'pointer',
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                      PNG, JPG ou WEBP, 4 Mo maximum.
+                    </p>
+                    {uploadError && uploadingTarget === null && (
+                      <p style={{ color: '#ef4444', fontSize: '12px', margin: '6px 0 0' }}>{uploadError}</p>
                     )}
                   </div>
                 </div>
@@ -1216,26 +1298,36 @@ export default function ParametresPage() {
 
                 {config.assistantAvatarType === 'custom_upload' && (
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>URL de l&apos;image</label>
-                    <input
-                      value={config.assistantAvatarUrl}
-                      onChange={e => setConfig(c => ({ ...c, assistantAvatarUrl: e.target.value }))}
-                      placeholder="https://monsite.fr/avatar.png"
-                      style={inputStyle}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                    <label style={labelStyle}>Image personnalisée</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                       {config.assistantAvatarUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={config.assistantAvatarUrl}
-                          alt="Aperçu avatar"
-                          style={{
-                            width: '40px', height: '40px',
-                            objectFit: 'cover', borderRadius: '50%',
-                          }}
-                          onError={e => (e.currentTarget.style.display = 'none')}
+                        <AssistantAvatarBubble
+                          assistantAvatarType="custom_upload"
+                          assistantAvatarUrl={config.assistantAvatarUrl}
+                          size={40}
                         />
                       )}
+                      <label
+                        style={{
+                          padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                          border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                          color: 'var(--text-2)', cursor: uploadingTarget === 'assistant_avatar' ? 'default' : 'pointer',
+                          opacity: uploadingTarget === 'assistant_avatar' ? 0.6 : 1,
+                        }}
+                      >
+                        {uploadingTarget === 'assistant_avatar' ? 'Import en cours...' : 'Importer une image'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          disabled={uploadingTarget === 'assistant_avatar'}
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (file) handleAssistantAvatarFile(file)
+                            e.target.value = ''
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
                       <button
                         type="button"
                         onClick={() => setConfig(c => ({ ...c, assistantAvatarType: 'kadria_default', assistantAvatarUrl: '' }))}
@@ -1248,6 +1340,12 @@ export default function ParametresPage() {
                         Réinitialiser
                       </button>
                     </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                      PNG, JPG ou WEBP, 4 Mo maximum.
+                    </p>
+                    {uploadError && uploadingTarget === null && (
+                      <p style={{ color: '#ef4444', fontSize: '12px', margin: '6px 0 0' }}>{uploadError}</p>
+                    )}
                   </div>
                 )}
 
@@ -1478,22 +1576,72 @@ export default function ParametresPage() {
                     </div>
 
                     <div>
-                      <label style={labelStyle}>Logo de la marque (URL)</label>
-                      <input
-                        value={config.widgetBrandLogoUrl}
-                        onChange={e => setConfig(c => ({ ...c, widgetBrandLogoUrl: e.target.value }))}
-                        placeholder="https://exemple.com/logo.png"
-                        disabled={!config.whiteLabelEnabled}
-                        style={{ ...inputStyle, opacity: config.whiteLabelEnabled ? 1 : 0.6 }}
-                      />
-                      {config.widgetBrandLogoUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={config.widgetBrandLogoUrl}
-                          alt="Aperçu du logo de marque"
-                          style={{ marginTop: '8px', height: '32px', maxWidth: '160px', objectFit: 'contain' }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
+                      <label style={labelStyle}>Logo de la marque</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', opacity: config.whiteLabelEnabled ? 1 : 0.6 }}>
+                        {config.widgetBrandLogoUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={config.widgetBrandLogoUrl}
+                            alt="Aperçu du logo de marque"
+                            style={{ height: '32px', maxWidth: '160px', objectFit: 'contain' }}
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                          />
+                        )}
+                        <label
+                          style={{
+                            padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                            border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                            color: 'var(--text-2)',
+                            cursor: !config.whiteLabelEnabled || uploadingTarget === 'white_label_logo' ? 'default' : 'pointer',
+                          }}
+                        >
+                          {uploadingTarget === 'white_label_logo' ? 'Import en cours...' : 'Importer un logo marque blanche'}
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            disabled={!config.whiteLabelEnabled || uploadingTarget === 'white_label_logo'}
+                            onChange={e => {
+                              const file = e.target.files?.[0]
+                              if (file) handleWhiteLabelLogoFile(file)
+                              e.target.value = ''
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        {config.logoUrl && (
+                          <button
+                            type="button"
+                            disabled={!config.whiteLabelEnabled}
+                            onClick={() => setConfig(c => ({ ...c, widgetBrandLogoUrl: c.logoUrl }))}
+                            style={{
+                              padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
+                              border: '1px solid var(--border)', background: 'transparent',
+                              color: 'var(--text-2)', cursor: config.whiteLabelEnabled ? 'pointer' : 'default',
+                            }}
+                          >
+                            Utiliser le logo entreprise
+                          </button>
+                        )}
+                        {config.widgetBrandLogoUrl && (
+                          <button
+                            type="button"
+                            disabled={!config.whiteLabelEnabled}
+                            onClick={() => setConfig(c => ({ ...c, widgetBrandLogoUrl: '' }))}
+                            style={{
+                              padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
+                              border: '1px solid var(--border)', background: 'transparent',
+                              color: 'var(--text-3)', cursor: config.whiteLabelEnabled ? 'pointer' : 'default',
+                            }}
+                          >
+                            Supprimer
+                          </button>
+                        )}
+                      </div>
+                      <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                        PNG, JPG ou WEBP, 4 Mo maximum.
+                      </p>
+                      {uploadError && uploadingTarget === null && (
+                        <p style={{ color: '#ef4444', fontSize: '12px', margin: '6px 0 0' }}>{uploadError}</p>
                       )}
                     </div>
 
