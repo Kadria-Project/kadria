@@ -7,11 +7,12 @@ import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { resolveDevisEmailBranding, escapeHtml } from '@/src/lib/devis-email-branding'
 
 function toHtml(text: string) {
   return text
     .split('\n\n')
-    .map((paragraph) => `<p style="margin:0 0 14px;line-height:1.6;color:#374151;">${paragraph.replace(/\n/g, '<br>')}</p>`)
+    .map((paragraph) => `<p style="margin:0 0 14px;line-height:1.6;color:#374151;">${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
     .join('')
 }
 
@@ -115,20 +116,42 @@ export async function POST(
     const devisUrl = getPublicDevisUrl(devis.token)
     const resend = new Resend(process.env.RESEND_API_KEY)
 
+    const emailBranding = resolveDevisEmailBranding({
+      plan: access.session.plan,
+      whiteLabelEnabled: config?.whiteLabelEnabled,
+      widgetBrandName: config?.widgetBrandName,
+      widgetBrandLogoUrl: config?.widgetBrandLogoUrl,
+      logoUrl: config?.logoUrl,
+      companyName: config?.companyName,
+      raisonSociale: config?.raisonSociale,
+      primaryColor: config?.primaryColor,
+      secondaryColor: config?.secondaryColor,
+    })
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr'
+    const fromName = emailBranding.isWhiteLabelActive
+      ? `${emailBranding.brandName} via Kadria`
+      : 'Kadria'
+    const ctaTextColor = emailBranding.isWhiteLabelActive ? '#ffffff' : '#09090b'
+    const footerHtml = emailBranding.isWhiteLabelActive
+      ? `<p style="margin:22px 0 0;font-size:11px;color:#9ca3af;text-align:center;">${escapeHtml(emailBranding.poweredByLabel)}</p>`
+      : ''
+
     const result = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
+      from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
       to: devis.clientEmail,
       subject: email.subject,
       text: `${email.text}\n\nLien du devis : ${devisUrl}`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;">
           <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:32px;">
+            <div style="margin-bottom:20px;">${emailBranding.headerHtml}</div>
             ${toHtml(email.text)}
             <p style="margin:22px 0 0;">
-              <a href="${devisUrl}" style="display:inline-block;background:#22c55e;color:#09090b;text-decoration:none;font-weight:700;border-radius:10px;padding:12px 18px;">
+              <a href="${devisUrl}" style="display:inline-block;background:${emailBranding.ctaColor};color:${ctaTextColor};text-decoration:none;font-weight:700;border-radius:10px;padding:12px 18px;">
                 Voir le devis
               </a>
             </p>
+            ${footerHtml}
           </div>
         </div>
       `,

@@ -7,6 +7,7 @@ import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { createSentDevisSnapshot } from '@/src/lib/devis-snapshots'
+import { resolveDevisEmailBranding, escapeHtml, type DevisEmailBranding } from '@/src/lib/devis-email-branding'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -20,8 +21,30 @@ function buildDevisEmailHtml(params: {
   totalTTC: number
   dateValidite: string
   devisUrl: string
+  branding: DevisEmailBranding
 }) {
-  const { artisanNom, devisNumero, totalTTC, dateValidite, devisUrl } = params
+  const { artisanNom, devisNumero, totalTTC, dateValidite, devisUrl, branding } = params
+  const artisanNomSafe = escapeHtml(artisanNom)
+  const devisNumeroSafe = escapeHtml(devisNumero)
+  const dateValiditeSafe = escapeHtml(dateValidite || "90 jours après émission")
+
+  const headerBg = branding.isWhiteLabelActive ? '#ffffff' : '#09090b'
+  const headerBorderBottom = branding.isWhiteLabelActive ? 'border-bottom:1px solid #e5e7eb;' : ''
+
+  const bodyIntro = branding.isWhiteLabelActive
+    ? `Votre devis ${devisNumeroSafe} est disponible. Vous pouvez le consulter, l'accepter ou le refuser en ligne.`
+    : `Veuillez trouver ci-joint votre devis établi par <strong>${artisanNomSafe}</strong>.`
+
+  const ctaLabel = branding.isWhiteLabelActive ? 'Consulter le devis' : 'Voir et accepter mon devis →'
+  const ctaTextColor = branding.isWhiteLabelActive ? '#ffffff' : '#000000'
+
+  const footerHtml = branding.isWhiteLabelActive
+    ? `<p class="footer-text">${escapeHtml(branding.poweredByLabel)}</p>`
+    : `<p class="footer-text">
+        Ce devis vous a été envoyé via Kadria.<br>
+        Devis gratuit et sans engagement.<br>
+        © ${new Date().getFullYear()} Kadria
+      </p>`
 
   return `
 <!DOCTYPE html>
@@ -43,15 +66,11 @@ function buildDevisEmailHtml(params: {
       border: 1px solid #e5e7eb;
     }
     .header {
-      background: #09090b;
+      background: ${headerBg};
+      ${headerBorderBottom}
       padding: 32px 40px;
       text-align: center;
     }
-    .logo {
-      font-size: 24px; font-weight: 900;
-      color: #ffffff; letter-spacing: -1px;
-    }
-    .logo span { color: #22c55e; }
     .body { padding: 40px; }
     .greeting {
       font-size: 18px; font-weight: 600;
@@ -69,7 +88,7 @@ function buildDevisEmailHtml(params: {
     }
     .devis-numero {
       font-size: 13px; font-weight: 700;
-      color: #22c55e; letter-spacing: 1px;
+      color: ${branding.ctaColor}; letter-spacing: 1px;
       text-transform: uppercase;
       margin-bottom: 8px;
     }
@@ -95,18 +114,17 @@ function buildDevisEmailHtml(params: {
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">KA<span>DRIA</span></div>
+      ${branding.headerHtml}
     </div>
     <div class="body">
       <div class="greeting">
         Bonjour,
       </div>
       <p class="text">
-        Veuillez trouver ci-joint votre devis
-        établi par <strong>${artisanNom}</strong>.
+        ${bodyIntro}
       </p>
       <div class="devis-card">
-        <div class="devis-numero">${devisNumero}</div>
+        <div class="devis-numero">${devisNumeroSafe}</div>
         <div class="devis-montant">
           ${new Intl.NumberFormat('fr-FR', {
             style: 'currency',
@@ -114,20 +132,20 @@ function buildDevisEmailHtml(params: {
           }).format(totalTTC)}
         </div>
         <div class="devis-validite">
-          Valable jusqu'au ${dateValidite || "90 jours après émission"}
+          Valable jusqu'au ${dateValiditeSafe}
         </div>
       </div>
       <div style="text-align:center; margin: 32px 0;">
         <a href="${devisUrl}"
            style="display:inline-block;
-                  background:#22c55e;
-                  color:#000000;
+                  background:${branding.ctaColor};
+                  color:${ctaTextColor};
                   font-weight:700;
                   font-size:16px;
                   padding:16px 40px;
                   border-radius:10px;
                   text-decoration:none;">
-          Voir et accepter mon devis →
+          ${ctaLabel}
         </a>
       </div>
       <p style="text-align:center; font-size:12px;
@@ -137,15 +155,11 @@ function buildDevisEmailHtml(params: {
       </p>
       <p class="text">
         Pour toute question, contactez directement
-        <strong>${artisanNom}</strong>.
+        <strong>${artisanNomSafe}</strong>.
       </p>
     </div>
     <div class="footer">
-      <p class="footer-text">
-        Ce devis vous a été envoyé via Kadria.<br>
-        Devis gratuit et sans engagement.<br>
-        © ${new Date().getFullYear()} Kadria
-      </p>
+      ${footerHtml}
     </div>
   </div>
 </body>
@@ -235,17 +249,36 @@ export async function POST(
         const resend = new Resend(process.env.RESEND_API_KEY)
         const artisanNom = config?.raisonSociale || config?.companyName || ''
         const devisUrl = getPublicDevisUrl(devis.token)
+        const emailBranding = resolveDevisEmailBranding({
+          plan: session.plan,
+          whiteLabelEnabled: config?.whiteLabelEnabled,
+          widgetBrandName: config?.widgetBrandName,
+          widgetBrandLogoUrl: config?.widgetBrandLogoUrl,
+          logoUrl: config?.logoUrl,
+          companyName: config?.companyName,
+          raisonSociale: config?.raisonSociale,
+          primaryColor: config?.primaryColor,
+          secondaryColor: config?.secondaryColor,
+        })
+        const fromEmail = process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr'
+        const fromName = emailBranding.isWhiteLabelActive
+          ? `${emailBranding.brandName} via Kadria`
+          : 'Kadria'
+        const subject = emailBranding.isWhiteLabelActive
+          ? `Votre devis est disponible — ${devis.devisNumber}`
+          : `Votre devis ${devis.devisNumber} — ${artisanNom}`
 
         const emailResult = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
+          from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
           to: clientEmail,
-          subject: `Votre devis ${devis.devisNumber} — ${artisanNom}`,
+          subject,
           html: buildDevisEmailHtml({
             artisanNom,
             devisNumero: devis.devisNumber,
             totalTTC: devis.totalTTC,
             dateValidite: devis.dateValidite,
             devisUrl,
+            branding: emailBranding,
           }),
           headers: {
             'X-Entity-Ref-ID': id,
