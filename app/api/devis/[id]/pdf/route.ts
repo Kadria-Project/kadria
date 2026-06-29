@@ -3,6 +3,7 @@ import { getArtisanConfig, getDevisById } from '@/src/lib/airtable'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceLines, getDelayMention, getLaborMention, getTravelFeeMention } from '@/src/lib/devis-legal'
 import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
+import { resolveDevisBranding } from '@/src/lib/devis-branding'
 
 interface DevisLine {
   type: 'item' | 'section'
@@ -46,6 +47,27 @@ export async function GET(
   }
 
   const config = await getArtisanConfig(devis.artisanId)
+
+  const branding = resolveDevisBranding({
+    plan: session.plan,
+    whiteLabelEnabled: config?.whiteLabelEnabled,
+    widgetBrandName: config?.widgetBrandName,
+    widgetBrandLogoUrl: config?.widgetBrandLogoUrl,
+    logoUrl: config?.logoUrl,
+    companyName: config?.companyName,
+    raisonSociale: config?.raisonSociale,
+    primaryColor: config?.primaryColor,
+    secondaryColor: config?.secondaryColor,
+  })
+  const accentColor = branding.isWhiteLabelActive ? branding.primaryColor : '#22c55e'
+  // Echappement basique pour eviter d'injecter du HTML via un nom de marque libre.
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c))
+  const headerLogoHtml = branding.isWhiteLabelActive
+    ? (branding.brandLogoUrl
+        ? `<img src="${escapeHtml(branding.brandLogoUrl)}" alt="${escapeHtml(branding.brandName)}" style="max-height:32px;max-width:220px;" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;logo&quot;>${escapeHtml(branding.brandName)}</div>')" />`
+        : `<div class="logo">${escapeHtml(branding.brandName)}</div>`)
+    : `<div class="logo"><span class="k">K</span>adria</div>`
 
   let lines: DevisLine[] = []
   try {
@@ -134,12 +156,13 @@ export async function GET(
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 2px solid #22c55e;
+    border-bottom: 2px solid ${accentColor};
     padding-bottom: 16px;
     margin-bottom: 24px;
   }
   .logo { font-size: 24px; font-weight: 800; }
   .logo .k { color: #22c55e; }
+  .powered-by { margin-top: 24px; font-size: 10px; color: #a1a1aa; text-align: center; }
   .company { margin-top: 8px; font-size: 12px; color: #71717a; line-height: 1.5; }
   .devis-meta { text-align: right; }
   .devis-meta h1 { font-size: 22px; margin: 0 0 8px; }
@@ -160,7 +183,7 @@ export async function GET(
   .field-value { font-weight: 600; }
   .objet {
     background: #f4f4f5;
-    border-left: 3px solid #22c55e;
+    border-left: 3px solid ${accentColor};
     padding: 12px 16px;
     font-size: 14px;
     margin: 12px 0;
@@ -175,6 +198,7 @@ export async function GET(
   .totals-box { width: 280px; }
   .total-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; color: #52525b; }
   .total-row.ttc { font-weight: 800; font-size: 16px; color: #18181b; border-top: 1px solid #e4e4e7; margin-top: 6px; padding-top: 8px; }
+  .total-row.ttc span:last-child { color: ${accentColor}; }
   .conditions { font-size: 13px; color: #3f3f46; white-space: pre-wrap; line-height: 1.6; }
   .footer {
     margin-top: 40px;
@@ -190,7 +214,7 @@ export async function GET(
 <body>
   <div class="header">
     <div>
-      <div class="logo"><span class="k">K</span>adria</div>
+      ${headerLogoHtml}
       <div class="company">
         <strong>${emetteurNom}</strong><br/>
         ${config?.formeJuridique ? `${config.formeJuridique}<br/>` : ''}
@@ -278,6 +302,8 @@ export async function GET(
   </div>
 
   ${devis.mentionsLegales ? `<div class="footer">${devis.mentionsLegales}</div>` : ''}
+
+  <div class="powered-by">${escapeHtml(branding.poweredByLabel)}</div>
 </body>
 </html>
   `

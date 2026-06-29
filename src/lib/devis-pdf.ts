@@ -1,9 +1,53 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, RGB } from 'pdf-lib'
+import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb, RGB } from 'pdf-lib'
 import type { DevisRecord, getArtisanConfig } from '@/src/lib/airtable'
 import { formatFullAddress, getPricingMention, getVatExemptionMention, getInsuranceLines, getDelayMention, getLaborMention, getTravelFeeMention } from '@/src/lib/devis-legal'
 import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
+import { resolveDevisBranding, type ResolvedDevisBranding } from '@/src/lib/devis-branding'
 
 type ArtisanConfig = Awaited<ReturnType<typeof getArtisanConfig>>
+
+// Convertit une couleur hex (#rrggbb) en RGB pdf-lib. Retourne le fallback si
+// la valeur est invalide ou absente — ne doit jamais faire échouer le rendu.
+function hexToRgb(hex: string | null | undefined, fallback: RGB): RGB {
+  if (!hex) return fallback
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim())
+  if (!match) return fallback
+  const value = match[1]
+  const r = parseInt(value.slice(0, 2), 16) / 255
+  const g = parseInt(value.slice(2, 4), 16) / 255
+  const b = parseInt(value.slice(4, 6), 16) / 255
+  return rgb(r, g, b)
+}
+
+// Tente de télécharger et d'intégrer le logo de marque blanche dans le PDF.
+// Ne lève jamais : en cas d'échec réseau, de format non supporté (autre que
+// png/jpg) ou de toute autre erreur, retourne null pour forcer le fallback
+// texte (brandName) côté appelant — la génération PDF ne doit jamais dépendre
+// de la disponibilité d'une image externe.
+async function tryEmbedBrandLogo(doc: PDFDocument, url: string | null): Promise<PDFImage | null> {
+  if (!url) return null
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type') || ''
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    if (contentType.includes('png') || url.toLowerCase().endsWith('.png')) {
+      return await doc.embedPng(bytes)
+    }
+    if (contentType.includes('jpeg') || contentType.includes('jpg') || url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.jpeg')) {
+      return await doc.embedJpg(bytes)
+    }
+    // Format non reconnu : tente PNG puis JPG avant d'abandonner.
+    try {
+      return await doc.embedPng(bytes)
+    } catch {
+      return await doc.embedJpg(bytes)
+    }
+  } catch (error) {
+    console.error('[DEVIS PDF] Logo de marque blanche inaccessible, fallback texte', error)
+    return null
+  }
+}
 
 interface DevisLine {
   type: 'item' | 'section'
@@ -149,7 +193,24 @@ class PdfWriter {
   }
 }
 
-export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig | null): Promise<Buffer> {
+export async function generateDevisPdf(
+  devis: DevisRecord,
+  config: ArtisanConfig | null,
+  options?: { plan?: string | null }
+): Promise<Buffer> {
+  const branding: ResolvedDevisBranding = resolveDevisBranding({
+    plan: options?.plan ?? null,
+    whiteLabelEnabled: config?.whiteLabelEnabled,
+    widgetBrandName: config?.widgetBrandName,
+    widgetBrandLogoUrl: config?.widgetBrandLogoUrl,
+    logoUrl: config?.logoUrl,
+    companyName: config?.companyName,
+    raisonSociale: config?.raisonSociale,
+    primaryColor: config?.primaryColor,
+    secondaryColor: config?.secondaryColor,
+  })
+  const headerAccent = branding.isWhiteLabelActive ? hexToRgb(branding.primaryColor, ACCENT) : ACCENT
+
   let lines: DevisLine[] = []
   try {
     const parsed = JSON.parse(devis.lignesJson)
@@ -174,10 +235,35 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
 
   // ── Header ──────────────────────────────────────────────────────────
   const headerTop = w.y
-  w.page.drawText('K', { x: MARGIN, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: ACCENT })
-  const kWidth = fontBold.widthOfTextAtSize('K', 20)
-  w.page.drawText('adria', { x: MARGIN + kWidth, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: TEXT_DARK })
-  w.y = headerTop + 20 * 1.3 + 20
+  let brandLogoImage: PDFImage | null = null
+  if (branding.isWhiteLabelActive && branding.brandLogoUrl) {
+    brandLogoImage = await tryEmbedBrandLogo(pdfDoc, branding.brandLogoUrl)
+  }
+
+  if (branding.isWhiteLabelActive) {
+    if (brandLogoImage) {
+      // Logo image artisan — hauteur fixe 28pt, largeur proportionnelle.
+      const logoHeight = 28
+      const logoWidth = (brandLogoImage.width / brandLogoImage.height) * logoHeight
+      w.page.drawImage(brandLogoImage, {
+        x: MARGIN,
+        y: PAGE_HEIGHT - headerTop - logoHeight,
+        width: logoWidth,
+        height: logoHeight,
+      })
+      w.y = headerTop + logoHeight + 20
+    } else {
+      // Fallback texte : nom de marque artisan (jamais le logo Kadria en marque blanche active).
+      w.page.drawText(branding.brandName, { x: MARGIN, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: TEXT_DARK })
+      w.y = headerTop + 20 * 1.3 + 20
+    }
+  } else {
+    // Rendu Kadria standard inchangé (Essentiel ou marque blanche inactive).
+    w.page.drawText('K', { x: MARGIN, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: ACCENT })
+    const kWidth = fontBold.widthOfTextAtSize('K', 20)
+    w.page.drawText('adria', { x: MARGIN + kWidth, y: PAGE_HEIGHT - headerTop - 20, size: 20, font: fontBold, color: TEXT_DARK })
+    w.y = headerTop + 20 * 1.3 + 20
+  }
 
   const emetteurNom = config?.raisonSociale || config?.companyName || ''
   const emetteurAdresse = formatFullAddress({ address: config?.adressePro, postalCode: config?.cpPro, city: config?.villePro })
@@ -223,7 +309,7 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
 
   w.y = Math.max(leftStartY + leftHeight, headerTop + rightHeight) + 16
 
-  w.hLine(ACCENT, 2)
+  w.hLine(headerAccent, 2)
   w.y += 24
 
   // ── Client ──────────────────────────────────────────────────────────
@@ -335,7 +421,7 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
   w.y += 4
 
   w.drawAt('Total TTC', totalsX, w.y, totalsWidth - 90, 13, fontBold, TEXT_DARK)
-  w.drawAt(formatEuro(devis.totalTTC), totalsX + totalsWidth - 90, w.y, 90, 13, fontBold, ACCENT, 'right')
+  w.drawAt(formatEuro(devis.totalTTC), totalsX + totalsWidth - 90, w.y, 90, 13, fontBold, headerAccent, 'right')
   w.y += 13 * 1.3
 
   // ── Conditions ──────────────────────────────────────────────────────
@@ -405,6 +491,13 @@ export async function generateDevisPdf(devis: DevisRecord, config: ArtisanConfig
     w.y += 8
     w.text(devis.mentionsLegales, fontRegular, 8, TEXT_MUTED)
   }
+
+  // ── Mention "Propulsé par Kadria" ────────────────────────────────────
+  // Affichée systématiquement : discrète en marque blanche active
+  // (showKadriaBranding=false), branding Kadria normal sinon.
+  w.y += 16
+  w.ensureSpace(20)
+  w.text(branding.poweredByLabel, fontRegular, 7, TEXT_MUTED)
 
   const pdfBytes = await pdfDoc.save()
   return Buffer.from(pdfBytes)

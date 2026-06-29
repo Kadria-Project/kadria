@@ -193,7 +193,7 @@ export async function POST(
     }
   } else {
     try {
-      pdfBuffer = await generateDevisPdf(devis, config)
+      pdfBuffer = await generateDevisPdf(devis, config, { plan: session.plan })
     } catch (error) {
       console.error('[DEVIS FINALIZE] Erreur génération PDF', error)
       return NextResponse.json({ success: false, error: 'Erreur génération PDF' }, { status: 500 })
