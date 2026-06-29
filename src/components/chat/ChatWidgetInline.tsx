@@ -541,7 +541,7 @@ export default function ChatWidgetInline({
     flexDirection: 'column',
     overflow: 'hidden',
     background: isProjectExperience
-      ? 'linear-gradient(180deg, rgba(24,24,27,0.98) 0%, rgba(9,9,11,0.98) 100%)'
+      ? `linear-gradient(180deg, ${hexToRgba(secondaryColorLocal, 0.94)} 0%, ${hexToRgba(secondaryColorLocal, 0.98)} 100%)`
       : secondaryColorLocal,
     boxShadow: isProjectExperience ? '0 28px 80px rgba(0,0,0,0.36)' : 'none',
     fontFamily: 'system-ui, sans-serif',
@@ -567,8 +567,8 @@ export default function ChatWidgetInline({
         {/* Header */}
         <div className={isProjectExperience ? 'project-mobile-hide-header' : undefined} style={{
           background: isProjectExperience
-            ? 'linear-gradient(180deg, rgba(18,18,20,0.96) 0%, rgba(18,18,20,0.88) 100%)'
-            : 'linear-gradient(180deg, rgba(15,16,15,0.97) 0%, rgba(9,9,11,0.97) 100%)',
+            ? `linear-gradient(180deg, ${hexToRgba(secondaryColorLocal, 0.96)} 0%, ${hexToRgba(secondaryColorLocal, 0.88)} 100%)`
+            : `linear-gradient(180deg, ${hexToRgba(secondaryColorLocal, 0.97)} 0%, ${hexToRgba(secondaryColorLocal, 0.97)} 100%)`,
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           padding: isProjectExperience ? '18px 20px 16px' : '14px 16px',
           display: 'flex',
@@ -649,7 +649,7 @@ export default function ChatWidgetInline({
         {/* Progress bar */}
         <div className={isProjectExperience ? 'project-progress-wrap' : undefined} style={{
           padding: isProjectExperience ? '16px 20px 18px' : '8px 16px',
-          background: isProjectExperience ? 'rgba(9,9,11,0.68)' : '#09090b',
+          background: isProjectExperience ? hexToRgba(secondaryColorLocal, 0.68) : secondaryColorLocal,
           borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
         }}>
           <div style={centerStyle}>
@@ -1338,7 +1338,7 @@ export default function ChatWidgetInline({
             {!saved && !showContactForm && (
               <div className="chat-input-container" style={{
                 padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
-                flexShrink: 0, background: isProjectExperience ? 'rgba(9,9,11,0.86)' : '#09090b',
+                flexShrink: 0, background: isProjectExperience ? hexToRgba(secondaryColorLocal, 0.86) : secondaryColorLocal,
                 position: 'relative',
               }}>
                 <div style={{
