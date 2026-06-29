@@ -42,6 +42,45 @@ interface Props {
   whiteLabelEnabled?: boolean
   widgetBrandName?: string
   widgetBrandLogoUrl?: string
+  companyNameOverride?: string
+  planOverride?: string
+}
+
+// ─── Résolution du branding du header (marque blanche) ─────────────────────
+// Règle unique, appliquée identiquement que les valeurs viennent des props
+// (aperçu live dans /parametres) ou de l'état interne alimenté par le fetch
+// /api/artisan/public-config (page réelle /projet) :
+//   - whiteLabelEnabled === true ET plan Performance/Agence
+//       → widgetBrandLogoUrl > logoUrl > widgetBrandName > companyName > "KADRIA"
+//   - sinon → toujours "KADRIA"
+// `welcomeName` (nom de l'assistant conversationnel) n'intervient JAMAIS ici.
+const WHITE_LABEL_PLANS = new Set(['performance', 'entreprise'])
+function resolveWidgetBranding({
+  whiteLabelEnabled,
+  plan,
+  widgetBrandName,
+  widgetBrandLogoUrl,
+  companyName,
+  logoUrl,
+}: {
+  whiteLabelEnabled: boolean
+  plan?: string
+  widgetBrandName?: string
+  widgetBrandLogoUrl?: string
+  companyName?: string
+  logoUrl?: string
+}): { isWhiteLabelActive: boolean; brandLabel: string; brandLogoUrl: string } {
+  const isWhiteLabelActive = whiteLabelEnabled && Boolean(plan && WHITE_LABEL_PLANS.has(plan))
+  if (!isWhiteLabelActive) {
+    return { isWhiteLabelActive: false, brandLabel: 'Kadria', brandLogoUrl: '' }
+  }
+  // Logo affiché : marque blanche > logo entreprise. Nom affiché à côté du
+  // logo/avatar : nom de marque > companyName > "Kadria" (jamais welcomeName).
+  return {
+    isWhiteLabelActive: true,
+    brandLogoUrl: widgetBrandLogoUrl || logoUrl || '',
+    brandLabel: widgetBrandName || companyName || 'Kadria',
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -122,6 +161,8 @@ export default function ChatWidgetInline({
   whiteLabelEnabled,
   widgetBrandName,
   widgetBrandLogoUrl,
+  companyNameOverride,
+  planOverride,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -163,6 +204,12 @@ export default function ChatWidgetInline({
   const [whiteLabelEnabledLocal, setWhiteLabelEnabledLocal] = useState(false)
   const [widgetBrandNameLocal, setWidgetBrandNameLocal] = useState('')
   const [widgetBrandLogoUrlLocal, setWidgetBrandLogoUrlLocal] = useState('')
+  // companyName/plan : nécessaires uniquement pour la résolution du branding
+  // (repli companyName quand marque blanche active sans widgetBrandName, et
+  // vérification du plan Performance/Agence) — jamais utilisés comme nom de
+  // l'assistant conversationnel (voir widgetName/welcomeName ci-dessus).
+  const [companyNameLocal, setCompanyNameLocal] = useState('')
+  const [planLocal, setPlanLocal] = useState('')
   const [brandLogoFailed, setBrandLogoFailed] = useState(false)
   // Détection viewport mobile : limitée à l'écran d'accueil de /projet
   // (isProjectExperience) afin de proposer une entrée à 4 choix inspirée du
@@ -194,6 +241,8 @@ export default function ChatWidgetInline({
           if (data.config.whiteLabelEnabled !== undefined) setWhiteLabelEnabledLocal(Boolean(data.config.whiteLabelEnabled))
           if (data.config.widgetBrandName) setWidgetBrandNameLocal(data.config.widgetBrandName)
           if (data.config.widgetBrandLogoUrl) setWidgetBrandLogoUrlLocal(data.config.widgetBrandLogoUrl)
+          if (data.config.companyName) setCompanyNameLocal(data.config.companyName)
+          if (data.config.plan) setPlanLocal(data.config.plan)
         }
       } catch (e) {
         console.error('Config load error:', e)
@@ -233,6 +282,12 @@ export default function ChatWidgetInline({
       setBrandLogoFailed(false)
     }
   }, [widgetBrandLogoUrl])
+  useEffect(() => {
+    if (companyNameOverride !== undefined) setCompanyNameLocal(companyNameOverride)
+  }, [companyNameOverride])
+  useEffect(() => {
+    if (planOverride !== undefined) setPlanLocal(planOverride)
+  }, [planOverride])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -516,16 +571,19 @@ export default function ChatWidgetInline({
   const isProjectExperience = fullPage && projectExperience
 
   // ── Résolution du branding du header (marque blanche Performance/Agence) ──
-  // Ordre de résolution : logo de marque blanche > logo entreprise (logoUrl)
-  // > nom de marque blanche > nom/companyName courant (widgetName, "Kadria"
-  // par défaut). Quand whiteLabelEnabledLocal est false/absent, le
-  // comportement reste strictement inchangé (branding Kadria existant).
-  const resolvedBrandLogoUrl = whiteLabelEnabledLocal
-    ? (widgetBrandLogoUrlLocal || logoUrlLocal || '')
-    : ''
-  const resolvedBrandName = whiteLabelEnabledLocal
-    ? (widgetBrandNameLocal || widgetName)
-    : widgetName
+  // Règle unique (voir resolveWidgetBranding ci-dessus) : si la marque
+  // blanche est active ET le plan l'autorise, logo de marque > logo
+  // entreprise pour l'image, nom de marque > companyName > "Kadria" pour le
+  // texte. Sinon, toujours "Kadria" — jamais welcomeName/widgetName, qui
+  // reste réservé au nom de l'assistant conversationnel.
+  const { brandLogoUrl: resolvedBrandLogoUrl, brandLabel: resolvedBrandName } = resolveWidgetBranding({
+    whiteLabelEnabled: whiteLabelEnabledLocal,
+    plan: planLocal,
+    widgetBrandName: widgetBrandNameLocal,
+    widgetBrandLogoUrl: widgetBrandLogoUrlLocal,
+    companyName: companyNameLocal,
+    logoUrl: logoUrlLocal,
+  })
 
   // ── Détection mobile (écran d'accueil /projet uniquement) ────────────────
   useEffect(() => {

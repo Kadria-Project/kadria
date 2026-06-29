@@ -1256,6 +1256,8 @@ export default function ParametresPage() {
                     whiteLabelEnabled={config.plan === 'performance' || config.plan === 'entreprise' ? config.whiteLabelEnabled : false}
                     widgetBrandName={config.widgetBrandName}
                     widgetBrandLogoUrl={config.widgetBrandLogoUrl}
+                    companyNameOverride={config.companyName}
+                    planOverride={config.plan}
                     fitParentHeight
                     previewMode
                   />
@@ -1504,20 +1506,34 @@ export default function ParametresPage() {
                       borderRadius: '10px',
                       padding: '10px 14px',
                     }}>
-                      {config.whiteLabelEnabled && config.widgetBrandLogoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={config.widgetBrandLogoUrl}
-                          alt=""
-                          style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'contain' }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
-                      ) : null}
-                      <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>
-                        {config.whiteLabelEnabled && (config.widgetBrandName || config.widgetBrandLogoUrl)
-                          ? (config.widgetBrandName || 'Votre marque')
-                          : 'Kadria'}
-                      </span>
+                      {(() => {
+                        // Même règle que ChatWidgetInline.resolveWidgetBranding :
+                        // marque blanche active (et plan Performance/Agence,
+                        // déjà garanti par cette section) → logo de marque >
+                        // logo entreprise pour l'image, nom de marque >
+                        // companyName > "Kadria" pour le texte. Sinon "Kadria".
+                        const isWhiteLabelActive = config.whiteLabelEnabled
+                        const previewLogoUrl = isWhiteLabelActive ? (config.widgetBrandLogoUrl || config.logoUrl || '') : ''
+                        const previewLabel = isWhiteLabelActive
+                          ? (config.widgetBrandName || config.companyName || 'Kadria')
+                          : 'Kadria'
+                        return (
+                          <>
+                            {previewLogoUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={previewLogoUrl}
+                                alt=""
+                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'contain' }}
+                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
+                            ) : null}
+                            <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>
+                              {previewLabel}
+                            </span>
+                          </>
+                        )
+                      })()}
                       <span style={{ color: 'var(--text-3)', fontSize: '11px' }}>Aperçu du header</span>
                     </div>
                   </div>

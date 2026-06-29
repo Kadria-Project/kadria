@@ -1251,9 +1251,9 @@ export default function DemoParametresPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div>
               <p style={{ margin: 0, color: '#f4f4f5', fontSize: '14px', fontWeight: 700 }}>
-                {settings.widget.whiteLabelEnabled && settings.widget.widgetBrandName
-                  ? settings.widget.widgetBrandName
-                  : settings.appearance.displayName}
+                {settings.widget.whiteLabelEnabled
+                  ? (settings.widget.widgetBrandName || settings.entreprise.companyName || 'Kadria')
+                  : 'Kadria'}
               </p>
               <p style={{ margin: '4px 0 0', color: '#a1a1aa', fontSize: '12px' }}>{settings.widget.responseTone} · assistant web</p>
             </div>
