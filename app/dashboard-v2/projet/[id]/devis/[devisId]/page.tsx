@@ -8,6 +8,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle, Clock, Copy, Download, Eye, Load
 import { getPublicDevisUrl } from '@/src/lib/base-url';
 import { UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
+import { resolveDevisBranding } from '@/src/lib/devis-branding';
 
 interface DevisLine {
   type: 'item' | 'section';
@@ -52,6 +53,17 @@ interface DevisData {
   sentSnapshotId?: string | null;
   acceptedSnapshotId?: string | null;
   declinedSnapshotId?: string | null;
+  branding?: {
+    plan: string | null;
+    white_label_enabled: boolean;
+    widget_brand_name: string;
+    widget_brand_logo_url: string;
+    logo_url: string;
+    company_name: string;
+    raison_sociale: string;
+    primary_color: string;
+    secondary_color: string;
+  };
 }
 
 function formatDate(value: string) {
@@ -242,6 +254,18 @@ function DevisView() {
   const isSent = devis.sent || devis.statut === 'Envoyé';
   const isDeclined = devis.statut === 'Refusé' || Boolean(devis.declinedAt) || Boolean(devis.declineReason);
 
+  const branding = resolveDevisBranding({
+    plan: devis.branding?.plan,
+    whiteLabelEnabled: devis.branding?.white_label_enabled,
+    widgetBrandName: devis.branding?.widget_brand_name,
+    widgetBrandLogoUrl: devis.branding?.widget_brand_logo_url,
+    logoUrl: devis.branding?.logo_url,
+    companyName: devis.branding?.company_name,
+    raisonSociale: devis.branding?.raison_sociale,
+    primaryColor: devis.branding?.primary_color,
+    secondaryColor: devis.branding?.secondary_color,
+  });
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <main className="mx-auto max-w-5xl px-6 py-8 space-y-4">
@@ -364,6 +388,22 @@ function DevisView() {
             Passez à Performance pour envoyer vos devis, générer des PDF et suivre leur statut.
           </div>
         )}
+
+        {/* Apercu branding (ce que verra le client sur la page publique) */}
+        <div style={{ ...sectionCard, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {branding.isWhiteLabelActive && branding.brandLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.brandLogoUrl} alt={branding.brandName} style={{ height: '24px', maxWidth: '140px', objectFit: 'contain' }} />
+            ) : null}
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#d4d4d8' }}>
+              {branding.isWhiteLabelActive
+                ? `Branding affiché au client : ${branding.brandName}`
+                : 'Branding affiché au client : Kadria'}
+            </span>
+          </div>
+          <span style={{ fontSize: '12px', color: '#71717a' }}>{branding.poweredByLabel}</span>
+        </div>
 
         {/* Suivi */}
         <div style={sectionCard}>

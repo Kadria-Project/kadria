@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { deleteDevis, getDevisById, updateDevis } from '@/src/lib/airtable'
+import { deleteDevis, getArtisanConfig, getDevisById, updateDevis } from '@/src/lib/airtable'
 import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
+import { isWhiteLabelAllowed } from '@/src/lib/devis-branding'
 
 const ALLOWED_STATUTS = ['Brouillon', 'Envoyé', 'Accepté', 'Refusé']
 
@@ -34,7 +35,24 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ success: true, devis })
+    const config = await getArtisanConfig(devis.artisanId)
+    const plan = session.plan
+    const planAllowsWhiteLabel = isWhiteLabelAllowed(plan)
+    const whiteLabelEnabled = planAllowsWhiteLabel && Boolean(config?.whiteLabelEnabled)
+
+    const branding = {
+      plan,
+      white_label_enabled: whiteLabelEnabled,
+      widget_brand_name: whiteLabelEnabled ? (config?.widgetBrandName || '') : '',
+      widget_brand_logo_url: whiteLabelEnabled ? (config?.widgetBrandLogoUrl || '') : '',
+      logo_url: config?.logoUrl || '',
+      company_name: config?.companyName || '',
+      raison_sociale: config?.raisonSociale || '',
+      primary_color: config?.primaryColor || '',
+      secondary_color: config?.secondaryColor || '',
+    }
+
+    return NextResponse.json({ success: true, devis: { ...devis, branding } })
   } catch (error) {
     console.error('[DEVIS GET BY ID]', error)
     return NextResponse.json(

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { resolveDevisBranding } from '@/src/lib/devis-branding';
 
 interface DevisLine {
   type: 'item' | 'section';
@@ -49,6 +50,17 @@ interface PublicDevis {
   delay_mention?: string | null;
   labor_mention?: string | null;
   travel_fee_mention?: string | null;
+  branding?: {
+    plan: string | null;
+    white_label_enabled: boolean;
+    widget_brand_name: string;
+    widget_brand_logo_url: string;
+    logo_url: string;
+    company_name: string;
+    raison_sociale: string;
+    primary_color: string;
+    secondary_color: string;
+  };
 }
 
 const DECLINE_REASONS = [
@@ -204,11 +216,33 @@ export default function PublicDevisPage() {
     );
   }
 
+  const branding = resolveDevisBranding({
+    plan: devis.branding?.plan,
+    whiteLabelEnabled: devis.branding?.white_label_enabled,
+    widgetBrandName: devis.branding?.widget_brand_name,
+    widgetBrandLogoUrl: devis.branding?.widget_brand_logo_url,
+    logoUrl: devis.branding?.logo_url,
+    companyName: devis.branding?.company_name,
+    raisonSociale: devis.branding?.raison_sociale,
+    primaryColor: devis.branding?.primary_color,
+    secondaryColor: devis.branding?.secondary_color,
+  });
+
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', color: '#111827' }}>
       <div style={{ maxWidth: '768px', margin: '0 auto', padding: '48px 24px' }}>
-        <div style={{ textAlign: 'right', fontSize: '12px', color: '#9ca3af', fontWeight: 700, letterSpacing: '1px', marginBottom: '24px' }}>
-          KADRIA
+        <div style={{ textAlign: 'right', marginBottom: '24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+          {branding.isWhiteLabelActive ? (
+            <>
+              {branding.brandLogoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={branding.brandLogoUrl} alt={branding.brandName} style={{ height: '28px', maxWidth: '160px', objectFit: 'contain' }} />
+              )}
+              <span style={{ fontSize: '13px', color: '#374151', fontWeight: 700 }}>{branding.brandName}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 700, letterSpacing: '1px' }}>KADRIA</span>
+          )}
         </div>
 
         {/* Header */}
@@ -416,7 +450,7 @@ export default function PublicDevisPage() {
               onClick={handleAccept}
               disabled={accepting}
               style={{
-                background: '#22c55e',
+                background: branding.primaryColor,
                 color: '#000000',
                 fontWeight: 700,
                 fontSize: '18px',
@@ -610,8 +644,11 @@ export default function PublicDevisPage() {
         )}
 
         {/* Footer */}
-        <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', margin: 0 }}>
-          Devis établi par {devis.artisan.raison_sociale || 'votre artisan'} via Kadria
+        <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', margin: '0 0 4px' }}>
+          Devis établi par {devis.artisan.raison_sociale || 'votre artisan'}
+        </p>
+        <p style={{ fontSize: '11px', color: '#d1d5db', textAlign: 'center', margin: 0 }}>
+          {branding.poweredByLabel}
         </p>
       </div>
     </div>

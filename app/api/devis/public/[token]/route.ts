@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getArtisanConfig, getDevisByToken } from '@/src/lib/airtable'
+import { getArtisanConfig, getDevisByToken, getUserByArtisanIdentifier } from '@/src/lib/airtable'
 import { getPricingMention, getVatExemptionMention, getInsuranceLines, getDelayMention, getLaborMention, getTravelFeeMention } from '@/src/lib/devis-legal'
 import type { QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
+import { isWhiteLabelAllowed } from '@/src/lib/devis-branding'
+import { normalizePlan } from '@/src/lib/plans'
 
 export async function GET(
   _request: NextRequest,
@@ -19,7 +21,19 @@ export async function GET(
       return NextResponse.json({ error: 'Devis introuvable' }, { status: 404 })
     }
 
-    const config = await getArtisanConfig(devis.artisanId)
+    const [config, user] = await Promise.all([
+      getArtisanConfig(devis.artisanId),
+      getUserByArtisanIdentifier(devis.artisanId),
+    ])
+
+    // Defense serveur : exactement comme app/api/artisan/public-config/route.ts —
+    // on ne fait jamais confiance a une valeur de plan ou de marque blanche
+    // venant du front. Le plan reel de l'artisan est revalide ici ; si le
+    // plan ne permet pas la marque blanche (Essentiel), whiteLabelEnabled est
+    // force a false meme si la colonne vaut encore true en base.
+    const plan = normalizePlan(user?.plan)
+    const planAllowsWhiteLabel = isWhiteLabelAllowed(plan)
+    const whiteLabelEnabled = planAllowsWhiteLabel && Boolean(config?.whiteLabelEnabled)
 
     let lignes: unknown[] = []
     try {
@@ -63,6 +77,17 @@ export async function GET(
         adresse: [config?.adressePro, config?.cpPro, config?.villePro].filter(Boolean).join(' '),
         siret: config?.siret || '',
         tva: config?.tvaNumber || '',
+      },
+      branding: {
+        plan,
+        white_label_enabled: whiteLabelEnabled,
+        widget_brand_name: whiteLabelEnabled ? (config?.widgetBrandName || '') : '',
+        widget_brand_logo_url: whiteLabelEnabled ? (config?.widgetBrandLogoUrl || '') : '',
+        logo_url: config?.logoUrl || '',
+        company_name: config?.companyName || '',
+        raison_sociale: config?.raisonSociale || '',
+        primary_color: config?.primaryColor || '',
+        secondary_color: config?.secondaryColor || '',
       },
       client: {
         nom: devis.clientName,
