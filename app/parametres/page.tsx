@@ -6,6 +6,7 @@ import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
+import AssistantAvatarBubble, { PRESET_AVATARS } from '@/src/components/chat/AssistantAvatarBubble'
 import { ARTISAN_TRADES } from '@/src/config/trades'
 import { getQuoteItemsForTrades } from '@/src/config/trade-taxonomy'
 import type { ArtisanServiceCatalogItem, ArtisanQuoteTemplate, ArtisanQuoteTemplateLine, QuoteCommercialSettings } from '@/src/lib/quote-suggestions'
@@ -221,6 +222,8 @@ export default function ParametresPage() {
     address: '',
     hours: '',
     logoUrl: '',
+    assistantAvatarType: 'kadria_default',
+    assistantAvatarUrl: '',
     welcomeName: '',
     welcomeMessage: '',
     primaryColor: '#22c55e',
@@ -342,6 +345,8 @@ export default function ParametresPage() {
             address: data.config.address || '',
             hours: data.config.hours || '',
             logoUrl: data.config.logoUrl || '',
+            assistantAvatarType: data.config.assistantAvatarType || 'kadria_default',
+            assistantAvatarUrl: data.config.assistantAvatarUrl || '',
             welcomeName: data.config.welcomeName || '',
             welcomeMessage: data.config.welcomeMessage || '',
             primaryColor: data.config.primaryColor || '#22c55e',
@@ -944,6 +949,120 @@ export default function ParametresPage() {
               </div>
 
               <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Avatar de l&apos;assistant
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Choisissez l&apos;image qui apparaîtra dans la bulle de votre assistant, à la place du logo Kadria.
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+                  <AssistantAvatarBubble
+                    assistantAvatarType={config.assistantAvatarType}
+                    assistantAvatarUrl={config.assistantAvatarUrl}
+                    logoUrl={config.logoUrl}
+                    primaryColor={config.primaryColor}
+                    size={48}
+                  />
+                  <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>Aperçu dans le widget</span>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                  {([
+                    { id: 'company_logo', label: "Logo de l'entreprise" },
+                    { id: 'custom_upload', label: 'Image personnalisée' },
+                    { id: 'preset', label: 'Avatar proposé' },
+                    { id: 'kadria_default', label: 'Logo Kadria par défaut' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setConfig(c => ({ ...c, assistantAvatarType: opt.id }))}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '999px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        border: config.assistantAvatarType === opt.id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        background: config.assistantAvatarType === opt.id ? 'var(--accent-soft, rgba(34,197,94,0.12))' : 'var(--bg-hover)',
+                        color: config.assistantAvatarType === opt.id ? 'var(--accent)' : 'var(--text-2)',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {config.assistantAvatarType === 'custom_upload' && (
+                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
+                    <label style={labelStyle}>URL de l&apos;image</label>
+                    <input
+                      value={config.assistantAvatarUrl}
+                      onChange={e => setConfig(c => ({ ...c, assistantAvatarUrl: e.target.value }))}
+                      placeholder="https://monsite.fr/avatar.png"
+                      style={inputStyle}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                      {config.assistantAvatarUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={config.assistantAvatarUrl}
+                          alt="Aperçu avatar"
+                          style={{
+                            width: '40px', height: '40px',
+                            objectFit: 'cover', borderRadius: '50%',
+                          }}
+                          onError={e => (e.currentTarget.style.display = 'none')}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setConfig(c => ({ ...c, assistantAvatarType: 'kadria_default', assistantAvatarUrl: '' }))}
+                        style={{
+                          padding: '6px 12px', borderRadius: '8px', fontSize: '12px',
+                          border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                          color: 'var(--text-2)', cursor: 'pointer',
+                        }}
+                      >
+                        Réinitialiser
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {config.assistantAvatarType === 'preset' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '10px', maxWidth: isMobile ? '100%' : '420px' }}>
+                    {PRESET_AVATARS.map(preset => {
+                      const ref = `preset:${preset.id}`
+                      const active = config.assistantAvatarUrl === ref
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => setConfig(c => ({ ...c, assistantAvatarUrl: ref }))}
+                          title={preset.label}
+                          style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                            padding: '8px', borderRadius: '10px', cursor: 'pointer',
+                            border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            background: active ? 'var(--accent-soft, rgba(34,197,94,0.12))' : 'var(--bg-hover)',
+                          }}
+                        >
+                          <AssistantAvatarBubble
+                            assistantAvatarType="preset"
+                            assistantAvatarUrl={ref}
+                            size={36}
+                          />
+                          <span style={{ fontSize: '10.5px', color: 'var(--text-3)', textAlign: 'center' }}>{preset.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Contact principal
                 </h3>
@@ -1111,6 +1230,9 @@ export default function ParametresPage() {
                     secondaryColor={config.secondaryColor}
                     welcomeNameOverride={config.welcomeName}
                     welcomeMessageOverride={config.welcomeMessage}
+                    assistantAvatarType={config.assistantAvatarType}
+                    assistantAvatarUrl={config.assistantAvatarUrl}
+                    logoUrl={config.logoUrl}
                     fitParentHeight
                     previewMode
                   />

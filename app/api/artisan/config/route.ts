@@ -185,6 +185,8 @@ export async function PATCH(request: NextRequest) {
     if (body.primaryColor !== undefined) fields['primary_color'] = body.primaryColor
     if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
     if (body.websiteUrl !== undefined) fields['website_url'] = body.websiteUrl
+    if (body.assistantAvatarType !== undefined) fields['assistant_avatar_type'] = body.assistantAvatarType
+    if (body.assistantAvatarUrl !== undefined) fields['assistant_avatar_url'] = body.assistantAvatarUrl
 
     if (body.trades !== undefined) {
       const cleanedTrades = (body.trades as unknown[])

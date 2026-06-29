@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
         logoUrl:        config.logoUrl,
         primaryTrade:   config.primaryTrade,
         active:         config.active,
+        assistantAvatarType: config.assistantAvatarType,
+        assistantAvatarUrl:  config.assistantAvatarUrl,
       },
     })
   } catch (error) {

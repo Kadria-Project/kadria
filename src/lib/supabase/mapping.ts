@@ -176,6 +176,8 @@ export interface SupabaseArtisanConfig {
   onboardingCompletedAt: string
   travelConfig: Record<string, unknown>
   businessConfig: Record<string, unknown>
+  assistantAvatarType: string
+  assistantAvatarUrl: string
 }
 
 export interface SupabaseProject {
@@ -281,6 +283,8 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     onboardingCompletedAt: getString(row, 'onboarding_completed_at'),
     travelConfig: getValue<Record<string, unknown>>(row, ['travel_config', 'Travel Config'], {}),
     businessConfig: getValue<Record<string, unknown>>(row, ['business_config', 'Business Config'], {}),
+    assistantAvatarType: getString(row, 'assistant_avatar_type', 'Assistant Avatar Type') || 'kadria_default',
+    assistantAvatarUrl: getString(row, 'assistant_avatar_url', 'Assistant Avatar URL'),
   }
 }
 

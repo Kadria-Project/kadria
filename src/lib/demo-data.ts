@@ -144,6 +144,8 @@ export const DEMO_SETTINGS_CONFIGURATION = {
     foundedYear: '2018',
     teamSize: 'Artisan independant',
     activityStatus: 'Actif',
+    assistantAvatarType: 'kadria_default',
+    assistantAvatarUrl: '',
   },
   profile: {
     mainTrade: 'Electricite generale',

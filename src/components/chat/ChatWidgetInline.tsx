@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Sparkles, Layers, Wrench, ShieldCheck, Zap, Compass } from 'lucide-react'
+import AssistantAvatarBubble from '@/src/components/chat/AssistantAvatarBubble'
 
 const WELCOME_OPTION_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   Sparkles, Layers, Wrench, ShieldCheck, Zap, Compass,
@@ -35,6 +36,9 @@ interface Props {
   onDossierChange?: (dossier: Dossier, score: number) => void
   onArtisanNameChange?: (name: string) => void
   onPrimaryColorChange?: (color: string) => void
+  assistantAvatarType?: string
+  assistantAvatarUrl?: string
+  logoUrl?: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -109,6 +113,9 @@ export default function ChatWidgetInline({
   onDossierChange,
   onArtisanNameChange,
   onPrimaryColorChange,
+  assistantAvatarType,
+  assistantAvatarUrl,
+  logoUrl,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -142,6 +149,9 @@ export default function ChatWidgetInline({
   const [secondaryColorLocal, setSecondaryColorLocal] = useState('#09090b')
   const [widgetName, setWidgetName] = useState('Kadria')
   const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
+  const [assistantAvatarTypeLocal, setAssistantAvatarTypeLocal] = useState('kadria_default')
+  const [assistantAvatarUrlLocal, setAssistantAvatarUrlLocal] = useState('')
+  const [logoUrlLocal, setLogoUrlLocal] = useState('')
   // Détection viewport mobile : limitée à l'écran d'accueil de /projet
   // (isProjectExperience) afin de proposer une entrée à 4 choix inspirée du
   // widget, sans toucher au rendu desktop ni au widget embarqué.
@@ -166,6 +176,9 @@ export default function ChatWidgetInline({
           if (data.config.secondaryColor) setSecondaryColorLocal(data.config.secondaryColor)
           if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
           if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
+          if (data.config.assistantAvatarType) setAssistantAvatarTypeLocal(data.config.assistantAvatarType)
+          if (data.config.assistantAvatarUrl) setAssistantAvatarUrlLocal(data.config.assistantAvatarUrl)
+          if (data.config.logoUrl) setLogoUrlLocal(data.config.logoUrl)
         }
       } catch (e) {
         console.error('Config load error:', e)
@@ -184,6 +197,15 @@ export default function ChatWidgetInline({
   useEffect(() => {
     if (welcomeMessageOverride) setCustomWelcomeMessage(welcomeMessageOverride)
   }, [welcomeMessageOverride])
+  useEffect(() => {
+    if (assistantAvatarType !== undefined) setAssistantAvatarTypeLocal(assistantAvatarType)
+  }, [assistantAvatarType])
+  useEffect(() => {
+    if (assistantAvatarUrl !== undefined) setAssistantAvatarUrlLocal(assistantAvatarUrl)
+  }, [assistantAvatarUrl])
+  useEffect(() => {
+    if (logoUrl !== undefined) setLogoUrlLocal(logoUrl)
+  }, [logoUrl])
 
   // ── Auto-scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -556,23 +578,22 @@ export default function ChatWidgetInline({
         }}>
           <div style={{ ...centerStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-              <div style={{
-                width: isProjectExperience ? '44px' : '38px',
-                height: isProjectExperience ? '44px' : '38px',
-                borderRadius: isProjectExperience ? '14px' : '12px',
-                background: isProjectExperience
+              <AssistantAvatarBubble
+                size={isProjectExperience ? 44 : 38}
+                borderRadius={isProjectExperience ? '14px' : '12px'}
+                assistantAvatarType={assistantAvatarTypeLocal}
+                assistantAvatarUrl={assistantAvatarUrlLocal}
+                logoUrl={logoUrlLocal}
+                primaryColor={primaryColorLocal}
+                fallbackGradient={isProjectExperience
                   ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)`
-                  : `linear-gradient(145deg, ${primaryColorLocal} 0%, #0f3d24 130%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: isProjectExperience ? '18px' : '15px',
-                color: isProjectExperience ? '#04110a' : '#ecfdf5',
-                boxShadow: isProjectExperience ? `0 12px 28px ${hexToRgba(primaryColorLocal, 0.18)}` : `0 6px 18px ${hexToRgba(primaryColorLocal, 0.22)}`,
-                border: isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)',
-                flexShrink: 0,
-              }}>K</div>
+                  : `linear-gradient(145deg, ${primaryColorLocal} 0%, #0f3d24 130%)`}
+                fontSize={isProjectExperience ? '18px' : '15px'}
+                fontWeight={800}
+                textColor={isProjectExperience ? '#04110a' : '#ecfdf5'}
+                boxShadow={isProjectExperience ? `0 12px 28px ${hexToRgba(primaryColorLocal, 0.18)}` : `0 6px 18px ${hexToRgba(primaryColorLocal, 0.22)}`}
+                border={isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)'}
+              />
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{widgetName}</p>

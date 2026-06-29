@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import AssistantAvatarBubble from '@/src/components/chat/AssistantAvatarBubble'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message { role: 'user' | 'assistant'; content: string }
@@ -96,6 +97,9 @@ export default function ChatWidget({
   const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor)
   const [widgetName, setWidgetName] = useState('Kadria')
   const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
+  const [assistantAvatarTypeLocal, setAssistantAvatarTypeLocal] = useState('kadria_default')
+  const [assistantAvatarUrlLocal, setAssistantAvatarUrlLocal] = useState('')
+  const [logoUrlLocal, setLogoUrlLocal] = useState('')
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -111,6 +115,9 @@ export default function ChatWidget({
           if (data.config.primaryColor) setPrimaryColorLocal(data.config.primaryColor)
           if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
           if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
+          if (data.config.assistantAvatarType) setAssistantAvatarTypeLocal(data.config.assistantAvatarType)
+          if (data.config.assistantAvatarUrl) setAssistantAvatarUrlLocal(data.config.assistantAvatarUrl)
+          if (data.config.logoUrl) setLogoUrlLocal(data.config.logoUrl)
         }
       } catch (e) {
         console.error('Config load error:', e)
@@ -403,12 +410,18 @@ export default function ChatWidget({
           alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: primaryColorLocal, display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: '16px', color: 'black',
-            }}>K</div>
+            <AssistantAvatarBubble
+              size={36}
+              borderRadius="50%"
+              assistantAvatarType={assistantAvatarTypeLocal}
+              assistantAvatarUrl={assistantAvatarUrlLocal}
+              logoUrl={logoUrlLocal}
+              primaryColor={primaryColorLocal}
+              fallbackGradient={primaryColorLocal}
+              fontWeight={700}
+              fontSize="16px"
+              textColor="black"
+            />
             <div>
               <p style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '14px' }}>{widgetName}</p>
               <p style={{ margin: 0, color: '#a1a1aa', fontSize: '12px' }}>Assistant en ligne</p>

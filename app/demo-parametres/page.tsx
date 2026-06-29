@@ -9,6 +9,7 @@ import {
   type SettingsShellGroup,
 } from '@/src/components/settings/SettingsPageShell';
 import { DEMO_SETTINGS_CONFIGURATION } from '@/src/lib/demo-data';
+import AssistantAvatarBubble, { PRESET_AVATARS } from '@/src/components/chat/AssistantAvatarBubble';
 
 type DemoSectionKey =
   | 'entreprise'
@@ -32,6 +33,8 @@ type DemoSettingsState = {
     foundedYear: string;
     teamSize: string;
     activityStatus: string;
+    assistantAvatarType: string;
+    assistantAvatarUrl: string;
   };
   profile: {
     mainTrade: string;
@@ -850,6 +853,87 @@ export default function DemoParametresPage() {
           value={settings.entreprise.description}
           onChange={(value) => updateEntrepriseField('description', value)}
         />
+      </DemoSectionCard>
+
+      <DemoSectionCard
+        title="Avatar de l'assistant"
+        description="Choisissez l'image qui apparaitra dans la bulle de votre assistant, a la place du logo Kadria."
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+          <AssistantAvatarBubble
+            assistantAvatarType={settings.entreprise.assistantAvatarType}
+            assistantAvatarUrl={settings.entreprise.assistantAvatarUrl}
+            primaryColor="#22c55e"
+            size={48}
+          />
+          <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>Apercu dans le widget</span>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+          {([
+            { id: 'company_logo', label: "Logo de l'entreprise" },
+            { id: 'custom_upload', label: 'Image personnalisee' },
+            { id: 'preset', label: 'Avatar propose' },
+            { id: 'kadria_default', label: 'Logo Kadria par defaut' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => updateEntrepriseField('assistantAvatarType', opt.id)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '999px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: settings.entreprise.assistantAvatarType === opt.id ? '1px solid var(--accent)' : '1px solid var(--border)',
+                background: settings.entreprise.assistantAvatarType === opt.id ? 'rgba(34,197,94,0.12)' : 'var(--bg-hover)',
+                color: settings.entreprise.assistantAvatarType === opt.id ? 'var(--accent)' : 'var(--text-2)',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {settings.entreprise.assistantAvatarType === 'custom_upload' && (
+          <Field
+            label="URL de l'image"
+            value={settings.entreprise.assistantAvatarUrl}
+            onChange={(value) => updateEntrepriseField('assistantAvatarUrl', value)}
+          />
+        )}
+
+        {settings.entreprise.assistantAvatarType === 'preset' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: '10px' }}>
+            {PRESET_AVATARS.map((preset) => {
+              const ref = `preset:${preset.id}`;
+              const active = settings.entreprise.assistantAvatarUrl === ref;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => updateEntrepriseField('assistantAvatarUrl', ref)}
+                  title={preset.label}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: active ? 'rgba(34,197,94,0.12)' : 'var(--bg-hover)',
+                  }}
+                >
+                  <AssistantAvatarBubble assistantAvatarType="preset" assistantAvatarUrl={ref} size={36} />
+                  <span style={{ fontSize: '10.5px', color: 'var(--text-3)', textAlign: 'center' }}>{preset.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </DemoSectionCard>
     </div>
   );
