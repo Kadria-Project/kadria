@@ -117,6 +117,17 @@ export const DEMO_ARTISAN = {
   theme: 'dark' as 'dark' | 'light',
   plan: 'Pro',
   hours: 'Lun-Ven 8h-18h',
+  // Champs de marque blanche demo, alignes sur la forme reelle d'ArtisanConfig
+  // (plan id technique distinct du libelle commercial ci-dessus) afin de
+  // pouvoir reutiliser resolveDevisBranding() (src/lib/devis-branding.ts)
+  // sans dupliquer la logique D1/D2/D3 dans la demo. Valeurs par defaut :
+  // marque blanche INACTIVE -> branding Kadria visible par defaut en demo.
+  whiteLabelPlanId: 'performance' as string,
+  whiteLabelEnabled: false,
+  widgetBrandName: '',
+  widgetBrandLogoUrl: '',
+  logoUrl: '',
+  raisonSociale: '',
 };
 
 export const DEMO_SETTINGS_PROFILE = {

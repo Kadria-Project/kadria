@@ -11,6 +11,7 @@ import {
   computeQuoteBuilderSummary,
   type DemoProject,
 } from '@/src/lib/demo-data';
+import { resolveDevisBranding } from '@/src/lib/devis-branding';
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -54,6 +55,22 @@ function DemoDevisView() {
   );
 
   const clientName = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ');
+
+  const branding = useMemo(
+    () =>
+      resolveDevisBranding({
+        plan: artisan.whiteLabelPlanId,
+        whiteLabelEnabled: artisan.whiteLabelEnabled,
+        widgetBrandName: artisan.widgetBrandName,
+        widgetBrandLogoUrl: artisan.widgetBrandLogoUrl,
+        logoUrl: artisan.logoUrl,
+        companyName: artisan.companyName,
+        raisonSociale: artisan.raisonSociale,
+        primaryColor: artisan.primaryColor,
+        secondaryColor: artisan.secondaryColor,
+      }),
+    [artisan]
+  );
 
   const sectionCard: React.CSSProperties = {
     background: 'var(--bg-elevated)',
@@ -167,7 +184,8 @@ function DemoDevisView() {
   }
 
   function openPdfPreview() {
-    const raisonSociale = artisan.companyName || 'Kadria Démo';
+    const brandName = branding.brandName || 'Kadria Démo';
+    const accentColor = branding.primaryColor;
     const htmlRows = quoteSummary.enabledLines
       .map((line) => {
         const lineTotalHt = Number(line.quantity || 0) * Number(line.unitPriceHt || 0);
@@ -175,12 +193,17 @@ function DemoDevisView() {
       })
       .join('');
 
+    const brandLogoHtml =
+      branding.isWhiteLabelActive && branding.brandLogoUrl
+        ? `<img src="${branding.brandLogoUrl}" alt="${brandName}" style="height:28px;max-width:160px;object-fit:contain;margin-bottom:6px" />`
+        : '';
+
     const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${devis.numero}</title><style>
       body{font-family:Inter,Arial,sans-serif;background:#fff;color:#18181b;padding:40px;line-height:1.5}
       .card{max-width:860px;margin:0 auto;border:1px solid #e4e4e7;border-radius:16px;padding:32px;position:relative}
       .muted{color:#71717a}
-      .accent{color:#16a34a}
-      .badge{position:absolute;top:24px;right:24px;background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.3);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700}
+      .accent{color:${accentColor}}
+      .badge{position:absolute;top:24px;right:24px;background:${accentColor}1f;color:${accentColor};border:1px solid ${accentColor}4d;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700}
       .row{display:flex;justify-content:space-between;gap:24px;margin:10px 0;border-bottom:1px solid #f4f4f5;padding-bottom:8px}
       .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
       table{width:100%;border-collapse:collapse;margin-top:16px}
@@ -196,7 +219,8 @@ function DemoDevisView() {
         <span class="badge">Démo</span>
         <div class="header">
           <div>
-            <p class="accent" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0">${raisonSociale}</p>
+            ${brandLogoHtml}
+            <p class="accent" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0">${brandName}</p>
             <p class="muted" style="margin:4px 0 0;font-size:13px">${artisan.address || ''}</p>
           </div>
           <div style="text-align:right">
@@ -218,7 +242,7 @@ function DemoDevisView() {
           <div class="summary-row total"><span>Total TTC</span><strong>${formatEuro(quoteSummary.totalTtc)}</strong></div>
         </div>
         <p class="muted" style="margin-top:24px;font-size:12px">${quoteBuilder.clientNote}</p>
-        <p class="muted" style="margin-top:20px;font-size:12px">Document de démonstration généré par Kadria — non valable comme devis officiel.</p>
+        <p class="muted" style="margin-top:20px;font-size:12px">${branding.poweredByLabel} — document de démonstration, non valable comme devis officiel.</p>
       </div>
     </body></html>`;
     const win = window.open('', '_blank');
@@ -232,6 +256,24 @@ function DemoDevisView() {
   return (
     <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)]">
       <main className="mx-auto max-w-5xl px-6 py-8 space-y-4">
+        {/* Bandeau de marque (branding D1/D2/D3 reproduit en demo) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          {branding.isWhiteLabelActive && branding.brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.brandLogoUrl}
+              alt={branding.brandName}
+              style={{ height: '28px', maxWidth: '140px', objectFit: 'contain' }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : null}
+          <span style={{ fontSize: '14px', fontWeight: 700, color: branding.isWhiteLabelActive ? branding.primaryColor : 'var(--text-1)' }}>
+            {branding.brandName}
+          </span>
+        </div>
+
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
@@ -450,6 +492,10 @@ function DemoDevisView() {
             )}
           </div>
         </div>
+
+        <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
+          {branding.poweredByLabel}
+        </p>
       </main>
 
       {toast && (

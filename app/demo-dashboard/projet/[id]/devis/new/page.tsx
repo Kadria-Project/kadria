@@ -11,6 +11,7 @@ import {
   type DemoQuoteBuilderLine,
   type DemoProject,
 } from '@/src/lib/demo-data';
+import { resolveDevisBranding } from '@/src/lib/devis-branding';
 
 function makeLineId() {
   return `l_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -36,6 +37,22 @@ function DemoNewDevis() {
   }, []);
 
   const initialBuilder = useMemo(() => normalizeQuoteBuilder(project), [project]);
+
+  const branding = useMemo(
+    () =>
+      resolveDevisBranding({
+        plan: artisan.whiteLabelPlanId,
+        whiteLabelEnabled: artisan.whiteLabelEnabled,
+        widgetBrandName: artisan.widgetBrandName,
+        widgetBrandLogoUrl: artisan.widgetBrandLogoUrl,
+        logoUrl: artisan.logoUrl,
+        companyName: artisan.companyName,
+        raisonSociale: artisan.raisonSociale,
+        primaryColor: artisan.primaryColor,
+        secondaryColor: artisan.secondaryColor,
+      }),
+    [artisan]
+  );
 
   const [clientName, setClientName] = useState(initialBuilder.clientName);
   const [siteAddress, setSiteAddress] = useState(initialBuilder.siteAddress);
@@ -199,6 +216,24 @@ function DemoNewDevis() {
         className="mx-auto max-w-5xl px-6 py-8 space-y-4"
         style={isMobile ? { padding: '12px', paddingBottom: 'calc(220px + env(safe-area-inset-bottom, 0px))' } : { paddingBottom: '110px' }}
       >
+        {/* Bandeau de marque (branding D1/D2/D3 reproduit en demo) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          {branding.isWhiteLabelActive && branding.brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.brandLogoUrl}
+              alt={branding.brandName}
+              style={{ height: '28px', maxWidth: '140px', objectFit: 'contain' }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : null}
+          <span style={{ fontSize: '14px', fontWeight: 700, color: branding.isWhiteLabelActive ? branding.primaryColor : 'var(--text-1)' }}>
+            {branding.brandName}
+          </span>
+        </div>
+
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
           <div>
@@ -396,6 +431,9 @@ function DemoNewDevis() {
 
         <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
           Rien n&apos;est envoyé automatiquement. Vous gardez la main jusqu&apos;à l&apos;envoi.
+        </p>
+        <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '11px', margin: 0 }}>
+          {branding.poweredByLabel}
         </p>
 
         {/* Barre d'action fixe */}
