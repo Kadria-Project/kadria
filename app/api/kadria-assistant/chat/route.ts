@@ -17,6 +17,41 @@ interface IncomingMessage {
   content: string
 }
 
+interface NavigationAction {
+  label: string
+  href: string
+}
+
+// Détermine de simples suggestions de navigation (non destructives) à partir
+// de mots-clés présents dans la question de l'artisan. Volontairement très
+// simple (pas de routeur complexe) : un mapping mot-clé -> lien existant.
+function buildNavigationActions(userQuestion: string): NavigationAction[] | undefined {
+  const text = userQuestion.toLowerCase()
+  const actions: NavigationAction[] = []
+
+  const addOnce = (action: NavigationAction) => {
+    if (!actions.some((a) => a.href === action.href)) actions.push(action)
+  }
+
+  if (/m[ée]tier|prestation|sp[ée]cialit[ée]/.test(text)) {
+    addOnce({ label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' })
+  }
+  if (/tarif|prix|devis/.test(text)) {
+    addOnce({ label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' })
+  }
+  if (/widget|avatar|logo|couleur|marque blanche|accueil/.test(text)) {
+    addOnce({ label: 'Ouvrir Mon widget', href: '/parametres' })
+  }
+  if (/progression|configurer|priorit[ée]|[ée]tape/.test(text)) {
+    addOnce({ label: 'Ouvrir le Centre de progression', href: '/parametres' })
+  }
+  if (/relance|prospect|convert|devis/.test(text)) {
+    addOnce({ label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' })
+  }
+
+  return actions.length > 0 ? actions : undefined
+}
+
 function sanitizeMessages(raw: unknown): { role: 'user' | 'assistant'; content: string }[] {
   if (!Array.isArray(raw)) return []
 
@@ -127,7 +162,10 @@ export async function POST(request: NextRequest) {
       limit: quotaCheck.limit,
     }
 
-    return NextResponse.json({ success: true, answer, usage })
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
+    const navigationActions = buildNavigationActions(lastUserMessage)
+
+    return NextResponse.json({ success: true, answer, usage, ...(navigationActions ? { navigationActions } : {}) })
   } catch (error) {
     const isQuotaOrTimeout = error instanceof Error && /timeout|quota|rate limit|429/i.test(error.message)
     console.error('[KADRIA-ASSISTANT] error', {

@@ -15,9 +15,9 @@ export type AssistantPlanKey = 'essentiel' | 'performance' | 'entreprise'
 const ASSISTANT_MESSAGE_COLUMN_CANDIDATES = ['assistant_messages', 'kadria_assistant_messages'] as const
 
 const ASSISTANT_MONTHLY_LIMITS: Record<AssistantPlanKey, number> = {
-  essentiel: 20,
-  performance: 100,
-  entreprise: 300,
+  essentiel: 50,
+  performance: 200,
+  entreprise: 500,
 }
 
 let cachedUsageMonthlyTable: string | null | undefined

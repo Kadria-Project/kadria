@@ -1624,7 +1624,7 @@ export default function DemoParametresPage() {
             <div>
               <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Assistant Kadria</p>
               <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                32 / 100 questions utilisées ce mois-ci
+                32 / 200 questions utilisées ce mois-ci
               </p>
             </div>
           </div>

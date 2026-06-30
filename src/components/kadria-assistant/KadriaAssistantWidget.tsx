@@ -2,9 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+interface NavigationAction {
+  label: string;
+  href: string;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  navigationActions?: NavigationAction[];
 }
 
 interface AssistantUsage {
@@ -73,11 +79,11 @@ function renderMessageContent(content: string) {
 
 const QUICK_STARTS = [
   'Que dois-je configurer en priorité ?',
-  'Explique-moi mon centre de progression',
-  'Comment améliorer mon profil métier ?',
-  'Comment fonctionne la marque blanche ?',
-  'Comment mieux utiliser mes devis ?',
-  "Quelles fonctionnalités de mon plan je n'utilise pas ?",
+  'Aide-moi à améliorer mon profil métier',
+  'Quelles prestations devrais-je proposer ?',
+  'Aide-moi à définir mes tarifs indicatifs',
+  'Comment améliorer mon centre de progression ?',
+  'Comment mieux convertir mes prospects ?',
 ];
 
 // Assistant interne pour l'artisan connecté (distinct du widget prospect
@@ -154,7 +160,14 @@ export default function KadriaAssistantWidget() {
         return;
       }
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.answer }]);
+      const navigationActions: NavigationAction[] | undefined = Array.isArray(data?.navigationActions)
+        ? data.navigationActions.filter(
+            (a: unknown): a is NavigationAction =>
+              Boolean(a) && typeof (a as NavigationAction).label === 'string' && typeof (a as NavigationAction).href === 'string'
+          )
+        : undefined;
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.answer, navigationActions }]);
     } catch {
       setError('Connexion impossible. Vérifiez votre connexion et réessayez.');
     } finally {
@@ -291,7 +304,7 @@ export default function KadriaAssistantWidget() {
             )}
 
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                     m.role === 'user'
@@ -301,6 +314,19 @@ export default function KadriaAssistantWidget() {
                 >
                   {renderMessageContent(m.content)}
                 </div>
+                {m.role === 'assistant' && m.navigationActions && m.navigationActions.length > 0 && (
+                  <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
+                    {m.navigationActions.map((action, ai) => (
+                      <a
+                        key={ai}
+                        href={action.href}
+                        className="rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20"
+                      >
+                        {action.label} →
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -320,9 +346,9 @@ export default function KadriaAssistantWidget() {
             {error && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
                 {error}
-                {quotaReached && usage?.limit === 20 && (
+                {quotaReached && usage?.limit === 50 && (
                   <p className="mt-1.5 text-xs text-red-300/90">
-                    Passez au plan Performance pour bénéficier de 100 questions par mois.
+                    Passez au plan Performance pour bénéficier de 200 questions par mois.
                   </p>
                 )}
               </div>
