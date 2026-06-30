@@ -8,6 +8,65 @@ interface ChatMessage {
   content: string;
 }
 
+// Rendu markdown minimal et sûr (V1) : pas de dangerouslySetInnerHTML.
+// Supporte **gras** inline et lignes commençant par "- " ou "* " comme
+// puces. Tout le reste reste du texte brut échappé par React (donc déjà
+// sûr, aucune sanitization HTML nécessaire ici). Une vraie librairie
+// markdown (ex react-markdown) pourra remplacer ce rendu dans un lot futur
+// si des besoins plus riches (titres, liens, code) apparaissent.
+function renderInline(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return (
+        <strong key={`${keyPrefix}-${i}`} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={`${keyPrefix}-${i}`}>{part}</span>;
+  });
+}
+
+function renderMessageContent(content: string) {
+  const lines = content.split('\n');
+  const blocks: React.ReactNode[] = [];
+  let listBuffer: string[] = [];
+
+  const flushList = (key: string) => {
+    if (listBuffer.length === 0) return;
+    blocks.push(
+      <ul key={key} className="ml-4 list-disc space-y-0.5">
+        {listBuffer.map((item, i) => (
+          <li key={i}>{renderInline(item, `${key}-li-${i}`)}</li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  lines.forEach((line, idx) => {
+    const bulletMatch = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (bulletMatch) {
+      listBuffer.push(bulletMatch[1]);
+      return;
+    }
+    flushList(`list-${idx}`);
+    if (line.trim().length === 0) {
+      blocks.push(<div key={`br-${idx}`} className="h-2" />);
+    } else {
+      blocks.push(
+        <p key={`p-${idx}`} className="leading-relaxed">
+          {renderInline(line, `p-${idx}`)}
+        </p>
+      );
+    }
+  });
+  flushList('list-end');
+
+  return <div className="space-y-1">{blocks}</div>;
+}
+
 const QUICK_STARTS = [
   'Comment configurer mon widget ?',
   'Comment fonctionne le Centre de progression ?',
@@ -23,6 +82,7 @@ const QUICK_STARTS = [
 // l'API serveur dédiée /api/kadria-assistant/chat.
 export default function KadriaAssistantWidget() {
   const [open, setOpen] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,6 +94,15 @@ export default function KadriaAssistantWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading, open]);
+
+  useEffect(() => {
+    if (open) {
+      // Mount off-screen first, then slide in on the next frame.
+      const raf = requestAnimationFrame(() => setDrawerVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    setDrawerVisible(false);
+  }, [open]);
 
   async function sendMessage(content: string) {
     const trimmed = content.trim();
@@ -77,24 +146,30 @@ export default function KadriaAssistantWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[#05130d] shadow-lg hover:opacity-90 transition-opacity"
-        style={{ display: open ? 'none' : 'flex' }}
+        className="fixed right-4 z-40 flex items-center gap-2 rounded-full border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-4 py-2.5 text-xs font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] transition-opacity sm:bottom-6 sm:right-6 sm:px-5 sm:py-3 sm:text-sm"
+        style={{
+          display: open ? 'none' : 'flex',
+          bottom: 'calc(5.5rem + env(safe-area-inset-bottom))',
+        }}
       >
-        <span aria-hidden>💬</span>
-        Besoin d&apos;aide ?
+        <span aria-hidden className="text-[var(--accent)]">💬</span>
+        <span className="hidden sm:inline">Besoin d&apos;aide ?</span>
+        <span className="sm:hidden">Aide</span>
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] bg-[#050505] sm:bg-black/60">
+        <div className="fixed inset-0 z-[9999]">
           <div
-            className="absolute inset-0 hidden sm:block"
+            className={`absolute inset-0 bg-black/60 transition-opacity duration-200 ${drawerVisible ? 'opacity-100' : 'opacity-0'}`}
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <div
-            className="absolute inset-0 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#050505] sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[560px] sm:max-h-[calc(100vh-3rem)] sm:w-[380px] sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border sm:border-[var(--border)] sm:bg-[var(--bg-elevated)] sm:shadow-2xl"
+          <aside
+            className={`absolute right-0 top-0 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#050505] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[var(--border)] ${
+              drawerVisible ? 'translate-x-0' : 'translate-x-full'
+            }`}
           >
-          <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[#050505] px-4 py-3 sm:bg-[var(--bg-elevated)]" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
+          <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
             <div>
               <h2 className="text-sm font-semibold text-[var(--text-1)]">Assistant Kadria</h2>
               <p className="mt-0.5 text-xs text-[var(--text-2)]">
@@ -109,19 +184,19 @@ export default function KadriaAssistantWidget() {
             >
               ✕
             </button>
-          </div>
+          </header>
 
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[#050505] px-4 py-3 sm:bg-[var(--bg-elevated)]">
+          <main ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[#050505] px-4 py-3">
             {messages.length === 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-2)]">Suggestions pour démarrer :</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
                   {QUICK_STARTS.map((q) => (
                     <button
                       key={q}
                       type="button"
                       onClick={() => sendMessage(q)}
-                      className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                      className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs text-[var(--text-1)] hover:bg-[var(--bg-hover)] whitespace-nowrap"
                     >
                       {q}
                     </button>
@@ -133,21 +208,26 @@ export default function KadriaAssistantWidget() {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
                     m.role === 'user'
                       ? 'bg-[var(--accent)] text-[#05130d]'
-                      : 'bg-[var(--bg-hover)] text-[var(--text-1)]'
+                      : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-1)]'
                   }`}
                 >
-                  {m.content}
+                  {renderMessageContent(m.content)}
                 </div>
               </div>
             ))}
 
             {loading && (
               <div className="flex justify-start">
-                <div className="rounded-lg bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-2)]">
-                  L&apos;assistant réfléchit…
+                <div className="flex items-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm text-[var(--text-2)]">
+                  <span>Kadria réfléchit</span>
+                  <span className="flex gap-0.5">
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-2)] [animation-delay:-0.3s]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-2)] [animation-delay:-0.15s]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-2)]" />
+                  </span>
                 </div>
               </div>
             )}
@@ -157,11 +237,11 @@ export default function KadriaAssistantWidget() {
                 {error}
               </div>
             )}
-          </div>
+          </main>
 
           <form
             onSubmit={handleSubmit}
-            className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] bg-[#050505] px-3 py-3 sm:bg-[var(--bg-elevated)]"
+            className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <input
@@ -176,7 +256,7 @@ export default function KadriaAssistantWidget() {
               Envoyer
             </Button>
           </form>
-          </div>
+          </aside>
         </div>
       )}
     </>
