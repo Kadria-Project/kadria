@@ -77,6 +77,43 @@ function renderMessageContent(content: string) {
   return <div className="space-y-1">{blocks}</div>;
 }
 
+const SESSION_STORAGE_KEY = 'kadria-assistant-session';
+const MAX_PERSISTED_MESSAGES = 20;
+
+interface PersistedSession {
+  messages: ChatMessage[];
+  usage: AssistantUsage | null;
+}
+
+function loadPersistedSession(): PersistedSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.messages)) return null;
+    return {
+      messages: parsed.messages,
+      usage: parsed.usage ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedSession(session: PersistedSession) {
+  if (typeof window === 'undefined') return;
+  try {
+    const trimmedMessages = session.messages.slice(-MAX_PERSISTED_MESSAGES);
+    window.sessionStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({ messages: trimmedMessages, usage: session.usage })
+    );
+  } catch {
+    // Storage failure (quota, private mode, etc.) must never crash the app.
+  }
+}
+
 const QUICK_STARTS = [
   'Que dois-je configurer en priorité ?',
   'Aide-moi à améliorer mon profil métier',
@@ -101,6 +138,24 @@ export default function KadriaAssistantWidget() {
   const [usage, setUsage] = useState<AssistantUsage | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Charge la conversation persistée (sessionStorage) au montage, pour
+  // permettre de la retrouver après une navigation déclenchée par une
+  // navigationAction. Aucune donnée n'est stockée côté serveur.
+  useEffect(() => {
+    const persisted = loadPersistedSession();
+    if (persisted) {
+      if (persisted.messages.length > 0) setMessages(persisted.messages);
+      if (persisted.usage) setUsage(persisted.usage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sauvegarde la conversation à chaque changement pertinent.
+  useEffect(() => {
+    if (messages.length === 0 && !usage) return;
+    savePersistedSession({ messages, usage });
+  }, [messages, usage]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -180,6 +235,22 @@ export default function KadriaAssistantWidget() {
     sendMessage(input);
   }
 
+  // Réduit le drawer sans effacer la conversation : elle reste en mémoire
+  // (state) et en sessionStorage, et la bulle redevient visible.
+  function minimize() {
+    setOpen(false);
+  }
+
+  // Au clic sur une navigationAction : la conversation est déjà persistée
+  // via l'effet ci-dessus à chaque changement de messages/usage, donc on
+  // s'assure juste qu'elle est à jour avant de fermer le drawer puis de
+  // naviguer. Le drawer se ferme (équivalent à "réduire"), la bulle reste
+  // visible après navigation, et la conversation est restaurée au retour.
+  function handleNavigationClick() {
+    savePersistedSession({ messages, usage });
+    setOpen(false);
+  }
+
   return (
     <>
       {/* Mobile : bouton rond simple, icône seule, fond opaque. */}
@@ -234,14 +305,25 @@ export default function KadriaAssistantWidget() {
                 </p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Fermer l'Assistant Kadria"
-              className="shrink-0 rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
-            >
-              ✕
-            </button>
+            <div className="flex shrink-0 items-start gap-1">
+              <button
+                type="button"
+                onClick={minimize}
+                aria-label="Réduire l'Assistant Kadria"
+                title="Réduire"
+                className="rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
+              >
+                —
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Fermer l'Assistant Kadria"
+                className="rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
+              >
+                ✕
+              </button>
+            </div>
           </header>
 
           <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-[#050505] px-4 py-3">
@@ -320,6 +402,7 @@ export default function KadriaAssistantWidget() {
                       <a
                         key={ai}
                         href={action.href}
+                        onClick={handleNavigationClick}
                         className="rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20"
                       >
                         {action.label} →
