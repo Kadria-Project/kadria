@@ -68,12 +68,12 @@ function renderMessageContent(content: string) {
 }
 
 const QUICK_STARTS = [
-  'Comment configurer mon widget ?',
-  'Comment fonctionne le Centre de progression ?',
-  'Quelles sont mes prochaines étapes ?',
-  'Comment activer la marque blanche ?',
-  'Comment fonctionnent mes devis ?',
-  'Quel est mon profil métier actuel ?',
+  'Que dois-je configurer en priorité ?',
+  'Explique-moi mon centre de progression',
+  'Comment améliorer mon profil métier ?',
+  'Comment fonctionne la marque blanche ?',
+  'Comment mieux utiliser mes devis ?',
+  "Quelles fonctionnalités de mon plan je n'utilise pas ?",
 ];
 
 // Assistant interne pour l'artisan connecté (distinct du widget prospect
@@ -87,6 +87,7 @@ export default function KadriaAssistantWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -142,19 +143,28 @@ export default function KadriaAssistantWidget() {
 
   return (
     <>
+      {/* Mobile : languette latérale sur le bord droit, hors bottom nav. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed right-4 z-40 flex items-center gap-2 rounded-full border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-4 py-2.5 text-xs font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] transition-opacity sm:bottom-6 sm:right-6 sm:px-5 sm:py-3 sm:text-sm"
-        style={{
-          display: open ? 'none' : 'flex',
-          bottom: 'calc(5.5rem + env(safe-area-inset-bottom))',
-        }}
+        className="fixed right-0 top-1/2 z-[9999] flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-xl border border-r-0 border-[var(--accent-border)] bg-[var(--bg-elevated)] px-2 py-3 text-[11px] font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] sm:hidden"
+        style={{ display: open ? 'none' : 'flex' }}
       >
         <span aria-hidden className="text-[var(--accent)]">💬</span>
-        <span className="hidden sm:inline">Besoin d&apos;aide ?</span>
-        <span className="sm:hidden">Aide</span>
+        <span>Aide</span>
+      </button>
+
+      {/* Desktop : bouton flottant bas-droite inchangé. */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Ouvrir l'Assistant Kadria"
+        className="fixed bottom-6 right-6 z-40 hidden items-center gap-2 rounded-full border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-5 py-3 text-sm font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] transition-opacity sm:flex"
+        style={{ display: open ? 'none' : undefined }}
+      >
+        <span aria-hidden className="text-[var(--accent)]">💬</span>
+        <span>Besoin d&apos;aide ?</span>
       </button>
 
       {open && (
@@ -188,20 +198,54 @@ export default function KadriaAssistantWidget() {
 
           <main ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[#050505] px-4 py-3">
             {messages.length === 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-[var(--text-2)]">Suggestions pour démarrer :</p>
-                <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <h3 className="text-base font-semibold text-[var(--text-1)]">
+                    Comment puis-je vous aider ?
+                  </h3>
+                  <p className="text-xs leading-relaxed text-[var(--text-2)]">
+                    Je peux vous expliquer Kadria, analyser votre configuration et vous proposer
+                    les prochaines étapes.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {QUICK_STARTS.map((q) => (
                     <button
                       key={q}
                       type="button"
                       onClick={() => sendMessage(q)}
-                      className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs text-[var(--text-1)] hover:bg-[var(--bg-hover)] whitespace-nowrap"
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-left text-xs leading-snug text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
                     >
                       {q}
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {messages.length > 0 && (
+              <div className="pb-1">
+                <button
+                  type="button"
+                  onClick={() => setSuggestionsCollapsed((v) => !v)}
+                  className="rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1 text-[11px] text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
+                >
+                  Suggestions {suggestionsCollapsed ? '▾' : '▴'}
+                </button>
+                {!suggestionsCollapsed && (
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {QUICK_STARTS.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => sendMessage(q)}
+                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-left text-xs leading-snug text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
