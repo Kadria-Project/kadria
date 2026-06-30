@@ -137,7 +137,15 @@ export default function KadriaAssistantWidget() {
   const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
   const [usage, setUsage] = useState<AssistantUsage | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
+  const [coachVisible, setCoachVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Écoute l'état du Coach Kadria pour masquer le bouton mobile quand la carte est affichée.
+  useEffect(() => {
+    const handler = (e: Event) => setCoachVisible((e as CustomEvent<boolean>).detail);
+    window.addEventListener('kadria-coach-visible', handler);
+    return () => window.removeEventListener('kadria-coach-visible', handler);
+  }, []);
 
   // Charge la conversation persistée (sessionStorage) au montage, pour
   // permettre de la retrouver après une navigation déclenchée par une
@@ -262,7 +270,7 @@ export default function KadriaAssistantWidget() {
         className="fixed z-50 flex items-center justify-center transition-colors active:scale-[0.98]
           sm:right-0 sm:top-[55%] sm:-translate-y-1/2 sm:rounded-l-xl sm:border sm:border-r-0 sm:border-[rgba(255,255,255,0.10)] sm:bg-[#17181b] sm:px-3 sm:py-5 sm:text-xs sm:font-medium sm:text-[#f8fafc] sm:shadow-[0_4px_14px_rgba(0,0,0,0.35)] sm:hover:border-[#22c55e]/30 sm:hover:text-[#22c55e]
           right-4 top-[calc(env(safe-area-inset-top)+12px)] h-11 w-11 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#17181b] text-xl shadow-[0_4px_14px_rgba(0,0,0,0.45)] hover:bg-[#22c55e]/10 sm:h-auto sm:w-auto sm:rounded-l-xl sm:rounded-r-none sm:border-r-0"
-        style={{ display: open ? 'none' : undefined }}
+        style={{ display: (open || coachVisible) ? 'none' : undefined }}
       >
         <span className="sm:hidden">💬</span>
         <span className="hidden sm:block" style={{ writingMode: 'vertical-rl', textAlign: 'center' }}>Aide</span>

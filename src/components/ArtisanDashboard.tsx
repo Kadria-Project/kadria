@@ -1690,6 +1690,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
   const [coachCardDismissed, setCoachCardDismissed] = useState(false);
 
+  // Informe le widget assistant que le Coach Kadria est visible ou non,
+  // pour qu'il masque son bouton flottant mobile quand la carte est affichée.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('kadria-coach-visible', { detail: !coachCardDismissed }));
+  }, [coachCardDismissed]);
+
   const formattedToday = useMemo(() => {
     const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
     return raw.charAt(0).toUpperCase() + raw.slice(1);
