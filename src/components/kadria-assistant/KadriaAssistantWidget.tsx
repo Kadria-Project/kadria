@@ -259,10 +259,10 @@ export default function KadriaAssistantWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed right-0 top-[55%] z-50 -translate-y-1/2 rounded-l-xl border border-r-0 border-[rgba(255,255,255,0.10)] bg-[#17181b] px-3 py-6 text-xs font-medium text-[#f8fafc] shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-colors hover:border-[#22c55e]/30 hover:text-[#22c55e] active:scale-[0.98]"
+        className="fixed right-0 top-[55%] z-50 -translate-y-1/2 rounded-l-xl border border-r-0 border-[rgba(255,255,255,0.10)] bg-[#17181b] px-3 py-5 text-xs font-medium text-[#f8fafc] shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-colors hover:border-[#22c55e]/30 hover:text-[#22c55e] active:scale-[0.98]"
         style={{ display: open ? 'none' : undefined }}
       >
-        <span className="flex flex-col items-center gap-1 [writing-mode:vertical-rl]"><span>Aide</span><span>💬</span></span>
+        <span className="block [writing-mode:vertical-rl]">Aide</span>
       </button>
 
       {open && (
