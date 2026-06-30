@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@/src/components/ui/button';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -36,7 +35,7 @@ function renderMessageContent(content: string) {
   const flushList = (key: string) => {
     if (listBuffer.length === 0) return;
     blocks.push(
-      <ul key={key} className="ml-4 list-disc space-y-0.5">
+      <ul key={key} className="ml-4 list-disc space-y-1.5 marker:text-[#22c55e]">
         {listBuffer.map((item, i) => (
           <li key={i}>{renderInline(item, `${key}-li-${i}`)}</li>
         ))}
@@ -190,22 +189,22 @@ export default function KadriaAssistantWidget() {
             aria-hidden="true"
           />
           <section
-            className={`relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-white shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[var(--border)] ${
+            className={`relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[rgba(255,255,255,0.08)] ${
               drawerVisible ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
-          <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
+          <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[rgba(255,255,255,0.08)] bg-[#101113] px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
             <div className="min-w-0">
-              <h2 className="text-[19px] font-semibold leading-tight text-[var(--text-1)]">Assistant Kadria</h2>
-              <p className="mt-0.5 text-[13px] leading-snug text-[var(--text-2)]">
-                Vos questions sur configuration, devis et profil métier.
+              <h2 className="text-[19px] font-semibold leading-tight text-[#f8fafc]">Assistant Kadria</h2>
+              <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
+                Configuration, devis, profil métier et prochaines étapes.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Fermer l'Assistant Kadria"
-              className="shrink-0 rounded-md p-1 text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
+              className="shrink-0 rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
             >
               ✕
             </button>
@@ -215,23 +214,26 @@ export default function KadriaAssistantWidget() {
             {messages.length === 0 && (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <h3 className="text-base font-semibold text-[var(--text-1)]">
+                  <h3 className="text-base font-semibold text-[#f8fafc]">
                     Comment puis-je vous aider ?
                   </h3>
-                  <p className="text-xs leading-relaxed text-[var(--text-2)]">
+                  <p className="text-xs leading-relaxed text-[#9ca3af]">
                     Je peux vous expliquer Kadria, analyser votre configuration et vous proposer
                     les prochaines étapes.
                   </p>
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2">
                   {QUICK_STARTS.map((q) => (
                     <button
                       key={q}
                       type="button"
                       onClick={() => sendMessage(q)}
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-left text-xs leading-snug text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                      className="group flex w-full items-center justify-between gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-3 text-left text-xs leading-snug text-[#f8fafc] transition-colors hover:border-[#22c55e]/30 hover:bg-[#22c55e]/10 active:bg-[#22c55e]/15"
                     >
-                      {q}
+                      <span>{q}</span>
+                      <span aria-hidden className="shrink-0 text-[#9ca3af] transition-colors group-hover:text-[#22c55e]">
+                        →
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -243,20 +245,23 @@ export default function KadriaAssistantWidget() {
                 <button
                   type="button"
                   onClick={() => setSuggestionsCollapsed((v) => !v)}
-                  className="rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1 text-[11px] text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
+                  className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3 py-1 text-[11px] text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
                 >
                   Suggestions {suggestionsCollapsed ? '▾' : '▴'}
                 </button>
                 {!suggestionsCollapsed && (
-                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="mt-2 grid grid-cols-1 gap-2">
                     {QUICK_STARTS.map((q) => (
                       <button
                         key={q}
                         type="button"
                         onClick={() => sendMessage(q)}
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-left text-xs leading-snug text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+                        className="group flex w-full items-center justify-between gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-2.5 text-left text-xs leading-snug text-[#f8fafc] transition-colors hover:border-[#22c55e]/30 hover:bg-[#22c55e]/10 active:bg-[#22c55e]/15"
                       >
-                        {q}
+                        <span>{q}</span>
+                        <span aria-hidden className="shrink-0 text-[#9ca3af] transition-colors group-hover:text-[#22c55e]">
+                          →
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -267,10 +272,10 @@ export default function KadriaAssistantWidget() {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                     m.role === 'user'
-                      ? 'bg-[var(--accent)] text-[#05130d]'
-                      : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-1)]'
+                      ? 'bg-[#22c55e] text-[#05130d]'
+                      : 'border border-[rgba(255,255,255,0.08)] bg-[#17181b] text-[#f8fafc]'
                   }`}
                 >
                   {renderMessageContent(m.content)}
@@ -280,12 +285,12 @@ export default function KadriaAssistantWidget() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="flex items-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm text-[var(--text-2)]">
+                <div className="flex items-center gap-1.5 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-2.5 text-sm text-[#9ca3af]">
                   <span>Kadria réfléchit</span>
                   <span className="flex gap-0.5">
-                    <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-2)] [animation-delay:-0.3s]" />
-                    <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-2)] [animation-delay:-0.15s]" />
-                    <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-2)]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e] [animation-delay:-0.3s]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e] [animation-delay:-0.15s]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e]" />
                   </span>
                 </div>
               </div>
@@ -299,7 +304,7 @@ export default function KadriaAssistantWidget() {
           </main>
 
           <footer
-            className="w-full max-w-full shrink-0 border-t border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3"
+            className="w-full max-w-full shrink-0 border-t border-[rgba(255,255,255,0.08)] bg-[#101113] px-3 py-3"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <form onSubmit={handleSubmit} className="flex w-full max-w-full items-center gap-2">
@@ -309,11 +314,20 @@ export default function KadriaAssistantWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Écrivez votre question..."
                 disabled={loading}
-                className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)] outline-none focus:border-[var(--accent)]"
+                className="min-w-0 flex-1 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-4 py-2.5 text-sm text-[#f8fafc] placeholder:text-[#9ca3af] outline-none transition-colors focus:border-[#22c55e]/50"
               />
-              <Button type="submit" disabled={loading || !input.trim()}>
-                Envoyer
-              </Button>
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                aria-label="Envoyer le message"
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-semibold transition-colors ${
+                  input.trim() && !loading
+                    ? 'bg-[#22c55e] text-[#05130d] hover:bg-[#34d979]'
+                    : 'bg-[#1f2937] text-[#6b7280]'
+                }`}
+              >
+                <span aria-hidden>➤</span>
+              </button>
             </form>
           </footer>
           </section>
