@@ -66,7 +66,6 @@ import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
 import { computeKadriaCoach, type KadriaCoachProjectEntry, type KadriaCoachResult, type CoachActionType, type CoachPriorityLevel } from '@/src/lib/kadria-coach';
-import KadriaAssistantWidget from '@/src/components/kadria-assistant/KadriaAssistantWidget';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -411,7 +410,6 @@ export default function ArtisanDashboardPage({
     <AuthGuard>
       <PlanProvider plan={normalizedPlan}>
         <Dashboard plan={normalizedPlan} />
-        <KadriaAssistantWidget />
       </PlanProvider>
     </AuthGuard>
   );

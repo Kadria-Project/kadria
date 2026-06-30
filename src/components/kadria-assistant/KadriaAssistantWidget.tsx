@@ -253,30 +253,16 @@ export default function KadriaAssistantWidget() {
 
   return (
     <>
-      {/* Mobile : bouton rond simple, icône seule, fond opaque. */}
+      {/* Onglet latéral discret, identique mobile/desktop : accroché au bord
+          droit, n'empiète ni sur la bottom nav ni sur le bouton "+". */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] text-xl leading-none text-[#05130d] shadow-[0_6px_16px_rgba(0,0,0,0.35)] active:scale-95 sm:hidden"
-        style={{
-          bottom: 'calc(5.5rem + env(safe-area-inset-bottom))',
-          display: open ? 'none' : 'flex',
-        }}
-      >
-        <span aria-hidden>💬</span>
-      </button>
-
-      {/* Desktop : bouton flottant bas-droite, fond opaque. */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed bottom-6 right-6 z-40 hidden items-center gap-2 rounded-full bg-[var(--bg-elevated)] px-5 py-3 text-sm font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] transition-opacity sm:flex"
+        className="fixed right-0 top-[55%] z-50 -translate-y-1/2 rounded-l-xl border border-r-0 border-[rgba(255,255,255,0.10)] bg-[#17181b] px-3 py-2.5 text-xs font-medium text-[#f8fafc] shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-colors hover:border-[#22c55e]/30 hover:text-[#22c55e] active:scale-[0.98]"
         style={{ display: open ? 'none' : undefined }}
       >
-        <span aria-hidden className="text-[var(--accent)]">💬</span>
-        <span>Besoin d&apos;aide ?</span>
+        <span className="whitespace-nowrap">Aide 💬</span>
       </button>
 
       {open && (

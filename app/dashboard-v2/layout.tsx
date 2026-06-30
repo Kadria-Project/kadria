@@ -1,3 +1,5 @@
+import KadriaAssistantGlobalMount from '@/src/components/kadria-assistant/KadriaAssistantGlobalMount'
+
 export default function DashboardLayout({
   children,
 }: {
@@ -18,6 +20,7 @@ export default function DashboardLayout({
         }}
       />
       {children}
+      <KadriaAssistantGlobalMount />
     </>
   )
 }
