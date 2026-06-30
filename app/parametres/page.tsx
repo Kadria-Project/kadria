@@ -64,6 +64,7 @@ interface MonthlyUsageSummary {
   plan: string
   projects: { used: number; limit: number | null; unlimited: boolean; status: UsageStatus }
   vapi: { callsUsed: number; callsLimit: number | null; callsUnlimited: boolean; minutesUsed: number; minutesLimit: number | null; status: UsageStatus }
+  assistant?: { used: number; limit: number; percent: number | null; status: UsageStatus }
 }
 
 interface AccountStatusSummary {
@@ -3077,9 +3078,9 @@ export default function ParametresPage() {
                         background: 'rgba(34,197,94,0.1)', color: 'var(--accent)',
                       }}>
                         {USAGE_STATUS_LABELS[
-                          ([monthlyUsage.projects.status, monthlyUsage.vapi.status].includes('exceeded') && 'exceeded')
-                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status].includes('limit_reached') && 'limit_reached')
-                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status].includes('warning') && 'warning')
+                          ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('exceeded') && 'exceeded')
+                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('limit_reached') && 'limit_reached')
+                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('warning') && 'warning')
                           || 'ok'
                         ]}
                       </span>
@@ -3111,6 +3112,14 @@ export default function ParametresPage() {
                             : `${monthlyUsage.vapi.minutesUsed} / ${monthlyUsage.vapi.minutesLimit} min`}
                         </p>
                       </div>
+                      {monthlyUsage.assistant && (
+                        <div>
+                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Assistant Kadria</p>
+                          <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
+                            {monthlyUsage.assistant.used} / {monthlyUsage.assistant.limit} questions utilisées ce mois-ci
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 

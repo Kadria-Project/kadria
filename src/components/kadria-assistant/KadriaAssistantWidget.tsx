@@ -7,6 +7,11 @@ interface ChatMessage {
   content: string;
 }
 
+interface AssistantUsage {
+  used: number;
+  limit: number;
+}
+
 // Rendu markdown minimal et sûr (V1) : pas de dangerouslySetInnerHTML.
 // Supporte **gras** inline et lignes commençant par "- " ou "* " comme
 // puces. Tout le reste reste du texte brut échappé par React (donc déjà
@@ -87,6 +92,8 @@ export default function KadriaAssistantWidget() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
+  const [usage, setUsage] = useState<AssistantUsage | null>(null);
+  const [quotaReached, setQuotaReached] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,7 +124,7 @@ export default function KadriaAssistantWidget() {
 
   async function sendMessage(content: string) {
     const trimmed = content.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || quotaReached) return;
 
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
     setMessages(nextMessages);
@@ -133,7 +140,16 @@ export default function KadriaAssistantWidget() {
       });
       const data = await res.json();
 
+      if (data?.usage) {
+        setUsage(data.usage);
+      }
+
       if (!res.ok || !data?.success) {
+        if (data?.code === 'ASSISTANT_QUOTA_REACHED') {
+          setQuotaReached(true);
+          setError('Vous avez atteint votre limite mensuelle de questions Assistant Kadria.');
+          return;
+        }
         setError(data?.error || "Une erreur est survenue. Merci de réessayer.");
         return;
       }
@@ -199,6 +215,11 @@ export default function KadriaAssistantWidget() {
               <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
                 Configuration, devis, profil métier et prochaines étapes.
               </p>
+              {usage && (
+                <p className="mt-1 text-[11px] leading-snug text-[#6b7280]">
+                  {usage.used} / {usage.limit} questions ce mois-ci
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -299,6 +320,11 @@ export default function KadriaAssistantWidget() {
             {error && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
                 {error}
+                {quotaReached && usage?.limit === 20 && (
+                  <p className="mt-1.5 text-xs text-red-300/90">
+                    Passez au plan Performance pour bénéficier de 100 questions par mois.
+                  </p>
+                )}
               </div>
             )}
           </main>
@@ -312,16 +338,16 @@ export default function KadriaAssistantWidget() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Écrivez votre question..."
-                disabled={loading}
-                className="min-w-0 flex-1 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-4 py-2.5 text-sm text-[#f8fafc] placeholder:text-[#9ca3af] outline-none transition-colors focus:border-[#22c55e]/50"
+                placeholder={quotaReached ? 'Limite mensuelle atteinte' : 'Écrivez votre question...'}
+                disabled={loading || quotaReached}
+                className="min-w-0 flex-1 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-4 py-2.5 text-sm text-[#f8fafc] placeholder:text-[#9ca3af] outline-none transition-colors focus:border-[#22c55e]/50 disabled:opacity-60"
               />
               <button
                 type="submit"
-                disabled={loading || !input.trim()}
+                disabled={loading || quotaReached || !input.trim()}
                 aria-label="Envoyer le message"
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-semibold transition-colors ${
-                  input.trim() && !loading
+                  input.trim() && !loading && !quotaReached
                     ? 'bg-[#22c55e] text-[#05130d] hover:bg-[#34d979]'
                     : 'bg-[#1f2937] text-[#6b7280]'
                 }`}

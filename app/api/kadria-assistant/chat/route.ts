@@ -3,6 +3,7 @@ import { getSession } from '@/src/lib/auth-utils'
 import { buildArtisanAssistantContext } from '@/src/lib/kadria-assistant/context'
 import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
 import { getKadriaAssistantOpenAIClient, KADRIA_ASSISTANT_MODEL } from '@/src/lib/kadria-assistant/openai-client'
+import { canUseKadriaAssistant, recordKadriaAssistantUsage } from '@/src/lib/kadria-assistant/quotas'
 
 // Assistant IA interne pour l'artisan connecté : strictement en lecture
 // seule, contextualisé au compte de l'artisan, jamais exposé côté client.
@@ -63,6 +64,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const quotaCheck = await canUseKadriaAssistant(session.artisanId, session.plan)
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ASSISTANT_QUOTA_REACHED',
+          error: 'Votre quota mensuel de questions Assistant Kadria est atteint.',
+          usage: { used: quotaCheck.used, limit: quotaCheck.limit },
+        },
+        { status: 403 }
+      )
+    }
+
     let client
     try {
       client = getKadriaAssistantOpenAIClient()
@@ -102,7 +116,18 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     })
 
-    return NextResponse.json({ success: true, answer })
+    // Incrément du compteur de quota uniquement après succès OpenAI. Ne doit
+    // jamais empêcher la réponse d'être retournée à l'utilisateur en cas
+    // d'échec (table/colonne absente, etc.) : on logge et on continue.
+    const incrementResult = await recordKadriaAssistantUsage(session.artisanId)
+    const usage = {
+      used: incrementResult.success && typeof incrementResult.used === 'number'
+        ? incrementResult.used
+        : quotaCheck.used + 1,
+      limit: quotaCheck.limit,
+    }
+
+    return NextResponse.json({ success: true, answer, usage })
   } catch (error) {
     const isQuotaOrTimeout = error instanceof Error && /timeout|quota|rate limit|429/i.test(error.message)
     console.error('[KADRIA-ASSISTANT] error', {

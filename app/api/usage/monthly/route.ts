@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { getMonthlyUsageSummary, getAccountStatusForArtisan } from '@/src/lib/usage/quotas'
+import { getKadriaAssistantUsageSummary } from '@/src/lib/kadria-assistant/quotas'
 
 export async function GET() {
   try {
@@ -19,9 +20,30 @@ export async function GET() {
 
     const accountResult = await getAccountStatusForArtisan(session.artisanId)
 
+    // Usage de l'Assistant Kadria interne : robuste si la colonne n'est pas
+    // encore créée en base (renvoie used: 0 dans ce cas, jamais d'erreur).
+    const assistantUsage = await getKadriaAssistantUsageSummary(session.artisanId, session.plan)
+    const assistantPercent = assistantUsage.limit > 0
+      ? Math.round((assistantUsage.used / assistantUsage.limit) * 1000) / 10
+      : null
+    const assistantStatus =
+      assistantPercent === null ? 'ok'
+        : assistantPercent > 100 ? 'exceeded'
+        : assistantPercent === 100 ? 'limit_reached'
+        : assistantPercent >= 80 ? 'warning'
+        : 'ok'
+
     return NextResponse.json({
       success: true,
-      usage: result.data,
+      usage: {
+        ...result.data,
+        assistant: {
+          used: assistantUsage.used,
+          limit: assistantUsage.limit,
+          percent: assistantPercent,
+          status: assistantStatus,
+        },
+      },
       ...(accountResult.success && accountResult.data ? { account: accountResult.data } : {}),
     })
   } catch (error) {
