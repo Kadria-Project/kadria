@@ -85,16 +85,16 @@ export default function KadriaAssistantWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[100]">
+        <div className="fixed inset-0 z-[9999] bg-[#050505] sm:bg-black/60">
           <div
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 hidden sm:block"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
           <div
-            className="absolute bottom-0 right-0 left-0 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl sm:bottom-6 sm:right-6 sm:left-auto sm:h-[560px] sm:max-h-[calc(100vh-3rem)] sm:w-[380px] sm:max-w-[calc(100vw-2rem)] sm:rounded-xl"
+            className="absolute inset-0 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#050505] sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[560px] sm:max-h-[calc(100vh-3rem)] sm:w-[380px] sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border sm:border-[var(--border)] sm:bg-[var(--bg-elevated)] sm:shadow-2xl"
           >
-          <div className="flex items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
+          <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[#050505] px-4 py-3 sm:bg-[var(--bg-elevated)]" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
             <div>
               <h2 className="text-sm font-semibold text-[var(--text-1)]">Assistant Kadria</h2>
               <p className="mt-0.5 text-xs text-[var(--text-2)]">
@@ -111,7 +111,7 @@ export default function KadriaAssistantWidget() {
             </button>
           </div>
 
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[var(--bg-elevated)] px-4 py-3">
+          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[#050505] px-4 py-3 sm:bg-[var(--bg-elevated)]">
             {messages.length === 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-2)]">Suggestions pour démarrer :</p>
@@ -161,7 +161,7 @@ export default function KadriaAssistantWidget() {
 
           <form
             onSubmit={handleSubmit}
-            className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3"
+            className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] bg-[#050505] px-3 py-3 sm:bg-[var(--bg-elevated)]"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <input
