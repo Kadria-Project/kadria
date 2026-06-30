@@ -259,10 +259,13 @@ export default function KadriaAssistantWidget() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed right-0 top-[55%] z-50 -translate-y-1/2 flex items-center justify-center rounded-l-xl border border-r-0 border-[rgba(255,255,255,0.10)] bg-[#17181b] px-3 py-5 text-xs font-medium text-[#f8fafc] shadow-[0_4px_14px_rgba(0,0,0,0.35)] transition-colors hover:border-[#22c55e]/30 hover:text-[#22c55e] active:scale-[0.98]"
+        className="fixed z-50 flex items-center justify-center transition-colors active:scale-[0.98]
+          sm:right-0 sm:top-[55%] sm:-translate-y-1/2 sm:rounded-l-xl sm:border sm:border-r-0 sm:border-[rgba(255,255,255,0.10)] sm:bg-[#17181b] sm:px-3 sm:py-5 sm:text-xs sm:font-medium sm:text-[#f8fafc] sm:shadow-[0_4px_14px_rgba(0,0,0,0.35)] sm:hover:border-[#22c55e]/30 sm:hover:text-[#22c55e]
+          right-4 top-[calc(env(safe-area-inset-top)+12px)] h-11 w-11 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#17181b] text-xl shadow-[0_4px_14px_rgba(0,0,0,0.45)] hover:bg-[#22c55e]/10 sm:h-auto sm:w-auto sm:rounded-l-xl sm:rounded-r-none sm:border-r-0"
         style={{ display: open ? 'none' : undefined }}
       >
-        <span style={{ writingMode: 'vertical-rl', textAlign: 'center' }}>Aide</span>
+        <span className="sm:hidden">💬</span>
+        <span className="hidden sm:block" style={{ writingMode: 'vertical-rl', textAlign: 'center' }}>Aide</span>
       </button>
 
       {open && (
