@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
-import { buildArtisanAssistantContext } from '@/src/lib/kadria-assistant/context'
+import { buildArtisanAssistantContext, getAssistantPriorities, type KadriaAssistantContext } from '@/src/lib/kadria-assistant/context'
 import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
 import { getKadriaAssistantOpenAIClient, KADRIA_ASSISTANT_MODEL } from '@/src/lib/kadria-assistant/openai-client'
 import { canUseKadriaAssistant, recordKadriaAssistantUsage } from '@/src/lib/kadria-assistant/quotas'
@@ -23,9 +23,12 @@ interface NavigationAction {
 }
 
 // Détermine de simples suggestions de navigation (non destructives) à partir
-// de mots-clés présents dans la question de l'artisan. Volontairement très
-// simple (pas de routeur complexe) : un mapping mot-clé -> lien existant.
-function buildNavigationActions(userQuestion: string): NavigationAction[] | undefined {
+// de mots-clés présents dans la question de l'artisan, complétées par les
+// priorités détectées dans le contexte réel du compte (centre de
+// progression, profil métier, widget...). Volontairement très simple (pas
+// de routeur complexe) : un mapping mot-clé/priorité -> lien existant, sans
+// jamais créer d'ancre vers une route qui n'existe pas.
+function buildNavigationActions(userQuestion: string, context: KadriaAssistantContext): NavigationAction[] | undefined {
   const text = userQuestion.toLowerCase()
   const actions: NavigationAction[] = []
 
@@ -33,7 +36,7 @@ function buildNavigationActions(userQuestion: string): NavigationAction[] | unde
     if (!actions.some((a) => a.href === action.href)) actions.push(action)
   }
 
-  if (/m[ée]tier|prestation|sp[ée]cialit[ée]/.test(text)) {
+  if (/m[ée]tier|prestation|sp[ée]cialit[ée]|question/.test(text)) {
     addOnce({ label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' })
   }
   if (/tarif|prix|devis/.test(text)) {
@@ -42,11 +45,30 @@ function buildNavigationActions(userQuestion: string): NavigationAction[] | unde
   if (/widget|avatar|logo|couleur|marque blanche|accueil/.test(text)) {
     addOnce({ label: 'Ouvrir Mon widget', href: '/parametres' })
   }
-  if (/progression|configurer|priorit[ée]|[ée]tape/.test(text)) {
+  if (/progression|optimiser|priorit[ée]|[ée]tape|conseille/.test(text)) {
     addOnce({ label: 'Ouvrir le Centre de progression', href: '/parametres' })
   }
-  if (/relance|prospect|convert|devis/.test(text)) {
+  if (/relance|prospect|convert/.test(text)) {
     addOnce({ label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' })
+  }
+  if (/param[èe]tre|g[ée]n[ée]ral/.test(text)) {
+    addOnce({ label: 'Ouvrir Paramètres', href: '/parametres' })
+  }
+
+  // Complète avec les destinations des priorités réelles du compte si la
+  // question est large/générale et n'a pas déjà produit d'action ciblée.
+  if (actions.length === 0) {
+    const priorities = getAssistantPriorities(context)
+    const destinationToAction: Record<string, NavigationAction> = {
+      'Profil métier': { label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' },
+      'Mon widget': { label: 'Ouvrir Mon widget', href: '/parametres' },
+      'Paramètres': { label: 'Ouvrir Paramètres', href: '/parametres' },
+      'Tableau de bord': { label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' },
+    }
+    for (const p of priorities) {
+      const action = destinationToAction[p.destination]
+      if (action) addOnce(action)
+    }
   }
 
   return actions.length > 0 ? actions : undefined
@@ -163,7 +185,7 @@ export async function POST(request: NextRequest) {
     }
 
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
-    const navigationActions = buildNavigationActions(lastUserMessage)
+    const navigationActions = buildNavigationActions(lastUserMessage, context)
 
     return NextResponse.json({ success: true, answer, usage, ...(navigationActions ? { navigationActions } : {}) })
   } catch (error) {

@@ -1,8 +1,9 @@
 import 'server-only'
 import { getArtisanConfig, getProjectsByArtisan, getDevisByArtisan } from '@/src/lib/airtable'
 import { getBusinessProfile } from '@/src/lib/business-profile'
+import { listServiceProfiles } from '@/src/lib/service-profiles'
 import { computeSetupProgress } from '@/src/lib/setup-progress'
-import { normalizePlan, getPlanLabel, getMonthlyProjectLimit } from '@/src/config/plans'
+import { normalizePlan, getPlanLabel, getMonthlyProjectLimit, hasFeature } from '@/src/config/plans'
 
 // Construit un résumé compact du compte de l'artisan connecté, destiné à être
 // injecté dans le system prompt de l'assistant IA interne. Volontairement
@@ -21,6 +22,7 @@ export interface KadriaAssistantContext {
     primaryColorConfigured: boolean
     avatarConfigured: boolean
     whiteLabelEnabled: boolean
+    whiteLabelAvailableOnPlan: boolean
     welcomeMessageConfigured: boolean
     websiteUrlConfigured: boolean
   }
@@ -30,6 +32,7 @@ export interface KadriaAssistantContext {
     interventionZoneConfigured: boolean
     hourlyRateConfigured: boolean
     servicesConfiguredCount: number
+    qualificationQuestionsCount: number
   }
   progressionCenter: {
     percent: number
@@ -40,6 +43,7 @@ export interface KadriaAssistantContext {
   quotes: {
     recentCount: number
     hasAnyQuote: boolean
+    automaticFollowupsAvailableOnPlan: boolean
   }
   usage: {
     monthlyProjectsCount: number
@@ -50,14 +54,16 @@ export interface KadriaAssistantContext {
 export async function buildArtisanAssistantContext(artisanId: string, planFromSession: string): Promise<KadriaAssistantContext> {
   const plan = normalizePlan(planFromSession)
 
-  const [artisanConfig, businessProfileResult, projects, devis] = await Promise.all([
+  const [artisanConfig, businessProfileResult, projects, devis, serviceProfilesResult] = await Promise.all([
     getArtisanConfig(artisanId).catch(() => null),
     getBusinessProfile(artisanId).catch(() => ({ row: null, tableMissing: true as const })),
     getProjectsByArtisan(artisanId).catch(() => []),
     getDevisByArtisan(artisanId).catch(() => []),
+    listServiceProfiles(artisanId).catch(() => ({ rows: [], tableMissing: true as const })),
   ])
 
   const businessProfileRow = businessProfileResult.row
+  const serviceProfileRows = serviceProfilesResult.rows || []
 
   const progress = computeSetupProgress({
     businessProfile: businessProfileRow
@@ -81,7 +87,16 @@ export async function buildArtisanAssistantContext(artisanId: string, planFromSe
           businessConfig: artisanConfig.businessConfig as { calendarMode?: string | null } | null,
         }
       : null,
+    serviceProfiles: serviceProfileRows.map((s) => ({ id: s.id })),
   })
+
+  // Nombre total de questions de qualification configurées, toutes
+  // prestations confondues (déjà chargé ci-dessus, aucune requête
+  // supplémentaire).
+  const qualificationQuestionsCount = serviceProfileRows.reduce(
+    (sum, s) => sum + (s.qualification_questions?.length || 0),
+    0
+  )
 
   // Réutilise directement les étapes "todo" déjà calculées par le Centre de
   // progression existant (src/lib/setup-progress.ts), sans dupliquer sa
@@ -110,6 +125,7 @@ export async function buildArtisanAssistantContext(artisanId: string, planFromSe
       primaryColorConfigured: Boolean(artisanConfig?.primaryColor && artisanConfig.primaryColor !== '#22c55e'),
       avatarConfigured: Boolean(artisanConfig?.assistantAvatarUrl) || (artisanConfig?.assistantAvatarType ? artisanConfig.assistantAvatarType !== 'kadria_default' : false),
       whiteLabelEnabled: Boolean(artisanConfig?.whiteLabelEnabled),
+      whiteLabelAvailableOnPlan: hasFeature(plan, 'whiteLabel'),
       welcomeMessageConfigured: Boolean(artisanConfig?.welcomeMessage),
       websiteUrlConfigured: Boolean(artisanConfig?.websiteUrl),
     },
@@ -118,7 +134,8 @@ export async function buildArtisanAssistantContext(artisanId: string, planFromSe
       specialtiesCount: businessProfileRow?.specialties?.length || 0,
       interventionZoneConfigured: Boolean(businessProfileRow?.base_city && businessProfileRow?.intervention_radius_km),
       hourlyRateConfigured: Boolean(businessProfileRow?.hourly_rate_ht),
-      servicesConfiguredCount: businessProfileRow?.specialties?.length || 0,
+      servicesConfiguredCount: serviceProfileRows.length,
+      qualificationQuestionsCount,
     },
     progressionCenter: {
       percent: progress.percent,
@@ -129,12 +146,111 @@ export async function buildArtisanAssistantContext(artisanId: string, planFromSe
     quotes: {
       recentCount: Math.min(devis?.length || 0, 999),
       hasAnyQuote: (devis?.length || 0) > 0,
+      automaticFollowupsAvailableOnPlan: hasFeature(plan, 'automaticFollowups'),
     },
     usage: {
       monthlyProjectsCount,
       monthlyProjectLimit: getMonthlyProjectLimit(plan),
     },
   }
+}
+
+// Niveau global synthétique du compte, dérivé du score du Centre de
+// progression déjà calculé par computeSetupProgress (aucun nouveau calcul
+// lourd, juste une catégorisation lisible pour le LLM).
+function getAccountLevelLabel(percent: number): string {
+  if (percent >= 71) return 'solide'
+  if (percent >= 26) return 'à compléter'
+  return 'démarrage'
+}
+
+function getWidgetStatusLabel(widget: KadriaAssistantContext['widget']): string {
+  const signals = [
+    widget.welcomeMessageConfigured,
+    widget.primaryColorConfigured,
+    widget.avatarConfigured,
+  ]
+  const configuredCount = signals.filter(Boolean).length
+  if (configuredCount === signals.length) return 'bien configuré'
+  if (configuredCount === 0) return 'non configuré'
+  return 'partiellement configuré'
+}
+
+function getBusinessProfileStatusLabel(bp: KadriaAssistantContext['businessProfile']): string {
+  if (!bp.primaryTradeConfigured) return 'vide'
+  if (bp.specialtiesCount > 0 && bp.qualificationQuestionsCount > 0 && bp.interventionZoneConfigured && bp.hourlyRateConfigured) {
+    return 'complet'
+  }
+  return 'incomplet'
+}
+
+export interface AssistantPriority {
+  label: string
+  reason: string
+  destination: string
+}
+
+// Détermine au maximum 3 priorités de configuration, dans l'ordre métier
+// recommandé (métier > prestations > questions > widget > marque blanche >
+// relances > optimisation). Logique simple, explicable, basée uniquement
+// sur les booléens/compteurs déjà présents dans le contexte — aucune
+// nouvelle requête, aucune donnée inventée.
+export function getAssistantPriorities(ctx: KadriaAssistantContext): AssistantPriority[] {
+  const priorities: AssistantPriority[] = []
+
+  if (!ctx.businessProfile.primaryTradeConfigured) {
+    priorities.push({
+      label: 'Renseigner votre métier principal',
+      reason: "Sans métier renseigné, Kadria ne peut pas qualifier vos demandes ni adapter vos prestations.",
+      destination: 'Profil métier',
+    })
+  } else if (ctx.businessProfile.specialtiesCount === 0) {
+    priorities.push({
+      label: 'Ajouter vos prestations fréquentes',
+      reason: 'Des prestations configurées permettent à Kadria de mieux qualifier les demandes et de préparer des dossiers plus faciles à chiffrer.',
+      destination: 'Profil métier',
+    })
+  } else if (ctx.businessProfile.qualificationQuestionsCount === 0) {
+    priorities.push({
+      label: 'Ajouter des questions de qualification',
+      reason: 'Des questions de qualification adaptées à votre métier améliorent la pertinence des demandes reçues.',
+      destination: 'Profil métier',
+    })
+  }
+
+  if (priorities.length < 3 && getWidgetStatusLabel(ctx.widget) !== 'bien configuré') {
+    priorities.push({
+      label: 'Compléter la configuration du widget',
+      reason: "Un widget complet (message d'accueil, couleurs, avatar) inspire davantage confiance aux prospects.",
+      destination: 'Mon widget',
+    })
+  }
+
+  if (priorities.length < 3 && ctx.widget.whiteLabelAvailableOnPlan && !ctx.widget.whiteLabelEnabled) {
+    priorities.push({
+      label: 'Activer la marque blanche',
+      reason: 'Votre plan inclut la marque blanche : l’activer renforce votre image de marque auprès de vos prospects.',
+      destination: 'Paramètres',
+    })
+  }
+
+  if (priorities.length < 3 && ctx.quotes.hasAnyQuote && ctx.quotes.automaticFollowupsAvailableOnPlan) {
+    priorities.push({
+      label: 'Mettre en place une routine de relance devis',
+      reason: 'Des relances de devis bien suivies augmentent le taux de conversion de vos dossiers en cours.',
+      destination: 'Tableau de bord',
+    })
+  }
+
+  if (priorities.length === 0) {
+    priorities.push({
+      label: 'Optimiser vos tarifs et votre suivi commercial',
+      reason: 'Votre configuration est globalement solide : la prochaine marge de progression porte sur l’optimisation tarifaire et le suivi commercial.',
+      destination: 'Profil métier',
+    })
+  }
+
+  return priorities.slice(0, 3)
 }
 
 // Sérialise le contexte en texte compact, lisible par le LLM, sans jamais
@@ -149,31 +265,59 @@ export function formatContextForPrompt(ctx: KadriaAssistantContext): string {
   }
   lines.push(`Zone / ville : ${ctx.city || 'non renseignée'}`)
 
-  lines.push('\nConfiguration du widget :')
-  lines.push(`- Couleur principale personnalisée : ${ctx.widget.primaryColorConfigured ? 'oui' : 'non (couleur par défaut)'}`)
-  lines.push(`- Avatar personnalisé : ${ctx.widget.avatarConfigured ? 'oui' : 'non'}`)
-  lines.push(`- Marque blanche active : ${ctx.widget.whiteLabelEnabled ? 'oui' : 'non'}`)
-  lines.push(`- Message d'accueil configuré : ${ctx.widget.welcomeMessageConfigured ? 'oui' : 'non'}`)
-  lines.push(`- Lien site web configuré : ${ctx.widget.websiteUrlConfigured ? 'oui' : 'non'}`)
+  const widgetStatus = getWidgetStatusLabel(ctx.widget)
+  lines.push(`\nWidget : ${widgetStatus}`)
+  lines.push(`- message d'accueil configuré : ${ctx.widget.welcomeMessageConfigured ? 'oui' : 'non'}`)
+  lines.push(`- couleurs personnalisées : ${ctx.widget.primaryColorConfigured ? 'oui' : 'non (couleur par défaut)'}`)
+  lines.push(`- logo / lien site web configuré : ${ctx.widget.websiteUrlConfigured ? 'oui' : 'non'}`)
+  lines.push(`- avatar assistant personnalisé : ${ctx.widget.avatarConfigured ? 'oui' : 'non'}`)
+  lines.push(
+    `- marque blanche : ${
+      ctx.widget.whiteLabelEnabled
+        ? 'active'
+        : ctx.widget.whiteLabelAvailableOnPlan
+          ? 'disponible sur votre plan mais inactive'
+          : 'non disponible sur votre plan actuel'
+    }`
+  )
 
-  lines.push('\nProfil métier :')
-  lines.push(`- Métier principal renseigné : ${ctx.businessProfile.primaryTradeConfigured ? 'oui' : 'non'}`)
-  lines.push(`- Nombre de spécialités/prestations configurées : ${ctx.businessProfile.specialtiesCount}`)
-  lines.push(`- Zone d'intervention configurée : ${ctx.businessProfile.interventionZoneConfigured ? 'oui' : 'non'}`)
-  lines.push(`- Tarif horaire configuré : ${ctx.businessProfile.hourlyRateConfigured ? 'oui' : 'non'}`)
+  const businessProfileStatus = getBusinessProfileStatusLabel(ctx.businessProfile)
+  lines.push(`\nProfil métier : ${businessProfileStatus}`)
+  lines.push(`- métier renseigné : ${ctx.businessProfile.primaryTradeConfigured ? (ctx.primaryTrade || 'oui') : 'non'}`)
+  lines.push(`- prestations configurées : ${ctx.businessProfile.servicesConfiguredCount}`)
+  lines.push(`- questions de qualification configurées : ${ctx.businessProfile.qualificationQuestionsCount}`)
+  lines.push(`- zone d'intervention configurée : ${ctx.businessProfile.interventionZoneConfigured ? 'oui' : 'non'}`)
+  lines.push(`- tarif horaire configuré : ${ctx.businessProfile.hourlyRateConfigured ? 'oui' : 'non'}`)
 
-  lines.push('\nCentre de progression :')
-  lines.push(`- Avancement : ${ctx.progressionCenter.percent}% (${ctx.progressionCenter.completedSteps}/${ctx.progressionCenter.totalSteps} étapes complétées)`)
+  lines.push('\nDevis :')
+  lines.push(`- Devis existants : ${ctx.quotes.hasAnyQuote ? `oui (${ctx.quotes.recentCount})` : 'aucun pour le moment'}`)
+  lines.push(
+    `- Relances automatiques : ${
+      !ctx.quotes.automaticFollowupsAvailableOnPlan
+        ? 'non disponibles sur votre plan actuel'
+        : ctx.quotes.hasAnyQuote
+          ? 'disponibles sur votre plan (à mettre en place si pas encore fait)'
+          : 'disponibles sur votre plan (pas encore de devis à relancer)'
+    }`
+  )
+
+  lines.push(`\nCentre de progression : ${ctx.progressionCenter.percent}% (niveau ${getAccountLevelLabel(ctx.progressionCenter.percent)})`)
+  lines.push(`- Étapes complétées : ${ctx.progressionCenter.completedSteps}/${ctx.progressionCenter.totalSteps}`)
   if (ctx.progressionCenter.nextStepLabel) {
     lines.push(`- Prochaine étape recommandée : ${ctx.progressionCenter.nextStepLabel}`)
   }
 
-  lines.push('\nDevis :')
-  lines.push(`- Devis existants : ${ctx.quotes.hasAnyQuote ? `oui (${ctx.quotes.recentCount})` : 'aucun pour le moment'}`)
-
   lines.push('\nUsage :')
   lines.push(`- Dossiers créés ce mois-ci : ${ctx.usage.monthlyProjectsCount}`)
   lines.push(`- Limite mensuelle du plan : ${ctx.usage.monthlyProjectLimit === null ? 'illimitée' : ctx.usage.monthlyProjectLimit}`)
+
+  const priorities = getAssistantPriorities(ctx)
+  if (priorities.length > 0) {
+    lines.push('\nPriorités recommandées (ordre décroissant) :')
+    priorities.forEach((p, i) => {
+      lines.push(`${i + 1}. ${p.label} — ${p.reason} (à faire dans : ${p.destination})`)
+    })
+  }
 
   return lines.join('\n')
 }
