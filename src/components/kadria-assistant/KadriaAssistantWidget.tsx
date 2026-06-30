@@ -105,6 +105,17 @@ export default function KadriaAssistantWidget() {
     setDrawerVisible(false);
   }, [open]);
 
+  // Bloque le scroll de la page derrière le drawer pendant qu'il est ouvert,
+  // et restaure la valeur précédente à la fermeture/démontage.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
   async function sendMessage(content: string) {
     const trimmed = content.trim();
     if (!trimmed || loading) return;
@@ -143,24 +154,26 @@ export default function KadriaAssistantWidget() {
 
   return (
     <>
-      {/* Mobile : languette latérale sur le bord droit, hors bottom nav. */}
+      {/* Mobile : bouton rond simple, icône seule, fond opaque. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed right-0 top-1/2 z-[9999] flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-xl border border-r-0 border-[var(--accent-border)] bg-[var(--bg-elevated)] px-2 py-3 text-[11px] font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] sm:hidden"
-        style={{ display: open ? 'none' : 'flex' }}
+        className="fixed right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] text-xl leading-none text-[#05130d] shadow-[0_6px_16px_rgba(0,0,0,0.35)] active:scale-95 sm:hidden"
+        style={{
+          bottom: 'calc(5.5rem + env(safe-area-inset-bottom))',
+          display: open ? 'none' : 'flex',
+        }}
       >
-        <span aria-hidden className="text-[var(--accent)]">💬</span>
-        <span>Aide</span>
+        <span aria-hidden>💬</span>
       </button>
 
-      {/* Desktop : bouton flottant bas-droite inchangé. */}
+      {/* Desktop : bouton flottant bas-droite, fond opaque. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed bottom-6 right-6 z-40 hidden items-center gap-2 rounded-full border border-[var(--accent-border)] bg-[var(--bg-elevated)] px-5 py-3 text-sm font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] transition-opacity sm:flex"
+        className="fixed bottom-6 right-6 z-40 hidden items-center gap-2 rounded-full bg-[var(--bg-elevated)] px-5 py-3 text-sm font-semibold text-[var(--text-1)] shadow-[0_8px_24px_rgba(0,0,0,0.4)] hover:bg-[var(--bg-hover)] transition-opacity sm:flex"
         style={{ display: open ? 'none' : undefined }}
       >
         <span aria-hidden className="text-[var(--accent)]">💬</span>
@@ -169,21 +182,23 @@ export default function KadriaAssistantWidget() {
 
       {open && (
         <div className="fixed inset-0 z-[9999]">
+          {/* Fond opaque plein écran sur mobile (pas de scrim transparent comme fond principal). */}
+          <div className="absolute inset-0 bg-[#050505] sm:hidden" />
           <div
-            className={`absolute inset-0 bg-black/60 transition-opacity duration-200 ${drawerVisible ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 hidden bg-black/60 transition-opacity duration-200 sm:block ${drawerVisible ? 'opacity-100' : 'opacity-0'}`}
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <aside
-            className={`absolute right-0 top-0 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-[#050505] shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[var(--border)] ${
+          <section
+            className={`relative ml-auto flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden overflow-x-hidden bg-[#050505] text-white shadow-2xl transition-transform duration-200 ease-out sm:w-[420px] sm:max-w-[calc(100vw-2rem)] sm:border-l sm:border-[var(--border)] ${
               drawerVisible ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
           <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3" style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}>
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--text-1)]">Assistant Kadria</h2>
-              <p className="mt-0.5 text-xs text-[var(--text-2)]">
-                Posez vos questions sur votre configuration, vos devis, votre profil métier ou vos prochaines étapes.
+            <div className="min-w-0">
+              <h2 className="text-[19px] font-semibold leading-tight text-[var(--text-1)]">Assistant Kadria</h2>
+              <p className="mt-0.5 text-[13px] leading-snug text-[var(--text-2)]">
+                Vos questions sur configuration, devis et profil métier.
               </p>
             </div>
             <button
@@ -196,7 +211,7 @@ export default function KadriaAssistantWidget() {
             </button>
           </header>
 
-          <main ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[#050505] px-4 py-3">
+          <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-3 overflow-y-auto overflow-x-hidden overscroll-contain bg-[#050505] px-4 py-3">
             {messages.length === 0 && (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -283,24 +298,25 @@ export default function KadriaAssistantWidget() {
             )}
           </main>
 
-          <form
-            onSubmit={handleSubmit}
-            className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3"
+          <footer
+            className="w-full max-w-full shrink-0 border-t border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3"
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Écrivez votre question..."
-              disabled={loading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)] outline-none focus:border-[var(--accent)]"
-            />
-            <Button type="submit" disabled={loading || !input.trim()}>
-              Envoyer
-            </Button>
-          </form>
-          </aside>
+            <form onSubmit={handleSubmit} className="flex w-full max-w-full items-center gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Écrivez votre question..."
+                disabled={loading}
+                className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)] outline-none focus:border-[var(--accent)]"
+              />
+              <Button type="submit" disabled={loading || !input.trim()}>
+                Envoyer
+              </Button>
+            </form>
+          </footer>
+          </section>
         </div>
       )}
     </>
