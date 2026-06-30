@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useLayoutEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
 import AddressAutocomplete from '@/components/AddressAutocomplete'
@@ -56,6 +56,25 @@ const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: 
     ],
   },
 ]
+
+// Mappe la valeur `?section=` (utilisée par les liens de navigation de
+// l'assistant) vers l'identifiant d'onglet interne réel de cette page.
+// Les sections inconnues sont ignorées sans erreur (comportement actuel
+// inchangé), et "marque-blanche" pointe vers l'onglet widget car la
+// marque blanche est une sous-section du widget, pas un onglet séparé.
+const SECTION_TO_TAB: Record<string, string> = {
+  'widget': 'widget',
+  'profil-metier': 'entreprise',
+  'offre': 'offre',
+  'quotas': 'offre',
+  'marque-blanche': 'widget',
+  'entreprise': 'entreprise',
+  'contact': 'contact',
+  'legal': 'legal',
+  'vehicule': 'vehicule',
+  'catalogue': 'catalogue',
+  'apparence': 'apparence',
+}
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded'
 
@@ -201,10 +220,22 @@ function WorkTypeReadOnlyChips({ values, accent }: { values: string[]; accent: '
   )
 }
 
-export default function ParametresPage() {
+function ParametresPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { theme, setTheme } = useTheme()
   const [activeSection, setActiveSection] = useState('entreprise')
+
+  // Deep link depuis l'assistant (ex: /parametres?section=widget) : active
+  // l'onglet correspondant au chargement et si le paramètre change. Une
+  // section absente ou inconnue laisse le comportement actuel inchangé
+  // (onglet par défaut "entreprise").
+  useEffect(() => {
+    const section = searchParams?.get('section')
+    if (!section) return
+    const tab = SECTION_TO_TAB[section]
+    if (tab) setActiveSection(tab)
+  }, [searchParams])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -3135,5 +3166,21 @@ export default function ParametresPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function ParametresPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh', background: 'var(--bg)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'var(--text-2)', fontFamily: 'system-ui',
+      }}>
+        Chargement...
+      </div>
+    }>
+      <ParametresPageContent />
+    </Suspense>
   )
 }

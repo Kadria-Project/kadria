@@ -42,11 +42,18 @@ function buildNavigationActions(userQuestion: string, context: KadriaAssistantCo
   if (/tarif|prix|devis/.test(text)) {
     addOnce({ label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' })
   }
-  if (/widget|avatar|logo|couleur|marque blanche|accueil/.test(text)) {
-    addOnce({ label: 'Ouvrir Mon widget', href: '/parametres' })
+  if (/marque blanche/.test(text)) {
+    addOnce({ label: 'Ouvrir Marque blanche', href: '/parametres?section=widget' })
+  } else if (/widget|avatar|logo|couleur|accueil/.test(text)) {
+    addOnce({ label: 'Ouvrir Mon widget', href: '/parametres?section=widget' })
+  }
+  if (/quota/.test(text)) {
+    addOnce({ label: 'Ouvrir Offre / Quotas', href: '/parametres?section=quotas' })
+  } else if (/abonnement|offre|plan/.test(text)) {
+    addOnce({ label: 'Ouvrir Offre / Quotas', href: '/parametres?section=offre' })
   }
   if (/progression|optimiser|priorit[ée]|[ée]tape|conseille/.test(text)) {
-    addOnce({ label: 'Ouvrir le Centre de progression', href: '/parametres' })
+    addOnce({ label: 'Ouvrir le Centre de progression', href: '/dashboard-v2' })
   }
   if (/relance|prospect|convert/.test(text)) {
     addOnce({ label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' })
@@ -61,7 +68,7 @@ function buildNavigationActions(userQuestion: string, context: KadriaAssistantCo
     const priorities = getAssistantPriorities(context)
     const destinationToAction: Record<string, NavigationAction> = {
       'Profil métier': { label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' },
-      'Mon widget': { label: 'Ouvrir Mon widget', href: '/parametres' },
+      'Mon widget': { label: 'Ouvrir Mon widget', href: '/parametres?section=widget' },
       'Paramètres': { label: 'Ouvrir Paramètres', href: '/parametres' },
       'Tableau de bord': { label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' },
     }
