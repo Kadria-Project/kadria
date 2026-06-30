@@ -85,10 +85,18 @@ export default function KadriaAssistantWidget() {
       </button>
 
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 flex w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-1)] shadow-2xl" style={{ height: '560px', maxHeight: 'calc(100vh - 3rem)' }}>
-          <div className="flex items-start justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
+        <div className="fixed inset-0 z-[100]">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            className="absolute bottom-0 right-0 left-0 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl sm:bottom-6 sm:right-6 sm:left-auto sm:h-[560px] sm:max-h-[calc(100vh-3rem)] sm:w-[380px] sm:max-w-[calc(100vw-2rem)] sm:rounded-xl"
+          >
+          <div className="flex items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold text-[var(--text-0)]">Assistant Kadria</h2>
+              <h2 className="text-sm font-semibold text-[var(--text-1)]">Assistant Kadria</h2>
               <p className="mt-0.5 text-xs text-[var(--text-2)]">
                 Posez vos questions sur votre configuration, vos devis, votre profil métier ou vos prochaines étapes.
               </p>
@@ -103,7 +111,7 @@ export default function KadriaAssistantWidget() {
             </button>
           </div>
 
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-[var(--bg-elevated)] px-4 py-3">
             {messages.length === 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-2)]">Suggestions pour démarrer :</p>
@@ -128,7 +136,7 @@ export default function KadriaAssistantWidget() {
                   className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm ${
                     m.role === 'user'
                       ? 'bg-[var(--accent)] text-[#05130d]'
-                      : 'bg-[var(--bg-2)] text-[var(--text-0)]'
+                      : 'bg-[var(--bg-hover)] text-[var(--text-1)]'
                   }`}
                 >
                   {m.content}
@@ -138,7 +146,7 @@ export default function KadriaAssistantWidget() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="rounded-lg bg-[var(--bg-2)] px-3 py-2 text-sm text-[var(--text-2)]">
+                <div className="rounded-lg bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-2)]">
                   L&apos;assistant réfléchit…
                 </div>
               </div>
@@ -151,19 +159,24 @@ export default function KadriaAssistantWidget() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-[var(--border)] px-3 py-3">
+          <form
+            onSubmit={handleSubmit}
+            className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3"
+            style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+          >
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Écrivez votre question..."
               disabled={loading}
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-0)] px-3 py-2 text-sm text-[var(--text-0)] outline-none focus:border-[var(--accent)]"
+              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)] outline-none focus:border-[var(--accent)]"
             />
             <Button type="submit" disabled={loading || !input.trim()}>
               Envoyer
             </Button>
           </form>
+          </div>
         </div>
       )}
     </>
