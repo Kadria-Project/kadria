@@ -1,0 +1,123 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/src/lib/auth-utils'
+import { buildArtisanAssistantContext } from '@/src/lib/kadria-assistant/context'
+import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
+import { getKadriaAssistantOpenAIClient, KADRIA_ASSISTANT_MODEL } from '@/src/lib/kadria-assistant/openai-client'
+
+// Assistant IA interne pour l'artisan connecté : strictement en lecture
+// seule, contextualisé au compte de l'artisan, jamais exposé côté client.
+// Ne touche à aucune route de mutation métier (config, devis, emails...).
+
+const MAX_HISTORY_MESSAGES = 8
+const MAX_MESSAGE_LENGTH = 2000
+
+interface IncomingMessage {
+  role: string
+  content: string
+}
+
+function sanitizeMessages(raw: unknown): { role: 'user' | 'assistant'; content: string }[] {
+  if (!Array.isArray(raw)) return []
+
+  const cleaned = (raw as IncomingMessage[])
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim().length > 0)
+    .map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content.slice(0, MAX_MESSAGE_LENGTH),
+    }))
+
+  // On ne garde que les derniers messages pour limiter le coût et la taille
+  // du contexte envoyé à OpenAI.
+  return cleaned.slice(-MAX_HISTORY_MESSAGES)
+}
+
+export async function POST(request: NextRequest) {
+  const startedAt = Date.now()
+  let artisanIdForLog = 'unknown'
+
+  try {
+    const session = await getSession()
+    if (!session || !session.artisanId) {
+      return NextResponse.json(
+        { success: false, error: 'Non authentifié' },
+        { status: 401 }
+      )
+    }
+    artisanIdForLog = session.artisanId
+
+    let body: { messages?: unknown }
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Corps de requête invalide' },
+        { status: 400 }
+      )
+    }
+
+    const messages = sanitizeMessages(body?.messages)
+    if (messages.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Aucun message fourni' },
+        { status: 400 }
+      )
+    }
+
+    let client
+    try {
+      client = getKadriaAssistantOpenAIClient()
+    } catch {
+      console.error('[KADRIA-ASSISTANT] OPENAI_API_KEY manquante')
+      return NextResponse.json(
+        { success: false, error: "L'assistant est temporairement indisponible. Merci de réessayer plus tard." },
+        { status: 503 }
+      )
+    }
+
+    const context = await buildArtisanAssistantContext(session.artisanId, session.plan || 'essentiel')
+    const systemPrompt = buildKadriaAssistantSystemPrompt(context)
+
+    const response = await client.chat.completions.create({
+      model: KADRIA_ASSISTANT_MODEL,
+      max_tokens: 700,
+      temperature: 0.4,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages,
+      ],
+    })
+
+    const answer = response.choices?.[0]?.message?.content?.trim() || ''
+
+    if (!answer) {
+      console.error('[KADRIA-ASSISTANT] Réponse vide de OpenAI', { artisanId: artisanIdForLog })
+      return NextResponse.json(
+        { success: false, error: "L'assistant n'a pas pu générer de réponse. Merci de reformuler votre question." },
+        { status: 502 }
+      )
+    }
+
+    console.info('[KADRIA-ASSISTANT] success', {
+      artisanId: artisanIdForLog,
+      durationMs: Date.now() - startedAt,
+    })
+
+    return NextResponse.json({ success: true, answer })
+  } catch (error) {
+    const isQuotaOrTimeout = error instanceof Error && /timeout|quota|rate limit|429/i.test(error.message)
+    console.error('[KADRIA-ASSISTANT] error', {
+      artisanId: artisanIdForLog,
+      durationMs: Date.now() - startedAt,
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return NextResponse.json(
+      {
+        success: false,
+        error: isQuotaOrTimeout
+          ? "L'assistant est momentanément surchargé. Merci de réessayer dans quelques instants."
+          : "Une erreur est survenue. Merci de réessayer plus tard.",
+      },
+      { status: 502 }
+    )
+  }
+}
