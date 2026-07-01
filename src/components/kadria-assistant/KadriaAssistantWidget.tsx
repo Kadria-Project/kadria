@@ -8,10 +8,25 @@ interface NavigationAction {
   href: string;
 }
 
+interface TodayActionCard {
+  id: string;
+  type: 'quote_followup' | 'review_request' | 'priority_project' | 'configuration' | 'delivery_error' | 'tasks_overview';
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  projectId?: string;
+  clientName?: string;
+  primaryActionLabel: string;
+  primaryActionHref: string;
+  secondaryActionLabel?: string;
+  secondaryActionHref?: string;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   navigationActions?: NavigationAction[];
+  todayActions?: TodayActionCard[];
 }
 
 interface AssistantUsage {
@@ -116,6 +131,7 @@ function savePersistedSession(session: PersistedSession) {
 }
 
 const QUICK_STARTS = [
+  "Que dois-je faire aujourd'hui ?",
   'Que dois-je configurer en priorité ?',
   'Aide-moi à améliorer mon profil métier',
   'Quelles prestations devrais-je proposer ?',
@@ -138,7 +154,64 @@ export default function KadriaAssistantWidget() {
   const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
   const [usage, setUsage] = useState<AssistantUsage | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
+  const [todayActions, setTodayActions] = useState<TodayActionCard[]>([]);
+  const [todayActionsLoading, setTodayActionsLoading] = useState(false);
+  const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  function isTodayActionsPrompt(value: string) {
+    return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour/i.test(value.trim());
+  }
+
+  async function loadTodayActions() {
+    setTodayActionsLoading(true);
+    setTodayActionsError(null);
+
+    try {
+      const res = await fetch('/api/kadria-assistant/today-actions');
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        setTodayActions([]);
+        setTodayActionsError(data?.error || 'Impossible de charger les actions du jour pour le moment.');
+        return [];
+      }
+
+      const actions = Array.isArray(data.actions) ? data.actions : [];
+      setTodayActions(actions);
+      return actions as TodayActionCard[];
+    } catch {
+      setTodayActions([]);
+      setTodayActionsError('Impossible de charger les actions du jour pour le moment.');
+      return [];
+    } finally {
+      setTodayActionsLoading(false);
+    }
+  }
+
+  async function appendTodayActionsMessage(userLabel: string) {
+    const trimmed = userLabel.trim();
+    if (!trimmed || loading || quotaReached) return;
+
+    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
+    setMessages(nextMessages);
+    setInput('');
+    setError(null);
+
+    const actions = await loadTodayActions();
+    const assistantMessage: ChatMessage = actions.length > 0
+      ? {
+          role: 'assistant',
+          content: 'Voici vos priorites du jour. Je vous propose de commencer par ces actions :',
+          todayActions: actions,
+        }
+      : {
+          role: 'assistant',
+          content: "Tout est a jour pour le moment. Je n'ai pas detecte d'action urgente.",
+        };
+
+    setMessages((prev) => [...prev, assistantMessage]);
+  }
 
   // Charge la conversation persistée (sessionStorage) au montage, pour
   // permettre de la retrouver après une navigation déclenchée par une
@@ -173,6 +246,11 @@ export default function KadriaAssistantWidget() {
     setDrawerVisible(false);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    void loadTodayActions();
+  }, [open]);
+
   // Bloque le scroll de la page derrière le drawer pendant qu'il est ouvert,
   // et restaure la valeur précédente à la fermeture/démontage.
   useEffect(() => {
@@ -187,6 +265,11 @@ export default function KadriaAssistantWidget() {
   async function sendMessage(content: string) {
     const trimmed = content.trim();
     if (!trimmed || loading || quotaReached) return;
+
+    if (isTodayActionsPrompt(trimmed)) {
+      await appendTodayActionsMessage(trimmed);
+      return;
+    }
 
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
     setMessages(nextMessages);
@@ -250,6 +333,58 @@ export default function KadriaAssistantWidget() {
   function handleNavigationClick() {
     savePersistedSession({ messages, usage });
     setOpen(false);
+  }
+
+  function renderTodayActionCards(items: TodayActionCard[]) {
+    return (
+      <div className="mt-2 flex flex-col gap-2.5">
+        {items.map((action) => (
+          <div
+            key={action.id}
+            className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111317] px-3.5 py-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#f8fafc]">{action.title}</p>
+                {(action.clientName || action.projectId) && (
+                  <p className="mt-1 text-xs text-[#9ca3af]">{action.clientName || 'Dossier prioritaire'}</p>
+                )}
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                  action.priority === 'high'
+                    ? 'bg-red-500/15 text-red-300'
+                    : action.priority === 'medium'
+                      ? 'bg-amber-500/15 text-amber-300'
+                      : 'bg-slate-500/15 text-slate-300'
+                }`}
+              >
+                {action.priority === 'high' ? 'Priorite haute' : action.priority === 'medium' ? 'A faire' : 'Info'}
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-[#cbd5e1]">{action.description}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={action.primaryActionHref}
+                onClick={handleNavigationClick}
+                className="rounded-full bg-[#22c55e] px-3 py-1.5 text-xs font-semibold text-[#05130d] transition-colors hover:bg-[#34d979]"
+              >
+                {action.primaryActionLabel}
+              </a>
+              {action.secondaryActionLabel && action.secondaryActionHref && (
+                <a
+                  href={action.secondaryActionHref}
+                  onClick={handleNavigationClick}
+                  className="rounded-full border border-[rgba(255,255,255,0.12)] px-3 py-1.5 text-xs font-semibold text-[#f8fafc] transition-colors hover:bg-white/5"
+                >
+                  {action.secondaryActionLabel}
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -330,6 +465,35 @@ export default function KadriaAssistantWidget() {
                     les prochaines étapes.
                   </p>
                 </div>
+                <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0f1115] p-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#f8fafc]">Actions du jour</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#9ca3af]">
+                        Les priorites utiles detectees sur votre compte, sans action automatique.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => appendTodayActionsMessage("Que dois-je faire aujourd'hui ?")}
+                      className="rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3 py-1.5 text-[11px] font-semibold text-[#22c55e] transition-colors hover:bg-[#22c55e]/20"
+                    >
+                      Voir
+                    </button>
+                  </div>
+                  {todayActionsLoading && (
+                    <p className="mt-3 text-xs text-[#9ca3af]">Chargement des actions du jour...</p>
+                  )}
+                  {!todayActionsLoading && todayActionsError && (
+                    <p className="mt-3 text-xs text-red-300">{todayActionsError}</p>
+                  )}
+                  {!todayActionsLoading && !todayActionsError && todayActions.length === 0 && (
+                    <p className="mt-3 text-xs text-[#cbd5e1]">
+                      Tout est a jour pour le moment. Je n&apos;ai pas detecte d&apos;action urgente.
+                    </p>
+                  )}
+                  {!todayActionsLoading && !todayActionsError && todayActions.length > 0 && renderTodayActionCards(todayActions.slice(0, 3))}
+                </div>
                 <div className="grid grid-cols-1 gap-2">
                   {QUICK_STARTS.map((q) => (
                     <button
@@ -388,6 +552,11 @@ export default function KadriaAssistantWidget() {
                 >
                   {renderMessageContent(m.content)}
                 </div>
+                {m.role === 'assistant' && m.todayActions && m.todayActions.length > 0 && (
+                  <div className="w-full max-w-[85%]">
+                    {renderTodayActionCards(m.todayActions)}
+                  </div>
+                )}
                 {m.role === 'assistant' && m.navigationActions && m.navigationActions.length > 0 && (
                   <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
                     {m.navigationActions.map((action, ai) => (
