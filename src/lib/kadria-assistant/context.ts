@@ -45,6 +45,9 @@ export interface KadriaAssistantContext {
     hasAnyQuote: boolean
     automaticFollowupsAvailableOnPlan: boolean
   }
+  googleReview: {
+    configured: boolean
+  }
   usage: {
     monthlyProjectsCount: number
     monthlyProjectLimit: number | null
@@ -147,6 +150,9 @@ export async function buildArtisanAssistantContext(artisanId: string, planFromSe
       recentCount: Math.min(devis?.length || 0, 999),
       hasAnyQuote: (devis?.length || 0) > 0,
       automaticFollowupsAvailableOnPlan: hasFeature(plan, 'automaticFollowups'),
+    },
+    googleReview: {
+      configured: Boolean(artisanConfig?.googleReviewUrl),
     },
     usage: {
       monthlyProjectsCount,
@@ -300,6 +306,7 @@ export function formatContextForPrompt(ctx: KadriaAssistantContext): string {
           : 'disponibles sur votre plan (pas encore de devis à relancer)'
     }`
   )
+  lines.push(`- URL d'avis Google configurée : ${ctx.googleReview.configured ? 'oui' : 'non'}`)
 
   lines.push(`\nCentre de progression : ${ctx.progressionCenter.percent}% (niveau ${getAccountLevelLabel(ctx.progressionCenter.percent)})`)
   lines.push(`- Étapes complétées : ${ctx.progressionCenter.completedSteps}/${ctx.progressionCenter.totalSteps}`)

@@ -244,6 +244,8 @@ interface ConfigurationKadriaItem {
   evaluable: boolean
 }
 
+const CONFIGURATION_CARD_STORAGE_KEY = 'kadria-configuration-card-expanded'
+
 function hasTextValue(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0
 }
@@ -428,6 +430,7 @@ function ParametresPageContent() {
   const [serviceProfilesCount, setServiceProfilesCount] = useState<number | null>(null)
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null)
   const [calendarEvaluable, setCalendarEvaluable] = useState(false)
+  const [configurationCardExpanded, setConfigurationCardExpanded] = useState(false)
   useEffect(() => {
     fetch('/api/artisan/business-profile')
       .then((r) => r.json())
@@ -487,6 +490,27 @@ function ParametresPageContent() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const stored = window.localStorage.getItem(CONFIGURATION_CARD_STORAGE_KEY)
+      if (stored === 'true') {
+        setConfigurationCardExpanded(true)
+      }
+    } catch {
+      // Ignore localStorage failures.
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.localStorage.setItem(CONFIGURATION_CARD_STORAGE_KEY, configurationCardExpanded ? 'true' : 'false')
+    } catch {
+      // Ignore localStorage failures.
+    }
+  }, [configurationCardExpanded])
 
   // Métiers effectifs utilisés par les suggestions de cette page (types de
   // travaux, catalogue, modèles de devis) : priorité au Profil métier
@@ -622,6 +646,7 @@ function ParametresPageContent() {
     : 0
   const configurationTodoItems = configurationItems.filter((item) => item.status === 'todo')
   const configurationPrimaryCta = configurationTodoItems[0] || null
+  const configurationRemainingCount = configurationTodoItems.length
 
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null)
   const [accountStatus, setAccountStatus] = useState<AccountStatusSummary | null>(null)
@@ -1183,40 +1208,70 @@ function ParametresPageContent() {
                   Configuration Kadria
                 </p>
                 <h2 style={{ margin: 0, fontSize: isMobile ? '22px' : '24px', fontWeight: 800 }}>
-                  Votre compte est configure a {configurationPercent} %
+                  {configurationPercent >= 100
+                    ? 'Votre configuration est complete'
+                    : `Votre compte est configure a ${configurationPercent} %`}
                 </h2>
                 <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '14px', lineHeight: 1.6 }}>
                   {configurationPercent >= 100
-                    ? 'Votre espace est pret. Toutes les briques essentielles sont configurees.'
-                    : 'Finalisez les reglages essentiels pour exploiter pleinement votre espace.'}
+                    ? 'Votre espace est pret. Vous pouvez garder le detail replie et y revenir si besoin.'
+                    : configurationPrimaryCta
+                      ? `${configurationRemainingCount} element(s) a completer. Commencez par : ${configurationPrimaryCta.label}.`
+                      : 'Finalisez les reglages essentiels pour exploiter pleinement votre espace.'}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => router.push(configurationPrimaryCta ? configurationPrimaryCta.href : '/parametres?section=entreprise')}
-                style={{
-                  background: 'var(--accent)',
-                  border: 'none',
-                  color: 'black',
-                  fontWeight: 700,
-                  borderRadius: '10px',
-                  padding: '10px 16px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {configurationPrimaryCta ? 'Completer ma configuration' : 'Ma configuration est prete'}
-              </button>
+              <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: '10px',
+                width: isMobile ? '100%' : 'auto',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => router.push(configurationPrimaryCta ? configurationPrimaryCta.href : '/parametres?section=entreprise')}
+                  style={{
+                    background: 'var(--accent)',
+                    border: 'none',
+                    color: 'black',
+                    fontWeight: 700,
+                    borderRadius: '10px',
+                    padding: '10px 16px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {configurationPrimaryCta ? configurationPrimaryCta.cta : 'Voir le detail'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfigurationCardExpanded((value) => !value)}
+                  aria-expanded={configurationCardExpanded}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    fontWeight: 600,
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {configurationCardExpanded ? 'Reduire ↑' : 'Afficher le detail ↓'}
+                </button>
+              </div>
             </div>
 
             <div style={{
-              height: '10px',
+              height: '8px',
               borderRadius: '999px',
               background: 'var(--bg-hover)',
               overflow: 'hidden',
-              marginBottom: '16px',
+              marginBottom: '12px',
             }}>
               <div style={{
                 width: `${configurationPercent}%`,
@@ -1226,7 +1281,41 @@ function ParametresPageContent() {
               }} />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap',
+            }}>
+              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px' }}>
+                {configurationPercent >= 100
+                  ? 'Toutes les briques suivies ici sont completees.'
+                  : `${configurationRemainingCount} element(s) restent a completer sur ${configurationItems.length}.`}
+              </p>
+              {configurationPrimaryCta && (
+                <button
+                  type="button"
+                  onClick={() => router.push(configurationPrimaryCta.href)}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {configurationPrimaryCta.cta} : {configurationPrimaryCta.label}
+                </button>
+              )}
+            </div>
+
+            {configurationCardExpanded && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
               {configurationItems.map((item) => {
                 const done = item.status === 'done'
                 return (
@@ -1300,7 +1389,8 @@ function ParametresPageContent() {
                   </div>
                 )
               })}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Section Entreprise */}

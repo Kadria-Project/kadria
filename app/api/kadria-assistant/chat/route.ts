@@ -22,6 +22,64 @@ interface NavigationAction {
   href: string
 }
 
+interface DeterministicAssistantReply {
+  answer: string
+  navigationActions?: NavigationAction[]
+}
+
+function buildDeterministicReply(userQuestion: string, context: KadriaAssistantContext): DeterministicAssistantReply | null {
+  const text = userQuestion.toLowerCase()
+
+  if (/google review|avis google|demande d'avis|lien google review/.test(text)) {
+    if (context.googleReview.configured) {
+      return {
+        answer: "Oui. Kadria peut preparer une demande d'avis Google depuis une fiche projet. L'envoi reste manuel : vous ouvrez un dossier gagne, cliquez sur 'Avis Google', puis vous confirmez l'envoi.",
+        navigationActions: [
+          { label: "Voir les dossiers concernes", href: '/dashboard-v2' },
+          { label: 'Ouvrir les actions du jour', href: '/dashboard-v2' },
+        ],
+      }
+    }
+
+    return {
+      answer: "Oui, Kadria peut vous aider a envoyer une demande d'avis Google depuis un dossier, mais il faut d'abord renseigner votre URL avis Google dans les parametres.",
+      navigationActions: [
+        { label: "Configurer l'URL avis Google", href: '/parametres?section=entreprise' },
+      ],
+    }
+  }
+
+  if (/relance|relancer/.test(text) && /devis/.test(text)) {
+    return {
+      answer: "Je peux vous aider a traiter les devis a relancer. Ouvrez les dossiers concernes depuis les actions du jour : chaque relance se fera ensuite depuis la fiche projet, avec confirmation avant envoi.",
+      navigationActions: [
+        { label: 'Ouvrir les actions du jour', href: '/dashboard-v2' },
+        { label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' },
+      ],
+    }
+  }
+
+  if (/actions du jour|priorites du jour|que dois-je faire aujourd'hui|que faire aujourd'hui/.test(text)) {
+    return {
+      answer: "Je peux vous proposer vos priorites du jour a partir de votre configuration, de vos devis et de votre suivi commercial, sans lancer d'action automatique.",
+      navigationActions: [
+        { label: 'Ouvrir les actions du jour', href: '/dashboard-v2' },
+      ],
+    }
+  }
+
+  if (/configur|parametr|url avis google/.test(text) && context.progressionCenter.percent < 100) {
+    return {
+      answer: `Votre configuration actuelle est a ${context.progressionCenter.percent} %. Je peux vous orienter vers le prochain reglage utile sans rien modifier a votre place.`,
+      navigationActions: [
+        { label: 'Ouvrir Parametres', href: '/parametres' },
+      ],
+    }
+  }
+
+  return null
+}
+
 // Détermine de simples suggestions de navigation (non destructives) à partir
 // de mots-clés présents dans la question de l'artisan, complétées par les
 // priorités détectées dans le contexte réel du compte (centre de
@@ -128,6 +186,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const context = await buildArtisanAssistantContext(session.artisanId, session.plan || 'essentiel')
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
+    const deterministicReply = buildDeterministicReply(lastUserMessage, context)
+
+    if (deterministicReply) {
+      return NextResponse.json({
+        success: true,
+        answer: deterministicReply.answer,
+        usage: null,
+        ...(deterministicReply.navigationActions ? { navigationActions: deterministicReply.navigationActions } : {}),
+      })
+    }
+
     const quotaCheck = await canUseKadriaAssistant(session.artisanId, session.plan)
     if (!quotaCheck.allowed) {
       return NextResponse.json(
@@ -152,7 +223,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const context = await buildArtisanAssistantContext(session.artisanId, session.plan || 'essentiel')
     const systemPrompt = buildKadriaAssistantSystemPrompt(context)
 
     const response = await client.chat.completions.create({
@@ -191,7 +261,6 @@ export async function POST(request: NextRequest) {
       limit: quotaCheck.limit,
     }
 
-    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
     const navigationActions = buildNavigationActions(lastUserMessage, context)
 
     return NextResponse.json({ success: true, answer, usage, ...(navigationActions ? { navigationActions } : {}) })

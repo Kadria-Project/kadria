@@ -12,10 +12,16 @@ interface TodayActionCard {
   id: string;
   type: 'quote_followup' | 'review_request' | 'priority_project' | 'configuration' | 'delivery_error' | 'tasks_overview';
   priority: 'high' | 'medium' | 'low';
+  status: 'ready' | 'blocked';
   title: string;
   description: string;
+  reason: string;
   projectId?: string;
+  devisId?: string;
   clientName?: string;
+  eligible?: boolean;
+  googleReviewConfigured?: boolean;
+  clientEmailPresent?: boolean;
   primaryActionLabel: string;
   primaryActionHref: string;
   secondaryActionLabel?: string;
@@ -91,6 +97,14 @@ function renderMessageContent(content: string) {
   flushList('list-end');
 
   return <div className="space-y-1">{blocks}</div>;
+}
+
+function isGoogleReviewPrompt(value: string) {
+  return /google review|avis google|demande d'avis|lien google review/i.test(value.trim());
+}
+
+function isQuoteFollowupPrompt(value: string) {
+  return /relance|relancer/i.test(value.trim()) && /devis/i.test(value.trim());
 }
 
 const SESSION_STORAGE_KEY = 'kadria-assistant-session';
@@ -213,6 +227,31 @@ export default function KadriaAssistantWidget() {
     setMessages((prev) => [...prev, assistantMessage]);
   }
 
+  async function appendQuoteFollowupMessage(userLabel: string) {
+    const trimmed = userLabel.trim();
+    if (!trimmed || loading || quotaReached) return;
+
+    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
+    setMessages(nextMessages);
+    setInput('');
+    setError(null);
+
+    const actions = await loadTodayActions();
+    const followups = actions.filter((action) => action.type === 'quote_followup');
+    const assistantMessage: ChatMessage = followups.length > 0
+      ? {
+          role: 'assistant',
+          content: `J'ai trouve ${followups.length} devis a examiner. Je peux vous ouvrir les dossiers concernes. Chaque relance demandera une confirmation avant envoi.`,
+          todayActions: followups,
+        }
+      : {
+          role: 'assistant',
+          content: "Je n'ai pas detecte de devis a relancer pour le moment.",
+        };
+
+    setMessages((prev) => [...prev, assistantMessage]);
+  }
+
   // Charge la conversation persistée (sessionStorage) au montage, pour
   // permettre de la retrouver après une navigation déclenchée par une
   // navigationAction. Aucune donnée n'est stockée côté serveur.
@@ -268,6 +307,11 @@ export default function KadriaAssistantWidget() {
 
     if (isTodayActionsPrompt(trimmed)) {
       await appendTodayActionsMessage(trimmed);
+      return;
+    }
+
+    if (isQuoteFollowupPrompt(trimmed)) {
+      await appendQuoteFollowupMessage(trimmed);
       return;
     }
 
@@ -359,10 +403,17 @@ export default function KadriaAssistantWidget() {
                       : 'bg-slate-500/15 text-slate-300'
                 }`}
               >
-                {action.priority === 'high' ? 'Priorite haute' : action.priority === 'medium' ? 'A faire' : 'Info'}
+                {action.status === 'blocked'
+                  ? 'Bloque'
+                  : action.priority === 'high'
+                    ? 'Priorite haute'
+                    : action.priority === 'medium'
+                      ? 'A faire'
+                      : 'Info'}
               </span>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[#cbd5e1]">{action.description}</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-[#94a3b8]">{action.reason}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <a
                 href={action.primaryActionHref}
@@ -470,7 +521,7 @@ export default function KadriaAssistantWidget() {
                     <div>
                       <p className="text-sm font-semibold text-[#f8fafc]">Actions du jour</p>
                       <p className="mt-1 text-xs leading-relaxed text-[#9ca3af]">
-                        Les priorites utiles detectees sur votre compte, sans action automatique.
+                        Les priorites utiles detectees sur votre compte, sans action automatique ni envoi silencieux.
                       </p>
                     </div>
                     <button

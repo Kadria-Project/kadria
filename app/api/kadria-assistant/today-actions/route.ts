@@ -22,10 +22,16 @@ interface TodayAction {
   id: string
   type: TodayActionType
   priority: TodayActionPriority
+  status: 'ready' | 'blocked'
   title: string
   description: string
+  reason: string
   projectId?: string
+  devisId?: string
   clientName?: string
+  eligible?: boolean
+  googleReviewConfigured?: boolean
+  clientEmailPresent?: boolean
   primaryActionLabel: string
   primaryActionHref: string
   secondaryActionLabel?: string
@@ -177,9 +183,13 @@ export async function GET() {
         id: 'configuration-google-review',
         type: 'configuration',
         priority: 'high',
-        title: 'Finaliser la configuration',
-        description: "URL avis Google manquante pour activer les demandes d'avis.",
-        primaryActionLabel: 'Completer',
+        status: 'blocked',
+        title: "Ajouter l'URL avis Google",
+        description: "Ajoutez votre lien d'avis Google pour pouvoir envoyer une demande d'avis depuis vos dossiers.",
+        reason: "URL avis Google absente.",
+        eligible: false,
+        googleReviewConfigured: false,
+        primaryActionLabel: 'Configurer',
         primaryActionHref: '/parametres?section=entreprise',
       })
     } else if (progress.percent < 100 && todoStep) {
@@ -187,8 +197,12 @@ export async function GET() {
         id: 'configuration-progress',
         type: 'configuration',
         priority: 'medium',
+        status: 'ready',
         title: 'Completer la configuration Kadria',
         description: sanitizeActionText(todoStep.description, `${todoStep.label} a completer.`),
+        reason: `${todoStep.label} reste a completer.`,
+        eligible: true,
+        googleReviewConfigured: true,
         primaryActionLabel: 'Completer',
         primaryActionHref: todoStep.href || '/parametres',
       })
@@ -206,10 +220,15 @@ export async function GET() {
         id: `failed-${projectId}-${index}`,
         type: 'delivery_error',
         priority: 'high',
+        status: 'ready',
         title: activity.action === 'DEVIS_FOLLOW_UP_FAILED' ? 'Verifier une relance devis en echec' : "Verifier une demande d'avis en echec",
         description: sanitizeActionText(activity.description, "Une erreur d'envoi recente merite votre attention."),
+        reason: 'Une action precedente a echoue et demande une verification manuelle.',
         projectId,
         clientName: formatClientName(project),
+        eligible: true,
+        googleReviewConfigured: hasText(artisanConfig?.googleReviewUrl),
+        clientEmailPresent: hasText(project.client_email),
         primaryActionLabel: 'Ouvrir le dossier',
         primaryActionHref: `/dashboard-v2/projet/${projectId}`,
       })
@@ -231,11 +250,16 @@ export async function GET() {
         id: `quote-followup-${devis.id}`,
         type: 'quote_followup',
         priority: state.stage === 'j10_final' ? 'high' : 'medium',
+        status: 'ready',
         title: 'Relancer un devis',
-        description: sanitizeActionText(state.reason, 'Devis envoye sans reponse recente.'),
+        description: 'La relance se fera depuis la fiche projet avec confirmation avant envoi.',
+        reason: sanitizeActionText(state.reason, 'Devis envoye sans reponse recente.'),
         projectId: devis.projectId,
+        devisId: devis.id,
         clientName: devis.clientName || project ? formatClientName(project as ProjectCandidateRow) : 'Dossier',
-        primaryActionLabel: 'Ouvrir le dossier',
+        eligible: true,
+        clientEmailPresent: true,
+        primaryActionLabel: 'Ouvrir le dossier et relancer',
         primaryActionHref: `/dashboard-v2/projet/${devis.projectId}`,
       })
     })
@@ -252,11 +276,16 @@ export async function GET() {
           id: `review-${reviewProject.id}`,
           type: 'review_request',
           priority: 'medium',
+          status: 'ready',
           title: 'Demander un avis Google',
-          description: 'Projet gagne, email client present, aucune demande envoyee.',
+          description: "L'envoi se fera depuis la fiche projet avec confirmation.",
+          reason: 'Projet gagne, email client present, aucune demande envoyee.',
           projectId: reviewProject.id,
           clientName: formatClientName(reviewProject),
-          primaryActionLabel: 'Ouvrir le dossier',
+          eligible: true,
+          googleReviewConfigured: true,
+          clientEmailPresent: true,
+          primaryActionLabel: "Ouvrir le dossier et demander l'avis",
           primaryActionHref: `/dashboard-v2/projet/${reviewProject.id}`,
         })
       }
@@ -290,10 +319,14 @@ export async function GET() {
         id: `priority-${priorityProject.project.id}`,
         type: 'priority_project',
         priority: 'medium',
+        status: 'ready',
         title: 'Ouvrir un dossier prioritaire',
         description: `Signal commercial fort detecte sur ${formatClientName(priorityProject.project)}.`,
+        reason: `Score commercial estime a ${priorityProject.score}.`,
         projectId: priorityProject.project.id,
         clientName: formatClientName(priorityProject.project),
+        eligible: true,
+        clientEmailPresent: hasText(priorityProject.project.client_email),
         primaryActionLabel: 'Ouvrir le dossier',
         primaryActionHref: `/dashboard-v2/projet/${priorityProject.project.id}`,
       })
@@ -323,8 +356,11 @@ export async function GET() {
         id: 'tasks-overview',
         type: 'tasks_overview',
         priority: 'low',
+        status: 'ready',
         title: 'Voir mes taches a faire',
         description: `${todayTasks.length} action(s) a traiter aujourd'hui dans le suivi commercial.`,
+        reason: 'Regroupe les priorites detectees dans votre suivi commercial.',
+        eligible: true,
         primaryActionLabel: 'Ouvrir le tableau de bord',
         primaryActionHref: '/dashboard-v2',
       })
