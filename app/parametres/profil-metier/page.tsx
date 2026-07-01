@@ -98,6 +98,8 @@ interface ServiceProfileForm {
   internalNotes: string
 }
 
+type ServiceProfileBadgeTone = 'photos' | 'appointment' | 'emergency' | 'travel' | 'default'
+
 const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   name: '',
   category: '',
@@ -118,6 +120,14 @@ const EMPTY_SERVICE_PROFILE_FORM: ServiceProfileForm = {
   emergencySupported: false,
   relatedServices: [],
   internalNotes: '',
+}
+
+function getServiceProfileBadgeTone(label: string): ServiceProfileBadgeTone {
+  if (label.includes('photo')) return 'photos'
+  if (label.includes('RDV')) return 'appointment'
+  if (label.includes('Urgence')) return 'emergency'
+  if (label.includes('Déplacement')) return 'travel'
+  return 'default'
 }
 
 function TradeMultiSearchSelect({
@@ -1592,6 +1602,7 @@ export default function ProfilMetierPage() {
                 return (
                   <div
                     key={sp.id}
+                    className="service-profile-card"
                     style={{
                       border: '1px solid var(--border)',
                       borderRadius: '12px',
@@ -1604,28 +1615,35 @@ export default function ProfilMetierPage() {
                     }}
                   >
                     <div>
-                      <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>{sp.name}</div>
-                      <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                      <div className="service-profile-card-title" style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>{sp.name}</div>
+                      <div className="service-profile-card-meta" style={{ color: 'var(--text-3)', fontSize: '12px' }}>
                         {[sp.category, linkedCatalogItem?.price_ht != null ? `${linkedCatalogItem.price_ht} € HT` : null, linkedCatalogItem?.estimated_duration_minutes ? `${linkedCatalogItem.estimated_duration_minutes} min` : sp.average_duration_minutes ? `${sp.average_duration_minutes} min` : null]
                           .filter(Boolean)
                           .join(' · ') || 'Sans détail'}
                       </div>
                     </div>
                     {badges.length > 0 && (
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <div className="service-profile-badges" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {badges.map((b) => (
-                          <span key={b} style={{
-                            fontSize: '11px', padding: '3px 8px', borderRadius: '999px',
-                            background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.25)',
-                          }}>
+                          <span
+                            key={b}
+                            className="service-profile-badge"
+                            data-badge-tone={getServiceProfileBadgeTone(b)}
+                            style={{
+                              fontSize: '11px', padding: '3px 8px', borderRadius: '999px',
+                              background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.25)',
+                            }}
+                          >
                             {b}
                           </span>
                         ))}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    <div className="service-profile-actions" style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                       <button
+                        type="button"
                         onClick={() => openServiceProfileEditor(sp)}
+                        className="service-profile-cta service-profile-cta-configure"
                         style={{
                           flex: 1, padding: '8px', borderRadius: '8px',
                           border: '1px solid var(--border)', background: 'transparent',
@@ -1635,7 +1653,9 @@ export default function ProfilMetierPage() {
                         Configurer
                       </button>
                       <button
+                        type="button"
                         onClick={() => toggleServiceProfileActive(sp)}
+                        className={`service-profile-cta ${sp.is_active ? 'service-profile-cta-danger' : 'service-profile-cta-reactivate'}`}
                         style={{
                           padding: '8px 10px', borderRadius: '8px',
                           border: '1px solid var(--border)', background: 'transparent',
@@ -2231,6 +2251,236 @@ export default function ProfilMetierPage() {
           }}
         />
       )}
+      <style jsx>{`
+        .service-profile-card {
+          transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .service-profile-card:hover {
+          transform: translateY(-1px);
+        }
+
+        .service-profile-card-title {
+          letter-spacing: -0.01em;
+        }
+
+        .service-profile-card-meta {
+          margin-top: 3px;
+        }
+
+        .service-profile-badge {
+          display: inline-flex;
+          align-items: center;
+          min-height: 24px;
+          line-height: 1.2;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+        }
+
+        .service-profile-actions {
+          padding-top: 10px;
+          border-top: 1px solid transparent;
+        }
+
+        .service-profile-cta {
+          transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+
+        .service-profile-cta:hover {
+          transform: translateY(-1px);
+        }
+
+        .service-profile-cta:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+        }
+
+        :global([data-theme="light"]) .service-profile-card {
+          border-color: rgba(15, 23, 42, 0.1) !important;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)) !important;
+          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+        }
+
+        :global([data-theme="light"]) .service-profile-card:hover {
+          border-color: rgba(22, 163, 74, 0.2) !important;
+          box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+        }
+
+        :global([data-theme="light"]) .service-profile-card-title {
+          color: #111827 !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-card-meta {
+          color: #4b5563 !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-actions {
+          border-top-color: rgba(148, 163, 184, 0.24);
+        }
+
+        :global([data-theme="light"]) .service-profile-cta-configure {
+          border-color: rgba(100, 116, 139, 0.32) !important;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96)) !important;
+          color: #111827 !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+
+        :global([data-theme="light"]) .service-profile-cta-configure:hover {
+          border-color: rgba(22, 163, 74, 0.35) !important;
+          background: linear-gradient(180deg, rgba(240, 253, 244, 1), rgba(236, 253, 245, 0.98)) !important;
+          box-shadow: 0 8px 20px rgba(22, 163, 74, 0.08);
+        }
+
+        :global([data-theme="light"]) .service-profile-cta-danger {
+          border-color: rgba(239, 68, 68, 0.24) !important;
+          background: rgba(254, 242, 242, 0.95) !important;
+          color: #b91c1c !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-cta-danger:hover {
+          border-color: rgba(239, 68, 68, 0.34) !important;
+          background: rgba(254, 226, 226, 0.98) !important;
+          box-shadow: 0 8px 18px rgba(239, 68, 68, 0.08);
+        }
+
+        :global([data-theme="light"]) .service-profile-cta-reactivate {
+          border-color: rgba(34, 197, 94, 0.25) !important;
+          background: rgba(240, 253, 244, 0.92) !important;
+          color: #15803d !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-cta-reactivate:hover {
+          border-color: rgba(22, 163, 74, 0.35) !important;
+          background: rgba(220, 252, 231, 0.98) !important;
+          box-shadow: 0 8px 18px rgba(22, 163, 74, 0.08);
+        }
+
+        :global([data-theme="light"]) .service-profile-badge[data-badge-tone="photos"] {
+          background: rgba(236, 253, 245, 0.98) !important;
+          border-color: rgba(22, 163, 74, 0.2) !important;
+          color: #166534 !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-badge[data-badge-tone="appointment"] {
+          background: rgba(239, 246, 255, 0.98) !important;
+          border-color: rgba(59, 130, 246, 0.2) !important;
+          color: #1d4ed8 !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-badge[data-badge-tone="emergency"] {
+          background: rgba(255, 247, 237, 0.98) !important;
+          border-color: rgba(249, 115, 22, 0.22) !important;
+          color: #c2410c !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-badge[data-badge-tone="travel"] {
+          background: rgba(236, 254, 255, 0.98) !important;
+          border-color: rgba(8, 145, 178, 0.22) !important;
+          color: #0f766e !important;
+        }
+
+        :global([data-theme="light"]) .service-profile-badge[data-badge-tone="default"] {
+          background: rgba(241, 245, 249, 0.98) !important;
+          border-color: rgba(148, 163, 184, 0.28) !important;
+          color: #334155 !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-card {
+          border-color: rgba(148, 163, 184, 0.2) !important;
+          box-shadow: 0 10px 26px rgba(2, 6, 23, 0.2);
+        }
+
+        :global([data-theme="dark"]) .service-profile-card:hover {
+          border-color: rgba(34, 197, 94, 0.22) !important;
+          box-shadow: 0 14px 30px rgba(2, 6, 23, 0.28);
+        }
+
+        :global([data-theme="dark"]) .service-profile-card-meta {
+          color: rgba(226, 232, 240, 0.74) !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-actions {
+          border-top-color: rgba(148, 163, 184, 0.12);
+        }
+
+        :global([data-theme="dark"]) .service-profile-cta-configure {
+          border-color: rgba(148, 163, 184, 0.24) !important;
+          background: rgba(15, 23, 42, 0.54) !important;
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-cta-configure:hover {
+          border-color: rgba(34, 197, 94, 0.3) !important;
+          background: rgba(15, 23, 42, 0.8) !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-cta-danger {
+          border-color: rgba(248, 113, 113, 0.24) !important;
+          background: rgba(69, 10, 10, 0.32) !important;
+          color: #fca5a5 !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-cta-danger:hover {
+          border-color: rgba(248, 113, 113, 0.34) !important;
+          background: rgba(127, 29, 29, 0.32) !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-cta-reactivate {
+          border-color: rgba(74, 222, 128, 0.24) !important;
+          background: rgba(20, 83, 45, 0.3) !important;
+          color: #86efac !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-cta-reactivate:hover {
+          border-color: rgba(74, 222, 128, 0.34) !important;
+          background: rgba(20, 83, 45, 0.42) !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-badge[data-badge-tone="photos"] {
+          background: rgba(20, 83, 45, 0.34) !important;
+          border-color: rgba(74, 222, 128, 0.22) !important;
+          color: #86efac !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-badge[data-badge-tone="appointment"] {
+          background: rgba(30, 64, 175, 0.28) !important;
+          border-color: rgba(96, 165, 250, 0.22) !important;
+          color: #bfdbfe !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-badge[data-badge-tone="emergency"] {
+          background: rgba(124, 45, 18, 0.32) !important;
+          border-color: rgba(251, 146, 60, 0.24) !important;
+          color: #fdba74 !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-badge[data-badge-tone="travel"] {
+          background: rgba(17, 94, 89, 0.3) !important;
+          border-color: rgba(45, 212, 191, 0.22) !important;
+          color: #99f6e4 !important;
+        }
+
+        :global([data-theme="dark"]) .service-profile-badge[data-badge-tone="default"] {
+          background: rgba(51, 65, 85, 0.5) !important;
+          border-color: rgba(148, 163, 184, 0.22) !important;
+          color: #e2e8f0 !important;
+        }
+
+        @media (max-width: 640px) {
+          .service-profile-badge {
+            white-space: normal;
+          }
+
+          .service-profile-actions {
+            flex-wrap: wrap;
+          }
+
+          .service-profile-cta {
+            min-width: 100%;
+          }
+        }
+      `}</style>
     </main>
   )
 }
