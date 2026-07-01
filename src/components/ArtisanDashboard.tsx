@@ -3083,139 +3083,108 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
           )}
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
-              <button
-                onClick={() => setDashboardMode('tasks')}
-                className="text-sm font-semibold text-[var(--accent)] hover:underline"
-              >
-                Voir toutes les tâches
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-[var(--text-3)]">
-              Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.
-            </p>
-            <div className="mt-3 space-y-2">
-              {topValueActions.map((action, index) =>
-                index === 0 ? (
-                  <ImpactCard
-                    key={action.key}
-                    variant="priority"
-                    as="button"
-                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
-                    className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{action.title} — {action.client}</p>
-                      <p className="text-xs text-[var(--impact-text-soft)]">{action.context}</p>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
-                      Voir le dossier <ChevronRight className="h-4 w-4" />
-                    </span>
-                  </ImpactCard>
-                ) : (
-                  <button
-                    key={action.key}
-                    onClick={() => router.push(`/dashboard-v2/projet/${action.projectId}`)}
-                    className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                    title={action.title === 'Devis à relancer' ? 'Devis envoyé sans réponse du client.' : undefined}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
-                      <p className="text-xs text-[var(--text-2)]">{action.context}</p>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-green-400">
-                      Voir le dossier <ChevronRight className="h-4 w-4" />
-                    </span>
-                  </button>
-                )
-              )}
-              {topValueActions.length === 0 && (
-                <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour le moment.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={Send} label="devis à envoyer" value={valueQuotesProjects.length} onClick={() => goToCommercialFilter('quotes')} />
-              <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
-              {canSeeAdvancedValueDashboard && (
-                <>
-                  <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
-                  <ActionSummary icon={Bell} label="opportunités chaudes" value={valueHotLeads.length} onClick={() => setDashboardMode('commercial')} />
-                </>
-              )}
-            </div>
-          </div>
-
           <div className="flex flex-col gap-4 lg:flex-row">
-            <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-              <div className="flex items-center gap-2">
-                <Timer className="h-4 w-4 text-green-400" />
-                <p className="text-base font-bold text-[var(--text-1)]">Temps estimé économisé</p>
+            <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6 relative overflow-hidden">
+              {/* Subtle green glow behind icon */}
+              <div className="absolute top-4 right-4 h-16 w-16 rounded-full bg-green-500/[0.07] blur-xl pointer-events-none" />
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
+                    <Timer className="h-4 w-4 text-green-400" />
+                  </div>
+                  <p className="text-sm font-semibold text-[var(--text-2)]">Temps estimé économisé</p>
+                </div>
+                <span className="shrink-0 rounded-full border border-green-500/25 bg-green-500/[0.08] px-2.5 py-0.5 text-[11px] font-semibold text-green-400">
+                  Temps récupéré
+                </span>
               </div>
-              <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">
+              <p className="mt-4 text-4xl font-extrabold tracking-tight text-[var(--text-1)] sm:text-[44px]">
                 {estimatedHoursSaved > 0 ? `${estimatedHoursSaved} h ${estimatedRemMinutesSaved} min` : `${estimatedRemMinutesSaved} min`}
               </p>
+              <p className="mt-1 text-xs text-[var(--text-3)]">économisées sur la période</p>
               {canSeeAdvancedValueDashboard ? (
-                <div className="mt-2 space-y-1 text-xs text-[var(--text-3)]">
-                  <p>Qualification automatique : {qualifiedValueCount * 8} min ({qualifiedValueCount} dossier(s))</p>
-                  <p>Devis préparés : {preparedQuotesValueCount * 5} min ({preparedQuotesValueCount} devis)</p>
-                  <p>Relances suivies : {handledFollowUpsValueCount * 5} min ({handledFollowUpsValueCount} relance(s))</p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between rounded-lg bg-[var(--bg-hover)] px-3 py-2">
+                    <span className="text-xs text-[var(--text-2)]">Qualification automatique</span>
+                    <span className="text-xs font-semibold text-[var(--text-1)]">{qualifiedValueCount * 8} min · {qualifiedValueCount} dossier(s)</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-[var(--bg-hover)] px-3 py-2">
+                    <span className="text-xs text-[var(--text-2)]">Devis préparés</span>
+                    <span className="text-xs font-semibold text-[var(--text-1)]">{preparedQuotesValueCount * 5} min · {preparedQuotesValueCount} devis</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-[var(--bg-hover)] px-3 py-2">
+                    <span className="text-xs text-[var(--text-2)]">Relances suivies</span>
+                    <span className="text-xs font-semibold text-[var(--text-1)]">{handledFollowUpsValueCount * 5} min · {handledFollowUpsValueCount} relance(s)</span>
+                  </div>
                 </div>
               ) : (
-                <p className="mt-1 text-xs text-[var(--text-3)]">
+                <p className="mt-3 text-xs text-[var(--text-3)]">
                   8 min économisées par dossier qualifié automatiquement, 5 min par relance/devis préparé.
                 </p>
               )}
-              <p className="mt-2 text-xs text-[var(--text-3)]">
+              <p className="mt-3 text-[11px] italic text-[var(--text-3)] opacity-70">
                 Estimation indicative basée sur les actions traitées par Kadria.
               </p>
             </div>
 
             {canSeeAdvancedValueDashboard ? (
               valueSourceStats.length > 0 && (
-                <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6 relative overflow-hidden">
+                  <div className="absolute top-4 right-4 h-16 w-16 rounded-full bg-green-500/[0.06] blur-xl pointer-events-none" />
                   <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-green-400" />
-                    <p className="text-base font-bold text-[var(--text-1)]">Sources des demandes</p>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
+                      <Globe className="h-4 w-4 text-green-400" />
+                    </div>
+                    <p className="text-sm font-semibold text-[var(--text-2)]">Sources des demandes</p>
                   </div>
-                  <div className="mt-3 space-y-2">
-                    {valueSourceStats.map((s) => (
-                      <div key={s.label} className="flex items-center justify-between text-sm">
-                        <span className="text-[var(--text-2)]">{s.label}</span>
-                        <span className="font-semibold text-[var(--text-1)]">
-                          {s.count}{s.amount > 0 ? ` · ${formatCurrency(s.amount)}` : ''}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="mt-4 space-y-2">
+                    {valueSourceStats.map((s, idx) => {
+                      const isTop = mostValuableSource && s.label === mostValuableSource.label && mostValuableSource.amount > 0;
+                      return (
+                        <div
+                          key={s.label}
+                          className={`rounded-xl px-4 py-3 ${isTop ? 'border border-green-500/25 bg-green-500/[0.06]' : 'border border-[var(--border)] bg-[var(--bg-hover)]'}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-[var(--text-1)] truncate">{s.label}</p>
+                                {isTop && (
+                                  <span className="shrink-0 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-400">
+                                    + rentable
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-xs text-[var(--text-3)]">
+                                {s.count} demande{s.count > 1 ? 's' : ''}
+                                {s.amount > 0 ? ` · ${formatCurrency(s.amount)} générés` : ''}
+                              </p>
+                            </div>
+                            {idx === 0 && valueSourceStats.length > 1 && (
+                              <span className="shrink-0 mt-0.5 text-[11px] font-semibold text-[var(--text-3)]">#{idx + 1}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {mostValuableSource && mostValuableSource.amount > 0 && (
-                    <p className="mt-3 text-xs font-semibold text-green-400">
-                      Source la plus rentable : {mostValuableSource.label}
-                    </p>
-                  )}
                 </div>
               )
             ) : (
-              <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+              <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6">
                 <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-green-400" />
-                  <p className="text-base font-bold text-[var(--text-1)]">Analyse avancée disponible avec Performance</p>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
+                    <Lock className="h-4 w-4 text-green-400" />
+                  </div>
+                  <p className="text-sm font-semibold text-[var(--text-2)]">Sources des demandes</p>
                 </div>
-                <p className="mt-2 text-sm text-[var(--text-2)]">
+                <p className="mt-3 text-sm text-[var(--text-2)]">
                   Kadria suit déjà les principaux indicateurs de votre activité. Identifiez vos sources les plus rentables, vos devis sans réponse et les opportunités à plus fort potentiel en passant à Performance.
                 </p>
                 <button
                   type="button"
                   onClick={() => openUpgradeModal('advancedValueDashboard')}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition-transform hover:scale-[1.02]"
                 >
                   Passer à Performance
                 </button>
