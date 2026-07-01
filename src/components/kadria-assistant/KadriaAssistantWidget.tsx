@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 
 interface NavigationAction {
   label: string;
@@ -137,15 +138,7 @@ export default function KadriaAssistantWidget() {
   const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
   const [usage, setUsage] = useState<AssistantUsage | null>(null);
   const [quotaReached, setQuotaReached] = useState(false);
-  const [coachVisible, setCoachVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Écoute l'état du Coach Kadria pour masquer le bouton mobile quand la carte est affichée.
-  useEffect(() => {
-    const handler = (e: Event) => setCoachVisible((e as CustomEvent<boolean>).detail);
-    window.addEventListener('kadria-coach-visible', handler);
-    return () => window.removeEventListener('kadria-coach-visible', handler);
-  }, []);
 
   // Charge la conversation persistée (sessionStorage) au montage, pour
   // permettre de la retrouver après une navigation déclenchée par une
@@ -261,19 +254,21 @@ export default function KadriaAssistantWidget() {
 
   return (
     <>
-      {/* Onglet latéral discret, identique mobile/desktop : accroché au bord
-          droit, n'empiète ni sur la bottom nav ni sur le bouton "+". */}
+      {/* Bulle flottante bottom-right, identique mobile/desktop (Intercom/Crisp-style).
+          Positionnée au-dessus de la bottom nav et du bouton "+" sur mobile. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Ouvrir l'Assistant Kadria"
-        className="fixed z-50 flex items-center justify-center transition-colors active:scale-[0.98]
-          sm:right-0 sm:top-[55%] sm:-translate-y-1/2 sm:rounded-l-xl sm:border sm:border-r-0 sm:border-[rgba(255,255,255,0.10)] sm:bg-[#17181b] sm:px-3 sm:py-5 sm:text-xs sm:font-medium sm:text-[#f8fafc] sm:shadow-[0_4px_14px_rgba(0,0,0,0.35)] sm:hover:border-[#22c55e]/30 sm:hover:text-[#22c55e]
-          right-4 top-[calc(env(safe-area-inset-top)+12px)] h-11 w-11 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#17181b] text-xl shadow-[0_4px_14px_rgba(0,0,0,0.45)] hover:bg-[#22c55e]/10 sm:h-auto sm:w-auto sm:rounded-l-xl sm:rounded-r-none sm:border-r-0"
-        style={{ display: (open || coachVisible) ? 'none' : undefined }}
+        aria-label="Ouvrir l'assistant Kadria"
+        title="Assistant Kadria"
+        className="group fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 flex h-[52px] w-[52px] items-center justify-center rounded-full border border-[rgba(34,197,94,0.25)] bg-[#101113] text-[#f8fafc] shadow-[0_6px_20px_rgba(0,0,0,0.45),0_0_0_1px_rgba(34,197,94,0.08)] outline-none transition-all duration-200 hover:scale-105 hover:border-[#22c55e]/50 hover:shadow-[0_8px_28px_rgba(0,0,0,0.5),0_0_24px_rgba(34,197,94,0.35)] focus-visible:ring-2 focus-visible:ring-[#22c55e] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] active:scale-95 sm:right-6 sm:bottom-6 sm:h-14 sm:w-14"
+        style={{ display: open ? 'none' : undefined }}
       >
-        <span className="sm:hidden">💬</span>
-        <span className="hidden sm:block" style={{ writingMode: 'vertical-rl', textAlign: 'center' }}>Aide</span>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full bg-[#22c55e] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-20"
+        />
+        <MessageCircle className="relative h-6 w-6 text-[#22c55e] sm:h-6 sm:w-6" strokeWidth={2} />
       </button>
 
       {open && (
