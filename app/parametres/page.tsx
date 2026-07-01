@@ -232,6 +232,101 @@ function WorkTypeReadOnlyChips({ values, accent }: { values: string[]; accent: '
   )
 }
 
+type ConfigurationItemStatus = 'done' | 'todo'
+
+interface ConfigurationKadriaItem {
+  key: string
+  label: string
+  description: string
+  status: ConfigurationItemStatus
+  href: string
+  cta: string
+  evaluable: boolean
+}
+
+function hasTextValue(value: string | null | undefined) {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function buildConfigurationKadriaItems(input: {
+  companyName?: string
+  phone?: string
+  email?: string
+  address?: string
+  villePro?: string
+  artisanId?: string
+  googleReviewUrl?: string
+  primaryTrade?: string
+  trades?: string[]
+  serviceCatalogCount?: number
+  serviceProfilesCount?: number | null
+  calendarConnected?: boolean | null
+  calendarEvaluable?: boolean
+}): ConfigurationKadriaItem[] {
+  const metierConfigured = hasTextValue(input.primaryTrade) || (input.trades || []).some((trade) => hasTextValue(trade))
+  const prestationsConfigured = (input.serviceCatalogCount || 0) > 0 || (input.serviceProfilesCount || 0) > 0
+  const widgetReady = hasTextValue(input.artisanId)
+
+  return [
+    {
+      key: 'entreprise',
+      label: 'Informations entreprise',
+      description: 'Nom, contact pro et point de contact visibles pour vos clients.',
+      status: hasTextValue(input.companyName) && (hasTextValue(input.phone) || hasTextValue(input.email)) && (hasTextValue(input.address) || hasTextValue(input.villePro))
+        ? 'done'
+        : 'todo',
+      href: '/parametres?section=entreprise',
+      cta: 'Completer',
+      evaluable: true,
+    },
+    {
+      key: 'metier',
+      label: 'Profil metier',
+      description: 'Votre metier aide Kadria a mieux qualifier les demandes.',
+      status: metierConfigured ? 'done' : 'todo',
+      href: '/parametres/profil-metier',
+      cta: 'Configurer',
+      evaluable: true,
+    },
+    {
+      key: 'prestations',
+      label: 'Prestations configurees',
+      description: 'Ajoutez vos prestations pour accelerer la qualification et les devis.',
+      status: prestationsConfigured ? 'done' : 'todo',
+      href: '/parametres/profil-metier',
+      cta: 'Ajouter',
+      evaluable: true,
+    },
+    {
+      key: 'widget',
+      label: 'Widget / lien projet',
+      description: 'Votre lien projet peut deja etre partage ou installe sur votre site.',
+      status: widgetReady ? 'done' : 'todo',
+      href: '/parametres?section=widget',
+      cta: 'Ouvrir',
+      evaluable: true,
+    },
+    {
+      key: 'google_review',
+      label: 'URL avis Google',
+      description: "Ajoutez votre lien d'avis pour activer les demandes d'avis.",
+      status: hasTextValue(input.googleReviewUrl) ? 'done' : 'todo',
+      href: '/parametres?section=entreprise',
+      cta: 'Ajouter',
+      evaluable: true,
+    },
+    {
+      key: 'calendar',
+      label: 'Agenda',
+      description: 'Connectez Google Calendar pour synchroniser vos rendez-vous.',
+      status: input.calendarConnected ? 'done' : 'todo',
+      href: '/dashboard-v2',
+      cta: 'Voir',
+      evaluable: Boolean(input.calendarEvaluable),
+    },
+  ]
+}
+
 function ParametresPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -330,6 +425,9 @@ function ParametresPageContent() {
   // vérité) : réutilisées en lecture seule pour les blocs "Types de travaux
   // acceptés/refusés" ci-dessous afin de ne pas dupliquer la donnée.
   const [businessProfileWorkTypes, setBusinessProfileWorkTypes] = useState<{ specialties: string[]; excludedServices: string[] } | null>(null)
+  const [serviceProfilesCount, setServiceProfilesCount] = useState<number | null>(null)
+  const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null)
+  const [calendarEvaluable, setCalendarEvaluable] = useState(false)
   useEffect(() => {
     fetch('/api/artisan/business-profile')
       .then((r) => r.json())
@@ -346,6 +444,48 @@ function ParametresPageContent() {
         }
       })
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetch('/api/artisan/service-profiles')
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return
+        if (data.success && Array.isArray(data.profiles)) {
+          setServiceProfilesCount(data.profiles.length)
+          return
+        }
+        setServiceProfilesCount(0)
+      })
+      .catch(() => {
+        if (!cancelled) setServiceProfilesCount(null)
+      })
+
+    fetch('/api/integrations/google-calendar/status')
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return
+        if (data.success) {
+          setCalendarConnected(Boolean(data.connected))
+          setCalendarEvaluable(true)
+          return
+        }
+        setCalendarConnected(null)
+        setCalendarEvaluable(false)
+      })
+      .catch(() => {
+        if (cancelled) {
+          return
+        }
+        setCalendarConnected(null)
+        setCalendarEvaluable(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Métiers effectifs utilisés par les suggestions de cette page (types de
@@ -459,6 +599,29 @@ function ParametresPageContent() {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  const configurationItems = buildConfigurationKadriaItems({
+    companyName: config.companyName,
+    phone: config.phone,
+    email: config.email,
+    address: config.address,
+    villePro: config.villePro,
+    artisanId: artisanIdDisplay !== 'VOTRE_ARTISAN_ID' ? artisanIdDisplay : '',
+    googleReviewUrl: config.googleReviewUrl,
+    primaryTrade: businessProfileTrades?.primaryTrade || config.primaryTrade,
+    trades: businessProfileTrades?.coveredTrades?.length ? businessProfileTrades.coveredTrades : config.trades,
+    serviceCatalogCount: config.businessConfig.serviceCatalog.length,
+    serviceProfilesCount,
+    calendarConnected,
+    calendarEvaluable,
+  }).filter((item) => item.evaluable)
+
+  const configurationCompletedCount = configurationItems.filter((item) => item.status === 'done').length
+  const configurationPercent = configurationItems.length > 0
+    ? Math.round((configurationCompletedCount / configurationItems.length) * 100)
+    : 0
+  const configurationTodoItems = configurationItems.filter((item) => item.status === 'todo')
+  const configurationPrimaryCta = configurationTodoItems[0] || null
 
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null)
   const [accountStatus, setAccountStatus] = useState<AccountStatusSummary | null>(null)
@@ -999,6 +1162,147 @@ function ParametresPageContent() {
 
         {/* Main content */}
         <div className="min-w-0 w-full">
+          <div style={sectionCard}>
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'flex-start' : 'center',
+              justifyContent: 'space-between',
+              gap: '14px',
+              marginBottom: '16px',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{
+                  margin: '0 0 6px',
+                  color: 'var(--text-3)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}>
+                  Configuration Kadria
+                </p>
+                <h2 style={{ margin: 0, fontSize: isMobile ? '22px' : '24px', fontWeight: 800 }}>
+                  Votre compte est configure a {configurationPercent} %
+                </h2>
+                <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '14px', lineHeight: 1.6 }}>
+                  {configurationPercent >= 100
+                    ? 'Votre espace est pret. Toutes les briques essentielles sont configurees.'
+                    : 'Finalisez les reglages essentiels pour exploiter pleinement votre espace.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push(configurationPrimaryCta ? configurationPrimaryCta.href : '/parametres?section=entreprise')}
+                style={{
+                  background: 'var(--accent)',
+                  border: 'none',
+                  color: 'black',
+                  fontWeight: 700,
+                  borderRadius: '10px',
+                  padding: '10px 16px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {configurationPrimaryCta ? 'Completer ma configuration' : 'Ma configuration est prete'}
+              </button>
+            </div>
+
+            <div style={{
+              height: '10px',
+              borderRadius: '999px',
+              background: 'var(--bg-hover)',
+              overflow: 'hidden',
+              marginBottom: '16px',
+            }}>
+              <div style={{
+                width: `${configurationPercent}%`,
+                height: '100%',
+                background: configurationPercent >= 100 ? '#22c55e' : 'var(--accent)',
+                transition: 'width 0.2s ease',
+              }} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {configurationItems.map((item) => {
+                const done = item.status === 'done'
+                return (
+                  <div
+                    key={item.key}
+                    style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: isMobile ? 'flex-start' : 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      border: '1px solid var(--border)',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      background: done ? 'rgba(34,197,94,0.08)' : 'var(--bg-hover)',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          background: done ? 'rgba(34,197,94,0.18)' : 'rgba(248,113,113,0.14)',
+                          color: done ? '#4ade80' : '#fda4af',
+                          flexShrink: 0,
+                        }}>
+                          {done ? '✓' : '•'}
+                        </span>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>
+                          {item.label}
+                        </p>
+                      </div>
+                      <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.5 }}>
+                        {item.description}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: done ? '#4ade80' : 'var(--text-2)',
+                      }}>
+                        {done ? 'Termine' : 'A completer'}
+                      </span>
+                      {!done && (
+                        <button
+                          type="button"
+                          onClick={() => router.push(item.href)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            color: 'var(--text-1)',
+                            borderRadius: '999px',
+                            padding: '7px 12px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {item.cta}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Section Entreprise */}
           {activeSection === 'entreprise' && (
             <div>
