@@ -22,6 +22,10 @@ interface ClientUsage {
   devisThisMonth?: number;
   devisLimit?: number | null;
   devisUsageLabel?: string;
+  assistantMessagesThisMonth?: number;
+  assistantMessagesLimit?: number | null;
+  assistantMessagesTracked?: boolean;
+  assistantMessagesUsageLabel?: string | null;
 }
 
 type ClientHealthStatus = 'healthy' | 'watch' | 'quota_warning' | 'upgrade_opportunity' | 'inactive';
@@ -225,7 +229,7 @@ function initials(firstName: string, lastName: string, email: string) {
 }
 
 function exportCsv(clients: ClientRecord[]) {
-  const headers = ['Email', 'Prénom', 'Nom', 'Entreprise', 'Plan', 'Statut', 'Inscrit le', 'Dernière connexion'];
+  const headers = ['Email', 'Prénom', 'Nom', 'Entreprise', 'Plan', 'Statut', 'Inscrit le', 'Dernière connexion', 'Chat interne'];
   const rows = clients.map((c) => [
     c.email,
     c.first_name,
@@ -235,6 +239,7 @@ function exportCsv(clients: ClientRecord[]) {
     c.statut,
     formatDate(c.created_at),
     formatLastLogin(c.last_login),
+    c.usage?.assistantMessagesTracked ? (c.usage?.assistantMessagesUsageLabel || '0 / 0') : 'Non suivi',
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
@@ -246,6 +251,11 @@ function exportCsv(clients: ClientRecord[]) {
   link.download = 'clients-kadria.csv';
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function renderAssistantUsage(usage?: ClientUsage) {
+  if (!usage?.assistantMessagesTracked) return 'Non suivi';
+  return usage.assistantMessagesUsageLabel || '0 / 0';
 }
 
 const inputStyle: React.CSSProperties = {
@@ -307,7 +317,7 @@ export default function AdminClientsPage() {
         <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>Gestion des comptes artisans</p>
       </div>
 
-      {loading && <LoadingTable columns={13} rows={5} />}
+      {loading && <LoadingTable columns={14} rows={5} />}
       {error && <p style={{ color: 'var(--status-lost)' }}>{error}</p>}
 
       {clients && (
@@ -357,28 +367,29 @@ export default function AdminClientsPage() {
           </p>
 
           {/* Desktop : tableau cockpit */}
-          <AdminTable className="admin-clients-table-wrap">
+          <AdminTable className="admin-clients-table-wrap" minWidth="2040px">
             <thead>
                   <tr style={{ background: 'var(--border)' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan ID</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '240px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '180px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Artisan ID</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Plan</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Statut</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Santé</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Configuration</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Dossiers</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Devis</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Appels vocaux</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Minutes vocales</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Fonctionnalités</th>
-                    <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Alertes</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '170px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Configuration</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '130px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Dossiers</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '130px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Devis</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '140px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Appels vocaux</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '145px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Minutes vocales</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '145px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Chat interne</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '220px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Fonctionnalités</th>
+                    <th style={{ textAlign: 'left', padding: '10px 20px', minWidth: '200px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Alertes</th>
                     <th style={{ textAlign: 'left', padding: '10px 20px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={13}>
+                      <td colSpan={14}>
                         <AdminEmptyState compact title="Aucun artisan trouvé" description="Aucun artisan ne correspond aux filtres actuels." />
                       </td>
                     </tr>
@@ -395,7 +406,7 @@ export default function AdminClientsPage() {
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--border)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? 'var(--bg-elevated)' : 'var(--bg)')}
                     >
-                      <td style={{ padding: '12px 20px' }}>
+                      <td style={{ padding: '12px 20px', minWidth: '240px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div
                             style={{
@@ -421,7 +432,7 @@ export default function AdminClientsPage() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 20px', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '12px' }}>
+                      <td style={{ padding: '12px 20px', minWidth: '180px', color: 'var(--text-2)', fontFamily: 'monospace', fontSize: '12px' }}>
                         {c.artisanId || c.artisan_id || 'Non renseigné'}
                       </td>
                       <td style={{ padding: '12px 20px' }}><AdminBadge label={c.planLabel || c.plan} tone={PLAN_TONE[c.planLabel || c.plan] || 'neutral'} variant="plan" /></td>
@@ -432,8 +443,9 @@ export default function AdminClientsPage() {
                       <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.devisUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.voiceCallUsageLabel || 'Non disponible'}</td>
                       <td style={{ padding: '12px 20px', color: 'var(--text-1)' }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</td>
-                      <td style={{ padding: '12px 20px', minWidth: '180px' }}><FeatureBadges features={c.features} /></td>
-                      <td style={{ padding: '12px 20px', minWidth: '160px' }}>
+                      <td style={{ padding: '12px 20px', minWidth: '145px', color: 'var(--text-1)' }}>{renderAssistantUsage(c.usage)}</td>
+                      <td style={{ padding: '12px 20px', minWidth: '220px' }}><FeatureBadges features={c.features} /></td>
+                      <td style={{ padding: '12px 20px', minWidth: '200px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           <AlertBadge alerts={c.alerts} />
                           <AlertMessages alerts={c.alerts} />
@@ -532,6 +544,10 @@ export default function AdminClientsPage() {
                   <div>
                     <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Minutes vocales</p>
                     <p style={{ margin: 0, fontWeight: 600 }}>{c.usage?.voiceMinuteUsageLabel || 'Non disponible'}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)' }}>Chat interne</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{renderAssistantUsage(c.usage)}</p>
                   </div>
                 </div>
 

@@ -7,6 +7,7 @@ import { computeClientHealth, getClientHealthLabel } from '@/src/lib/admin/clien
 import { batchGetSetupProgress } from '@/src/lib/admin/setupProgressBatch'
 import { getSetupProgressBand } from '@/src/lib/setup-progress'
 import type { SetupProgressArtisanConfig } from '@/src/lib/setup-progress'
+import { getKadriaAssistantUsageSummary } from '@/src/lib/kadria-assistant/quotas'
 
 type AlertLevel = 'ok' | 'warning' | 'danger'
 
@@ -51,6 +52,9 @@ export async function GET() {
 
         const usageResult = u.artisanId ? await getMonthlyUsageSummary(u.artisanId) : null
         const usageData = usageResult?.success ? usageResult.data : null
+        const assistantUsage = u.artisanId
+          ? await getKadriaAssistantUsageSummary(u.artisanId, plan)
+          : { used: 0, limit: 0, tracked: false }
 
         const projectsUsed = usageData?.projects.used ?? 0
         const projectLimit = usageData ? (usageData.projects.unlimited ? null : usageData.projects.limit) : null
@@ -74,6 +78,10 @@ export async function GET() {
           devisThisMonth: devisUsed,
           devisLimit,
           devisUsageLabel: formatUsageLabel(devisUsed, devisLimit),
+          assistantMessagesThisMonth: assistantUsage.used,
+          assistantMessagesLimit: assistantUsage.tracked ? assistantUsage.limit : null,
+          assistantMessagesTracked: assistantUsage.tracked === true,
+          assistantMessagesUsageLabel: assistantUsage.tracked ? formatUsageLabel(assistantUsage.used, assistantUsage.limit) : null,
         }
 
         const features = {

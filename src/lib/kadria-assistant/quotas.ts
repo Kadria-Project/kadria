@@ -70,6 +70,7 @@ async function resolveAssistantColumn(tableName: string): Promise<string | null>
 export interface AssistantUsageSummary {
   used: number
   limit: number
+  tracked?: boolean
 }
 
 /**
@@ -86,12 +87,12 @@ export async function getKadriaAssistantUsageSummary(
   try {
     const tableName = await resolveUsageMonthlyTable()
     if (!tableName) {
-      return { used: 0, limit }
+      return { used: 0, limit, tracked: false }
     }
 
     const column = await resolveAssistantColumn(tableName)
     if (!column) {
-      return { used: 0, limit }
+      return { used: 0, limit, tracked: false }
     }
 
     const supabase = getSupabaseAdmin()
@@ -105,20 +106,20 @@ export async function getKadriaAssistantUsageSummary(
       .maybeSingle()
 
     if (error || !data) {
-      return { used: 0, limit }
+      return { used: 0, limit, tracked: true }
     }
 
     const row = data as unknown as Record<string, unknown>
     const rawUsed = row[column]
     const used = typeof rawUsed === 'number' && Number.isFinite(rawUsed) ? rawUsed : 0
 
-    return { used, limit }
+    return { used, limit, tracked: true }
   } catch (error) {
     console.error('[KADRIA-ASSISTANT-QUOTA] getKadriaAssistantUsageSummary error', {
       artisanId,
       message: error instanceof Error ? error.message : String(error),
     })
-    return { used: 0, limit }
+    return { used: 0, limit, tracked: false }
   }
 }
 
