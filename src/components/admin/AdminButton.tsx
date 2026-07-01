@@ -5,27 +5,28 @@ export type AdminButtonSize = 'small' | 'medium' | 'large';
 
 const VARIANT_STYLES: Record<AdminButtonVariant, CSSProperties> = {
   primary: {
-    background: 'var(--accent)',
-    color: 'var(--bg)',
+    background: 'linear-gradient(180deg, #34d399, #22c55e)',
+    color: '#04130a',
     border: 'none',
     fontWeight: 700,
+    boxShadow: '0 10px 24px rgba(34,197,94,0.22)',
   },
   secondary: {
-    background: 'var(--border)',
+    background: 'rgba(255,255,255,0.04)',
     color: 'var(--text-1)',
-    border: '1px solid var(--border)',
+    border: '1px solid rgba(255,255,255,0.08)',
     fontWeight: 600,
   },
   danger: {
-    background: 'var(--status-lost)',
-    color: 'var(--text-1)',
-    border: 'none',
+    background: 'rgba(127,29,29,0.45)',
+    color: '#fecaca',
+    border: '1px solid rgba(248,113,113,0.22)',
     fontWeight: 700,
   },
   ghost: {
     background: 'transparent',
     color: 'var(--text-2)',
-    border: 'none',
+    border: '1px solid rgba(255,255,255,0.08)',
     fontWeight: 600,
   },
 };
@@ -66,6 +67,7 @@ export default function AdminButton({
         ...SIZE_STYLES[size],
         cursor: 'pointer',
         width: fullWidth ? '100%' : undefined,
+        transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease, color 160ms ease',
         ...style,
       }}
       {...rest}

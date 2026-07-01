@@ -13,17 +13,32 @@ export default function AdminEmptyState({ icon, title, description, action, comp
     <div
       style={{
         textAlign: 'center',
-        padding: compact ? '20px 0' : '32px 0',
+        padding: compact ? '20px 12px' : '40px 20px',
+        maxWidth: compact ? '100%' : '420px',
+        margin: '0 auto',
       }}
     >
       {icon && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', color: 'var(--text-3)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '44px',
+            height: '44px',
+            margin: '0 auto 12px',
+            color: 'var(--text-2)',
+            borderRadius: '999px',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+          }}
+        >
           {icon}
         </div>
       )}
-      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, fontWeight: 600 }}>{title}</p>
+      <p style={{ fontSize: compact ? '13px' : '15px', color: 'var(--text-2)', margin: 0, fontWeight: 700 }}>{title}</p>
       {description && (
-        <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '4px 0 0' }}>{description}</p>
+        <p style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--text-3)', margin: '8px 0 0' }}>{description}</p>
       )}
       {action && <div style={{ marginTop: '12px' }}>{action}</div>}
     </div>

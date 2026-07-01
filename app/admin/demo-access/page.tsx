@@ -134,6 +134,13 @@ export default function AdminDemoAccessPage() {
     || filteredRequests[0]
     || null;
 
+  const requestStats = useMemo(() => ({
+    total: requests.length,
+    pending: requests.filter((request) => request.effective_status === 'pending').length,
+    approved: requests.filter((request) => request.effective_status === 'approved').length,
+    closed: requests.filter((request) => request.effective_status === 'rejected' || request.effective_status === 'revoked' || request.effective_status === 'expired').length,
+  }), [requests]);
+
   useEffect(() => {
     if (selectedRequest) {
       setSelectedId(selectedRequest.id);
@@ -258,15 +265,46 @@ export default function AdminDemoAccessPage() {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: '24px' }}>
+    <div style={{ display: 'grid', gap: '20px' }}>
+      <div style={{ marginBottom: '4px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Demandes d&apos;acces demo</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '4px 0 0' }}>
+        <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '6px 0 0', maxWidth: '760px', lineHeight: 1.6 }}>
           Qualifiez les prospects avant de leur ouvrir la demonstration complete.
         </p>
       </div>
 
-      <AdminCard radius="md" padding="lg" style={{ marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '14px' }} className="admin-demo-access-stats">
+        <AdminCard padding="md" radius="md">
+          <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', margin: '0 0 12px', fontWeight: 700 }}>Demandes</p>
+          <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.03em', margin: 0 }}>{requestStats.total}</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '8px 0 0' }}>Volume total reçu</p>
+        </AdminCard>
+        <AdminCard padding="md" radius="md">
+          <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', margin: '0 0 12px', fontWeight: 700 }}>En attente</p>
+          <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: '#fbbf24' }}>{requestStats.pending}</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '8px 0 0' }}>Demandes à qualifier</p>
+        </AdminCard>
+        <AdminCard padding="md" radius="md">
+          <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', margin: '0 0 12px', fontWeight: 700 }}>Approuvées</p>
+          <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: '#4ade80' }}>{requestStats.approved}</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '8px 0 0' }}>Accès actifs ou délivrés</p>
+        </AdminCard>
+        <AdminCard padding="md" radius="md">
+          <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-3)', margin: '0 0 12px', fontWeight: 700 }}>Clôturées</p>
+          <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: '#fca5a5' }}>{requestStats.closed}</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '8px 0 0' }}>Refusées, révoquées ou expirées</p>
+        </AdminCard>
+      </div>
+
+      <AdminCard radius="md" padding="lg">
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Filtrer les demandes</p>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-2)' }}>Affinez la liste par statut ou recherchez un prospect.</p>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>{filteredRequests.length} résultat{filteredRequests.length > 1 ? 's' : ''}</div>
+        </div>
+
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
           {FILTERS.map((item) => (
             <button
@@ -274,8 +312,8 @@ export default function AdminDemoAccessPage() {
               onClick={() => setFilter(item.key)}
               style={{
                 borderRadius: '999px',
-                border: filter === item.key ? '1px solid rgba(34,197,94,0.4)' : '1px solid var(--border)',
-                background: filter === item.key ? 'rgba(34,197,94,0.08)' : 'transparent',
+                border: filter === item.key ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                background: filter === item.key ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)',
                 color: filter === item.key ? 'var(--accent)' : 'var(--text-2)',
                 padding: '8px 14px',
                 fontSize: '12px',
@@ -291,57 +329,61 @@ export default function AdminDemoAccessPage() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Rechercher par email ou entreprise"
+          placeholder="Rechercher par email, entreprise ou metier"
           style={{
             width: '100%',
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '10px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '12px',
             color: 'var(--text-1)',
             fontSize: '13px',
-            padding: '10px 12px',
+            padding: '12px 14px',
+            boxSizing: 'border-box',
           }}
         />
       </AdminCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(340px, 0.9fr)', gap: '20px' }} className="admin-demo-access-grid">
-        <AdminTable
-          columns={['Prospect', 'Entreprise', 'Metier', 'Objectif', 'Statut', 'Cree le', 'Expire le', 'Acces']}
-          loading={loading ? <LoadingTable columns={8} rows={6} style={{ border: 'none', borderRadius: 0 }} /> : undefined}
-          emptyState={!loading && filteredRequests.length === 0 ? (
-            <AdminEmptyState title="Aucune demande" description="Aucune demande ne correspond aux filtres actuels." />
-          ) : undefined}
-        >
-          <tbody>
-            {filteredRequests.map((request) => (
-              <tr
-                key={request.id}
-                onClick={() => setSelectedId(request.id)}
-                style={{
-                  borderTop: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  background: selectedId === request.id ? 'rgba(34,197,94,0.06)' : 'transparent',
-                }}
-              >
-                <td style={{ padding: '12px 20px' }}>
-                  <div style={{ fontWeight: 600 }}>{`${request.first_name} ${request.last_name}`.trim()}</div>
-                  <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>{request.email}</div>
-                </td>
-                <td style={{ padding: '12px 20px' }}>{request.company_name || '—'}</td>
-                <td style={{ padding: '12px 20px' }}>{request.trade || '—'}</td>
-                <td style={{ padding: '12px 20px' }}>{request.objective || '—'}</td>
-                <td style={{ padding: '12px 20px' }}>
-                  <AdminBadge label={STATUS_LABELS[request.effective_status]} tone={STATUS_TONES[request.effective_status]} variant="status" />
-                </td>
-                <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{formatDateTime(request.created_at)}</td>
-                <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{formatDateTime(request.expires_at)}</td>
-                <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>
-                  {request.access_count} / {formatDateTime(request.last_access_at)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </AdminTable>
+        <AdminCard radius="md" padding="md" title="Liste des demandes" subtitle="Sélectionnez un prospect pour afficher son détail et agir.">
+          <AdminTable
+            columns={['Prospect', 'Entreprise', 'Metier', 'Objectif', 'Statut', 'Cree le', 'Expire le', 'Acces']}
+            loading={loading ? <LoadingTable columns={8} rows={6} style={{ border: 'none', borderRadius: 0 }} /> : undefined}
+            emptyState={!loading && filteredRequests.length === 0 ? (
+              <AdminEmptyState title="Aucune demande" description="Aucune demande ne correspond aux filtres actuels." />
+            ) : undefined}
+            style={{ background: 'transparent', border: 'none', borderRadius: 0, boxShadow: 'none' }}
+          >
+            <tbody>
+              {filteredRequests.map((request) => (
+                <tr
+                  key={request.id}
+                  onClick={() => setSelectedId(request.id)}
+                  style={{
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    cursor: 'pointer',
+                    background: selectedId === request.id ? 'rgba(34,197,94,0.08)' : 'transparent',
+                  }}
+                >
+                  <td style={{ padding: '12px 20px' }}>
+                    <div style={{ fontWeight: 600 }}>{`${request.first_name} ${request.last_name}`.trim()}</div>
+                    <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>{request.email}</div>
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>{request.company_name || '—'}</td>
+                  <td style={{ padding: '12px 20px' }}>{request.trade || '—'}</td>
+                  <td style={{ padding: '12px 20px' }}>{request.objective || '—'}</td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <AdminBadge label={STATUS_LABELS[request.effective_status]} tone={STATUS_TONES[request.effective_status]} variant="status" />
+                  </td>
+                  <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{formatDateTime(request.created_at)}</td>
+                  <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>{formatDateTime(request.expires_at)}</td>
+                  <td style={{ padding: '12px 20px', color: 'var(--text-2)' }}>
+                    {request.access_count} / {formatDateTime(request.last_access_at)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </AdminTable>
+        </AdminCard>
 
         <AdminCard
           radius="md"
@@ -373,7 +415,7 @@ export default function AdminDemoAccessPage() {
                 <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700, margin: '0 0 6px' }}>
                   Message libre
                 </p>
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', fontSize: '13px', color: 'var(--text-2)', minHeight: '72px', whiteSpace: 'pre-wrap' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px', fontSize: '13px', color: 'var(--text-2)', minHeight: '72px', whiteSpace: 'pre-wrap' }}>
                   {selectedRequest.message || 'Aucun message'}
                 </div>
               </div>
@@ -389,9 +431,9 @@ export default function AdminDemoAccessPage() {
                   style={{
                     width: '100%',
                     boxSizing: 'border-box',
-                    background: 'var(--bg)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '12px',
                     color: 'var(--text-1)',
                     fontSize: '13px',
                     padding: '12px',
@@ -412,7 +454,7 @@ export default function AdminDemoAccessPage() {
                 <AdminButton variant="secondary" onClick={() => handleApprove(true)} disabled={submitting}>
                   Approuver + envoyer email
                 </AdminButton>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} className="admin-demo-access-actions">
                   <AdminButton variant="danger" onClick={handleRevoke} disabled={submitting}>
                     Revoquer
                   </AdminButton>
@@ -426,7 +468,7 @@ export default function AdminDemoAccessPage() {
                 <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', fontWeight: 700, margin: '0 0 6px' }}>
                   Lien d'acces genere
                 </p>
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', fontSize: '12px', color: generatedLink ? 'var(--text-1)' : 'var(--text-3)', wordBreak: 'break-all' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px', fontSize: '12px', color: generatedLink ? 'var(--text-1)' : 'var(--text-3)', wordBreak: 'break-all' }}>
                   {generatedLink || 'Aucun lien genere dans cette session. Cliquez sur Approuver pour generer ou regenerer le lien.'}
                 </div>
                 <div style={{ marginTop: '10px' }}>
@@ -445,8 +487,15 @@ export default function AdminDemoAccessPage() {
       </div>
 
       <style>{`
+        @media (max-width: 1279px) {
+          .admin-demo-access-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
         @media (max-width: 1199px) {
           .admin-demo-access-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 639px) {
+          .admin-demo-access-stats { grid-template-columns: 1fr !important; }
+          .admin-demo-access-actions { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

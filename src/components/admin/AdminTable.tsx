@@ -33,10 +33,11 @@ export default function AdminTable({
     <div
       className={className}
       style={{
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border)',
+        background: 'linear-gradient(180deg, rgba(24,24,27,0.96), rgba(9,9,11,0.98))',
+        border: '1px solid rgba(255,255,255,0.07)',
         borderRadius: '16px',
         overflow: 'hidden',
+        boxShadow: '0 18px 40px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.03)',
         ...style,
       }}
     >
@@ -49,7 +50,7 @@ export default function AdminTable({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth }}>
             {columns && (
               <thead>
-                <tr style={{ background: 'var(--border)' }}>
+                <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
                   {columns.map((col) => (
                     <th key={col} style={thStyle}>{col}</th>
                   ))}

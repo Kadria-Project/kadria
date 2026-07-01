@@ -10,10 +10,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', color: '#ffffff' }}>
+    <div
+      className="admin-root"
+      style={{
+        minHeight: '100vh',
+        background:
+          'radial-gradient(circle at top left, rgba(34,197,94,0.08), transparent 22%), radial-gradient(circle at top right, rgba(16,185,129,0.05), transparent 20%), #09090b',
+        color: '#ffffff',
+      }}
+    >
       <AdminSidebar adminEmail={session.email} />
-      <main className="admin-main" style={{ marginLeft: '240px', padding: '32px', minHeight: '100vh' }}>
-        {children}
+      <main className="admin-main" style={{ marginLeft: '240px', padding: '32px 32px 40px', minHeight: '100vh' }}>
+        <div
+          className="admin-page-shell"
+          style={{
+            maxWidth: '1440px',
+            margin: '0 auto',
+            minHeight: 'calc(100vh - 64px)',
+          }}
+        >
+          {children}
+        </div>
       </main>
       <style>{`
         @media (max-width: 767px) {
