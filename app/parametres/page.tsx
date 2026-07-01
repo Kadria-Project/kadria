@@ -1245,24 +1245,6 @@ function ParametresPageContent() {
                 >
                   {configurationPrimaryCta ? configurationPrimaryCta.cta : 'Voir le detail'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setConfigurationCardExpanded((value) => !value)}
-                  aria-expanded={configurationCardExpanded}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-1)',
-                    fontWeight: 600,
-                    borderRadius: '10px',
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {configurationCardExpanded ? 'Reduire ↑' : 'Afficher le detail ↓'}
-                </button>
               </div>
             </div>
 
@@ -1283,7 +1265,8 @@ function ParametresPageContent() {
 
             <div style={{
               display: 'flex',
-              alignItems: 'center',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
               justifyContent: 'space-between',
               gap: '12px',
               flexWrap: 'wrap',
@@ -1313,6 +1296,31 @@ function ParametresPageContent() {
                 </button>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setConfigurationCardExpanded((value) => !value)}
+              aria-expanded={configurationCardExpanded}
+              style={{
+                marginTop: '14px',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: configurationCardExpanded ? 'rgba(34,197,94,0.08)' : 'transparent',
+                border: '1px solid var(--border)',
+                color: 'var(--text-1)',
+                fontWeight: 700,
+                borderRadius: '12px',
+                padding: '11px 14px',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              <span>{configurationCardExpanded ? 'Reduire' : 'Afficher le detail'}</span>
+              <span aria-hidden>{configurationCardExpanded ? '↑' : '↓'}</span>
+            </button>
 
             {configurationCardExpanded && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
