@@ -300,6 +300,7 @@ function ProjectDetail() {
   const [artisanConfig, setArtisanConfig] = useState<{
     siret?: string;
     raisonSociale?: string;
+    googleReviewUrl?: string;
     adressePro?: string;
     address?: string;
     assuranceNonRequise?: boolean;
@@ -334,11 +335,21 @@ function ProjectDetail() {
   const [followingUpDevisId, setFollowingUpDevisId] = useState<string | null>(null);
   const [followUpConfirmDevis, setFollowUpConfirmDevis] = useState<DevisListItem | null>(null);
   const [followUpConfirmError, setFollowUpConfirmError] = useState('');
+  const [reviewRequestToast, setReviewRequestToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [sendingReviewRequest, setSendingReviewRequest] = useState(false);
+  const [reviewRequestConfirmOpen, setReviewRequestConfirmOpen] = useState(false);
+  const [reviewRequestError, setReviewRequestError] = useState('');
   useEffect(() => {
     if (!followUpToast) return;
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
     return () => window.clearTimeout(timeout);
   }, [followUpToast]);
+
+  useEffect(() => {
+    if (!reviewRequestToast) return;
+    const timeout = window.setTimeout(() => setReviewRequestToast(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [reviewRequestToast]);
 
   useEffect(() => {
     if (!followUpConfirmDevis) return;
@@ -351,6 +362,18 @@ function ProjectDetail() {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [followUpConfirmDevis, followingUpDevisId]);
+
+  useEffect(() => {
+    if (!reviewRequestConfirmOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !sendingReviewRequest) {
+        setReviewRequestConfirmOpen(false);
+        setReviewRequestError('');
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [reviewRequestConfirmOpen, sendingReviewRequest]);
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionSearch, setSuggestionSearch] = useState('');
@@ -549,6 +572,59 @@ function ProjectDetail() {
       });
     } finally {
       setFollowingUpDevisId(null);
+    }
+  }
+
+  function requestGoogleReview() {
+    if (!project?.clientEmail) {
+      setReviewRequestToast({ type: 'error', message: 'Email client manquant.' });
+      return;
+    }
+
+    if (!artisanConfig?.googleReviewUrl) {
+      setReviewRequestToast({
+        type: 'error',
+        message: "Ajoutez votre URL d'avis Google dans vos parametres pour utiliser cette action.",
+      });
+      return;
+    }
+
+    setReviewRequestError('');
+    setReviewRequestConfirmOpen(true);
+  }
+
+  async function sendGoogleReviewRequest() {
+    if (!project?.id) return;
+
+    setSendingReviewRequest(true);
+    try {
+      const response = await fetch(`/api/projects/${project.id}/request-review`, { method: 'POST' });
+      const text = await response.text();
+      let data: { success?: boolean; error?: string; message?: string } = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { success: false, error: text || 'Reponse serveur invalide' };
+      }
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Impossible d'envoyer la demande d'avis");
+      }
+
+      await loadActivities();
+      setReviewRequestError('');
+      setReviewRequestConfirmOpen(false);
+      setReviewRequestToast({
+        type: 'success',
+        message: data.message || "Demande d'avis envoyee au client.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Impossible d'envoyer la demande d'avis";
+      setReviewRequestError(message);
+      setReviewRequestToast({ type: 'error', message });
+    } finally {
+      setSendingReviewRequest(false);
     }
   }
 
@@ -942,6 +1018,7 @@ function ProjectDetail() {
   const NEXT_ACTION_CTA_HANDLER: Partial<Record<string, () => void>> = {
     schedule_appointment: () => { if (!appointment) openAppointmentModal(); },
     follow_up_quote: () => { if (latestDevis && decision.canFollowUpQuote) requestQuoteFollowUp(latestDevis); },
+    ask_review: () => { requestGoogleReview(); },
     review_quote_decline: () => { router.push(`/dashboard-v2/projet/${id}/devis/new`); },
     // Reprend le canal email/téléphone déjà utilisé ailleurs sur cette page
     // pour contacter le client (cf. boutons "✉️ Message" / "tel:") plutôt
@@ -961,6 +1038,11 @@ function ProjectDetail() {
   // Raison affichée quand le CTA n'est pas actionnable, plutôt qu'un bouton
   // grisé silencieux (ex: "Demander photos" sans email ni téléphone client).
   const NEXT_ACTION_CTA_DISABLED_REASON: Partial<Record<string, string>> = {
+    ask_review: !project.clientEmail
+      ? 'Email client manquant'
+      : !artisanConfig?.googleReviewUrl
+        ? "URL d'avis Google non configuree"
+        : undefined,
     request_photos: project.clientEmail || project.clientPhone
       ? undefined
       : 'Aucun email ni téléphone client renseigné',
@@ -1277,7 +1359,7 @@ function ProjectDetail() {
     }
   }
 
-  function handleNextBestAction(type: NextActionType) {
+  function handleNextBestAction(type: NextActionType | 'ask_review') {
     switch (type) {
       case 'call': {
         if (project.clientPhone) {
@@ -1310,6 +1392,10 @@ function ProjectDetail() {
         if (latestDevis) {
           requestQuoteFollowUp(latestDevis);
         }
+        break;
+      }
+      case 'ask_review': {
+        requestGoogleReview();
         break;
       }
       case 'ask_info': {
@@ -1614,6 +1700,11 @@ function ProjectDetail() {
               decision.canFollowUpQuote
                 ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && requestQuoteFollowUp(latestDevis) }
                 : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
+              {
+                label: '⭐ Avis Google',
+                disabled: !project.clientEmail || !artisanConfig?.googleReviewUrl,
+                onClick: requestGoogleReview,
+              },
             ].map((a) => (
               <button
                 key={a.label}
@@ -1629,6 +1720,24 @@ function ProjectDetail() {
               </button>
             ))}
           </div>
+          {(!artisanConfig?.googleReviewUrl || !project.clientEmail) && (
+            <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
+              {!artisanConfig?.googleReviewUrl ? (
+                <>
+                  Ajoutez votre URL d&apos;avis Google dans vos paramètres pour utiliser cette action.
+                  <button
+                    type="button"
+                    onClick={() => router.push('/parametres?section=entreprise')}
+                    style={{ ...quickActionButtonStyle, marginLeft: '8px', padding: '4px 10px' }}
+                  >
+                    Configurer
+                  </button>
+                </>
+              ) : (
+                'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
+              )}
+            </div>
+          )}
 
           {/* Rendez-vous */}
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
@@ -4143,6 +4252,87 @@ function ProjectDetail() {
         </div>
       )}
 
+      {reviewRequestConfirmOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            if (!sendingReviewRequest) {
+              setReviewRequestConfirmOpen(false);
+              setReviewRequestError('');
+            }
+          }}
+        >
+          <div
+            className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-lg w-full space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-[var(--text-1)] font-bold text-lg m-0">Demander un avis Google</h2>
+                <p className="text-sm text-[var(--text-2)] mt-1 mb-0">
+                  Un email sera envoyé au client avec votre lien d&apos;avis Google.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!sendingReviewRequest) {
+                    setReviewRequestConfirmOpen(false);
+                    setReviewRequestError('');
+                  }
+                }}
+                disabled={sendingReviewRequest}
+                className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3 text-sm">
+              <p className="m-0 text-[var(--text-2)]">
+                Client : <span className="text-[var(--text-1)] font-semibold">{clientLabel}</span>
+              </p>
+              <p className="m-0 mt-2 text-[var(--text-2)]">
+                Email : <span className="text-[var(--text-1)] font-semibold">{project?.clientEmail || 'Non renseigné'}</span>
+              </p>
+              <p className="m-0 mt-2 text-[var(--text-2)]">
+                Projet : <span className="text-[var(--text-1)] font-semibold">{projectTitle}</span>
+              </p>
+            </div>
+
+            {reviewRequestError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {reviewRequestError}
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!sendingReviewRequest) {
+                    setReviewRequestConfirmOpen(false);
+                    setReviewRequestError('');
+                  }
+                }}
+                disabled={sendingReviewRequest}
+                className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-2.5 text-sm font-semibold text-[var(--text-1)] transition hover:border-green-500/40 hover:text-white disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={sendGoogleReviewRequest}
+                disabled={sendingReviewRequest}
+                className="rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-bold text-black transition hover:brightness-110 disabled:opacity-60"
+              >
+                {sendingReviewRequest ? 'Envoi en cours...' : 'Envoyer la demande'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAppointmentModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
@@ -4366,6 +4556,18 @@ function ProjectDetail() {
           }`}
         >
           {followUpToast.message}
+        </div>
+      )}
+
+      {reviewRequestToast && (
+        <div
+          className={`fixed bottom-20 left-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-2xl sm:bottom-24 sm:left-auto sm:right-6 sm:max-w-sm ${
+            reviewRequestToast.type === 'error'
+              ? 'border-red-500/30 bg-[var(--bg-elevated)] text-red-200'
+              : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'
+          }`}
+        >
+          {reviewRequestToast.message}
         </div>
       )}
 

@@ -181,6 +181,7 @@ export interface SupabaseArtisanConfig {
   whiteLabelEnabled: boolean
   widgetBrandName: string
   widgetBrandLogoUrl: string
+  googleReviewUrl: string
 }
 
 export interface SupabaseProject {
@@ -291,6 +292,16 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     whiteLabelEnabled: getBoolean(row, 'white_label_enabled', 'White Label Enabled'),
     widgetBrandName: getString(row, 'widget_brand_name', 'Widget Brand Name'),
     widgetBrandLogoUrl: getString(row, 'widget_brand_logo_url', 'Widget Brand Logo URL'),
+    googleReviewUrl: getString(
+      row,
+      'google_review_url',
+      'Google Review URL',
+      'googleReviewsUrl',
+      'google_review_link',
+      'review_url',
+      'reviews_url',
+      'google_business_review_url',
+    ),
   }
 }
 

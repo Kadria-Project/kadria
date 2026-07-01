@@ -173,6 +173,18 @@ function validateLegalConfig(config: LegalConfig): Record<string, string> {
   return errors
 }
 
+function isValidOptionalHttpUrl(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return true
+
+  try {
+    const url = new URL(trimmed)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 // Normalise les champs spécialités/prestations exclues du Profil métier,
 // stockés en tableau côté Supabase mais parfois saisis/édités sous forme de
 // texte séparé par des virgules — accepte les deux formats sans dupliquer
@@ -264,6 +276,7 @@ function ParametresPageContent() {
     primaryColor: '#22c55e',
     secondaryColor: '#18181b',
     websiteUrl: '',
+    googleReviewUrl: '',
     whiteLabelEnabled: false,
     widgetBrandName: '',
     widgetBrandLogoUrl: '',
@@ -391,6 +404,7 @@ function ParametresPageContent() {
             primaryColor: data.config.primaryColor || '#22c55e',
             secondaryColor: data.config.secondaryColor || '#18181b',
             websiteUrl: data.config.websiteUrl || '',
+            googleReviewUrl: data.config.googleReviewUrl || '',
             whiteLabelEnabled: Boolean(data.config.whiteLabelEnabled),
             widgetBrandName: data.config.widgetBrandName || '',
             widgetBrandLogoUrl: data.config.widgetBrandLogoUrl || '',
@@ -501,6 +515,12 @@ function ParametresPageContent() {
 
     if (Object.keys(errors).length > 0) {
       setActiveSection('legal')
+      return
+    }
+
+    if (!isValidOptionalHttpUrl(config.googleReviewUrl)) {
+      setActiveSection('entreprise')
+      setSaveError("L'URL d'avis Google doit etre une URL valide")
       return
     }
 
@@ -1008,6 +1028,18 @@ function ParametresPageContent() {
                       placeholder="https://monsite.fr"
                       style={inputStyle}
                     />
+                  </div>
+                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
+                    <label style={labelStyle}>URL avis Google</label>
+                    <input
+                      value={config.googleReviewUrl}
+                      onChange={e => setConfig(c => ({ ...c, googleReviewUrl: e.target.value }))}
+                      placeholder="https://g.page/r/..."
+                      style={inputStyle}
+                    />
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
+                      Collez ici le lien direct permettant a vos clients de laisser un avis Google.
+                    </p>
                   </div>
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
                     <label style={labelStyle}>Nom de l&apos;assistant dans le widget</label>

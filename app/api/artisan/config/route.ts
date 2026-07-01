@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, updateArtisanConfig, getUserByArtisanIdentifier, updateUser } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
 
+function isValidOptionalUrl(value: unknown): boolean {
+  if (value === undefined || value === null || value === '') return true
+  if (typeof value !== 'string') return false
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export async function GET() {
   try {
     const session = await getSession()
@@ -56,6 +68,13 @@ export async function PATCH(request: NextRequest) {
     if (body.devisPrefixe !== undefined && String(body.devisPrefixe).length > 6) {
       return NextResponse.json(
         { success: false, error: 'Le prefixe de numerotation ne peut pas depasser 6 caracteres' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidOptionalUrl(body.googleReviewUrl)) {
+      return NextResponse.json(
+        { success: false, error: "L'URL d'avis Google doit etre une URL valide" },
         { status: 400 }
       )
     }
@@ -186,6 +205,7 @@ export async function PATCH(request: NextRequest) {
     if (body.primaryColor !== undefined) fields['primary_color'] = body.primaryColor
     if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
     if (body.websiteUrl !== undefined) fields['website_url'] = body.websiteUrl
+    if (body.googleReviewUrl !== undefined) fields['google_review_url'] = body.googleReviewUrl
     if (body.assistantAvatarType !== undefined) fields['assistant_avatar_type'] = body.assistantAvatarType
     if (body.assistantAvatarUrl !== undefined) fields['assistant_avatar_url'] = body.assistantAvatarUrl
 
