@@ -33,10 +33,29 @@ async function createActivityLogSupabase(projectId: string, action: string, desc
   }
 }
 
+function buildFollowUpSentDescription(stage: string, devisNumber: string) {
+  if (stage === 'j2_unopened') return `Relance J+2 envoyee - devis ${devisNumber} non ouvert`
+  if (stage === 'j5_opened_no_decision') return `Relance J+5 envoyee - devis ${devisNumber} ouvert sans reponse`
+  if (stage === 'j10_final') return `Relance finale J+10 envoyee - devis ${devisNumber}`
+  return `Relance devis envoyee - ${devisNumber}`
+}
+
+function buildFollowUpFailedDescription(stage: string, devisNumber: string, detail: string) {
+  const normalizedDetail = detail.trim() || 'Erreur inconnue'
+  if (stage === 'j2_unopened') return `Echec relance J+2 - devis ${devisNumber} non ouvert - ${normalizedDetail}`
+  if (stage === 'j5_opened_no_decision') return `Echec relance J+5 - devis ${devisNumber} ouvert sans reponse - ${normalizedDetail}`
+  if (stage === 'j10_final') return `Echec relance finale J+10 - devis ${devisNumber} - ${normalizedDetail}`
+  return `Echec relance devis - ${devisNumber} - ${normalizedDetail}`
+}
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let projectIdForLog: string | null = null
+  let devisNumberForLog = ''
+  let stageForLog = 'none'
+
   try {
     const access = await requireFeatureAccess('quoteGeneration')
     if (!access.ok) {
@@ -48,12 +67,14 @@ export async function POST(
     if (!devis) {
       return NextResponse.json({ success: false, error: 'Devis introuvable' }, { status: 404 })
     }
+    devisNumberForLog = devis.devisNumber || id
 
     if (devis.artisanId !== access.session.artisanId) {
       return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
 
     const followupState = getQuoteFollowupState(devis)
+    stageForLog = followupState.stage
     if (!followupState.canFollowUp) {
       return NextResponse.json({ success: false, error: followupState.reason }, { status: 400 })
     }
@@ -70,6 +91,7 @@ export async function POST(
     if (!project || project.artisanId !== access.session.artisanId) {
       return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
+    projectIdForLog = project.id
 
     if (!isValidDevisToken(devis.token)) {
       try {
@@ -165,7 +187,16 @@ export async function POST(
 
     if (result.error) {
       console.error('[DEVIS FOLLOW-UP] Resend error:', result.error)
-      return NextResponse.json({ success: false, error: 'Erreur envoi e-mail' }, { status: 500 })
+      const resendMessage =
+        typeof result.error.message === 'string' && result.error.message.trim()
+          ? result.error.message
+          : 'Erreur envoi e-mail'
+      await createActivityLogSupabase(
+        project.id,
+        'DEVIS_FOLLOW_UP_FAILED',
+        buildFollowUpFailedDescription(followupState.stage, devis.devisNumber, resendMessage),
+      )
+      return NextResponse.json({ success: false, error: "Impossible d'envoyer la relance. Reessayez." }, { status: 500 })
     }
 
     const now = new Date().toISOString()
@@ -175,16 +206,11 @@ export async function POST(
       followUpCount: (devis.followUpCount || 0) + 1,
     })
 
-    const stageDescription =
-      followupState.stage === 'j2_unopened'
-        ? `Relance J+2 envoyee — devis ${devis.devisNumber} non ouvert`
-        : followupState.stage === 'j5_opened_no_decision'
-          ? `Relance J+5 envoyee — devis ${devis.devisNumber} ouvert sans reponse`
-          : followupState.stage === 'j10_final'
-            ? `Relance finale J+10 envoyee — devis ${devis.devisNumber}`
-            : `Relance devis envoyee — ${devis.devisNumber}`
-
-    await createActivityLogSupabase(project.id, 'DEVIS_FOLLOW_UP_SENT', stageDescription)
+    await createActivityLogSupabase(
+      project.id,
+      'DEVIS_FOLLOW_UP_SENT',
+      buildFollowUpSentDescription(followupState.stage, devis.devisNumber),
+    )
 
     await notifyArtisanQuoteFollowedUp({
       artisanId: access.session.artisanId,
@@ -202,6 +228,14 @@ export async function POST(
     })
   } catch (error) {
     console.error('[DEVIS FOLLOW-UP]', error instanceof Error ? error.message : String(error))
+    if (projectIdForLog) {
+      const errorMessage = error instanceof Error ? error.message : 'Erreur serveur'
+      await createActivityLogSupabase(
+        projectIdForLog,
+        'DEVIS_FOLLOW_UP_FAILED',
+        buildFollowUpFailedDescription(stageForLog, devisNumberForLog || 'inconnu', errorMessage),
+      )
+    }
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Erreur serveur' },
       { status: 500 }

@@ -44,10 +44,18 @@ async function createActivityLogSupabase(projectId: string, action: string, desc
 }
 
 function stageDescription(stage: string, devisNumber: string): string {
-  if (stage === 'j2_unopened') return `Relance J+2 envoyee — devis ${devisNumber} non ouvert`
-  if (stage === 'j5_opened_no_decision') return `Relance J+5 envoyee — devis ${devisNumber} ouvert sans reponse`
-  if (stage === 'j10_final') return `Relance finale J+10 envoyee — devis ${devisNumber}`
-  return `Relance devis envoyee — ${devisNumber}`
+  if (stage === 'j2_unopened') return `Relance J+2 envoyee - devis ${devisNumber} non ouvert`
+  if (stage === 'j5_opened_no_decision') return `Relance J+5 envoyee - devis ${devisNumber} ouvert sans reponse`
+  if (stage === 'j10_final') return `Relance finale J+10 envoyee - devis ${devisNumber}`
+  return `Relance devis envoyee - ${devisNumber}`
+}
+
+function failedStageDescription(stage: string, devisNumber: string, detail: string): string {
+  const normalizedDetail = detail.trim() || 'Erreur inconnue'
+  if (stage === 'j2_unopened') return `Echec relance J+2 - devis ${devisNumber} non ouvert - ${normalizedDetail}`
+  if (stage === 'j5_opened_no_decision') return `Echec relance J+5 - devis ${devisNumber} ouvert sans reponse - ${normalizedDetail}`
+  if (stage === 'j10_final') return `Echec relance finale J+10 - devis ${devisNumber} - ${normalizedDetail}`
+  return `Echec relance devis - ${devisNumber} - ${normalizedDetail}`
 }
 
 // Liste les devis eligibles a une relance automatique sans rien envoyer.
@@ -96,6 +104,8 @@ export async function POST(request: NextRequest) {
       .filter(({ state }) => state.shouldAutoFollowUp)
 
     for (const { devis, state } of due) {
+      let projectIdForLog: string | null = null
+
       try {
         if (!devis.clientEmail) {
           results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'skipped', detail: 'Email client manquant' })
@@ -112,6 +122,7 @@ export async function POST(request: NextRequest) {
           results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'skipped', detail: 'Projet introuvable' })
           continue
         }
+        projectIdForLog = project.id
 
         const { data: projectRow } = await supabaseAdmin
           .from(TABLES.projects)
@@ -155,6 +166,15 @@ export async function POST(request: NextRequest) {
 
         if (sendResult.error) {
           console.error('[QUOTE FOLLOW-UPS] Resend error:', sendResult.error)
+          const resendMessage =
+            typeof sendResult.error.message === 'string' && sendResult.error.message.trim()
+              ? sendResult.error.message
+              : 'Erreur envoi e-mail'
+          await createActivityLogSupabase(
+            project.id,
+            'DEVIS_FOLLOW_UP_FAILED',
+            failedStageDescription(state.stage, devis.devisNumber, resendMessage),
+          )
           results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'error', detail: 'Erreur envoi e-mail' })
           continue
         }
@@ -173,12 +193,20 @@ export async function POST(request: NextRequest) {
         results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'sent', detail: 'OK' })
       } catch (innerError) {
         console.error('[QUOTE FOLLOW-UPS] Erreur sur un devis:', innerError instanceof Error ? innerError.message : String(innerError))
+        const detail = innerError instanceof Error ? innerError.message : 'Erreur inconnue'
+        if (projectIdForLog) {
+          await createActivityLogSupabase(
+            projectIdForLog,
+            'DEVIS_FOLLOW_UP_FAILED',
+            failedStageDescription(state.stage, devis.devisNumber, detail),
+          )
+        }
         results.push({
           devisId: devis.id,
           devisNumber: devis.devisNumber,
           stage: state.stage,
           status: 'error',
-          detail: innerError instanceof Error ? innerError.message : 'Erreur inconnue',
+          detail,
         })
       }
     }
