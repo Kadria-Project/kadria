@@ -246,6 +246,14 @@ interface ConfigurationKadriaItem {
 
 const CONFIGURATION_CARD_STORAGE_KEY = 'kadria-configuration-card-expanded'
 
+// Associe chaque item de la checklist "Configuration Kadria" au champ à
+// mettre en surbrillance/focus une fois la section cible affichée (best
+// effort : si l'id n'existe pas dans le DOM, le scroll/focus est simplement
+// ignoré sans erreur).
+const CONFIGURATION_ITEM_FOCUS_FIELD: Record<string, string> = {
+  google_review: 'field-google-review-url',
+}
+
 function hasTextValue(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0
 }
@@ -647,6 +655,40 @@ function ParametresPageContent() {
   const configurationTodoItems = configurationItems.filter((item) => item.status === 'todo')
   const configurationPrimaryCta = configurationTodoItems[0] || null
   const configurationRemainingCount = configurationTodoItems.length
+
+  // Déclenche la navigation/activation de section pour un item de la
+  // checklist "Configuration Kadria", puis tente de scroller/focus le champ
+  // concerné une fois le contenu affiché. Reste silencieux (pas d'erreur)
+  // si le champ n'existe pas dans la section ciblée.
+  const handleConfigurationAction = (item: ConfigurationKadriaItem) => {
+    const focusFieldId = CONFIGURATION_ITEM_FOCUS_FIELD[item.key]
+    const url = new URL(item.href, window.location.origin)
+    const targetSection = url.searchParams.get('section')
+    const samePathname = url.pathname === window.location.pathname
+
+    if (samePathname && targetSection) {
+      const tab = SECTION_TO_TAB[targetSection]
+      if (tab) setActiveSection(tab)
+      router.replace(item.href, { scroll: false })
+    } else {
+      router.push(item.href)
+    }
+
+    if (focusFieldId) {
+      window.setTimeout(() => {
+        const el = document.getElementById(focusFieldId)
+        if (!el) return
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          if (typeof (el as HTMLElement).focus === 'function') {
+            ;(el as HTMLElement).focus({ preventScroll: true })
+          }
+        } catch {
+          // best effort uniquement, on ignore silencieusement
+        }
+      }, 150)
+    }
+  }
 
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null)
   const [accountStatus, setAccountStatus] = useState<AccountStatusSummary | null>(null)
@@ -1230,7 +1272,14 @@ function ParametresPageContent() {
               }}>
                 <button
                   type="button"
-                  onClick={() => router.push(configurationPrimaryCta ? configurationPrimaryCta.href : '/parametres?section=entreprise')}
+                  onClick={() => {
+                    if (configurationPrimaryCta) {
+                      handleConfigurationAction(configurationPrimaryCta)
+                    } else {
+                      setActiveSection('entreprise')
+                      router.replace('/parametres?section=entreprise', { scroll: false })
+                    }
+                  }}
                   style={{
                     background: 'var(--accent)',
                     border: 'none',
@@ -1279,7 +1328,7 @@ function ParametresPageContent() {
               {configurationPrimaryCta && (
                 <button
                   type="button"
-                  onClick={() => router.push(configurationPrimaryCta.href)}
+                  onClick={() => handleConfigurationAction(configurationPrimaryCta)}
                   style={{
                     background: 'var(--bg-hover)',
                     border: '1px solid var(--border)',
@@ -1378,7 +1427,7 @@ function ParametresPageContent() {
                       {!done && (
                         <button
                           type="button"
-                          onClick={() => router.push(item.href)}
+                          onClick={() => handleConfigurationAction(item)}
                           style={{
                             background: 'transparent',
                             border: '1px solid var(--border)',
@@ -1434,6 +1483,7 @@ function ParametresPageContent() {
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
                     <label style={labelStyle}>Lien de demande d&apos;avis Google</label>
                     <input
+                      id="field-google-review-url"
                       value={config.googleReviewUrl}
                       onChange={e => setConfig(c => ({ ...c, googleReviewUrl: e.target.value }))}
                       placeholder="https://g.page/r/..."
