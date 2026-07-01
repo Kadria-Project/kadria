@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
+  Eye,
   LayoutDashboard,
   Mail,
   Menu,
@@ -20,6 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Vue d'ensemble", href: '/admin', icon: LayoutDashboard },
   { label: 'Artisans', href: '/admin/clients', icon: Users },
+  { label: "Acces demo", href: '/admin/demo-access', icon: Eye },
   { label: 'Emails', href: '/admin/emails', icon: Mail },
 ];
 

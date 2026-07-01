@@ -1,6 +1,57 @@
 import { SignJWT, jwtVerify } from 'jose'
+import { Resend } from 'resend'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 export const DEMO_ACCESS_COOKIE = 'kadria-demo-access'
+export const DEMO_ACCESS_DEFAULT_EXPIRY_DAYS = 7
+
+export type DemoAccessStatus = 'pending' | 'approved' | 'rejected' | 'revoked' | 'expired'
+
+export type DemoAccessRequestRecord = {
+  id: string
+  created_at: string
+  updated_at: string
+  first_name: string
+  last_name: string
+  company_name: string | null
+  email: string
+  phone: string | null
+  trade: string | null
+  website: string | null
+  monthly_requests_volume: string | null
+  current_tool: string | null
+  main_need: string | null
+  objective: string | null
+  message: string | null
+  consent_contact: boolean
+  status: DemoAccessStatus
+  approved_at: string | null
+  revoked_at: string | null
+  expires_at: string | null
+  access_token_hash: string | null
+  access_sent_at: string | null
+  last_access_at: string | null
+  access_count: number
+  approved_by: string | null
+  internal_note: string | null
+}
+
+type DemoAccessQueryOptions = {
+  status?: string
+  search?: string
+}
+
+type ApproveDemoAccessInput = {
+  requestId?: string
+  email?: string
+  approvedBy: string
+  sendEmail?: boolean
+}
+
+type UpdateStatusInput = {
+  requestId: string
+  internalNote?: string
+}
 
 type DemoAccessSessionPayload = {
   type: 'demo-access-session'
@@ -28,6 +79,25 @@ function getDemoAccessSecret() {
 
 function bytesToHex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function normalizeText(value: unknown) {
+  return String(value || '').trim()
+}
+
+function parseDate(value?: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    return null
+  }
+
+  return new Resend(apiKey)
 }
 
 export async function hashDemoAccessToken(token: string) {
@@ -85,4 +155,203 @@ export function getDemoAccessBaseUrl() {
 
 export function buildDemoAccessVerifyUrl(token: string) {
   return `${getDemoAccessBaseUrl()}/api/demo-access/verify?token=${encodeURIComponent(token)}`
+}
+
+export function getEffectiveDemoAccessStatus(record: Pick<DemoAccessRequestRecord, 'status' | 'expires_at' | 'revoked_at'>): DemoAccessStatus {
+  if (record.revoked_at || record.status === 'revoked') {
+    return 'revoked'
+  }
+
+  const expiresAt = parseDate(record.expires_at)
+  if (record.status === 'approved' && expiresAt && expiresAt.getTime() <= Date.now()) {
+    return 'expired'
+  }
+
+  return record.status
+}
+
+export async function listDemoAccessRequests(options: DemoAccessQueryOptions = {}) {
+  let query = supabaseAdmin
+    .from('demo_access_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  const search = normalizeText(options.search).toLowerCase()
+  if (search) {
+    query = query.or(`email.ilike.%${search}%,company_name.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`)
+  }
+
+  const { data, error } = await query
+  if (error) {
+    throw error
+  }
+
+  let rows = (data || []) as DemoAccessRequestRecord[]
+  const statusFilter = normalizeText(options.status).toLowerCase()
+  if (statusFilter && statusFilter !== 'all') {
+    rows = rows.filter((row) => getEffectiveDemoAccessStatus(row) === statusFilter)
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    effective_status: getEffectiveDemoAccessStatus(row),
+  }))
+}
+
+export async function getDemoAccessRequestById(requestId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('demo_access_requests')
+    .select('*')
+    .eq('id', requestId)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return (data as DemoAccessRequestRecord | null) || null
+}
+
+async function findDemoAccessRequest(input: { requestId?: string; email?: string }) {
+  const requestId = normalizeText(input.requestId)
+  const email = normalizeText(input.email).toLowerCase()
+
+  if (!requestId && !email) {
+    return null
+  }
+
+  let query = supabaseAdmin
+    .from('demo_access_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (requestId) {
+    query = query.eq('id', requestId)
+  } else {
+    query = query.eq('email', email)
+  }
+
+  const { data, error } = await query.maybeSingle()
+  if (error) {
+    throw error
+  }
+
+  return (data as DemoAccessRequestRecord | null) || null
+}
+
+export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
+  const row = await findDemoAccessRequest({ requestId: input.requestId, email: input.email })
+  if (!row) {
+    throw new Error('REQUEST_NOT_FOUND')
+  }
+
+  const rawToken = generateDemoAccessToken()
+  const tokenHash = await hashDemoAccessToken(rawToken)
+  const expiresAt = new Date(Date.now() + DEMO_ACCESS_DEFAULT_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+  const verifyUrl = buildDemoAccessVerifyUrl(rawToken)
+
+  const { error: updateError } = await supabaseAdmin
+    .from('demo_access_requests')
+    .update({
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      revoked_at: null,
+      expires_at: expiresAt.toISOString(),
+      access_token_hash: tokenHash,
+      access_sent_at: new Date().toISOString(),
+      approved_by: input.approvedBy,
+    })
+    .eq('id', row.id)
+
+  if (updateError) {
+    throw updateError
+  }
+
+  let emailed = false
+  if (input.sendEmail && row.email) {
+    const resend = getResendClient()
+    if (resend) {
+      try {
+        await resend.emails.send({
+          from: 'Kadria <contact@kadria.fr>',
+          to: row.email,
+          subject: 'Votre acces a la demo Kadria',
+          html: `
+            <div style="font-family:system-ui;max-width:560px;margin:0 auto;padding:32px 20px;background:#09090b;color:white;">
+              <h1 style="margin:0 0 20px;">
+                <span style="color:#22c55e">K</span><span style="color:white">adria</span>
+              </h1>
+              <h2 style="margin:0 0 16px;font-size:20px;">Votre acces demo est pret</h2>
+              <p style="margin:0 0 16px;color:#a1a1aa;line-height:1.7;">
+                Bonjour ${row.first_name || ''}, votre acces a la demonstration Kadria a ete active.
+                Cliquez sur le bouton ci-dessous pour ouvrir la demo complete.
+              </p>
+              <a href="${verifyUrl}" style="display:inline-block;background:#22c55e;color:black;font-weight:700;border-radius:10px;padding:14px 24px;font-size:16px;text-decoration:none;">
+                Ouvrir la demo Kadria
+              </a>
+              <p style="margin:16px 0 0;color:#71717a;font-size:12px;line-height:1.6;">
+                Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')} et peut etre revoque a tout moment.
+              </p>
+            </div>
+          `,
+        })
+        emailed = true
+      } catch (emailError) {
+        console.error('[DEMO ACCESS] Email error:', emailError)
+      }
+    }
+  }
+
+  return {
+    requestId: row.id,
+    status: 'approved' as const,
+    expiresAt: expiresAt.toISOString(),
+    verifyUrl,
+    tokenHash,
+    emailed,
+  }
+}
+
+export async function revokeDemoAccessRequest(input: UpdateStatusInput) {
+  const { error } = await supabaseAdmin
+    .from('demo_access_requests')
+    .update({
+      status: 'revoked',
+      revoked_at: new Date().toISOString(),
+      internal_note: input.internalNote ?? undefined,
+    })
+    .eq('id', input.requestId)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function rejectDemoAccessRequest(input: UpdateStatusInput) {
+  const { error } = await supabaseAdmin
+    .from('demo_access_requests')
+    .update({
+      status: 'rejected',
+      internal_note: input.internalNote ?? undefined,
+    })
+    .eq('id', input.requestId)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function updateDemoAccessInternalNote(input: UpdateStatusInput) {
+  const { error } = await supabaseAdmin
+    .from('demo_access_requests')
+    .update({
+      internal_note: input.internalNote ?? '',
+    })
+    .eq('id', input.requestId)
+
+  if (error) {
+    throw error
+  }
 }
