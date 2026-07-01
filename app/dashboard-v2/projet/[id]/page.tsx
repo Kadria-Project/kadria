@@ -165,6 +165,71 @@ function getSourceLabel(source?: string | null) {
   return source || 'Source inconnue';
 }
 
+interface FollowUpRecommendedWindow {
+  startMinutes: number;
+  endMinutes: number;
+}
+
+interface FollowUpRecommendedMoment {
+  hasRecommendation: boolean;
+  isInRecommendedSlot: boolean;
+  recommendedLabel: string;
+}
+
+function formatRecommendedTime(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins === 0 ? `${hours} h` : `${hours} h ${String(mins).padStart(2, '0')}`;
+}
+
+function extractRecommendedWindows(...slots: Array<string | undefined>) {
+  const pattern = /(\d{1,2})\s*h(?:\s*(\d{2}))?\s*(?:à|a|et|-)\s*(\d{1,2})\s*h(?:\s*(\d{2}))?/gi;
+  const windows: FollowUpRecommendedWindow[] = [];
+
+  slots.forEach((slot) => {
+    if (!slot) return;
+    for (const match of slot.matchAll(pattern)) {
+      const startHour = Number(match[1]);
+      const startMinute = Number(match[2] || 0);
+      const endHour = Number(match[3]);
+      const endMinute = Number(match[4] || 0);
+
+      if ([startHour, startMinute, endHour, endMinute].some((value) => Number.isNaN(value))) continue;
+
+      windows.push({
+        startMinutes: startHour * 60 + startMinute,
+        endMinutes: endHour * 60 + endMinute,
+      });
+    }
+  });
+
+  return windows;
+}
+
+function getFollowUpRecommendedMoment(primarySlot?: string, secondarySlot?: string): FollowUpRecommendedMoment {
+  const windows = extractRecommendedWindows(primarySlot, secondarySlot);
+  if (windows.length === 0) {
+    return {
+      hasRecommendation: false,
+      isInRecommendedSlot: false,
+      recommendedLabel: '',
+    };
+  }
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const isInRecommendedSlot = windows.some((window) => nowMinutes >= window.startMinutes && nowMinutes < window.endMinutes);
+  const recommendedLabel = windows
+    .map((window) => `entre ${formatRecommendedTime(window.startMinutes)} et ${formatRecommendedTime(window.endMinutes)}`)
+    .join(' ou ');
+
+  return {
+    hasRecommendation: true,
+    isInRecommendedSlot,
+    recommendedLabel,
+  };
+}
+
 export default function ProjectDetailPage() {
   return (
     <AuthGuard>
@@ -267,11 +332,25 @@ function ProjectDetail() {
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
   const [followUpToast, setFollowUpToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [followingUpDevisId, setFollowingUpDevisId] = useState<string | null>(null);
+  const [followUpConfirmDevis, setFollowUpConfirmDevis] = useState<DevisListItem | null>(null);
+  const [followUpConfirmError, setFollowUpConfirmError] = useState('');
   useEffect(() => {
     if (!followUpToast) return;
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
     return () => window.clearTimeout(timeout);
   }, [followUpToast]);
+
+  useEffect(() => {
+    if (!followUpConfirmDevis) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !followingUpDevisId) {
+        setFollowUpConfirmDevis(null);
+        setFollowUpConfirmError('');
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [followUpConfirmDevis, followingUpDevisId]);
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionSearch, setSuggestionSearch] = useState('');
@@ -398,6 +477,22 @@ function ProjectDetail() {
         console.error('[DEVIS LIST] Erreur réseau chargement devis du projet:', error);
       });
   }, [id]);
+
+  function requestQuoteFollowUp(devis: DevisListItem) {
+    if (!canQuote) {
+      openUpgradeModal('quoteGeneration');
+      return;
+    }
+
+    if (!devis.token || devis.token.includes('undefined')) {
+      setFollowUpToast({ type: 'error', message: 'Impossible de relancer ce devis : lien de devis introuvable.' });
+      return;
+    }
+
+    setFollowUpConfirmError('');
+    setFollowUpConfirmDevis(devis);
+  }
+
   async function followUpQuote(devis: DevisListItem) {
     if (!canQuote) {
       openUpgradeModal('quoteGeneration');
@@ -431,6 +526,8 @@ function ProjectDetail() {
       }
 
       await loadActivities();
+      setFollowUpConfirmError('');
+      setFollowUpConfirmDevis(null);
       setDevisList((prev) =>
         prev.map((item) =>
           item.id === devis.id
@@ -444,9 +541,11 @@ function ProjectDetail() {
       );
       setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyée. Le client a reçu un email lui rappelant ce devis en attente.' });
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Impossible de relancer le devis';
+      setFollowUpConfirmError(message);
       setFollowUpToast({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Impossible de relancer le devis',
+        message,
       });
     } finally {
       setFollowingUpDevisId(null);
@@ -842,7 +941,7 @@ function ProjectDetail() {
   // fausse action) tant qu'ils ne sont pas integres.
   const NEXT_ACTION_CTA_HANDLER: Partial<Record<string, () => void>> = {
     schedule_appointment: () => { if (!appointment) openAppointmentModal(); },
-    follow_up_quote: () => { if (latestDevis && decision.canFollowUpQuote) followUpQuote(latestDevis); },
+    follow_up_quote: () => { if (latestDevis && decision.canFollowUpQuote) requestQuoteFollowUp(latestDevis); },
     review_quote_decline: () => { router.push(`/dashboard-v2/projet/${id}/devis/new`); },
     // Reprend le canal email/téléphone déjà utilisé ailleurs sur cette page
     // pour contacter le client (cf. boutons "✉️ Message" / "tel:") plutôt
@@ -936,7 +1035,7 @@ function ProjectDetail() {
       return {
         title: 'Relancer le devis',
         ctaLabel: 'Relancer le client',
-        onClick: () => followUpQuote(latestDevis),
+        onClick: () => requestQuoteFollowUp(latestDevis),
         meta: latestDevis.opens_count > 0
           ? `Le devis a été consulté ${latestDevis.opens_count} fois. Relancez le client pendant que le projet est encore chaud.`
           : 'Le devis a été envoyé. Relancez le client pendant que le projet est encore chaud.',
@@ -1158,6 +1257,13 @@ function ProjectDetail() {
   const followUpTime = getBestFollowUpTime(project);
   const showIdealFollowUp = shouldShowIdealFollowUp(project);
   const idealActionLabel = getIdealActionLabel(project, analysis.nextBestAction.type);
+  const followUpIdealActionLabel = getIdealActionLabel(project, 'followup');
+  const followUpRecommendedMoment = getFollowUpRecommendedMoment(
+    followUpIdealActionLabel.mainSlot,
+    followUpIdealActionLabel.secondarySlot
+  );
+  const followUpClientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client non renseigné';
+  const followUpProjectLabel = [project?.projectType, project?.trade].filter(Boolean).join(' · ') || 'Projet non renseigné';
 
   function getNextActionCtaLabel(type: NextActionType): string {
     switch (type) {
@@ -1202,7 +1308,7 @@ function ProjectDetail() {
       }
       case 'followup': {
         if (latestDevis) {
-          followUpQuote(latestDevis);
+          requestQuoteFollowUp(latestDevis);
         }
         break;
       }
@@ -1266,7 +1372,7 @@ function ProjectDetail() {
       ? () => handleNextBestAction('quote')
       : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined
         ? decision.canFollowUpQuote
-          ? () => followUpQuote(latestDevis)
+          ? () => requestQuoteFollowUp(latestDevis)
           : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`)
         : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
 
@@ -1506,7 +1612,7 @@ function ProjectDetail() {
               { label: '📅 RDV', disabled: !!appointment, onClick: () => { if (!appointment) openAppointmentModal(); } },
               { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
               decision.canFollowUpQuote
-                ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && followUpQuote(latestDevis) }
+                ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && requestQuoteFollowUp(latestDevis) }
                 : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
             ].map((a) => (
               <button
@@ -2192,7 +2298,7 @@ function ProjectDetail() {
           {/* Suivi client — uniquement actionnable quand decision.canFollowUpQuote
               est vraie, pour ne jamais contredire l'Action recommandée */}
           <button
-            onClick={() => decision.canFollowUpQuote && latestDevis ? followUpQuote(latestDevis) : handleNextBestAction(latestDevis ? 'followup' : 'call')}
+            onClick={() => decision.canFollowUpQuote && latestDevis ? requestQuoteFollowUp(latestDevis) : handleNextBestAction(latestDevis ? 'followup' : 'call')}
             disabled={!decision.canFollowUpQuote && !latestDevis && !project.clientPhone}
             style={{
               background: 'var(--bg-elevated)',
@@ -3073,7 +3179,7 @@ function ProjectDetail() {
                                       type="button"
                                       onClick={(event) => {
                                         event.stopPropagation();
-                                        followUpQuote(devis);
+                                        requestQuoteFollowUp(devis);
                                       }}
                                       disabled={followingUpDevisId === devis.id}
                                       style={{
@@ -3943,6 +4049,99 @@ function ProjectDetail() {
         </section>
 
       </main>
+
+      {followUpConfirmDevis && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            if (!followingUpDevisId) {
+              setFollowUpConfirmDevis(null);
+              setFollowUpConfirmError('');
+            }
+          }}
+        >
+          <div
+            className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-lg w-full space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-[var(--text-1)] font-bold text-lg m-0">
+                  {followUpRecommendedMoment.hasRecommendation && !followUpRecommendedMoment.isInRecommendedSlot
+                    ? 'Confirmer l’envoi maintenant ?'
+                    : 'Confirmer la relance du devis'}
+                </h2>
+                <p className="text-sm text-[var(--text-2)] mt-1 mb-0">
+                  {followUpRecommendedMoment.hasRecommendation
+                    ? followUpRecommendedMoment.isInRecommendedSlot
+                      ? 'Vous êtes dans le créneau recommandé pour relancer ce client.'
+                      : `Pour maximiser les chances d’ouverture, il est conseillé d’envoyer cette relance ${followUpRecommendedMoment.recommendedLabel}.`
+                    : 'Une relance sera envoyée au client pour ce devis.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!followingUpDevisId) {
+                    setFollowUpConfirmDevis(null);
+                    setFollowUpConfirmError('');
+                  }
+                }}
+                disabled={Boolean(followingUpDevisId)}
+                className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3 text-sm">
+              <p className="m-0 text-[var(--text-2)]">
+                Client : <span className="text-[var(--text-1)] font-semibold">{followUpClientLabel}</span>
+              </p>
+              <p className="m-0 mt-2 text-[var(--text-2)]">
+                Devis : <span className="text-[var(--text-1)] font-semibold">{followUpConfirmDevis.numero || 'Non renseigné'}</span>
+              </p>
+              <p className="m-0 mt-2 text-[var(--text-2)]">
+                Projet : <span className="text-[var(--text-1)] font-semibold">{followUpProjectLabel}</span>
+              </p>
+            </div>
+
+            {followUpConfirmError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {followUpConfirmError}
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!followingUpDevisId) {
+                    setFollowUpConfirmDevis(null);
+                    setFollowUpConfirmError('');
+                  }
+                }}
+                disabled={Boolean(followingUpDevisId)}
+                className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-2.5 text-sm font-semibold text-[var(--text-1)] transition hover:border-green-500/40 hover:text-white disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => followUpQuote(followUpConfirmDevis)}
+                disabled={followingUpDevisId === followUpConfirmDevis.id}
+                className="rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-bold text-black transition hover:brightness-110 disabled:opacity-60"
+              >
+                {followingUpDevisId === followUpConfirmDevis.id
+                  ? 'Envoi en cours...'
+                  : followUpRecommendedMoment.hasRecommendation && !followUpRecommendedMoment.isInRecommendedSlot
+                    ? 'Envoyer maintenant'
+                    : 'Envoyer la relance'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAppointmentModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
