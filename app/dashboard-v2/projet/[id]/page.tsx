@@ -125,6 +125,17 @@ const MONEY_FORMATTER = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 2,
 });
 
+type ActivityTone = 'success' | 'error' | 'info';
+
+interface ActivityFeedItem {
+  id: string;
+  action?: string;
+  createdAt?: string | null;
+  title: string;
+  detail?: string | null;
+  tone: ActivityTone;
+}
+
 function parseValidDate(value?: string | null) {
   if (!value) return null;
   const date = new Date(value);
@@ -152,6 +163,172 @@ function formatInteger(value?: number | null) {
 
 function formatMoney(value?: number | null) {
   return MONEY_FORMATTER.format(Number(value || 0));
+}
+
+function sanitizeActivityDetail(detail?: string | null, tone: ActivityTone = 'info') {
+  const normalized = String(detail || '').trim();
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+  const looksTechnical = lower.includes('provider_message_id')
+    || lower.includes('stack')
+    || lower.includes('trace')
+    || lower.includes('resend')
+    || lower.includes('smtp')
+    || normalized.includes('{')
+    || normalized.includes('[');
+
+  if (looksTechnical) {
+    return tone === 'error' ? "Echec de l'envoi. Reessayez." : null;
+  }
+
+  return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
+}
+
+function getActivityPresentation(activity: { action?: string; description?: string; createdAt?: string | null; id?: string }, index: number): ActivityFeedItem {
+  const action = String(activity.action || '').trim();
+  const description = String(activity.description || '').trim();
+
+  if (action === 'DEVIS_FOLLOW_UP_SENT') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Relance devis envoyee',
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
+  if (action === 'DEVIS_FOLLOW_UP_FAILED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Echec de la relance devis',
+      detail: sanitizeActivityDetail(description, 'error') || "Echec de l'envoi. Reessayez.",
+      tone: 'error',
+    };
+  }
+
+  if (action === 'GOOGLE_REVIEW_REQUEST_SENT') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: "Demande d'avis Google envoyee",
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
+  if (action === 'GOOGLE_REVIEW_REQUEST_FAILED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: "Echec de la demande d'avis Google",
+      detail: sanitizeActivityDetail(description, 'error') || "Echec de l'envoi. Reessayez.",
+      tone: 'error',
+    };
+  }
+
+  if (action === 'CREATED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Dossier cree',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action.includes('STATUS')) {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Statut du dossier mis a jour',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action.includes('CALLBACK')) {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Rappel client programme',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action.includes('NOTE')) {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Note interne mise a jour',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action === 'DEVIS') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Mouvement sur le devis',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  return {
+    id: activity.id || `activity-item-${index}`,
+    action,
+    createdAt: activity.createdAt,
+    title: description || 'Action enregistree',
+    detail: description && description !== 'Action enregistree' ? sanitizeActivityDetail(description, 'info') : null,
+    tone: 'info',
+  };
+}
+
+function getActivityToneStyles(tone: ActivityTone) {
+  if (tone === 'success') {
+    return {
+      dotBg: 'rgba(34, 197, 94, 0.16)',
+      dotColor: 'rgb(74, 222, 128)',
+      badgeBg: 'rgba(34, 197, 94, 0.14)',
+      badgeBorder: 'rgba(34, 197, 94, 0.22)',
+      badgeColor: 'rgb(134, 239, 172)',
+      badgeLabel: 'Succes',
+    };
+  }
+
+  if (tone === 'error') {
+    return {
+      dotBg: 'rgba(248, 113, 113, 0.16)',
+      dotColor: 'rgb(248, 113, 113)',
+      badgeBg: 'rgba(248, 113, 113, 0.12)',
+      badgeBorder: 'rgba(248, 113, 113, 0.24)',
+      badgeColor: 'rgb(252, 165, 165)',
+      badgeLabel: 'Echec',
+    };
+  }
+
+  return {
+    dotBg: 'rgba(148, 163, 184, 0.14)',
+    dotColor: 'rgb(203, 213, 225)',
+    badgeBg: 'rgba(148, 163, 184, 0.08)',
+    badgeBorder: 'rgba(148, 163, 184, 0.18)',
+    badgeColor: 'rgb(203, 213, 225)',
+    badgeLabel: 'Info',
+  };
 }
 
 function getSourceLabel(source?: string | null) {
@@ -247,6 +424,7 @@ function ProjectDetail() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
+  const [activityUnavailable, setActivityUnavailable] = useState(false);
   const [note, setNote] = useState('');
   const [showNotes, setShowNotes] = useState(false);
   const [callbackDate, setCallbackDate] = useState('');
@@ -400,11 +578,26 @@ function ProjectDetail() {
     });
   }
 
-  async function loadActivities() {
-    const activityData = await getProjectActivity(id);
+  const recentActivityItems = activities
+    .slice(0, 8)
+    .map((activity, index) => getActivityPresentation(activity, index));
 
-    if (activityData.success) {
-      setActivities(activityData.activities);
+  async function loadActivities() {
+    try {
+      setActivityUnavailable(false);
+      const activityData = await getProjectActivity(id);
+
+      if (activityData.success) {
+        setActivities(Array.isArray(activityData.activities) ? activityData.activities : []);
+        return;
+      }
+
+      setActivities([]);
+      setActivityUnavailable(true);
+    } catch (error) {
+      console.error('PROJECT_ACTIVITY_LOAD_ERROR', error);
+      setActivities([]);
+      setActivityUnavailable(true);
     }
   }
 
@@ -1545,12 +1738,43 @@ function ProjectDetail() {
         ),
       },
       {
-        key: 'historique',
-        title: 'Historique',
+        key: 'activity',
+        title: 'Activite du dossier',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
-            {activities.map((a, i) => (
+            {activityUnavailable && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Activite indisponible pour le moment.</p>}
+            {!activityUnavailable && recentActivityItems.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucune activite enregistree pour le moment.</p>}
+            {false && activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
+            {!activityUnavailable && recentActivityItems.map((item) => {
+              const tone = getActivityToneStyles(item.tone);
+              return (
+                <div key={item.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{
+                    width: '10px',
+                    height: '10px',
+                    marginTop: '5px',
+                    borderRadius: '999px',
+                    background: tone.dotBg,
+                    border: `1px solid ${tone.badgeBorder}`,
+                    flexShrink: 0,
+                  }} />
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
+                      {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>
+                      {item.title}
+                    </p>
+                    {item.detail && item.detail !== item.title && (
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
+                        {item.detail}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {false && activities.map((a, i) => (
               <p key={a.id || i} style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
                 {formatShortDate(a.createdAt)} — {a.description}
               </p>
@@ -2461,6 +2685,77 @@ function ProjectDetail() {
             </p>
           </button>
         </div>
+
+        <section
+          className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
+          style={{ marginBottom: '16px' }}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
+              <p className="mt-1 text-sm text-[var(--text-2)]">
+                Les dernieres actions enregistrees sur ce projet.
+              </p>
+            </div>
+            {!activityUnavailable && recentActivityItems.length > 0 && (
+              <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
+                {recentActivityItems.length} evenement{recentActivityItems.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3">
+            {activityUnavailable && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                Activite indisponible pour le moment.
+              </div>
+            )}
+
+            {!activityUnavailable && recentActivityItems.length === 0 && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                Aucune activite enregistree pour le moment.
+              </div>
+            )}
+
+            {!activityUnavailable && recentActivityItems.map((item) => {
+              const tone = getActivityToneStyles(item.tone);
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
+                      {item.detail && item.detail !== item.title && (
+                        <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <span
+                      className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                      style={{
+                        background: tone.badgeBg,
+                        borderColor: tone.badgeBorder,
+                        color: tone.badgeColor,
+                      }}
+                    >
+                      {tone.badgeLabel}
+                    </span>
+                    <p className="text-xs text-[var(--text-3)]">
+                      {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Analyse Kadria — bloc secondaire d'aide à la lecture du dossier,
             volontairement plus neutre que l'Action recommandée. */}
@@ -4612,6 +4907,22 @@ function TimelineIcon({ action }: { action?: string }) {
     return (
       <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
         <FileTextIcon className="w-3 h-3 text-blue-400" />
+      </span>
+    );
+  }
+
+  if (action?.includes('FAILED')) {
+    return (
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-red-500/15 flex items-center justify-center">
+        <AlertTriangle className="w-3 h-3 text-red-300" />
+      </span>
+    );
+  }
+
+  if (action?.includes('SENT')) {
+    return (
+      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+        <Check className="w-3 h-3 text-green-300" />
       </span>
     );
   }
