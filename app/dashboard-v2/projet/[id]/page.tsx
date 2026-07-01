@@ -777,7 +777,7 @@ function ProjectDetail() {
     if (!artisanConfig?.googleReviewUrl) {
       setReviewRequestToast({
         type: 'error',
-        message: "Ajoutez votre URL d'avis Google dans vos parametres pour utiliser cette action.",
+        message: "Ajoutez votre lien de demande d'avis Google dans vos parametres pour utiliser cette action.",
       });
       return;
     }
@@ -1234,7 +1234,7 @@ function ProjectDetail() {
     ask_review: !project.clientEmail
       ? 'Email client manquant'
       : !artisanConfig?.googleReviewUrl
-        ? "URL d'avis Google non configuree"
+        ? "Lien de demande d'avis Google non configure"
         : undefined,
     request_photos: project.clientEmail || project.clientPhone
       ? undefined
@@ -1743,7 +1743,7 @@ function ProjectDetail() {
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {activityUnavailable && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Activite indisponible pour le moment.</p>}
-            {!activityUnavailable && recentActivityItems.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucune activite enregistree pour le moment.</p>}
+            {!activityUnavailable && recentActivityItems.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucune activite enregistree pour le moment. Les relances, demandes d'avis et changements importants apparaitront ici.</p>}
             {false && activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
             {!activityUnavailable && recentActivityItems.map((item) => {
               const tone = getActivityToneStyles(item.tone);
@@ -1948,7 +1948,7 @@ function ProjectDetail() {
             <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
               {!artisanConfig?.googleReviewUrl ? (
                 <>
-                  Ajoutez votre URL d&apos;avis Google dans vos paramètres pour utiliser cette action.
+                  Ajoutez votre lien de demande d&apos;avis Google dans vos paramètres pour utiliser cette action.
                   <button
                     type="button"
                     onClick={() => router.push('/parametres?section=entreprise')}
@@ -2714,6 +2714,7 @@ function ProjectDetail() {
             {!activityUnavailable && recentActivityItems.length === 0 && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
                 Aucune activite enregistree pour le moment.
+                Les relances, demandes d'avis et changements importants apparaitront ici.
               </div>
             )}
 

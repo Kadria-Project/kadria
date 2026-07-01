@@ -310,8 +310,8 @@ function buildConfigurationKadriaItems(input: {
     },
     {
       key: 'google_review',
-      label: 'URL avis Google',
-      description: "Ajoutez votre lien d'avis pour activer les demandes d'avis.",
+      label: 'Lien avis Google',
+      description: "Ajoutez votre lien d'avis Google pour activer les demandes d'avis client.",
       status: hasTextValue(input.googleReviewUrl) ? 'done' : 'todo',
       href: '/parametres?section=entreprise',
       cta: 'Ajouter',
@@ -708,7 +708,7 @@ function ParametresPageContent() {
 
     if (!isValidOptionalHttpUrl(config.googleReviewUrl)) {
       setActiveSection('entreprise')
-      setSaveError("L'URL d'avis Google doit etre une URL valide")
+      setSaveError("Le lien de demande d'avis Google doit etre une URL valide")
       return
     }
 
@@ -1432,7 +1432,7 @@ function ParametresPageContent() {
                     />
                   </div>
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>URL avis Google</label>
+                    <label style={labelStyle}>Lien de demande d&apos;avis Google</label>
                     <input
                       value={config.googleReviewUrl}
                       onChange={e => setConfig(c => ({ ...c, googleReviewUrl: e.target.value }))}
@@ -1440,7 +1440,8 @@ function ParametresPageContent() {
                       style={inputStyle}
                     />
                     <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                      Collez ici le lien direct permettant a vos clients de laisser un avis Google.
+                      Ajoutez votre lien d&apos;avis Google pour activer les demandes d&apos;avis client.
+                      Vous pouvez le recuperer depuis votre fiche Google Business Profile.
                     </p>
                   </div>
                   <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
