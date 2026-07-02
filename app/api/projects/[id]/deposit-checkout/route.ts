@@ -151,6 +151,8 @@ export async function POST(
           },
         ],
         metadata: {
+          type: 'deposit',
+          environment: 'kadria',
           artisan_id: session.artisanId,
           project_id: String(project.id || ''),
           deposit_amount: computedDeposit.amount.toFixed(2),

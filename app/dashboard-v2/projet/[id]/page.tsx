@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createProjectDepositCheckout, getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
@@ -300,6 +300,17 @@ function getActivityPresentation(activity: { action?: string; description?: stri
     };
   }
 
+  if (action === 'ACOMPTE_PAID') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Acompte paye',
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
   return {
     id: activity.id || `activity-item-${index}`,
     action,
@@ -430,6 +441,7 @@ export default function ProjectDetailPage() {
 function ProjectDetail() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
 
   const [project, setProject] = useState<any>(null);
@@ -554,6 +566,21 @@ function ProjectDetail() {
     const timeout = window.setTimeout(() => setDepositActionMessage(null), 3200);
     return () => window.clearTimeout(timeout);
   }, [depositActionMessage]);
+
+  useEffect(() => {
+    const depositParam = searchParams?.get('deposit');
+    if (!depositParam) return;
+
+    if (depositParam === 'success') {
+      setDepositActionError(null);
+      setDepositActionMessage('Paiement en cours de verification. Le statut sera mis a jour automatiquement.');
+    } else if (depositParam === 'cancelled') {
+      setDepositActionError(null);
+      setDepositActionMessage("Paiement annule ou interrompu. Le lien reste disponible si le client souhaite reessayer.");
+    }
+
+    router.replace(`/dashboard-v2/projet/${encodeURIComponent(String(id))}`, { scroll: false });
+  }, [id, router, searchParams]);
 
   useEffect(() => {
     if (!followUpConfirmDevis) return;
@@ -1117,6 +1144,7 @@ function ProjectDetail() {
   const depositPaymentUrl = typeof project.depositPaymentUrl === 'string' ? project.depositPaymentUrl : '';
   const hasDepositLink = depositPaymentUrl.trim().length > 0 && normalizedDepositStatus === 'requested';
   const effectiveDepositAmount = project.depositAmount ?? recommendedDeposit?.amount ?? null;
+  const depositPaidDateLabel = project.depositPaidAt ? formatDateTime(project.depositPaidAt, '') : '';
 
   // Signal frais de deplacement pour l'Analyse Kadria : reprend les memes
   // helpers que la card "Frais de deplacement estimes" ci-dessous. Ne rien
@@ -3378,6 +3406,63 @@ function ProjectDetail() {
                       Ajoutez un montant de devis pour calculer un acompte recommande.
                     </p>
                   </>
+                ) : normalizedDepositStatus === 'paid' ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>Acompte paye</p>
+                        <p style={{ margin: '4px 0 0', color: 'var(--text-2)', fontSize: '12px' }}>
+                          {recommendedDeposit.basisLabel}
+                        </p>
+                      </div>
+                      <span style={{ color: '#4ade80', fontSize: '20px', fontWeight: 800 }}>
+                        {formatEuro(effectiveDepositAmount)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        borderRadius: '999px',
+                        padding: '5px 10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: 'rgba(34,197,94,0.12)',
+                        color: '#4ade80',
+                        border: '1px solid rgba(34,197,94,0.22)',
+                      }}>
+                        Acompte paye
+                      </span>
+                      {depositPaidDateLabel && (
+                        <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                          Paye le {depositPaidDateLabel}
+                        </span>
+                      )}
+                    </div>
+                    {depositActionMessage && (
+                      <p style={{ margin: 0, color: 'var(--accent)', fontSize: '12px', lineHeight: 1.5 }}>
+                        {depositActionMessage}
+                      </p>
+                    )}
+                    {depositPaymentUrl && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => window.open(depositPaymentUrl, '_blank', 'noopener,noreferrer')}
+                          style={{
+                            border: '1px solid var(--border)',
+                            background: 'transparent',
+                            color: 'var(--text-1)',
+                            borderRadius: '10px',
+                            padding: '8px 12px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Ouvrir le lien
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : hasDepositLink ? (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
@@ -3522,25 +3607,19 @@ function ProjectDetail() {
                         padding: '5px 10px',
                         fontSize: '11px',
                         fontWeight: 700,
-                        background: normalizedDepositStatus === 'paid'
-                          ? 'rgba(34,197,94,0.12)'
-                          : normalizedDepositStatus === 'requested'
+                        background: normalizedDepositStatus === 'requested'
                             ? 'rgba(59,130,246,0.12)'
                             : 'rgba(148,163,184,0.12)',
-                        color: normalizedDepositStatus === 'paid'
-                          ? '#4ade80'
-                          : normalizedDepositStatus === 'requested'
+                        color: normalizedDepositStatus === 'requested'
                             ? '#93c5fd'
                             : 'var(--text-2)',
                         border: '1px solid rgba(148,163,184,0.18)',
                       }}>
-                        {normalizedDepositStatus === 'paid'
-                          ? 'Acompte paye'
-                          : normalizedDepositStatus === 'requested'
-                            ? 'Acompte demande'
-                            : normalizedDepositStatus === 'cancelled'
-                              ? 'Acompte annule'
-                              : 'Stripe connecte'}
+                        {normalizedDepositStatus === 'requested'
+                          ? 'Acompte demande'
+                          : normalizedDepositStatus === 'cancelled'
+                            ? 'Acompte annule'
+                            : 'Stripe connecte'}
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
                         Stripe est connecte. La generation des liens d’acompte sera activee dans la prochaine etape.
