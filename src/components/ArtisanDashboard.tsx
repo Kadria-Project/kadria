@@ -219,6 +219,8 @@ function parseDurationMinutes(duration: string): number {
   return match ? Number(match[1]) : 0;
 }
 
+const PROGRESS_CENTER_STORAGE_KEY = 'kadria-progress-center-expanded';
+
 function getProjectRevenueAmount(project: Project): number {
   return Number(project.devisAmount) || parseBudget(project.budget || '');
 }
@@ -1554,11 +1556,32 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [artisanFirstName, setArtisanFirstName] = useState('');
   const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null);
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
+  const [progressCenterExpanded, setProgressCenterExpanded] = useState(false);
 
   const formattedToday = useMemo(() => {
     const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
     return raw.charAt(0).toUpperCase() + raw.slice(1);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = window.localStorage.getItem(PROGRESS_CENTER_STORAGE_KEY);
+      if (saved === 'true') setProgressCenterExpanded(true);
+      if (saved === 'false') setProgressCenterExpanded(false);
+    } catch {
+      // Ignore unavailable localStorage.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(PROGRESS_CENTER_STORAGE_KEY, progressCenterExpanded ? 'true' : 'false');
+    } catch {
+      // Ignore unavailable localStorage.
+    }
+  }, [progressCenterExpanded]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2614,7 +2637,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 🚀 Centre de progression
               </div>
               <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                {progressRecommendations.globalMessage}
+                {progressCenterExpanded
+                  ? progressRecommendations.globalMessage
+                  : `Encore environ ${progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.`}
               </div>
             </div>
             <div style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800, whiteSpace: 'nowrap' }}>
@@ -2626,63 +2651,145 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div style={{ height: '100%', width: `${progressRecommendations.progress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
           </div>
 
-              <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '14px' }}>
-                Encore environ {progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.
+          {!progressCenterExpanded ? (
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: '10px' }}>
+              <div style={{ color: 'var(--text-3)', fontSize: '12px', minWidth: 0 }}>
+                {progressRecommendations.nextSteps[0]
+                  ? `Prochaine étape : ${progressRecommendations.nextSteps[0].title}.`
+                  : 'Poursuivez votre configuration pour activer toutes les briques clés.'}
               </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                <span style={{ border: '1px solid rgba(34,197,94,0.28)', background: 'rgba(34,197,94,0.12)', color: '#86efac', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
-                  Essentiel
-                </span>
-                <span style={{ border: '1px solid rgba(251,191,36,0.28)', background: 'rgba(251,191,36,0.12)', color: '#fcd34d', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
-                  Recommandé
-                </span>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+                {progressRecommendations.nextSteps[0] && (
+                  <button
+                    type="button"
+                    onClick={() => (progressRecommendations.nextSteps[0].key === 'calendar' ? setDashboardMode('calendar') : router.push(progressRecommendations.nextSteps[0].href))}
+                    style={{
+                      background: 'var(--accent)',
+                      border: 'none',
+                      color: 'black',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Continuer la configuration
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setProgressCenterExpanded(true)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Voir le détail
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ border: '1px solid rgba(34,197,94,0.28)', background: 'rgba(34,197,94,0.12)', color: '#86efac', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
+                    Essentiel
+                  </span>
+                  <span style={{ border: '1px solid rgba(251,191,36,0.28)', background: 'rgba(251,191,36,0.12)', color: '#fcd34d', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
+                    Recommandé
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProgressCenterExpanded(false)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    alignSelf: isMobile ? 'stretch' : 'auto',
+                  }}
+                >
+                  Réduire
+                </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-                {progressRecommendations.nextSteps.slice(0, 3).map((s) => (
+                {progressRecommendations.nextSteps.map((s) => (
                   <div
-                key={s.key}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-                  border: '1px solid var(--border)', borderRadius: '10px', padding: '8px 10px', background: 'var(--bg-elevated)',
-                }}
-              >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <span style={{ fontSize: '16px' }}>{s.icon}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span>{s.title}</span>
-                        <span style={{
-                          border: '1px solid',
-                          borderColor: s.category === 'essential' ? 'rgba(34,197,94,0.28)' : 'rgba(251,191,36,0.28)',
-                          background: s.category === 'essential' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)',
-                          color: s.category === 'essential' ? '#86efac' : '#fcd34d',
-                          borderRadius: '999px',
-                          padding: '2px 8px',
-                          fontSize: '10px',
-                          fontWeight: 700,
-                        }}>
-                          {s.category === 'essential' ? 'Essentiel' : 'Recommandé'}
-                        </span>
+                    key={s.key}
+                    style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: isMobile ? 'stretch' : 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '8px 10px',
+                      background: 'var(--bg-elevated)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <span style={{ fontSize: '16px' }}>{s.icon}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{s.title}</span>
+                          <span style={{
+                            border: '1px solid',
+                            borderColor: s.category === 'essential' ? 'rgba(34,197,94,0.28)' : 'rgba(251,191,36,0.28)',
+                            background: s.category === 'essential' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)',
+                            color: s.category === 'essential' ? '#86efac' : '#fcd34d',
+                            borderRadius: '999px',
+                            padding: '2px 8px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                          }}>
+                            {s.category === 'essential' ? 'Essentiel' : 'Recommandé'}
+                          </span>
+                        </div>
+                        <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                          {s.estimatedTime} · ✓ {s.benefits[0]}
+                        </div>
                       </div>
-                      <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
-                        {s.estimatedTime} · ✓ {s.benefits[0]}
-                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => (s.key === 'calendar' ? setDashboardMode('calendar') : router.push(s.href))}
+                      style={{
+                        background: 'var(--accent)',
+                        border: 'none',
+                        color: 'black',
+                        fontWeight: 700,
+                        borderRadius: '8px',
+                        padding: '7px 12px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        alignSelf: isMobile ? 'stretch' : 'auto',
+                      }}
+                    >
+                      {s.cta}
+                    </button>
                   </div>
-                </div>
-                <button
-                  onClick={() => (s.key === 'calendar' ? setDashboardMode('calendar') : router.push(s.href))}
-                  style={{
-                    background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
-                    borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}
-                >
-                  {s.cta}
-                </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
       {pathname.startsWith('/parametres') && progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (
@@ -2739,9 +2846,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           todayTasks={todayTasks}
           pipelineSteps={pipelineSteps}
           kpiCards={kpiCards}
+          progressRecommendations={progressRecommendations}
+          progressCenterExpanded={progressCenterExpanded}
           router={router}
           dashboardMode={dashboardMode}
           setDashboardMode={setDashboardMode}
+          setProgressCenterExpanded={setProgressCenterExpanded}
           setFilters={setFilters}
           applyQuickFilter={applyQuickFilter}
           goToCommercialFilter={goToCommercialFilter}
