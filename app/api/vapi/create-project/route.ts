@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomBytes } from 'crypto'
 import { TABLES } from '@/src/lib/airtable'
 import { notifyArtisanQuotaReached } from '@/src/lib/artisan-notifications'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/src/lib/usage/quotas'
+import { sendOvhSms } from '@/src/lib/sms/ovh-sms'
+import { getBaseUrl } from '@/src/lib/base-url'
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo'
 
@@ -106,6 +109,72 @@ function parseIncomingPayload(body: any) {
     calledNumber: call?.phoneNumber?.number,
     callerNumber: call?.customer?.number,
     params,
+  }
+}
+
+// Génère un token de complément sécurisé et envoie un SMS OVH au client
+// avec le lien de complément d'infos. Étape best-effort : ne doit jamais
+// faire échouer la création du projet (le projet est déjà créé en base
+// au moment de l'appel de cette fonction). Toute erreur est capturée et
+// tracée sur la ligne Projects via sms_status/sms_last_error.
+async function sendCompletionSmsBestEffort(params: { projectId: string; clientPhone: string }) {
+  const { projectId, clientPhone } = params
+
+  if (!clientPhone) {
+    console.warn('[VAPI] Pas de numéro client, SMS de complément non envoyé - projectId:', projectId)
+    return
+  }
+
+  const token = randomBytes(24).toString('hex')
+  const completionUrl = `${getBaseUrl()}/completer/${token}`
+
+  try {
+    const { error: tokenUpdateError } = await supabaseAdmin
+      .from(TABLES.projects)
+      .update({
+        sms_completion_token: token,
+        sms_completion_url: completionUrl,
+      })
+      .eq('id', projectId)
+
+    if (tokenUpdateError) {
+      console.error('[VAPI] Échec écriture token de complément:', tokenUpdateError.message)
+    }
+
+    const message = `Kadria - Merci pour votre appel. Complétez votre demande ici : ${completionUrl}`
+    const smsResult = await sendOvhSms({ to: clientPhone, message })
+
+    const { error: statusUpdateError } = await supabaseAdmin
+      .from(TABLES.projects)
+      .update({
+        sms_sent_at: new Date().toISOString(),
+        sms_status: smsResult.success ? 'sent' : 'failed',
+        sms_last_error: smsResult.success ? null : (smsResult.error || 'Erreur inconnue'),
+      })
+      .eq('id', projectId)
+
+    if (statusUpdateError) {
+      console.error('[VAPI] Échec écriture statut SMS:', statusUpdateError.message)
+    }
+
+    if (!smsResult.success) {
+      console.error('[VAPI] Envoi SMS de complément échoué - projectId:', projectId, '- error:', smsResult.error)
+    } else {
+      console.log('[VAPI] SMS de complément envoyé - projectId:', projectId)
+    }
+  } catch (error) {
+    console.error('[VAPI] Erreur inattendue lors de l\'envoi du SMS de complément - projectId:', projectId, '-', error instanceof Error ? error.message : String(error))
+    try {
+      await supabaseAdmin
+        .from(TABLES.projects)
+        .update({
+          sms_status: 'failed',
+          sms_last_error: error instanceof Error ? error.message : 'Erreur inconnue',
+        })
+        .eq('id', projectId)
+    } catch {
+      // best-effort : on n'échoue jamais la création du projet pour ça
+    }
   }
 }
 
@@ -232,6 +301,10 @@ export async function POST(request: NextRequest) {
       console.error('[VAPI] Supabase error:', error.message)
     } else {
       console.log('[VAPI] Project created - recordId:', result.id)
+
+      // SMS de complément (best-effort, n'affecte jamais la création du projet).
+      await sendCompletionSmsBestEffort({ projectId: result.id, clientPhone })
+
       const usageResult = await recordProjectCreatedUsage({
         artisanId,
         projectId: result.id,
