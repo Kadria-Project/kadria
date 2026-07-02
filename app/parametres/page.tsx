@@ -30,6 +30,18 @@ const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
 ]
 
+const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: string }> = [
+  { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
+  { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
+  { id: 'contact', label: 'Coordonnées', icon: '📍' },
+  { id: 'legal', label: 'Infos légales', icon: '📋' },
+  { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
+  { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
+  { id: 'widget', label: 'Mon widget', icon: '🎨' },
+  { id: 'apparence', label: 'Apparence', icon: '🌘' },
+  { id: 'offre', label: 'Offre & quotas', icon: '💳' },
+]
+
 // Groupes visuels du menu latéral des paramètres
 const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: string; icon: string; href?: string }> }> = [
   {
@@ -1197,6 +1209,30 @@ function ParametresPageContent() {
     minWidth: 0,
   }
 
+  const workspaceCard: React.CSSProperties = {
+    ...sectionCard,
+    marginBottom: 0,
+    height: '100%',
+    boxShadow: '0 18px 40px rgba(0,0,0,0.18)',
+  }
+
+  const tabButtonStyle = (active: boolean): React.CSSProperties => ({
+    flexShrink: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: isMobile ? '10px 12px' : '11px 14px',
+    borderRadius: '12px',
+    border: active ? '1px solid rgba(34,197,94,0.35)' : '1px solid var(--border)',
+    background: active ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)',
+    color: active ? 'var(--accent)' : 'var(--text-2)',
+    fontSize: '13px',
+    fontWeight: active ? 700 : 500,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.15s ease',
+  })
+
   if (loading) return (
     <div style={{
       minHeight: '100vh', background: 'var(--bg)',
@@ -1215,7 +1251,7 @@ function ParametresPageContent() {
       color: 'var(--text-1)',
     }}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4" style={{
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 xl:px-10" style={{
         background: 'var(--bg-elevated)',
         borderBottom: '1px solid var(--border)',
         position: 'sticky',
@@ -1236,34 +1272,45 @@ function ParametresPageContent() {
           </button>
           <div className="flex min-w-0 items-baseline gap-2">
             <KadriaLogo size="sm" theme={theme === 'light' ? 'light' : 'dark'} noLink />
+            <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
+              · Configuration
+            </span>
             {!isMobile && (
               <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
-                · Configuration
+                Workspace de configuration
               </span>
             )}
           </div>
         </div>
-        <button
-          onClick={save}
-          disabled={saving}
-          className="shrink-0"
-          style={{
-            background: saved ? 'rgba(34,197,94,0.2)' : saving ? 'var(--bg-hover)' : 'var(--accent)',
-            border: saved ? '1px solid var(--accent)' : 'none',
-            color: saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
-            fontWeight: 700, borderRadius: '10px',
-            padding: isMobile ? '9px 12px' : '10px 24px', fontSize: '14px',
-            cursor: saving ? 'default' : 'pointer',
-            transition: 'all 0.2s',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
-        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          {!isMobile && (
+            <span style={{ color: saved ? '#4ade80' : 'var(--text-3)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+              {saved ? 'Dernière sauvegarde · à l’instant' : saving ? 'Sauvegarde en cours…' : 'Configuration en cours'}
+            </span>
+          )}
+          <button
+            onClick={save}
+            disabled={saving}
+            className="shrink-0"
+            style={{
+              background: saved ? 'rgba(34,197,94,0.2)' : saving ? 'var(--bg-hover)' : 'var(--accent)',
+              border: saved ? '1px solid var(--accent)' : 'none',
+              color: saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
+              fontWeight: 700, borderRadius: '12px',
+              padding: isMobile ? '9px 12px' : '10px 20px', fontSize: '14px',
+              cursor: saving ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap',
+              boxShadow: saving ? 'none' : '0 10px 24px rgba(34,197,94,0.18)',
+            }}
+          >
+            {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+        </div>
       </div>
 
       {saveError && (
-        <div className="mx-3 mt-4 sm:mx-8" style={{
+        <div className="mx-auto mt-4 w-full max-w-[1500px] px-4 sm:px-6 xl:px-10" style={{
           background: 'rgba(220,38,38,0.08)',
           border: '1px solid rgba(220,38,38,0.3)',
           borderRadius: '10px',
@@ -1275,107 +1322,76 @@ function ParametresPageContent() {
         </div>
       )}
 
-      <div className="mx-auto grid w-full max-w-full grid-cols-1 gap-4 px-3 py-4 sm:px-6 sm:py-8 md:max-w-[900px] md:grid-cols-[220px_1fr] md:gap-6" style={{ alignItems: 'start' }}>
-        {/* Sidebar navigation */}
-        <div className="min-w-0" style={isMobile ? {} : { position: 'sticky', top: '80px' }}>
-          <div style={{
-            ...sectionCard,
-            ...(isMobile ? {
-              display: 'flex',
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              gap: '8px',
-              padding: '12px',
-            } : {}),
-          }}>
-            {SETTINGS_GROUPS.map((group, gi) => (
-              <div key={group.label} style={isMobile ? { display: 'flex', gap: '8px' } : {}}>
-                {!isMobile && (
-                  <p style={{
-                    color: 'var(--text-3)', fontSize: '10px', fontWeight: 700,
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                    margin: gi === 0 ? '2px 14px 6px' : '14px 14px 6px',
-                  }}>
-                    {group.label}
-                  </p>
-                )}
-                {group.items.map(section => (
-                  <button
-                    key={section.id}
-                    onClick={() => {
-                      if (section.href) {
-                        router.push(section.href)
-                        return
-                      }
-                      setActiveSection(section.id)
-                    }}
-                    style={{
-                      width: isMobile ? 'auto' : '100%',
-                      flexShrink: isMobile ? 0 : undefined,
-                      background: activeSection === section.id
-                        ? 'rgba(34,197,94,0.1)' : 'transparent',
-                      border: 'none',
-                      borderLeft: !isMobile && activeSection === section.id
-                        ? '2px solid var(--accent)' : isMobile ? 'none' : '2px solid transparent',
-                      borderBottom: isMobile && activeSection === section.id
-                        ? '2px solid var(--accent)' : isMobile ? '2px solid transparent' : undefined,
-                      color: activeSection === section.id ? 'var(--accent)' : 'var(--text-2)',
-                      borderRadius: isMobile ? '8px' : '0 8px 8px 0',
-                      padding: '10px 14px',
-                      fontSize: '14px',
-                      fontWeight: activeSection === section.id ? 600 : 400,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: isMobile ? 0 : '4px',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <span>{section.icon}</span>
-                    {section.label}
-                  </button>
-                ))}
-              </div>
-            ))}
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 xl:px-10" style={{ alignItems: 'stretch' }}>
+        <div style={{
+          ...workspaceCard,
+          padding: isMobile ? '10px' : '12px',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <div style={{ display: 'flex', gap: '10px', minWidth: 'max-content' }}>
+            {SETTINGS_TABS.map((section) => {
+              const isActive = activeSection === section.id
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => {
+                    if (section.href) {
+                      router.push(section.href)
+                      return
+                    }
+                    setActiveSection(section.id)
+                  }}
+                  style={tabButtonStyle(isActive)}
+                >
+                  <span>{section.icon}</span>
+                  {section.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Main content */}
         <div className="min-w-0 w-full">
-          <div style={sectionCard}>
+          <div style={{
+            ...workspaceCard,
+            padding: isMobile ? '16px' : '18px 22px',
+            background: 'linear-gradient(180deg, rgba(34,197,94,0.08), rgba(24,24,27,0.92))',
+          }}>
             <div style={{
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
               alignItems: isMobile ? 'flex-start' : 'center',
               justifyContent: 'space-between',
               gap: '14px',
-              marginBottom: '16px',
             }}>
               <div style={{ minWidth: 0 }}>
-                <p style={{
-                  margin: '0 0 6px',
-                  color: 'var(--text-3)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}>
-                  Configuration Kadria
-                </p>
-                <h2 style={{ margin: 0, fontSize: isMobile ? '22px' : '24px', fontWeight: 800 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '30px',
+                    height: '30px',
+                    borderRadius: '999px',
+                    background: 'rgba(34,197,94,0.14)',
+                    color: '#4ade80',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                  }}>
+                    ✓
+                  </span>
+                  <strong style={{ fontSize: isMobile ? '16px' : '17px', fontWeight: 800 }}>
+                    {configurationPercent >= 100 ? 'Configuration complète' : `Configuration à ${configurationPercent}%`}
+                  </strong>
+                </div>
+                <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.5 }}>
                   {configurationPercent >= 100
-                    ? 'Votre configuration est complete'
-                    : `Votre compte est configure a ${configurationPercent} %`}
-                </h2>
-                <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '14px', lineHeight: 1.6 }}>
-                  {configurationPercent >= 100
-                    ? 'Votre espace est pret. Vous pouvez garder le detail replie et y revenir si besoin.'
+                    ? 'Tous les modules essentiels sont prêts. Vous pouvez modifier à tout moment.'
                     : configurationPrimaryCta
-                      ? `${configurationRemainingCount} element(s) a completer. Commencez par : ${configurationPrimaryCta.label}.`
-                      : 'Finalisez les reglages essentiels pour exploiter pleinement votre espace.'}
+                      ? `${configurationRemainingCount} élément(s) à compléter. Commencez par ${configurationPrimaryCta.label}.`
+                      : 'Finalisez les réglages essentiels pour exploiter pleinement votre espace.'}
                 </p>
               </div>
 
@@ -1386,49 +1402,43 @@ function ParametresPageContent() {
                 gap: '10px',
                 width: isMobile ? '100%' : 'auto',
               }}>
+                <div style={{
+                  minWidth: isMobile ? '100%' : '180px',
+                  height: '8px',
+                  borderRadius: '999px',
+                  background: 'rgba(255,255,255,0.06)',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${configurationPercent}%`,
+                    height: '100%',
+                    background: configurationPercent >= 100 ? '#22c55e' : 'var(--accent)',
+                    transition: 'width 0.2s ease',
+                  }} />
+                </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (configurationPrimaryCta) {
-                      handleConfigurationAction(configurationPrimaryCta)
-                    } else {
-                      setActiveSection('entreprise')
-                      router.replace('/parametres?section=entreprise', { scroll: false })
-                    }
-                  }}
+                  onClick={() => setConfigurationCardExpanded((value) => !value)}
+                  aria-expanded={configurationCardExpanded}
                   style={{
-                    background: 'var(--accent)',
-                    border: 'none',
-                    color: 'black',
+                    background: configurationCardExpanded ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
                     fontWeight: 700,
-                    borderRadius: '10px',
-                    padding: '10px 16px',
-                    fontSize: '14px',
+                    borderRadius: '12px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {configurationPrimaryCta ? configurationPrimaryCta.cta : 'Voir le detail'}
+                  {configurationCardExpanded ? 'Réduire' : 'Voir le détail'}
                 </button>
               </div>
             </div>
 
             <div style={{
-              height: '8px',
-              borderRadius: '999px',
-              background: 'var(--bg-hover)',
-              overflow: 'hidden',
-              marginBottom: '12px',
-            }}>
-              <div style={{
-                width: `${configurationPercent}%`,
-                height: '100%',
-                background: configurationPercent >= 100 ? '#22c55e' : 'var(--accent)',
-                transition: 'width 0.2s ease',
-              }} />
-            </div>
-
-            <div style={{
+              marginTop: '14px',
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
               alignItems: isMobile ? 'stretch' : 'center',
@@ -1462,33 +1472,8 @@ function ParametresPageContent() {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setConfigurationCardExpanded((value) => !value)}
-              aria-expanded={configurationCardExpanded}
-              style={{
-                marginTop: '14px',
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                background: configurationCardExpanded ? 'rgba(34,197,94,0.08)' : 'transparent',
-                border: '1px solid var(--border)',
-                color: 'var(--text-1)',
-                fontWeight: 700,
-                borderRadius: '12px',
-                padding: '11px 14px',
-                fontSize: '13px',
-                cursor: 'pointer',
-              }}
-            >
-              <span>{configurationCardExpanded ? 'Reduire' : 'Afficher le detail'}</span>
-              <span aria-hidden>{configurationCardExpanded ? '↑' : '↓'}</span>
-            </button>
-
             {configurationCardExpanded && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px', marginTop: '14px' }}>
               {configurationItems.map((item) => {
                 const done = item.status === 'done'
                 return (
@@ -2493,6 +2478,7 @@ function ParametresPageContent() {
                   />
                 </div>
               </div>
+
             </div>
           )}
 
@@ -2955,13 +2941,16 @@ function ParametresPageContent() {
 
           {activeSection === 'catalogue' && (
             <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                📒 Catalogue & devis
-              </h2>
-              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '-12px 0 16px' }}>
-                Votre catalogue de prestations, vos modèles de devis et vos paramètres par défaut.
-              </p>
-              <div style={sectionCard}>
+              <div style={{ margin: '0 0 18px' }}>
+                <h2 style={{ margin: 0, fontSize: isMobile ? '22px' : '28px', fontWeight: 800 }}>
+                  Catalogue & devis
+                </h2>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '8px 0 0', lineHeight: 1.6, maxWidth: '760px' }}>
+                  Votre catalogue de prestations, vos modèles de devis et vos paramètres par défaut, répartis dans un workspace plus dense et plus lisible.
+                </p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, minmax(0, 1fr))', gap: '16px' }}>
+                <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 4' }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Catalogue de prestations
                 </h3>
@@ -3114,7 +3103,7 @@ function ParametresPageContent() {
                 </button>
               </div>
 
-              <div style={sectionCard}>
+              <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 8' }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Modèles de devis
                 </h3>
@@ -3664,6 +3653,7 @@ function ParametresPageContent() {
                 </div>
               </div>
             </div>
+          </div>
           )}
 
           {activeSection === 'apparence' && (
