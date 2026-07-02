@@ -308,7 +308,7 @@ export default function CompleterPage() {
 
           <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 16px', marginBottom: '24px' }}>
             <p style={{ fontSize: '13px', fontWeight: 700, color: '#111827', margin: '0 0 4px' }}>
-              {clientFirstName ? `Bonjour ${clientFirstName}` : 'Votre demande'}
+              Bonjour,
             </p>
             {needSummary && (
               <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 4px' }}>{needSummary}</p>
