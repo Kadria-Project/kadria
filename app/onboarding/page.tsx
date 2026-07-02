@@ -390,6 +390,7 @@ export default function OnboardingPage() {
 
   const progressPct = Math.round(((stepIndex + 1) / STEPS.length) * 100)
   const widgetScriptTag = `<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`
+  const hasRealArtisanId = artisanIdDisplay.trim().length > 0 && artisanIdDisplay !== 'VOTRE_ARTISAN_ID' && artisanIdDisplay !== 'Test'
   const minimumSetupDone = Boolean(
     config.companyName.trim() &&
     config.phone.trim() &&
@@ -601,47 +602,30 @@ export default function OnboardingPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                  <label style={labelStyle}>Metiers *</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {ARTISAN_TRADES.map(t => {
-                    const selected = config.trades.includes(t.value)
-                    return (
-                      <button
-                        key={t.value}
-                        type="button"
-                        onClick={() => setConfig(c => {
-                          const trades = selected
-                            ? c.trades.filter(v => v !== t.value)
-                            : [...c.trades, t.value]
-                          return {
-                            ...c,
-                            trades,
-                            primaryTrade: trades[0]
-                              ? (ARTISAN_TRADES.find(opt => opt.value === trades[0])?.label || trades[0])
-                              : '',
-                            otherTrade: t.value === 'autre' && selected ? '' : c.otherTrade,
-                          }
-                        })}
-                        style={{
-                          background: selected ? 'rgba(34,197,94,0.15)' : 'var(--bg-hover)',
-                          border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
-                          color: selected ? 'var(--accent)' : 'var(--text-2)',
-                          borderRadius: '20px',
-                          padding: '8px 16px',
-                          fontSize: '13px',
-                          fontWeight: selected ? 600 : 400,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {selected ? '✓ ' : ''}{t.label}
-                      </button>
-                    )
-                  })}
-                </div>
+                <label style={labelStyle}>Metier principal *</label>
+                <select
+                  value={config.trades[0] || ''}
+                  onChange={e => {
+                    const selectedTrade = e.target.value
+                    setConfig(c => ({
+                      ...c,
+                      trades: selectedTrade ? [selectedTrade] : [],
+                      primaryTrade: selectedTrade
+                        ? (ARTISAN_TRADES.find(opt => opt.value === selectedTrade)?.label || selectedTrade)
+                        : '',
+                      otherTrade: selectedTrade === 'autre' ? c.otherTrade : '',
+                    }))
+                  }}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  <option value="">Selectionnez votre metier principal</option>
+                  {ARTISAN_TRADES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
                 {config.trades.length === 0 && (
                   <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
-                    Sélectionnez au moins un métier.
+                    Selectionnez au moins un metier.
                   </p>
                 )}
               </div>
@@ -704,39 +688,9 @@ export default function OnboardingPage() {
                     <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
                       Vous pourrez configurer vos prestations en detail plus tard dans Parametres.
                     </p>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
-                      <button
-                        type="button"
-                        onClick={() => router.push('/parametres/profil-metier')}
-                        style={{
-                          background: 'var(--accent)',
-                          border: 'none',
-                          color: 'black',
-                          fontWeight: 700,
-                          borderRadius: '10px',
-                          padding: '10px 14px',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Configurer mes prestations
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSavedAt(Date.now())}
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid var(--border)',
-                          color: 'var(--text-2)',
-                          borderRadius: '10px',
-                          padding: '10px 14px',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Je le ferai plus tard
-                      </button>
-                    </div>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '10px 0 0' }}>
+                      Vous pourrez configurer vos prestations en detail apres l&apos;onboarding depuis Parametres {'>'} Profil metier.
+                    </p>
                   </div>
                 )}
               <div>
@@ -1034,28 +988,36 @@ export default function OnboardingPage() {
                 background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px',
                 padding: '16px', position: 'relative',
               }}>
-                <pre style={{
-                  margin: 0, fontFamily: 'monospace', fontSize: '13px', color: '#4ade80',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6,
-                }}>
-                  {widgetScriptTag}
-                </pre>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(widgetScriptTag)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }}
-                  style={{
-                    position: 'absolute', top: '10px', right: '10px',
-                    background: copied ? 'rgba(34,197,94,0.2)' : 'var(--bg-hover)',
-                    border: '1px solid', borderColor: copied ? 'var(--accent)' : 'var(--border)',
-                    color: copied ? '#4ade80' : 'var(--text-2)', borderRadius: '6px',
-                    padding: '4px 10px', fontSize: '12px', cursor: 'pointer',
-                  }}
-                >
-                  {copied ? '✓ Copie !' : 'Copier'}
-                </button>
+                {hasRealArtisanId ? (
+                  <>
+                    <pre style={{
+                      margin: 0, fontFamily: 'monospace', fontSize: '13px', color: '#4ade80',
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6,
+                    }}>
+                      {widgetScriptTag}
+                    </pre>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(widgetScriptTag)
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      }}
+                      style={{
+                        position: 'absolute', top: '10px', right: '10px',
+                        background: copied ? 'rgba(34,197,94,0.2)' : 'var(--bg-hover)',
+                        border: '1px solid', borderColor: copied ? 'var(--accent)' : 'var(--border)',
+                        color: copied ? '#4ade80' : 'var(--text-2)', borderRadius: '6px',
+                        padding: '4px 10px', fontSize: '12px', cursor: 'pointer',
+                      }}
+                    >
+                      {copied ? '✓ Copie !' : 'Copier'}
+                    </button>
+                  </>
+                ) : (
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                    Votre lien projet sera disponible apres finalisation de l&apos;onboarding.
+                  </p>
+                )}
               </div>
               <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
                 Vous pourrez utiliser ce lien ou installer le widget plus tard depuis les parametres.
@@ -1122,22 +1084,9 @@ export default function OnboardingPage() {
                 <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
                   Vous pourrez demander des acomptes avec un montant prerempli. Pour cela, votre compte Stripe devra etre connecte depuis les parametres.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/parametres?section=catalogue')}
-                  style={{
-                    alignSelf: 'flex-start',
-                    background: 'transparent',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-2)',
-                    borderRadius: '10px',
-                    padding: '10px 14px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Configurer plus tard
-                </button>
+                <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.6 }}>
+                  Vous pourrez activer les acomptes et connecter Stripe apres l&apos;onboarding depuis Parametres {'>'} Catalogue & devis.
+                </p>
               </div>
               <div style={{
                 background: 'var(--bg-hover)',

@@ -5,6 +5,7 @@
 import {
   computeSetupProgress,
   type ComputeSetupProgressInput,
+  type SetupStepCategory,
   type SetupProgressResult,
   type SetupProgressStep,
 } from '@/src/lib/setup-progress'
@@ -15,6 +16,7 @@ export interface ProgressNextStep {
   description: string
   estimatedTime: string
   priority: number
+  category: SetupStepCategory
   benefits: string[]
   unlocks: string[]
   icon: string
@@ -121,6 +123,7 @@ function toNextStep(step: SetupProgressStep): ProgressNextStep {
     description: step.description,
     estimatedTime: meta.estimatedTime,
     priority: step.priority,
+    category: step.category,
     benefits: meta.benefits,
     unlocks: meta.unlocks,
     icon: meta.icon,

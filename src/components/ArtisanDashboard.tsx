@@ -2626,26 +2626,49 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div style={{ height: '100%', width: `${progressRecommendations.progress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
           </div>
 
-          <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '14px' }}>
-            Encore environ {progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.
-          </div>
+              <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '14px' }}>
+                Encore environ {progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.
+              </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-            {progressRecommendations.nextSteps.slice(0, 3).map((s) => (
-              <div
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                <span style={{ border: '1px solid rgba(34,197,94,0.28)', background: 'rgba(34,197,94,0.12)', color: '#86efac', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
+                  Essentiel
+                </span>
+                <span style={{ border: '1px solid rgba(251,191,36,0.28)', background: 'rgba(251,191,36,0.12)', color: '#fcd34d', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
+                  Recommandé
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {progressRecommendations.nextSteps.slice(0, 3).map((s) => (
+                  <div
                 key={s.key}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
                   border: '1px solid var(--border)', borderRadius: '10px', padding: '8px 10px', background: 'var(--bg-elevated)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <span style={{ fontSize: '16px' }}>{s.icon}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>{s.title}</div>
-                    <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
-                      {s.estimatedTime} · ✓ {s.benefits[0]}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <span style={{ fontSize: '16px' }}>{s.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span>{s.title}</span>
+                        <span style={{
+                          border: '1px solid',
+                          borderColor: s.category === 'essential' ? 'rgba(34,197,94,0.28)' : 'rgba(251,191,36,0.28)',
+                          background: s.category === 'essential' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)',
+                          color: s.category === 'essential' ? '#86efac' : '#fcd34d',
+                          borderRadius: '999px',
+                          padding: '2px 8px',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                        }}>
+                          {s.category === 'essential' ? 'Essentiel' : 'Recommandé'}
+                        </span>
+                      </div>
+                      <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                        {s.estimatedTime} · ✓ {s.benefits[0]}
+                      </div>
                   </div>
                 </div>
                 <button

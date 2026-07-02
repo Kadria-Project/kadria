@@ -19,8 +19,14 @@ export interface SetupProgressArtisanConfig {
   phone?: string | null
   villePro?: string | null
   address?: string | null
+  artisanId?: string | null
+  googleReviewUrl?: string | null
+  depositEnabled?: boolean | null
+  devisConditionsPaiement?: string | null
+  stripeConnectStatus?: string | null
   businessConfig?: {
     calendarMode?: string | null
+    serviceCatalog?: unknown[] | null
   } | null
 }
 
@@ -40,12 +46,14 @@ export interface ComputeSetupProgressInput {
 }
 
 export type SetupStepStatus = 'done' | 'todo'
+export type SetupStepCategory = 'essential' | 'recommended'
 
 export interface SetupProgressStep {
   key: string
   label: string
   description: string
   status: SetupStepStatus
+  category: SetupStepCategory
   ctaLabel: string
   href: string
   priority: number
@@ -79,6 +87,9 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
   const calendarIntegration = input.calendarIntegration || null
   const artisanConfig = input.artisanConfig || null
   const calendarMode = artisanConfig?.businessConfig?.calendarMode === 'google' ? 'google' : 'kadria'
+  const serviceCatalogCount = Array.isArray(artisanConfig?.businessConfig?.serviceCatalog)
+    ? artisanConfig?.businessConfig?.serviceCatalog?.length || 0
+    : 0
 
   const entrepriseDone =
     hasText(artisanConfig?.companyName) && hasText(artisanConfig?.phone) &&
@@ -90,8 +101,9 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       label: 'Entreprise renseignee',
       description: "Nom de l'entreprise, telephone et commune.",
       status: entrepriseDone ? 'done' : 'todo',
+      category: 'essential',
       ctaLabel: 'Completer mon entreprise',
-      href: '/parametres/profil-metier',
+      href: '/parametres?section=entreprise',
       priority: 1,
     },
     {
@@ -99,6 +111,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       label: 'Metier principal renseigne',
       description: 'Le metier principal permet a Kadria de qualifier vos demandes.',
       status: hasText(businessProfile?.primaryTrade) ? 'done' : 'todo',
+      category: 'essential',
       ctaLabel: 'Renseigner mon metier',
       href: '/parametres/profil-metier',
       priority: 2,
@@ -108,8 +121,9 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       label: "Zone d'intervention",
       description: "Ville de depart et rayon d'intervention.",
       status: hasText(businessProfile?.baseCity) && hasValue(businessProfile?.interventionRadiusKm) ? 'done' : 'todo',
+      category: 'essential',
       ctaLabel: 'Definir ma zone',
-      href: '/parametres/profil-metier',
+      href: '/parametres?section=entreprise',
       priority: 4,
     },
     {
@@ -117,6 +131,7 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       label: 'Tarifs de base',
       description: 'Tarif horaire ou TVA par defaut.',
       status: hasValue(businessProfile?.hourlyRateHt) || hasValue(businessProfile?.defaultVatRate) ? 'done' : 'todo',
+      category: 'essential',
       ctaLabel: 'Renseigner mes tarifs',
       href: '/parametres/profil-metier',
       priority: 5,
@@ -125,33 +140,87 @@ export function computeSetupProgress(input: ComputeSetupProgressInput): SetupPro
       key: 'prestations',
       label: 'Prestations configurees',
       description: 'Au moins une fiche prestation dans votre bibliotheque.',
-      status: serviceProfiles.length > 0 ? 'done' : 'todo',
+      status: serviceProfiles.length > 0 || serviceCatalogCount > 0 ? 'done' : 'todo',
+      category: 'essential',
       ctaLabel: 'Configurer mes prestations',
       href: '/parametres/profil-metier',
       priority: 3,
+    },
+    {
+      key: 'devis',
+      label: 'Conditions de paiement / devis',
+      description: 'Base utile pour vos devis et votre suivi commercial.',
+      status: hasText(artisanConfig?.devisConditionsPaiement) ? 'done' : 'todo',
+      category: 'essential',
+      ctaLabel: 'Configurer mes devis',
+      href: '/parametres?section=catalogue',
+      priority: 6,
     },
     {
       key: 'calendar',
       label: 'Agenda configure',
       description: 'Choisissez Planning Kadria ou connectez Google Calendar.',
       status: calendarMode === 'kadria' || calendarIntegration?.connected ? 'done' : 'todo',
+      category: 'recommended',
       ctaLabel: 'Configurer mon agenda',
       href: '/dashboard-v2',
-      priority: 7,
+      priority: 9,
     },
     {
       key: 'horaires',
       label: 'Horaires renseignes',
       description: 'Jours travailles et creneaux horaires habituels.',
       status: (businessProfile?.workingDays || []).length > 0 && hasText(businessProfile?.workStartTime) && hasText(businessProfile?.workEndTime) ? 'done' : 'todo',
+      category: 'recommended',
       ctaLabel: 'Renseigner mes horaires',
       href: '/parametres/profil-metier',
-      priority: 6,
+      priority: 10,
+    },
+    {
+      key: 'google_review',
+      label: 'Lien avis Google',
+      description: "Permet d'envoyer plus facilement des demandes d'avis.",
+      status: hasText(artisanConfig?.googleReviewUrl) ? 'done' : 'todo',
+      category: 'recommended',
+      ctaLabel: 'Ajouter le lien',
+      href: '/parametres?section=entreprise',
+      priority: 11,
+    },
+    {
+      key: 'deposit',
+      label: 'Acomptes actives',
+      description: 'Activez les acomptes pour securiser vos chantiers.',
+      status: artisanConfig?.depositEnabled ? 'done' : 'todo',
+      category: 'recommended',
+      ctaLabel: 'Activer',
+      href: '/parametres?section=catalogue',
+      priority: 12,
+    },
+    {
+      key: 'stripe_connect',
+      label: 'Stripe connecte',
+      description: 'Necessaire seulement si vous voulez encaisser des acomptes en ligne.',
+      status: artisanConfig?.stripeConnectStatus === 'active' ? 'done' : 'todo',
+      category: 'recommended',
+      ctaLabel: 'Connecter',
+      href: '/parametres?section=catalogue',
+      priority: 13,
+    },
+    {
+      key: 'widget',
+      label: 'Widget / lien projet',
+      description: 'Votre lien projet peut deja etre partage ou installe sur votre site.',
+      status: hasText(artisanConfig?.artisanId) ? 'done' : 'todo',
+      category: 'recommended',
+      ctaLabel: 'Ouvrir',
+      href: '/parametres?section=widget',
+      priority: 8,
     },
   ]
 
-  const completedSteps = steps.filter((s) => s.status === 'done').length
-  const totalSteps = steps.length
+  const scoredSteps = steps.filter((s) => s.category === 'essential')
+  const completedSteps = scoredSteps.filter((s) => s.status === 'done').length
+  const totalSteps = scoredSteps.length
   const percent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
 
   return { percent, completedSteps, totalSteps, steps }
