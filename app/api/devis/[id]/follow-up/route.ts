@@ -7,14 +7,8 @@ import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { resolveDevisEmailBranding, escapeHtml } from '@/src/lib/devis-email-branding'
-
-function toHtml(text: string) {
-  return text
-    .split('\n\n')
-    .map((paragraph) => `<p style="margin:0 0 14px;line-height:1.6;color:#374151;">${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
-    .join('')
-}
+import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
+import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
 
 function isValidDevisToken(token: string | undefined): token is string {
   return !!token && !token.includes('undefined') && /^[0-9a-f-]{36}$/i.test(token)
@@ -153,30 +147,25 @@ export async function POST(
     const fromName = emailBranding.isWhiteLabelActive
       ? `${emailBranding.brandName} via Kadria`
       : 'Kadria'
-    const ctaTextColor = emailBranding.isWhiteLabelActive ? '#ffffff' : '#09090b'
-    const footerHtml = emailBranding.isWhiteLabelActive
-      ? `<p style="margin:22px 0 0;font-size:11px;color:#9ca3af;text-align:center;">${escapeHtml(emailBranding.poweredByLabel)}</p>`
-      : ''
-
     const result = await resend.emails.send({
       from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
       to: devis.clientEmail,
       subject: email.subject,
       text: `${email.text}\n\nLien du devis : ${devisUrl}`,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;">
-          <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:32px;">
-            <div style="margin-bottom:20px;">${emailBranding.headerHtml}</div>
-            ${toHtml(email.text)}
-            <p style="margin:22px 0 0;">
-              <a href="${devisUrl}" style="display:inline-block;background:${emailBranding.ctaColor};color:${ctaTextColor};text-decoration:none;font-weight:700;border-radius:10px;padding:12px 18px;">
-                Voir le devis
-              </a>
-            </p>
-            ${footerHtml}
-          </div>
-        </div>
-      `,
+      html: renderBaseEmail({
+        preheader: email.subject,
+        brand: emailBranding.brandName || 'Kadria',
+        title: 'Votre devis est toujours disponible',
+        intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis à tout moment depuis le lien ci-dessous.',
+        body: email.text,
+        ctaLabel: 'Consulter le devis',
+        ctaUrl: devisUrl,
+        artisanName: artisanName,
+        footerNote: emailBranding.isWhiteLabelActive
+          ? emailBranding.poweredByLabel
+          : 'Kadria aide les artisans à qualifier, suivre et sécuriser leurs demandes clients.',
+        accentColor: emailBranding.ctaColor,
+      }),
       attachments: devis.pdfUrl
         ? [{ filename: `${devis.devisNumber}.pdf`, path: devis.pdfUrl }]
         : undefined,

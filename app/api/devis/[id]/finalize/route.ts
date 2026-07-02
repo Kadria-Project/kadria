@@ -8,6 +8,7 @@ import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { createSentDevisSnapshot } from '@/src/lib/devis-snapshots'
 import { resolveDevisEmailBranding, escapeHtml, type DevisEmailBranding } from '@/src/lib/devis-email-branding'
+import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -167,6 +168,45 @@ function buildDevisEmailHtml(params: {
   `
 }
 
+function buildDevisEmailHtmlV2(params: {
+  artisanNom: string
+  devisNumero: string
+  totalTTC: number
+  dateValidite: string
+  devisUrl: string
+  branding: DevisEmailBranding
+}) {
+  const { artisanNom, devisNumero, totalTTC, dateValidite, devisUrl, branding } = params
+  const artisanNomSafe = escapeHtml(artisanNom)
+  const formattedAmount = new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(totalTTC)
+
+  return renderBaseEmail({
+    preheader: `Votre devis ${devisNumero} est prêt`,
+    brand: branding.brandName || 'Kadria',
+    title: 'Votre devis est prêt',
+    intro: branding.isWhiteLabelActive
+      ? `Votre devis ${devisNumero} est disponible. Vous pouvez le consulter, l'accepter ou le refuser depuis la page sécurisée.`
+      : `Vous trouverez votre devis ci-dessous. Vous pouvez le consulter, l'accepter ou le refuser depuis la page sécurisée.`,
+    body: `Pour toute question, contactez directement ${artisanNomSafe}.`,
+    ctaLabel: 'Consulter le devis',
+    ctaUrl: devisUrl,
+    secondaryText: 'Vous pouvez également télécharger le PDF depuis cette page.',
+    summaryItems: [
+      { label: 'Référence', value: devisNumero },
+      { label: 'Montant', value: formattedAmount },
+      { label: 'Validité', value: dateValidite || '90 jours après émission' },
+    ],
+    artisanName: artisanNom || branding.brandName,
+    footerNote: branding.isWhiteLabelActive
+      ? branding.poweredByLabel
+      : 'Kadria aide les artisans à qualifier, suivre et sécuriser leurs demandes clients.',
+    accentColor: branding.ctaColor,
+  })
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -272,7 +312,7 @@ export async function POST(
           from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
           to: clientEmail,
           subject,
-          html: buildDevisEmailHtml({
+          html: buildDevisEmailHtmlV2({
             artisanNom,
             devisNumero: devis.devisNumber,
             totalTTC: devis.totalTTC,

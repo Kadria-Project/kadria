@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
-import { escapeHtml, resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
+import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
+import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function isValidHttpUrl(value: string): boolean {
@@ -124,35 +125,27 @@ export async function POST(
     const fromName = emailBranding.isWhiteLabelActive
       ? `${emailBranding.brandName} via Kadria`
       : 'Kadria'
-    const ctaTextColor = emailBranding.isWhiteLabelActive ? '#ffffff' : '#09090b'
-    const footerHtml = emailBranding.isWhiteLabelActive
-      ? `<p style="margin:22px 0 0;font-size:11px;color:#9ca3af;text-align:center;">${escapeHtml(emailBranding.poweredByLabel)}</p>`
-      : ''
-
     const resend = new Resend(process.env.RESEND_API_KEY)
     const result = await resend.emails.send({
       from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
       to: clientEmail,
       subject: 'Votre avis compte pour nous',
       text: `${greeting}\n\nMerci pour votre confiance.\n\nSi vous etes satisfait de l'intervention ou de l'accompagnement pour ${projectLabel}, vous pouvez laisser un avis ici :\n\n${googleReviewUrl}\n\nVotre retour aide ${businessName} a etre plus visible localement et a continuer d'ameliorer son service.\n\nMerci encore.\n\n${businessName}`,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;">
-          <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:32px;">
-            <div style="margin-bottom:20px;">${emailBranding.headerHtml}</div>
-            <p style="margin:0 0 14px;line-height:1.6;color:#374151;">${escapeHtml(greeting)}</p>
-            <p style="margin:0 0 14px;line-height:1.6;color:#374151;">Merci pour votre confiance.</p>
-            <p style="margin:0 0 14px;line-height:1.6;color:#374151;">Si vous etes satisfait de l'intervention ou de l'accompagnement pour ${escapeHtml(projectLabel)}, vous pouvez laisser un avis ici :</p>
-            <p style="margin:22px 0 0;">
-              <a href="${googleReviewUrl}" style="display:inline-block;background:${emailBranding.ctaColor};color:${ctaTextColor};text-decoration:none;font-weight:700;border-radius:10px;padding:12px 18px;">
-                Laisser un avis Google
-              </a>
-            </p>
-            <p style="margin:22px 0 0;line-height:1.6;color:#374151;">Votre retour aide ${escapeHtml(businessName)} a etre plus visible localement et a continuer d'ameliorer son service.</p>
-            <p style="margin:14px 0 0;line-height:1.6;color:#374151;">Merci encore.<br>${escapeHtml(businessName)}</p>
-            ${footerHtml}
-          </div>
-        </div>
-      `,
+      html: renderBaseEmail({
+        preheader: 'Votre avis compte beaucoup',
+        brand: emailBranding.brandName || 'Kadria',
+        title: 'Votre avis compte beaucoup',
+        intro: `${greeting}\n\nMerci pour votre confiance. Votre retour aide l'entreprise à valoriser son travail et à rassurer ses futurs clients.`,
+        body: `Si vous êtes satisfait de l'intervention ou de l'accompagnement pour ${projectLabel}, vous pouvez laisser un avis via le lien ci-dessous.`,
+        ctaLabel: 'Laisser un avis',
+        ctaUrl: googleReviewUrl,
+        artisanName: businessName,
+        secondaryText: `Votre retour aide ${businessName} à être plus visible localement et à continuer d'améliorer son service.`,
+        footerNote: emailBranding.isWhiteLabelActive
+          ? emailBranding.poweredByLabel
+          : 'Kadria aide les artisans à qualifier, suivre et sécuriser leurs demandes clients.',
+        accentColor: emailBranding.ctaColor,
+      }),
       headers: {
         'X-Entity-Ref-ID': `google-review-request-${project.id}`,
       },

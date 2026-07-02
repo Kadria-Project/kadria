@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { Resend } from 'resend'
+import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 export const DEMO_ACCESS_COOKIE = 'kadria-demo-access'
@@ -278,24 +279,16 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
           from: 'Kadria <contact@kadria.fr>',
           to: row.email,
           subject: 'Votre acces a la demo Kadria',
-          html: `
-            <div style="font-family:system-ui;max-width:560px;margin:0 auto;padding:32px 20px;background:#09090b;color:white;">
-              <h1 style="margin:0 0 20px;">
-                <span style="color:#22c55e">K</span><span style="color:white">adria</span>
-              </h1>
-              <h2 style="margin:0 0 16px;font-size:20px;">Votre acces demo est pret</h2>
-              <p style="margin:0 0 16px;color:#a1a1aa;line-height:1.7;">
-                Bonjour ${row.first_name || ''}, votre acces a la demonstration Kadria a ete active.
-                Cliquez sur le bouton ci-dessous pour ouvrir la demo complete.
-              </p>
-              <a href="${verifyUrl}" style="display:inline-block;background:#22c55e;color:black;font-weight:700;border-radius:10px;padding:14px 24px;font-size:16px;text-decoration:none;">
-                Ouvrir la demo Kadria
-              </a>
-              <p style="margin:16px 0 0;color:#71717a;font-size:12px;line-height:1.6;">
-                Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')} et peut etre revoque a tout moment.
-              </p>
-            </div>
-          `,
+          html: renderBaseEmail({
+            preheader: 'Votre accès démo Kadria est prêt',
+            title: 'Votre accès démo est prêt',
+            intro: `Bonjour ${row.first_name || ''}, votre accès à la démonstration Kadria a été activé.`,
+            body: 'Cliquez sur le bouton ci-dessous pour ouvrir la démo complète.',
+            ctaLabel: 'Ouvrir la démo Kadria',
+            ctaUrl: verifyUrl,
+            secondaryText: `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')} et peut être révoqué à tout moment.`,
+            footerNote: 'Kadria aide les artisans à qualifier, suivre et sécuriser leurs demandes clients.',
+          }),
         })
         emailed = true
       } catch (emailError) {
