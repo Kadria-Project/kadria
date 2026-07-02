@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
         const { data: projectRow } = await supabaseAdmin
           .from(TABLES.projects)
-          .select('client_first_name, project_type, trade, ai_summary, description')
+          .select('client_first_name, project_type, trade, ai_summary, project_title')
           .eq('id', project.id)
           .limit(1)
           .maybeSingle()
@@ -150,10 +150,10 @@ export async function POST(request: NextRequest) {
         // source de verite que la fiche projet et la page devis publique.
         const projectType = getProjectDisplayTitle(
           {
+            projectTitle: projectRow?.project_title,
             projectType: projectRow?.project_type,
             trade: projectRow?.trade,
             aiSummary: projectRow?.ai_summary,
-            description: (projectRow?.description as string) || devis.objet,
           },
           devis.objet || (projectRow?.project_type as string) || (projectRow?.trade as string) || 'votre projet',
         )

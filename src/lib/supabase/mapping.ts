@@ -1,4 +1,5 @@
 import { normalizeTrades } from '@/src/config/trades'
+import { resolveProjectTitleForStorage } from '@/src/lib/project-detail/project-headline'
 
 type RawRow = Record<string, unknown>
 
@@ -194,6 +195,7 @@ export interface SupabaseProject {
   projectNumber: string
   status: string
   leadStatus: string
+  projectTitle: string
   clientName: string
   clientFirstName: string
   clientEmail: string
@@ -329,6 +331,12 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     projectNumber: id ? id.slice(-6) : '',
     status: getString(row, 'status', 'Status') || 'Inconnu',
     leadStatus: getString(row, 'lead_status', 'Lead Status'),
+    // Colonne texte ajoutee manuellement sur Projects pour persister le titre
+    // complet du projet. Postgres normalise en minuscules un identifiant non
+    // quote : `project_title` est donc la casse attendue. On garde des cles
+    // de secours (autres casses) pour rester tolerant si jamais le row vient
+    // d'un select('*') qui exposerait une casse differente.
+    projectTitle: getString(row, 'project_title', 'Project_title', 'projectTitle'),
     clientName: getString(row, 'client_name', 'Client Name'),
     clientFirstName: getString(row, 'client_first_name', 'Client First Name'),
     clientEmail: getString(row, 'client_email', 'Client Email'),
@@ -447,6 +455,16 @@ export function toSupabaseProjectInsert(input: Record<string, unknown>) {
     desired_timeline: String(input.desiredTimeline || ''),
     maturity: String(input.maturity || ''),
     ai_summary: String(input.aiSummary || '').trim() || buildFallbackAiSummary(input),
+    // Titre complet et persistant du projet (Projects.project_title) :
+    // resolu une seule fois a la creation via resolveProjectTitleForStorage
+    // pour eviter de dupliquer la logique de priorite dans chaque route.
+    project_title: resolveProjectTitleForStorage({
+      aiGeneratedTitle: typeof input.projectTitle === 'string' ? input.projectTitle : undefined,
+      headline: typeof input.headline === 'string' ? input.headline : undefined,
+      aiSummary: typeof input.aiSummary === 'string' ? input.aiSummary : undefined,
+      projectType: typeof input.projectType === 'string' ? input.projectType : undefined,
+      trade: typeof input.trade === 'string' ? input.trade : undefined,
+    }),
     chat_history: String(input.chatHistory || input.projectDetails || ''),
     trade_answers:
       input.tradeAnswers === undefined || input.tradeAnswers === null || input.tradeAnswers === ''
@@ -499,6 +517,7 @@ export function toSupabaseProjectUpdate(input: Record<string, unknown>) {
     'Desired Timeline': 'desired_timeline',
     Maturity: 'maturity',
     'AI Summary': 'ai_summary',
+    projectTitle: 'project_title',
     'Chat History': 'chat_history',
     'Trade Answers': 'trade_answers',
     'Artisan Notes': 'artisan_notes',

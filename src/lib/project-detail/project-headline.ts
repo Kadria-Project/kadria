@@ -119,10 +119,79 @@ export function getProjectHeadline(project: any) {
 // precis n'a pu etre determine, on retombe sur un fallback generique neutre
 // plutot que d'injecter un texte pense pour un H1.
 export function getProjectDisplayTitle(project: any, fallback: string = 'votre projet'): string {
-  const headline = getProjectHeadline(project);
-  const trimmedFallback = fallback?.trim() || 'votre projet';
-  if (!headline || typeof headline !== 'string') return trimmedFallback;
-  const trimmed = headline.trim();
-  if (!trimmed || trimmed === 'Projet à qualifier') return trimmedFallback;
-  return trimmed;
+  // Ordre de priorite : 1) colonne persistee project_title (Projects),
+  // 2) headline deja calcule par Kadria (getProjectHeadline, qui retombe
+  // lui-meme sur ai_summary/project_type/trade), 3) `fallback` fourni par
+  // l'appelant (typiquement devis.objet), 4) fallback neutre generique.
+  // Ne jamais throw sur un champ manquant, ne jamais renvoyer
+  // "[object Object]", toujours une string non vide.
+  const trimmedFallback = (typeof fallback === 'string' && fallback.trim()) || 'votre projet';
+
+  const storedTitle = typeof project?.projectTitle === 'string' ? project.projectTitle.trim() : '';
+  if (storedTitle && !isGenericHeadline(storedTitle)) return storedTitle;
+
+  let headline: unknown;
+  try {
+    headline = getProjectHeadline(project);
+  } catch {
+    headline = undefined;
+  }
+
+  if (typeof headline === 'string') {
+    const trimmed = headline.trim();
+    if (trimmed && trimmed !== 'Projet à qualifier') return trimmed;
+  }
+
+  // Le headline generique n'a rien apporte de plus precis que le titre
+  // stocke (meme s'il etait juge trop court) : on le garde plutot que de
+  // sauter directement au fallback neutre.
+  if (storedTitle) return storedTitle;
+
+  return trimmedFallback;
+}
+
+// Resout le titre a persister dans Projects.project_title au moment de la
+// creation du dossier (assistant web, Vapi, creation manuelle...). Toujours
+// appele une seule fois par point de creation pour eviter de dupliquer la
+// logique de resolution. Retourne toujours une chaine non vide.
+//
+// Ordre de priorite :
+// 1) Titre deja genere par Kadria/l'IA si fourni explicitement a la creation
+// 2) Headline deja calcule par getProjectHeadline / equivalent
+// 3) ai_summary court et exploitable
+// 4) Sujet/nom de projet fourni par le client (projectType)
+// 5) Combinaison metier + besoin principal ("{type projet} — {element}")
+// 6) Fallback : "Nouvelle demande {metier}" ou "Projet client"
+export function resolveProjectTitleForStorage(input: {
+  aiGeneratedTitle?: string | null
+  headline?: string | null
+  aiSummary?: string | null
+  projectType?: string | null
+  trade?: string | null
+}): string {
+  const aiGeneratedTitle = typeof input.aiGeneratedTitle === 'string' ? input.aiGeneratedTitle.trim() : '';
+  if (aiGeneratedTitle && !isGenericHeadline(aiGeneratedTitle)) return aiGeneratedTitle;
+
+  const headline = typeof input.headline === 'string' ? input.headline.trim() : '';
+  if (headline && !isGenericHeadline(headline) && headline !== 'Projet à qualifier') return headline;
+
+  const aiSummary = typeof input.aiSummary === 'string' ? input.aiSummary.trim() : '';
+  if (aiSummary) {
+    const precise = extractPreciseHeadline([aiSummary]);
+    if (precise) return precise;
+    // Resume court et exploitable (une phrase courte) : on le garde tel quel.
+    if (aiSummary.length <= 120 && !aiSummary.includes('\n')) return aiSummary;
+  }
+
+  const projectType = typeof input.projectType === 'string' ? input.projectType.trim() : '';
+  if (projectType && !isGenericHeadline(projectType)) return projectType;
+
+  const trade = typeof input.trade === 'string' ? input.trade.trim() : '';
+  if (projectType && trade) return `${projectType} — ${trade}`;
+  if (trade) return `Nouvelle demande ${trade}`;
+  if (projectType) return projectType;
+  if (aiGeneratedTitle) return aiGeneratedTitle;
+  if (headline) return headline;
+
+  return 'Projet client';
 }
