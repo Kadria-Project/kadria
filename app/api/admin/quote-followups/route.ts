@@ -7,9 +7,6 @@ import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
-// Route protegee, a appeler manuellement (ou par un futur scheduler externe une
-// fois mis en place) -- aucun cron n'existe encore dans ce projet, donc cette
-// route n'est jamais declenchee automatiquement par le serveur lui-meme.
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.QUOTE_FOLLOWUP_ADMIN_SECRET
   if (!secret) {
@@ -52,7 +49,6 @@ function failedStageDescription(stage: string, devisNumber: string, detail: stri
   return `Echec relance devis - ${devisNumber} - ${normalizedDetail}`
 }
 
-// Liste les devis eligibles a une relance automatique sans rien envoyer.
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ success: false, error: 'Non autorise' }, { status: 401 })
@@ -77,8 +73,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Envoie reellement les relances dues. A declencher manuellement (ou par un
-// futur scheduler externe securise) -- jamais par un cron interne non maitrise.
 export async function POST(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ success: false, error: 'Non autorise' }, { status: 401 })
@@ -137,41 +131,30 @@ export async function POST(request: NextRequest) {
           artisanName,
         })
         const devisUrl = getPublicDevisUrl(devis.token)
-
         const emailTitle =
           state.stage === 'j10_final'
             ? 'Dernier rappel concernant votre devis'
             : 'Votre devis est toujours disponible'
+
+        const emailTemplate = {
+          preheader: email.subject,
+          title: emailTitle,
+          body: email.text,
+          ctaLabel: 'Consulter le devis',
+          ctaUrl: devisUrl,
+          summaryItems: [
+            { label: 'Reference', value: devis.devisNumber },
+            { label: 'Projet', value: projectType },
+          ],
+          artisanName,
+        }
+
         const sendResult = await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
           to: devis.clientEmail,
           subject: email.subject,
-          text: renderBaseEmailText({
-            preheader: email.subject,
-            title: emailTitle,
-            intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis a tout moment depuis le lien ci-dessous.',
-            body: email.text,
-            ctaLabel: 'Consulter le devis',
-            ctaUrl: devisUrl,
-            summaryItems: [
-              { label: 'Reference', value: devis.devisNumber },
-              { label: 'Projet', value: projectType },
-            ],
-            artisanName: artisanName,
-          }),
-          html: renderBaseEmail({
-            preheader: email.subject,
-            title: emailTitle,
-            intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis à tout moment depuis le lien ci-dessous.',
-            body: email.text,
-            ctaLabel: 'Consulter le devis',
-            ctaUrl: devisUrl,
-            summaryItems: [
-              { label: 'Reference', value: devis.devisNumber },
-              { label: 'Projet', value: projectType },
-            ],
-            artisanName: artisanName,
-          }),
+          text: renderBaseEmailText(emailTemplate),
+          html: renderBaseEmail(emailTemplate),
           headers: { 'X-Entity-Ref-ID': `auto-follow-up-${devis.id}-${state.stage}` },
         })
 

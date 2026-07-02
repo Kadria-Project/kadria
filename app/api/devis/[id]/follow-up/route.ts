@@ -6,9 +6,9 @@ import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
-import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function isValidDevisToken(token: string | undefined): token is string {
   return !!token && !token.includes('undefined') && /^[0-9a-f-]{36}$/i.test(token)
@@ -151,45 +151,31 @@ export async function POST(
       followupState.stage === 'j10_final'
         ? 'Dernier rappel concernant votre devis'
         : 'Votre devis est toujours disponible'
+
+    const emailTemplate = {
+      preheader: email.subject,
+      brand: emailBranding.brandName || 'Kadria',
+      title: emailTitle,
+      body: email.text,
+      ctaLabel: 'Consulter le devis',
+      ctaUrl: devisUrl,
+      summaryItems: [
+        { label: 'Reference', value: devis.devisNumber },
+        { label: 'Projet', value: projectType },
+      ],
+      artisanName,
+      footerNote: emailBranding.isWhiteLabelActive
+        ? emailBranding.poweredByLabel
+        : 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+      accentColor: emailBranding.ctaColor,
+    }
+
     const result = await resend.emails.send({
       from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
       to: devis.clientEmail,
       subject: email.subject,
-      text: renderBaseEmailText({
-        preheader: email.subject,
-        brand: emailBranding.brandName || 'Kadria',
-        title: emailTitle,
-        intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis a tout moment depuis le lien ci-dessous.',
-        body: email.text,
-        ctaLabel: 'Consulter le devis',
-        ctaUrl: devisUrl,
-        summaryItems: [
-          { label: 'Reference', value: devis.devisNumber },
-          { label: 'Projet', value: projectType },
-        ],
-        artisanName: artisanName,
-        footerNote: emailBranding.isWhiteLabelActive
-          ? emailBranding.poweredByLabel
-          : 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
-      }),
-      html: renderBaseEmail({
-        preheader: email.subject,
-        brand: emailBranding.brandName || 'Kadria',
-        title: emailTitle,
-        intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis à tout moment depuis le lien ci-dessous.',
-        body: email.text,
-        ctaLabel: 'Consulter le devis',
-        ctaUrl: devisUrl,
-        summaryItems: [
-          { label: 'Reference', value: devis.devisNumber },
-          { label: 'Projet', value: projectType },
-        ],
-        artisanName: artisanName,
-        footerNote: emailBranding.isWhiteLabelActive
-          ? emailBranding.poweredByLabel
-          : 'Kadria aide les artisans à qualifier, suivre et sécuriser leurs demandes clients.',
-        accentColor: emailBranding.ctaColor,
-      }),
+      text: renderBaseEmailText(emailTemplate),
+      html: renderBaseEmail(emailTemplate),
       attachments: devis.pdfUrl
         ? [{ filename: `${devis.devisNumber}.pdf`, path: devis.pdfUrl }]
         : undefined,

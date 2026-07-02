@@ -83,6 +83,32 @@ function formatEuro(value: number) {
   return value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
+function normalizeHexColor(value?: string | null): string | null {
+  const trimmed = String(value || '').trim();
+  if (!/^#([0-9a-fA-F]{6})$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return `rgba(34, 197, 94, ${alpha})`;
+  const safeAlpha = Math.min(1, Math.max(0, alpha));
+  const r = Number.parseInt(normalized.slice(1, 3), 16);
+  const g = Number.parseInt(normalized.slice(3, 5), 16);
+  const b = Number.parseInt(normalized.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+}
+
+function getContrastTextColor(hex: string): '#ffffff' | '#111827' {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return '#ffffff';
+  const r = Number.parseInt(normalized.slice(1, 3), 16);
+  const g = Number.parseInt(normalized.slice(3, 5), 16);
+  const b = Number.parseInt(normalized.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.62 ? '#111827' : '#ffffff';
+}
+
 export default function PublicDevisPage() {
   const params = useParams();
   const token = params.token as string;
@@ -227,6 +253,10 @@ export default function PublicDevisPage() {
     primaryColor: devis.branding?.primary_color,
     secondaryColor: devis.branding?.secondary_color,
   });
+  const accentColor = normalizeHexColor(branding.primaryColor) || '#16a34a';
+  const accentSoftBackground = hexToRgba(accentColor, 0.06);
+  const accentSoftBorder = hexToRgba(accentColor, 0.22);
+  const accentTextColor = getContrastTextColor(accentColor);
 
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', color: '#111827' }}>
@@ -433,8 +463,8 @@ export default function PublicDevisPage() {
           </div>
         ) : (
           <div style={{
-            background: '#f0fdf4',
-            border: '2px solid #22c55e',
+            background: accentSoftBackground,
+            border: `2px solid ${accentSoftBorder}`,
             borderRadius: '16px',
             padding: '32px',
             textAlign: 'center',
@@ -450,8 +480,8 @@ export default function PublicDevisPage() {
               onClick={handleAccept}
               disabled={accepting}
               style={{
-                background: branding.primaryColor,
-                color: '#000000',
+                background: accentColor,
+                color: accentTextColor,
                 fontWeight: 700,
                 fontSize: '18px',
                 padding: '16px 48px',
@@ -475,7 +505,7 @@ export default function PublicDevisPage() {
               onClick={() => setDeclineOpen(true)}
               style={{
                 marginTop: '16px',
-                background: 'transparent',
+                background: '#ffffff',
                 color: '#6b7280',
                 fontWeight: 600,
                 fontSize: '14px',
