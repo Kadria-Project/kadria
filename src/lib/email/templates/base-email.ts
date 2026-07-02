@@ -92,6 +92,11 @@ export function renderFooter(artisanName?: string, footerNote?: string): string 
   `
 }
 
+function renderTextSummary(items: SummaryItem[] = []): string {
+  if (items.length === 0) return ''
+  return items.map((item) => `- ${item.label} : ${item.value}`).join('\n')
+}
+
 export function renderBaseEmail(options: RenderBaseEmailOptions): string {
   const accentColor = options.accentColor || DEFAULT_ACCENT
   const preheader = options.preheader || options.title
@@ -159,4 +164,38 @@ export function renderBaseEmail(options: RenderBaseEmailOptions): string {
   </body>
 </html>
   `
+}
+
+export function renderBaseEmailText(options: RenderBaseEmailOptions): string {
+  const preheader = options.preheader || options.title
+  const introParagraphs = normalizeParagraphs(options.intro)
+  const bodyParagraphs = normalizeParagraphs(options.body)
+  const sections = [
+    preheader,
+    '',
+    ...introParagraphs,
+    ...bodyParagraphs,
+  ]
+
+  if (options.summaryItems?.length) {
+    sections.push('', renderTextSummary(options.summaryItems))
+  }
+
+  if (options.ctaLabel && options.ctaUrl) {
+    sections.push('', `${options.ctaLabel} : ${options.ctaUrl}`)
+  }
+
+  if (options.secondaryText) {
+    sections.push('', options.secondaryText)
+  }
+
+  sections.push(
+    '',
+    options.artisanName
+      ? `Envoye avec Kadria pour ${options.artisanName}.`
+      : 'Envoye avec Kadria.',
+    options.footerNote || 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+  )
+
+  return sections.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }

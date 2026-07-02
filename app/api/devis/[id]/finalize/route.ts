@@ -8,7 +8,7 @@ import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { createSentDevisSnapshot } from '@/src/lib/devis-snapshots'
 import { resolveDevisEmailBranding, escapeHtml, type DevisEmailBranding } from '@/src/lib/devis-email-branding'
-import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -207,6 +207,43 @@ function buildDevisEmailHtmlV2(params: {
   })
 }
 
+function buildDevisEmailTextV2(params: {
+  artisanNom: string
+  devisNumero: string
+  totalTTC: number
+  dateValidite: string
+  devisUrl: string
+  branding: DevisEmailBranding
+}) {
+  const { artisanNom, devisNumero, totalTTC, dateValidite, devisUrl, branding } = params
+  const formattedAmount = new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(totalTTC)
+
+  return renderBaseEmailText({
+    preheader: `Votre devis ${devisNumero} est pret`,
+    brand: branding.brandName || 'Kadria',
+    title: 'Votre devis est pret',
+    intro: branding.isWhiteLabelActive
+      ? `Votre devis ${devisNumero} est disponible. Vous pouvez le consulter, l'accepter ou le refuser depuis la page securisee.`
+      : `Vous trouverez votre devis ci-dessous. Vous pouvez le consulter, l'accepter ou le refuser depuis la page securisee.`,
+    body: `Pour toute question, contactez directement ${artisanNom}.`,
+    ctaLabel: 'Consulter le devis',
+    ctaUrl: devisUrl,
+    secondaryText: 'Vous pouvez egalement telecharger le PDF depuis cette page.',
+    summaryItems: [
+      { label: 'Reference', value: devisNumero },
+      { label: 'Montant', value: formattedAmount },
+      { label: 'Validite', value: dateValidite || '90 jours apres emission' },
+    ],
+    artisanName: artisanNom || branding.brandName,
+    footerNote: branding.isWhiteLabelActive
+      ? branding.poweredByLabel
+      : 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+  })
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -312,6 +349,14 @@ export async function POST(
           from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
           to: clientEmail,
           subject,
+          text: buildDevisEmailTextV2({
+            artisanNom,
+            devisNumero: devis.devisNumber,
+            totalTTC: devis.totalTTC,
+            dateValidite: devis.dateValidite,
+            devisUrl,
+            branding: emailBranding,
+          }),
           html: buildDevisEmailHtmlV2({
             artisanNom,
             devisNumero: devis.devisNumber,

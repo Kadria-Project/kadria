@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 type DemoAccessPayload = {
@@ -24,15 +25,6 @@ function normalizeText(value: unknown) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
 }
 
 function getResendClient() {
@@ -123,26 +115,46 @@ export async function POST(request: Request) {
           from: 'Kadria <contact@kadria.fr>',
           to: 'contact@kadria.fr',
           subject: `Nouvelle demande d'acces demo - ${subjectName || payload.email}`,
-          html: `
-            <div style="font-family:system-ui;max-width:560px;margin:0 auto;padding:32px 20px;background:#09090b;color:white;">
-              <h1 style="margin:0 0 20px;">
-                <span style="color:#22c55e">K</span><span style="color:white">adria</span>
-              </h1>
-              <h2 style="margin:0 0 16px;font-size:20px;">Nouvelle demande d'acces demo</h2>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Nom :</strong> ${escapeHtml(subjectName)}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Entreprise :</strong> ${escapeHtml(payload.companyName)}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Metier :</strong> ${escapeHtml(payload.trade)}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Email :</strong> ${escapeHtml(payload.email)}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Telephone :</strong> ${escapeHtml(payload.phone)}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Site web :</strong> ${escapeHtml(payload.website || '-')}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Volume mensuel :</strong> ${escapeHtml(payload.monthlyRequestsVolume || '-')}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Outil actuel :</strong> ${escapeHtml(payload.currentTool || '-')}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Besoin principal :</strong> ${escapeHtml(payload.mainNeed || '-')}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Objectif :</strong> ${escapeHtml(payload.objective)}</p>
-              <p style="margin:0 0 8px;color:#a1a1aa;"><strong style="color:white;">Consentement :</strong> ${payload.consentContact ? 'oui' : 'non'}</p>
-              <div style="margin-top:16px;border-radius:12px;background:#18181b;padding:16px;color:#d4d4d8;white-space:pre-wrap;">${escapeHtml(payload.message || 'Aucun message')}</div>
-            </div>
-          `,
+          text: renderBaseEmailText({
+            preheader: `Nouvelle demande d'acces demo - ${subjectName || payload.email}`,
+            title: 'Nouvelle demande d acces demo',
+            intro: `Une nouvelle demande d'acces demo a ete soumise par ${subjectName || payload.email}.`,
+            body: payload.message || 'Aucun message',
+            summaryItems: [
+              { label: 'Nom', value: subjectName || '-' },
+              { label: 'Entreprise', value: payload.companyName },
+              { label: 'Metier', value: payload.trade },
+              { label: 'Email', value: payload.email },
+              { label: 'Telephone', value: payload.phone },
+              { label: 'Site web', value: payload.website || '-' },
+              { label: 'Volume mensuel', value: payload.monthlyRequestsVolume || '-' },
+              { label: 'Outil actuel', value: payload.currentTool || '-' },
+              { label: 'Besoin principal', value: payload.mainNeed || '-' },
+              { label: 'Objectif', value: payload.objective },
+              { label: 'Consentement', value: payload.consentContact ? 'oui' : 'non' },
+            ],
+            footerNote: 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+          }),
+          html: renderBaseEmail({
+            preheader: `Nouvelle demande d'acces demo - ${subjectName || payload.email}`,
+            title: 'Nouvelle demande d acces demo',
+            intro: `Une nouvelle demande d'acces demo a ete soumise par ${subjectName || payload.email}.`,
+            body: payload.message || 'Aucun message',
+            summaryItems: [
+              { label: 'Nom', value: subjectName || '-' },
+              { label: 'Entreprise', value: payload.companyName },
+              { label: 'Metier', value: payload.trade },
+              { label: 'Email', value: payload.email },
+              { label: 'Telephone', value: payload.phone },
+              { label: 'Site web', value: payload.website || '-' },
+              { label: 'Volume mensuel', value: payload.monthlyRequestsVolume || '-' },
+              { label: 'Outil actuel', value: payload.currentTool || '-' },
+              { label: 'Besoin principal', value: payload.mainNeed || '-' },
+              { label: 'Objectif', value: payload.objective },
+              { label: 'Consentement', value: payload.consentContact ? 'oui' : 'non' },
+            ],
+            footerNote: 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+          }),
         })
       } catch (emailError) {
         console.error('[DEMO ACCESS REQUEST] Resend error:', emailError)

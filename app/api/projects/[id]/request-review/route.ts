@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
-import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function isValidHttpUrl(value: string): boolean {
@@ -130,7 +130,25 @@ export async function POST(
       from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
       to: clientEmail,
       subject: 'Votre avis compte pour nous',
-      text: `${greeting}\n\nMerci pour votre confiance.\n\nSi vous etes satisfait de l'intervention ou de l'accompagnement pour ${projectLabel}, vous pouvez laisser un avis ici :\n\n${googleReviewUrl}\n\nVotre retour aide ${businessName} a etre plus visible localement et a continuer d'ameliorer son service.\n\nMerci encore.\n\n${businessName}`,
+      text: renderBaseEmailText({
+        preheader: 'Votre avis compte beaucoup',
+        brand: emailBranding.brandName || 'Kadria',
+        title: 'Votre avis compte beaucoup',
+        intro: `${greeting}\n\nMerci pour votre confiance. Votre retour aide l'entreprise a valoriser son travail et a rassurer ses futurs clients.`,
+        body: `Si vous etes satisfait de l'intervention ou de l'accompagnement pour ${projectLabel}, vous pouvez laisser un avis via le lien ci-dessous.`,
+        ctaLabel: 'Laisser un avis',
+        ctaUrl: googleReviewUrl,
+        artisanName: businessName,
+        summaryItems: [
+          { label: 'Projet', value: projectLabel },
+          { label: 'Entreprise', value: businessName },
+        ],
+        secondaryText: `Votre retour aide ${businessName} a etre plus visible localement et a continuer d'ameliorer son service.`,
+        footerNote: emailBranding.isWhiteLabelActive
+          ? emailBranding.poweredByLabel
+          : 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+        accentColor: emailBranding.ctaColor,
+      }),
       html: renderBaseEmail({
         preheader: 'Votre avis compte beaucoup',
         brand: emailBranding.brandName || 'Kadria',

@@ -1,13 +1,12 @@
-// Source unique pour les notifications email envoyées a l'artisan (jamais au
+// Source unique pour les notifications email envoyees a l'artisan (jamais au
 // prospect/client final). Tout evenement metier qui doit prevenir l'artisan
 // passe par une des fonctions ci-dessous plutot que d'appeler Resend
-// directement depuis une route — voir le module d'eligibilite des relances
-// devis (src/lib/quote-followup.ts) pour le meme principe applique au statut
-// des devis.
+// directement depuis une route.
 
 import { Resend } from 'resend'
 import { TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable'
 import { getBaseUrl } from '@/src/lib/base-url'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function formatAmount(value: number): string {
@@ -32,21 +31,23 @@ async function logArtisanNotificationActivity(projectId: string | undefined, des
   }
 }
 
+type SummaryItem = { label: string; value: string }
+
 type SendArtisanEmailParams = {
   artisanId: string
   projectId?: string
   subject: string
-  html: string
+  title: string
+  intro?: string
+  body?: string
+  ctaLabel?: string
+  ctaUrl?: string
+  summaryItems?: SummaryItem[]
   eventLabel: string
 }
 
-// Coeur commun a toutes les notifications : resolution de l'email artisan,
-// envoi Resend, et traçabilite (succes ou raison d'echec) dans l'historique
-// du dossier quand un projectId est disponible. Ne jamais laisser une erreur
-// d'envoi remonter vers l'appelant — l'action metier ne doit jamais echouer
-// a cause d'un email qui ne part pas.
 async function sendArtisanEmail(params: SendArtisanEmailParams): Promise<boolean> {
-  const { artisanId, projectId, subject, html, eventLabel } = params
+  const { artisanId, projectId, subject, title, intro, body, ctaLabel, ctaUrl, summaryItems, eventLabel } = params
 
   try {
     const [artisan, config] = await Promise.all([
@@ -56,22 +57,42 @@ async function sendArtisanEmail(params: SendArtisanEmailParams): Promise<boolean
     const recipientEmail = config?.notificationEmail || artisan?.email
     if (!recipientEmail) {
       console.error(`[ARTISAN NOTIFICATIONS] Email artisan manquant pour artisan_id=${artisanId} (${eventLabel})`)
-      await logArtisanNotificationActivity(projectId, `Notification artisan non envoyée — email artisan manquant (${eventLabel}).`)
+      await logArtisanNotificationActivity(projectId, `Notification artisan non envoyee - email artisan manquant (${eventLabel}).`)
       return false
     }
 
     const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) {
-      console.error(`[ARTISAN NOTIFICATIONS] RESEND_API_KEY manquante, notification non envoyée (${eventLabel})`)
+      console.error(`[ARTISAN NOTIFICATIONS] RESEND_API_KEY manquante, notification non envoyee (${eventLabel})`)
       return false
     }
 
+    const artisanName = config?.raisonSociale || config?.companyName || artisan?.companyName || 'Votre artisan'
     const resend = new Resend(apiKey)
     const result = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
       to: recipientEmail,
       subject,
-      html,
+      text: renderBaseEmailText({
+        preheader: subject,
+        title,
+        intro,
+        body,
+        ctaLabel,
+        ctaUrl,
+        summaryItems,
+        artisanName,
+      }),
+      html: renderBaseEmail({
+        preheader: subject,
+        title,
+        intro,
+        body,
+        ctaLabel,
+        ctaUrl,
+        summaryItems,
+        artisanName,
+      }),
     })
 
     if (result.error) {
@@ -79,10 +100,10 @@ async function sendArtisanEmail(params: SendArtisanEmailParams): Promise<boolean
       return false
     }
 
-    await logArtisanNotificationActivity(projectId, `Notification artisan envoyée — ${eventLabel}.`)
+    await logArtisanNotificationActivity(projectId, `Notification artisan envoyee - ${eventLabel}.`)
     return true
   } catch (error) {
-    console.error(`[ARTISAN NOTIFICATIONS] Échec envoi notification (${eventLabel}):`, error instanceof Error ? error.message : String(error))
+    console.error(`[ARTISAN NOTIFICATIONS] Echec envoi notification (${eventLabel}):`, error instanceof Error ? error.message : String(error))
     return false
   }
 }
@@ -101,17 +122,17 @@ export async function notifyArtisanNewProject(params: {
     artisanId: params.artisanId,
     projectId: params.projectId,
     eventLabel: 'nouveau dossier',
-    subject: `Nouveau dossier qualifié — ${params.clientName || 'Prospect'}`,
-    html: `
-      <p>Un nouveau dossier vient d'être qualifié.</p>
-      <ul>
-        <li><strong>Client :</strong> ${params.clientName || 'Non renseigné'}</li>
-        <li><strong>Type de projet :</strong> ${params.projectType || 'Non renseigné'}</li>
-        <li><strong>Commune :</strong> ${params.city || 'Non renseignée'}</li>
-        ${params.priority ? `<li><strong>Priorité :</strong> ${params.priority}</li>` : ''}
-      </ul>
-      <p><a href="${projectUrl}">Voir le dossier</a></p>
-    `,
+    subject: `Nouveau dossier qualifie - ${params.clientName || 'Prospect'}`,
+    title: 'Nouveau dossier qualifie',
+    intro: "Un nouveau dossier vient d'etre qualifie.",
+    ctaLabel: 'Voir le dossier',
+    ctaUrl: projectUrl,
+    summaryItems: [
+      { label: 'Client', value: params.clientName || 'Non renseigne' },
+      { label: 'Type de projet', value: params.projectType || 'Non renseigne' },
+      { label: 'Commune', value: params.city || 'Non renseignee' },
+      ...(params.priority ? [{ label: 'Priorite', value: params.priority }] : []),
+    ],
   })
 }
 
@@ -129,18 +150,18 @@ export async function notifyArtisanQuoteAccepted(params: {
   return sendArtisanEmail({
     artisanId: params.artisanId,
     projectId: params.projectId,
-    eventLabel: 'devis accepté',
-    subject: 'Devis accepté — nouveau chantier gagné',
-    html: `
-      <p>Le devis a été accepté. Le dossier est passé automatiquement en <strong>Gagné</strong>.</p>
-      <ul>
-        <li><strong>Client :</strong> ${params.clientName || 'Non renseigné'}</li>
-        <li><strong>Type de projet :</strong> ${params.projectType || 'Non renseigné'}</li>
-        <li><strong>Commune :</strong> ${params.city || 'Non renseignée'}</li>
-        <li><strong>Montant du devis :</strong> ${formatAmount(params.totalTTC)}</li>
-      </ul>
-      <p><a href="${projectUrl}">Voir la fiche projet</a></p>
-    `,
+    eventLabel: 'devis accepte',
+    subject: 'Devis accepte - nouveau chantier gagne',
+    title: 'Devis accepte',
+    intro: 'Le devis a ete accepte. Le dossier est passe automatiquement en Gagne.',
+    ctaLabel: 'Voir la fiche projet',
+    ctaUrl: projectUrl,
+    summaryItems: [
+      { label: 'Client', value: params.clientName || 'Non renseigne' },
+      { label: 'Type de projet', value: params.projectType || 'Non renseigne' },
+      { label: 'Commune', value: params.city || 'Non renseignee' },
+      { label: 'Montant du devis', value: formatAmount(params.totalTTC) },
+    ],
   })
 }
 
@@ -159,19 +180,19 @@ export async function notifyArtisanQuoteDeclined(params: {
   return sendArtisanEmail({
     artisanId: params.artisanId,
     projectId: params.projectId,
-    eventLabel: 'devis refusé',
-    subject: 'Devis refusé — retour prospect disponible',
-    html: `
-      <p>Le prospect a refusé le devis ${params.devisNumber}. Le dossier a été mis à jour automatiquement.</p>
-      <ul>
-        <li><strong>Client :</strong> ${params.clientName || 'Non renseigné'}</li>
-        <li><strong>Type de projet :</strong> ${params.projectType || 'Non renseigné'}</li>
-        <li><strong>Commune :</strong> ${params.city || 'Non renseignée'}</li>
-        <li><strong>Montant du devis :</strong> ${formatAmount(params.totalTTC)}</li>
-        <li><strong>Motif du refus :</strong> ${params.declineReason}</li>
-      </ul>
-      <p><a href="${projectUrl}">Voir la fiche projet</a></p>
-    `,
+    eventLabel: 'devis refuse',
+    subject: 'Devis refuse - retour prospect disponible',
+    title: 'Devis refuse',
+    intro: `Le prospect a refuse le devis ${params.devisNumber}. Le dossier a ete mis a jour automatiquement.`,
+    ctaLabel: 'Voir la fiche projet',
+    ctaUrl: projectUrl,
+    summaryItems: [
+      { label: 'Client', value: params.clientName || 'Non renseigne' },
+      { label: 'Type de projet', value: params.projectType || 'Non renseigne' },
+      { label: 'Commune', value: params.city || 'Non renseignee' },
+      { label: 'Montant du devis', value: formatAmount(params.totalTTC) },
+      { label: 'Motif du refus', value: params.declineReason || 'Non renseigne' },
+    ],
   })
 }
 
@@ -187,7 +208,7 @@ export async function notifyArtisanQuoteFollowedUp(params: {
     params.stage === 'j2_unopened'
       ? 'J+2 (devis non ouvert)'
       : params.stage === 'j5_opened_no_decision'
-        ? 'J+5 (devis ouvert sans décision)'
+        ? 'J+5 (devis ouvert sans decision)'
         : params.stage === 'j10_final'
           ? 'J+10 (relance finale)'
           : 'manuelle'
@@ -195,17 +216,17 @@ export async function notifyArtisanQuoteFollowedUp(params: {
   return sendArtisanEmail({
     artisanId: params.artisanId,
     projectId: params.projectId,
-    eventLabel: 'relance devis envoyée',
-    subject: `Relance devis envoyée — ${params.clientName || 'Prospect'}`,
-    html: `
-      <p>Une relance a été envoyée au prospect pour le devis ${params.devisNumber}.</p>
-      <ul>
-        <li><strong>Client :</strong> ${params.clientName || 'Non renseigné'}</li>
-        <li><strong>Référence devis :</strong> ${params.devisNumber}</li>
-        <li><strong>Stade de relance :</strong> ${stageLabel}</li>
-      </ul>
-      <p><a href="${projectUrl}">Voir la fiche projet</a></p>
-    `,
+    eventLabel: 'relance devis envoyee',
+    subject: `Relance devis envoyee - ${params.clientName || 'Prospect'}`,
+    title: 'Relance devis envoyee',
+    intro: `Une relance a ete envoyee au prospect pour le devis ${params.devisNumber}.`,
+    ctaLabel: 'Voir la fiche projet',
+    ctaUrl: projectUrl,
+    summaryItems: [
+      { label: 'Client', value: params.clientName || 'Non renseigne' },
+      { label: 'Reference devis', value: params.devisNumber },
+      { label: 'Stade de relance', value: stageLabel },
+    ],
   })
 }
 
@@ -219,16 +240,16 @@ export async function notifyArtisanQuotaWarning(params: {
 }): Promise<boolean> {
   return sendArtisanEmail({
     artisanId: params.artisanId,
-    eventLabel: `quota ${params.quotaType} bientôt atteint`,
-    subject: 'Votre quota Kadria est bientôt atteint',
-    html: `
-      <p>Votre quota de <strong>${params.quotaType}</strong> approche de la limite de votre offre.</p>
-      <ul>
-        <li><strong>Usage actuel :</strong> ${params.used}</li>
-        <li><strong>Limite :</strong> ${params.limit}</li>
-      </ul>
-      <p><a href="${getBaseUrl()}/pricing">Voir les offres et quotas</a></p>
-    `,
+    eventLabel: `quota ${params.quotaType} bientot atteint`,
+    subject: 'Votre quota Kadria est bientot atteint',
+    title: 'Votre quota Kadria est bientot atteint',
+    intro: `Votre quota de ${params.quotaType} approche de la limite de votre offre.`,
+    ctaLabel: 'Voir les offres et quotas',
+    ctaUrl: `${getBaseUrl()}/pricing`,
+    summaryItems: [
+      { label: 'Usage actuel', value: String(params.used) },
+      { label: 'Limite', value: String(params.limit) },
+    ],
   })
 }
 
@@ -242,13 +263,13 @@ export async function notifyArtisanQuotaReached(params: {
     artisanId: params.artisanId,
     eventLabel: `quota ${params.quotaType} atteint`,
     subject: 'Quota Kadria atteint',
-    html: `
-      <p>Votre quota de <strong>${params.quotaType}</strong> est atteint, l'action correspondante est bloquée.</p>
-      <ul>
-        <li><strong>Usage actuel :</strong> ${params.used}</li>
-        <li><strong>Limite :</strong> ${params.limit}</li>
-      </ul>
-      <p><a href="${getBaseUrl()}/pricing">Voir les offres et quotas</a></p>
-    `,
+    title: 'Quota Kadria atteint',
+    intro: `Votre quota de ${params.quotaType} est atteint, l'action correspondante est bloquee.`,
+    ctaLabel: 'Voir les offres et quotas',
+    ctaUrl: `${getBaseUrl()}/pricing`,
+    summaryItems: [
+      { label: 'Usage actuel', value: String(params.used) },
+      { label: 'Limite', value: String(params.limit) },
+    ],
   })
 }

@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { Resend } from 'resend'
-import { renderBaseEmail } from '@/src/lib/email/templates/base-email'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 export const DEMO_ACCESS_COOKIE = 'kadria-demo-access'
@@ -279,6 +279,16 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
           from: 'Kadria <contact@kadria.fr>',
           to: row.email,
           subject: 'Votre acces a la demo Kadria',
+          text: renderBaseEmailText({
+            preheader: 'Votre acces demo Kadria est pret',
+            title: 'Votre acces demo est pret',
+            intro: `Bonjour ${row.first_name || ''}, votre acces a la demonstration Kadria a ete active.`,
+            body: 'Cliquez sur le bouton ci-dessous pour ouvrir la demo complete.',
+            ctaLabel: 'Ouvrir la demo Kadria',
+            ctaUrl: verifyUrl,
+            secondaryText: `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')} et peut etre revoque a tout moment.`,
+            footerNote: 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
+          }),
           html: renderBaseEmail({
             preheader: 'Votre accès démo Kadria est prêt',
             title: 'Votre accès démo est prêt',

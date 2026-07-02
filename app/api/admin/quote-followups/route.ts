@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { TABLES, getAllSentDevis, getArtisanConfig, resolveProjectId, updateDevis } from '@/src/lib/airtable'
 import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
@@ -17,13 +18,6 @@ function isAuthorized(request: NextRequest): boolean {
   const headerSecret = request.headers.get('x-admin-secret')
   const querySecret = new URL(request.url).searchParams.get('secret')
   return headerSecret === secret || querySecret === secret
-}
-
-function toHtml(text: string) {
-  return text
-    .split('\n\n')
-    .map((paragraph) => `<p style="margin:0 0 14px;line-height:1.6;color:#374151;">${paragraph.replace(/\n/g, '<br>')}</p>`)
-    .join('')
 }
 
 function isValidDevisToken(token: string | undefined): token is string {
@@ -144,23 +138,40 @@ export async function POST(request: NextRequest) {
         })
         const devisUrl = getPublicDevisUrl(devis.token)
 
+        const emailTitle =
+          state.stage === 'j10_final'
+            ? 'Dernier rappel concernant votre devis'
+            : 'Votre devis est toujours disponible'
         const sendResult = await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
           to: devis.clientEmail,
           subject: email.subject,
-          text: `${email.text}\n\nLien du devis : ${devisUrl}`,
-          html: `
-            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;">
-              <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:32px;">
-                ${toHtml(email.text)}
-                <p style="margin:22px 0 0;">
-                  <a href="${devisUrl}" style="display:inline-block;background:#22c55e;color:#09090b;text-decoration:none;font-weight:700;border-radius:10px;padding:12px 18px;">
-                    Voir le devis
-                  </a>
-                </p>
-              </div>
-            </div>
-          `,
+          text: renderBaseEmailText({
+            preheader: email.subject,
+            title: emailTitle,
+            intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis a tout moment depuis le lien ci-dessous.',
+            body: email.text,
+            ctaLabel: 'Consulter le devis',
+            ctaUrl: devisUrl,
+            summaryItems: [
+              { label: 'Reference', value: devis.devisNumber },
+              { label: 'Projet', value: projectType },
+            ],
+            artisanName: artisanName,
+          }),
+          html: renderBaseEmail({
+            preheader: email.subject,
+            title: emailTitle,
+            intro: 'Bonjour, nous revenons vers vous concernant votre projet. Vous pouvez consulter votre devis à tout moment depuis le lien ci-dessous.',
+            body: email.text,
+            ctaLabel: 'Consulter le devis',
+            ctaUrl: devisUrl,
+            summaryItems: [
+              { label: 'Reference', value: devis.devisNumber },
+              { label: 'Projet', value: projectType },
+            ],
+            artisanName: artisanName,
+          }),
           headers: { 'X-Entity-Ref-ID': `auto-follow-up-${devis.id}-${state.stage}` },
         })
 
