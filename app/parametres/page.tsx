@@ -1354,129 +1354,206 @@ function ParametresPageContent() {
         </div>
 
         <div className="min-w-0 w-full">
-          <div style={{
-            ...workspaceCard,
-            padding: isMobile ? '16px' : '18px 22px',
-            background: 'linear-gradient(180deg, rgba(34,197,94,0.08), rgba(24,24,27,0.92))',
-          }}>
+          {configurationPercent >= 100 && !configurationCardExpanded ? (
             <div style={{
+              ...workspaceCard,
+              padding: isMobile ? '12px 14px' : '12px 16px',
+              background: 'rgba(34,197,94,0.06)',
               display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              alignItems: isMobile ? 'flex-start' : 'center',
+              alignItems: isMobile ? 'stretch' : 'center',
               justifyContent: 'space-between',
-              gap: '14px',
+              gap: '10px',
+              flexDirection: isMobile ? 'column' : 'row',
             }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '999px',
-                    background: 'rgba(34,197,94,0.14)',
-                    color: '#4ade80',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                  }}>
-                    ✓
-                  </span>
-                  <strong style={{ fontSize: isMobile ? '16px' : '17px', fontWeight: 800 }}>
-                    {configurationPercent >= 100 ? 'Configuration complète' : `Configuration à ${configurationPercent}%`}
-                  </strong>
-                </div>
-                <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.5 }}>
-                  {configurationPercent >= 100
-                    ? 'Tous les modules essentiels sont prêts. Vous pouvez modifier à tout moment.'
-                    : configurationPrimaryCta
-                      ? `${configurationRemainingCount} élément(s) à compléter. Commencez par ${configurationPrimaryCta.label}.`
-                      : 'Finalisez les réglages essentiels pour exploiter pleinement votre espace.'}
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '999px',
+                  background: 'rgba(34,197,94,0.14)',
+                  color: '#4ade80',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}>
+                  ✓
+                </span>
+                <strong style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)' }}>
+                  Configuration complète
+                </strong>
+                <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                  Toutes les briques sont validées.
+                </span>
               </div>
-
+              <button
+                type="button"
+                onClick={() => setConfigurationCardExpanded(true)}
+                aria-expanded={false}
+                style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-1)',
+                  fontWeight: 700,
+                  borderRadius: '999px',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  alignSelf: isMobile ? 'flex-start' : 'auto',
+                }}
+              >
+                Voir le détail
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              ...workspaceCard,
+              padding: isMobile ? '14px' : '16px 18px',
+              background: 'linear-gradient(180deg, rgba(34,197,94,0.08), rgba(24,24,27,0.92))',
+            }}>
               <div style={{
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
-                alignItems: isMobile ? 'stretch' : 'center',
-                gap: '10px',
-                width: isMobile ? '100%' : 'auto',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
               }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '999px',
+                      background: 'rgba(34,197,94,0.14)',
+                      color: '#4ade80',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                    }}>
+                      ✓
+                    </span>
+                    <strong style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: 800 }}>
+                      {configurationPercent >= 100 ? 'Configuration complète' : `Configuration à ${configurationPercent}%`}
+                    </strong>
+                  </div>
+                  <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.5 }}>
+                    {configurationPercent >= 100
+                      ? 'Tous les modules essentiels sont prêts. Vous pouvez consulter le détail à tout moment.'
+                      : configurationPrimaryCta
+                        ? `${configurationRemainingCount} élément(s) à compléter. Commencez par ${configurationPrimaryCta.label}.`
+                        : 'Finalisez les réglages essentiels pour exploiter pleinement votre espace.'}
+                  </p>
+                </div>
+
                 <div style={{
-                  minWidth: isMobile ? '100%' : '180px',
-                  height: '8px',
-                  borderRadius: '999px',
-                  background: 'rgba(255,255,255,0.06)',
-                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  gap: '10px',
+                  width: isMobile ? '100%' : 'auto',
                 }}>
                   <div style={{
-                    width: `${configurationPercent}%`,
-                    height: '100%',
-                    background: configurationPercent >= 100 ? '#22c55e' : 'var(--accent)',
-                    transition: 'width 0.2s ease',
-                  }} />
+                    minWidth: isMobile ? '100%' : '180px',
+                    height: '8px',
+                    borderRadius: '999px',
+                    background: 'rgba(255,255,255,0.06)',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      width: `${configurationPercent}%`,
+                      height: '100%',
+                      background: configurationPercent >= 100 ? '#22c55e' : 'var(--accent)',
+                      transition: 'width 0.2s ease',
+                    }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConfigurationCardExpanded((value) => !value)}
+                    aria-expanded={configurationCardExpanded}
+                    style={{
+                      background: configurationCardExpanded ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-1)',
+                      fontWeight: 700,
+                      borderRadius: '12px',
+                      padding: '9px 13px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {configurationCardExpanded ? 'Masquer' : 'Voir le détail'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setConfigurationCardExpanded((value) => !value)}
-                  aria-expanded={configurationCardExpanded}
-                  style={{
-                    background: configurationCardExpanded ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-1)',
-                    fontWeight: 700,
-                    borderRadius: '12px',
-                    padding: '10px 14px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {configurationCardExpanded ? 'Réduire' : 'Voir le détail'}
-                </button>
               </div>
-            </div>
 
-            <div style={{
-              marginTop: '14px',
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              alignItems: isMobile ? 'stretch' : 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              flexWrap: 'wrap',
-            }}>
-              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px' }}>
-                {configurationPercent >= 100
-                  ? 'Toutes les briques suivies ici sont completees.'
-                  : `${configurationRemainingCount} element(s) restent a completer sur ${configurationItems.length}.`}
-              </p>
-              {configurationPrimaryCta && (
-                <button
-                  type="button"
-                  onClick={() => handleConfigurationAction(configurationPrimaryCta)}
-                  style={{
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-1)',
-                    borderRadius: '10px',
-                    padding: '8px 12px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {configurationPrimaryCta.cta} : {configurationPrimaryCta.label}
-                </button>
-              )}
-            </div>
+              <div style={{
+                marginTop: '12px',
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                flexWrap: 'wrap',
+              }}>
+                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                  {configurationPercent >= 100
+                    ? 'Toutes les briques suivies ici sont complétées.'
+                    : `${configurationRemainingCount} élément(s) restent à compléter sur ${configurationItems.length}.`}
+                </p>
+                {configurationPrimaryCta && (
+                  <button
+                    type="button"
+                    onClick={() => handleConfigurationAction(configurationPrimaryCta)}
+                    style={{
+                      background: 'var(--bg-hover)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-1)',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {configurationPrimaryCta.cta} : {configurationPrimaryCta.label}
+                  </button>
+                )}
+              </div>
 
-            {configurationCardExpanded && (
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px', marginTop: '14px' }}>
-              {configurationItems.map((item) => {
-                const done = item.status === 'done'
-                return (
+              {configurationCardExpanded && (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '10px', marginTop: '14px' }}>
+                  <div style={{
+                    gridColumn: '1 / -1',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setConfigurationCardExpanded(false)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-2)',
+                        borderRadius: '999px',
+                        padding: '7px 12px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Fermer
+                    </button>
+                  </div>
+               {configurationItems.map((item) => {
+                 const done = item.status === 'done'
+                 return (
                   <div
                     key={item.key}
                     style={{
@@ -1547,9 +1624,10 @@ function ParametresPageContent() {
                   </div>
                 )
               })}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Section Entreprise */}
           {activeSection === 'entreprise' && (
