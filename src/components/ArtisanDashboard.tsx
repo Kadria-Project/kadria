@@ -46,6 +46,7 @@ import {
   Sparkles,
   Globe,
   Timer,
+  CreditCard,
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useTheme } from '@/src/hooks/useTheme';
@@ -54,6 +55,7 @@ import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
 import { hasFeature, normalizePlan, PLAN_DEFINITIONS, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { formatEuro, getAnnualFullPrice, getAnnualOneShotPrice } from '@/src/config/pricing';
+import { normalizeDepositStatus } from '@/src/lib/deposit';
 import {
   buildAutomaticTasks,
   getHotLeadMessage,
@@ -216,6 +218,28 @@ function parseDurationMinutes(duration: string): number {
   const match = duration.match(/(\d+)/);
   return match ? Number(match[1]) : 0;
 }
+
+function getProjectRevenueAmount(project: Project): number {
+  return Number(project.devisAmount) || parseBudget(project.budget || '');
+}
+
+function isDepositRelevantProject(project: Project): boolean {
+  const amount = getProjectRevenueAmount(project);
+  if (amount <= 0 || project.status === 'Perdu') return false;
+
+  return project.status === 'Devis envoyé' || project.status === 'Gagné' || Boolean(project.quoteSentAt) || Boolean(project.acceptedAt);
+}
+
+type DepositPriorityAction = {
+  kind: 'deposit';
+  project: Project;
+  title: string;
+  subtitle: string;
+  estimatedDuration: string;
+  priorityRank: number;
+  filterKey: 'deposits';
+  icon: string;
+};
 
 const STATUS_OPTIONS = [
   { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
@@ -1384,7 +1408,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
-  const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | ActionType | null>(null);
+  const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | 'deposits' | ActionType | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
@@ -1636,6 +1660,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     if (actionEngineFilter === 'critical') return sortedActionEngineEntries.filter((e) => e.action.priority === 'critical');
     if (actionEngineFilter === 'today') return sortedActionEngineEntries.filter((e) => e.action.urgency === 'today' || e.action.urgency === 'overdue');
     if (actionEngineFilter === 'week') return sortedActionEngineEntries.filter((e) => e.action.urgency !== 'none');
+    if (actionEngineFilter === 'deposits') return [];
     return sortedActionEngineEntries.filter((e) => e.action.actionType === actionEngineFilter);
   }, [sortedActionEngineEntries, actionEngineFilter]);
 
@@ -1715,6 +1740,26 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')
     .sort((a, b) => opportunityScore(b, artisanTrades) - opportunityScore(a, artisanTrades))
     .slice(0, 5);
+
+  const depositProjects = useMemo(() => {
+    const toAsk = activeProjects.filter((project) => {
+      const depositStatus = normalizeDepositStatus(project.depositStatus);
+      return isDepositRelevantProject(project) && (depositStatus === 'not_requested' || depositStatus === 'recommended');
+    });
+    const requested = activeProjects.filter((project) => normalizeDepositStatus(project.depositStatus) === 'requested');
+    const paid = activeProjects.filter((project) => normalizeDepositStatus(project.depositStatus) === 'paid');
+    const requestedAmount = requested.reduce((sum, project) => sum + Math.max(0, Number(project.depositAmount) || 0), 0);
+    const paidAmount = paid.reduce((sum, project) => sum + Math.max(0, Number(project.depositAmount) || 0), 0);
+
+    return {
+      toAsk,
+      requested,
+      paid,
+      requestedAmount,
+      paidAmount,
+      securedRate: requestedAmount > 0 ? (paidAmount / requestedAmount) * 100 : 0,
+    };
+  }, [activeProjects]);
 
   const hotLeads = activeProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
   const riskProjects = activeProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
@@ -2055,7 +2100,81 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       format: (v: number) => `${Math.round(v)} prospect(s)`,
       alert: hotLeads.length > 0,
     },
+    {
+      label: 'Acomptes à demander',
+      value: depositProjects.toAsk.length,
+      delta: null,
+      icon: Timer,
+      borderColor: '#f59e0b',
+      format: (v: number) => `${Math.round(v)} dossier(s)`,
+      alert: depositProjects.toAsk.length > 0,
+    },
+    {
+      label: 'Acomptes demandés',
+      value: depositProjects.requestedAmount,
+      delta: null,
+      icon: CreditCard,
+      borderColor: '#2563eb',
+      format: formatCurrency,
+      alert: depositProjects.requested.length > 0,
+    },
+    {
+      label: 'Acomptes reçus',
+      value: depositProjects.paidAmount,
+      delta: null,
+      icon: CheckCircle,
+      borderColor: '#16a34a',
+      format: formatCurrency,
+      alert: depositProjects.paid.length > 0,
+    },
   ];
+
+  const depositPriorityActions = useMemo<DepositPriorityAction[]>(
+    () => [
+      ...depositProjects.toAsk.map((project) => ({
+        kind: 'deposit' as const,
+        project,
+        title: "Demander l'acompte",
+        subtitle: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier',
+        estimatedDuration: '5 min',
+        priorityRank: project.status === 'Gagné' || Boolean(project.acceptedAt) ? 88 : 72,
+        filterKey: 'deposits' as const,
+        icon: '🟠',
+      })),
+      ...depositProjects.requested.map((project) => ({
+        kind: 'deposit' as const,
+        project,
+        title: "Suivre l'acompte",
+        subtitle: "Acompte demandé, paiement en attente",
+        estimatedDuration: '3 min',
+        priorityRank: 82,
+        filterKey: 'deposits' as const,
+        icon: '🟡',
+      })),
+    ]
+      .sort((a, b) => b.priorityRank - a.priorityRank)
+      .slice(0, 8),
+    [depositProjects],
+  );
+
+  const priorityActionItems = useMemo(() => {
+    const actionEngineItems = filteredActionEngineEntries.map(({ project, action }) => ({
+      kind: 'engine' as const,
+      project,
+      action,
+      priorityRank:
+        (action.priority === 'critical' ? 400 : action.priority === 'high' ? 300 : action.priority === 'medium' ? 200 : 100) +
+        (action.urgency === 'overdue' ? 30 : action.urgency === 'today' ? 20 : action.urgency === 'soon' ? 10 : 0),
+    }));
+
+    if (actionEngineFilter === 'deposits') {
+      return depositPriorityActions;
+    }
+
+    return [...depositPriorityActions, ...actionEngineItems]
+      .sort((a, b) => b.priorityRank - a.priorityRank)
+      .slice(0, 8);
+  }, [actionEngineFilter, depositPriorityActions, filteredActionEngineEntries]);
 
   // --- Vue "Valeur générée par Kadria" — calculs V1 sans nouvelle API ---
   // Règles métriques figées : CA potentiel = tous les projets sauf Gagné/Perdu ;
@@ -3074,6 +3193,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   { key: 'critical', label: 'Actions critiques' },
                   { key: 'today', label: "Aujourd'hui" },
                   { key: 'week', label: 'Cette semaine' },
+                  { key: 'deposits', label: 'Acomptes' },
                   { key: 'follow_up_quote', label: 'Relances' },
                   { key: 'send_quote', label: 'Devis' },
                   { key: 'schedule_appointment', label: 'Rendez-vous' },
@@ -3093,25 +3213,31 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             </div>
             <div className="space-y-2">
-              {filteredActionEngineEntries.slice(0, 8).map(({ project, action }) => (
+              {priorityActionItems.map((item) => (
                 <button
-                  key={project.id}
-                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                  key={`${item.kind}-${item.project.id}`}
+                  onClick={() => router.push(`/dashboard-v2/projet/${item.project.id}`)}
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="text-lg shrink-0">{ACTION_TYPE_EMOJI[action.actionType]}</span>
+                    <span className="text-lg shrink-0">{item.kind === 'deposit' ? item.icon : ACTION_TYPE_EMOJI[item.action.actionType]}</span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--text-1)]">{action.title}</p>
+                      <p className="truncate text-sm font-semibold text-[var(--text-1)]">
+                        {item.kind === 'deposit' ? item.title : item.action.title}
+                      </p>
                       <p className="truncate text-xs text-[var(--text-2)]">
-                        {[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}
+                        {item.kind === 'deposit'
+                          ? item.subtitle
+                          : ([item.project.clientFirstName, item.project.clientName].filter(Boolean).join(' ') || item.project.projectType || 'Dossier')}
                       </p>
                     </div>
                   </div>
-                  <span className="shrink-0 text-xs font-semibold text-[var(--text-2)]">{action.estimatedDuration}</span>
+                  <span className="shrink-0 text-xs font-semibold text-[var(--text-2)]">
+                    {item.kind === 'deposit' ? item.estimatedDuration : item.action.estimatedDuration}
+                  </span>
                 </button>
               ))}
-              {filteredActionEngineEntries.length === 0 && (
+              {priorityActionItems.length === 0 && (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
                   <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
                 </div>
@@ -3151,7 +3277,42 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-3">
             <p className="mb-3 font-bold text-[var(--text-1)]">Compteurs</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+              {[
+                {
+                  label: 'Acomptes à demander',
+                  value: `${depositProjects.toAsk.length}`,
+                  tone: depositProjects.toAsk.length > 0 ? 'text-amber-300' : 'text-[var(--text-1)]',
+                },
+                {
+                  label: 'Acomptes demandés',
+                  value: `${depositProjects.requested.length} · ${formatCurrency(depositProjects.requestedAmount)}`,
+                  tone: depositProjects.requested.length > 0 ? 'text-blue-300' : 'text-[var(--text-1)]',
+                },
+                {
+                  label: 'Acomptes reçus',
+                  value: `${depositProjects.paid.length} · ${formatCurrency(depositProjects.paidAmount)}`,
+                  tone: depositProjects.paid.length > 0 ? 'text-green-300' : 'text-[var(--text-1)]',
+                },
+                {
+                  label: 'CA sécurisé',
+                  value: formatCurrency(depositProjects.paidAmount),
+                  tone: depositProjects.paidAmount > 0 ? 'text-green-300' : 'text-[var(--text-1)]',
+                },
+                {
+                  label: 'Taux de sécurisation',
+                  value: `${Math.round(depositProjects.securedRate)}%`,
+                  tone: 'text-[var(--text-1)]',
+                },
+              ].map((counter) => (
+                <div
+                  key={counter.label}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left"
+                >
+                  <p className="text-xs text-[var(--text-2)]">{counter.label}</p>
+                  <p className={`mt-1 text-lg font-bold ${counter.tone}`}>{counter.value}</p>
+                </div>
+              ))}
               {(Object.keys(ACTION_TYPE_COUNTER_LABEL) as ActionType[])
                 .filter((type) => type !== 'monitor')
                 .map((type) => (

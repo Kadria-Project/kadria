@@ -29,6 +29,7 @@ import {
   getOpportunityBadge,
   type Task,
 } from '@/src/lib/commercial-actions';
+import { normalizeDepositStatus } from '@/src/lib/deposit';
 import {
   opportunityScore,
   formatCurrency,
@@ -103,10 +104,19 @@ type ActionRow = {
 const ACTION_PRIORITY = {
   send_quote: 100,
   quote_followup: 90,
+  deposit_followup: 85,
+  deposit_request: 84,
   call_back: 80,
   hot_prospect: 70,
   complete_project: 60,
 } as const;
+
+function hasRelevantDeposit(project: Project): boolean {
+  const amount = Number((project as any).devisAmount) || 0;
+  if (amount <= 0 || (project as any).status === 'Perdu') return false;
+
+  return (project as any).status === 'Devis envoyé' || (project as any).status === 'Gagné' || Boolean((project as any).quoteSentAt) || Boolean((project as any).acceptedAt);
+}
 
 function buildActionRows(
   priorityProjects: Project[],
@@ -125,6 +135,15 @@ function buildActionRows(
     const project = priorityProjects.find((p) => p.id === task.projectId);
     if (!project || task.type !== 'quote') continue;
     addCandidate(project.id, ACTION_PRIORITY.send_quote, '🔴', `Envoyer le devis — ${clientLabel(project)}`, `quote-${project.id}`);
+  }
+
+  for (const project of priorityProjects) {
+    const depositStatus = normalizeDepositStatus((project as any).depositStatus);
+    if (hasRelevantDeposit(project) && (depositStatus === 'not_requested' || depositStatus === 'recommended')) {
+      addCandidate(project.id, ACTION_PRIORITY.deposit_request, '🟠', `Demander l'acompte — ${clientLabel(project)}`, `deposit-request-${project.id}`);
+    } else if (depositStatus === 'requested') {
+      addCandidate(project.id, ACTION_PRIORITY.deposit_followup, '🟡', `Suivre l'acompte — ${clientLabel(project)}`, `deposit-follow-${project.id}`);
+    }
   }
 
   for (const project of riskProjects) {
