@@ -117,6 +117,37 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
   hour12: false,
 });
 
+// Construit un instant (Date, donc UTC en interne) correspondant à
+// hour:minute en heure de Paris pour la date "YYYY-MM-DD" donnée, en tenant
+// compte du décalage saisonnier (CET/CEST) — même algorithme que
+// buildParisDateTime dans src/lib/appointment-slots.ts (server-only), copié
+// ici côté client pour la sélection d'amplitude du rendez-vous, afin de ne
+// jamais produire un start_time/end_time naïf ou décalé pour Google Calendar.
+function parisOffsetHoursFor(date: Date): number {
+  const utcHour = date.getUTCHours();
+  const parisHour = Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).format(date)
+  );
+  let diff = parisHour - utcHour;
+  if (diff < 0) diff += 24;
+  if (diff > 12) diff -= 24;
+  return diff;
+}
+
+function buildParisDateTime(dateStr: string, hour: number, minute: number): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const approxUtc = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const offset = parisOffsetHoursFor(approxUtc);
+  return new Date(Date.UTC(year, month - 1, day, hour - offset, minute));
+}
+
+const TIME_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
 const INTEGER_FORMATTER = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 0,
 });
@@ -156,6 +187,45 @@ function formatMediumDate(value?: string | null, fallback = 'Non renseigné') {
 function formatDateTime(value?: string | null, fallback = 'Date non renseignée') {
   const date = parseValidDate(value);
   return date ? DATE_TIME_FORMATTER.format(date) : fallback;
+}
+
+// Résumé compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
+// distingue un RDV court (avec durée), une demi-journée / journée complète
+// (amplitude, sans heure de fin explicite) et un chantier multi-jours
+// (plage de dates), en se basant uniquement sur start/end déjà stockés.
+function summarizeAppointment(appointment: { start: string; end: string } | null, synced = true): { title: string; detail: string } {
+  if (!appointment) {
+    return { title: 'Rendez-vous', detail: 'Planifier un rendez-vous' };
+  }
+  const start = parseValidDate(appointment.start);
+  const end = parseValidDate(appointment.end);
+  if (!start || !end) {
+    return { title: 'Rendez-vous', detail: formatDateTime(appointment.start) };
+  }
+
+  const dayKey = (d: Date) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const isMultiDay = dayKey(start) !== dayKey(end);
+  const durationMs = end.getTime() - start.getTime();
+  const durationHours = durationMs / (1000 * 60 * 60);
+  const syncLine = synced ? 'Synchronisé Google Calendar' : 'Synchronisation Google Calendar à vérifier';
+
+  if (isMultiDay) {
+    return {
+      title: 'Rendez-vous',
+      detail: `Chantier prévu du ${formatShortDate(appointment.start)} au ${formatShortDate(appointment.end)} · Amplitude : plusieurs jours · ${syncLine}`,
+    };
+  }
+  if (durationHours >= 9.5) {
+    return {
+      title: 'Rendez-vous',
+      detail: `RDV prévu le ${formatShortDate(appointment.start)} · Amplitude : journée complète · ${syncLine}`,
+    };
+  }
+  const durationLabel = Number.isInteger(durationHours) ? `${durationHours}h` : `${durationHours.toFixed(1).replace('.', 'h')}`;
+  return {
+    title: 'Rendez-vous',
+    detail: `RDV prévu le ${formatShortDate(appointment.start)} à ${TIME_FORMATTER.format(start)} · Durée : ${durationLabel} · ${syncLine}`,
+  };
 }
 
 function formatInteger(value?: number | null) {
@@ -471,6 +541,15 @@ function ProjectDetail() {
   const [bookingSlot, setBookingSlot] = useState<{ start: string; end: string } | null>(null);
   const [appointmentError, setAppointmentError] = useState<string | null>(null);
   const [appointmentDate, setAppointmentDate] = useState<string>('');
+  // Amplitude / durée du rendez-vous (Part 5) : 'slot' = flux existant
+  // (créneaux 1h proposés par Google Calendar) ; les autres valeurs
+  // basculent sur une plage calculée manuellement (durée personnalisée,
+  // demi-journée, journée complète, plusieurs jours).
+  const [appointmentAmplitude, setAppointmentAmplitude] = useState<'slot' | 'custom' | 'half_day' | 'full_day' | 'multi_day'>('slot');
+  const [customDurationMin, setCustomDurationMin] = useState<number>(60);
+  const [appointmentStartTime, setAppointmentStartTime] = useState<string>('09:00');
+  const [halfDayPeriod, setHalfDayPeriod] = useState<'morning' | 'afternoon'>('morning');
+  const [multiDayEndDate, setMultiDayEndDate] = useState<string>('');
 
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -1118,6 +1197,11 @@ function ProjectDetail() {
   function openAppointmentModal() {
     setAppointmentDate('');
     setBookingSlot(null);
+    setAppointmentAmplitude('slot');
+    setCustomDurationMin(60);
+    setAppointmentStartTime('09:00');
+    setHalfDayPeriod('morning');
+    setMultiDayEndDate('');
     setShowAppointmentModal(true);
     fetchAppointmentSlots();
   }
@@ -1132,8 +1216,44 @@ function ProjectDetail() {
     await fetchAppointmentSlots(appointmentDate || undefined);
   }
 
+  // Calcule la plage start/end (ISO) pour les amplitudes manuelles
+  // (durée personnalisée / demi-journée / journée complète / plusieurs
+  // jours), en heure de Paris, avec un end toujours cohérent et jamais
+  // réduit à 30/60 min par défaut. Retourne null tant que les champs
+  // requis ne sont pas renseignés.
+  function computeManualAppointmentRange(): { start: string; end: string } | null {
+    if (!appointmentDate) return null;
+    if (appointmentAmplitude === 'custom') {
+      const [h, m] = appointmentStartTime.split(':').map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      const start = buildParisDateTime(appointmentDate, h, m);
+      const end = new Date(start.getTime() + customDurationMin * 60000);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+    if (appointmentAmplitude === 'half_day') {
+      const [startHour, endHour] = halfDayPeriod === 'morning' ? [8, 12] : [14, 18];
+      const start = buildParisDateTime(appointmentDate, startHour, 0);
+      const end = buildParisDateTime(appointmentDate, endHour, 0);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+    if (appointmentAmplitude === 'full_day') {
+      const start = buildParisDateTime(appointmentDate, 8, 0);
+      const end = buildParisDateTime(appointmentDate, 18, 0);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+    if (appointmentAmplitude === 'multi_day') {
+      if (!multiDayEndDate) return null;
+      const start = buildParisDateTime(appointmentDate, 8, 0);
+      const end = buildParisDateTime(multiDayEndDate, 18, 0);
+      if (end.getTime() <= start.getTime()) return null;
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+    return null;
+  }
+
   async function confirmAppointment() {
-    if (!bookingSlot) return;
+    const range = appointmentAmplitude === 'slot' ? bookingSlot : computeManualAppointmentRange();
+    if (!range) return;
     setAppointmentError(null);
     try {
       const res = await fetch('/api/appointments/book', {
@@ -1141,8 +1261,8 @@ function ProjectDetail() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId: project.id,
-          start: bookingSlot.start,
-          end: bookingSlot.end,
+          start: range.start,
+          end: range.end,
         }),
       });
       const data = await res.json();
@@ -2377,44 +2497,160 @@ function ProjectDetail() {
               </div>
 
               <div>
-                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
-
-                {loadingSlots ? (
-                  <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
-                ) : !appointmentConnected ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
-                    <p className="text-sm text-[var(--text-2)]">Connecter votre agenda débloquera des rendez-vous synchronisés et un planning fiable.</p>
-                    <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
-                  </div>
-                ) : appointmentError ? (
-                  <p className="text-sm text-red-400">{appointmentError}</p>
-                ) : appointmentSlots.length === 0 ? (
-                  <p className="text-sm text-[var(--text-2)]">
-                    {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {appointmentSlots.map((slot) => (
-                      <button
-                        key={slot.start}
-                        onClick={() => setBookingSlot(slot)}
-                        className={`w-full text-left rounded-lg border p-2 text-sm ${
-                          bookingSlot?.start === slot.start
-                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
-                            : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
-                        }`}
-                      >
-                        {formatDateTime(slot.start)}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Amplitude</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { key: 'slot', label: '1h (créneau proposé)' },
+                    { key: 'custom', label: 'Durée personnalisée' },
+                    { key: 'half_day', label: 'Demi-journée' },
+                    { key: 'full_day', label: 'Journée complète' },
+                    { key: 'multi_day', label: 'Plusieurs jours' },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => { setAppointmentAmplitude(opt.key); setBookingSlot(null); }}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                        appointmentAmplitude === opt.key
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                          : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {appointmentConnected && appointmentSlots.length > 0 && (
+              {appointmentAmplitude === 'slot' ? (
+                <div>
+                  <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
+
+                  {loadingSlots ? (
+                    <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+                  ) : !appointmentConnected ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
+                      <p className="text-sm text-[var(--text-2)]">Connecter votre agenda débloquera des rendez-vous synchronisés et un planning fiable.</p>
+                      <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
+                    </div>
+                  ) : appointmentError ? (
+                    <p className="text-sm text-red-400">{appointmentError}</p>
+                  ) : appointmentSlots.length === 0 ? (
+                    <p className="text-sm text-[var(--text-2)]">
+                      {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {appointmentSlots.map((slot) => (
+                        <button
+                          key={slot.start}
+                          onClick={() => setBookingSlot(slot)}
+                          className={`w-full text-left rounded-lg border p-2 text-sm ${
+                            bookingSlot?.start === slot.start
+                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                              : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                          }`}
+                        >
+                          {formatDateTime(slot.start)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {!appointmentConnected && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
+                      <p className="text-sm text-[var(--text-2)]">Connecter votre agenda débloquera des rendez-vous synchronisés et un planning fiable.</p>
+                      <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
+                    </div>
+                  )}
+                  {appointmentAmplitude === 'custom' && (
+                    <>
+                      <div>
+                        <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Heure de début</label>
+                        <input
+                          type="time"
+                          value={appointmentStartTime}
+                          onChange={(e) => setAppointmentStartTime(e.target.value)}
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {[30, 60, 90, 120, 180, 240].map((min) => (
+                          <button
+                            key={min}
+                            type="button"
+                            onClick={() => setCustomDurationMin(min)}
+                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                              customDurationMin === min
+                                ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                                : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                            }`}
+                          >
+                            {min < 60 ? `${min}min` : min % 60 === 0 ? `${min / 60}h` : `${Math.floor(min / 60)}h${min % 60}`}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {appointmentAmplitude === 'half_day' && (
+                    <div className="flex flex-wrap gap-2">
+                      {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'Après-midi (14h-18h)' }] as const).map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setHalfDayPeriod(opt.key)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                            halfDayPeriod === opt.key
+                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                              : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {appointmentAmplitude === 'full_day' && (
+                    <p className="text-sm text-[var(--text-2)]">Amplitude par défaut : 08h00 - 18h00.</p>
+                  )}
+                  {appointmentAmplitude === 'multi_day' && (
+                    <div>
+                      <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Date de fin</label>
+                      <input
+                        type="date"
+                        value={multiDayEndDate}
+                        min={appointmentDate || undefined}
+                        onChange={(e) => setMultiDayEndDate(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                      />
+                      <p className="mt-1 text-xs text-[var(--text-2)]">Chantier de {formatShortDate(appointmentDate)} 08h00 à {multiDayEndDate ? formatShortDate(multiDayEndDate) : '…'} 18h00.</p>
+                    </div>
+                  )}
+                  {appointmentError && <p className="text-sm text-red-400">{appointmentError}</p>}
+
+                  {(() => {
+                    const range = computeManualAppointmentRange();
+                    if (!range) return null;
+                    const start = new Date(range.start);
+                    const end = new Date(range.end);
+                    return (
+                      <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-xs text-[var(--text-2)]">
+                        <p className="mb-1 font-semibold text-[var(--text-1)]">Récapitulatif</p>
+                        <p>Début : {formatDateTime(start.toISOString())}</p>
+                        <p>Fin : {formatDateTime(end.toISOString())}</p>
+                        <p>{appointmentConnected ? 'Sera synchronisé avec Google Calendar.' : 'Google Calendar non connecté — synchronisation impossible.'}</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {((appointmentAmplitude === 'slot' && appointmentConnected && appointmentSlots.length > 0) || (appointmentAmplitude !== 'slot' && appointmentConnected)) && (
                 <button
                   onClick={confirmAppointment}
-                  disabled={!bookingSlot}
+                  disabled={appointmentAmplitude === 'slot' ? !bookingSlot : !computeManualAppointmentRange()}
                   className="w-full bg-[var(--accent)] text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
                 >
                   Confirmer le rendez-vous
@@ -2715,184 +2951,160 @@ function ProjectDetail() {
           </div>
         </div>
 
-        {/* Action recommandée — sortie minimale de l'Action Engine (src/lib/action-engine.ts).
-            Point d'entrée principal de la fiche : mise en avant subtile (bordure
-            accent + léger halo), sans tomber dans un style "alerte". */}
+        {/* Pilotage commercial — fusion de "Action recommandée" et
+            "Avancement commercial" (sortie de l'Action Engine, src/lib/action-engine.ts,
+            + timeline commerciale) dans une seule carte pleine largeur, pour
+            réduire la hauteur totale sans perdre la hiérarchie : action à
+            gauche (CTA toujours visible), timeline compacte à droite. */}
         <div style={{
           background: 'var(--bg-elevated)',
           border: '1px solid rgba(34,197,94,0.35)',
           boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 4px 16px rgba(34,197,94,0.08)',
           borderRadius: '14px',
-          padding: '16px 18px',
+          padding: isMobile ? '16px' : '18px 20px',
           marginBottom: '16px',
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'flex-start' : 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
         }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Action recommandée
-            </p>
-            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
-              {recommendedAction.title}
-            </p>
-            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px' }}>
-              {recommendedAction.meta}
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: '999px',
-                border: '1px solid var(--border)',
-                color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)',
-              }}>
-                Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
-              </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                Impact {nextAction.impact === 'high' ? 'fort' : nextAction.impact === 'medium' ? 'moyen' : 'faible'}
-              </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                ~{nextAction.estimatedDuration}
-              </span>
-            </div>
-            {nextAction.blockingReasons.length > 0 && (
-              <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '6px 0 0' }}>
-                Blocages : {nextAction.blockingReasons.join(' · ')}
+          <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Pilotage commercial
+          </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.3fr) minmax(0, 1fr)',
+            gap: isMobile ? '18px' : '28px',
+            alignItems: 'start',
+          }}>
+            {/* Action recommandée */}
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Action recommandée
               </p>
-            )}
-            {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
-              <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '6px 0 0' }}>
-                {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]}
+              <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
+                {recommendedAction.title}
               </p>
-            )}
-          </div>
-          {(() => {
-            const ctaActionable = !!recommendedAction.onClick && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
-            const disabledTitle = NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]
-              || (!recommendedAction.onClick ? 'Action pas encore disponible depuis cette carte' : undefined);
-            return (
-              <button
-                type="button"
-                onClick={recommendedAction.onClick}
-                disabled={!ctaActionable}
-                title={!ctaActionable ? disabledTitle : undefined}
-                style={{
-                  flexShrink: 0,
-                  background: ctaActionable ? 'var(--accent)' : 'transparent',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  padding: '8px 16px',
-                  fontSize: '12px',
+              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px' }}>
+                {recommendedAction.meta}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{
+                  fontSize: '11px',
                   fontWeight: 600,
-                  color: ctaActionable ? '#fff' : 'var(--text-3)',
-                  cursor: ctaActionable ? 'pointer' : 'not-allowed',
-                  opacity: ctaActionable ? 1 : 0.6,
-                  width: isMobile ? '100%' : undefined,
-                }}
-              >
-                {recommendedAction.ctaLabel}
-              </button>
-            );
-          })()}
-        </div>
-
-        {/* Avancement commercial en pleine largeur. */}
-        {(() => {
-          return (
-            <>
-              <div style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '14px',
-                padding: isMobile ? '16px' : '22px',
-                marginBottom: '16px',
-              }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 18px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Avancement commercial
-                </p>
-                <div style={{
-                  display: isMobile ? 'flex' : 'grid',
-                  flexDirection: isMobile ? 'column' : undefined,
-                  gridTemplateColumns: isMobile ? undefined : `repeat(${commercialTimeline.length}, minmax(0, 1fr))`,
-                  gap: isMobile ? '10px' : '6px',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  border: '1px solid var(--border)',
+                  color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)',
                 }}>
-                  {commercialTimeline.map((step, index) => {
-                    const isCurrent = !step.done && commercialTimeline.slice(0, index).every((s) => s.done);
-                    return (
-                      <div
-                        key={step.id}
-                        style={{
-                          display: 'flex',
-                          flexDirection: isMobile ? 'row' : 'column',
-                          alignItems: isMobile ? 'center' : 'stretch',
-                          gap: '10px',
-                        }}
-                      >
-                        <div style={{
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                        }}>
-                          <span style={{
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '999px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            background: step.done ? 'rgba(34,197,94,0.18)' : isCurrent ? 'rgba(234,88,12,0.14)' : 'var(--bg)',
-                            border: `2px solid ${step.done ? 'rgba(34,197,94,0.5)' : isCurrent ? '#ea580c' : 'var(--border)'}`,
-                            color: step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)',
-                            flexShrink: 0,
-                          }}>
-                            {step.done ? '✓' : index + 1}
-                          </span>
-                          {!isMobile && index < commercialTimeline.length - 1 && (
-                            <span style={{
-                              flex: 1,
-                              height: '2px',
-                              background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)',
-                            }} />
-                          )}
-                        </div>
-                        <p style={{
-                          margin: isMobile ? 0 : '10px 0 0',
-                          fontSize: '12px',
-                          color: step.done ? 'var(--text-1)' : isCurrent ? '#ea580c' : 'var(--text-3)',
-                          fontWeight: step.done || isCurrent ? 700 : 500,
-                          lineHeight: 1.3,
-                        }}>
-                          {step.label}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p style={{ margin: '16px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
-                  Étape actuelle : {(() => {
-                    const current = commercialTimeline.find((s) => !s.done) || commercialTimeline[commercialTimeline.length - 1];
-                    return `${current.label} — ${recommendedAction.title.charAt(0).toLowerCase()}${recommendedAction.title.slice(1)}.`;
-                  })()}
-                </p>
+                  Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                  Impact {nextAction.impact === 'high' ? 'fort' : nextAction.impact === 'medium' ? 'moyen' : 'faible'}
+                </span>
+                <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
+                  ~{nextAction.estimatedDuration}
+                </span>
               </div>
-            </>
-          );
-        })()}
+              {nextAction.blockingReasons.length > 0 && (
+                <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '0 0 6px' }}>
+                  Blocages : {nextAction.blockingReasons.join(' · ')}
+                </p>
+              )}
+              {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
+                <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '0 0 6px' }}>
+                  {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]}
+                </p>
+              )}
+              {(() => {
+                const ctaActionable = !!recommendedAction.onClick && !NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType];
+                const disabledTitle = NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType]
+                  || (!recommendedAction.onClick ? 'Action pas encore disponible depuis cette carte' : undefined);
+                return (
+                  <button
+                    type="button"
+                    onClick={recommendedAction.onClick}
+                    disabled={!ctaActionable}
+                    title={!ctaActionable ? disabledTitle : undefined}
+                    style={{
+                      marginTop: '4px',
+                      background: ctaActionable ? 'var(--accent)' : 'transparent',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: ctaActionable ? '#fff' : 'var(--text-3)',
+                      cursor: ctaActionable ? 'pointer' : 'not-allowed',
+                      opacity: ctaActionable ? 1 : 0.6,
+                      width: isMobile ? '100%' : undefined,
+                    }}
+                  >
+                    {recommendedAction.ctaLabel}
+                  </button>
+                );
+              })()}
+            </div>
+
+            {/* Avancement commercial — timeline verticale compacte pour ne
+                jamais prendre plus de place que l'action recommandée. */}
+            <div style={{
+              borderLeft: isMobile ? 'none' : '1px solid var(--border)',
+              borderTop: isMobile ? '1px solid var(--border)' : 'none',
+              paddingLeft: isMobile ? 0 : '24px',
+              paddingTop: isMobile ? '14px' : 0,
+            }}>
+              <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Avancement commercial
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {commercialTimeline.map((step, index) => {
+                  const isCurrent = !step.done && commercialTimeline.slice(0, index).every((s) => s.done);
+                  const isLast = index === commercialTimeline.length - 1;
+                  return (
+                    <div key={step.id} style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                        <span style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '999px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          background: step.done ? 'rgba(34,197,94,0.18)' : isCurrent ? 'rgba(234,88,12,0.14)' : 'var(--bg)',
+                          border: `2px solid ${step.done ? 'rgba(34,197,94,0.5)' : isCurrent ? '#ea580c' : 'var(--border)'}`,
+                          color: step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)',
+                        }}>
+                          {step.done ? '✓' : index + 1}
+                        </span>
+                        {!isLast && (
+                          <span style={{ width: '2px', flex: 1, minHeight: '10px', background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)' }} />
+                        )}
+                      </div>
+                      <p style={{
+                        margin: isLast ? '2px 0 0' : '2px 0 10px',
+                        fontSize: '12px',
+                        color: step.done ? 'var(--text-1)' : isCurrent ? '#ea580c' : 'var(--text-3)',
+                        fontWeight: step.done || isCurrent ? 700 : 500,
+                        lineHeight: 1.3,
+                      }}>
+                        {step.label}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
           gap: '10px',
           marginBottom: '16px',
         }}>
-          {/* Rendez-vous */}
+          {/* Rendez-vous — porte désormais le résumé compact du RDV (date,
+              amplitude/durée, statut de synchronisation Google Calendar),
+              la carte "Rendez-vous" dédiée ayant été retirée (doublon). */}
           <button
             onClick={() => {
               if (!appointment) openAppointmentModal();
@@ -2910,8 +3122,8 @@ function ProjectDetail() {
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
               📅 Rendez-vous
             </p>
-            <p style={{ fontSize: '13px', color: appointment ? 'var(--accent)' : 'var(--text-1)', fontWeight: 600, margin: 0 }}>
-              {loadingAppointment ? 'Chargement...' : appointment ? formatDateTime(appointment.start) : 'Planifier un rendez-vous'}
+            <p style={{ fontSize: '13px', color: appointment ? 'var(--accent)' : 'var(--text-1)', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+              {loadingAppointment ? 'Chargement...' : summarizeAppointment(appointment).detail}
             </p>
           </button>
 
@@ -2969,6 +3181,35 @@ function ProjectDetail() {
                       : decision.canFollowUpQuote
                         ? 'Consulter / relancer'
                         : 'Consulter le devis'}
+            </p>
+          </button>
+
+          {/* Avis Google — même logique/handler que l'action rapide mobile
+              (requestGoogleReview) ; auparavant absente en desktop (bug
+              d'affichage), pas de condition métier supplémentaire ajoutée. */}
+          <button
+            onClick={requestGoogleReview}
+            disabled={!project.clientEmail || !artisanConfig?.googleReviewUrl}
+            title={!artisanConfig?.googleReviewUrl
+              ? "Ajoutez votre lien de demande d'avis Google dans vos paramètres."
+              : !project.clientEmail
+                ? 'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
+                : undefined}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: (!project.clientEmail || !artisanConfig?.googleReviewUrl) ? 'not-allowed' : 'pointer',
+              opacity: (!project.clientEmail || !artisanConfig?.googleReviewUrl) ? 0.5 : 1,
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              ⭐ Avis client
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              Demander avis Google
             </p>
           </button>
         </div>
@@ -3322,6 +3563,153 @@ function ProjectDetail() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Frais de déplacement estimés — intégré à Analyse Kadria (source
+              unique pour ce sujet, l'ancienne carte isolée a été retirée).
+              Reprend exactement les mêmes helpers de calcul que l'ancienne
+              carte, sans inventer de logique supplémentaire. */}
+          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+            <p style={{
+              color: 'var(--text-3)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              🚗 Frais de déplacement
+            </p>
+            {!canTravelCost ? (
+              <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
+                  Distance aller, aller-retour et coût de déplacement estimé (vol d&apos;oiseau).
+                </p>
+              </div>
+            ) : (() => {
+              const travelConfig = artisanConfig?.travelConfig;
+              const originAddress = travelConfig?.originAddress || artisanConfig?.address;
+              const originLat = travelConfig?.originLat;
+              const originLng = travelConfig?.originLng;
+              const siteAddress = project?.siteAddress;
+              const destLat = project?.latitude;
+              const destLng = project?.longitude;
+
+              // Cas 3 — pas d'adresse chantier : non disponible.
+              if (!siteAddress) {
+                return (
+                  <>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Non disponible</p>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      Adresse chantier manquante sur le dossier. Ajoutez-la pour permettre l&apos;estimation.
+                    </p>
+                  </>
+                );
+              }
+              if (!originAddress) {
+                return (
+                  <>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Non disponible</p>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      Adresse professionnelle manquante dans vos paramètres.
+                    </p>
+                  </>
+                );
+              }
+              // Cas 2 — adresse(s) présente(s) mais coordonnées GPS ou
+              // motorisation manquantes : estimation à fiabiliser.
+              if (
+                originLat === undefined || originLng === undefined
+                || destLat === null || destLat === undefined || destLng === null || destLng === undefined
+              ) {
+                return (
+                  <>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation à fiabiliser</p>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      {originLat === undefined || originLng === undefined
+                        ? "Adresse professionnelle non géocodée. Resélectionnez-la via l'autocomplete dans Paramètres."
+                        : "Adresse chantier renseignée mais coordonnées GPS manquantes. Ressaisissez-la via l'autocomplete pour fiabiliser l'estimation."}
+                    </p>
+                  </>
+                );
+              }
+              if (!travelConfig?.vehicleType) {
+                return (
+                  <>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation à fiabiliser</p>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      Motorisation non renseignée dans vos paramètres.
+                    </p>
+                  </>
+                );
+              }
+
+              // Cas 1 — toutes les données sont disponibles : estimation
+              // fiable, calculée avec les mêmes helpers que précédemment.
+              const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
+              const result = calculateTravelCost(distanceKm, {
+                vehicleType: travelConfig.vehicleType as VehicleType,
+                consumptionPer100Km: travelConfig.consumptionPer100Km,
+                chargingType: travelConfig.chargingType as ChargingType | undefined,
+                customCostPerKm: travelConfig.customCostPerKm,
+              });
+              if (!result) {
+                return (
+                  <>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation à fiabiliser</p>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Impossible de calculer le déplacement.</p>
+                  </>
+                );
+              }
+              const recommendation = calculateTravelFeeRecommendation({
+                oneWayDistanceKm: result.distanceKm,
+                estimatedCost: result.cost,
+                minimumTravelFee: travelConfig.minimumTravelFee,
+                freeTravelRadiusKm: travelConfig.freeTravelRadiusKm,
+              });
+              return (
+                <>
+                  <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
+                    ≈ {result.cost.toFixed(2)} € estimés
+                  </p>
+                  <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: '0 0 6px' }}>
+                    {result.distanceKm.toFixed(1)} km aller · {result.distanceKmAR.toFixed(1)} km aller-retour ({result.energyLabel})
+                  </p>
+                  <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: 0 }}>
+                    À intégrer dans votre tarification (forfait déplacement) — {recommendation.isFreeZone
+                      ? 'chantier en zone proche, aucun frais spécifique n’est suggéré.'
+                      : recommendation.reason}
+                  </p>
+                </>
+              );
+            })()}
+            {!canTravelCost && (
+              <button
+                onClick={() => openUpgradeModal('travelCost')}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <span style={{
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'var(--accent)',
+                }}>
+                  Disponible avec Performance
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Synthèse IA longue */}
@@ -4629,224 +5017,6 @@ function ProjectDetail() {
 
         </div>
 
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          marginBottom: '16px',
-        }}>
-          <div style={{
-            padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            <h2 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>
-              Rendez-vous
-            </h2>
-          </div>
-
-          <div style={{ padding: isMobile ? '16px' : '16px 20px' }}>
-            {loadingAppointment ? (
-              <LoadingSkeleton width="70%" height="13px" />
-            ) : appointment ? (
-              <div>
-                <p style={{ color: 'var(--text-1)', fontSize: '14px', margin: '0 0 4px', fontWeight: 600 }}>
-                  {formatDateTime(appointment.start)}
-                </p>
-                {appointment.location && (
-                  <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 4px' }}>
-                    📍 {appointment.location}
-                  </p>
-                )}
-                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 8px' }}>
-                  Statut : {appointment.status}
-                </p>
-                <p style={{ color: 'var(--accent)', fontSize: '12px', margin: 0 }}>
-                  ✓ Synchronisé Google Calendar
-                </p>
-              </div>
-            ) : (
-              <div>
-                <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: '0 0 10px' }}>
-                  Aucun rendez-vous planifié pour ce dossier.
-                </p>
-                <button
-                  onClick={openAppointmentModal}
-                  style={{
-                    background: 'var(--accent)',
-                    border: 'none',
-                    color: 'black',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Planifier un rendez-vous
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Frais de déplacement estimés — plan Performance et supérieur */}
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          padding: isMobile ? '16px' : '16px 20px',
-          marginBottom: '16px',
-          position: 'relative',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '16px' }}>🚗</span>
-            <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '14px' }}>
-              Frais de déplacement estimés
-            </span>
-          </div>
-          {!canTravelCost ? (
-            <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
-              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                Distance aller, aller-retour et coût de déplacement estimé (vol d&apos;oiseau).
-              </p>
-            </div>
-          ) : (() => {
-            const travelConfig = artisanConfig?.travelConfig;
-            const originAddress = travelConfig?.originAddress || artisanConfig?.address;
-            const originLat = travelConfig?.originLat;
-            const originLng = travelConfig?.originLng;
-            const siteAddress = project?.siteAddress;
-            const destLat = project?.latitude;
-            const destLng = project?.longitude;
-
-            // Cas 1 : adresse artisan absente
-            if (!originAddress) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse professionnelle manquante dans vos paramètres.
-                </p>
-              );
-            }
-            // Cas 2 : adresse artisan présente mais coordonnées absentes
-            if (originLat === undefined || originLng === undefined) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse professionnelle renseignée, mais non géocodée. Sélectionnez-la via l&apos;autocomplete dans Paramètres.
-                </p>
-              );
-            }
-            // Cas 3 : adresse chantier absente
-            if (!siteAddress) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse chantier manquante sur le dossier.
-                </p>
-              );
-            }
-            // Cas 4 : adresse chantier présente mais coordonnées absentes
-            if (destLat === null || destLat === undefined || destLng === null || destLng === undefined) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Adresse chantier renseignée, mais coordonnées GPS manquantes. Les nouveaux dossiers doivent utiliser l&apos;adresse suggérée par l&apos;autocomplete.
-                </p>
-              );
-            }
-            if (!travelConfig?.vehicleType) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Motorisation non renseignée dans vos paramètres.
-                </p>
-              );
-            }
-            const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
-            const result = calculateTravelCost(distanceKm, {
-              vehicleType: travelConfig.vehicleType as VehicleType,
-              consumptionPer100Km: travelConfig.consumptionPer100Km,
-              chargingType: travelConfig.chargingType as ChargingType | undefined,
-              customCostPerKm: travelConfig.customCostPerKm,
-            });
-            if (!result) {
-              return (
-                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Impossible de calculer le déplacement.
-                </p>
-              );
-            }
-            const recommendation = calculateTravelFeeRecommendation({
-              oneWayDistanceKm: result.distanceKm,
-              estimatedCost: result.cost,
-              minimumTravelFee: travelConfig.minimumTravelFee,
-              freeTravelRadiusKm: travelConfig.freeTravelRadiusKm,
-            });
-            return (
-              <>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller</p>
-                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKm.toFixed(1)} km</p>
-                  </div>
-                  <div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Distance aller-retour</p>
-                    <p style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>{result.distanceKmAR.toFixed(1)} km</p>
-                  </div>
-                  <div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 2px' }}>Coût estimé ({result.energyLabel})</p>
-                    <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: 0 }}>{result.cost.toFixed(2)} €</p>
-                  </div>
-                </div>
-                <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '10px 0 0', fontStyle: 'italic' }}>
-                  Distance géographique majorée de 10 %.
-                </p>
-                <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--bg-elevated)', borderRadius: '8px' }}>
-                  <p style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700, margin: '0 0 2px' }}>
-                    {recommendation.label}
-                  </p>
-                  <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
-                    {recommendation.isFreeZone
-                      ? 'Le chantier est dans votre zone proche. Aucun frais de déplacement spécifique n’est suggéré.'
-                      : recommendation.reason}
-                  </p>
-                  {(travelConfig.minimumTravelFee !== undefined || travelConfig.freeTravelRadiusKm !== undefined) && (
-                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
-                      {travelConfig.minimumTravelFee !== undefined && `Frais minimum : ${travelConfig.minimumTravelFee} €`}
-                      {travelConfig.minimumTravelFee !== undefined && travelConfig.freeTravelRadiusKm !== undefined && ' · '}
-                      {travelConfig.freeTravelRadiusKm !== undefined && `Zone sans frais : ${travelConfig.freeTravelRadiusKm} km`}
-                    </p>
-                  )}
-                </div>
-              </>
-            );
-          })()}
-          {!canTravelCost && (
-            <button
-              onClick={() => openUpgradeModal('travelCost')}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span style={{
-                background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
-                borderRadius: '20px',
-                padding: '6px 14px',
-                fontSize: '12px',
-                fontWeight: 600,
-                color: 'var(--accent)',
-              }}>
-                Disponible avec Performance
-              </span>
-            </button>
-          )}
-        </div>
-
         {!showNotes ? (
           <div style={{
             background: 'var(--bg-elevated)',
@@ -5222,41 +5392,154 @@ function ProjectDetail() {
             </div>
 
             <div>
-              <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
-
-              {loadingSlots ? (
-                <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
-              ) : !appointmentConnected ? (
-                <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
-              ) : appointmentError ? (
-                <p className="text-sm text-red-400">{appointmentError}</p>
-              ) : appointmentSlots.length === 0 ? (
-                <p className="text-sm text-[var(--text-2)]">
-                  {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {appointmentSlots.map((slot) => (
-                    <button
-                      key={slot.start}
-                      onClick={() => setBookingSlot(slot)}
-                      className={`w-full text-left rounded-lg border p-2 text-sm ${
-                        bookingSlot?.start === slot.start
-                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
-                          : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
-                      }`}
-                    >
-                      {formatDateTime(slot.start)}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Amplitude</p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { key: 'slot', label: '1h (créneau proposé)' },
+                  { key: 'custom', label: 'Durée personnalisée' },
+                  { key: 'half_day', label: 'Demi-journée' },
+                  { key: 'full_day', label: 'Journée complète' },
+                  { key: 'multi_day', label: 'Plusieurs jours' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => { setAppointmentAmplitude(opt.key); setBookingSlot(null); }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      appointmentAmplitude === opt.key
+                        ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                        : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {appointmentConnected && appointmentSlots.length > 0 && (
+            {appointmentAmplitude === 'slot' ? (
+              <div>
+                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
+
+                {loadingSlots ? (
+                  <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+                ) : !appointmentConnected ? (
+                  <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
+                ) : appointmentError ? (
+                  <p className="text-sm text-red-400">{appointmentError}</p>
+                ) : appointmentSlots.length === 0 ? (
+                  <p className="text-sm text-[var(--text-2)]">
+                    {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {appointmentSlots.map((slot) => (
+                      <button
+                        key={slot.start}
+                        onClick={() => setBookingSlot(slot)}
+                        className={`w-full text-left rounded-lg border p-2 text-sm ${
+                          bookingSlot?.start === slot.start
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                            : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                        }`}
+                      >
+                        {formatDateTime(slot.start)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {!appointmentConnected && (
+                  <p className="text-sm text-[var(--text-2)]">Agenda non connecté — la synchronisation ne sera pas possible.</p>
+                )}
+                {appointmentAmplitude === 'custom' && (
+                  <>
+                    <div>
+                      <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Heure de début</label>
+                      <input
+                        type="time"
+                        value={appointmentStartTime}
+                        onChange={(e) => setAppointmentStartTime(e.target.value)}
+                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {[30, 60, 90, 120, 180, 240].map((min) => (
+                        <button
+                          key={min}
+                          type="button"
+                          onClick={() => setCustomDurationMin(min)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                            customDurationMin === min
+                              ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                              : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                          }`}
+                        >
+                          {min < 60 ? `${min}min` : min % 60 === 0 ? `${min / 60}h` : `${Math.floor(min / 60)}h${min % 60}`}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {appointmentAmplitude === 'half_day' && (
+                  <div className="flex flex-wrap gap-2">
+                    {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'Après-midi (14h-18h)' }] as const).map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setHalfDayPeriod(opt.key)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                          halfDayPeriod === opt.key
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-1)]'
+                            : 'border-[var(--border)] bg-[var(--bg-hover)] text-[var(--text-2)]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {appointmentAmplitude === 'full_day' && (
+                  <p className="text-sm text-[var(--text-2)]">Amplitude par défaut : 08h00 - 18h00.</p>
+                )}
+                {appointmentAmplitude === 'multi_day' && (
+                  <div>
+                    <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Date de fin</label>
+                    <input
+                      type="date"
+                      value={multiDayEndDate}
+                      min={appointmentDate || undefined}
+                      onChange={(e) => setMultiDayEndDate(e.target.value)}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                    />
+                    <p className="mt-1 text-xs text-[var(--text-2)]">Chantier de {formatShortDate(appointmentDate)} 08h00 à {multiDayEndDate ? formatShortDate(multiDayEndDate) : '…'} 18h00.</p>
+                  </div>
+                )}
+                {appointmentError && <p className="text-sm text-red-400">{appointmentError}</p>}
+
+                {(() => {
+                  const range = computeManualAppointmentRange();
+                  if (!range) return null;
+                  const start = new Date(range.start);
+                  const end = new Date(range.end);
+                  return (
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-xs text-[var(--text-2)]">
+                      <p className="mb-1 font-semibold text-[var(--text-1)]">Récapitulatif</p>
+                      <p>Début : {formatDateTime(start.toISOString())}</p>
+                      <p>Fin : {formatDateTime(end.toISOString())}</p>
+                      <p>{appointmentConnected ? 'Sera synchronisé avec Google Calendar.' : 'Google Calendar non connecté — synchronisation impossible.'}</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {((appointmentAmplitude === 'slot' && appointmentConnected && appointmentSlots.length > 0) || (appointmentAmplitude !== 'slot' && appointmentConnected)) && (
               <button
                 onClick={confirmAppointment}
-                disabled={!bookingSlot}
+                disabled={appointmentAmplitude === 'slot' ? !bookingSlot : !computeManualAppointmentRange()}
                 className="w-full bg-[var(--accent)] text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
               >
                 Confirmer le rendez-vous
