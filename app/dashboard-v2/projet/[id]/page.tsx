@@ -497,7 +497,6 @@ function ProjectDetail() {
   const canTravelCost = hasFeature(plan, 'travelCost');
   const openUpgradeModal = (feature: PlanFeatureKey) => setUpgradeFeature(feature);
 
-  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const [artisanConfig, setArtisanConfig] = useState<{
     siret?: string;
@@ -631,9 +630,72 @@ function ProjectDetail() {
     });
   }
 
-  const recentActivityItems = activities
-    .slice(0, 8)
+  const dossierActivitySource = [
+    ...activities,
+    ...devisList.flatMap((devis) => {
+      const items: { id: string; description: string; createdAt?: string | null; action: string }[] = [];
+      if (devis.date_emission) {
+        items.push({
+          id: `${devis.id}-created`,
+          description: `Devis ${devis.numero} cree — ${formatMoney(devis.amount)} € TTC`,
+          createdAt: devis.date_emission,
+          action: 'DEVIS',
+        });
+      }
+      if (devis.sent && devis.quote_sent_at) {
+        items.push({
+          id: `${devis.id}-sent`,
+          description: `Devis ${devis.numero} envoye — ${formatMoney(devis.amount)} € TTC`,
+          createdAt: devis.quote_sent_at,
+          action: 'DEVIS',
+        });
+      }
+      if (devis.follow_up_count && devis.last_follow_up_at) {
+        items.push({
+          id: `${devis.id}-followup`,
+          description: `Relance envoyee pour le devis ${devis.numero}`,
+          createdAt: devis.last_follow_up_at,
+          action: 'DEVIS',
+        });
+      }
+      if (devis.accepted) {
+        items.push({
+          id: `${devis.id}-accepted`,
+          description: `Devis ${devis.numero} accepte`,
+          createdAt: devis.accepted_at,
+          action: 'DEVIS',
+        });
+      }
+      if (devis.declined) {
+        items.push({
+          id: `${devis.id}-declined`,
+          description: devis.decline_reason
+            ? `Devis ${devis.numero} refuse — Motif : ${devis.decline_reason}`
+            : `Devis ${devis.numero} refuse`,
+          createdAt: devis.declined_at,
+          action: 'DEVIS',
+        });
+      }
+      return items;
+    }),
+    {
+      id: 'creation',
+      description: `Dossier cree — statut initial : ${project?.status || 'Nouveau'}`,
+      createdAt: project?.createdAt,
+      action: 'CREATED',
+    },
+  ]
+    .filter((activity) => activity.createdAt || activity.description)
+    .sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+  const activityItems = dossierActivitySource
     .map((activity, index) => getActivityPresentation(activity, index));
+
+  const recentActivityItems = activityItems.slice(0, 8);
 
   async function loadActivities() {
     try {
@@ -2804,7 +2866,7 @@ function ProjectDetail() {
             </div>
             {!activityUnavailable && recentActivityItems.length > 0 && (
               <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
-                {recentActivityItems.length} evenement{recentActivityItems.length > 1 ? 's' : ''}
+                {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -4765,104 +4827,6 @@ function ProjectDetail() {
           </div>
         )}
 
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-[var(--text-1)] mb-5">Historique du dossier</h2>
-
-          {(() => {
-            // Évènements devis consolidés depuis les données déjà chargées sur
-            // cette page (devisList) — aucune donnée inventée, juste les
-            // mêmes champs déjà utilisés par "Actions et devis" ci-dessus.
-            const devisEvents = devisList.flatMap((devis) => {
-              const items: { id: string; description: string; createdAt?: string | null; action: string }[] = [];
-              if (devis.date_emission) {
-                items.push({
-                  id: `${devis.id}-created`,
-                  description: `Devis ${devis.numero} créé — ${formatMoney(devis.amount)} € TTC`,
-                  createdAt: devis.date_emission,
-                  action: 'DEVIS',
-                });
-              }
-              if (devis.sent && devis.quote_sent_at) {
-                items.push({
-                  id: `${devis.id}-sent`,
-                  description: `Devis ${devis.numero} envoyé — ${formatMoney(devis.amount)} € TTC`,
-                  createdAt: devis.quote_sent_at,
-                  action: 'DEVIS',
-                });
-              }
-              if (devis.follow_up_count && devis.last_follow_up_at) {
-                items.push({
-                  id: `${devis.id}-followup`,
-                  description: `Relance envoyée pour le devis ${devis.numero}`,
-                  createdAt: devis.last_follow_up_at,
-                  action: 'DEVIS',
-                });
-              }
-              if (devis.accepted) {
-                items.push({
-                  id: `${devis.id}-accepted`,
-                  description: `Devis ${devis.numero} accepté`,
-                  createdAt: devis.accepted_at,
-                  action: 'DEVIS',
-                });
-              }
-              if (devis.declined) {
-                items.push({
-                  id: `${devis.id}-declined`,
-                  description: devis.decline_reason
-                    ? `Devis ${devis.numero} refusé — Motif : ${devis.decline_reason}`
-                    : `Devis ${devis.numero} refusé`,
-                  createdAt: devis.declined_at,
-                  action: 'DEVIS',
-                });
-              }
-              return items;
-            });
-            const allEvents = [...activities, ...devisEvents, {
-              id: 'creation',
-              description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
-              createdAt: project.createdAt,
-              action: 'CREATED',
-            }].sort((a, b) => {
-              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-              return timeB - timeA;
-            });
-            const events = showAllHistory ? allEvents : allEvents.slice(0, 3);
-
-            return (
-              <>
-                <div className="relative">
-                  <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-[var(--bg-hover)]" />
-
-                  {events.map((activity) => (
-                    <div key={activity.id} className="relative pl-10 pb-5 last:pb-0">
-                      <TimelineIcon action={activity.action} />
-
-                      <p className="font-medium text-[var(--text-1)] text-sm">{activity.description}</p>
-
-                      <p className="text-xs text-[var(--text-2)] mt-0.5">
-                        {activity.createdAt
-                          ? formatDateTime(activity.createdAt)
-                          : 'Date inconnue'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {allEvents.length > 3 && (
-                  <button
-                    onClick={() => setShowAllHistory((v) => !v)}
-                    className="text-sm text-green-500 hover:underline"
-                  >
-                    {showAllHistory ? 'Réduire' : "Voir tout l'historique"}
-                  </button>
-                )}
-              </>
-            );
-          })()}
-        </section>
-
       </main>
 
       {followUpConfirmDevis && (
@@ -5286,62 +5250,6 @@ function ProjectDetail() {
         />
       )}
     </div>
-  );
-}
-
-function TimelineIcon({ action }: { action?: string }) {
-  if (action === 'CREATED') {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-        <Plus className="w-3 h-3 text-zinc-950" />
-      </span>
-    );
-  }
-
-  if (action?.includes('STATUS')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-[var(--bg-hover)] border-2 border-[var(--border)] flex items-center justify-center">
-        <ArrowRight className="w-3 h-3 text-[var(--text-1)]" />
-      </span>
-    );
-  }
-
-  if (action?.includes('CALLBACK')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center">
-        <Clock className="w-3 h-3 text-amber-500" />
-      </span>
-    );
-  }
-
-  if (action?.includes('NOTE')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
-        <FileTextIcon className="w-3 h-3 text-blue-400" />
-      </span>
-    );
-  }
-
-  if (action?.includes('FAILED')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-red-500/15 flex items-center justify-center">
-        <AlertTriangle className="w-3 h-3 text-red-300" />
-      </span>
-    );
-  }
-
-  if (action?.includes('SENT')) {
-    return (
-      <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
-        <Check className="w-3 h-3 text-green-300" />
-      </span>
-    );
-  }
-
-  return (
-    <span className="absolute left-0 top-0 w-5 h-5 rounded-full bg-[var(--bg-hover)] border-2 border-[var(--border)] flex items-center justify-center">
-      <ArrowRight className="w-3 h-3 text-[var(--text-1)]" />
-    </span>
   );
 }
 
