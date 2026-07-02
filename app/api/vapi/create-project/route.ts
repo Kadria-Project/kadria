@@ -60,6 +60,99 @@ function resolveArtisanId(params: {
   return FALLBACK_ARTISAN_ID
 }
 
+// Renvoie true si le body correspond à un event serveur Vapi qui n'est PAS
+// un vrai appel d'outil (ex: conversation-update, status-update, etc.).
+// Ces events partagent tous une structure message.type connue de Vapi qui
+// n'est pas "tool-calls". On ne doit jamais créer de dossier à partir de ça.
+function isNonToolVapiEvent(body: any): boolean {
+  const messageType = body?.message?.type
+  if (typeof messageType !== 'string') return false
+  return messageType !== 'tool-calls'
+}
+
+// Un appel manuel de test (hors Vapi) envoie le payload "à plat" à la racine
+// du body, sans structure message.*. On le reconnaît par la présence de
+// champs propres au contrat create_project (clientName/artisanId), afin de
+// ne jamais confondre un event Vapi (conversation-update, etc.) avec un
+// appel de test légitime.
+function looksLikeFlatManualTestPayload(body: any): boolean {
+  if (!body || typeof body !== 'object') return false
+  if (body.message) return false
+  return typeof body.clientName === 'string' || typeof body.artisanId === 'string'
+}
+
+function extractToolCallFromBody(body: any): { toolCall: any; source: string } | null {
+  const message = body?.message
+  if (message?.type === 'tool-calls') {
+    const toolCall = Array.isArray(message?.toolCalls)
+      ? message.toolCalls[0]
+      : Array.isArray(message?.toolCallList)
+        ? message.toolCallList[0]
+        : undefined
+    if (toolCall) return { toolCall, source: 'message.toolCalls[0].function.arguments' }
+  }
+  if (body?.toolCall) return { toolCall: body.toolCall, source: 'body.toolCall' }
+  if (Array.isArray(body?.toolCalls) && body.toolCalls[0]) {
+    return { toolCall: body.toolCalls[0], source: 'body.toolCalls' }
+  }
+  if (body?.functionCall) {
+    return { toolCall: { function: body.functionCall }, source: 'body.functionCall' }
+  }
+  return null
+}
+
+// Extrait le numéro de téléphone du CLIENT (jamais celui de l'artisan)
+// depuis les différents emplacements possibles d'un payload Vapi. Testé
+// dans l'ordre décrit dans le brief, on renvoie le premier match non-vide.
+// Ne jamais lire phoneNumber.number / calledNumber / body.phoneNumber.number
+// ici : ce sont des identifiants du numéro Vapi/Twilio de l'artisan.
+export function extractCustomerPhoneFromVapiPayload(body: any, args: Record<string, unknown>): {
+  phone: string
+  source: string
+} {
+  const candidates: Array<[string, unknown]> = [
+    ['args.caller_phone', args?.caller_phone],
+    ['args.callerPhone', args?.callerPhone],
+    ['args.phone', args?.phone],
+    ['args.clientPhone', args?.clientPhone],
+    ['args.customerPhone', args?.customerPhone],
+    ['body.customer.number', body?.customer?.number],
+    ['body.call.customer.number', body?.call?.customer?.number],
+    ['body.message.customer.number', body?.message?.customer?.number],
+    ['body.message.call.customer.number', body?.message?.call?.customer?.number],
+    ['body.message.artifact.variables.customer.number', body?.message?.artifact?.variables?.customer?.number],
+    ['body.message.artifact.variableValues.customer.number', body?.message?.artifact?.variableValues?.customer?.number],
+    ['body.message.artifact.variables.transport.from', body?.message?.artifact?.variables?.transport?.from],
+    ['body.message.artifact.variableValues.transport.from', body?.message?.artifact?.variableValues?.transport?.from],
+    ['body.call.transport.from', body?.call?.transport?.from],
+  ]
+
+  for (const [source, value] of candidates) {
+    if (typeof value === 'string' && value.trim()) {
+      return { phone: value.trim(), source }
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return { phone: String(value), source }
+    }
+  }
+
+  return { phone: '', source: 'none' }
+}
+
+function extractCallId(body: any, args: Record<string, unknown>): string {
+  const candidates = [
+    args?.callId,
+    body?.call?.id,
+    body?.message?.call?.id,
+    body?.message?.artifact?.variables?.call?.id,
+    body?.message?.artifact?.variableValues?.call?.id,
+  ]
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate
+  }
+  return ''
+}
+
 function parseIncomingPayload(body: any) {
   const message = body?.message
   const isToolCallFormat = message?.type === 'tool-calls'
@@ -122,6 +215,17 @@ async function sendCompletionSmsBestEffort(params: { projectId: string; clientPh
 
   if (!clientPhone) {
     console.warn('[VAPI] Pas de numéro client, SMS de complément non envoyé - projectId:', projectId)
+    try {
+      await supabaseAdmin
+        .from(TABLES.projects)
+        .update({
+          sms_status: 'not_sent',
+          sms_last_error: 'missing_customer_phone',
+        })
+        .eq('id', projectId)
+    } catch {
+      // best-effort : on n'échoue jamais la création du projet pour ça
+    }
     return
   }
 
@@ -209,13 +313,24 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    // Garde-fou : un event serveur Vapi qui n'est pas un vrai appel d'outil
+    // (ex: conversation-update) ne doit jamais créer de dossier projet. On
+    // ne l'ignore que s'il n'y a pas non plus de vrai tool call détectable
+    // dans le même body (défense en profondeur) et que ce n'est pas un
+    // payload de test manuel à plat.
+    if (isNonToolVapiEvent(body) && !extractToolCallFromBody(body) && !looksLikeFlatManualTestPayload(body)) {
+      console.log('[VAPI] Event ignored - type:', body?.message?.type)
+      return NextResponse.json({ success: true, ignored: true, reason: 'non_tool_event' })
+    }
+
     parsed = parseIncomingPayload(body)
 
     const {
       isToolCallFormat,
       toolCallId,
       toolName,
-      callId,
+      callId: callIdFromParse,
       assistantId,
       phoneNumberId,
       calledNumber,
@@ -223,8 +338,28 @@ export async function POST(request: NextRequest) {
       params,
     } = parsed
 
-    console.log('[VAPI] Detected args source:', isToolCallFormat ? 'message.toolCalls[0].function.arguments' : 'root body')
-    console.log('[VAPI] Parsed args:', JSON.stringify(params, null, 2))
+    const callId = String(params.callId || '') || callIdFromParse || extractCallId(body, params)
+
+    console.log(
+      '[VAPI] Detected args source:',
+      isToolCallFormat ? 'message.toolCalls[0].function.arguments' : 'root body',
+    )
+    console.log(
+      isToolCallFormat
+        ? '[VAPI] Tool call detected - source: message.toolCalls[0].function.arguments'
+        : looksLikeFlatManualTestPayload(body)
+          ? '[VAPI] Tool call detected - source: flat manual test payload'
+          : '[VAPI] Tool call detected - source: root body fallback',
+    )
+    {
+      const redactedParams: Record<string, unknown> = { ...params }
+      for (const key of ['phone', 'clientPhone', 'customerPhone', 'callerPhone', 'caller_phone']) {
+        if (typeof redactedParams[key] === 'string') {
+          redactedParams[key] = maskPhone(redactedParams[key] as string)
+        }
+      }
+      console.log('[VAPI] Parsed args:', JSON.stringify(redactedParams, null, 2))
+    }
     console.log(
       '[VAPI] Incoming payload -',
       'type:', isToolCallFormat ? 'tool-calls' : 'flat',
@@ -252,13 +387,12 @@ export async function POST(request: NextRequest) {
     const desiredTimeline = String(params.desiredTimeline || '')
     const urgency = String(params.urgency || '')
     const clientName = String(params.clientName || '') || 'Prospect appel vocal'
-    const clientPhone = String(
-      params.clientPhone ||
-      callerNumber ||
-      body?.customer?.number ||
-      body?.call?.customer?.number ||
-      body?.phoneNumber ||
-      '',
+    const phoneExtraction = extractCustomerPhoneFromVapiPayload(body, params)
+    const clientPhone = phoneExtraction.phone || String(params.clientPhone || callerNumber || '')
+    console.log(
+      '[VAPI] Customer phone extraction - found:', Boolean(clientPhone),
+      '- source:', phoneExtraction.phone ? phoneExtraction.source : 'none',
+      '- phoneLast4:', clientPhone ? clientPhone.slice(-4) : '-',
     )
 
     let completenessScore = Number(params.completenessScore)
