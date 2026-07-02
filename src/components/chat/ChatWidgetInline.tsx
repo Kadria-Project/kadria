@@ -122,21 +122,30 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 // ─── Address autocomplete ─────────────────────────────────────────────────────
-interface AdresseSuggestion { label: string; city: string; postcode: string; latitude: number | null; longitude: number | null }
+interface AdresseSuggestion { label: string; city: string; postcode: string; score: number | null; latitude: number | null; longitude: number | null }
 
-async function fetchAdresses(q: string): Promise<AdresseSuggestion[]> {
+// Renvoie null en cas d'échec réseau/HTTP (distinct d'une liste vide, qui
+// signifie "recherche ok mais aucun résultat") afin de pouvoir afficher un
+// message d'indisponibilité différent d'un simple "aucune adresse trouvée".
+async function fetchAdresses(q: string): Promise<AdresseSuggestion[] | null> {
   if (q.length < 3) return []
-  const res = await fetch(
-    `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5`
-  )
-  const data = await res.json()
-  return (data.features || []).map((f: any) => ({
-    label: f.properties.label,
-    city: f.properties.city,
-    postcode: f.properties.postcode,
-    longitude: f.geometry?.coordinates?.[0] ?? null,
-    latitude: f.geometry?.coordinates?.[1] ?? null,
-  }))
+  try {
+    const res = await fetch(
+      `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5&autocomplete=1`
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data.features || []).map((f: any) => ({
+      label: f.properties.label,
+      city: f.properties.city,
+      postcode: f.properties.postcode,
+      score: typeof f.properties.score === 'number' ? f.properties.score : null,
+      longitude: f.geometry?.coordinates?.[0] ?? null,
+      latitude: f.geometry?.coordinates?.[1] ?? null,
+    }))
+  } catch {
+    return null
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -181,6 +190,9 @@ export default function ChatWidgetInline({
   // Address autocomplete
   const [adresseSuggestions, setAdresseSuggestions] = useState<AdresseSuggestion[]>([])
   const [adresseLoading, setAdresseLoading] = useState(false)
+  const [adresseError, setAdresseError] = useState(false)
+  const [adresseSearched, setAdresseSearched] = useState(false)
+  const [adresseAttempts, setAdresseAttempts] = useState(0)
   const adresseTimer = useRef<NodeJS.Timeout | null>(null)
   // Photos
   const [photos, setPhotos] = useState<{ url: string; publicId: string }[]>([])
@@ -326,6 +338,16 @@ export default function ChatWidgetInline({
   // ── Address mode detection ───────────────────────────────────────────────
   const isAddressMode = expectedField === 'siteAddress'
 
+  // Réinitialise les compteurs d'échec de recherche adresse à chaque entrée
+  // dans l'étape adresse, pour ne pas hériter d'un état d'une étape précédente.
+  useEffect(() => {
+    if (isAddressMode) {
+      setAdresseAttempts(0)
+      setAdresseSearched(false)
+      setAdresseError(false)
+    }
+  }, [isAddressMode])
+
   // ── Photo mode detection ─────────────────────────────────────────────────
   // Use expectedField (set from API response) as primary signal; fall back to
   // text-based detection in case the field is missing
@@ -339,12 +361,29 @@ export default function ChatWidgetInline({
     setInput(val)
     if (!isAddressMode) { setAdresseSuggestions([]); return }
     if (adresseTimer.current) clearTimeout(adresseTimer.current)
-    if (val.length < 3) { setAdresseSuggestions([]); return }
+    if (val.trim().length < 3) {
+      setAdresseSuggestions([])
+      setAdresseError(false)
+      setAdresseSearched(false)
+      return
+    }
     adresseTimer.current = setTimeout(async () => {
       setAdresseLoading(true)
-      const suggestions = await fetchAdresses(val)
-      setAdresseSuggestions(suggestions)
+      const suggestions = await fetchAdresses(val.trim())
       setAdresseLoading(false)
+      setAdresseSearched(true)
+      if (suggestions === null) {
+        // API indisponible (réseau/HTTP) : on ne bloque jamais le dossier,
+        // la saisie manuelle reste possible via le fallback affiché.
+        setAdresseError(true)
+        setAdresseSuggestions([])
+        return
+      }
+      setAdresseError(false)
+      setAdresseSuggestions(suggestions)
+      if (suggestions.length === 0) {
+        setAdresseAttempts((n) => n + 1)
+      }
     }, 300)
   }, [isAddressMode])
 
@@ -1236,15 +1275,23 @@ export default function ChatWidgetInline({
             </div>
 
             {/* Address suggestions */}
-            {isAddressMode && adresseSuggestions.length > 0 && (
+            {isAddressMode && (adresseLoading || adresseSuggestions.length > 0 || (adresseSearched && input.trim().length >= 3)) && (
               <div style={centerStyle}>
                 <div style={{
                   background: '#18181b', border: '1px solid #27272a',
                   borderRadius: '8px', margin: fullPage ? 0 : '0 12px',
                   overflow: 'hidden', flexShrink: 0,
+                  maxHeight: '220px', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 }}>
-                  {adresseSuggestions.map((s, i) => (
+                  {adresseLoading && (
+                    <div style={{ padding: '10px 14px', fontSize: '13px', color: '#a1a1aa' }}>
+                      Recherche en cours...
+                    </div>
+                  )}
+
+                  {!adresseLoading && adresseSuggestions.map((s, i) => (
                     <div key={i}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         setInput(s.label)
                         setAdresseSuggestions([])
@@ -1256,6 +1303,8 @@ export default function ChatWidgetInline({
                           latitude: s.latitude ?? undefined,
                           longitude: s.longitude ?? undefined,
                         }))
+                        // Le bubble utilisateur doit afficher l'adresse
+                        // complète normalisée (label BAN), jamais un extrait.
                         sendMessage(s.label)
                       }}
                       style={{
@@ -1266,9 +1315,48 @@ export default function ChatWidgetInline({
                       onMouseEnter={e => (e.currentTarget.style.background = '#27272a')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
-                      📍 {s.label}
+                      <div>📍 {s.label}</div>
+                      {(s.postcode || s.city) && (
+                        <div style={{ color: '#a1a1aa', fontSize: '11.5px', marginTop: '2px' }}>
+                          {s.postcode} {s.city}
+                        </div>
+                      )}
                     </div>
                   ))}
+
+                  {!adresseLoading && adresseSuggestions.length === 0 && adresseSearched && input.trim().length >= 3 && (
+                    <div style={{ padding: '10px 14px' }}>
+                      <p style={{ margin: '0 0 8px', color: '#a1a1aa', fontSize: '12.5px', lineHeight: 1.5 }}>
+                        {adresseError
+                          ? "L'adresse n'a pas pu être vérifiée pour le moment."
+                          : "Je n'ai pas trouvé d'adresse exacte. Pouvez-vous préciser la commune ou le code postal ?"}
+                      </p>
+                      {(adresseError || adresseAttempts >= 2) && (
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            const raw = input.trim()
+                            setAdresseSuggestions([])
+                            setDossier(prev => ({ ...prev, siteAddress: raw }))
+                            sendMessage(raw)
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: `1px solid ${primaryColorLocal}`,
+                            color: primaryColorLocal,
+                            borderRadius: '8px',
+                            padding: '6px 12px',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Continuer avec cette adresse →
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1482,7 +1570,35 @@ export default function ChatWidgetInline({
                     ref={inputRef}
                     value={input}
                     onChange={e => handleInputChange(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                    onKeyDown={e => {
+                      if (e.key !== 'Enter') return
+                      // En mode adresse, on n'accepte le texte brut comme
+                      // définitif qu'après un échec de recherche déjà visible
+                      // (aucun résultat ou API indisponible) : sinon on relance
+                      // simplement la recherche et on demande de choisir une
+                      // suggestion, sans jamais bloquer le client.
+                      if (isAddressMode && input.trim().length >= 3) {
+                        const canFallback = adresseSearched && (adresseError || adresseSuggestions.length === 0)
+                        if (!canFallback) {
+                          if (adresseTimer.current) clearTimeout(adresseTimer.current)
+                          setAdresseLoading(true)
+                          fetchAdresses(input.trim()).then((suggestions) => {
+                            setAdresseLoading(false)
+                            setAdresseSearched(true)
+                            if (suggestions === null) {
+                              setAdresseError(true)
+                              setAdresseSuggestions([])
+                              return
+                            }
+                            setAdresseError(false)
+                            setAdresseSuggestions(suggestions)
+                            if (suggestions.length === 0) setAdresseAttempts((n) => n + 1)
+                          })
+                          return
+                        }
+                      }
+                      sendMessage()
+                    }}
                     onBlur={() => setTimeout(() => setAdresseSuggestions([]), 200)}
                     placeholder={isAddressMode ? "Tapez votre adresse..." : "Écrivez votre message..."}
                     disabled={loading}
