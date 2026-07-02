@@ -24,11 +24,9 @@ const DEVIS_TVA_TAUX = [5.5, 10, 20]
 const STEPS = [
   { id: 'bienvenue', label: 'Bienvenue', icon: '👋' },
   { id: 'entreprise', label: 'Entreprise', icon: '🏢' },
-  { id: 'metier', label: 'Métier & zone', icon: '🛠️' },
-  { id: 'vehicule', label: 'Véhicule', icon: '🚗' },
-  { id: 'notifications', label: 'Notifications', icon: '🔔' },
-  { id: 'devis', label: 'Devis', icon: '📋' },
-  { id: 'widget', label: 'Widget', icon: '🎨' },
+  { id: 'metier', label: 'Qualification métier', icon: '🛠️' },
+  { id: 'reception', label: 'Demandes clients', icon: '🔗' },
+  { id: 'commercial', label: 'Devis & suivi', icon: '📋' },
   { id: 'fin', label: 'Finalisation', icon: '✅' },
 ] as const
 
@@ -38,6 +36,9 @@ const SERVICE_AREA_FLEXIBLE = 'SELON_OPPORTUNITE'
 
 interface OnboardingConfig {
   companyName: string
+  firstName: string
+  lastName: string
+  email: string
   primaryTrade: string
   trades: string[]
   otherTrade: string
@@ -45,6 +46,7 @@ interface OnboardingConfig {
   address: string
   hours: string
   websiteUrl: string
+  googleReviewUrl: string
   raisonSociale: string
   formeJuridique: string
   siret: string
@@ -82,6 +84,9 @@ interface OnboardingConfig {
 
 const EMPTY_CONFIG: OnboardingConfig = {
   companyName: '',
+  firstName: '',
+  lastName: '',
+  email: '',
   primaryTrade: '',
   trades: [],
   otherTrade: '',
@@ -89,6 +94,7 @@ const EMPTY_CONFIG: OnboardingConfig = {
   address: '',
   hours: '',
   websiteUrl: '',
+  googleReviewUrl: '',
   raisonSociale: '',
   formeJuridique: '',
   siret: '',
@@ -157,6 +163,9 @@ export default function OnboardingPage() {
           const customTrade = rawTrades.find(t => !knownValues.has(t)) || ''
           setConfig({
             companyName: c.companyName || '',
+            firstName: c.firstName || '',
+            lastName: c.lastName || '',
+            email: c.email || '',
             primaryTrade: c.primaryTrade || '',
             trades: rawTrades,
             otherTrade: customTrade,
@@ -164,6 +173,7 @@ export default function OnboardingPage() {
             address: c.address || '',
             hours: c.hours || '',
             websiteUrl: c.websiteUrl || '',
+            googleReviewUrl: c.googleReviewUrl || '',
             raisonSociale: c.raisonSociale || '',
             formeJuridique: c.formeJuridique || '',
             siret: c.siret || '',
@@ -261,11 +271,16 @@ export default function OnboardingPage() {
   function getStepErrors(id: StepId): string {
     if (id === 'entreprise') {
       if (!config.companyName.trim()) return "Le nom de l'entreprise est requis pour continuer."
+      if (!config.phone.trim()) return 'Le telephone de contact est requis pour continuer.'
+      if (!config.address.trim() && !config.villePro.trim()) return 'Votre commune ou adresse de travail est requise pour continuer.'
     }
     if (id === 'metier') {
       if (config.trades.length === 0) return 'Sélectionnez au moins un métier pour continuer.'
       if (config.trades.includes('autre') && !config.otherTrade.trim()) {
         return 'Précisez votre métier dans le champ "Autre".'
+      }
+      if (!config.serviceArea.trim() && config.serviceArea !== SERVICE_AREA_FLEXIBLE && config.interventionRadius === '') {
+        return "Renseignez au moins une zone ou un rayon d'intervention."
       }
     }
     return ''
@@ -375,6 +390,15 @@ export default function OnboardingPage() {
 
   const progressPct = Math.round(((stepIndex + 1) / STEPS.length) * 100)
   const widgetScriptTag = `<script src="${process.env.NEXT_PUBLIC_APP_URL || 'https://kadria-beta.vercel.app'}/widget.js" data-artisan-id="${artisanIdDisplay}"></script>`
+  const minimumSetupDone = Boolean(
+    config.companyName.trim() &&
+    config.phone.trim() &&
+    (config.address.trim() || config.villePro.trim()) &&
+    config.trades.length > 0
+  )
+  const prestationsConfigured = config.businessConfig.acceptedWorkTypes.length > 0 || config.businessConfig.customAcceptedWork.trim().length > 0
+  const hasGoogleReviewUrl = config.googleReviewUrl.trim().length > 0
+  const hasAgendaPreference = false
 
   return (
     <main className="dashboard-shell w-full max-w-full overflow-x-hidden" style={{
@@ -448,16 +472,45 @@ export default function OnboardingPage() {
               👋 Bienvenue sur Kadria
             </h2>
             <p style={{ color: 'var(--text-2)', fontSize: '14px', lineHeight: 1.7, margin: 0 }}>
-              En quelques étapes, configurons votre espace : entreprise, métier, zone d&apos;intervention,
-              notifications, devis et widget. Vous pourrez revenir modifier ces réglages
-              à tout moment depuis votre dashboard.
+              Quelques reglages suffisent pour commencer. Kadria peut deja recevoir et qualifier vos demandes,
+              et vous pourrez completer le reste plus tard depuis vos parametres.
             </p>
+            <div style={{
+              marginTop: '16px',
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: '10px',
+            }}>
+              {[
+                'Entreprise et contact',
+                'Metier principal et zone',
+                'Lien projet et widget',
+                'Devis, acomptes et options avancees',
+              ].map((item) => (
+                <div
+                  key={item}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                    color: 'var(--text-2)',
+                    fontSize: '13px',
+                  }}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {step.id === 'entreprise' && (
           <div style={sectionCard}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>🏢 Votre entreprise</h3>
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🏢 Votre entreprise</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+              Renseignez le minimum utile pour demarrer correctement. Vous pourrez completer les infos legales plus tard.
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={labelStyle}>Nom de l&apos;entreprise *</label>
@@ -470,36 +523,31 @@ export default function OnboardingPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={labelStyle}>Raison sociale</label>
+                  <label style={labelStyle}>Prenom du contact principal</label>
                   <input
-                    value={config.raisonSociale}
-                    onChange={e => setConfig(c => ({ ...c, raisonSociale: e.target.value }))}
-                    placeholder="Martin Rénovation SARL"
+                    value={config.firstName}
+                    onChange={e => setConfig(c => ({ ...c, firstName: e.target.value }))}
+                    placeholder="Martin"
                     style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label style={labelStyle}>Forme juridique</label>
-                  <select
-                    value={config.formeJuridique}
-                    onChange={e => setConfig(c => ({ ...c, formeJuridique: e.target.value }))}
-                    style={{ ...inputStyle, cursor: 'pointer' }}
-                  >
-                    <option value="">Sélectionner</option>
-                    {FORMES_JURIDIQUES.map(f => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
+                  <label style={labelStyle}>Nom du contact principal</label>
+                  <input
+                    value={config.lastName}
+                    onChange={e => setConfig(c => ({ ...c, lastName: e.target.value }))}
+                    placeholder="Martin"
+                    style={inputStyle}
+                  />
                 </div>
               </div>
               <div>
-                <label style={labelStyle}>SIRET</label>
+                <label style={labelStyle}>Email professionnel</label>
                 <input
-                  value={config.siret}
-                  onChange={e => setConfig(c => ({ ...c, siret: e.target.value.replace(/[^\d]/g, '') }))}
-                  placeholder="12345678901234"
-                  maxLength={14}
-                  inputMode="numeric"
+                  type="email"
+                  value={config.email}
+                  onChange={e => setConfig(c => ({ ...c, email: e.target.value }))}
+                  placeholder="contact@monentreprise.fr"
                   style={inputStyle}
                 />
               </div>
@@ -514,9 +562,9 @@ export default function OnboardingPage() {
                 />
               </div>
               <div>
-                <label style={labelStyle}>Adresse professionnelle</label>
+                <label style={labelStyle}>Commune / adresse de depart *</label>
                 <AddressAutocomplete
-                  value={config.adressePro}
+                  value={config.adressePro || config.address}
                   onChange={value => setConfig(c => ({ ...c, adressePro: value }))}
                   onSelect={selection => setConfig(c => ({
                     ...c,
@@ -535,7 +583,7 @@ export default function OnboardingPage() {
                   style={inputStyle}
                 />
                 <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
-                  Sélectionnez une suggestion de l&apos;autocomplete pour permettre le calcul des frais de déplacement.
+                  Cette base servira aussi pour votre zone d&apos;intervention et vos futurs rendez-vous.
                 </p>
               </div>
             </div>
@@ -544,16 +592,16 @@ export default function OnboardingPage() {
 
         {step.id === 'metier' && (
           <div style={sectionCard}>
-            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🛠️ Quels métiers couvrez-vous ?</h3>
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🛠️ Qualification metier</h3>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 4px' }}>
-              Sélectionnez un ou plusieurs métiers. Kadria s&apos;en servira pour mieux qualifier vos prospects.
+              Selectionnez votre metier principal et les demandes que vous souhaitez recevoir.
             </p>
             <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px', fontStyle: 'italic' }}>
-              Exemple : Plombier + Chauffagiste, ou Paysagiste + Terrassier.
+              Vous pourrez affiner vos prestations et vos regles de qualification plus tard.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={labelStyle}>Métiers *</label>
+                  <label style={labelStyle}>Metiers *</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {ARTISAN_TRADES.map(t => {
                     const selected = config.trades.includes(t.value)
@@ -610,7 +658,7 @@ export default function OnboardingPage() {
               )}
               {config.trades.length > 0 && (
                 <div>
-                  <label style={labelStyle}>Quels types de demandes voulez-vous recevoir ?</label>
+                    <label style={labelStyle}>Prestations principales si vous les connaissez deja</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
                     {getSuggestedWorkTypesForTrades(config.trades, 10).map(w => {
                       const selected = config.businessConfig.acceptedWorkTypes.includes(w)
@@ -643,21 +691,54 @@ export default function OnboardingPage() {
                       )
                     })}
                   </div>
-                  <textarea
-                    value={config.businessConfig.customRefusedWork}
-                    onChange={e => setConfig(c => ({
-                      ...c,
-                      businessConfig: { ...c.businessConfig, customRefusedWork: e.target.value },
-                    }))}
-                    placeholder="Demandes à éviter (optionnel)"
-                    rows={2}
-                    style={{ ...inputStyle, marginTop: '10px', resize: 'vertical' }}
-                  />
-                  <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
-                    Vous pourrez affiner ces préférences plus tard dans Paramètres.
-                  </p>
-                </div>
-              )}
+                    <textarea
+                      value={config.businessConfig.customRefusedWork}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        businessConfig: { ...c.businessConfig, customRefusedWork: e.target.value },
+                      }))}
+                      placeholder="Demandes a eviter (optionnel)"
+                      rows={2}
+                      style={{ ...inputStyle, marginTop: '10px', resize: 'vertical' }}
+                    />
+                    <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: '6px 0 0' }}>
+                      Vous pourrez configurer vos prestations en detail plus tard dans Parametres.
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/parametres/profil-metier')}
+                        style={{
+                          background: 'var(--accent)',
+                          border: 'none',
+                          color: 'black',
+                          fontWeight: 700,
+                          borderRadius: '10px',
+                          padding: '10px 14px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Configurer mes prestations
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSavedAt(Date.now())}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text-2)',
+                          borderRadius: '10px',
+                          padding: '10px 14px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Je le ferai plus tard
+                      </button>
+                    </div>
+                  </div>
+                )}
               <div>
                 <label style={checkboxRowStyle}>
                   <input
@@ -697,7 +778,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step.id === 'vehicule' && (
+        {String(step.id) === 'vehicule' && (
           <div style={sectionCard}>
             <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🚗 Véhicule & déplacements</h3>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
@@ -803,7 +884,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step.id === 'notifications' && (
+        {String(step.id) === 'notifications' && (
           <div style={sectionCard}>
             <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🔔 Notifications</h3>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
@@ -826,7 +907,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step.id === 'devis' && (
+        {String(step.id) === 'devis' && (
           <div style={sectionCard}>
             <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>📋 Préférences devis</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -880,7 +961,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step.id === 'widget' && (
+        {String(step.id) === 'widget' && (
           <div style={sectionCard}>
             <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🎨 Widget pour votre site</h3>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 14px' }}>
@@ -929,39 +1010,212 @@ export default function OnboardingPage() {
           </div>
         )}
 
+        {step.id === 'reception' && (
+          <div style={sectionCard}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>🔗 Reception des demandes</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+              Vous pourrez partager votre lien Kadria ou installer le widget sur votre site.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '14px',
+              }}>
+                <p style={{ margin: '0 0 8px', color: 'var(--text-1)', fontSize: '13px', fontWeight: 700 }}>
+                  Meme sans site internet, vous pouvez deja partager votre lien Kadria a vos clients.
+                </p>
+                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                  Votre lien projet sera disponible apres finalisation et le widget pourra etre installe plus tard si besoin.
+                </p>
+              </div>
+              <div style={{
+                background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px',
+                padding: '16px', position: 'relative',
+              }}>
+                <pre style={{
+                  margin: 0, fontFamily: 'monospace', fontSize: '13px', color: '#4ade80',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6,
+                }}>
+                  {widgetScriptTag}
+                </pre>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(widgetScriptTag)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  style={{
+                    position: 'absolute', top: '10px', right: '10px',
+                    background: copied ? 'rgba(34,197,94,0.2)' : 'var(--bg-hover)',
+                    border: '1px solid', borderColor: copied ? 'var(--accent)' : 'var(--border)',
+                    color: copied ? '#4ade80' : 'var(--text-2)', borderRadius: '6px',
+                    padding: '4px 10px', fontSize: '12px', cursor: 'pointer',
+                  }}
+                >
+                  {copied ? '✓ Copie !' : 'Copier'}
+                </button>
+              </div>
+              <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                Vous pourrez utiliser ce lien ou installer le widget plus tard depuis les parametres.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {step.id === 'commercial' && (
+          <div style={sectionCard}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px' }}>📋 Devis et suivi commercial</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+              Vous pourrez configurer vos devis, vos acomptes et vos moyens de paiement depuis les parametres.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={labelStyle}>Email de notification</label>
+                <input
+                  type="email"
+                  value={config.notificationEmail}
+                  onChange={e => setConfig(c => ({ ...c, notificationEmail: e.target.value }))}
+                  placeholder="contact@monentreprise.fr"
+                  style={inputStyle}
+                />
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                  Facultatif. Si laisse vide, l&apos;email de votre compte sera utilise.
+                </p>
+              </div>
+              <div>
+                <label style={labelStyle}>Conditions de paiement par defaut</label>
+                <textarea
+                  value={config.devisConditionsPaiement}
+                  onChange={e => setConfig(c => ({ ...c, devisConditionsPaiement: e.target.value }))}
+                  placeholder="30% a la commande, solde a la fin du chantier"
+                  rows={3}
+                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Lien avis Google</label>
+                <input
+                  type="url"
+                  value={config.googleReviewUrl}
+                  onChange={e => setConfig(c => ({ ...c, googleReviewUrl: e.target.value }))}
+                  placeholder="https://g.page/r/..."
+                  style={inputStyle}
+                />
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
+                  Facultatif. Il permettra d&apos;envoyer facilement des demandes d&apos;avis a vos clients.
+                </p>
+              </div>
+              <div style={{
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}>
+                <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '13px', fontWeight: 700 }}>
+                  Acomptes et paiements
+                </p>
+                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                  Vous pourrez demander des acomptes avec un montant prerempli. Pour cela, votre compte Stripe devra etre connecte depuis les parametres.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/parametres?section=catalogue')}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-2)',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Configurer plus tard
+                </button>
+              </div>
+              <div style={{
+                background: 'var(--bg-hover)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '14px',
+              }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-1)', fontSize: '13px', fontWeight: 700 }}>
+                  Agenda
+                </p>
+                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                  La synchronisation agenda pourra etre activee plus tard pour mieux suivre vos rendez-vous.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {step.id === 'fin' && (
           <div style={sectionCard}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '16px' }}>✅ Tout est prêt</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: '16px' }}>✅ Finalisation</h3>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+              Votre base est prete. Vous pourrez completer le reste ensuite sans bloquer l&apos;acces au dashboard.
+            </p>
             <ul style={{ margin: '0 0 20px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
-                { label: 'Entreprise', done: !!config.companyName },
-                { label: 'Métier & zone d\'intervention', done: config.trades.length > 0 },
-                { label: 'Notifications', done: !!config.notificationEmail },
-                { label: 'Préférences devis', done: !!config.devisPrefixe },
-                { label: 'Widget', done: true },
+                { label: 'Informations entreprise', done: Boolean(config.companyName && config.phone && (config.address || config.villePro)), optional: false },
+                { label: 'Profil metier', done: config.trades.length > 0, optional: false },
+                { label: 'Prestations', done: prestationsConfigured, optional: true },
+                { label: 'Lien projet / widget', done: true, optional: true },
+                { label: 'Avis Google', done: hasGoogleReviewUrl, optional: true },
+                { label: 'Agenda', done: hasAgendaPreference, optional: true },
+                { label: 'Acompte / paiement', done: false, optional: true },
               ].map(item => (
                 <li key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-2)', fontSize: '13px' }}>
-                  <span style={{ color: item.done ? '#4ade80' : 'var(--text-3)' }}>
+                  <span style={{ color: item.done ? '#4ade80' : item.optional ? '#fbbf24' : 'var(--text-3)' }}>
                     {item.done ? '✓' : '○'}
                   </span>
-                  {item.label}
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  <span style={{ color: item.done ? '#4ade80' : item.optional ? '#fbbf24' : 'var(--text-3)', fontSize: '12px' }}>
+                    {item.done ? 'Configure' : item.optional ? 'Facultatif' : 'A completer'}
+                  </span>
                 </li>
               ))}
             </ul>
             <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
-              Vous pourrez modifier tous ces réglages plus tard depuis votre dashboard.
+              Kadria peut deja recevoir et qualifier vos demandes. Les options avancees comme les acomptes, les avis Google ou l&apos;agenda se configurent ensuite.
             </p>
-            <button
-              onClick={finalize}
-              disabled={saving}
-              style={{
-                background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
-                borderRadius: '10px', padding: '12px 24px', fontSize: '14px',
-                cursor: saving ? 'default' : 'pointer', width: '100%',
-              }}
-            >
-              {saving ? 'Finalisation...' : 'Accéder à mon dashboard'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={finalize}
+                disabled={saving || !minimumSetupDone}
+                style={{
+                  background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                  borderRadius: '10px', padding: '12px 24px', fontSize: '14px',
+                  cursor: saving || !minimumSetupDone ? 'default' : 'pointer', width: '100%',
+                  opacity: saving || !minimumSetupDone ? 0.7 : 1,
+                }}
+              >
+                {saving ? 'Finalisation...' : 'Acceder a mon tableau de bord'}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/parametres')}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-2)',
+                  borderRadius: '10px',
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
+              >
+                Completer ma configuration
+              </button>
+            </div>
           </div>
         )}
 
