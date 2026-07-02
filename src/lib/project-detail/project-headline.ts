@@ -108,3 +108,21 @@ export function getProjectHeadline(project: any) {
   if (project?.trade && project?.city) return `${project.trade} - ${project.city}`;
   return getFallbackHeadline(project?.trade);
 }
+
+// Source de verite unique pour le titre de projet affiche cote emails
+// (devis, relances manuelles/admin). Reutilise getProjectHeadline (deja la
+// reference pour la fiche projet et la page devis publique) afin que le
+// meme projet porte le meme intitule partout. Contrairement a
+// getProjectHeadline (pense pour un H1 de fiche projet, avec un fallback
+// "Projet a qualifier"/"Projet de <metier>"), ce wrapper est destine a des
+// phrases d'email ("Projet : ...", "... pour <titre>.") : si aucun intitule
+// precis n'a pu etre determine, on retombe sur un fallback generique neutre
+// plutot que d'injecter un texte pense pour un H1.
+export function getProjectDisplayTitle(project: any, fallback: string = 'votre projet'): string {
+  const headline = getProjectHeadline(project);
+  const trimmedFallback = fallback?.trim() || 'votre projet';
+  if (!headline || typeof headline !== 'string') return trimmedFallback;
+  const trimmed = headline.trim();
+  if (!trimmed || trimmed === 'Projet à qualifier') return trimmedFallback;
+  return trimmed;
+}

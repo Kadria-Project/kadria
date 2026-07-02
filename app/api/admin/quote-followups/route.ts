@@ -5,6 +5,7 @@ import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
+import { getProjectDisplayTitle } from '@/src/lib/project-detail/project-headline'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 function isAuthorized(request: NextRequest): boolean {
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
 
         const { data: projectRow } = await supabaseAdmin
           .from(TABLES.projects)
-          .select('client_first_name, project_type, trade')
+          .select('client_first_name, project_type, trade, ai_summary, description')
           .eq('id', project.id)
           .limit(1)
           .maybeSingle()
@@ -122,7 +123,18 @@ export async function POST(request: NextRequest) {
         const config = await getArtisanConfig(devis.artisanId)
         const artisanName = config?.raisonSociale || config?.companyName || 'Votre artisan'
         const firstName = (projectRow?.client_first_name as string) || devis.clientName.split(' ')[0] || ''
-        const projectType = (projectRow?.project_type as string) || (projectRow?.trade as string) || devis.objet || 'votre projet'
+        // Titre complet du projet (ex : "Installation neuve d'un WC suspendu"),
+        // et non le seul type/service court (ex : "Installation") — meme
+        // source de verite que la fiche projet et la page devis publique.
+        const projectType = getProjectDisplayTitle(
+          {
+            projectType: projectRow?.project_type,
+            trade: projectRow?.trade,
+            aiSummary: projectRow?.ai_summary,
+            description: (projectRow?.description as string) || devis.objet,
+          },
+          devis.objet || (projectRow?.project_type as string) || (projectRow?.trade as string) || 'votre projet',
+        )
 
         const email = generateQuoteFollowupEmailForStage(state.stage, {
           firstName,

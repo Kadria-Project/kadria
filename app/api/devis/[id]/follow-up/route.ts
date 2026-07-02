@@ -6,6 +6,7 @@ import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
+import { getProjectDisplayTitle } from '@/src/lib/project-detail/project-headline'
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
@@ -102,7 +103,7 @@ export async function POST(
 
     const { data: projectRow, error: projectError } = await supabaseAdmin
       .from(TABLES.projects)
-      .select('client_first_name, project_type, trade')
+      .select('client_first_name, project_type, trade, ai_summary, description')
       .eq('id', project.id)
       .limit(1)
       .maybeSingle()
@@ -117,11 +118,18 @@ export async function POST(
       (projectRow?.client_first_name as string) ||
       devis.clientName.split(' ')[0] ||
       ''
-    const projectType =
-      (projectRow?.project_type as string) ||
-      (projectRow?.trade as string) ||
-      devis.objet ||
-      'votre projet'
+    // Titre complet du projet (ex : "Installation neuve d'un WC suspendu"),
+    // et non le seul type/service court (ex : "Installation") — meme source
+    // de verite que la fiche projet et la page devis publique.
+    const projectType = getProjectDisplayTitle(
+      {
+        projectType: projectRow?.project_type,
+        trade: projectRow?.trade,
+        aiSummary: projectRow?.ai_summary,
+        description: (projectRow?.description as string) || devis.objet,
+      },
+      devis.objet || (projectRow?.project_type as string) || (projectRow?.trade as string) || 'votre projet',
+    )
 
     const email = generateQuoteFollowupEmailForStage(followupState.stage, {
       firstName,
