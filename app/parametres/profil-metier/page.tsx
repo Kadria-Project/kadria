@@ -913,12 +913,7 @@ export default function ProfilMetierPage() {
             ← Retour
           </button>
           <div className="flex min-w-0 items-baseline gap-2">
-            <KadriaLogo size="sm" theme="dark" noLink />
-            {!isMobile && (
-              <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
-                · Profil métier
-              </span>
-            )}
+            <KadriaLogo size="sm" theme="light" noLink />
           </div>
         </div>
         <button

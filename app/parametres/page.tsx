@@ -1272,14 +1272,6 @@ function ParametresPageContent() {
           </button>
           <div className="flex min-w-0 items-baseline gap-2">
             <KadriaLogo size="sm" theme={theme === 'light' ? 'light' : 'dark'} noLink />
-            <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
-              · Configuration
-            </span>
-            {!isMobile && (
-              <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
-                Workspace de configuration
-              </span>
-            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
