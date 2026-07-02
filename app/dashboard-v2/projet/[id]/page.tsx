@@ -46,7 +46,6 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }
   'Perdu':        { bg: 'rgba(220,38,38,0.15)', text: '#dc2626', border: 'rgba(220,38,38,0.3)' },
 };
 
-const statusColors = STATUS_COLORS;
 const statusStyles = STATUS_COLORS;
 
 interface DevisListItem {
@@ -565,10 +564,6 @@ function ProjectDetail() {
   });
   const [savingContact, setSavingContact] = useState(false);
 
-  const [devisAmount, setDevisAmount] = useState<string>(
-    project?.devisAmount ? String(project.devisAmount) : ''
-  );
-  const [savingDevis, setSavingDevis] = useState(false);
   const [plan, setPlan] = useState<PlanKey>('essentiel');
   const [upgradeFeature, setUpgradeFeature] = useState<PlanFeatureKey | null>(null);
   const canQuote = hasFeature(plan, 'quoteGeneration');
@@ -804,7 +799,6 @@ function ProjectDetail() {
         setNote(data.project?.internalNotes || '');
         setCallbackDate(data.project?.callbackDate || '');
         setShowCallback(!!data.project?.callbackDate);
-        setDevisAmount(data.project?.devisAmount ? String(data.project.devisAmount) : '');
 
         await loadActivities();
       } catch (error) {
@@ -1314,8 +1308,16 @@ function ProjectDetail() {
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
   const latestDevis = devisList[0];
-  const devisAmountNumber = devisAmount === '' ? null : Number(devisAmount);
-  const safeDevisAmount = devisAmountNumber !== null && Number.isFinite(devisAmountNumber) ? devisAmountNumber : null;
+  // Montant du devis : jamais de saisie libre. On distingue "devis envoyé"
+  // (montant figé, priorité absolue) de "devis préparé mais non envoyé"
+  // (montant indicatif). devisList est trié par date_emission décroissante
+  // (cf. /api/devis), donc le premier devis envoyé trouvé est le plus récent.
+  const sentDevis = devisList.find((d) => d.sent || d.statut?.startsWith('Envoy'));
+  const preparedDevis = !sentDevis ? latestDevis : undefined;
+  // Base la plus fiable disponible pour le calcul d'acompte : montant du
+  // devis envoyé (figé) en priorité, sinon montant préparé — jamais un
+  // montant saisi à la main.
+  const safeDevisAmount = sentDevis?.amount ?? preparedDevis?.amount ?? null;
   const recommendedDeposit = computeRecommendedDeposit({
     depositEnabled: artisanConfig?.depositEnabled,
     depositType: artisanConfig?.depositType,
@@ -1542,10 +1544,14 @@ function ProjectDetail() {
   };
   const recommendedAction = (() => {
     if (project.status === 'Perdu' || decision.state === 'quote_declined') {
+      // Le devis a été refusé (ou le dossier déjà marqué perdu) : l'action
+      // doit clôturer directement le dossier, plutôt que de renvoyer vers
+      // "Actions et devis" qui ne porte plus les boutons de statut.
+      const alreadyClosed = project.status === 'Perdu';
       return {
         title: 'Clôturer le dossier',
-        ctaLabel: 'Clôturer le dossier',
-        onClick: scrollToActionsAndQuote,
+        ctaLabel: alreadyClosed ? 'Dossier clôturé (perdu)' : 'Marquer comme perdu',
+        onClick: alreadyClosed ? undefined : () => updateStatus('Perdu'),
         meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
       };
     }
@@ -3040,6 +3046,54 @@ function ProjectDetail() {
                   </button>
                 );
               })()}
+              {/* Décision commerciale manuelle — seul endroit de la fiche
+                  permettant de marquer un dossier gagné/perdu à la main
+                  (ex. accord verbal, refus téléphonique), en plus du
+                  passage automatique via l'acceptation/le refus du devis
+                  en ligne. Remplace les anciens boutons dupliqués de
+                  "Actions et devis" (Faire avancer le dossier / Clôture). */}
+              {project.status !== 'Gagné' && project.status !== 'Perdu' && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    disabled={updating}
+                    onClick={() => updateStatus('Gagné')}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(22,163,74,0.4)',
+                      color: '#15803d',
+                      borderRadius: '999px',
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: updating ? 'default' : 'pointer',
+                      opacity: updating ? 0.6 : 1,
+                    }}
+                  >
+                    🏆 Marquer gagné
+                  </button>
+                  <button
+                    type="button"
+                    disabled={updating}
+                    onClick={() => {
+                      if (confirm('Archiver ce dossier comme perdu ?')) updateStatus('Perdu');
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(220,38,38,0.35)',
+                      color: '#b91c1c',
+                      borderRadius: '999px',
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: updating ? 'default' : 'pointer',
+                      opacity: updating ? 0.6 : 1,
+                    }}
+                  >
+                    🗄️ Marquer perdu
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Avancement commercial — timeline verticale compacte pour ne
@@ -3883,54 +3937,14 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Pipeline — changer de statut */}
+          {/* Statut commercial (Gagné/Perdu/etc.) piloté depuis la carte
+              "Pilotage commercial" plus haut — plus de bloc "Faire avancer
+              le dossier" ici, pour éviter la double commande de statut. */}
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
             borderBottom: '1px solid var(--border)',
           }}>
-            <p style={{
-              color: 'var(--text-3)',
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Faire avancer le dossier
-            </p>
-            <div style={{ display: 'flex', gap: isMobile ? '6px' : '8px', flexWrap: 'wrap' }}>
-              {['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'].map(s => (
-                <button
-                  key={s}
-                  disabled={updating}
-                  onClick={() => updateStatus(s)}
-                  style={{
-                    padding: isMobile ? '8px 10px' : '7px 14px',
-                    borderRadius: '8px',
-                    fontSize: isMobile ? '12px' : '13px',
-                    fontWeight: (project.status === s) ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    background: (project.status === s)
-                      ? statusColors[s].bg
-                      : 'var(--bg)',
-                    color: (project.status === s)
-                      ? statusColors[s].text
-                      : 'var(--text-2)',
-                    border: `1px solid ${statusColors[s].border}`,
-                    opacity: (project.status === s) ? 1 : 0.75,
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <div style={{
-              borderTop: '1px solid var(--border)',
-              marginTop: '12px',
-              paddingTop: '14px',
-            }}>
+            <div>
               <p style={{
                 color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
                 letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -4243,87 +4257,45 @@ function ProjectDetail() {
               }}>
                 Montant du devis
               </p>
-              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px', alignItems: isMobile ? 'stretch' : 'center' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <input
-                    type="number"
-                    value={devisAmount}
-                    onChange={e => setDevisAmount(e.target.value)}
-                    placeholder={`Budget estimé : ${project.budget || 'non renseigné'}`}
-                    style={{
-                      width: '100%',
-                      background: 'var(--border)',
-                      border: devisAmount ? '1px solid var(--accent)' : '1px solid var(--border)',
-                      borderRadius: '8px',
-                      padding: '8px 40px 8px 12px',
-                      color: 'var(--text-1)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-3)',
-                    fontSize: '14px',
-                  }}>€</span>
-                </div>
-                <button
-                  onClick={async () => {
-                    setSavingDevis(true);
-                    try {
-                      await fetch(`/api/projects/${project.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          fields: {
-                            Devis_amount: devisAmount ? Number(devisAmount) : null,
-                          },
-                        }),
-                      });
-                      project.devisAmount = Number(devisAmount);
-                    } catch {
-                      alert('Erreur lors de la sauvegarde');
-                    } finally {
-                      setSavingDevis(false);
-                    }
-                  }}
-                  disabled={savingDevis}
-                  style={{
-                    background: savingDevis ? 'var(--border)' : 'var(--accent)',
-                    border: 'none',
-                    color: savingDevis ? 'var(--text-3)' : 'black',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    padding: '8px 14px',
-                    fontSize: '13px',
-                    cursor: savingDevis ? 'default' : 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    width: isMobile ? '100%' : undefined,
-                  }}
-                >
-                  {savingDevis ? '...' : 'Enregistrer'}
-                </button>
+              {/* Lecture seule : le montant du devis ne doit jamais être
+                  saisi librement dans la fiche projet (raison juridique/
+                  business), il vient uniquement du devis réellement généré/
+                  envoyé, figé à l'envoi. */}
+              <div style={{
+                border: '1px solid var(--border)',
+                borderRadius: '10px',
+                padding: '12px 14px',
+                background: 'var(--bg-elevated)',
+              }}>
+                {sentDevis ? (
+                  <>
+                    <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>
+                      Devis envoyé : {formatInteger(sentDevis.amount)} €
+                    </p>
+                    <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
+                      Montant figé à l&apos;envoi client.
+                    </p>
+                  </>
+                ) : preparedDevis ? (
+                  <>
+                    <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>
+                      Montant préparé : {formatInteger(preparedDevis.amount)} €
+                    </p>
+                    <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
+                      Non figé juridiquement tant que le devis n&apos;a pas été envoyé au client.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>
+                      Aucun devis envoyé
+                    </p>
+                    <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
+                      Le montant sera renseigné automatiquement après génération et envoi du devis au client.
+                    </p>
+                  </>
+                )}
               </div>
-              {devisAmount && (
-                <p style={{
-                  color: 'var(--accent)', fontSize: '12px', margin: '6px 0 0',
-                }}>
-                  ✓ Montant réel : {formatInteger(Number(devisAmount))} €
-                  {' '}— utilisé pour les KPIs
-                </p>
-              )}
-              {!devisAmount && project.budget && (
-                <p style={{
-                  color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0',
-                }}>
-                  Budget estimé utilisé par défaut : {project.budget}
-                </p>
-              )}
             </div>
 
             <div style={{
@@ -4949,70 +4921,6 @@ function ProjectDetail() {
                     )}
                   </div>
                 )}
-
-                <div style={{
-                  borderTop: '1px solid var(--border)',
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  opacity: (project.status === 'Gagné' || project.status === 'Perdu') ? 1 : 0.7,
-                }}>
-                  <p style={{
-                    color: 'var(--text-3)',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    margin: '0 0 8px',
-                  }}>
-                    Clôture du dossier
-                  </p>
-              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px' }}>
-                <button
-                  onClick={() => updateStatus('Gagné')}
-                  style={{
-                    flex: 1,
-                    background: project.status === 'Gagné'
-                      ? 'rgba(21,128,61,0.25)' : 'rgba(21,128,61,0.06)',
-                    border: project.status === 'Gagné' ? '1px solid #16a34a' : '1px solid rgba(22,163,74,0.4)',
-                    color: '#15803d',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  🏆 Chantier gagné
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('Archiver ce dossier comme perdu ?')) updateStatus('Perdu');
-                  }}
-                  style={{
-                    flex: 1,
-                    background: project.status === 'Perdu'
-                      ? 'rgba(220,38,38,0.2)' : 'rgba(220,38,38,0.05)',
-                    border: project.status === 'Perdu' ? '1px solid #dc2626' : '1px solid rgba(220,38,38,0.35)',
-                    color: '#b91c1c',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  🗄️ Archiver (perdu)
-                </button>
-              </div>
-            </div>
           </div>
 
         </div>
