@@ -648,6 +648,19 @@ function ParametresPageContent() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    const stripeConnectParam = searchParams?.get('stripe_connect')
+    if (stripeConnectParam !== 'return') return
+
+    setActiveSection('catalogue')
+    setStripeConnectMessage('Verification du statut Stripe...')
+
+    syncStripeConnectStatus()
+      .finally(() => {
+        router.replace('/parametres?section=catalogue', { scroll: false })
+      })
+  }, [router, searchParams])
+
   const configurationItems = buildConfigurationKadriaItems({
     companyName: config.companyName,
     phone: config.phone,
@@ -712,6 +725,10 @@ function ParametresPageContent() {
   const [usageError, setUsageError] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
+  const [stripeConnectLoading, setStripeConnectLoading] = useState(false)
+  const [stripeConnectSyncing, setStripeConnectSyncing] = useState(false)
+  const [stripeConnectError, setStripeConnectError] = useState<string | null>(null)
+  const [stripeConnectMessage, setStripeConnectMessage] = useState<string | null>(null)
 
   const openBillingPortal = async () => {
     setPortalLoading(true)
@@ -728,6 +745,69 @@ function ParametresPageContent() {
       setPortalError('Impossible d’ouvrir la gestion d’abonnement.')
     } finally {
       setPortalLoading(false)
+    }
+  }
+
+  const syncStripeConnectStatus = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true
+
+    if (!silent) {
+      setStripeConnectSyncing(true)
+      setStripeConnectError(null)
+      setStripeConnectMessage('Verification du statut Stripe...')
+    }
+
+    try {
+      const res = await fetch('/api/stripe/connect/sync', { method: 'POST' })
+      const data = await res.json()
+
+      if (!data.success) {
+        throw new Error(data.error || "Impossible d'actualiser le statut Stripe.")
+      }
+
+      setConfig((current) => ({
+        ...current,
+        stripeConnectStatus: normalizeStripeConnectStatus(data.stripeConnectStatus),
+        stripeAccountId: data.stripeAccountId || '',
+      }))
+
+      if (!silent) {
+        setStripeConnectMessage('Statut Stripe mis a jour.')
+      }
+    } catch (error) {
+      if (!silent) {
+        setStripeConnectError(error instanceof Error ? error.message : "Impossible d'actualiser le statut Stripe.")
+        setStripeConnectMessage(null)
+      }
+    } finally {
+      if (!silent) {
+        setStripeConnectSyncing(false)
+      }
+    }
+  }
+
+  const startStripeConnectOnboarding = async () => {
+    setStripeConnectLoading(true)
+    setStripeConnectError(null)
+    setStripeConnectMessage(null)
+
+    try {
+      const res = await fetch('/api/stripe/connect/onboard', { method: 'POST' })
+      const data = await res.json()
+
+      if (!data.success || !data.url) {
+        throw new Error(data.error || "Impossible d'ouvrir Stripe.")
+      }
+
+      setConfig((current) => ({
+        ...current,
+        stripeConnectStatus: normalizeStripeConnectStatus(data.status),
+      }))
+
+      window.location.href = data.url
+    } catch (error) {
+      setStripeConnectError(error instanceof Error ? error.message : "Impossible d'ouvrir Stripe.")
+      setStripeConnectLoading(false)
     }
   }
 
@@ -796,13 +876,18 @@ function ParametresPageContent() {
       const cleanedQuoteTemplates = config.businessConfig.quoteTemplates
         .filter(t => t.name.trim())
         .map(t => ({ ...t, lines: t.lines.filter(l => l.label.trim()) }))
+      const {
+        stripeConnectStatus: _ignoredStripeConnectStatus,
+        stripeAccountId: _ignoredStripeAccountId,
+        ...configPayload
+      } = config
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...config,
+          ...configPayload,
           trades: effectiveTrades,
-          businessConfig: { ...config.businessConfig, serviceCatalog: cleanedServiceCatalog, quoteTemplates: cleanedQuoteTemplates },
+          businessConfig: { ...configPayload.businessConfig, serviceCatalog: cleanedServiceCatalog, quoteTemplates: cleanedQuoteTemplates },
         }),
       })
       const data = await res.json()
@@ -3258,7 +3343,7 @@ function ParametresPageContent() {
                   Acompte et paiement
                 </h3>
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.6 }}>
-                  Preparez une demande d&apos;acompte par defaut pour vos devis. Le paiement en ligne avec montant pre-rempli sera disponible avec Stripe Connect.
+                  Preparez une demande d&apos;acompte par defaut pour vos devis. Les paiements d&apos;acompte seront actives dans une prochaine etape.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <label style={{ ...checkboxRowStyle, alignItems: 'flex-start' }}>
@@ -3315,7 +3400,7 @@ function ParametresPageContent() {
                       <div>
                         <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>Stripe Connect</p>
                         <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.5 }}>
-                          Stripe Connect permettra a vos clients de payer le montant exact de l&apos;acompte, directement sur votre compte Stripe.
+                          Les paiements d&apos;acompte seront actives dans une prochaine etape.
                         </p>
                       </div>
                       <span style={{ borderRadius: '999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, background: 'rgba(148,163,184,0.12)', color: 'var(--text-2)', border: '1px solid rgba(148,163,184,0.2)' }}>
@@ -3329,15 +3414,62 @@ function ParametresPageContent() {
                       </span>
                     </div>
                     <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
-                      Preparation de la fonctionnalite paiement. Aucun lien de paiement n&apos;est genere pour le moment.
+                      {config.stripeConnectStatus === 'active'
+                        ? 'Votre compte Stripe est pret. Les futurs liens d’acompte pourront etre rattaches a votre compte.'
+                        : config.stripeConnectStatus === 'pending'
+                          ? 'Votre compte Stripe est cree, mais l’onboarding doit etre termine.'
+                          : config.stripeConnectStatus === 'restricted'
+                            ? 'Stripe demande des informations complementaires pour finaliser votre compte.'
+                            : 'Connectez votre compte Stripe pour generer prochainement des liens d’acompte avec le montant exact.'}
                     </p>
-                    <button
-                      type="button"
-                      disabled
-                      style={{ marginTop: '12px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, cursor: 'not-allowed', opacity: 0.8 }}
-                    >
-                      Connexion Stripe bientot disponible
-                    </button>
+                    {stripeConnectMessage && (
+                      <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.5 }}>
+                        {stripeConnectMessage}
+                      </p>
+                    )}
+                    {stripeConnectError && (
+                      <p style={{ margin: '10px 0 0', fontSize: '12px', color: '#fca5a5', lineHeight: 1.5 }}>
+                        {stripeConnectError}
+                      </p>
+                    )}
+                    <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {config.stripeConnectStatus !== 'active' && (
+                        <button
+                          type="button"
+                          onClick={startStripeConnectOnboarding}
+                          disabled={stripeConnectLoading || stripeConnectSyncing}
+                          style={{
+                            border: 'none',
+                            background: 'var(--accent)',
+                            color: 'black',
+                            borderRadius: '10px',
+                            padding: '9px 14px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: stripeConnectLoading || stripeConnectSyncing ? 'wait' : 'pointer',
+                            opacity: stripeConnectLoading || stripeConnectSyncing ? 0.7 : 1,
+                          }}
+                        >
+                          {stripeConnectLoading
+                            ? 'Ouverture de Stripe...'
+                            : config.stripeConnectStatus === 'pending'
+                              ? 'Continuer la configuration Stripe'
+                              : config.stripeConnectStatus === 'restricted'
+                                ? 'Corriger sur Stripe'
+                                : 'Connecter Stripe'}
+                        </button>
+                      )}
+                      {(config.stripeConnectStatus === 'pending' || config.stripeConnectStatus === 'restricted' || config.stripeConnectStatus === 'active') && (
+                        <button
+                          type="button"
+                          onClick={() => syncStripeConnectStatus()}
+                          disabled={stripeConnectLoading || stripeConnectSyncing}
+                          style={{ marginTop: 0, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-1)', borderRadius: '10px', padding: '9px 14px', fontSize: '12px', fontWeight: 700, cursor: stripeConnectLoading || stripeConnectSyncing ? 'wait' : 'pointer', opacity: stripeConnectLoading || stripeConnectSyncing ? 0.7 : 1 }}
+                        >
+                          {stripeConnectSyncing ? 'Actualisation...' : 'Actualiser le statut'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

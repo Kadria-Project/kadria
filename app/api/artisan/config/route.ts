@@ -18,10 +18,6 @@ function isValidDepositType(value: unknown): boolean {
   return value === undefined || value === null || value === 'percentage' || value === 'fixed'
 }
 
-function isValidStripeConnectStatus(value: unknown): boolean {
-  return value === undefined || value === null || ['not_connected', 'pending', 'active', 'restricted'].includes(String(value))
-}
-
 export async function GET() {
   try {
     const session = await getSession()
@@ -101,10 +97,10 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    if (!isValidStripeConnectStatus(body.stripeConnectStatus)) {
+    if (body.stripeConnectStatus !== undefined || body.stripeAccountId !== undefined) {
       return NextResponse.json(
-        { success: false, error: 'stripeConnectStatus invalide' },
-        { status: 400 }
+        { success: false, error: 'Les champs Stripe Connect sont geres uniquement cote serveur' },
+        { status: 403 }
       )
     }
 
@@ -263,8 +259,6 @@ export async function PATCH(request: NextRequest) {
     if (body.depositEnabled !== undefined) fields['deposit_enabled'] = body.depositEnabled
     if (body.depositType !== undefined) fields['deposit_type'] = body.depositType || 'percentage'
     if (body.depositValue !== undefined) fields['deposit_value'] = body.depositValue === '' ? null : body.depositValue
-    if (body.stripeConnectStatus !== undefined) fields['stripe_connect_status'] = body.stripeConnectStatus || 'not_connected'
-    if (body.stripeAccountId !== undefined) fields['stripe_account_id'] = body.stripeAccountId
     if (body.assistantAvatarType !== undefined) fields['assistant_avatar_type'] = body.assistantAvatarType
     if (body.assistantAvatarUrl !== undefined) fields['assistant_avatar_url'] = body.assistantAvatarUrl
 
