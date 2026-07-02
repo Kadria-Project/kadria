@@ -238,6 +238,7 @@ async function sendCompletionSmsBestEffort(params: { projectId: string; clientPh
       .update({
         sms_completion_token: token,
         sms_completion_url: completionUrl,
+        completion_source: 'sms_after_vapi',
       })
       .eq('id', projectId)
 
@@ -254,6 +255,7 @@ async function sendCompletionSmsBestEffort(params: { projectId: string; clientPh
         sms_sent_at: new Date().toISOString(),
         sms_status: smsResult.success ? 'sent' : 'failed',
         sms_last_error: smsResult.success ? null : (smsResult.error || 'Erreur inconnue'),
+        completion_source: 'sms_after_vapi',
       })
       .eq('id', projectId)
 
@@ -274,6 +276,7 @@ async function sendCompletionSmsBestEffort(params: { projectId: string; clientPh
         .update({
           sms_status: 'failed',
           sms_last_error: error instanceof Error ? error.message : 'Erreur inconnue',
+          completion_source: 'sms_after_vapi',
         })
         .eq('id', projectId)
     } catch {

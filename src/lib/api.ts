@@ -69,3 +69,18 @@ export async function createProjectDepositCheckout(id: string) {
 
   return data;
 }
+
+export async function sendProjectCompletionSms(id: string) {
+  const res = await fetch(`/api/projects/${id}/send-completion-sms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Erreur envoi SMS de complément");
+  }
+
+  return data;
+}

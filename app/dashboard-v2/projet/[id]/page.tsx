@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { createProjectDepositCheckout, getProject, updateProject, getProjectActivity } from '@/src/lib/api';
+import { createProjectDepositCheckout, getProject, updateProject, getProjectActivity, sendProjectCompletionSms } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import {
@@ -461,6 +461,77 @@ function getSourceLabel(source?: string | null) {
   return source || 'Source inconnue';
 }
 
+function hasMeaningfulValue(value: unknown) {
+  return value !== null && value !== undefined && String(value).trim() !== '';
+}
+
+function normalizeSmsStatus(status?: string | null) {
+  return String(status || '').trim().toLowerCase();
+}
+
+function shouldShowSmsCompletionCard(project: any) {
+  const source = String(project?.source || '').trim().toLowerCase();
+  const projectSource = String(project?.projectSource || '').trim().toLowerCase();
+  const createdFrom = String(project?.createdFrom || '').trim().toLowerCase();
+  const completionSource = String(project?.completionSource || '').trim().toLowerCase();
+  const smsStatus = normalizeSmsStatus(project?.smsStatus);
+
+  return (
+    source === 'vapi'
+    || projectSource === 'vapi'
+    || createdFrom === 'vapi'
+    || completionSource === 'sms_after_vapi'
+    || hasMeaningfulValue(project?.smsCompletionToken)
+    || hasMeaningfulValue(project?.smsCompletionUrl)
+    || (smsStatus !== '' && smsStatus !== 'unknown' && smsStatus !== 'default')
+    || hasMeaningfulValue(project?.callId)
+  );
+}
+
+function getSmsCompletionBadge(status: string, completionCompletedAt?: string | null) {
+  if (completionCompletedAt || status === 'completed') {
+    return {
+      label: 'Informations complétées',
+      styles: {
+        background: 'rgba(34,197,94,0.12)',
+        border: '1px solid rgba(34,197,94,0.24)',
+        color: '#86efac',
+      } as CSSProperties,
+    };
+  }
+
+  if (status === 'sent') {
+    return {
+      label: 'SMS envoyé',
+      styles: {
+        background: 'rgba(59,130,246,0.12)',
+        border: '1px solid rgba(59,130,246,0.24)',
+        color: '#93c5fd',
+      } as CSSProperties,
+    };
+  }
+
+  if (status === 'failed') {
+    return {
+      label: 'SMS échoué',
+      styles: {
+        background: 'rgba(239,68,68,0.12)',
+        border: '1px solid rgba(239,68,68,0.24)',
+        color: '#fca5a5',
+      } as CSSProperties,
+    };
+  }
+
+  return {
+    label: 'SMS non envoyé',
+    styles: {
+      background: 'rgba(245,158,11,0.10)',
+      border: '1px solid rgba(245,158,11,0.24)',
+      color: '#fcd34d',
+    } as CSSProperties,
+  };
+}
+
 interface FollowUpRecommendedWindow {
   startMinutes: number;
   endMinutes: number;
@@ -650,6 +721,8 @@ function ProjectDetail() {
   const [depositCheckoutLoading, setDepositCheckoutLoading] = useState(false);
   const [depositActionMessage, setDepositActionMessage] = useState<string | null>(null);
   const [depositActionError, setDepositActionError] = useState<string | null>(null);
+  const [smsCompletionLoading, setSmsCompletionLoading] = useState(false);
+  const [smsCompletionToast, setSmsCompletionToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   useEffect(() => {
     if (!followUpToast) return;
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
@@ -667,6 +740,12 @@ function ProjectDetail() {
     const timeout = window.setTimeout(() => setDepositActionMessage(null), 3200);
     return () => window.clearTimeout(timeout);
   }, [depositActionMessage]);
+
+  useEffect(() => {
+    if (!smsCompletionToast) return;
+    const timeout = window.setTimeout(() => setSmsCompletionToast(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [smsCompletionToast]);
 
   useEffect(() => {
     const depositParam = searchParams?.get('deposit');
@@ -1158,6 +1237,39 @@ function ProjectDetail() {
     await updateStatus(nextStatus);
   }
 
+  async function reloadProject() {
+    const data = await getProject(id);
+    if (data?.success && data.project) {
+      setProject(data.project);
+    }
+  }
+
+  async function handleSendCompletionSms() {
+    try {
+      setSmsCompletionLoading(true);
+      const data = await sendProjectCompletionSms(id);
+      if (data?.project) {
+        setProject(data.project);
+      } else {
+        await reloadProject();
+      }
+      await loadActivities();
+      setSmsCompletionToast({ type: 'success', message: data.message || 'SMS de complément envoyé.' });
+    } catch (error) {
+      setSmsCompletionToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : "Erreur lors de l'envoi du SMS de complément",
+      });
+      try {
+        await reloadProject();
+      } catch {
+        // no-op
+      }
+    } finally {
+      setSmsCompletionLoading(false);
+    }
+  }
+
   async function archiveProject() {
     const confirmed = window.confirm(
       'Archiver ce dossier ? Il restera disponible dans l’historique client mais ne sera plus affiché dans les actions prioritaires.',
@@ -1586,6 +1698,14 @@ function ProjectDetail() {
   const projectTitle = getProjectHeadline(project);
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
   const sourceLabel = getSourceLabel(project.source);
+  const showSmsCompletionCard = shouldShowSmsCompletionCard(project);
+  const smsCompletionStatus = project.completionStatus === 'completed'
+    ? 'completed'
+    : normalizeSmsStatus(project.smsStatus) || 'not_sent';
+  const smsCompletionBadge = getSmsCompletionBadge(smsCompletionStatus, project.completionCompletedAt);
+  const smsCompletionHasPhone = hasMeaningfulValue(project.clientPhone);
+  const smsCompletionHasLink = hasMeaningfulValue(project.smsCompletionUrl);
+  const smsCompletionPhotosCount = Array.isArray(project.photos) ? project.photos.length : 0;
   const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' · ');
   const budgetLabel = project.budget || 'Budget non renseigne';
   const timelineLabel = project.desiredTimeline || 'Delai non precise';
@@ -2210,6 +2330,155 @@ function ProjectDetail() {
               )}
             </div>
           </div>
+          {showSmsCompletionCard && (
+            <div style={{
+              marginTop: '16px',
+              padding: isMobile ? '14px' : '16px',
+              borderRadius: '14px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>
+                    Complément client par SMS
+                  </p>
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+                    Suite à l’appel vocal, le client peut compléter adresse, coordonnées et photos.
+                  </p>
+                </div>
+                <span style={{
+                  ...smsCompletionBadge.styles,
+                  borderRadius: '999px',
+                  padding: '5px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {smsCompletionBadge.label}
+                </span>
+              </div>
+
+              {smsCompletionStatus === 'completed' ? (
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Complété le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
+                  </p>
+                  <div style={{ display: 'grid', gap: '6px', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))' }}>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Client : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{clientLabel}</span>
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Email : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.clientEmail || 'Non renseigné'}</span>
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Adresse : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.siteAddress || 'Non renseignée'}</span>
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Ville / CP : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{[project.city, project.postalCode].filter(Boolean).join(' ') || 'Non renseignés'}</span>
+                    </p>
+                  </div>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Photos ajoutées : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{smsCompletionPhotosCount}</span>
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.6 }}>
+                    Les précisions saisies via le lien SMS sont réintégrées dans le dossier et visibles dans le résumé / les coordonnées ci-dessus.
+                  </p>
+                </div>
+              ) : smsCompletionStatus === 'sent' ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Envoyé le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.smsSentAt)}</span>
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>Statut : En attente de complétion</p>
+                  {smsCompletionHasLink && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(project.smsCompletionUrl);
+                            setSmsCompletionToast({ type: 'success', message: 'Lien de complément copié.' });
+                          } catch {
+                            setSmsCompletionToast({ type: 'error', message: 'Impossible de copier le lien.' });
+                          }
+                        }}
+                        style={quickActionButtonStyle}
+                      >
+                        Copier le lien
+                      </button>
+                      <a
+                        href={project.smsCompletionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          ...quickActionButtonStyle,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        Ouvrir le lien
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : smsCompletionStatus === 'failed' ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    {project.smsLastError ? `Erreur : ${project.smsLastError}` : "L'envoi du lien de complément a échoué."}
+                  </p>
+                  {smsCompletionHasPhone ? (
+                    <button
+                      type="button"
+                      onClick={handleSendCompletionSms}
+                      disabled={smsCompletionLoading}
+                      style={{
+                        ...quickActionButtonStyle,
+                        background: 'var(--accent)',
+                        border: '1px solid rgba(34,197,94,0.35)',
+                        color: 'black',
+                        fontWeight: 700,
+                        width: isMobile ? '100%' : 'fit-content',
+                      }}
+                    >
+                      {smsCompletionLoading ? 'Envoi...' : "Réessayer l'envoi"}
+                    </button>
+                  ) : (
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>Numéro client manquant</p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Le lien de complément n’a pas encore été envoyé.
+                  </p>
+                  {smsCompletionHasPhone ? (
+                    <button
+                      type="button"
+                      onClick={handleSendCompletionSms}
+                      disabled={smsCompletionLoading}
+                      style={{
+                        ...quickActionButtonStyle,
+                        background: 'var(--accent)',
+                        border: '1px solid rgba(34,197,94,0.35)',
+                        color: 'black',
+                        fontWeight: 700,
+                        width: isMobile ? '100%' : 'fit-content',
+                      }}
+                    >
+                      {smsCompletionLoading ? 'Envoi...' : 'Envoyer le SMS'}
+                    </button>
+                  ) : (
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>Numéro client manquant</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <main style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -5673,6 +5942,18 @@ function ProjectDetail() {
         </div>
       )}
 
+      {smsCompletionToast && (
+        <div
+          className={`fixed bottom-20 left-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-2xl sm:bottom-24 sm:left-auto sm:right-6 sm:max-w-sm ${
+            smsCompletionToast.type === 'error'
+              ? 'border-red-500/30 bg-[var(--bg-elevated)] text-red-200'
+              : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'
+          }`}
+        >
+          {smsCompletionToast.message}
+        </div>
+      )}
+
       {commercialClosureConfirm && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -5737,6 +6018,155 @@ function ProjectDetail() {
               </button>
             </div>
           </div>
+          {showSmsCompletionCard && (
+            <div style={{
+              marginTop: '16px',
+              padding: isMobile ? '14px' : '16px',
+              borderRadius: '14px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div>
+                  <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>
+                    Complément client par SMS
+                  </p>
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+                    Suite à l’appel vocal, le client peut compléter adresse, coordonnées et photos.
+                  </p>
+                </div>
+                <span style={{
+                  ...smsCompletionBadge.styles,
+                  borderRadius: '999px',
+                  padding: '5px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {smsCompletionBadge.label}
+                </span>
+              </div>
+
+              {smsCompletionStatus === 'completed' ? (
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Complété le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
+                  </p>
+                  <div style={{ display: 'grid', gap: '6px', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))' }}>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Client : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{clientLabel}</span>
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Email : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.clientEmail || 'Non renseigné'}</span>
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Adresse : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.siteAddress || 'Non renseignée'}</span>
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                      Ville / CP : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{[project.city, project.postalCode].filter(Boolean).join(' ') || 'Non renseignés'}</span>
+                    </p>
+                  </div>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Photos ajoutées : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{smsCompletionPhotosCount}</span>
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.6 }}>
+                    Les précisions saisies via le lien SMS sont réintégrées dans le dossier et visibles dans le résumé / les coordonnées ci-dessus.
+                  </p>
+                </div>
+              ) : smsCompletionStatus === 'sent' ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Envoyé le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.smsSentAt)}</span>
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>Statut : En attente de complétion</p>
+                  {smsCompletionHasLink && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(project.smsCompletionUrl);
+                            setSmsCompletionToast({ type: 'success', message: 'Lien de complément copié.' });
+                          } catch {
+                            setSmsCompletionToast({ type: 'error', message: 'Impossible de copier le lien.' });
+                          }
+                        }}
+                        style={quickActionButtonStyle}
+                      >
+                        Copier le lien
+                      </button>
+                      <a
+                        href={project.smsCompletionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          ...quickActionButtonStyle,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        Ouvrir le lien
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : smsCompletionStatus === 'failed' ? (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    {project.smsLastError ? `Erreur : ${project.smsLastError}` : "L'envoi du lien de complément a échoué."}
+                  </p>
+                  {smsCompletionHasPhone ? (
+                    <button
+                      type="button"
+                      onClick={handleSendCompletionSms}
+                      disabled={smsCompletionLoading}
+                      style={{
+                        ...quickActionButtonStyle,
+                        background: 'var(--accent)',
+                        border: '1px solid rgba(34,197,94,0.35)',
+                        color: 'black',
+                        fontWeight: 700,
+                        width: isMobile ? '100%' : 'fit-content',
+                      }}
+                    >
+                      {smsCompletionLoading ? 'Envoi...' : "Réessayer l'envoi"}
+                    </button>
+                  ) : (
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>Numéro client manquant</p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
+                    Le lien de complément n’a pas encore été envoyé.
+                  </p>
+                  {smsCompletionHasPhone ? (
+                    <button
+                      type="button"
+                      onClick={handleSendCompletionSms}
+                      disabled={smsCompletionLoading}
+                      style={{
+                        ...quickActionButtonStyle,
+                        background: 'var(--accent)',
+                        border: '1px solid rgba(34,197,94,0.35)',
+                        color: 'black',
+                        fontWeight: 700,
+                        width: isMobile ? '100%' : 'fit-content',
+                      }}
+                    >
+                      {smsCompletionLoading ? 'Envoi...' : 'Envoyer le SMS'}
+                    </button>
+                  ) : (
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>Numéro client manquant</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -218,6 +218,17 @@ export interface SupabaseProject {
   assignedTo: string
   artisanId: string
   source: string
+  projectSource: string
+  createdFrom: string
+  completionStatus: string
+  completionCompletedAt: string | null
+  completionSource: string
+  smsCompletionToken: string
+  smsCompletionUrl: string
+  smsSentAt: string | null
+  smsStatus: string
+  smsLastError: string
+  callId: string
   latitude: number | null
   longitude: number | null
   callbackDate: string
@@ -362,6 +373,17 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     assignedTo: getString(row, 'assigned_to', 'Assigned To'),
     artisanId: getString(row, 'artisan_id', 'Artisan ID'),
     source: getString(row, 'source', 'Source'),
+    projectSource: getString(row, 'project_source', 'Project Source'),
+    createdFrom: getString(row, 'created_from', 'Created From'),
+    completionStatus: getString(row, 'completion_status', 'Completion Status'),
+    completionCompletedAt: getValue<string | null>(row, ['completion_completed_at', 'Completion Completed At'], null),
+    completionSource: getString(row, 'completion_source', 'Completion Source'),
+    smsCompletionToken: getString(row, 'sms_completion_token', 'SMS Completion Token'),
+    smsCompletionUrl: getString(row, 'sms_completion_url', 'SMS Completion Url'),
+    smsSentAt: getValue<string | null>(row, ['sms_sent_at', 'SMS Sent At'], null),
+    smsStatus: getString(row, 'sms_status', 'SMS Status'),
+    smsLastError: getString(row, 'sms_last_error', 'SMS Last Error'),
+    callId: getString(row, 'call_id', 'Call ID', 'callId', 'vapi_call_id', 'Vapi Call Id'),
     latitude: getNullableNumber(row, 'latitude', 'Latitude'),
     longitude: getNullableNumber(row, 'longitude', 'Longitude'),
     callbackDate: getString(row, 'callback_date', 'Callback Date'),
@@ -526,6 +548,17 @@ export function toSupabaseProjectUpdate(input: Record<string, unknown>) {
     Contacted: 'contacted',
     'Assigned To': 'assigned_to',
     Source: 'source',
+    'Project Source': 'project_source',
+    'Created From': 'created_from',
+    'Completion Status': 'completion_status',
+    'Completion Completed At': 'completion_completed_at',
+    'Completion Source': 'completion_source',
+    'SMS Completion Token': 'sms_completion_token',
+    'SMS Completion Url': 'sms_completion_url',
+    'SMS Sent At': 'sms_sent_at',
+    'SMS Status': 'sms_status',
+    'SMS Last Error': 'sms_last_error',
+    'Call ID': 'call_id',
     Latitude: 'latitude',
     Longitude: 'longitude',
     'Callback Date': 'callback_date',
