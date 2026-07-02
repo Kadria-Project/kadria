@@ -70,7 +70,7 @@ export async function getOrCreateStripeConnectAccount(input: {
   }
 
   const account = await stripe.accounts.create({
-    type: 'express',
+    type: 'standard',
     email: input.email || undefined,
     business_profile: input.config?.websiteUrl
       ? {
