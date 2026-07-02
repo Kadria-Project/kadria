@@ -2185,7 +2185,7 @@ function ProjectDetail() {
 
           {/* Détails secondaires en accordéons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {mobileAccordions.map((section) => {
+            {mobileAccordions.filter((section) => section.key !== 'activity').map((section) => {
               const open = openMobileSections.has(section.key);
               return (
                 <div key={section.key} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -2201,6 +2201,78 @@ function ProjectDetail() {
               );
             })}
           </div>
+
+          <section
+            className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"
+            style={{ marginTop: '16px', marginBottom: '12px' }}
+          >
+            <div className="flex flex-col gap-2">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
+                <p className="mt-1 text-sm text-[var(--text-2)]">
+                  Les dernieres actions enregistrees sur ce projet.
+                </p>
+              </div>
+              {!activityUnavailable && recentActivityItems.length > 0 && (
+                <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
+                  {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3">
+              {activityUnavailable && (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                  Activite indisponible pour le moment.
+                </div>
+              )}
+
+              {!activityUnavailable && recentActivityItems.length === 0 && (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                  Aucune activite enregistree pour le moment.
+                  Les relances, demandes d'avis et changements importants apparaitront ici.
+                </div>
+              )}
+
+              {!activityUnavailable && recentActivityItems.map((item) => {
+                const tone = getActivityToneStyles(item.tone);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4"
+                  >
+                    <div className="flex min-w-0 gap-3">
+                      <span
+                        className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
+                        style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
+                        {item.detail && item.detail !== item.title && (
+                          <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-start gap-2">
+                      <span
+                        className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                        style={{
+                          background: tone.badgeBg,
+                          borderColor: tone.badgeBorder,
+                          color: tone.badgeColor,
+                        }}
+                      >
+                        {tone.badgeLabel}
+                      </span>
+                      <p className="text-xs text-[var(--text-3)]">
+                        {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </main>
 
         {/* Bottom action bar sticky */}
@@ -2853,6 +2925,7 @@ function ProjectDetail() {
           </button>
         </div>
 
+        {false && (
         <section
           className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
           style={{ marginBottom: '16px' }}
@@ -2924,6 +2997,7 @@ function ProjectDetail() {
             })}
           </div>
         </section>
+        )}
 
         {/* Analyse Kadria — bloc secondaire d'aide à la lecture du dossier,
             volontairement plus neutre que l'Action recommandée. */}
@@ -5002,6 +5076,78 @@ function ProjectDetail() {
           </div>
         </div>
       )}
+
+      <section
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
+        style={{ marginBottom: '16px' }}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
+            <p className="mt-1 text-sm text-[var(--text-2)]">
+              Les dernieres actions enregistrees sur ce projet.
+            </p>
+          </div>
+          {!activityUnavailable && recentActivityItems.length > 0 && (
+            <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
+              {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3">
+          {activityUnavailable && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+              Activite indisponible pour le moment.
+            </div>
+          )}
+
+          {!activityUnavailable && recentActivityItems.length === 0 && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+              Aucune activite enregistree pour le moment.
+              Les relances, demandes d'avis et changements importants apparaitront ici.
+            </div>
+          )}
+
+          {!activityUnavailable && recentActivityItems.map((item) => {
+            const tone = getActivityToneStyles(item.tone);
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="flex min-w-0 gap-3">
+                  <span
+                    className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
+                    style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
+                    {item.detail && item.detail !== item.title && (
+                      <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <span
+                    className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                    style={{
+                      background: tone.badgeBg,
+                      borderColor: tone.badgeBorder,
+                      color: tone.badgeColor,
+                    }}
+                  >
+                    {tone.badgeLabel}
+                  </span>
+                  <p className="text-xs text-[var(--text-3)]">
+                    {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {showAppointmentModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
