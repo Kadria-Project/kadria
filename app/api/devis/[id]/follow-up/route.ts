@@ -78,6 +78,7 @@ export async function POST(
     if (!access.ok) {
       return NextResponse.json(access.body, { status: access.status })
     }
+    console.log('[DEVIS FOLLOW-UP] step: session-ok')
 
     const { id } = await params
     let devis = await getDevisById(id)
@@ -85,6 +86,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Devis introuvable' }, { status: 404 })
     }
     devisNumberForLog = devis.devisNumber || id
+    console.log('[DEVIS FOLLOW-UP] step: devis-loaded', '| devisId:', devisNumberForLog)
 
     if (devis.artisanId !== access.session.artisanId) {
       return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
@@ -109,6 +111,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
     }
     projectIdForLog = project.id
+    console.log('[DEVIS FOLLOW-UP] step: project-loaded', '| projectId:', projectIdForLog)
 
     if (!isValidDevisToken(devis.token)) {
       try {
@@ -135,6 +138,7 @@ export async function POST(
     }
 
     const config = await getArtisanConfig(access.session.artisanId)
+    console.log('[DEVIS FOLLOW-UP] step: artisan-config-loaded')
     const artisanName = config?.raisonSociale || config?.companyName || access.session.companyName || 'Votre artisan'
     const firstName =
       (projectRow?.client_first_name as string) ||
@@ -221,7 +225,9 @@ export async function POST(
       })
       return NextResponse.json({ success: false, error: "Impossible d'envoyer la relance pour le moment." }, { status: 500 })
     }
+    console.log('[DEVIS FOLLOW-UP] step: email-built')
 
+    console.log('[DEVIS FOLLOW-UP] step: resend-start')
     const result = await resend.emails.send({
       from: resendFrom,
       to: resendTo,
@@ -249,6 +255,7 @@ export async function POST(
       )
       return NextResponse.json({ success: false, error: "Impossible d'envoyer la relance. Reessayez." }, { status: 500 })
     }
+    console.log('[DEVIS FOLLOW-UP] step: resend-success')
 
     const now = new Date().toISOString()
 
@@ -257,11 +264,13 @@ export async function POST(
       followUpCount: (devis.followUpCount || 0) + 1,
     })
 
+    console.log('[DEVIS FOLLOW-UP] step: activity-log-start')
     await createActivityLogSupabase(
       project.id,
       'DEVIS_FOLLOW_UP_SENT',
       buildFollowUpSentDescription(followupState.stage, devis.devisNumber),
     )
+    console.log('[DEVIS FOLLOW-UP] step: activity-log-success')
 
     await notifyArtisanQuoteFollowedUp({
       artisanId: access.session.artisanId,
