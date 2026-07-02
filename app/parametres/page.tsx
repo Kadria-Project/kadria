@@ -1351,11 +1351,14 @@ function ParametresPageContent() {
               ...workspaceCard,
               padding: isMobile ? '12px 14px' : '12px 16px',
               background: 'rgba(34,197,94,0.06)',
+              border: '1px solid rgba(34,197,94,0.14)',
+              boxShadow: '0 10px 24px rgba(15,23,42,0.04)',
               display: 'flex',
               alignItems: isMobile ? 'stretch' : 'center',
               justifyContent: 'space-between',
               gap: '10px',
               flexDirection: isMobile ? 'column' : 'row',
+              marginBottom: '36px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flexWrap: 'wrap' }}>
                 <span style={{
@@ -1385,7 +1388,7 @@ function ParametresPageContent() {
                 onClick={() => setConfigurationCardExpanded(true)}
                 aria-expanded={false}
                 style={{
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--bg)',
                   border: '1px solid var(--border)',
                   color: 'var(--text-1)',
                   fontWeight: 700,
@@ -1404,7 +1407,10 @@ function ParametresPageContent() {
             <div style={{
               ...workspaceCard,
               padding: isMobile ? '14px' : '16px 18px',
-              background: 'linear-gradient(180deg, rgba(34,197,94,0.08), rgba(24,24,27,0.92))',
+              background: configurationPercent >= 100 ? 'rgba(34,197,94,0.05)' : 'var(--bg-elevated)',
+              border: configurationPercent >= 100 ? '1px solid rgba(34,197,94,0.16)' : '1px solid var(--border)',
+              boxShadow: '0 12px 28px rgba(15,23,42,0.05)',
+              marginBottom: '36px',
             }}>
               <div style={{
                 display: 'flex',
@@ -1453,7 +1459,7 @@ function ParametresPageContent() {
                     minWidth: isMobile ? '100%' : '180px',
                     height: '8px',
                     borderRadius: '999px',
-                    background: 'rgba(255,255,255,0.06)',
+                    background: 'rgba(148,163,184,0.18)',
                     overflow: 'hidden',
                   }}>
                     <div style={{
@@ -1468,7 +1474,7 @@ function ParametresPageContent() {
                     onClick={() => setConfigurationCardExpanded((value) => !value)}
                     aria-expanded={configurationCardExpanded}
                     style={{
-                      background: configurationCardExpanded ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)',
+                      background: configurationCardExpanded ? 'rgba(34,197,94,0.10)' : 'var(--bg)',
                       border: '1px solid var(--border)',
                       color: 'var(--text-1)',
                       fontWeight: 700,
@@ -1503,7 +1509,7 @@ function ParametresPageContent() {
                     type="button"
                     onClick={() => handleConfigurationAction(configurationPrimaryCta)}
                     style={{
-                      background: 'var(--bg-hover)',
+                      background: 'var(--bg)',
                       border: '1px solid var(--border)',
                       color: 'var(--text-1)',
                       borderRadius: '10px',
