@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getProject, updateProject, getProjectActivity } from '@/src/lib/api';
+import { createProjectDepositCheckout, getProject, updateProject, getProjectActivity } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import { Button } from '@/src/components/ui/button';
 import {
@@ -289,6 +289,17 @@ function getActivityPresentation(activity: { action?: string; description?: stri
     };
   }
 
+  if (action === 'ACOMPTE_PAYMENT_LINK_CREATED' || action === 'ACOMPTE_REQUESTED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: "Lien d'acompte cree",
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
   return {
     id: activity.id || `activity-item-${index}`,
     action,
@@ -523,6 +534,9 @@ function ProjectDetail() {
   const [sendingReviewRequest, setSendingReviewRequest] = useState(false);
   const [reviewRequestConfirmOpen, setReviewRequestConfirmOpen] = useState(false);
   const [reviewRequestError, setReviewRequestError] = useState('');
+  const [depositCheckoutLoading, setDepositCheckoutLoading] = useState(false);
+  const [depositActionMessage, setDepositActionMessage] = useState<string | null>(null);
+  const [depositActionError, setDepositActionError] = useState<string | null>(null);
   useEffect(() => {
     if (!followUpToast) return;
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
@@ -534,6 +548,12 @@ function ProjectDetail() {
     const timeout = window.setTimeout(() => setReviewRequestToast(null), 4200);
     return () => window.clearTimeout(timeout);
   }, [reviewRequestToast]);
+
+  useEffect(() => {
+    if (!depositActionMessage) return;
+    const timeout = window.setTimeout(() => setDepositActionMessage(null), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [depositActionMessage]);
 
   useEffect(() => {
     if (!followUpConfirmDevis) return;
@@ -655,6 +675,45 @@ function ProjectDetail() {
       })
       .catch(() => {});
   }, []);
+
+  async function handleCreateDepositCheckout() {
+    setDepositCheckoutLoading(true);
+    setDepositActionError(null);
+    setDepositActionMessage(null);
+
+    try {
+      const data = await createProjectDepositCheckout(id);
+
+      setProject((current: any) => current ? {
+        ...current,
+        depositStatus: data.depositStatus || 'requested',
+        depositAmount: data.depositAmount ?? current.depositAmount ?? recommendedDeposit?.amount ?? null,
+        depositRequestedAt: data.depositRequestedAt || new Date().toISOString(),
+        depositPaymentUrl: data.depositPaymentUrl || data.url || current.depositPaymentUrl || '',
+        depositProvider: data.depositProvider || 'stripe_connect',
+      } : current);
+
+      setDepositActionMessage("Lien d'acompte cree");
+      await loadActivities();
+    } catch (error) {
+      setDepositActionError(error instanceof Error ? error.message : "Impossible de generer le lien d'acompte pour le moment.");
+    } finally {
+      setDepositCheckoutLoading(false);
+    }
+  }
+
+  async function copyDepositLink(url: string) {
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setDepositActionError(null);
+      setDepositActionMessage('Lien copie');
+    } catch (error) {
+      console.error('[DEPOSIT COPY LINK]', error);
+      setDepositActionError('Impossible de copier le lien');
+    }
+  }
 
   // Référentiel métier (profil métier + profils de prestations) : utilisé
   // uniquement pour enrichir les suggestions de lignes de devis ci-dessous,
@@ -1055,6 +1114,9 @@ function ProjectDetail() {
   }, safeDevisAmount);
   const normalizedStripeConnectStatus = normalizeStripeConnectStatus(artisanConfig?.stripeConnectStatus);
   const normalizedDepositStatus = normalizeDepositStatus(project.depositStatus);
+  const depositPaymentUrl = typeof project.depositPaymentUrl === 'string' ? project.depositPaymentUrl : '';
+  const hasDepositLink = depositPaymentUrl.trim().length > 0 && normalizedDepositStatus === 'requested';
+  const effectiveDepositAmount = project.depositAmount ?? recommendedDeposit?.amount ?? null;
 
   // Signal frais de deplacement pour l'Analyse Kadria : reprend les memes
   // helpers que la card "Frais de deplacement estimes" ci-dessous. Ne rien
@@ -3316,6 +3378,133 @@ function ProjectDetail() {
                       Ajoutez un montant de devis pour calculer un acompte recommande.
                     </p>
                   </>
+                ) : hasDepositLink ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>Lien d&apos;acompte genere</p>
+                        <p style={{ margin: '4px 0 0', color: 'var(--text-2)', fontSize: '12px' }}>
+                          {recommendedDeposit.basisLabel}
+                        </p>
+                      </div>
+                      <span style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800 }}>
+                        {formatEuro(effectiveDepositAmount)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        borderRadius: '999px',
+                        padding: '5px 10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: 'rgba(59,130,246,0.12)',
+                        color: '#93c5fd',
+                        border: '1px solid rgba(148,163,184,0.18)',
+                      }}>
+                        Demande
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {depositPaymentUrl}
+                      </span>
+                    </div>
+                    {depositActionMessage && (
+                      <p style={{ margin: 0, color: 'var(--accent)', fontSize: '12px', lineHeight: 1.5 }}>
+                        {depositActionMessage}
+                      </p>
+                    )}
+                    {depositActionError && (
+                      <p style={{ margin: 0, color: '#fca5a5', fontSize: '12px', lineHeight: 1.5 }}>
+                        {depositActionError}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => copyDepositLink(depositPaymentUrl)}
+                        style={{
+                          border: '1px solid var(--border)',
+                          background: 'transparent',
+                          color: 'var(--text-1)',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Copier le lien
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.open(depositPaymentUrl, '_blank', 'noopener,noreferrer')}
+                        style={{
+                          border: '1px solid var(--border)',
+                          background: 'transparent',
+                          color: 'var(--text-1)',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Ouvrir le lien
+                      </button>
+                    </div>
+                  </>
+                ) : normalizedStripeConnectStatus !== 'active' ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>Acompte recommande</p>
+                        <p style={{ margin: '4px 0 0', color: 'var(--text-2)', fontSize: '12px' }}>{recommendedDeposit.basisLabel}</p>
+                      </div>
+                      <span style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800 }}>
+                        {formatEuro(recommendedDeposit.amount)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        borderRadius: '999px',
+                        padding: '5px 10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: 'rgba(148,163,184,0.12)',
+                        color: 'var(--text-2)',
+                        border: '1px solid rgba(148,163,184,0.18)',
+                      }}>
+                        {normalizedStripeConnectStatus === 'pending'
+                          ? 'Configuration en attente'
+                          : normalizedStripeConnectStatus === 'restricted'
+                            ? 'Action requise'
+                            : 'Stripe non connecte'}
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                        {normalizedStripeConnectStatus === 'pending' || normalizedStripeConnectStatus === 'restricted'
+                          ? 'Terminez la configuration Stripe pour creer un lien d’acompte.'
+                          : 'Connectez Stripe pour creer un lien d’acompte.'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/parametres?section=catalogue')}
+                      style={{
+                        alignSelf: 'flex-start',
+                        border: '1px solid var(--border)',
+                        background: 'transparent',
+                        color: 'var(--text-1)',
+                        borderRadius: '10px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {normalizedStripeConnectStatus === 'pending' || normalizedStripeConnectStatus === 'restricted'
+                        ? 'Configurer Stripe'
+                        : 'Connecter Stripe'}
+                    </button>
+                  </>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
@@ -3351,14 +3540,41 @@ function ProjectDetail() {
                             ? 'Acompte demande'
                             : normalizedDepositStatus === 'cancelled'
                               ? 'Acompte annule'
-                              : 'Paiement Stripe bientot disponible'}
+                              : 'Stripe connecte'}
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                        {normalizedStripeConnectStatus === 'active'
-                          ? 'Stripe Connect pret'
-                          : 'Le lien de paiement sera genere ici lorsque Stripe Connect sera active.'}
+                        Stripe est connecte. La generation des liens d’acompte sera activee dans la prochaine etape.
                       </span>
                     </div>
+                    {depositActionMessage && (
+                      <p style={{ margin: 0, color: 'var(--accent)', fontSize: '12px', lineHeight: 1.5 }}>
+                        {depositActionMessage}
+                      </p>
+                    )}
+                    {depositActionError && (
+                      <p style={{ margin: 0, color: '#fca5a5', fontSize: '12px', lineHeight: 1.5 }}>
+                        {depositActionError}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleCreateDepositCheckout}
+                      disabled={depositCheckoutLoading}
+                      style={{
+                        alignSelf: 'flex-start',
+                        border: 'none',
+                        background: 'var(--accent)',
+                        color: 'black',
+                        borderRadius: '10px',
+                        padding: '9px 14px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: depositCheckoutLoading ? 'wait' : 'pointer',
+                        opacity: depositCheckoutLoading ? 0.7 : 1,
+                      }}
+                    >
+                      {depositCheckoutLoading ? 'Creation du lien...' : "Creer le lien d'acompte"}
+                    </button>
                   </>
                 )}
               </div>
