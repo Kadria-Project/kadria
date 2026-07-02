@@ -2949,8 +2949,8 @@ function ParametresPageContent() {
                   Votre catalogue de prestations, vos modèles de devis et vos paramètres par défaut, répartis dans un workspace plus dense et plus lisible.
                 </p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, minmax(0, 1fr))', gap: '16px' }}>
-                <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 4' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, minmax(0, 1fr))', gap: '18px', width: '100%', minWidth: 0 }}>
+                <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 4', width: '100%', minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Catalogue de prestations
                 </h3>
@@ -3103,7 +3103,7 @@ function ParametresPageContent() {
                 </button>
               </div>
 
-              <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 8' }}>
+              <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 8', width: '100%', minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Modèles de devis
                 </h3>
@@ -3327,7 +3327,7 @@ function ParametresPageContent() {
                 </button>
               </div>
 
-              <div style={sectionCard}>
+              <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 6', width: '100%', minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Acompte et paiement
                 </h3>
@@ -3463,7 +3463,7 @@ function ParametresPageContent() {
                 </div>
               </div>
 
-              <div style={sectionCard}>
+              <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 6', width: '100%', minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Paramètres de devis
                 </h3>
