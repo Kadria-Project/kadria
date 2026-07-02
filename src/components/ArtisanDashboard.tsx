@@ -487,6 +487,34 @@ const ACTION_REQUIRED_PRIORITY: Record<string, number> = {
   'A relancer': 2,
 };
 
+type CommercialClosureStatus = 'Gagné' | 'Perdu';
+
+type CommercialClosureRequest = {
+  id: string;
+  status: CommercialClosureStatus;
+  projectLabel: string;
+};
+
+function isCommercialClosureStatus(status: string): status is CommercialClosureStatus {
+  return status === 'Gagné' || status === 'Perdu';
+}
+
+function getCommercialClosureCopy(status: CommercialClosureStatus) {
+  if (status === 'Gagné') {
+    return {
+      title: 'Confirmer le dossier gagné',
+      description: 'Ce dossier sera marqué comme gagné et sortira des opportunités commerciales en cours.',
+      confirmLabel: 'Marquer gagné',
+    };
+  }
+
+  return {
+    title: 'Confirmer le dossier perdu',
+    description: 'Ce dossier sera clôturé comme perdu et sortira des opportunités commerciales en cours.',
+    confirmLabel: 'Marquer perdu',
+  };
+}
+
 function resolveKanbanDropStatus(project: Project | undefined, column: (typeof KANBAN_GROUPED_COLUMNS)[number]) {
   if (project?.status && column.statuses.includes(project.status)) return project.status;
   return column.defaultStatus;
@@ -1449,7 +1477,23 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     }
   }, [canUseKanban, viewMode]);
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const [commercialClosureRequest, setCommercialClosureRequest] = useState<CommercialClosureRequest | null>(null);
+
+  const handleStatusChange = async (
+    id: string,
+    newStatus: string,
+    options: { skipConfirmation?: boolean; projectLabel?: string } = {},
+  ) => {
+    if (!options.skipConfirmation && isCommercialClosureStatus(newStatus)) {
+      const project = allProjects.find((item) => item.id === id);
+      const projectLabel = options.projectLabel
+        || [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ')
+        || project?.projectType
+        || 'ce dossier';
+      setCommercialClosureRequest({ id, status: newStatus, projectLabel });
+      return;
+    }
+
     setAllProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
 
     try {
@@ -1458,6 +1502,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       console.error('UPDATE_PROJECT_STATUS_ERROR', error);
     }
   };
+
+  const closeCommercialClosureModal = useCallback(() => {
+    setCommercialClosureRequest(null);
+  }, []);
+
+  const confirmCommercialClosure = useCallback(async () => {
+    if (!commercialClosureRequest) return;
+
+    const { id, status } = commercialClosureRequest;
+    closeCommercialClosureModal();
+    await handleStatusChange(id, status, { skipConfirmation: true });
+  }, [closeCommercialClosureModal, commercialClosureRequest]);
 
   const [openPanel, setOpenPanel] = useState<'pipeline' | 'chantiers' | null>(null);
 
@@ -3613,10 +3669,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         Creer une tache
                       </button>
                       <button
-                        onClick={() => {
-                          if (!confirm('Cloturer ce dossier comme perdu ?')) return;
-                          handleStatusChange(project.id, 'Perdu');
-                        }}
+                        onClick={() =>
+                          handleStatusChange(project.id, 'Perdu', {
+                            projectLabel: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'ce dossier',
+                          })
+                        }
                         style={{
                           background: 'rgba(239,68,68,0.1)',
                           border: '1px solid rgba(239,68,68,0.3)',
@@ -4586,6 +4643,62 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {planModalOpen && (
         <PlanChangeModal currentPlan={plan} onClose={() => setPlanModalOpen(false)} />
+      )}
+
+      {commercialClosureRequest && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={closeCommercialClosureModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="m-0 text-lg font-bold text-[var(--text-1)]">
+                  {getCommercialClosureCopy(commercialClosureRequest.status).title}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-2)]">
+                  {getCommercialClosureCopy(commercialClosureRequest.status).description}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCommercialClosureModal}
+                className="text-[var(--text-2)] transition hover:text-[var(--text-1)]"
+                aria-label="Fermer la confirmation"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3 text-sm text-[var(--text-2)]">
+              Dossier concerné : <span className="font-semibold text-[var(--text-1)]">{commercialClosureRequest.projectLabel}</span>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeCommercialClosureModal}
+                className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-2.5 text-sm font-semibold text-[var(--text-1)] transition hover:border-green-500/30 hover:text-white"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmCommercialClosure}
+                className={`rounded-xl px-4 py-2.5 text-sm font-bold transition hover:brightness-110 ${
+                  commercialClosureRequest.status === 'Gagné'
+                    ? 'bg-green-500 text-zinc-950'
+                    : 'bg-red-500 text-white'
+                }`}
+              >
+                {getCommercialClosureCopy(commercialClosureRequest.status).confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </div>

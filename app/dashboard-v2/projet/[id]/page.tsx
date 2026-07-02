@@ -74,6 +74,33 @@ interface DevisListItem {
   follow_up_disabled_at?: string | null;
 }
 
+type CommercialClosureStatus = 'Gagné' | 'Perdu';
+
+type CommercialClosureConfirmState = {
+  status: CommercialClosureStatus;
+  title: string;
+  description: string;
+  confirmLabel: string;
+};
+
+function getCommercialClosureConfirmState(status: CommercialClosureStatus): CommercialClosureConfirmState {
+  if (status === 'Gagné') {
+    return {
+      status,
+      title: 'Confirmer le dossier gagné',
+      description: 'Le dossier sera marqué comme gagné et sortira du suivi commercial en cours.',
+      confirmLabel: 'Marquer gagné',
+    };
+  }
+
+  return {
+    status,
+    title: 'Confirmer le dossier perdu',
+    description: 'Le dossier sera clôturé comme perdu et sortira du suivi commercial en cours.',
+    confirmLabel: 'Marquer perdu',
+  };
+}
+
 const quickActionButtonStyle: CSSProperties = {
   background: 'var(--bg-elevated)',
   border: '1px solid var(--border)',
@@ -619,6 +646,7 @@ function ProjectDetail() {
   const [sendingReviewRequest, setSendingReviewRequest] = useState(false);
   const [reviewRequestConfirmOpen, setReviewRequestConfirmOpen] = useState(false);
   const [reviewRequestError, setReviewRequestError] = useState('');
+  const [commercialClosureConfirm, setCommercialClosureConfirm] = useState<CommercialClosureConfirmState | null>(null);
   const [depositCheckoutLoading, setDepositCheckoutLoading] = useState(false);
   const [depositActionMessage, setDepositActionMessage] = useState<string | null>(null);
   const [depositActionError, setDepositActionError] = useState<string | null>(null);
@@ -678,6 +706,17 @@ function ProjectDetail() {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [reviewRequestConfirmOpen, sendingReviewRequest]);
+
+  useEffect(() => {
+    if (!commercialClosureConfirm) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !updating) {
+        setCommercialClosureConfirm(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [commercialClosureConfirm, updating]);
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionSearch, setSuggestionSearch] = useState('');
@@ -1106,6 +1145,17 @@ function ProjectDetail() {
     } finally {
       setUpdating(false);
     }
+  }
+
+  function requestCommercialClosure(status: CommercialClosureStatus) {
+    setCommercialClosureConfirm(getCommercialClosureConfirmState(status));
+  }
+
+  async function confirmCommercialClosure() {
+    if (!commercialClosureConfirm) return;
+    const nextStatus = commercialClosureConfirm.status;
+    setCommercialClosureConfirm(null);
+    await updateStatus(nextStatus);
   }
 
   async function archiveProject() {
@@ -1551,7 +1601,7 @@ function ProjectDetail() {
       return {
         title: 'Clôturer le dossier',
         ctaLabel: alreadyClosed ? 'Dossier clôturé (perdu)' : 'Marquer comme perdu',
-        onClick: alreadyClosed ? undefined : () => updateStatus('Perdu'),
+        onClick: alreadyClosed ? undefined : () => requestCommercialClosure('Perdu'),
         meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
       };
     }
@@ -3057,7 +3107,7 @@ function ProjectDetail() {
                   <button
                     type="button"
                     disabled={updating}
-                    onClick={() => updateStatus('Gagné')}
+                    onClick={() => requestCommercialClosure('Gagné')}
                     style={{
                       background: 'transparent',
                       border: '1px solid rgba(22,163,74,0.4)',
@@ -3075,9 +3125,7 @@ function ProjectDetail() {
                   <button
                     type="button"
                     disabled={updating}
-                    onClick={() => {
-                      if (confirm('Archiver ce dossier comme perdu ?')) updateStatus('Perdu');
-                    }}
+                    onClick={() => requestCommercialClosure('Perdu')}
                     style={{
                       background: 'transparent',
                       border: '1px solid rgba(220,38,38,0.35)',
@@ -5622,6 +5670,73 @@ function ProjectDetail() {
           }`}
         >
           {reviewRequestToast.message}
+        </div>
+      )}
+
+      {commercialClosureConfirm && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            if (!updating) setCommercialClosureConfirm(null);
+          }}
+        >
+          <div
+            className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-lg w-full space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-[var(--text-1)] font-bold text-lg m-0">{commercialClosureConfirm.title}</h2>
+                <p className="text-sm text-[var(--text-2)] mt-1 mb-0">
+                  {commercialClosureConfirm.description}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!updating) setCommercialClosureConfirm(null);
+                }}
+                disabled={updating}
+                className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3 text-sm">
+              <p className="m-0 text-[var(--text-2)]">
+                Dossier : <span className="text-[var(--text-1)] font-semibold">{clientLabel || project.projectType || 'Projet'}</span>
+              </p>
+              <p className="m-0 mt-2 text-[var(--text-2)]">
+                Statut actuel : <span className="text-[var(--text-1)] font-semibold">{project.status || 'Non renseigné'}</span>
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!updating) setCommercialClosureConfirm(null);
+                }}
+                disabled={updating}
+                className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-2.5 text-sm font-semibold text-[var(--text-1)] transition hover:border-green-500/40 hover:text-white disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmCommercialClosure}
+                disabled={updating}
+                className={`rounded-xl px-4 py-2.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60 ${
+                  commercialClosureConfirm.status === 'Gagné'
+                    ? 'bg-[var(--accent)] text-black'
+                    : 'bg-red-500 text-white'
+                }`}
+              >
+                {updating ? 'Mise à jour...' : commercialClosureConfirm.confirmLabel}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
