@@ -21,6 +21,10 @@ type RenderBaseEmailOptions = {
 const DEFAULT_ACCENT = '#16a34a'
 
 function escapeHtml(value: string): string {
+  // Defensif : un champ manquant/mal type (ex : summaryItems.value derive
+  // d'un champ Supabase absent) ne doit jamais faire crasher le rendu email
+  // avec un TypeError sur .replaceAll — on retombe sur une chaine vide.
+  if (typeof value !== 'string') return ''
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')

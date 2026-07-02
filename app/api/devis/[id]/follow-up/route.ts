@@ -15,6 +15,28 @@ function isValidDevisToken(token: string | undefined): token is string {
   return !!token && !token.includes('undefined') && /^[0-9a-f-]{36}$/i.test(token)
 }
 
+// Rend une erreur exploitable en log, quel que soit son type (Error natif,
+// objet d'erreur Supabase/Resend en plain object, string, etc.). Evite le
+// classique "console.error('[X]', error)" qui affiche "[object Object]"
+// pour les erreurs qui ne sont pas des instances de Error.
+function serializeErrorForLog(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}${error.stack ? `\n${error.stack.split('\n').slice(0, 5).join('\n')}` : ''}`
+  }
+  if (typeof error === 'string') return error
+  try {
+    const json = JSON.stringify(error, null, 2)
+    if (json && json !== '{}') return json
+  } catch {
+    // ignore, fallback below
+  }
+  try {
+    return String(error)
+  } catch {
+    return 'Erreur non serialisable'
+  }
+}
+
 async function createActivityLogSupabase(projectId: string, action: string, description: string) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
     project_id: projectId,
@@ -24,7 +46,7 @@ async function createActivityLogSupabase(projectId: string, action: string, desc
   })
 
   if (error) {
-    console.error('[DEVIS FOLLOW-UP ACTIVITY] Insert error:', JSON.stringify(error, null, 2))
+    console.error('[DEVIS FOLLOW-UP ACTIVITY] Insert error:', serializeErrorForLog(error), '| projectId:', projectId)
   }
 }
 
@@ -92,7 +114,7 @@ export async function POST(
       try {
         devis = await updateDevis(devis.id, { token: randomUUID() })
       } catch (error) {
-        console.error('[DEVIS FOLLOW-UP] Token update failed:', error instanceof Error ? error.message : String(error))
+        console.error('[DEVIS FOLLOW-UP] Token update failed:', serializeErrorForLog(error))
         return NextResponse.json({ success: false, error: 'Invalid devis token' }, { status: 400 })
       }
     }
@@ -178,12 +200,34 @@ export async function POST(
       accentColor: emailBranding.ctaColor,
     }
 
+    const resendFrom = `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`
+    const resendTo = devis.clientEmail
+    const resendSubject = email.subject
+    const resendHtml = renderBaseEmail(emailTemplate)
+    const resendText = renderBaseEmailText(emailTemplate)
+
+    // Garde-fou avant l'appel Resend : un payload invalide (destinataire,
+    // expediteur, sujet ou corps vide) doit produire une erreur claire et
+    // loggable plutot qu'un echec Resend opaque ou un envoi vide.
+    if (!resendTo || !resendFrom || !resendSubject || !resendHtml || !resendText) {
+      console.error('[DEVIS FOLLOW-UP] Payload Resend invalide', {
+        devisId: id,
+        artisanId: access.session.artisanId,
+        hasTo: Boolean(resendTo),
+        hasFrom: Boolean(resendFrom),
+        hasSubject: Boolean(resendSubject),
+        hasHtml: Boolean(resendHtml),
+        hasText: Boolean(resendText),
+      })
+      return NextResponse.json({ success: false, error: "Impossible d'envoyer la relance pour le moment." }, { status: 500 })
+    }
+
     const result = await resend.emails.send({
-      from: `"${fromName.replace(/["\r\n]/g, '')}" <${fromEmail}>`,
-      to: devis.clientEmail,
-      subject: email.subject,
-      text: renderBaseEmailText(emailTemplate),
-      html: renderBaseEmail(emailTemplate),
+      from: resendFrom,
+      to: resendTo,
+      subject: resendSubject,
+      text: resendText,
+      html: resendHtml,
       attachments: devis.pdfUrl
         ? [{ filename: `${devis.devisNumber}.pdf`, path: devis.pdfUrl }]
         : undefined,
@@ -193,7 +237,7 @@ export async function POST(
     })
 
     if (result.error) {
-      console.error('[DEVIS FOLLOW-UP] Resend error:', result.error)
+      console.error('[DEVIS FOLLOW-UP] Resend error:', serializeErrorForLog(result.error), '| devisId:', id, '| artisanId:', access.session.artisanId)
       const resendMessage =
         typeof result.error.message === 'string' && result.error.message.trim()
           ? result.error.message
@@ -234,17 +278,29 @@ export async function POST(
       resend_id: result.data?.id || null,
     })
   } catch (error) {
-    console.error('[DEVIS FOLLOW-UP]', error instanceof Error ? error.message : String(error))
+    console.error(
+      '[DEVIS FOLLOW-UP]',
+      serializeErrorForLog(error),
+      '| devisId:', devisNumberForLog || 'inconnu',
+      '| projectId:', projectIdForLog || 'inconnu',
+      '| stage:', stageForLog,
+    )
     if (projectIdForLog) {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur serveur'
-      await createActivityLogSupabase(
-        projectIdForLog,
-        'DEVIS_FOLLOW_UP_FAILED',
-        buildFollowUpFailedDescription(stageForLog, devisNumberForLog || 'inconnu', errorMessage),
-      )
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+      try {
+        await createActivityLogSupabase(
+          projectIdForLog,
+          'DEVIS_FOLLOW_UP_FAILED',
+          buildFollowUpFailedDescription(stageForLog, devisNumberForLog || 'inconnu', errorMessage),
+        )
+      } catch (logError) {
+        // Ne jamais laisser l'echec du logging masquer l'erreur d'origine
+        // deja loggee et deja convertie en reponse 500 ci-dessous.
+        console.error('[DEVIS FOLLOW-UP] Failed to log DEVIS_FOLLOW_UP_FAILED activity:', serializeErrorForLog(logError))
+      }
     }
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { success: false, error: "Impossible d'envoyer la relance pour le moment." },
       { status: 500 }
     )
   }

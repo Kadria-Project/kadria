@@ -22,6 +22,28 @@ function isValidDevisToken(token: string | undefined): token is string {
   return !!token && !token.includes('undefined') && /^[0-9a-f-]{36}$/i.test(token)
 }
 
+// Rend une erreur exploitable en log, quel que soit son type (Error natif,
+// objet d'erreur Supabase/Resend en plain object, string, etc.). Evite le
+// classique "console.error('[X]', error)" qui affiche "[object Object]"
+// pour les erreurs qui ne sont pas des instances de Error.
+function serializeErrorForLog(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}${error.stack ? `\n${error.stack.split('\n').slice(0, 5).join('\n')}` : ''}`
+  }
+  if (typeof error === 'string') return error
+  try {
+    const json = JSON.stringify(error, null, 2)
+    if (json && json !== '{}') return json
+  } catch {
+    // ignore, fallback below
+  }
+  try {
+    return String(error)
+  } catch {
+    return 'Erreur non serialisable'
+  }
+}
+
 async function createActivityLogSupabase(projectId: string, action: string, description: string) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
     project_id: projectId,
@@ -31,7 +53,7 @@ async function createActivityLogSupabase(projectId: string, action: string, desc
   })
 
   if (error) {
-    console.error('[QUOTE FOLLOW-UPS ACTIVITY] Insert error:', JSON.stringify(error, null, 2))
+    console.error('[QUOTE FOLLOW-UPS ACTIVITY] Insert error:', serializeErrorForLog(error), '| projectId:', projectId)
   }
 }
 
@@ -69,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, due, count: due.length })
   } catch (error) {
-    console.error('[QUOTE FOLLOW-UPS GET]', error instanceof Error ? error.message : String(error))
+    console.error('[QUOTE FOLLOW-UPS GET]', serializeErrorForLog(error))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }
@@ -161,17 +183,44 @@ export async function POST(request: NextRequest) {
           artisanName,
         }
 
+        const resendFrom = process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr'
+        const resendTo = devis.clientEmail
+        const resendSubject = email.subject
+        const resendHtml = renderBaseEmail(emailTemplate)
+        const resendText = renderBaseEmailText(emailTemplate)
+
+        // Garde-fou avant l'appel Resend : un payload invalide doit produire
+        // une erreur claire et loggable plutot qu'un echec Resend opaque.
+        if (!resendTo || !resendFrom || !resendSubject || !resendHtml || !resendText) {
+          console.error('[QUOTE FOLLOW-UPS] Payload Resend invalide', {
+            devisId: devis.id,
+            artisanId: devis.artisanId,
+            hasTo: Boolean(resendTo),
+            hasFrom: Boolean(resendFrom),
+            hasSubject: Boolean(resendSubject),
+            hasHtml: Boolean(resendHtml),
+            hasText: Boolean(resendText),
+          })
+          await createActivityLogSupabase(
+            project.id,
+            'DEVIS_FOLLOW_UP_FAILED',
+            failedStageDescription(state.stage, devis.devisNumber, 'Payload email invalide'),
+          )
+          results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'error', detail: 'Payload email invalide' })
+          continue
+        }
+
         const sendResult = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || 'devis@kadria.fr',
-          to: devis.clientEmail,
-          subject: email.subject,
-          text: renderBaseEmailText(emailTemplate),
-          html: renderBaseEmail(emailTemplate),
+          from: resendFrom,
+          to: resendTo,
+          subject: resendSubject,
+          text: resendText,
+          html: resendHtml,
           headers: { 'X-Entity-Ref-ID': `auto-follow-up-${devis.id}-${state.stage}` },
         })
 
         if (sendResult.error) {
-          console.error('[QUOTE FOLLOW-UPS] Resend error:', sendResult.error)
+          console.error('[QUOTE FOLLOW-UPS] Resend error:', serializeErrorForLog(sendResult.error), '| devisId:', devis.id, '| artisanId:', devis.artisanId)
           const resendMessage =
             typeof sendResult.error.message === 'string' && sendResult.error.message.trim()
               ? sendResult.error.message
@@ -198,14 +247,23 @@ export async function POST(request: NextRequest) {
 
         results.push({ devisId: devis.id, devisNumber: devis.devisNumber, stage: state.stage, status: 'sent', detail: 'OK' })
       } catch (innerError) {
-        console.error('[QUOTE FOLLOW-UPS] Erreur sur un devis:', innerError instanceof Error ? innerError.message : String(innerError))
+        console.error(
+          '[QUOTE FOLLOW-UPS] Erreur sur un devis:',
+          serializeErrorForLog(innerError),
+          '| devisId:', devis.id,
+          '| artisanId:', devis.artisanId,
+        )
         const detail = innerError instanceof Error ? innerError.message : 'Erreur inconnue'
         if (projectIdForLog) {
-          await createActivityLogSupabase(
-            projectIdForLog,
-            'DEVIS_FOLLOW_UP_FAILED',
-            failedStageDescription(state.stage, devis.devisNumber, detail),
-          )
+          try {
+            await createActivityLogSupabase(
+              projectIdForLog,
+              'DEVIS_FOLLOW_UP_FAILED',
+              failedStageDescription(state.stage, devis.devisNumber, detail),
+            )
+          } catch (logError) {
+            console.error('[QUOTE FOLLOW-UPS] Failed to log DEVIS_FOLLOW_UP_FAILED activity:', serializeErrorForLog(logError))
+          }
         }
         results.push({
           devisId: devis.id,
@@ -219,7 +277,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, processed: results.length, results })
   } catch (error) {
-    console.error('[QUOTE FOLLOW-UPS POST]', error instanceof Error ? error.message : String(error))
+    console.error('[QUOTE FOLLOW-UPS POST]', serializeErrorForLog(error))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }
