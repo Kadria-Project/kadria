@@ -35,6 +35,7 @@ import { computeNextAction } from '@/src/lib/action-engine';
 import { getProjectDecisionState } from '@/src/lib/quote-status';
 import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
+import { computeRecommendedDeposit, formatEuro, normalizeDepositStatus, normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -479,6 +480,11 @@ function ProjectDetail() {
     siret?: string;
     raisonSociale?: string;
     googleReviewUrl?: string;
+    depositEnabled?: boolean;
+    depositType?: DepositType;
+    depositValue?: number | null;
+    stripeConnectStatus?: StripeConnectStatus;
+    stripeAccountId?: string;
     adressePro?: string;
     address?: string;
     assuranceNonRequise?: boolean;
@@ -1040,6 +1046,15 @@ function ProjectDetail() {
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
   const latestDevis = devisList[0];
+  const devisAmountNumber = devisAmount === '' ? null : Number(devisAmount);
+  const safeDevisAmount = devisAmountNumber !== null && Number.isFinite(devisAmountNumber) ? devisAmountNumber : null;
+  const recommendedDeposit = computeRecommendedDeposit({
+    depositEnabled: artisanConfig?.depositEnabled,
+    depositType: artisanConfig?.depositType,
+    depositValue: artisanConfig?.depositValue,
+  }, safeDevisAmount);
+  const normalizedStripeConnectStatus = normalizeStripeConnectStatus(artisanConfig?.stripeConnectStatus);
+  const normalizedDepositStatus = normalizeDepositStatus(project.depositStatus);
 
   // Signal frais de deplacement pour l'Analyse Kadria : reprend les memes
   // helpers que la card "Frais de deplacement estimes" ci-dessous. Ne rien
@@ -3247,6 +3262,106 @@ function ProjectDetail() {
                   {s}
                 </button>
               ))}
+            </div>
+
+            <div style={{
+              borderTop: '1px solid var(--border)',
+              marginTop: '12px',
+              paddingTop: '14px',
+            }}>
+              <p style={{
+                color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                margin: '0 0 10px',
+              }}>
+                Acompte
+              </p>
+              <div style={{
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '14px',
+                background: 'var(--bg-elevated)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}>
+                {!artisanConfig?.depositEnabled ? (
+                  <>
+                    <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>Acompte non active</p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                      Activez les acomptes dans les parametres pour securiser les chantiers acceptes.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/parametres?section=catalogue')}
+                      style={{
+                        alignSelf: 'flex-start',
+                        border: '1px solid var(--border)',
+                        background: 'transparent',
+                        color: 'var(--text-1)',
+                        borderRadius: '10px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Configurer les acomptes
+                    </button>
+                  </>
+                ) : !recommendedDeposit ? (
+                  <>
+                    <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>Montant devis necessaire</p>
+                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
+                      Ajoutez un montant de devis pour calculer un acompte recommande.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>Acompte recommande</p>
+                        <p style={{ margin: '4px 0 0', color: 'var(--text-2)', fontSize: '12px' }}>{recommendedDeposit.basisLabel}</p>
+                      </div>
+                      <span style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800 }}>
+                        {formatEuro(recommendedDeposit.amount)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        borderRadius: '999px',
+                        padding: '5px 10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: normalizedDepositStatus === 'paid'
+                          ? 'rgba(34,197,94,0.12)'
+                          : normalizedDepositStatus === 'requested'
+                            ? 'rgba(59,130,246,0.12)'
+                            : 'rgba(148,163,184,0.12)',
+                        color: normalizedDepositStatus === 'paid'
+                          ? '#4ade80'
+                          : normalizedDepositStatus === 'requested'
+                            ? '#93c5fd'
+                            : 'var(--text-2)',
+                        border: '1px solid rgba(148,163,184,0.18)',
+                      }}>
+                        {normalizedDepositStatus === 'paid'
+                          ? 'Acompte paye'
+                          : normalizedDepositStatus === 'requested'
+                            ? 'Acompte demande'
+                            : normalizedDepositStatus === 'cancelled'
+                              ? 'Acompte annule'
+                              : 'Paiement Stripe bientot disponible'}
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                        {normalizedStripeConnectStatus === 'active'
+                          ? 'Stripe Connect pret'
+                          : 'Le lien de paiement sera genere ici lorsque Stripe Connect sera active.'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             <div style={{

@@ -182,6 +182,11 @@ export interface SupabaseArtisanConfig {
   widgetBrandName: string
   widgetBrandLogoUrl: string
   googleReviewUrl: string
+  depositEnabled: boolean
+  depositType: string
+  depositValue: number | null
+  stripeConnectStatus: string
+  stripeAccountId: string
 }
 
 export interface SupabaseProject {
@@ -215,6 +220,12 @@ export interface SupabaseProject {
   longitude: number | null
   callbackDate: string
   devisAmount: number
+  depositStatus: string
+  depositAmount: number | null
+  depositRequestedAt: string | null
+  depositPaidAt: string | null
+  depositPaymentUrl: string | null
+  depositProvider: string | null
   photos: Array<{
     url: string
     thumbnailUrl: string
@@ -302,6 +313,11 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
       'reviews_url',
       'google_business_review_url',
     ),
+    depositEnabled: getBoolean(row, 'deposit_enabled', 'Deposit Enabled'),
+    depositType: getString(row, 'deposit_type', 'Deposit Type') || 'percentage',
+    depositValue: getNullableNumber(row, 'deposit_value', 'Deposit Value'),
+    stripeConnectStatus: getString(row, 'stripe_connect_status', 'Stripe Connect Status') || 'not_connected',
+    stripeAccountId: getString(row, 'stripe_account_id', 'Stripe Account Id'),
   }
 }
 
@@ -342,6 +358,12 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     longitude: getNullableNumber(row, 'longitude', 'Longitude'),
     callbackDate: getString(row, 'callback_date', 'Callback Date'),
     devisAmount: getNumber(row, 'devis_amount', 'Devis_amount'),
+    depositStatus: getString(row, 'deposit_status', 'Deposit Status') || 'not_requested',
+    depositAmount: getNullableNumber(row, 'deposit_amount', 'Deposit Amount'),
+    depositRequestedAt: getValue<string | null>(row, ['deposit_requested_at', 'Deposit Requested At'], null),
+    depositPaidAt: getValue<string | null>(row, ['deposit_paid_at', 'Deposit Paid At'], null),
+    depositPaymentUrl: getValue<string | null>(row, ['deposit_payment_url', 'Deposit Payment Url'], null),
+    depositProvider: getValue<string | null>(row, ['deposit_provider', 'Deposit Provider'], null),
     photos: getPhotos(row),
     recordId: getString(row, 'record_id'),
   }
@@ -489,6 +511,12 @@ export function toSupabaseProjectUpdate(input: Record<string, unknown>) {
     Longitude: 'longitude',
     'Callback Date': 'callback_date',
     Devis_amount: 'devis_amount',
+    'Deposit Status': 'deposit_status',
+    'Deposit Amount': 'deposit_amount',
+    'Deposit Requested At': 'deposit_requested_at',
+    'Deposit Paid At': 'deposit_paid_at',
+    'Deposit Payment Url': 'deposit_payment_url',
+    'Deposit Provider': 'deposit_provider',
     Photos: 'photos',
     record_id: 'record_id',
   }

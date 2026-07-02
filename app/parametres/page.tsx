@@ -17,6 +17,7 @@ import {
   CHARGING_TYPE_LABELS,
   DEFAULT_CONSUMPTION_PER_100KM,
 } from '@/src/config/travel'
+import { normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit'
 
 const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }> = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
@@ -265,8 +266,13 @@ function buildConfigurationKadriaItems(input: {
   address?: string
   villePro?: string
   artisanId?: string
-  googleReviewUrl?: string
-  primaryTrade?: string
+    googleReviewUrl?: string
+    depositEnabled?: boolean
+    depositType?: DepositType
+    depositValue?: number | null
+    stripeConnectStatus?: StripeConnectStatus
+    stripeAccountId?: string
+    primaryTrade?: string
   trades?: string[]
   serviceCatalogCount?: number
   serviceProfilesCount?: number | null
@@ -382,6 +388,11 @@ function ParametresPageContent() {
     secondaryColor: '#18181b',
     websiteUrl: '',
     googleReviewUrl: '',
+    depositEnabled: false,
+    depositType: 'percentage' as DepositType,
+    depositValue: null as number | null,
+    stripeConnectStatus: 'not_connected' as StripeConnectStatus,
+    stripeAccountId: '',
     whiteLabelEnabled: false,
     widgetBrandName: '',
     widgetBrandLogoUrl: '',
@@ -577,6 +588,11 @@ function ParametresPageContent() {
             secondaryColor: data.config.secondaryColor || '#18181b',
             websiteUrl: data.config.websiteUrl || '',
             googleReviewUrl: data.config.googleReviewUrl || '',
+            depositEnabled: Boolean(data.config.depositEnabled),
+            depositType: data.config.depositType === 'fixed' ? 'fixed' : 'percentage',
+            depositValue: data.config.depositValue ?? null,
+            stripeConnectStatus: normalizeStripeConnectStatus(data.config.stripeConnectStatus),
+            stripeAccountId: data.config.stripeAccountId || '',
             whiteLabelEnabled: Boolean(data.config.whiteLabelEnabled),
             widgetBrandName: data.config.widgetBrandName || '',
             widgetBrandLogoUrl: data.config.widgetBrandLogoUrl || '',
@@ -752,6 +768,21 @@ function ParametresPageContent() {
       setActiveSection('entreprise')
       setSaveError("Le lien de demande d'avis Google doit etre une URL valide")
       return
+    }
+
+    if (config.depositEnabled) {
+      if (config.depositValue !== null && config.depositValue !== undefined) {
+        if (config.depositType === 'percentage' && (config.depositValue < 1 || config.depositValue > 100)) {
+          setActiveSection('catalogue')
+          setSaveError("Le pourcentage d'acompte doit etre compris entre 1 et 100")
+          return
+        }
+        if (config.depositType === 'fixed' && config.depositValue < 0) {
+          setActiveSection('catalogue')
+          setSaveError("Le montant fixe d'acompte doit etre superieur ou egal a 0")
+          return
+        }
+      }
     }
 
     setSaving(true)
@@ -3220,6 +3251,95 @@ function ParametresPageContent() {
                 >
                   + Ajouter un modèle
                 </button>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Acompte et paiement
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.6 }}>
+                  Preparez une demande d&apos;acompte par defaut pour vos devis. Le paiement en ligne avec montant pre-rempli sera disponible avec Stripe Connect.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <label style={{ ...checkboxRowStyle, alignItems: 'flex-start' }}>
+                    <input
+                      type="checkbox"
+                      checked={config.depositEnabled}
+                      onChange={e => setConfig(c => ({ ...c, depositEnabled: e.target.checked }))}
+                    />
+                    <span>Demander un acompte sur les devis</span>
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', opacity: config.depositEnabled ? 1 : 0.7 }}>
+                    <div>
+                      <label style={labelStyle}>Type d&apos;acompte</label>
+                      <select
+                        value={config.depositType}
+                        onChange={e => setConfig(c => ({ ...c, depositType: e.target.value === 'fixed' ? 'fixed' : 'percentage' }))}
+                        style={inputStyle}
+                        disabled={!config.depositEnabled}
+                      >
+                        <option value="percentage">Pourcentage du devis</option>
+                        <option value="fixed">Montant fixe</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Valeur par defaut</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="number"
+                          min={config.depositType === 'fixed' ? 0 : 1}
+                          max={config.depositType === 'percentage' ? 100 : undefined}
+                          step="any"
+                          value={config.depositValue ?? ''}
+                          onChange={e => setConfig(c => ({ ...c, depositValue: e.target.value === '' ? null : Number(e.target.value) }))}
+                          style={{ ...inputStyle, paddingRight: '44px' }}
+                          disabled={!config.depositEnabled}
+                          placeholder={config.depositType === 'fixed' ? '150' : '30'}
+                        />
+                        <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', fontSize: '13px' }}>
+                          {config.depositType === 'fixed' ? 'EUR' : '%'}
+                        </span>
+                      </div>
+                      <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
+                        {config.depositType === 'fixed' ? "Exemple : 150 EUR d'acompte fixe." : "Exemple : 30 % pour securiser le chantier."}
+                      </p>
+                    </div>
+                  </div>
+                  {!config.depositEnabled && (
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                      Activez l&apos;option pour preparer un acompte recommande sur vos futurs devis.
+                    </p>
+                  )}
+                  <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', background: 'var(--bg-hover)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>Stripe Connect</p>
+                        <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.5 }}>
+                          Stripe Connect permettra a vos clients de payer le montant exact de l&apos;acompte, directement sur votre compte Stripe.
+                        </p>
+                      </div>
+                      <span style={{ borderRadius: '999px', padding: '6px 10px', fontSize: '11px', fontWeight: 700, background: 'rgba(148,163,184,0.12)', color: 'var(--text-2)', border: '1px solid rgba(148,163,184,0.2)' }}>
+                        {config.stripeConnectStatus === 'active'
+                          ? 'Stripe connecte'
+                          : config.stripeConnectStatus === 'pending'
+                            ? 'Connexion Stripe en attente'
+                            : config.stripeConnectStatus === 'restricted'
+                              ? 'Connexion Stripe restreinte'
+                              : 'Stripe non connecte'}
+                      </span>
+                    </div>
+                    <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
+                      Preparation de la fonctionnalite paiement. Aucun lien de paiement n&apos;est genere pour le moment.
+                    </p>
+                    <button
+                      type="button"
+                      disabled
+                      style={{ marginTop: '12px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, cursor: 'not-allowed', opacity: 0.8 }}
+                    >
+                      Connexion Stripe bientot disponible
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div style={sectionCard}>

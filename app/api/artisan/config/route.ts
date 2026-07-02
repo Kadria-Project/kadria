@@ -14,6 +14,14 @@ function isValidOptionalUrl(value: unknown): boolean {
   }
 }
 
+function isValidDepositType(value: unknown): boolean {
+  return value === undefined || value === null || value === 'percentage' || value === 'fixed'
+}
+
+function isValidStripeConnectStatus(value: unknown): boolean {
+  return value === undefined || value === null || ['not_connected', 'pending', 'active', 'restricted'].includes(String(value))
+}
+
 export async function GET() {
   try {
     const session = await getSession()
@@ -77,6 +85,52 @@ export async function PATCH(request: NextRequest) {
         { success: false, error: "L'URL d'avis Google doit etre une URL valide" },
         { status: 400 }
       )
+    }
+
+    if (body.depositEnabled !== undefined && typeof body.depositEnabled !== 'boolean') {
+      return NextResponse.json(
+        { success: false, error: 'depositEnabled doit etre un booleen' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidDepositType(body.depositType)) {
+      return NextResponse.json(
+        { success: false, error: 'depositType doit etre percentage ou fixed' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidStripeConnectStatus(body.stripeConnectStatus)) {
+      return NextResponse.json(
+        { success: false, error: 'stripeConnectStatus invalide' },
+        { status: 400 }
+      )
+    }
+
+    if (body.depositValue !== undefined && body.depositValue !== null && body.depositValue !== '') {
+      const depositValue = Number(body.depositValue)
+      if (!Number.isFinite(depositValue)) {
+        return NextResponse.json(
+          { success: false, error: 'depositValue doit etre numerique' },
+          { status: 400 }
+        )
+      }
+
+      const depositType = body.depositType === 'fixed' ? 'fixed' : 'percentage'
+      if (depositType === 'percentage' && (depositValue < 1 || depositValue > 100)) {
+        return NextResponse.json(
+          { success: false, error: "Le pourcentage d'acompte doit etre compris entre 1 et 100" },
+          { status: 400 }
+        )
+      }
+
+      if (depositType === 'fixed' && depositValue < 0) {
+        return NextResponse.json(
+          { success: false, error: "Le montant fixe d'acompte doit etre superieur ou egal a 0" },
+          { status: 400 }
+        )
+      }
     }
 
     if (body.trades !== undefined && !Array.isArray(body.trades)) {
@@ -206,6 +260,11 @@ export async function PATCH(request: NextRequest) {
     if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
     if (body.websiteUrl !== undefined) fields['website_url'] = body.websiteUrl
     if (body.googleReviewUrl !== undefined) fields['google_review_url'] = body.googleReviewUrl
+    if (body.depositEnabled !== undefined) fields['deposit_enabled'] = body.depositEnabled
+    if (body.depositType !== undefined) fields['deposit_type'] = body.depositType || 'percentage'
+    if (body.depositValue !== undefined) fields['deposit_value'] = body.depositValue === '' ? null : body.depositValue
+    if (body.stripeConnectStatus !== undefined) fields['stripe_connect_status'] = body.stripeConnectStatus || 'not_connected'
+    if (body.stripeAccountId !== undefined) fields['stripe_account_id'] = body.stripeAccountId
     if (body.assistantAvatarType !== undefined) fields['assistant_avatar_type'] = body.assistantAvatarType
     if (body.assistantAvatarUrl !== undefined) fields['assistant_avatar_url'] = body.assistantAvatarUrl
 
