@@ -992,7 +992,11 @@ export function computeKpis(projects: Project[]): KpiData {
     .filter((p) => p.status !== 'Perdu')
     .reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
 
-  const gagne = projects.filter((p) => p.status === 'Gagné');
+  // Un dossier est "gagne" si le statut l'indique, ou si son acompte est
+  // paye (cas acompte active : le devis accepte seul ne suffit plus, mais
+  // l'acompte paye vaut chantier securise/gagne). Sans acompte, aucun
+  // changement : depositStatus reste 'not_requested' pour tous.
+  const gagne = projects.filter((p) => p.status === 'Gagné' || normalizeDepositStatus(p.depositStatus) === 'paid');
   const caGagne = gagne.reduce((sum, p) => sum + (p.devisAmount || parseBudget(p.budget || '')), 0);
 
   const devisEnvoyesProjects = projects.filter((p) => p.status === 'Devis envoyé');
@@ -1554,6 +1558,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [artisanTrades, setArtisanTrades] = useState<string[]>([]);
   const [artisanFirstName, setArtisanFirstName] = useState('');
+  // Acompte active ou non pour cet artisan : conditionne la definition de
+  // "chantier gagne" (cf. isAcceptedValueProject plus bas) sans recalculer
+  // l'ensemble du dashboard.
+  const [artisanDepositEnabled, setArtisanDepositEnabled] = useState(false);
   const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null);
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
   const [progressCenterExpanded, setProgressCenterExpanded] = useState(false);
@@ -1630,6 +1638,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           artisanConfig: configRes?.success ? configRes.config : null,
         })
       );
+      setArtisanDepositEnabled(Boolean(configRes?.success && configRes.config?.depositEnabled));
     });
     return () => {
       cancelled = true;
@@ -2206,7 +2215,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   // disponible sur les projets tant que le détail des devis n'est pas chargé ici).
   const canSeeAdvancedValueDashboard = canAccessFeature('advancedValueDashboard');
   const projectValue = (p: Project) => p.devisAmount || parseBudget(p.budget || '');
-  const isAcceptedValueProject = (p: Project) => p.status === 'Gagné' || Boolean(p.acceptedAt);
+  // Regle acompte : si les acomptes sont actives pour l'artisan, un devis
+  // accepte ne suffit plus a considerer le chantier comme gagne/securise —
+  // il faut l'acompte paye. Sans acompte, comportement inchange (statut
+  // Gagné ou acceptedAt).
+  const isAcceptedValueProject = (p: Project) =>
+    artisanDepositEnabled
+      ? normalizeDepositStatus(p.depositStatus) === 'paid'
+      : p.status === 'Gagné' || Boolean(p.acceptedAt);
 
   // Le filtre source détaillé est réservé Performance+ ; en Essentiel, on ignore la
   // sélection et on retombe sur "Toutes les sources".

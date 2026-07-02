@@ -12,11 +12,13 @@ import {
 const MAX_REQUESTS_PER_IP = 5
 const requestCounts = new Map<string, number>()
 
-async function logDevisAcceptedActivity(projectId: string, devisNumber: string) {
+async function logDevisAcceptedActivity(projectId: string, devisNumber: string, depositEnabled: boolean) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
     project_id: projectId,
     action: 'Devis accepté',
-    description: `Devis ${devisNumber} accepté — dossier passé en Gagné automatiquement.`,
+    description: depositEnabled
+      ? `Devis ${devisNumber} accepté — acompte à demander avant de sécuriser le chantier.`
+      : `Devis ${devisNumber} accepté — dossier passé en Gagné automatiquement.`,
     created_at: new Date().toISOString(),
   })
 
@@ -115,7 +117,16 @@ export async function POST(
 
     const projectRow = projectRowForSnapshot
 
-    if (projectRow) {
+    // Regle acompte : si les acomptes sont actives pour l'artisan, l'acceptation
+    // du devis seule ne suffit plus a considerer le chantier comme gagne —
+    // l'acompte devient l'etape commerciale intermediaire. On ne passe donc
+    // PAS le statut en "Gagné" dans ce cas : le projet garde son statut actuel
+    // (typiquement "Devis envoyé"), et acceptedAt (deja enregistre sur le
+    // devis ci-dessus) + deposit_status pilotent la suite (cf. src/lib/deposit.ts,
+    // src/lib/quote-status.ts). Aucune nouvelle valeur de statut n'est inventee.
+    const depositEnabledForArtisan = Boolean(config?.depositEnabled)
+
+    if (projectRow && !depositEnabledForArtisan) {
       const { error: projectUpdateError } = await supabaseAdmin
         .from(TABLES.projects)
         .update({ status: 'Gagné' })
@@ -126,7 +137,7 @@ export async function POST(
       }
     }
 
-    await logDevisAcceptedActivity(devis.projectId, devis.devisNumber)
+    await logDevisAcceptedActivity(devis.projectId, devis.devisNumber, depositEnabledForArtisan)
 
     if (projectRow) {
       const project = mapSupabaseProject(projectRow)
@@ -141,7 +152,11 @@ export async function POST(
       })
     }
 
-    return NextResponse.json({ success: true, accepted_at: now, status: 'Gagné' })
+    return NextResponse.json({
+      success: true,
+      accepted_at: now,
+      status: depositEnabledForArtisan ? (projectRow?.status || 'Devis envoyé') : 'Gagné',
+    })
   } catch (error) {
     console.error('[DEVIS PUBLIC ACCEPT]', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

@@ -1430,6 +1430,42 @@ function ProjectDetail() {
       };
     }
     if (project.status === 'Gagné' || decision.state === 'quote_accepted') {
+      // Regle acompte : quand les acomptes sont actives pour l'artisan, le
+      // devis accepte seul ne suffit plus a "gagner" le dossier — l'acompte
+      // devient l'etape commerciale intermediaire avant la planification.
+      // Reutilise le meme etat (normalizedDepositStatus) et le meme handler
+      // (handleCreateDepositCheckout) que la carte acompte existante, sans
+      // dupliquer la logique Stripe.
+      if (artisanConfig?.depositEnabled) {
+        if (normalizedDepositStatus === 'paid') {
+          // Cas C — acompte paye : chantier securise, place a la planification.
+          return {
+            title: 'Planifier le chantier',
+            ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier un rendez-vous',
+            onClick: appointment ? scrollToActionsAndQuote : () => { if (!appointment) openAppointmentModal(); },
+            meta: appointment
+              ? `L’acompte est payé, rendez-vous prévu le ${formatDateTime(appointment.start)}.`
+              : 'L’acompte est payé. Le chantier est sécurisé.',
+          };
+        }
+        if (normalizedDepositStatus === 'requested' && depositPaymentUrl) {
+          // Cas B — lien genere, paiement en attente.
+          return {
+            title: 'Suivre l’acompte',
+            ctaLabel: 'Ouvrir le lien',
+            onClick: () => window.open(depositPaymentUrl, '_blank', 'noopener,noreferrer'),
+            meta: 'Le lien d’acompte a été généré. Le paiement est encore en attente.',
+          };
+        }
+        // Cas A — devis accepte, aucun lien d'acompte genere pour le moment.
+        return {
+          title: 'Demander l’acompte',
+          ctaLabel: 'Créer le lien d’acompte',
+          onClick: handleCreateDepositCheckout,
+          meta: 'Le devis est accepté. Sécurisez le chantier avant de le planifier.',
+        };
+      }
+      // Cas D — acompte non active : comportement historique inchange.
       return {
         title: 'Planifier l’intervention chantier',
         ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier l’intervention',
@@ -1500,6 +1536,15 @@ function ProjectDetail() {
       meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
     };
   })();
+  // Acompte : etape commerciale intermediaire, affichee uniquement quand les
+  // acomptes sont actives pour l'artisan (sinon on ne l'insere pas du tout
+  // dans le stepper, cf. brief — comportement historique inchange sinon).
+  const depositStepDone = normalizedDepositStatus === 'paid';
+  const depositStepLabel = normalizedDepositStatus === 'paid'
+    ? 'Acompte payé'
+    : normalizedDepositStatus === 'requested'
+      ? 'Acompte demandé'
+      : 'Acompte à demander';
   const commercialTimeline = [
     { id: 'received', label: 'Reçu', done: Boolean(project.createdAt) },
     { id: 'qualified', label: 'Qualifié', done: project.status !== 'Nouveau' },
@@ -1515,10 +1560,13 @@ function ProjectDetail() {
       label: 'Décision',
       done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
     },
+    ...(artisanConfig?.depositEnabled
+      ? [{ id: 'deposit', label: depositStepLabel, done: depositStepDone }]
+      : []),
     {
       id: 'outcome',
       label: 'Gagné / perdu',
-      done: project.status === 'Gagné' || project.status === 'Perdu',
+      done: project.status === 'Gagné' || project.status === 'Perdu' || depositStepDone,
     },
   ];
 
@@ -2769,7 +2817,7 @@ function ProjectDetail() {
                 <div style={{
                   display: isMobile ? 'flex' : 'grid',
                   flexDirection: isMobile ? 'column' : undefined,
-                  gridTemplateColumns: isMobile ? undefined : 'repeat(7, minmax(0, 1fr))',
+                  gridTemplateColumns: isMobile ? undefined : `repeat(${commercialTimeline.length}, minmax(0, 1fr))`,
                   gap: isMobile ? '10px' : '6px',
                 }}>
                   {commercialTimeline.map((step, index) => {
