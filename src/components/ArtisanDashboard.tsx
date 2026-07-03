@@ -1885,6 +1885,47 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     [filteredProjects],
   );
 
+  const geoSummary = useMemo(() => {
+    const hasCoordinates = (project: Project) => {
+      const latitude = Number(project.latitude);
+      const longitude = Number(project.longitude);
+      return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude !== 0 && longitude !== 0;
+    };
+
+    const geolocatedCount = sortedProjects.filter((project) => hasCoordinates(project)).length;
+    const missingAddressCount = sortedProjects.filter((project) => !project.siteAddress && !project.city).length;
+    const urgentCount = sortedProjects.filter((project) => {
+      const risk = getProjectRiskStatus(project);
+      return risk.status === 'followUp' || risk.status === 'atRisk' || isHotLead(project);
+    }).length;
+    const quotesSentCount = sortedProjects.filter((project) => isQuoteSentProject(project)).length;
+    const depositsPendingCount = sortedProjects.filter((project) => {
+      const depositStatus = normalizeDepositStatus(project.depositStatus);
+      return isDepositRelevantProject(project) && (depositStatus === 'not_requested' || depositStatus === 'recommended' || depositStatus === 'requested');
+    }).length;
+    const topCities = Array.from<[string, number]>(
+      sortedProjects.reduce((acc, project) => {
+        const city = (project.city || '').trim();
+        if (!city) return acc;
+        acc.set(city, (acc.get(city) ?? 0) + 1);
+        return acc;
+      }, new Map<string, number>()),
+    )
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    return {
+      projects: sortedProjects,
+      mapProjects: sortedProjects.slice(0, 8),
+      geolocatedCount,
+      missingAddressCount,
+      urgentCount,
+      quotesSentCount,
+      depositsPendingCount,
+      topCities,
+    };
+  }, [sortedProjects]);
+
   const priorityProjects = Array.from(
     new Map(
       [...topOpportunities, ...riskProjects, ...hotLeads]
@@ -3964,6 +4005,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </span>
             </div>
 
+            {false && (
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="contents">
               <button
@@ -4065,9 +4107,129 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </button>
               </div>
             </div>
+            )}
           </div>
 
+            <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.45fr)_minmax(0,0.55fr)]">
+              <div
+                className={`rounded-2xl border p-4 sm:p-5 ${
+                  !canAccessFeature('geoProjects')
+                    ? 'border-dashed border-[var(--border)] bg-[var(--bg-elevated)]/55 opacity-80'
+                    : 'border-[var(--border)] bg-[var(--bg-elevated)]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className={`h-5 w-5 ${!canAccessFeature('geoProjects') ? 'text-[var(--text-3)]' : 'text-green-400'}`} />
+                      <h3 className={`text-[15px] font-bold ${!canAccessFeature('geoProjects') ? 'text-[var(--text-2)]' : 'text-[var(--text-1)]'}`}>
+                        Carte des chantiers
+                      </h3>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--text-2)]">
+                      {!canAccessFeature('geoProjects')
+                        ? 'Vue géographique des dossiers disponible avec Performance'
+                        : `${geoSummary.mapProjects.length} dossiers affichés sur la carte`}
+                    </p>
+                  </div>
+
+                  {!canAccessFeature('geoProjects') ? (
+                    <button
+                      type="button"
+                      onClick={() => openUpgradeModal('geoProjects')}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[11px] font-semibold text-green-500"
+                    >
+                      <Lock className="h-3 w-3" />
+                      Performance
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => togglePanel('chantiers')}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:border-green-500/30 hover:text-[var(--text-1)]"
+                    >
+                      {openPanel === 'chantiers' ? 'Réduire la carte' : 'Agrandir la carte'}
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${openPanel === 'chantiers' ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)]" style={{ height: isMobile ? '220px' : '250px' }}>
+                  {canAccessFeature('geoProjects') ? (
+                    <ProspectsLeafletMap
+                      projects={geoSummary.mapProjects}
+                      onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[var(--text-2)]">
+                      Activez Performance pour afficher la carte géolocalisée des dossiers.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-[15px] font-bold text-[var(--text-1)]">Zones et priorités</h3>
+                    <p className="mt-1 text-xs text-[var(--text-2)]">
+                      Synthèse géographique et commerciale basée sur les dossiers déjà affichés.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold text-[var(--text-2)]">
+                    {geoSummary.projects.length} dossier(s)
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-3)]">Géolocalisés</p>
+                    <p className="mt-2 text-2xl font-semibold text-[var(--text-1)]">{geoSummary.geolocatedCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-3)]">Adresse manquante</p>
+                    <p className="mt-2 text-2xl font-semibold text-[var(--text-1)]">{geoSummary.missingAddressCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-3)]">Urgents</p>
+                    <p className="mt-2 text-2xl font-semibold text-amber-300">{geoSummary.urgentCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-3)]">Devis envoyés</p>
+                    <p className="mt-2 text-2xl font-semibold text-blue-300">{geoSummary.quotesSentCount}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-3)]">Acomptes à suivre</p>
+                    <p className="mt-2 text-xl font-semibold text-[var(--text-1)]">{geoSummary.depositsPendingCount}</p>
+                    <p className="mt-1 text-xs text-[var(--text-2)]">Dossiers avec acompte à demander ou relancer.</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-3)]">Top zones</p>
+                    {geoSummary.topCities.length > 0 ? (
+                      <div className="mt-2 space-y-2">
+                        {geoSummary.topCities.map(([city, count]) => (
+                          <div key={city} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="truncate text-[var(--text-1)]">{city}</span>
+                            <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--text-2)]">
+                              {count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-[var(--text-2)]">Aucune ville renseignée sur les dossiers affichés.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
           {/* ZONE 3 — Panneau accordéon */}
+          {false && (
           <div
             className="rounded-2xl border border-[var(--border)] overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
             style={{
@@ -4139,11 +4301,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
           </div>
+          )}
 
           <div
             className="rounded-2xl border border-[var(--border)] overflow-hidden transition-[max-height,opacity] duration-300 ease-out motion-reduce:transition-none"
             style={{
-              maxHeight: openPanel === 'chantiers' ? '600px' : '0px',
+              maxHeight: openPanel === 'chantiers' ? '720px' : '0px',
               opacity: openPanel === 'chantiers' ? 1 : 0,
             }}
           >
@@ -4151,9 +4314,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                <div className="p-4 sm:p-6">
                 <h3 className="text-[var(--text-1)] font-semibold mb-3">📍 Chantiers</h3>
 
-                 <div style={{ height: isMobile ? '280px' : '400px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-sm text-[var(--text-2)]">Vue détaillée de la carte des chantiers.</p>
+                  <button
+                    type="button"
+                    onClick={() => togglePanel('chantiers')}
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:border-green-500/30 hover:text-[var(--text-1)]"
+                  >
+                    Réduire
+                    <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                  </button>
+                </div>
+
+                 <div style={{ height: isMobile ? '320px' : '440px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <ProspectsLeafletMap
-                    projects={sortedProjects.slice(0, 8)}
+                    projects={geoSummary.mapProjects}
                     onSelectProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
                   />
                 </div>
