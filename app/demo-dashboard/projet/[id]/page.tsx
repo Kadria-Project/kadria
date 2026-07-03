@@ -307,6 +307,8 @@ function ProjectDetail() {
     updateProjectCallback,
     updateProjectFields,
     createEvent,
+    clientEvents,
+    addClientEvent,
   } = useDemoMode();
 
   const [project, setProject] = useState<any>(null);
@@ -384,6 +386,11 @@ function ProjectDetail() {
   } | null>(null);
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
+  const [artisanReplyText, setArtisanReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [replyToast, setReplyToast] = useState<string | null>(null);
+  const [copyPortalToast, setCopyPortalToast] = useState<string | null>(null);
+  const [showRetoursClient, setShowRetoursClient] = useState(false);
   const [followUpToast, setFollowUpToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [followingUpDevisId, setFollowingUpDevisId] = useState<string | null>(null);
   useEffect(() => {
@@ -3342,6 +3349,187 @@ function ProjectDetail() {
             </div>
           </div>
         </div>
+
+        {/* Portail client — mirroring app/dashboard-v2/projet/[id]/page.tsx :
+            copie d'un lien fictif (jamais un vrai token /api/.../client-portal-link),
+            aucune écriture réelle. */}
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>🔗 Portail client</p>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
+                Lien fictif de démonstration — aucune donnée réelle exposée.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={async () => {
+                  const url = `${window.location.origin}/demo-dashboard/client/projet/${project.id}`;
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    setCopyPortalToast('Simulation : lien portail client copié (démo)');
+                  } catch {
+                    setCopyPortalToast(`Simulation : lien portail — ${url}`);
+                  }
+                  window.setTimeout(() => setCopyPortalToast(null), 4000);
+                }}
+                style={{
+                  background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '12px',
+                  padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                }}
+              >
+                Copier le lien
+              </button>
+              <a
+                href={`/demo-dashboard/client/projet/${project.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: 'transparent', color: 'var(--text-1)', fontWeight: 600, fontSize: '12px',
+                  padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer',
+                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+                }}
+              >
+                Voir le portail
+              </a>
+            </div>
+          </div>
+          {copyPortalToast && (
+            <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{copyPortalToast}</p>
+          )}
+        </div>
+
+        {/* Retours client — bulles de discussion + activité du dossier,
+            reprend la logique de app/dashboard-v2/projet/[id]/page.tsx mais
+            sur clientEvents locaux (DemoModeContext), aucun appel réseau. */}
+        {!showRetoursClient ? (
+          <div style={{
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
+          }}>
+            <button
+              onClick={() => setShowRetoursClient(true)}
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--text-2)', cursor: 'pointer',
+                fontSize: '14px', padding: 0, width: '100%', display: 'flex', alignItems: 'center',
+                gap: '8px', textAlign: 'left',
+              }}
+            >
+              <span>💬</span>
+              <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>Retours client</span>
+              {(clientEvents[project.id]?.length || 0) > 0 && (
+                <span style={{
+                  background: 'var(--accent)', color: 'black', borderRadius: '10px',
+                  padding: '1px 7px', fontSize: '11px', fontWeight: 700,
+                }}>
+                  {clientEvents[project.id]?.length}
+                </span>
+              )}
+              <span style={{
+                marginLeft: isMobile ? 0 : 'auto', width: isMobile ? '100%' : undefined,
+                fontSize: '12px', color: 'var(--accent)',
+              }}>
+                Voir la discussion et l&apos;activité du dossier →
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: isMobile ? '16px' : '20px', marginBottom: '16px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
+              <h3 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>💬 Retours client</h3>
+              <button
+                onClick={() => setShowRetoursClient(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '13px' }}
+              >
+                Réduire
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {(clientEvents[project.id] || []).length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+                  Aucun échange pour le moment sur ce dossier démo.
+                </p>
+              ) : (
+                (clientEvents[project.id] || []).map((ev) => {
+                  const isClient = ev.type === 'client_message';
+                  const isArtisan = ev.type === 'artisan_reply';
+                  if (!isClient && !isArtisan) {
+                    return (
+                      <div key={ev.id} style={{
+                        background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                        borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: 'var(--text-2)',
+                      }}>
+                        <strong style={{ color: 'var(--text-1)' }}>{ev.title}</strong>
+                        {ev.message ? ` — ${ev.message}` : ''}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
+                      <div style={{
+                        maxWidth: '80%',
+                        background: isClient ? 'var(--bg-inset)' : 'var(--accent)',
+                        color: isClient ? 'var(--text-1)' : 'black',
+                        border: isClient ? '1px solid var(--border)' : 'none',
+                        borderRadius: isClient ? '14px 14px 14px 4px' : '14px 14px 4px 14px',
+                        padding: '10px 14px',
+                      }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', opacity: 0.75 }}>
+                          {isClient ? 'Client' : 'Vous (artisan)'}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.message}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <textarea
+              value={artisanReplyText}
+              onChange={(e) => setArtisanReplyText(e.target.value)}
+              placeholder="Votre réponse sera visible par le client dans son portail (simulation démo)..."
+              rows={3}
+              maxLength={2000}
+              style={{
+                width: '100%', background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                borderRadius: '10px', padding: '10px', color: 'var(--text-1)', fontSize: '13px',
+                fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px',
+              }}
+            />
+            <button
+              onClick={() => {
+                const text = artisanReplyText.trim();
+                if (!text || sendingReply) return;
+                setSendingReply(true);
+                addClientEvent(project.id, { type: 'artisan_reply', title: 'Réponse artisan', message: text, source: 'artisan' });
+                setArtisanReplyText('');
+                setReplyToast('Simulation : réponse publiée dans le portail client (démo)');
+                window.setTimeout(() => setReplyToast(null), 4000);
+                setSendingReply(false);
+              }}
+              disabled={!artisanReplyText.trim() || sendingReply}
+              style={{
+                background: !artisanReplyText.trim() || sendingReply ? 'var(--border)' : 'var(--accent)',
+                color: !artisanReplyText.trim() || sendingReply ? 'var(--text-3)' : 'black',
+                fontWeight: 700, fontSize: '13px', padding: '10px 16px', borderRadius: '8px',
+                border: 'none', cursor: !artisanReplyText.trim() || sendingReply ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {sendingReply ? 'Publication...' : 'Publier dans le portail client'}
+            </button>
+            {replyToast && (
+              <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{replyToast}</p>
+            )}
+          </div>
+        )}
 
         {!showNotes ? (
           <div style={{

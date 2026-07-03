@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { DEMO_ARTISAN, DEMO_EVENTS, DEMO_PROJECTS, type DemoEvent, type DemoProject } from '@/src/lib/demo-data';
+import { DEMO_ARTISAN, DEMO_CLIENT_EVENTS, DEMO_EVENTS, DEMO_PROJECTS, type DemoClientEvent, type DemoEvent, type DemoProject } from '@/src/lib/demo-data';
 
 type DemoArtisan = typeof DEMO_ARTISAN;
 
@@ -26,6 +26,8 @@ interface DemoModeContextValue {
   updateEvent: (id: string, fields: Partial<DemoEvent>) => void;
   deleteEvent: (id: string) => void;
   updateArtisanConfig: (fields: Partial<DemoArtisan>) => void;
+  clientEvents: Record<string, DemoClientEvent[]>;
+  addClientEvent: (projectId: string, event: Omit<DemoClientEvent, 'id' | 'createdAt'> & { createdAt?: string }) => void;
 }
 
 const DemoModeContext = createContext<DemoModeContextValue | null>(null);
@@ -35,6 +37,22 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
   const [events, setEvents] = useState<DemoEvent[]>(DEMO_EVENTS);
   const [artisan, setArtisan] = useState<DemoArtisan>(DEMO_ARTISAN);
   const [theme, setThemeState] = useState<'dark' | 'light'>(DEMO_ARTISAN.theme);
+  const [clientEvents, setClientEvents] = useState<Record<string, DemoClientEvent[]>>(DEMO_CLIENT_EVENTS);
+
+  const addClientEvent = useCallback((projectId: string, event: Omit<DemoClientEvent, 'id' | 'createdAt'> & { createdAt?: string }) => {
+    setClientEvents((current) => {
+      const list = current[projectId] || [];
+      const created: DemoClientEvent = {
+        id: `demo_evt_${projectId}_${Date.now()}`,
+        createdAt: event.createdAt || new Date().toISOString(),
+        type: event.type,
+        title: event.title,
+        message: event.message ?? null,
+        source: event.source,
+      };
+      return { ...current, [projectId]: [...list, created] };
+    });
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -142,8 +160,10 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       updateEvent,
       deleteEvent,
       updateArtisanConfig,
+      clientEvents,
+      addClientEvent,
     }),
-    [artisan, createEvent, createProject, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus],
+    [artisan, clientEvents, addClientEvent, createEvent, createProject, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

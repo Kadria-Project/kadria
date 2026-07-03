@@ -92,6 +92,34 @@ export interface DemoProject {
   quoteBuilder?: DemoQuoteBuilder;
 }
 
+export interface DemoClientEvent {
+  id: string;
+  type: 'client_message' | 'artisan_reply' | 'client_info_updated' | 'quote_sent' | 'quote_accepted' | 'quote_declined';
+  title: string;
+  message: string | null;
+  source: 'client' | 'artisan' | 'system';
+  createdAt: string;
+}
+
+export const DEMO_CLIENT_EVENTS: Record<string, DemoClientEvent[]> = {
+  demo_001: [
+    { id: 'demo_001_evt_1', type: 'client_message', title: 'Message client', message: 'Bonjour, est-ce que vous pourriez intervenir dès la semaine prochaine ?', source: 'client', createdAt: '2026-06-20T18:12:00.000Z' },
+    { id: 'demo_001_evt_2', type: 'artisan_reply', title: 'Réponse artisan', message: 'Bonjour Marie, oui tout à fait, je vous propose un créneau mardi matin.', source: 'artisan', createdAt: '2026-06-21T08:05:00.000Z' },
+  ],
+  demo_003: [
+    { id: 'demo_003_evt_1', type: 'quote_sent', title: 'Devis envoyé au client', message: null, source: 'system', createdAt: '2026-06-18T16:40:00.000Z' },
+    { id: 'demo_003_evt_2', type: 'client_message', title: 'Message client', message: 'Le montant me semble correct, je regarde avec mon conjoint et je reviens vers vous.', source: 'client', createdAt: '2026-06-19T09:40:00.000Z' },
+  ],
+  demo_004: [
+    { id: 'demo_004_evt_1', type: 'quote_sent', title: 'Devis envoyé au client', message: null, source: 'system', createdAt: '2026-06-15T17:15:00.000Z' },
+    { id: 'demo_004_evt_2', type: 'quote_accepted', title: 'Devis accepté par le client', message: null, source: 'system', createdAt: '2026-06-17T09:30:00.000Z' },
+  ],
+  demo_005: [
+    { id: 'demo_005_evt_1', type: 'quote_sent', title: 'Devis envoyé au client', message: null, source: 'system', createdAt: '2026-06-13T10:00:00.000Z' },
+    { id: 'demo_005_evt_2', type: 'quote_declined', title: 'Devis refusé par le client', message: 'Budget reporté et choix d un autre prestataire', source: 'system', createdAt: '2026-06-14T09:00:00.000Z' },
+  ],
+};
+
 export interface DemoEvent {
   id: string;
   title: string;
