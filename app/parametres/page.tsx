@@ -1898,6 +1898,69 @@ function ParametresPageContent() {
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Apparence du widget
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Choisissez le rendu visuel utilisé sur votre site et dans l&apos;aperçu.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+                  {([
+                    {
+                      value: 'sobriety',
+                      label: 'Sobre',
+                      description: 'Clair, discret, compatible avec toutes les couleurs.',
+                    },
+                    {
+                      value: 'immersive',
+                      label: 'Immersif',
+                      description: 'Met davantage votre couleur de marque en avant.',
+                    },
+                    {
+                      value: 'premium_dark',
+                      label: 'Sombre premium',
+                      description: 'Rendu haut de gamme sur fond sombre.',
+                    },
+                  ] as Array<{ value: WidgetColorMode; label: string; description: string }>).map((mode) => {
+                    const active = config.widgetColorMode === mode.value
+                    return (
+                      <button
+                        key={mode.value}
+                        type="button"
+                        onClick={() => setConfig(c => ({ ...c, widgetColorMode: mode.value }))}
+                        style={{
+                          textAlign: 'left',
+                          padding: '14px',
+                          borderRadius: '12px',
+                          border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                          background: active ? 'var(--accent-soft, rgba(34,197,94,0.12))' : 'var(--bg-hover)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          boxShadow: active ? '0 0 0 1px rgba(34,197,94,0.15) inset' : 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <span style={{ color: active ? 'var(--accent)' : 'var(--text-1)', fontSize: '13px', fontWeight: 700 }}>
+                            {mode.label}
+                          </span>
+                          {active && (
+                            <span style={{ color: 'var(--accent)', fontSize: '12px', fontWeight: 700 }}>
+                              ✓ Actif
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
+                          {mode.description}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
                   Tester mon widget
                 </h3>
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 12px' }}>
@@ -3545,46 +3608,6 @@ function ParametresPageContent() {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '16px' }}>
-                  <label style={labelStyle}>Mode de couleur</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
-                    {([
-                      { value: 'sobriety', label: 'Sobre', description: 'Fond clair, accents marque et intro premium sombre.' },
-                      { value: 'immersive', label: 'Immersif', description: 'Univers plus coloré, basé sur votre couleur principale.' },
-                      { value: 'premium_dark', label: 'Sombre premium', description: 'Fond sombre premium, accents principaux et secondaires.' },
-                    ] as Array<{ value: WidgetColorMode; label: string; description: string }>).map((mode) => {
-                      const active = config.widgetColorMode === mode.value
-                      return (
-                        <button
-                          key={mode.value}
-                          type="button"
-                          onClick={() => setConfig(c => ({ ...c, widgetColorMode: mode.value }))}
-                          style={{
-                            textAlign: 'left',
-                            padding: '14px',
-                            borderRadius: '12px',
-                            border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
-                            background: active ? 'var(--accent-soft, rgba(34,197,94,0.12))' : 'var(--bg-hover)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '6px',
-                          }}
-                        >
-                          <span style={{ color: active ? 'var(--accent)' : 'var(--text-1)', fontSize: '13px', fontWeight: 700 }}>
-                            {mode.label}
-                          </span>
-                          <span style={{ color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
-                            {mode.description}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
-                    Choisit la base visuelle du widget sans changer vos contenus ni votre logique de qualification.
-                  </p>
-                </div>
               </div>
 
               <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 6', width: '100%', minWidth: 0 }}>
