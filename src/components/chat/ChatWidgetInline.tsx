@@ -47,6 +47,13 @@ interface Props {
   planOverride?: string
 }
 
+const FIRST_STEP_PROMPTS: Record<string, string> = {
+  'Réparation / Dépannage': 'Quel problème rencontrez-vous ?',
+  'Travaux d\'amélioration': 'Décrivez brièvement les travaux souhaités.',
+  'Entretien': 'Quel entretien souhaitez-vous prévoir ?',
+  'Je ne sais pas encore': 'Expliquez-moi simplement votre situation, je vais vous guider.',
+}
+
 // ─── Résolution du branding du header (marque blanche) ─────────────────────
 // Règle unique, appliquée identiquement que les valeurs viennent des props
 // (aperçu live dans /parametres) ou de l'état interne alimenté par le fetch
@@ -187,6 +194,7 @@ export default function ChatWidgetInline({
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showWelcome, setShowWelcome] = useState(true)
+  const [pendingInitialIntent, setPendingInitialIntent] = useState<string | null>(null)
   // Address autocomplete
   const [adresseSuggestions, setAdresseSuggestions] = useState<AdresseSuggestion[]>([])
   const [adresseLoading, setAdresseLoading] = useState(false)
@@ -388,30 +396,6 @@ export default function ChatWidgetInline({
   }, [isAddressMode])
 
   // ── Fetch opener ─────────────────────────────────────────────────────────
-  const fetchOpener = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [], currentDossier: {}, artisanId }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        const { text } = parseReply(data.reply)
-        const options = Array.isArray(data.quickReplies) && data.quickReplies.length > 0
-          ? data.quickReplies
-          : parseReply(data.reply ?? '').options
-        setMessages([{ role: 'assistant', content: text }])
-        setQuickReplies(options)
-      }
-    } catch (e) {
-      setMessages([{ role: 'assistant', content: 'Bonjour ! Comment puis-je vous aider ?' }])
-    } finally {
-      setLoading(false)
-    }
-  }, [artisanId])
-
   // ── Apply API response ───────────────────────────────────────────────────
   const applyApiResponse = useCallback((data: any) => {
     const { text: replyText } = parseReply(data.reply ?? '')
@@ -473,6 +457,23 @@ export default function ChatWidgetInline({
     setQuickReplies(options)
   }, [])
 
+  const startDeterministicIntent = useCallback((intent: string) => {
+    const prompt = FIRST_STEP_PROMPTS[intent] || 'Décrivez brièvement votre besoin.'
+    setShowWelcome(false)
+    setPendingInitialIntent(intent)
+    setQuickReplies([])
+    setExpectedField(null)
+    setLoading(false)
+    setInput('')
+    setMessages([
+      { role: 'user', content: intent },
+      { role: 'assistant', content: prompt },
+    ])
+    setDossier(prev => ({ ...prev, projectType: intent }))
+    setScore(prev => Math.max(prev, 20))
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }, [])
+
   // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim()
@@ -486,13 +487,20 @@ export default function ChatWidgetInline({
     setMessages(next)
     setLoading(true)
     try {
+      const apiMessages = pendingInitialIntent
+        ? [
+            { role: 'user' as const, content: pendingInitialIntent },
+            { role: 'user' as const, content: text },
+          ]
+        : next
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next, currentDossier: dossier, artisanId }),
+        body: JSON.stringify({ messages: apiMessages, currentDossier: dossier, artisanId }),
       })
       const data = await res.json()
       if (data.success) {
+        if (pendingInitialIntent) setPendingInitialIntent(null)
         applyApiResponse(data)
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: "Désolé, une erreur est survenue. Pouvez-vous reformuler ?" }])
@@ -503,7 +511,7 @@ export default function ChatWidgetInline({
       setLoading(false)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [input, messages, loading, dossier, artisanId, applyApiResponse])
+  }, [input, messages, loading, dossier, artisanId, applyApiResponse, pendingInitialIntent])
 
   // ── Upload photos ────────────────────────────────────────────────────────
   const uploadPhotos = useCallback(async (files: FileList | null) => {
@@ -896,8 +904,7 @@ export default function ChatWidgetInline({
                   <button
                     key={card.title}
                     onClick={() => {
-                      setShowWelcome(false)
-                      fetchOpener().then(() => sendMessage(card.value))
+                      startDeterministicIntent(card.value)
                     }}
                     className="project-mobile-quick-card"
                     style={{
@@ -944,8 +951,8 @@ export default function ChatWidgetInline({
                   onKeyDown={e => {
                     if (e.key === 'Enter' && input.trim()) {
                       const text = input
-                      setShowWelcome(false)
-                      fetchOpener().then(() => sendMessage(text))
+                       setShowWelcome(false)
+                       sendMessage(text)
                     }
                   }}
                   placeholder="Ou décrivez directement votre besoin..."
@@ -958,8 +965,8 @@ export default function ChatWidgetInline({
                   onClick={() => {
                     if (!input.trim()) return
                     const text = input
-                    setShowWelcome(false)
-                    fetchOpener().then(() => sendMessage(text))
+                     setShowWelcome(false)
+                     sendMessage(text)
                   }}
                   disabled={!input.trim()}
                   style={{
@@ -994,8 +1001,7 @@ export default function ChatWidgetInline({
                   <button
                     key={opt}
                     onClick={() => {
-                      setShowWelcome(false)
-                      fetchOpener().then(() => sendMessage(opt))
+                      startDeterministicIntent(opt)
                     }}
                     className="project-choice-card"
                     style={{
@@ -1065,8 +1071,7 @@ export default function ChatWidgetInline({
                 <button
                   key={card.title}
                   onClick={() => {
-                    setShowWelcome(false)
-                    fetchOpener().then(() => sendMessage(card.value))
+                    startDeterministicIntent(card.value)
                   }}
                   className="widget-quick-card"
                   style={{
@@ -1103,8 +1108,8 @@ export default function ChatWidgetInline({
                 onKeyDown={e => {
                   if (e.key === 'Enter' && input.trim()) {
                     const text = input
-                    setShowWelcome(false)
-                    fetchOpener().then(() => sendMessage(text))
+                     setShowWelcome(false)
+                     sendMessage(text)
                   }
                 }}
                 placeholder="Ou décrivez directement votre besoin..."
@@ -1117,8 +1122,8 @@ export default function ChatWidgetInline({
                 onClick={() => {
                   if (!input.trim()) return
                   const text = input
-                  setShowWelcome(false)
-                  fetchOpener().then(() => sendMessage(text))
+                   setShowWelcome(false)
+                   sendMessage(text)
                 }}
                 disabled={!input.trim()}
                 style={{
