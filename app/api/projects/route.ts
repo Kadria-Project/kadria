@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
+import { sendClientProjectConfirmationEmailBestEffort } from '@/src/lib/email/client-project-confirmation';
 import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
 import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
@@ -216,6 +217,23 @@ export async function POST(request: Request) {
     if (!usageResult.success) {
       console.error('[PROJECT_QUOTA] Project created but usage tracking failed:', usageResult.error || 'unknown error');
     }
+
+    // Email de confirmation client (best-effort) : ne doit jamais faire
+    // echouer la creation du projet, ni etre attendu de facon bloquante.
+    await sendClientProjectConfirmationEmailBestEffort({
+      projectId: record.id,
+      artisanId,
+      clientEmail: String(input.clientEmail || ''),
+      clientFirstName: typeof input.clientFirstName === 'string' ? input.clientFirstName : undefined,
+      projectType: typeof input.projectType === 'string' ? input.projectType : undefined,
+      aiSummary: typeof input.aiSummary === 'string' ? input.aiSummary : undefined,
+      city: typeof input.city === 'string' ? input.city : undefined,
+      siteAddress: typeof input.siteAddress === 'string' ? input.siteAddress : undefined,
+      budget: typeof input.budget === 'string' ? input.budget : undefined,
+      desiredTimeline: typeof input.desiredTimeline === 'string' ? input.desiredTimeline : undefined,
+      clientPhone: typeof input.clientPhone === 'string' ? input.clientPhone : undefined,
+      photosCount: Array.isArray(input.photos) ? input.photos.length : undefined,
+    });
 
     return NextResponse.json({
       success: true,

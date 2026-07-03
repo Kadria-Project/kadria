@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/src/lib/usage/quotas'
 import { sendOvhSms } from '@/src/lib/sms/ovh-sms'
 import { getBaseUrl } from '@/src/lib/base-url'
+import { sendClientProjectConfirmationEmailBestEffort } from '@/src/lib/email/client-project-confirmation'
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo'
 
@@ -390,6 +391,11 @@ export async function POST(request: NextRequest) {
     const desiredTimeline = String(params.desiredTimeline || '')
     const urgency = String(params.urgency || '')
     const clientName = String(params.clientName || '') || 'Prospect appel vocal'
+    // Optionnel : certains assistants Vapi peuvent transmettre un email
+    // client (ex: rappele par le client a l'oral). Extraction non-bloquante,
+    // n'existait pas avant ce lot - purement additive.
+    const clientEmail = String(params.clientEmail || params.email || '')
+    const clientFirstName = String(params.clientFirstName || '')
     const phoneExtraction = extractCustomerPhoneFromVapiPayload(body, params)
     const clientPhone = phoneExtraction.phone || String(params.clientPhone || callerNumber || '')
     console.log(
@@ -413,7 +419,9 @@ export async function POST(request: NextRequest) {
     const payload = toSupabaseProjectInsert({
       artisanId,
       clientName,
+      clientFirstName,
       clientPhone,
+      clientEmail,
       city,
       trade,
       projectType,
@@ -441,6 +449,22 @@ export async function POST(request: NextRequest) {
 
       // SMS de complément (best-effort, n'affecte jamais la création du projet).
       await sendCompletionSmsBestEffort({ projectId: result.id, clientPhone })
+
+      // Email de confirmation client (best-effort, n'affecte jamais la
+      // création du projet). N'envoie rien si aucun email client valide
+      // n'est disponible (cas actuel le plus fréquent côté Vapi).
+      await sendClientProjectConfirmationEmailBestEffort({
+        projectId: result.id,
+        artisanId,
+        clientEmail,
+        clientFirstName: clientFirstName || undefined,
+        projectType,
+        aiSummary,
+        city,
+        budget,
+        desiredTimeline,
+        clientPhone,
+      })
 
       const usageResult = await recordProjectCreatedUsage({
         artisanId,
