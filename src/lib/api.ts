@@ -16,7 +16,7 @@ export async function getProjects(params: GetProjectsParams = {}) {
 
   const res = await fetch(url);
 
-  if (!res.ok) throw new Error('Erreur rÃ©cupÃ©ration projets');
+  if (!res.ok) throw new Error('Erreur récupération projets');
 
   return res.json();
 }
@@ -24,7 +24,7 @@ export async function getProjects(params: GetProjectsParams = {}) {
 export async function getStats() {
   const res = await fetch('/api/stats');
 
-  if (!res.ok) throw new Error('Erreur rÃ©cupÃ©ration stats');
+  if (!res.ok) throw new Error('Erreur récupération stats');
 
   return res.json();
 }
@@ -32,7 +32,7 @@ export async function getStats() {
 export async function getProject(id: string) {
   const res = await fetch(`/api/projects/${id}`);
 
-  if (!res.ok) throw new Error('Erreur rÃ©cupÃ©ration dossier');
+  if (!res.ok) throw new Error('Erreur récupération dossier');
 
   return res.json();
 }
@@ -44,7 +44,7 @@ export async function updateProject(id: string, data: Record<string, unknown>) {
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) throw new Error('Erreur mise Ã  jour dossier');
+  if (!res.ok) throw new Error('Erreur mise à jour dossier');
 
   return res.json();
 }
@@ -52,7 +52,7 @@ export async function updateProject(id: string, data: Record<string, unknown>) {
 export async function getProjectActivity(id: string) {
   const res = await fetch(`/api/projects/${id}/activity`);
 
-  if (!res.ok) throw new Error('Erreur rÃ©cupÃ©ration historique');
+  if (!res.ok) throw new Error('Erreur récupération historique');
 
   return res.json();
 }
@@ -65,7 +65,7 @@ export async function createProjectDepositCheckout(id: string) {
 
   const data = await res.json();
 
-  if (!res.ok || !data.success) throw new Error(data.error || "Erreur gÃ©nÃ©ration lien d'acompte");
+  if (!res.ok || !data.success) throw new Error(data.error || "Erreur génération lien d'acompte");
 
   return data;
 }
