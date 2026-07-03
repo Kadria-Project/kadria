@@ -330,7 +330,7 @@ async function fetchAdresses(q: string): Promise<AdresseSuggestion[] | null> {
 export default function ChatWidgetInline({
   artisanId = '',
   artisanName = "l'artisan",
-  primaryColor = '#22c55e',
+  primaryColor,
   secondaryColor,
   widgetColorMode = 'sobriety',
   welcomeNameOverride,
@@ -386,7 +386,7 @@ export default function ChatWidgetInline({
   })
 
   // Config artisan
-  const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor)
+  const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor || '#22c55e')
   const [secondaryColorLocal, setSecondaryColorLocal] = useState('#09090b')
   const [widgetColorModeLocal, setWidgetColorModeLocal] = useState<'sobriety' | 'immersive' | 'premium_dark'>(widgetColorMode)
   const [widgetName, setWidgetName] = useState('Kadria')
