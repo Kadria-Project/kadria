@@ -30,6 +30,39 @@ interface PortalProject {
   clientMessages: string;
 }
 
+interface TimelineEvent {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  source: string;
+  createdAt: string | null;
+  metadata: Record<string, unknown>;
+}
+
+function sourceLabel(source: string): string {
+  if (source === 'client') return 'Vous';
+  if (source === 'artisan') return 'Artisan';
+  return 'Kadria';
+}
+
+function sourceColor(source: string): string {
+  if (source === 'client') return '#16a34a';
+  if (source === 'artisan') return '#2563eb';
+  return '#6b7280';
+}
+
+function formatDateTimeFr(value: string | null): string {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleString('fr-FR', {
+      day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   border: '1px solid #e5e7eb',
@@ -72,6 +105,7 @@ export default function ClientPortalPage() {
   const [invalid, setInvalid] = useState(false);
   const [artisan, setArtisan] = useState<ArtisanBranding | null>(null);
   const [project, setProject] = useState<PortalProject | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -104,6 +138,7 @@ export default function ClientPortalPage() {
         }
         setArtisan(data.artisan || null);
         setProject(data.project || null);
+        setTimelineEvents(Array.isArray(data.timelineEvents) ? data.timelineEvents : []);
         // Préremplissage réel des champs connus (mêmes valeurs que la fiche
         // projet artisan), pas seulement en placeholder : le client doit
         // retrouver ses informations déjà éditables, y compris le Nom.
@@ -126,6 +161,20 @@ export default function ClientPortalPage() {
       setLoading(false);
     }
   }, [token]);
+
+  // Rafraîchit uniquement la timeline après un envoi (refetch simple, plus
+  // sûr qu'une mise à jour optimiste pour ce lot V1).
+  const refetchTimeline = async () => {
+    try {
+      const res = await fetch(`/api/client-portal/${token}`);
+      const data = await res.json();
+      if (res.ok) {
+        setTimelineEvents(Array.isArray(data.timelineEvents) ? data.timelineEvents : []);
+      }
+    } catch {
+      // non bloquant
+    }
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -184,6 +233,7 @@ export default function ClientPortalPage() {
       setMessage('');
       setPhotos([]);
       setDone(true);
+      await refetchTimeline();
     } catch {
       setSubmitError("Erreur lors de l'enregistrement");
     } finally {
@@ -287,6 +337,53 @@ export default function ClientPortalPage() {
             <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
               {project.photos.map((p, i) => (
                 <img key={i} src={p.url} alt="" style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Timeline "Suivi de votre demande" — ne montre que les événements
+            visibles côté client renvoyés par l'API (visibility='client'),
+            jamais de donnée interne. Ordre chronologique croissant pour
+            raconter l'histoire de la demande. */}
+        <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>Suivi de votre demande</h2>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 16px' }}>
+            L&apos;artisan vous répondra ici lorsque de nouvelles informations seront disponibles.
+          </p>
+
+          {timelineEvents.length === 0 ? (
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+              Votre demande a bien été reçue. Aucun échange pour le moment.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {timelineEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  style={{
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    borderLeft: `3px solid ${sourceColor(ev.source)}`,
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: sourceColor(ev.source) }}>
+                      {sourceLabel(ev.source)}
+                    </span>
+                    {ev.createdAt && (
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDateTimeFr(ev.createdAt)}</span>
+                    )}
+                  </div>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#111827' }}>{ev.title}</p>
+                  {ev.message && (
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {ev.message}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           )}

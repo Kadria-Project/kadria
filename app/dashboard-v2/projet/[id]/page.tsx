@@ -291,6 +291,32 @@ function parseClientMessages(raw: unknown): ClientPortalMessage[] {
   }
 }
 
+// Timeline client (lot messagerie/timeline V1) : événements issus de la
+// table ProjectClientEvents (client_message, artisan_reply,
+// client_info_updated, + futurs types réservés). Distinct des notes
+// internes (jamais mélangés) et distinct de l'Activity interne générique.
+type ClientTimelineEvent = {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  source: string;
+  createdAt: string | null;
+  metadata: Record<string, unknown>;
+};
+
+function clientEventBorderColor(source: string): string {
+  if (source === 'client') return '#16a34a';
+  if (source === 'artisan') return '#2563eb';
+  return 'var(--border)';
+}
+
+function clientEventSourceLabel(source: string): string {
+  if (source === 'client') return 'Message client';
+  if (source === 'artisan') return 'Réponse artisan';
+  return 'Événement système';
+}
+
 // Résumé compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
 // distingue un RDV court (avec durée), une demi-journée / journée complète
 // (amplitude, sans heure de fin explicite) et un chantier multi-jours
@@ -801,6 +827,11 @@ function ProjectDetail() {
   const [smsCompletionToast, setSmsCompletionToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [clientPortalLoading, setClientPortalLoading] = useState(false);
   const [clientPortalToast, setClientPortalToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [clientTimelineEvents, setClientTimelineEvents] = useState<ClientTimelineEvent[]>([]);
+  const [clientReplyMessage, setClientReplyMessage] = useState('');
+  const [clientReplySending, setClientReplySending] = useState(false);
+  const [clientReplyError, setClientReplyError] = useState('');
+  const [clientReplySuccess, setClientReplySuccess] = useState('');
   useEffect(() => {
     if (!clientPortalToast) return;
     const timeout = window.setTimeout(() => setClientPortalToast(null), 4200);
@@ -1038,6 +1069,61 @@ function ProjectDetail() {
       })
       .catch(() => {});
   }, []);
+
+  // Timeline client (lot messagerie/timeline V1) : tolérant à l'absence de
+  // la table ProjectClientEvents (migration pas encore appliquée) — l'API
+  // renvoie alors simplement un tableau vide plutôt qu'une erreur.
+  async function loadClientTimeline() {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/projects/${id}/client-replies`);
+      const data = await res.json();
+      if (data.success) setClientTimelineEvents(Array.isArray(data.events) ? data.events : []);
+    } catch {
+      // non bloquant : la fiche projet reste utilisable sans timeline
+    }
+  }
+
+  useEffect(() => {
+    loadClientTimeline();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  async function submitClientReply() {
+    const trimmed = clientReplyMessage.trim();
+    setClientReplyError('');
+    setClientReplySuccess('');
+
+    if (!trimmed) {
+      setClientReplyError('Merci de saisir un message avant de publier.');
+      return;
+    }
+    if (trimmed.length > 2000) {
+      setClientReplyError('Le message est trop long (2000 caractères maximum).');
+      return;
+    }
+
+    setClientReplySending(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/client-replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setClientReplyError(data.error || "Erreur lors de l'envoi de la réponse.");
+        return;
+      }
+      setClientReplyMessage('');
+      setClientReplySuccess('Réponse ajoutée au portail client');
+      await loadClientTimeline();
+    } catch {
+      setClientReplyError("Erreur lors de l'envoi de la réponse.");
+    } finally {
+      setClientReplySending(false);
+    }
+  }
 
   async function handleCreateDepositCheckout() {
     setDepositCheckoutLoading(true);
@@ -3831,7 +3917,42 @@ function ProjectDetail() {
                 </ul>
               )}
 
-              {clientMessages.length > 0 && (
+              {/* Timeline (ProjectClientEvents) prioritaire si disponible ;
+                  sinon repli sur l'ancien affichage client_messages, pour
+                  les anciens projets / si la migration n'est pas encore
+                  appliquée. */}
+              {clientTimelineEvents.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                  <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                    Timeline
+                  </p>
+                  {clientTimelineEvents.map((ev) => (
+                    <div
+                      key={ev.id}
+                      style={{
+                        background: 'var(--bg-hover)',
+                        border: '1px solid var(--border)',
+                        borderLeft: `3px solid ${clientEventBorderColor(ev.source)}`,
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: clientEventBorderColor(ev.source) }}>
+                          {clientEventSourceLabel(ev.source)}
+                        </span>
+                        {ev.createdAt && <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{formatDateTime(ev.createdAt)}</span>}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{ev.title}</p>
+                      {ev.message && (
+                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                          {ev.message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : clientMessages.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
                   <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
                     Messages client
@@ -3858,6 +3979,64 @@ function ProjectDetail() {
                   ))}
                 </div>
               )}
+
+              {/* Réponse artisan — publiée dans le portail client (visible
+                  du client final), strictement distincte des notes internes
+                  (section séparée plus bas dans la page). */}
+              <div style={{
+                marginTop: '4px',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                  Répondre au client
+                </p>
+                <textarea
+                  value={clientReplyMessage}
+                  onChange={(e) => {
+                    setClientReplyMessage(e.target.value);
+                    setClientReplyError('');
+                    setClientReplySuccess('');
+                  }}
+                  placeholder="Votre réponse sera visible par le client dans son portail..."
+                  rows={3}
+                  maxLength={2000}
+                  style={{
+                    width: '100%',
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    color: 'var(--text-1)',
+                    background: 'var(--bg-hover)',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {clientReplyError && (
+                  <p style={{ fontSize: '12px', color: '#dc2626', margin: 0 }}>{clientReplyError}</p>
+                )}
+                {clientReplySuccess && (
+                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, fontWeight: 600 }}>{clientReplySuccess}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={submitClientReply}
+                  disabled={clientReplySending || !clientReplyMessage.trim()}
+                  style={{
+                    ...quickActionButtonStyle,
+                    width: isMobile ? '100%' : 'fit-content',
+                    opacity: (clientReplySending || !clientReplyMessage.trim()) ? 0.6 : 1,
+                    cursor: (clientReplySending || !clientReplyMessage.trim()) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}
+                </button>
+              </div>
             </div>
           );
         })()}

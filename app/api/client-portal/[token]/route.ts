@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable'
+import { createClientEvent, getPublicTimelineEvents } from '@/src/lib/client-events'
 import { resolveDevisBranding } from '@/src/lib/devis-branding'
 import { normalizePlan } from '@/src/lib/plans'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
@@ -115,6 +116,7 @@ export async function GET(
     })
 
     const photos = Array.isArray(project.photos) ? project.photos : []
+    const timelineEvents = await getPublicTimelineEvents(String(project.id))
 
     return NextResponse.json({
       valid: true,
@@ -143,6 +145,7 @@ export async function GET(
         photos: photos.map((p: unknown) => (p && typeof p === 'object' ? { url: String((p as Record<string, unknown>).url || '') } : null)).filter(Boolean),
         clientMessages: project.client_messages || '',
       },
+      timelineEvents,
     })
   } catch (e) {
     console.error('[CLIENT-PORTAL GET] Unexpected error:', e instanceof Error ? e.message : String(e))
@@ -277,6 +280,39 @@ export async function PATCH(
         photoUrls.length > 0 ? `${photoUrls.length} photo(s) ajoutée(s).` : '',
       ].filter(Boolean).join(' '),
     )
+
+    // Timeline client V1 : on ne crée un événement 'client_info_updated' que
+    // si au moins un champ a réellement été renseigné avec une valeur non
+    // vide (pas de bruit dans la timeline pour une requête sans changement
+    // réel). Le message client a son propre événement dédié.
+    const infoUpdated = Boolean(
+      firstName || lastName || email || phone || address || budget || timeline ||
+      availability || urgency || details || photoUrls.length > 0,
+    )
+
+    if (message) {
+      await createClientEvent({
+        projectId: String(project.id),
+        artisanId: String(project.artisan_id),
+        eventType: 'client_message',
+        visibility: 'client',
+        source: 'client',
+        title: 'Message du client',
+        message,
+      })
+    }
+
+    if (infoUpdated) {
+      await createClientEvent({
+        projectId: String(project.id),
+        artisanId: String(project.artisan_id),
+        eventType: 'client_info_updated',
+        visibility: 'client',
+        source: 'client',
+        title: 'Informations complétées',
+        message: 'Le client a complété des informations sur sa demande.',
+      })
+    }
 
     const photosOut = Array.isArray(updated.photos) ? updated.photos : []
 
