@@ -96,6 +96,12 @@ interface MonthlyUsageSummary {
     percent: number | null;
     status: UsageStatus;
   };
+  assistant?: {
+    used: number;
+    limit: number | null;
+    percent: number | null;
+    status: UsageStatus;
+  };
   updatedAt?: string;
 }
 
@@ -1722,6 +1728,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         status: 'ok',
       },
       devis: { used: 6, limit: null, unlimited: true, percent: null, status: 'ok' },
+      assistant: { used: 9, limit: 50, percent: 18, status: 'ok' },
       updatedAt: new Date().toISOString(),
     };
 
@@ -5169,7 +5176,10 @@ function MonthlyUsageCard({
     );
   }
 
-  const globalStatus = combineUsageStatusUi(usage.projects.status, usage.vapi.status);
+  const globalStatus = combineUsageStatusUi(
+    combineUsageStatusUi(usage.projects.status, usage.vapi.status),
+    usage.assistant?.status ?? 'ok',
+  );
 
   const projectsLabel = usage.projects.unlimited
     ? `${usage.projects.used} / Illimité`
@@ -5189,6 +5199,12 @@ function MonthlyUsageCard({
     ? `${usage.devis.used} / Illimité`
     : `${usage.devis.used} / ${usage.devis.limit ?? 0}`;
 
+  const assistantLabel = usage.assistant
+    ? usage.assistant.limit === null
+      ? `${usage.assistant.used} / Illimité`
+      : `${usage.assistant.used} / ${usage.assistant.limit}`
+    : null;
+
   return (
     <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
       <div className="flex items-center justify-between gap-2">
@@ -5199,6 +5215,9 @@ function MonthlyUsageCard({
       <div className="mt-4 flex flex-col gap-3">
         <UsageRow label="Dossiers" value={projectsLabel} percent={usage.projects.unlimited ? null : usage.projects.percent} status={usage.projects.status} />
         <UsageRow label="Devis" value={devisLabel} percent={usage.devis.unlimited ? null : usage.devis.percent} status={usage.devis.status} />
+        {usage.assistant && assistantLabel && (
+          <UsageRow label="Messages assistant interne" value={assistantLabel} percent={usage.assistant.percent} status={usage.assistant.status} />
+        )}
         <UsageRow label="Appels vocaux" value={callsLabel} percent={usage.vapi.callsUnlimited ? null : usage.vapi.callsPercent} status={usage.vapi.status} />
         <UsageRow label="Minutes" value={minutesLabel} percent={usage.vapi.minutesPercent} status={usage.vapi.status} />
       </div>
@@ -5245,6 +5264,12 @@ function MonthlyUsageDetailModal({
     ? `${usage.devis.used} / Illimité`
     : `${usage.devis.used} / ${usage.devis.limit ?? 0}`;
 
+  const assistantLabel = usage.assistant
+    ? usage.assistant.limit === null
+      ? `${usage.assistant.used} / Illimité`
+      : `${usage.assistant.used} / ${usage.assistant.limit}`
+    : null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
@@ -5282,6 +5307,15 @@ function MonthlyUsageDetailModal({
             </div>
             <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{devisLabel}</p>
           </div>
+          {usage.assistant && assistantLabel && (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[var(--text-3)]">Messages assistant interne</p>
+                <UsageStatusBadge status={usage.assistant.status} />
+              </div>
+              <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{assistantLabel}</p>
+            </div>
+          )}
           <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
             <div className="flex items-center justify-between">
               <p className="text-xs text-[var(--text-3)]">Appels vocaux</p>
