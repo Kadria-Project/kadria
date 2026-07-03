@@ -129,6 +129,7 @@ export async function GET(
         createdAt: project.created_at || null,
         clientFirstName: project.client_first_name || '',
         clientName: project.client_name || '',
+        clientLastName: project.client_name || '',
         clientEmail: project.client_email || '',
         clientPhone: project.client_phone || '',
         projectType: project.project_type || '',
@@ -215,12 +216,14 @@ export async function PATCH(
       client_update_count: (Number(project.client_update_count) || 0) + 1,
     }
 
+    // Important : `client_name` correspond au champ "Nom" (nom de famille
+    // seul) tel qu'affiché/édité dans la fiche projet artisan — ce n'est
+    // PAS un nom complet. On ne le compose donc jamais avec le prénom, sous
+    // peine d'écraser le "Nom" avec "Prénom Nom" et de désynchroniser
+    // l'affichage côté artisan. On n'écrit un champ que s'il a été renseigné
+    // (jamais d'écrasement par une valeur vide non intentionnelle).
     if (firstName) update.client_first_name = firstName
-    if (firstName || lastName) {
-      const existingName = String(project.client_name || '')
-      const composed = [firstName || existingName.split(' ')[0] || '', lastName].filter(Boolean).join(' ').trim()
-      if (composed) update.client_name = composed
-    }
+    if (lastName) update.client_name = lastName
     if (email) update.client_email = email
     if (phone) update.client_phone = phone
     if (address) update.site_address = address
@@ -284,6 +287,7 @@ export async function PATCH(
         createdAt: updated.created_at || null,
         clientFirstName: updated.client_first_name || '',
         clientName: updated.client_name || '',
+        clientLastName: updated.client_name || '',
         clientEmail: updated.client_email || '',
         clientPhone: updated.client_phone || '',
         projectType: updated.project_type || '',

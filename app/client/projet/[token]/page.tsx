@@ -15,6 +15,7 @@ interface PortalProject {
   createdAt: string | null;
   clientFirstName: string;
   clientName: string;
+  clientLastName: string;
   clientEmail: string;
   clientPhone: string;
   projectType: string;
@@ -103,6 +104,13 @@ export default function ClientPortalPage() {
         }
         setArtisan(data.artisan || null);
         setProject(data.project || null);
+        // Préremplissage réel des champs connus (mêmes valeurs que la fiche
+        // projet artisan), pas seulement en placeholder : le client doit
+        // retrouver ses informations déjà éditables, y compris le Nom.
+        setFirstName(data.project?.clientFirstName || '');
+        setLastName(data.project?.clientLastName || '');
+        setEmail(data.project?.clientEmail || '');
+        setPhone(data.project?.clientPhone || '');
         setAddress(data.project?.siteAddress || '');
         setBudget(data.project?.budget || '');
         setTimeline(data.project?.desiredTimeline || '');
@@ -305,7 +313,7 @@ export default function ClientPortalPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
             <div>
               <label style={labelStyle}>Prénom</label>
-              <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={120} placeholder={project.clientFirstName || 'Prénom'} />
+              <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={120} placeholder="Prénom" />
             </div>
             <div>
               <label style={labelStyle}>Nom</label>
@@ -315,12 +323,12 @@ export default function ClientPortalPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
             <div>
-              <label style={labelStyle}>Email</label>
-              <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} placeholder={project.clientEmail || 'vous@exemple.fr'} />
+              <label style={labelStyle}>Téléphone</label>
+              <input style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} placeholder="06..." />
             </div>
             <div>
-              <label style={labelStyle}>Téléphone</label>
-              <input style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} placeholder={project.clientPhone || '06...'} />
+              <label style={labelStyle}>Email</label>
+              <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} placeholder="vous@exemple.fr" />
             </div>
           </div>
 
