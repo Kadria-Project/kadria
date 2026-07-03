@@ -43,8 +43,19 @@ interface PortalQuote {
   publicQuoteUrl: string | null;
   depositPaymentUrl: string | null;
   depositAmount: number | null;
+  deposit: PortalDeposit | null;
   canAccept: boolean;
   canDecline: boolean;
+}
+
+interface PortalDeposit {
+  status: 'paid' | 'pending' | 'failed' | 'unavailable';
+  publicStatus: 'paid' | 'pending' | 'failed' | 'unavailable';
+  amount: number | null;
+  paymentUrl: string | null;
+  paidAt: string | null;
+  canPay: boolean;
+  isPaid: boolean;
 }
 
 interface TimelineEvent {
@@ -545,23 +556,102 @@ export default function ClientPortalPage() {
                   )}
                 </div>
 
-                {quote.depositPaymentUrl ? (
-                  <a
-                    href={quote.depositPaymentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-block', background: '#111827', color: '#fff', fontWeight: 700,
-                      fontSize: '13px', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none',
-                    }}
-                  >
-                    {quote.depositAmount !== null ? `Régler l'acompte (${formatAmount(quote.depositAmount)})` : "Régler l'acompte"}
-                  </a>
-                ) : (
-                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
-                    Le paiement d&apos;un acompte n&apos;est pas encore disponible pour ce projet.
-                  </p>
-                )}
+                {(() => {
+                  const deposit = quote.deposit;
+                  const depositAmount = deposit?.amount ?? quote.depositAmount;
+                  const depositUrl = deposit?.paymentUrl ?? quote.depositPaymentUrl;
+
+                  // Acompte payé : badge vert compact, aucun CTA de paiement.
+                  if (deposit?.isPaid) {
+                    return (
+                      <div>
+                        <div style={{
+                          display: 'inline-block', padding: '6px 12px', borderRadius: '999px', margin: '0 0 8px',
+                          background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: '13px',
+                        }}>
+                          Acompte payé
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>
+                          {depositAmount !== null ? `Acompte de ${formatAmount(depositAmount)} réglé.` : 'Acompte réglé.'}
+                          {deposit.paidAt ? ` Payé le ${formatDate(deposit.paidAt)}.` : ''}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  // Paiement en cours de confirmation : pas de CTA.
+                  if (deposit?.status === 'pending') {
+                    return (
+                      <div>
+                        <div style={{
+                          display: 'inline-block', padding: '6px 12px', borderRadius: '999px', margin: '0 0 8px',
+                          background: '#dbeafe', color: '#1e40af', fontWeight: 700, fontSize: '13px',
+                        }}>
+                          Paiement en cours
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>
+                          Le paiement de l&apos;acompte est en cours de confirmation.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  // Échec / annulation : proposer de réessayer si un lien
+                  // valide existe encore, sinon message neutre.
+                  if (deposit?.status === 'failed') {
+                    return (
+                      <div>
+                        <div style={{
+                          display: 'inline-block', padding: '6px 12px', borderRadius: '999px', margin: '0 0 8px',
+                          background: '#fee2e2', color: '#b91c1c', fontWeight: 700, fontSize: '13px',
+                        }}>
+                          Paiement non finalisé
+                        </div>
+                        {depositUrl ? (
+                          <a
+                            href={depositUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-block', background: '#111827', color: '#fff', fontWeight: 700,
+                              fontSize: '13px', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none',
+                            }}
+                          >
+                            Réessayer le paiement
+                          </a>
+                        ) : (
+                          <p style={{ fontSize: '13px', color: '#374151', margin: 0 }}>
+                            Paiement non disponible.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Pas de statut payé/en attente/échoué mais un lien valide
+                  // existe : comportement historique, bouton de paiement.
+                  if (deposit?.canPay && depositUrl) {
+                    return (
+                      <a
+                        href={depositUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-block', background: '#111827', color: '#fff', fontWeight: 700,
+                          fontSize: '13px', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none',
+                        }}
+                      >
+                        {depositAmount !== null ? `Régler l'acompte (${formatAmount(depositAmount)})` : "Régler l'acompte"}
+                      </a>
+                    );
+                  }
+
+                  return (
+                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
+                      Le paiement d&apos;un acompte n&apos;est pas encore disponible pour ce projet.
+                    </p>
+                  );
+                })()}
               </div>
             )}
           </div>

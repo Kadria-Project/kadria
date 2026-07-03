@@ -5,6 +5,7 @@ import { resolveDevisBranding } from '@/src/lib/devis-branding'
 import { normalizePlan } from '@/src/lib/plans'
 import { getBaseUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { normalizePublicDepositStatus } from '@/src/lib/deposit'
 
 // Portail client V1 : page publique de suivi + complément d'une demande,
 // sécurisée par token opaque (même convention que sms_completion_token /
@@ -54,7 +55,7 @@ const PUBLIC_PROJECT_COLUMNS =
   'id, artisan_id, status, completeness_score, client_first_name, client_name, client_email, ' +
   'client_phone, site_address, city, postal_code, project_type, trade, budget, desired_timeline, ' +
   'ai_summary, photos, created_at, client_portal_token, client_messages, client_last_update_at, ' +
-  'client_update_count, deposit_payment_url, deposit_amount, deposit_status'
+  'client_update_count, deposit_payment_url, deposit_amount, deposit_status, deposit_paid_at'
 
 // Seul un lien http(s) valide est exposé au client — jamais une valeur vide,
 // malformée, ou un schéma non http(s).
@@ -123,6 +124,31 @@ async function buildPublicQuoteBlock(project: Record<string, any>) {
   const depositPaymentUrl = isValidHttpUrl(project.deposit_payment_url) ? String(project.deposit_payment_url).trim() : null
   const depositAmountRaw = Number(project.deposit_amount)
   const depositAmount = Number.isFinite(depositAmountRaw) && depositAmountRaw > 0 ? depositAmountRaw : null
+  // Statut réel écrit par le webhook (app/api/stripe/connect/deposit-webhook/
+  // route.ts) : littéralement 'paid' au succès. normalizePublicDepositStatus
+  // reste défensif sur d'autres valeurs possibles mais 'paid' est la seule
+  // effectivement produite aujourd'hui par ce pipeline.
+  const depositPublicStatus = normalizePublicDepositStatus(project.deposit_status)
+  const depositIsPaid = depositPublicStatus === 'paid'
+  const depositIsPending = depositPublicStatus === 'pending'
+  const depositPaidAt = depositIsPaid && typeof project.deposit_paid_at === 'string' ? project.deposit_paid_at : null
+
+  function buildDepositBlock(showDeposit: boolean) {
+    const url = showDeposit ? depositPaymentUrl : null
+    const amount = showDeposit ? depositAmount : null
+    const status = showDeposit ? depositPublicStatus : 'unavailable'
+    const isPaid = showDeposit && depositIsPaid
+    const canPay = showDeposit && Boolean(url) && !depositIsPaid && !depositIsPending
+    return {
+      status,
+      publicStatus: status,
+      amount,
+      paymentUrl: url,
+      paidAt: showDeposit ? depositPaidAt : null,
+      canPay,
+      isPaid,
+    }
+  }
 
   if (!quoteRow) {
     return {
@@ -138,6 +164,7 @@ async function buildPublicQuoteBlock(project: Record<string, any>) {
       publicQuoteUrl: null,
       depositPaymentUrl,
       depositAmount,
+      deposit: buildDepositBlock(false),
       canAccept: false,
       canDecline: false,
     }
@@ -172,6 +199,7 @@ async function buildPublicQuoteBlock(project: Record<string, any>) {
     publicQuoteUrl,
     depositPaymentUrl: showDeposit ? depositPaymentUrl : null,
     depositAmount: showDeposit ? depositAmount : null,
+    deposit: buildDepositBlock(showDeposit),
     // Acceptation/refus restent gérés par la page publique existante
     // (/devis/[token]) dans ce lot — pas d'intégration directe dans le
         // portail, voir limites du rapport final.
