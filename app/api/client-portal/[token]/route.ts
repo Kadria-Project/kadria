@@ -41,20 +41,8 @@ function resolveClientStatus(status: string, completenessScore: number): string 
   return CLIENT_STATUS_MAP[status] || 'Demande reçue'
 }
 
-async function createActivityLog(projectId: string, action: string, description: string) {
-  try {
-    const { error } = await supabaseAdmin.from(TABLES.activity).insert({
-      project_id: projectId,
-      action,
-      description,
-      created_at: new Date().toISOString(),
-    })
-    if (error) {
-      console.error('[CLIENT-PORTAL] Activity insert error:', error.message)
-    }
-  } catch (e) {
-    console.error('[CLIENT-PORTAL] Activity insert threw:', e instanceof Error ? e.message : String(e))
-  }
+function normalizeCompare(value: unknown): string {
+  return String(value ?? '').trim()
 }
 
 // Champs strictement publics du projet : jamais de score commercial, notes
@@ -214,6 +202,92 @@ export async function PATCH(
       return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
     }
 
+    // Anti-spam serveur : on ne considère qu'il y a un changement réel que
+    // si une valeur envoyée diffère (après trim) de la valeur actuellement
+    // en base, ou s'il s'agit d'un contenu additif (précisions/message/
+    // photos) qui n'a pas déjà été enregistré tel quel. Objectif : un clic
+    // sur "Envoyer mes informations" sans aucune modification ne doit
+    // jamais créer d'événement, ni incrémenter les compteurs, ni polluer
+    // l'activité du dossier — même si le front (gating bouton) est
+    // contourné ou en retard sur une resoumission.
+    const existingValues = {
+      firstName: normalizeCompare(project.client_first_name),
+      lastName: normalizeCompare(project.client_name),
+      email: normalizeCompare(project.client_email),
+      phone: normalizeCompare(project.client_phone),
+      address: normalizeCompare(project.site_address),
+      budget: normalizeCompare(project.budget),
+      timeline: normalizeCompare(project.desired_timeline),
+    }
+
+    const changedFieldLabels: string[] = []
+    if (firstName && firstName !== existingValues.firstName) changedFieldLabels.push('prénom')
+    if (lastName && lastName !== existingValues.lastName) changedFieldLabels.push('nom')
+    if (email && email !== existingValues.email) changedFieldLabels.push('email')
+    if (phone && phone !== existingValues.phone) changedFieldLabels.push('téléphone')
+    if (address && address !== existingValues.address) changedFieldLabels.push('adresse')
+    if (budget && budget !== existingValues.budget) changedFieldLabels.push('budget')
+    if (timeline && timeline !== existingValues.timeline) changedFieldLabels.push('délai souhaité')
+
+    // Précisions / disponibilités / urgence : ajoutées de façon additive au
+    // résumé, jamais en écrasant l'existant (même approche que /completer).
+    // On ne les considère "changées" que si ce bloc exact n'est pas déjà la
+    // dernière chose ajoutée au résumé (évite d'empiler la même précision à
+    // chaque clic).
+    const extraNotes: string[] = []
+    if (details) extraNotes.push(`Précisions complémentaires (client) : ${details}`)
+    if (availability) extraNotes.push(`Disponibilités (client) : ${availability}`)
+    if (urgency) extraNotes.push(`Urgence signalée par le client : ${urgency}`)
+    const existingSummary = String(project.ai_summary || '').trim()
+    const notesBlock = extraNotes.join('\n\n')
+    const notesChanged = extraNotes.length > 0 && !(existingSummary && existingSummary.endsWith(notesBlock))
+    if (notesChanged) changedFieldLabels.push('précisions')
+
+    const existingPhotoUrls = new Set(
+      (Array.isArray(project.photos) ? project.photos : [])
+        .map((p: unknown) => (p && typeof p === 'object' ? String((p as Record<string, unknown>).url || '') : ''))
+        .filter(Boolean),
+    )
+    const newPhotoUrls = photoUrls.filter((url) => !existingPhotoUrls.has(url))
+    if (newPhotoUrls.length > 0) changedFieldLabels.push('photos')
+
+    const existingMessagesTrim = String(project.client_messages || '').trim()
+    const lastMessageBlock = existingMessagesTrim.split(/\n\s*\n/).filter(Boolean).pop() || ''
+    const messageIsNew = Boolean(message) && !lastMessageBlock.endsWith(message)
+
+    const infoChanged = changedFieldLabels.length > 0
+
+    // Rien de réellement nouveau : réponse neutre, aucune écriture (pas
+    // d'événement, pas de compteur, pas d'activité). Empêche le spam par
+    // double-clic ou resoumission identique, même si le front est contourné.
+    if (!infoChanged && !messageIsNew) {
+      return NextResponse.json({
+        success: true,
+        unchanged: true,
+        project: {
+          clientStatus: resolveClientStatus(project.status || 'Nouveau', Number(project.completeness_score) || 0),
+          createdAt: project.created_at || null,
+          clientFirstName: project.client_first_name || '',
+          clientName: project.client_name || '',
+          clientLastName: project.client_name || '',
+          clientEmail: project.client_email || '',
+          clientPhone: project.client_phone || '',
+          projectType: project.project_type || '',
+          trade: project.trade || '',
+          city: project.city || '',
+          siteAddress: project.site_address || '',
+          postalCode: project.postal_code || '',
+          budget: project.budget || '',
+          desiredTimeline: project.desired_timeline || '',
+          summary: project.ai_summary ? String(project.ai_summary).slice(0, 600) : '',
+          photos: (Array.isArray(project.photos) ? project.photos : [])
+            .map((p: unknown) => (p && typeof p === 'object' ? { url: String((p as Record<string, unknown>).url || '') } : null))
+            .filter(Boolean),
+          clientMessages: project.client_messages || '',
+        },
+      })
+    }
+
     const update: Record<string, unknown> = {
       client_last_update_at: new Date().toISOString(),
       client_update_count: (Number(project.client_update_count) || 0) + 1,
@@ -233,26 +307,18 @@ export async function PATCH(
     if (budget) update.budget = budget
     if (timeline) update.desired_timeline = timeline
 
-    // Précisions / disponibilités / urgence : ajoutées de façon additive au
-    // résumé, jamais en écrasant l'existant (même approche que /completer).
-    const extraNotes: string[] = []
-    if (details) extraNotes.push(`Précisions complémentaires (client) : ${details}`)
-    if (availability) extraNotes.push(`Disponibilités (client) : ${availability}`)
-    if (urgency) extraNotes.push(`Urgence signalée par le client : ${urgency}`)
-    if (extraNotes.length > 0) {
-      const existingSummary = String(project.ai_summary || '').trim()
+    if (notesChanged) {
       update.ai_summary = [existingSummary, ...extraNotes].filter(Boolean).join('\n\n')
     }
 
-    if (photoUrls.length > 0) {
+    if (newPhotoUrls.length > 0) {
       const existingPhotos = Array.isArray(project.photos) ? project.photos : []
-      update.photos = [...existingPhotos, ...photoUrls.map((url) => ({ url }))]
+      update.photos = [...existingPhotos, ...newPhotoUrls.map((url) => ({ url }))]
     }
 
-    if (message) {
-      const existingMessages = String(project.client_messages || '').trim()
+    if (messageIsNew) {
       const stamp = new Date().toLocaleString('fr-FR')
-      update.client_messages = [existingMessages, `[${stamp}] ${message}`].filter(Boolean).join('\n\n')
+      update.client_messages = [existingMessagesTrim, `[${stamp}] ${message}`].filter(Boolean).join('\n\n')
     }
 
     const updateResult = await supabaseAdmin
@@ -270,27 +336,16 @@ export async function PATCH(
       return NextResponse.json({ error: "Erreur lors de l'enregistrement" }, { status: 500 })
     }
 
-    await createActivityLog(
-      project.id,
-      'CLIENT_PORTAL_UPDATE',
-      [
-        'Informations complétées via le portail client.',
-        address ? 'Adresse renseignée.' : '',
-        message ? 'Message client ajouté.' : '',
-        photoUrls.length > 0 ? `${photoUrls.length} photo(s) ajoutée(s).` : '',
-      ].filter(Boolean).join(' '),
-    )
-
-    // Timeline client V1 : on ne crée un événement 'client_info_updated' que
-    // si au moins un champ a réellement été renseigné avec une valeur non
-    // vide (pas de bruit dans la timeline pour une requête sans changement
-    // réel). Le message client a son propre événement dédié.
-    const infoUpdated = Boolean(
-      firstName || lastName || email || phone || address || budget || timeline ||
-      availability || urgency || details || photoUrls.length > 0,
-    )
-
-    if (message) {
+    // Source unique pour l'activité du dossier ("Activité du dossier") :
+    // ProjectClientEvents. On n'écrit plus jamais de ligne dans la table
+    // Activity pour cette action, afin d'éviter le doublon
+    // "Informations complétées par le client" / "Informations complétées
+    // via le portail client." observé précédemment (les deux lignes
+    // provenaient de deux sources différentes pour la même action). Le
+    // message client a son propre événement dédié, distinct de
+    // 'client_info_updated', et n'est jamais affiché dans l'activité du
+    // dossier (il vit uniquement dans la section "Discussion client").
+    if (messageIsNew) {
       await createClientEvent({
         projectId: String(project.id),
         artisanId: String(project.artisan_id),
@@ -302,15 +357,16 @@ export async function PATCH(
       })
     }
 
-    if (infoUpdated) {
+    if (infoChanged) {
       await createClientEvent({
         projectId: String(project.id),
         artisanId: String(project.artisan_id),
         eventType: 'client_info_updated',
         visibility: 'client',
         source: 'client',
-        title: 'Informations complétées',
-        message: 'Le client a complété des informations sur sa demande.',
+        title: 'Informations complétées par le client',
+        message: `Le client a complété des informations depuis le portail client. Champs modifiés : ${changedFieldLabels.join(', ')}.`,
+        metadata: { changedFields: changedFieldLabels, source: 'Portail client' },
       })
     }
 

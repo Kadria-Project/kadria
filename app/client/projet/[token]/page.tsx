@@ -153,6 +153,36 @@ export default function ClientPortalPage() {
   const [submitError, setSubmitError] = useState('');
   const [done, setDone] = useState(false);
 
+  // Snapshot des valeurs de référence pour le gating du bouton "Envoyer mes
+  // informations" (anti-spam front) : le bouton n'est actif que si au moins
+  // un champ diffère réellement (après trim) du snapshot. Mis à jour après
+  // chaque envoi réussi pour repasser hasChanges à false.
+  type FormSnapshot = {
+    firstName: string; lastName: string; email: string; phone: string; address: string;
+    budget: string; timeline: string; availability: string; urgency: string; details: string;
+    message: string; photos: string;
+  };
+  const [snapshot, setSnapshot] = useState<FormSnapshot | null>(null);
+
+  const currentSnapshot = (): FormSnapshot => ({
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    email: email.trim(),
+    phone: phone.trim(),
+    address: address.trim(),
+    budget: budget.trim(),
+    timeline: timeline.trim(),
+    availability: availability.trim(),
+    urgency: urgency.trim(),
+    details: details.trim(),
+    message: message.trim(),
+    photos: JSON.stringify(photos.map((p) => p.url)),
+  });
+
+  const hasChanges = snapshot
+    ? Object.entries(currentSnapshot()).some(([key, value]) => value !== snapshot[key as keyof FormSnapshot])
+    : false;
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -175,6 +205,20 @@ export default function ClientPortalPage() {
         setAddress(data.project?.siteAddress || '');
         setBudget(data.project?.budget || '');
         setTimeline(data.project?.desiredTimeline || '');
+        setSnapshot({
+          firstName: (data.project?.clientFirstName || '').trim(),
+          lastName: (data.project?.clientLastName || '').trim(),
+          email: (data.project?.clientEmail || '').trim(),
+          phone: (data.project?.clientPhone || '').trim(),
+          address: (data.project?.siteAddress || '').trim(),
+          budget: (data.project?.budget || '').trim(),
+          timeline: (data.project?.desiredTimeline || '').trim(),
+          availability: '',
+          urgency: '',
+          details: '',
+          message: '',
+          photos: JSON.stringify([]),
+        });
       } catch {
         setInvalid(true);
       } finally {
@@ -223,6 +267,8 @@ export default function ClientPortalPage() {
   };
 
   const handleSubmit = async () => {
+    if (!hasChanges || submitting) return;
+
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setSubmitError('Adresse email invalide.');
       return;
@@ -259,6 +305,23 @@ export default function ClientPortalPage() {
       setMessage('');
       setPhotos([]);
       setDone(true);
+      // Snapshot mis à jour avec les nouvelles valeurs enregistrées :
+      // hasChanges repasse à false, empêchant un second envoi identique
+      // (double-clic / re-clic) tant que rien n'est modifié à nouveau.
+      setSnapshot({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        budget: budget.trim(),
+        timeline: timeline.trim(),
+        availability: '',
+        urgency: '',
+        details: '',
+        message: '',
+        photos: JSON.stringify([]),
+      });
       await refetchTimeline();
     } catch {
       setSubmitError("Erreur lors de l'enregistrement");
@@ -632,22 +695,26 @@ export default function ClientPortalPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !hasChanges}
             style={{
-              background: primaryColor,
-              color: '#ffffff',
+              background: submitting || !hasChanges ? '#e5e7eb' : primaryColor,
+              color: submitting || !hasChanges ? '#9ca3af' : '#ffffff',
               fontWeight: 700,
               fontSize: '15px',
               padding: '14px',
               borderRadius: '10px',
               border: 'none',
               width: '100%',
-              cursor: submitting ? 'default' : 'pointer',
-              opacity: submitting ? 0.7 : 1,
+              cursor: submitting || !hasChanges ? 'not-allowed' : 'pointer',
             }}
           >
             {submitting ? 'Envoi...' : 'Envoyer mes informations'}
           </button>
+          {!submitting && !hasChanges && (
+            <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', marginTop: '8px' }}>
+              Modifiez une information pour l&apos;envoyer.
+            </p>
+          )}
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af' }}>Propulsé par Kadria</p>

@@ -426,7 +426,8 @@ function getActivityPresentation(activity: { action?: string; description?: stri
       action,
       createdAt: activity.createdAt,
       title: 'Informations complétées par le client',
-      detail: 'Le client a complété son adresse, budget, délai ou précisions depuis le portail. Source : Portail client.',
+      detail: sanitizeActivityDetail(description, 'info')
+        || 'Le client a complété des informations depuis le portail client. Source : Portail client.',
       tone: 'info',
     };
   }
