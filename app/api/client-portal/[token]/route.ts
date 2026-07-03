@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TABLES, getArtisanConfig, getUserByArtisanIdentifier } from '@/src/lib/airtable'
+import { TABLES, getArtisanConfig, getDevisByProjet, getUserByArtisanIdentifier } from '@/src/lib/airtable'
 import { createClientEvent, getPublicTimelineEvents } from '@/src/lib/client-events'
 import { resolveDevisBranding } from '@/src/lib/devis-branding'
 import { normalizePlan } from '@/src/lib/plans'
+import { getBaseUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 // Portail client V1 : page publique de suivi + complément d'une demande,
@@ -46,12 +47,138 @@ function normalizeCompare(value: unknown): string {
 }
 
 // Champs strictement publics du projet : jamais de score commercial, notes
-// internes, maturité, relances, coûts/marges, etc.
+// internes, maturité, relances, coûts/marges, etc. deposit_* proviennent du
+// pipeline acompte existant (src/lib/deposit.ts) — jamais de nouveau champ
+// paiement créé ici, simple lecture si déjà renseigné par l'artisan.
 const PUBLIC_PROJECT_COLUMNS =
   'id, artisan_id, status, completeness_score, client_first_name, client_name, client_email, ' +
   'client_phone, site_address, city, postal_code, project_type, trade, budget, desired_timeline, ' +
   'ai_summary, photos, created_at, client_portal_token, client_messages, client_last_update_at, ' +
-  'client_update_count'
+  'client_update_count, deposit_payment_url, deposit_amount, deposit_status'
+
+// Seul un lien http(s) valide est exposé au client — jamais une valeur vide,
+// malformée, ou un schéma non http(s).
+function isValidHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || !value.trim()) return false
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+// Statut devis interne -> statut public client, jamais l'inverse. Toute
+// valeur inconnue retombe sur un libellé neutre. "Expiré" seulement si une
+// date de validité est dépassée et que le devis n'a pas déjà été
+// accepté/refusé (sinon son état définitif prime).
+function resolveQuotePublicStatus(params: {
+  hasQuote: boolean
+  sent: boolean
+  accepted: boolean
+  declined: boolean
+  dateValidite: string | null
+}): 'no_quote' | 'in_preparation' | 'available' | 'accepted' | 'declined' | 'expired' {
+  const { hasQuote, sent, accepted, declined, dateValidite } = params
+  if (!hasQuote) return 'no_quote'
+  if (accepted) return 'accepted'
+  if (declined) return 'declined'
+  if (!sent) return 'in_preparation'
+  if (dateValidite) {
+    const validUntil = new Date(dateValidite)
+    if (!Number.isNaN(validUntil.getTime()) && validUntil.getTime() < Date.now()) {
+      return 'expired'
+    }
+  }
+  return 'available'
+}
+
+const QUOTE_PUBLIC_STATUS_LABEL: Record<string, string> = {
+  no_quote: "Votre devis n'est pas encore disponible.",
+  in_preparation: 'Votre devis est en préparation.',
+  available: 'Devis disponible',
+  accepted: 'Devis accepté',
+  declined: 'Devis refusé',
+  expired: 'Devis expiré',
+}
+
+// Construit le bloc "quote" strictement public renvoyé au portail client.
+// Reprend le devis le plus récent du projet (getDevisByProjet trie déjà du
+// plus récent au plus ancien). Ne renvoie jamais l'id technique du devis, ni
+// le token public du devis à nu au-delà de l'URL déjà construite vers la
+// page publique existante (/devis/[token]) : cette page gère elle-même
+// l'acceptation/le refus avec sa propre protection (rate-limit IP,
+// idempotence déjà en place côté /api/devis/public/accept|decline/[token]),
+// on ne duplique jamais cette logique ici pour ce lot.
+async function buildPublicQuoteBlock(project: Record<string, any>) {
+  let quoteRow: Awaited<ReturnType<typeof getDevisByProjet>>[number] | null = null
+  try {
+    const devisList = await getDevisByProjet(String(project.id))
+    quoteRow = devisList.length > 0 ? devisList[0] : null
+  } catch (e) {
+    console.error('[CLIENT-PORTAL] getDevisByProjet failed:', e instanceof Error ? e.message : String(e))
+    quoteRow = null
+  }
+
+  const depositPaymentUrl = isValidHttpUrl(project.deposit_payment_url) ? String(project.deposit_payment_url).trim() : null
+  const depositAmountRaw = Number(project.deposit_amount)
+  const depositAmount = Number.isFinite(depositAmountRaw) && depositAmountRaw > 0 ? depositAmountRaw : null
+
+  if (!quoteRow) {
+    return {
+      publicStatus: 'no_quote' as const,
+      statusLabel: QUOTE_PUBLIC_STATUS_LABEL.no_quote,
+      amount: null,
+      reference: null,
+      sentAt: null,
+      acceptedAt: null,
+      declinedAt: null,
+      declineReason: null,
+      pdfUrl: null,
+      publicQuoteUrl: null,
+      depositPaymentUrl,
+      depositAmount,
+      canAccept: false,
+      canDecline: false,
+    }
+  }
+
+  const publicStatus = resolveQuotePublicStatus({
+    hasQuote: true,
+    sent: Boolean(quoteRow.sent),
+    accepted: Boolean(quoteRow.accepted),
+    declined: quoteRow.statut === 'Refusé' || Boolean(quoteRow.declinedAt),
+    dateValidite: quoteRow.dateValidite || null,
+  })
+
+  const publicQuoteUrl = quoteRow.token ? `${getBaseUrl()}/devis/${quoteRow.token}` : null
+
+  // Lien/montant d'acompte affiché seulement si le devis est accepté ou
+  // disponible (pas de sens tant qu'un devis n'existe pas / est refusé) —
+  // n'affecte jamais si le champ existe réellement, seulement la pertinence
+  // d'affichage côté portail.
+  const showDeposit = publicStatus === 'accepted' || publicStatus === 'available'
+
+  return {
+    publicStatus,
+    statusLabel: QUOTE_PUBLIC_STATUS_LABEL[publicStatus] || QUOTE_PUBLIC_STATUS_LABEL.no_quote,
+    amount: Number.isFinite(quoteRow.totalTTC) && quoteRow.totalTTC > 0 ? quoteRow.totalTTC : null,
+    reference: quoteRow.devisNumber || null,
+    sentAt: quoteRow.sentAt || quoteRow.quoteSentAt || null,
+    acceptedAt: quoteRow.acceptedAt || null,
+    declinedAt: quoteRow.declinedAt || null,
+    declineReason: quoteRow.declineReason || null,
+    pdfUrl: quoteRow.pdfUrl || null,
+    publicQuoteUrl,
+    depositPaymentUrl: showDeposit ? depositPaymentUrl : null,
+    depositAmount: showDeposit ? depositAmount : null,
+    // Acceptation/refus restent gérés par la page publique existante
+    // (/devis/[token]) dans ce lot — pas d'intégration directe dans le
+        // portail, voir limites du rapport final.
+    canAccept: false,
+    canDecline: false,
+  }
+}
 
 async function findProjectByToken(token: string) {
   const result = await supabaseAdmin
@@ -105,6 +232,7 @@ export async function GET(
 
     const photos = Array.isArray(project.photos) ? project.photos : []
     const timelineEvents = await getPublicTimelineEvents(String(project.id))
+    const quote = await buildPublicQuoteBlock(project)
 
     return NextResponse.json({
       valid: true,
@@ -134,6 +262,7 @@ export async function GET(
         clientMessages: project.client_messages || '',
       },
       timelineEvents,
+      quote,
     })
   } catch (e) {
     console.error('[CLIENT-PORTAL GET] Unexpected error:', e instanceof Error ? e.message : String(e))

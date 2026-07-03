@@ -30,6 +30,23 @@ interface PortalProject {
   clientMessages: string;
 }
 
+interface PortalQuote {
+  publicStatus: 'no_quote' | 'in_preparation' | 'available' | 'accepted' | 'declined' | 'expired';
+  statusLabel: string;
+  amount: number | null;
+  reference: string | null;
+  sentAt: string | null;
+  acceptedAt: string | null;
+  declinedAt: string | null;
+  declineReason: string | null;
+  pdfUrl: string | null;
+  publicQuoteUrl: string | null;
+  depositPaymentUrl: string | null;
+  depositAmount: number | null;
+  canAccept: boolean;
+  canDecline: boolean;
+}
+
 interface TimelineEvent {
   id: string;
   type: string;
@@ -91,6 +108,15 @@ function formatDate(value: string | null): string {
   }
 }
 
+function formatAmount(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '';
+  try {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return `${value} €`;
+  }
+}
+
 // Repli sur l'ancien champ client_messages (texte accumulé, voir
 // app/api/client-portal/[token]/route.ts PATCH) pour les projets où la
 // nouvelle table ProjectClientEvents ne contient encore aucun message de
@@ -132,6 +158,7 @@ export default function ClientPortalPage() {
   const [artisan, setArtisan] = useState<ArtisanBranding | null>(null);
   const [project, setProject] = useState<PortalProject | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [quote, setQuote] = useState<PortalQuote | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -195,6 +222,7 @@ export default function ClientPortalPage() {
         setArtisan(data.artisan || null);
         setProject(data.project || null);
         setTimelineEvents(Array.isArray(data.timelineEvents) ? data.timelineEvents : []);
+        setQuote(data.quote || null);
         // Préremplissage réel des champs connus (mêmes valeurs que la fiche
         // projet artisan), pas seulement en placeholder : le client doit
         // retrouver ses informations déjà éditables, y compris le Nom.
@@ -430,6 +458,105 @@ export default function ClientPortalPage() {
             </div>
           )}
         </div>
+
+        {/* Votre devis — affichage strictement public (montant, statut,
+            PDF, éventuel lien d'acompte déjà existant). L'acceptation et le
+            refus restent gérés par la page publique existante /devis/[token]
+            (sa propre protection anti-abus et son idempotence ne sont pas
+            dupliquées ici, voir le rapport de lot). */}
+        {quote && (
+          <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>Votre devis</h2>
+
+            {quote.publicStatus === 'no_quote' && (
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: '8px 0 0' }}>
+                Votre devis n&apos;est pas encore disponible. L&apos;artisan pourra le déposer ici lorsqu&apos;il sera prêt.
+              </p>
+            )}
+
+            {quote.publicStatus === 'in_preparation' && (
+              <p style={{ fontSize: '13px', color: '#6b7280', margin: '8px 0 0' }}>
+                Votre devis est en préparation.
+              </p>
+            )}
+
+            {(quote.publicStatus === 'available' || quote.publicStatus === 'accepted' || quote.publicStatus === 'declined' || quote.publicStatus === 'expired') && (
+              <div>
+                <div style={{
+                  display: 'inline-block', padding: '6px 12px', borderRadius: '999px', margin: '8px 0 12px',
+                  background: quote.publicStatus === 'accepted' ? '#dcfce7' : quote.publicStatus === 'declined' ? '#fee2e2' : '#eef2ff',
+                  color: quote.publicStatus === 'accepted' ? '#15803d' : quote.publicStatus === 'declined' ? '#b91c1c' : '#3730a3',
+                  fontWeight: 700, fontSize: '13px',
+                }}>
+                  {quote.statusLabel}
+                </div>
+
+                <div style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#374151', marginBottom: '14px' }}>
+                  {quote.reference && <p style={{ margin: 0 }}><strong>Référence :</strong> {quote.reference}</p>}
+                  {quote.amount !== null && <p style={{ margin: 0 }}><strong>Montant :</strong> {formatAmount(quote.amount)}</p>}
+                  {quote.sentAt && <p style={{ margin: 0 }}><strong>Envoyé le :</strong> {formatDate(quote.sentAt)}</p>}
+                  {quote.publicStatus === 'accepted' && quote.acceptedAt && (
+                    <p style={{ margin: 0 }}><strong>Accepté le :</strong> {formatDate(quote.acceptedAt)}</p>
+                  )}
+                  {quote.publicStatus === 'declined' && quote.declinedAt && (
+                    <p style={{ margin: 0 }}><strong>Refusé le :</strong> {formatDate(quote.declinedAt)}</p>
+                  )}
+                  {quote.publicStatus === 'declined' && quote.declineReason && (
+                    <p style={{ margin: 0 }}><strong>Motif :</strong> {quote.declineReason}</p>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                  {quote.pdfUrl && (
+                    <a
+                      href={quote.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-block', background: primaryColor, color: '#fff', fontWeight: 700,
+                        fontSize: '13px', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none',
+                      }}
+                    >
+                      Voir le devis
+                    </a>
+                  )}
+                  {quote.publicQuoteUrl && quote.publicStatus === 'available' && (
+                    <a
+                      href={quote.publicQuoteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-block', background: '#f1f5f9', color: '#111827', fontWeight: 700,
+                        fontSize: '13px', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none',
+                        border: '1px solid #e5e7eb',
+                      }}
+                    >
+                      Répondre au devis (accepter / refuser)
+                    </a>
+                  )}
+                </div>
+
+                {quote.depositPaymentUrl ? (
+                  <a
+                    href={quote.depositPaymentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-block', background: '#111827', color: '#fff', fontWeight: 700,
+                      fontSize: '13px', padding: '10px 16px', borderRadius: '8px', textDecoration: 'none',
+                    }}
+                  >
+                    {quote.depositAmount !== null ? `Régler l'acompte (${formatAmount(quote.depositAmount)})` : "Régler l'acompte"}
+                  </a>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
+                    Le paiement d&apos;un acompte n&apos;est pas encore disponible pour ce projet.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Discussion avec l'artisan — bulles façon iOS, réservées aux
             SEULS types de discussion (client_message / artisan_reply).
