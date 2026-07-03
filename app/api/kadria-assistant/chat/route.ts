@@ -4,6 +4,8 @@ import { buildArtisanAssistantContext, getAssistantPriorities, type KadriaAssist
 import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
 import { getKadriaAssistantOpenAIClient, KADRIA_ASSISTANT_MODEL } from '@/src/lib/kadria-assistant/openai-client'
 import { canUseKadriaAssistant, recordKadriaAssistantUsage } from '@/src/lib/kadria-assistant/quotas'
+import { buildProposedAction, type ProposedAction } from '@/src/lib/assistant/propose-action'
+import { logAssistantAction } from '@/src/lib/assistant/actions'
 
 // Assistant IA interne pour l'artisan connecté : strictement en lecture
 // seule, contextualisé au compte de l'artisan, jamais exposé côté client.
@@ -190,12 +192,35 @@ export async function POST(request: NextRequest) {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
     const deterministicReply = buildDeterministicReply(lastUserMessage, context)
 
+    // Détection déterministe (mots-clés) d'une action contrôlée éventuelle.
+    // Ne modifie JAMAIS la base ici : uniquement une proposition affichée à
+    // l'artisan, qui devra cliquer "Appliquer" pour déclencher une écriture
+    // via /api/assistant/actions/execute. Best-effort : une erreur ici ne
+    // doit jamais empêcher la réponse conversationnelle de partir.
+    let proposedAction: ProposedAction | null = null
+    try {
+      proposedAction = await buildProposedAction(lastUserMessage, session.artisanId)
+    } catch (err) {
+      console.error('[KADRIA-ASSISTANT] proposedAction detection failed', err instanceof Error ? err.message : String(err))
+    }
+    if (proposedAction) {
+      await logAssistantAction({
+        artisanId: session.artisanId,
+        userId: session.id,
+        actionType: proposedAction.type,
+        status: 'proposed',
+        summary: proposedAction.summary,
+        payload: proposedAction.payload,
+      })
+    }
+
     if (deterministicReply) {
       return NextResponse.json({
         success: true,
         answer: deterministicReply.answer,
         usage: null,
         ...(deterministicReply.navigationActions ? { navigationActions: deterministicReply.navigationActions } : {}),
+        ...(proposedAction ? { proposedAction } : {}),
       })
     }
 
@@ -263,7 +288,13 @@ export async function POST(request: NextRequest) {
 
     const navigationActions = buildNavigationActions(lastUserMessage, context)
 
-    return NextResponse.json({ success: true, answer, usage, ...(navigationActions ? { navigationActions } : {}) })
+    return NextResponse.json({
+      success: true,
+      answer,
+      usage,
+      ...(navigationActions ? { navigationActions } : {}),
+      ...(proposedAction ? { proposedAction } : {}),
+    })
   } catch (error) {
     const isQuotaOrTimeout = error instanceof Error && /timeout|quota|rate limit|429/i.test(error.message)
     console.error('[KADRIA-ASSISTANT] error', {

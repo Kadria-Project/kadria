@@ -8,6 +8,19 @@ interface NavigationAction {
   href: string;
 }
 
+interface ProposedAction {
+  type: string;
+  label: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  requiresConfirmation: true;
+  oldValueHint?: string;
+  newValueHint?: string;
+  projectLabel?: string;
+}
+
+type ProposedActionState = 'pending' | 'applying' | 'applied' | 'cancelled' | 'error';
+
 interface TodayActionCard {
   id: string;
   type: 'quote_followup' | 'review_request' | 'priority_project' | 'configuration' | 'delivery_error' | 'tasks_overview';
@@ -33,6 +46,9 @@ interface ChatMessage {
   content: string;
   navigationActions?: NavigationAction[];
   todayActions?: TodayActionCard[];
+  proposedAction?: ProposedAction;
+  proposedActionState?: ProposedActionState;
+  proposedActionError?: string;
 }
 
 interface AssistantUsage {
@@ -350,12 +366,154 @@ export default function KadriaAssistantWidget() {
           )
         : undefined;
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.answer, navigationActions }]);
+      const proposedAction: ProposedAction | undefined =
+        data?.proposedAction && typeof data.proposedAction === 'object' && typeof data.proposedAction.type === 'string'
+          ? (data.proposedAction as ProposedAction)
+          : undefined;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: data.answer,
+          navigationActions,
+          proposedAction,
+          proposedActionState: proposedAction ? 'pending' : undefined,
+        },
+      ]);
     } catch {
       setError('Connexion impossible. Vérifiez votre connexion et réessayez.');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function applyProposedAction(messageIndex: number) {
+    const target = messages[messageIndex];
+    if (!target?.proposedAction) return;
+
+    setMessages((prev) =>
+      prev.map((m, i) => (i === messageIndex ? { ...m, proposedActionState: 'applying', proposedActionError: undefined } : m))
+    );
+
+    try {
+      const res = await fetch('/api/assistant/actions/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: target.proposedAction.type,
+          payload: target.proposedAction.payload,
+          summary: target.proposedAction.summary,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        setMessages((prev) =>
+          prev.map((m, i) =>
+            i === messageIndex
+              ? { ...m, proposedActionState: 'error', proposedActionError: data?.error || "L'action n'a pas pu être appliquée." }
+              : m
+          )
+        );
+        return;
+      }
+
+      setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, proposedActionState: 'applied' } : m)));
+    } catch {
+      setMessages((prev) =>
+        prev.map((m, i) =>
+          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'Connexion impossible. Réessayez.' } : m
+        )
+      );
+    }
+  }
+
+  function cancelProposedAction(messageIndex: number) {
+    setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, proposedActionState: 'cancelled' } : m)));
+  }
+
+  function renderProposedActionCard(message: ChatMessage, messageIndex: number) {
+    const action = message.proposedAction;
+    if (!action) return null;
+    const state = message.proposedActionState || 'pending';
+
+    return (
+      <div className="mt-2 w-full max-w-[85%] rounded-2xl border border-[#22c55e]/20 bg-[#101113] px-3.5 py-3">
+        <p className="text-sm font-semibold text-[#f8fafc]">{action.label}</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-[#cbd5e1]">{action.summary}</p>
+        {(action.oldValueHint !== undefined || action.newValueHint !== undefined) && (
+          <div className="mt-2 space-y-1 rounded-xl bg-[#17181b] px-3 py-2 text-[11px] leading-relaxed">
+            {action.oldValueHint !== undefined && (
+              <p className="text-[#9ca3af]">
+                Actuel : <span className="text-[#cbd5e1]">{action.oldValueHint || '(vide)'}</span>
+              </p>
+            )}
+            {action.newValueHint !== undefined && (
+              <p className="text-[#9ca3af]">
+                Nouveau : <span className="text-[#22c55e]">{action.newValueHint}</span>
+              </p>
+            )}
+          </div>
+        )}
+        {action.projectLabel && (
+          <p className="mt-1.5 text-[11px] text-[#9ca3af]">Dossier concerné : {action.projectLabel}</p>
+        )}
+
+        {state === 'pending' && (
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => applyProposedAction(messageIndex)}
+              className="rounded-full bg-[#22c55e] px-3.5 py-1.5 text-xs font-semibold text-[#05130d] transition-colors hover:bg-[#34d979]"
+            >
+              Appliquer
+            </button>
+            <button
+              type="button"
+              onClick={() => cancelProposedAction(messageIndex)}
+              className="rounded-full border border-[rgba(255,255,255,0.12)] px-3.5 py-1.5 text-xs font-semibold text-[#f8fafc] transition-colors hover:bg-white/5"
+            >
+              Annuler
+            </button>
+          </div>
+        )}
+
+        {state === 'applying' && (
+          <p className="mt-3 text-xs text-[#9ca3af]">Application en cours...</p>
+        )}
+
+        {state === 'applied' && (
+          <p className="mt-3 text-xs font-medium text-[#22c55e]">Action appliquée avec succès.</p>
+        )}
+
+        {state === 'cancelled' && (
+          <p className="mt-3 text-xs text-[#9ca3af]">Action annulée. Rien n&apos;a été modifié.</p>
+        )}
+
+        {state === 'error' && (
+          <div className="mt-3">
+            <p className="text-xs text-red-400">{message.proposedActionError || "Une erreur est survenue."}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => applyProposedAction(messageIndex)}
+                className="rounded-full bg-[#22c55e] px-3.5 py-1.5 text-xs font-semibold text-[#05130d] transition-colors hover:bg-[#34d979]"
+              >
+                Réessayer
+              </button>
+              <button
+                type="button"
+                onClick={() => cancelProposedAction(messageIndex)}
+                className="rounded-full border border-[rgba(255,255,255,0.12)] px-3.5 py-1.5 text-xs font-semibold text-[#f8fafc] transition-colors hover:bg-white/5"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -622,6 +780,7 @@ export default function KadriaAssistantWidget() {
                     ))}
                   </div>
                 )}
+                {m.role === 'assistant' && renderProposedActionCard(m, i)}
               </div>
             ))}
 
