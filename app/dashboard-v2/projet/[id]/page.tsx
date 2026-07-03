@@ -723,6 +723,13 @@ function ProjectDetail() {
   const [depositActionError, setDepositActionError] = useState<string | null>(null);
   const [smsCompletionLoading, setSmsCompletionLoading] = useState(false);
   const [smsCompletionToast, setSmsCompletionToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [clientPortalLoading, setClientPortalLoading] = useState(false);
+  const [clientPortalToast, setClientPortalToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  useEffect(() => {
+    if (!clientPortalToast) return;
+    const timeout = window.setTimeout(() => setClientPortalToast(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [clientPortalToast]);
   useEffect(() => {
     if (!followUpToast) return;
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
@@ -1110,6 +1117,63 @@ function ProjectDetail() {
       });
     } finally {
       setFollowingUpDevisId(null);
+    }
+  }
+
+  async function copyClientPortalLink() {
+    if (!project?.id) {
+      setClientPortalToast({ type: 'error', message: 'Projet introuvable.' });
+      return;
+    }
+
+    setClientPortalLoading(true);
+    try {
+      const response = await fetch(`/api/projects/${project.id}/client-portal-link`);
+      const text = await response.text();
+      let data: { success?: boolean; url?: string; error?: string } = {};
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { success: false, error: text || 'Reponse serveur invalide' };
+      }
+
+      if (!response.ok || !data.success || !data.url) {
+        setClientPortalToast({
+          type: 'error',
+          message: response.status === 401
+            ? 'Session expirée, reconnectez-vous.'
+            : (data.error || 'Impossible de récupérer le lien du portail client.'),
+        });
+        return;
+      }
+
+      const url = data.url;
+
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const tempInput = document.createElement('textarea');
+          tempInput.value = url;
+          tempInput.style.position = 'fixed';
+          tempInput.style.opacity = '0';
+          document.body.appendChild(tempInput);
+          tempInput.focus();
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+        }
+        setClientPortalToast({ type: 'success', message: 'Lien portail client copié' });
+      } catch (copyError) {
+        console.error('[CLIENT PORTAL COPY LINK]', copyError);
+        setClientPortalToast({ type: 'error', message: `Impossible de copier automatiquement. Lien : ${url}` });
+      }
+    } catch (error) {
+      console.error('[CLIENT PORTAL LINK]', error);
+      setClientPortalToast({ type: 'error', message: 'Erreur réseau, réessayez.' });
+    } finally {
+      setClientPortalLoading(false);
     }
   }
 
@@ -3585,6 +3649,43 @@ function ProjectDetail() {
           </button>
         </div>
 
+        {/* Portail client — reprend la logique de l'endpoint interne
+            /api/projects/[id]/client-portal-link (token généré paresseusement
+            côté serveur). Le front ne fait qu'appeler l'endpoint et copier
+            l'URL renvoyée, aucune génération de token côté client. */}
+        <div style={{
+          marginBottom: '16px',
+          padding: isMobile ? '14px' : '16px',
+          borderRadius: '14px',
+          border: '1px solid var(--border)',
+          background: 'var(--bg-elevated)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+        }}>
+          <div>
+            <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>
+              Portail client
+            </p>
+            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+              Partagez ce lien avec le client pour qu'il consulte et complète sa demande.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={copyClientPortalLink}
+            disabled={clientPortalLoading || !project?.id}
+            style={{
+              ...quickActionButtonStyle,
+              width: isMobile ? '100%' : 'fit-content',
+              opacity: (clientPortalLoading || !project?.id) ? 0.6 : 1,
+              cursor: (clientPortalLoading || !project?.id) ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {clientPortalLoading ? 'Copie en cours...' : 'Copier le lien'}
+          </button>
+        </div>
+
         {false && (
         <section
           className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
@@ -5951,6 +6052,18 @@ function ProjectDetail() {
           }`}
         >
           {smsCompletionToast.message}
+        </div>
+      )}
+
+      {clientPortalToast && (
+        <div
+          className={`fixed bottom-20 left-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-2xl sm:bottom-24 sm:left-auto sm:right-6 sm:max-w-sm ${
+            clientPortalToast.type === 'error'
+              ? 'border-red-500/30 bg-[var(--bg-elevated)] text-red-200'
+              : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'
+          }`}
+        >
+          {clientPortalToast.message}
         </div>
       )}
 
