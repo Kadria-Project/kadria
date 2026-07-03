@@ -305,18 +305,6 @@ type ClientTimelineEvent = {
   metadata: Record<string, unknown>;
 };
 
-function clientEventBorderColor(source: string): string {
-  if (source === 'client') return '#16a34a';
-  if (source === 'artisan') return '#2563eb';
-  return 'var(--border)';
-}
-
-function clientEventSourceLabel(source: string): string {
-  if (source === 'client') return 'Message client';
-  if (source === 'artisan') return 'Réponse artisan';
-  return 'Événement système';
-}
-
 // Résumé compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
 // distingue un RDV court (avec durée), une demi-journée / journée complète
 // (amplitude, sans heure de fin explicite) et un chantier multi-jours
@@ -429,6 +417,17 @@ function getActivityPresentation(activity: { action?: string; description?: stri
       title: "Echec de la demande d'avis Google",
       detail: sanitizeActivityDetail(description, 'error') || "Echec de l'envoi. Reessayez.",
       tone: 'error',
+    };
+  }
+
+  if (action === 'CLIENT_INFO_UPDATED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Informations complétées par le client',
+      detail: 'Le client a complété son adresse, budget, délai ou précisions depuis le portail. Source : Portail client.',
+      tone: 'info',
     };
   }
 
@@ -936,8 +935,25 @@ function ProjectDetail() {
     });
   }
 
+  // Option A (préférée) : lecture combinée — les événements
+  // 'client_info_updated' issus de ProjectClientEvents sont ajoutés à la
+  // source de l'activité du dossier sans jamais écrire dans la table
+  // Activity, pour ne pas polluer une convention qu'on ne maîtrise pas
+  // entièrement. Les messages (client_message/artisan_reply) n'apparaissent
+  // volontairement jamais ici : ils vivent exclusivement dans la section
+  // "Discussion client" plus haut.
+  const clientInfoActivityItems = clientTimelineEvents
+    .filter((ev) => ev.type === 'client_info_updated')
+    .map((ev) => ({
+      id: `client-event-${ev.id}`,
+      description: ev.message || 'Le client a complété son adresse, budget, délai ou précisions depuis le portail.',
+      createdAt: ev.createdAt,
+      action: 'CLIENT_INFO_UPDATED',
+    }));
+
   const dossierActivitySource = [
     ...activities,
+    ...clientInfoActivityItems,
     ...devisList.flatMap((devis) => {
       const items: { id: string; description: string; createdAt?: string | null; action: string }[] = [];
       if (devis.date_emission) {
@@ -3917,68 +3933,92 @@ function ProjectDetail() {
                 </ul>
               )}
 
-              {/* Timeline (ProjectClientEvents) prioritaire si disponible ;
-                  sinon repli sur l'ancien affichage client_messages, pour
-                  les anciens projets / si la migration n'est pas encore
-                  appliquée. */}
-              {clientTimelineEvents.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                  <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                    Timeline
-                  </p>
-                  {clientTimelineEvents.map((ev) => (
-                    <div
-                      key={ev.id}
-                      style={{
-                        background: 'var(--bg-hover)',
-                        border: '1px solid var(--border)',
-                        borderLeft: `3px solid ${clientEventBorderColor(ev.source)}`,
-                        borderRadius: '10px',
-                        padding: '10px 12px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: clientEventBorderColor(ev.source) }}>
-                          {clientEventSourceLabel(ev.source)}
-                        </span>
-                        {ev.createdAt && <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{formatDateTime(ev.createdAt)}</span>}
-                      </div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{ev.title}</p>
-                      {ev.message && (
-                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                          {ev.message}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : clientMessages.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                  <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                    Messages client
-                  </p>
-                  {clientMessages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        background: 'var(--bg-hover)',
-                        border: '1px solid var(--border)',
-                        borderLeft: '3px solid #16a34a',
-                        borderRadius: '10px',
-                        padding: '10px 12px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a' }}>Client</span>
-                        {msg.date && <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{msg.date}</span>}
-                      </div>
-                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                        {msg.text}
+              {/* Discussion client — bulles façon iOS, réservées aux SEULS
+                  types de discussion (client_message / artisan_reply).
+                  client_info_updated et les autres événements système ne
+                  sont jamais rendus ici : ils vivent dans l'activité du
+                  dossier plus bas sur la page. Repli sur l'ancien champ
+                  client_messages (texte accumulé) uniquement si la nouvelle
+                  table ne renvoie aucun message de discussion (anciens
+                  projets / migration pas encore appliquée). */}
+              {(() => {
+                const discussionEvents = clientTimelineEvents.filter(
+                  (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
+                );
+                const useLegacyFallback = discussionEvents.length === 0 && clientMessages.length > 0;
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                    <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                      Discussion client
+                    </p>
+
+                    {discussionEvents.length === 0 && !useLegacyFallback && (
+                      <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '4px 0 0', fontStyle: 'italic' }}>
+                        Aucun message client pour le moment.
                       </p>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                      {useLegacyFallback
+                        ? clientMessages.map((msg, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <div
+                              style={{
+                                maxWidth: isMobile ? '88%' : '72%',
+                                background: '#f1f5f9',
+                                color: '#0f172a',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '16px 16px 16px 4px',
+                                padding: '10px 14px',
+                              }}
+                            >
+                              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
+                                Client{msg.date ? ` · ${msg.date}` : ''}
+                              </div>
+                              <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                {msg.text}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                        : discussionEvents.map((ev) => {
+                          const isClient = ev.type === 'client_message';
+                          return (
+                            <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
+                              <div
+                                style={{
+                                  maxWidth: isMobile ? '88%' : '72%',
+                                  background: isClient ? '#f1f5f9' : 'var(--accent)',
+                                  color: isClient ? '#0f172a' : '#ffffff',
+                                  border: isClient ? '1px solid #e2e8f0' : 'none',
+                                  borderRadius: isClient ? '16px 16px 16px 4px' : '16px 16px 4px 16px',
+                                  padding: '10px 14px',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    marginBottom: '4px',
+                                    color: isClient ? '#64748b' : 'rgba(255,255,255,0.8)',
+                                    textAlign: isClient ? 'left' : 'right',
+                                  }}
+                                >
+                                  {isClient ? 'Client' : 'Vous'}
+                                  {ev.createdAt ? ` · ${formatDateTime(ev.createdAt)}` : ''}
+                                </div>
+                                <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {ev.message || ev.title}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
 
               {/* Réponse artisan — publiée dans le portail client (visible
                   du client final), strictement distincte des notes internes
@@ -4028,10 +4068,18 @@ function ProjectDetail() {
                   onClick={submitClientReply}
                   disabled={clientReplySending || !clientReplyMessage.trim()}
                   style={{
-                    ...quickActionButtonStyle,
                     width: isMobile ? '100%' : 'fit-content',
-                    opacity: (clientReplySending || !clientReplyMessage.trim()) ? 0.6 : 1,
+                    border: 'none',
+                    borderRadius: '999px',
+                    padding: '9px 18px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    background: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--bg-elevated)' : 'var(--accent)',
+                    color: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--text-3)' : '#ffffff',
+                    boxShadow: (clientReplySending || !clientReplyMessage.trim()) ? 'none' : '0 2px 10px rgba(0,0,0,0.18)',
+                    opacity: (clientReplySending || !clientReplyMessage.trim()) ? 0.7 : 1,
                     cursor: (clientReplySending || !clientReplyMessage.trim()) ? 'not-allowed' : 'pointer',
+                    transition: 'background 0.15s ease, box-shadow 0.15s ease',
                   }}
                 >
                   {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}

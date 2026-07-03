@@ -91,6 +91,32 @@ function formatDate(value: string | null): string {
   }
 }
 
+// Repli sur l'ancien champ client_messages (texte accumulé, voir
+// app/api/client-portal/[token]/route.ts PATCH) pour les projets où la
+// nouvelle table ProjectClientEvents ne contient encore aucun message de
+// discussion. Toujours du texte côté client, jamais côté artisan — repli
+// donc uniquement affiché comme des messages "Vous".
+type LegacyMessage = { text: string; date: string | null };
+
+function parseLegacyClientMessages(raw: unknown): LegacyMessage[] {
+  try {
+    if (typeof raw !== 'string') return [];
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    return trimmed
+      .split(/\n\s*\n/)
+      .filter(Boolean)
+      .map((entry) => {
+        const match = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+        if (match) return { text: match[2].trim() || entry.trim(), date: match[1] };
+        return { text: entry.trim(), date: null };
+      })
+      .filter((m) => m.text);
+  } catch {
+    return [];
+  }
+}
+
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return 'K';
@@ -342,51 +368,145 @@ export default function ClientPortalPage() {
           )}
         </div>
 
+        {/* Discussion avec l'artisan — bulles façon iOS, réservées aux
+            SEULS types de discussion (client_message / artisan_reply).
+            Aucune note interne, aucun événement système ici. Repli sur
+            l'ancien champ client_messages uniquement si la nouvelle table
+            ne renvoie aucun message de discussion. */}
+        {(() => {
+          const discussionEvents = timelineEvents.filter(
+            (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
+          );
+          const legacyMessages = parseLegacyClientMessages(project.clientMessages);
+          const useLegacyFallback = discussionEvents.length === 0 && legacyMessages.length > 0;
+
+          return (
+            <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>Discussion avec l&apos;artisan</h2>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 16px' }}>
+                Vos échanges directs avec l&apos;artisan à propos de cette demande.
+              </p>
+
+              {discussionEvents.length === 0 && !useLegacyFallback ? (
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                  Aucun message pour le moment.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {useLegacyFallback
+                    ? legacyMessages.map((msg, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <div
+                          style={{
+                            maxWidth: '78%',
+                            background: '#2563eb',
+                            color: '#ffffff',
+                            borderRadius: '16px 16px 4px 16px',
+                            padding: '10px 14px',
+                          }}
+                        >
+                          <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', color: 'rgba(255,255,255,0.85)', textAlign: 'right' }}>
+                            Vous{msg.date ? ` · ${msg.date}` : ''}
+                          </div>
+                          <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {msg.text}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                    : discussionEvents.map((ev) => {
+                      const isClient = ev.type === 'client_message';
+                      return (
+                        <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-end' : 'flex-start' }}>
+                          <div
+                            style={{
+                              maxWidth: '78%',
+                              background: isClient ? '#2563eb' : '#f1f5f9',
+                              color: isClient ? '#ffffff' : '#111827',
+                              border: isClient ? 'none' : '1px solid #e5e7eb',
+                              borderRadius: isClient ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                              padding: '10px 14px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                marginBottom: '4px',
+                                color: isClient ? 'rgba(255,255,255,0.85)' : '#6b7280',
+                                textAlign: isClient ? 'right' : 'left',
+                              }}
+                            >
+                              {isClient ? 'Vous' : 'Artisan'}
+                              {ev.createdAt ? ` · ${formatDateTimeFr(ev.createdAt)}` : ''}
+                            </div>
+                            <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              {ev.message || ev.title}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Timeline "Suivi de votre demande" — ne montre que les événements
-            visibles côté client renvoyés par l'API (visibility='client'),
-            jamais de donnée interne. Ordre chronologique croissant pour
-            raconter l'histoire de la demande. */}
+            système visibles côté client renvoyés par l'API
+            (visibility='client'), jamais de discussion (voir section
+            ci-dessus) ni de donnée interne. Ordre chronologique croissant
+            pour raconter l'histoire de la demande. */}
         <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>Suivi de votre demande</h2>
           <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 16px' }}>
             L&apos;artisan vous répondra ici lorsque de nouvelles informations seront disponibles.
           </p>
 
-          {timelineEvents.length === 0 ? (
-            <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
-              Votre demande a bien été reçue. Aucun échange pour le moment.
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {timelineEvents.map((ev) => (
-                <div
-                  key={ev.id}
-                  style={{
-                    background: '#f9fafb',
-                    border: '1px solid #e5e7eb',
-                    borderLeft: `3px solid ${sourceColor(ev.source)}`,
-                    borderRadius: '10px',
-                    padding: '10px 12px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: sourceColor(ev.source) }}>
-                      {sourceLabel(ev.source)}
-                    </span>
-                    {ev.createdAt && (
-                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDateTimeFr(ev.createdAt)}</span>
+          {(() => {
+            const systemEvents = timelineEvents.filter(
+              (ev) => ev.type !== 'client_message' && ev.type !== 'artisan_reply',
+            );
+            if (systemEvents.length === 0) {
+              return (
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                  Votre demande a bien été reçue. Aucun échange pour le moment.
+                </p>
+              );
+            }
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {systemEvents.map((ev) => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      background: '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      borderLeft: `3px solid ${sourceColor(ev.source)}`,
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: sourceColor(ev.source) }}>
+                        {sourceLabel(ev.source)}
+                      </span>
+                      {ev.createdAt && (
+                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDateTimeFr(ev.createdAt)}</span>
+                      )}
+                    </div>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#111827' }}>{ev.title}</p>
+                    {ev.message && (
+                      <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                        {ev.message}
+                      </p>
                     )}
                   </div>
-                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#111827' }}>{ev.title}</p>
-                  {ev.message && (
-                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                      {ev.message}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {done && (
