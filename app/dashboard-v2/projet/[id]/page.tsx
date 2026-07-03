@@ -215,6 +215,82 @@ function formatDateTime(value?: string | null, fallback = 'Date non renseignée'
   return date ? DATE_TIME_FORMATTER.format(date) : fallback;
 }
 
+// Messages client (portail V1) : la colonne client_messages est aujourd'hui
+// écrite par l'API comme une chaîne accumulée ("[date] message" séparés par
+// des lignes vides — voir app/api/client-portal/[token]/route.ts, PATCH).
+// On reste toutefois tolérant à d'autres formats possibles (tableau
+// d'objets, objet unique, JSON stringifié) pour ne jamais faire planter la
+// fiche projet, quel que soit l'état réel de la donnée en base.
+type ClientPortalMessage = { text: string; date: string | null };
+
+function extractMessageFromObject(obj: Record<string, unknown>): ClientPortalMessage {
+  const text =
+    typeof obj.text === 'string' ? obj.text :
+    typeof obj.message === 'string' ? obj.message :
+    typeof obj.content === 'string' ? obj.content :
+    (() => {
+      try { return JSON.stringify(obj); } catch { return String(obj); }
+    })();
+  const date =
+    typeof obj.date === 'string' ? obj.date :
+    typeof obj.createdAt === 'string' ? obj.createdAt :
+    typeof obj.created_at === 'string' ? obj.created_at :
+    null;
+  return { text, date };
+}
+
+function parseClientMessages(raw: unknown): ClientPortalMessage[] {
+  try {
+    if (raw === null || raw === undefined) return [];
+
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      if (!trimmed) return [];
+
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          return parseClientMessages(JSON.parse(trimmed));
+        } catch {
+          // Pas du JSON valide malgré les apparences : on retombe sur le
+          // traitement "texte brut" ci-dessous.
+        }
+      }
+
+      // Texte brut : chaque complément est ajouté sous la forme
+      // "[dd/mm/yyyy hh:mm:ss] message", séparé par une ligne vide.
+      return trimmed.split(/\n\s*\n/).filter(Boolean).map((entry) => {
+        const match = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
+        if (match) return { text: match[2].trim() || entry.trim(), date: match[1] };
+        return { text: entry.trim(), date: null };
+      }).filter((m) => m.text);
+    }
+
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => {
+          if (item && typeof item === 'object') return extractMessageFromObject(item as Record<string, unknown>);
+          if (typeof item === 'string') return { text: item, date: null };
+          return { text: String(item), date: null };
+        })
+        .filter((m) => m.text);
+    }
+
+    if (typeof raw === 'object') {
+      return [extractMessageFromObject(raw as Record<string, unknown>)];
+    }
+
+    return [{ text: String(raw), date: null }];
+  } catch {
+    // Format totalement inattendu : on affiche la valeur brute plutôt que
+    // de faire planter la fiche projet.
+    try {
+      return [{ text: String(raw), date: null }];
+    } catch {
+      return [];
+    }
+  }
+}
+
 // Résumé compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
 // distingue un RDV court (avec durée), une demi-journée / journée complète
 // (amplitude, sans heure de fin explicite) et un chantier multi-jours
@@ -3685,6 +3761,106 @@ function ProjectDetail() {
             {clientPortalLoading ? 'Copie en cours...' : 'Copier le lien'}
           </button>
         </div>
+
+        {/* Retours client / Compléments client — distinct des notes internes
+            (section plus bas) : ce bloc n'affiche QUE ce qui vient du client
+            via le portail (messages, dernière mise à jour, complétions),
+            jamais les notes internes de l'artisan. Tolérant à tous les
+            formats de client_messages et à l'absence des colonnes portail
+            (migration non encore appliquée). */}
+        {(() => {
+          const clientMessages = parseClientMessages(project?.clientMessages);
+          const clientUpdateCount = Number(project?.clientUpdateCount) || 0;
+          const clientLastUpdateAt = project?.clientLastUpdateAt || null;
+          const hasClientActivity = clientUpdateCount > 0 || !!clientLastUpdateAt || clientMessages.length > 0;
+
+          return (
+            <div style={{
+              marginBottom: '16px',
+              padding: isMobile ? '14px' : '16px',
+              borderRadius: '14px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-elevated)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: 0 }}>
+                  Retours client
+                </p>
+                {hasClientActivity && (
+                  <span style={{
+                    background: 'rgba(22,163,74,0.15)',
+                    color: '#16a34a',
+                    border: '1px solid rgba(22,163,74,0.3)',
+                    borderRadius: '999px',
+                    padding: '3px 10px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                  }}>
+                    {clientUpdateCount > 0 ? 'Infos complétées par le client' : 'Complément client reçu'}
+                  </span>
+                )}
+              </div>
+
+              <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                {clientLastUpdateAt
+                  ? `Dernière mise à jour client : ${formatDateTime(clientLastUpdateAt)}`
+                  : 'Aucune mise à jour client pour le moment'}
+              </p>
+
+              {!hasClientActivity && (
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
+                  Aucun complément reçu via le portail client pour le moment.
+                </p>
+              )}
+
+              {hasClientActivity && (
+                <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
+                  Le client a complété certaines informations depuis le portail.
+                  {project?.siteAddress || project?.budget || project?.desiredTimeline ? ' Résumé :' : ''}
+                </p>
+              )}
+
+              {hasClientActivity && (project?.siteAddress || project?.budget || project?.desiredTimeline) && (
+                <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
+                  {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
+                  {project?.budget && <li>Budget : {project.budget}</li>}
+                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
+                </ul>
+              )}
+
+              {clientMessages.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                  <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                    Messages client
+                  </p>
+                  {clientMessages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: 'var(--bg-hover)',
+                        border: '1px solid var(--border)',
+                        borderLeft: '3px solid #16a34a',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a' }}>Client</span>
+                        {msg.date && <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{msg.date}</span>}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                        {msg.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {false && (
         <section

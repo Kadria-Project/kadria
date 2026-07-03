@@ -247,6 +247,9 @@ export interface SupabaseProject {
     size: number
   }>
   recordId: string
+  clientMessages: string
+  clientLastUpdateAt: string | null
+  clientUpdateCount: number
 }
 
 export function mapSupabaseUserLookup(row: RawRow): SupabaseUserLookup {
@@ -398,6 +401,14 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     depositProvider: getValue<string | null>(row, ['deposit_provider', 'Deposit Provider'], null),
     photos: getPhotos(row),
     recordId: getString(row, 'record_id'),
+    // Portail client (V1) : messages libres envoyés par le client. Le format
+    // stocké est aujourd'hui une chaîne (accumulation "[date] message"), mais
+    // on garde cette valeur brute (pas de forçage String()) pour rester
+    // tolérant si la colonne contient un jour un JSON (tableau/objet) —
+    // c'est la page projet (dashboard-v2) qui se charge du parsing tolérant.
+    clientMessages: (getValue<unknown>(row, ['client_messages'], '') ?? '') as unknown as string,
+    clientLastUpdateAt: getValue<string | null>(row, ['client_last_update_at'], null),
+    clientUpdateCount: getNumber(row, 'client_update_count'),
   }
 }
 
