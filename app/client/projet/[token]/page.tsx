@@ -176,6 +176,12 @@ export default function ClientPortalPage() {
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Compactage d'affichage de la timeline système (aucune suppression de
+  // donnée) : si plusieurs événements 'client_info_updated' s'accumulent,
+  // on n'affiche par défaut que les 3 plus récents + un texte "+ X
+  // événements précédents" à déplier.
+  const [showAllSystemEvents, setShowAllSystemEvents] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [done, setDone] = useState(false);
@@ -393,10 +399,10 @@ export default function ClientPortalPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', color: '#111827' }}>
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '32px 20px 64px' }}>
+      <div className="max-w-[640px] lg:max-w-7xl mx-auto px-5 lg:px-8 py-8 lg:py-10">
 
         {/* 1. Header artisan */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <div className="lg:justify-start" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           {artisan?.brandLogoUrl ? (
             <img src={artisan.brandLogoUrl} alt="" style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }} />
           ) : (
@@ -413,6 +419,9 @@ export default function ClientPortalPage() {
             {artisan?.trade && <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{artisan.trade}</p>}
           </div>
         </div>
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.8fr)] lg:gap-6 lg:items-start">
+        <div className="lg:min-w-0">
 
         <div style={{ background: '#ffffff', borderRadius: '16px', padding: '28px 24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: '20px' }}>
           <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 4px' }}>Suivi de votre demande</h1>
@@ -441,13 +450,13 @@ export default function ClientPortalPage() {
         {/* 3. Résumé de la demande */}
         <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px' }}>Votre demande</h2>
-          <div style={{ display: 'grid', gap: '8px', fontSize: '13px', color: '#374151' }}>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-x-6" style={{ display: 'grid', gap: '8px', fontSize: '13px', color: '#374151' }}>
             {project.projectType && <p style={{ margin: 0 }}><strong>Type de prestation :</strong> {project.projectType}</p>}
             {project.city && <p style={{ margin: 0 }}><strong>Ville :</strong> {project.city}</p>}
             {project.siteAddress && <p style={{ margin: 0 }}><strong>Adresse :</strong> {project.siteAddress}</p>}
             {project.budget && <p style={{ margin: 0 }}><strong>Budget :</strong> {project.budget}</p>}
             {project.desiredTimeline && <p style={{ margin: 0 }}><strong>Délai souhaité :</strong> {project.desiredTimeline}</p>}
-            {project.summary && <p style={{ margin: '8px 0 0', color: '#6b7280' }}>{project.summary}</p>}
+            {project.summary && <p className="lg:col-span-2" style={{ margin: '8px 0 0', color: '#6b7280' }}>{project.summary}</p>}
           </div>
 
           {project.photos.length > 0 && (
@@ -582,7 +591,7 @@ export default function ClientPortalPage() {
                   Aucun message pour le moment.
                 </p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="lg:max-h-[520px] lg:overflow-y-auto lg:pr-1" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {useLegacyFallback
                     ? legacyMessages.map((msg, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -665,9 +674,36 @@ export default function ClientPortalPage() {
                 </p>
               );
             }
+            // Compactage : parmi les événements 'client_info_updated', on ne
+            // garde visibles par défaut que les 3 plus récents (les autres
+            // types d'événements restent toujours affichés). Rien n'est
+            // supprimé côté données, uniquement replié à l'affichage.
+            const infoUpdateIdx = systemEvents
+              .map((ev, i) => ({ ev, i }))
+              .filter((x) => x.ev.type === 'client_info_updated');
+            const hiddenCount = Math.max(0, infoUpdateIdx.length - 3);
+            const hiddenIndexSet = new Set(
+              hiddenCount > 0 ? infoUpdateIdx.slice(0, hiddenCount).map((x) => x.i) : [],
+            );
+            const visibleEvents = showAllSystemEvents
+              ? systemEvents
+              : systemEvents.filter((_, i) => !hiddenIndexSet.has(i));
+
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {systemEvents.map((ev) => (
+                {hiddenCount > 0 && !showAllSystemEvents && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSystemEvents(true)}
+                    style={{
+                      alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0,
+                      fontSize: '12px', color: '#6b7280', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline',
+                    }}
+                  >
+                    + {hiddenCount} événement{hiddenCount > 1 ? 's' : ''} précédent{hiddenCount > 1 ? 's' : ''}
+                  </button>
+                )}
+                {visibleEvents.map((ev) => (
                   <div
                     key={ev.id}
                     style={{
@@ -698,6 +734,10 @@ export default function ClientPortalPage() {
             );
           })()}
         </div>
+
+        </div>
+        {/* Colonne latérale (desktop) : formulaire + rappel */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
 
         {done && (
           <div style={{
@@ -842,6 +882,16 @@ export default function ClientPortalPage() {
               Modifiez une information pour l&apos;envoyer.
             </p>
           )}
+        </div>
+
+        <div style={{
+          background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px',
+          padding: '12px 16px', marginBottom: '20px', color: '#6b7280', fontSize: '12px', textAlign: 'center',
+        }}>
+          Aucune création de compte n&apos;est nécessaire pour suivre votre demande.
+        </div>
+
+        </div>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af' }}>Propulsé par Kadria</p>
