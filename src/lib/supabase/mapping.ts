@@ -250,6 +250,7 @@ export interface SupabaseProject {
   clientMessages: string
   clientLastUpdateAt: string | null
   clientUpdateCount: number
+  clientActivityLastSeenAt: string | null
 }
 
 export function mapSupabaseUserLookup(row: RawRow): SupabaseUserLookup {
@@ -409,6 +410,10 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     clientMessages: (getValue<unknown>(row, ['client_messages'], '') ?? '') as unknown as string,
     clientLastUpdateAt: getValue<string | null>(row, ['client_last_update_at'], null),
     clientUpdateCount: getNumber(row, 'client_update_count'),
+    // Colonne "Activité"/nouveautés (migration
+    // 20260712_project_client_activity_seen.sql, pas forcément appliquée) :
+    // tolérant si la colonne n'existe pas encore (fallback null).
+    clientActivityLastSeenAt: getValue<string | null>(row, ['client_activity_last_seen_at'], null),
   }
 }
 

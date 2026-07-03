@@ -395,6 +395,64 @@ export function timeAgo(dateStr: string): string {
   return formatReceivedAt(dateStr);
 }
 
+// Colonne Activité (suivi commercial) : libellés courts pour les types
+// d'événements client significatifs. Garde en phase avec
+// SIGNIFICANT_EVENT_LABELS côté serveur (src/lib/client-events.ts) — dupliqué
+// ici pour ne pas faire dépendre ce composant client d'un module qui importe
+// supabaseAdmin (server-only).
+const CLIENT_ACTIVITY_LABELS: Record<string, string> = {
+  client_message: 'Message client',
+  client_info_updated: 'Infos complétées',
+  quote_accepted: 'Devis accepté',
+  quote_declined: 'Devis refusé',
+  appointment_scheduled: 'RDV planifié',
+  appointment_updated: 'RDV mis à jour',
+};
+
+export interface ClientActivityInfo {
+  unreadCount?: number;
+  lastEventType?: string | null;
+  lastEventAt?: string | null;
+}
+
+function ActivityCell({ activity, compact }: { activity?: ClientActivityInfo; compact?: boolean }) {
+  const unreadCount = activity?.unreadCount || 0;
+  const lastType = activity?.lastEventType ? CLIENT_ACTIVITY_LABELS[activity.lastEventType] || null : null;
+  const lastAt = activity?.lastEventAt || null;
+
+  if (!activity || (!unreadCount && !lastType)) {
+    return <span className="text-xs text-[var(--text-3)]">Aucune activité</span>;
+  }
+
+  if (unreadCount > 0) {
+    return (
+      <div className={compact ? 'flex flex-wrap items-center gap-1.5 text-xs' : 'flex flex-col gap-0.5'}>
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-bold text-green-400">
+          {unreadCount} {unreadCount > 1 ? 'nouveautés' : 'à lire'}
+        </span>
+        {(lastType || lastAt) && (
+          <span className="text-[11px] text-[var(--text-2)]">
+            {[lastType, lastAt ? timeAgo(lastAt) : null].filter(Boolean).join(' · ')}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={compact ? 'flex flex-wrap items-center gap-1.5 text-xs' : 'flex flex-col gap-0.5'}>
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--border)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-2)]">
+        À jour
+      </span>
+      {(lastType || lastAt) && (
+        <span className="text-[11px] text-[var(--text-3)]">
+          {[lastType, lastAt ? timeAgo(lastAt) : null].filter(Boolean).join(' · ')}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ReceivedAtLabel({ dateLike, className }: { dateLike: unknown; className?: string }) {
   const label = formatReceivedAt(dateLike);
   const title = label === 'Date à vérifier' ? 'Date de réception incohérente ou future.' : undefined;
@@ -4896,10 +4954,11 @@ export function ProjectList({
         <span className="col-span-1">Réf</span>
         <span className="col-span-1">Reçu</span>
         <span className="col-span-2">Client</span>
-        <span className="col-span-2">Projet</span>
-        <span className="col-span-2">Ville</span>
+        <span className="col-span-1">Projet</span>
+        <span className="col-span-1">Ville</span>
         <span className="col-span-1">Budget</span>
         <span className="col-span-1">Score</span>
+        <span className="col-span-2">Activité</span>
         <span className="col-span-1">Statut</span>
         <span className="col-span-1"></span>
       </div>
@@ -4925,13 +4984,13 @@ export function ProjectList({
             </span>
 
             <span
-              className="col-span-2 text-[var(--text-2)]"
+              className="col-span-1 text-[var(--text-2)]"
               style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {p.trade || '—'}
             </span>
 
-            <span className="col-span-2 text-[var(--text-2)] truncate">
+            <span className="col-span-1 text-[var(--text-2)] truncate">
               {p.city || '—'}
             </span>
 
@@ -4941,6 +5000,10 @@ export function ProjectList({
 
             <span className="col-span-1">
               <ScorePill score={p.completenessScore || 0} />
+            </span>
+
+            <span className="col-span-2">
+              <ActivityCell activity={p.clientActivity} />
             </span>
 
             <span className="col-span-1">
@@ -4981,6 +5044,8 @@ export function ProjectList({
               <span className="text-[var(--text-3)]">•</span>
               <ScorePill score={p.completenessScore || 0} />
             </div>
+
+            <ActivityCell activity={p.clientActivity} compact />
 
             <div className="flex items-center justify-between gap-3">
               <ReceivedAtLabel dateLike={p.createdAt} className="text-xs text-[var(--text-3)]" />
@@ -5149,6 +5214,15 @@ function KanbanCard({
 
         <ReceivedAtLabel dateLike={project.createdAt} className="ml-auto text-xs text-[var(--text-3)]" />
       </div>
+
+      {Boolean(project.clientActivity?.unreadCount) && (
+        <div className="mt-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-bold text-green-400">
+            {project.clientActivity!.unreadCount}{' '}
+            {project.clientActivity!.unreadCount! > 1 ? 'nouveautés' : 'à lire'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

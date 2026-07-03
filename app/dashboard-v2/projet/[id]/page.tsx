@@ -1128,6 +1128,15 @@ function ProjectDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Marque les nouveautés client comme lues à l'ouverture de la fiche projet
+  // (colonne Activité du suivi commercial). Appel unique, best-effort : ne
+  // doit jamais bloquer/casser l'affichage de la fiche si ça échoue (table
+  // ou colonne pas encore migrée, réseau, etc.).
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/projects/${id}/mark-activity-seen`, { method: 'POST' }).catch(() => {});
+  }, [id]);
+
   async function submitClientReply() {
     const trimmed = clientReplyMessage.trim();
     setClientReplyError('');

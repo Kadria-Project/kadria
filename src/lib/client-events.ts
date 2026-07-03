@@ -31,6 +31,97 @@ export const PRODUCED_EVENT_TYPES = new Set<ClientEventType>([
   'client_info_updated',
 ])
 
+// Événements "significatifs" côté artisan pour la colonne Activité du suivi
+// commercial : des nouveautés que l'artisan doit voir/lire. On exclut
+// explicitement artisan_reply (action de l'artisan lui-même, jamais une
+// nouveauté pour lui) et tout futur type interne non listé ici. Liste
+// blanche volontairement restrictive plutôt que "tout sauf artisan_reply",
+// pour rester sûr si de nouveaux types internes apparaissent plus tard.
+export const SIGNIFICANT_CLIENT_EVENT_TYPES = new Set<ClientEventType>([
+  'client_message',
+  'client_info_updated',
+  'quote_accepted',
+  'quote_declined',
+  'appointment_scheduled',
+  'appointment_updated',
+])
+
+// Libellés courts affichés dans la colonne Activité ("Message client",
+// "Infos complétées"...).
+export const SIGNIFICANT_EVENT_LABELS: Record<string, string> = {
+  client_message: 'Message client',
+  client_info_updated: 'Infos complétées',
+  quote_accepted: 'Devis accepté',
+  quote_declined: 'Devis refusé',
+  appointment_scheduled: 'RDV planifié',
+  appointment_updated: 'RDV mis à jour',
+}
+
+export interface ClientActivitySummary {
+  unreadCount: number
+  lastEventType: string | null
+  lastEventAt: string | null
+}
+
+// Récupère, en une seule requête groupée, les événements client
+// significatifs pour un lot de projets (utilisé par la liste de suivi
+// commercial pour éviter tout N+1). Tolérant à l'absence de la table (V1 pas
+// encore appliquée dans cet environnement) : retourne une map vide plutôt
+// que de faire planter la liste.
+export async function getClientActivitySummaries(
+  projectIds: string[],
+  lastSeenAtByProjectId: Map<string, string | null>,
+): Promise<Map<string, ClientActivitySummary>> {
+  const result = new Map<string, ClientActivitySummary>()
+  if (!projectIds.length) return result
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(CLIENT_EVENTS_TABLE)
+      .select('project_id, event_type, created_at')
+      .in('project_id', projectIds)
+      .eq('visibility', 'client')
+      .order('created_at', { ascending: false })
+      .limit(2000)
+
+    if (error) {
+      if (!isMissingTableError(error)) {
+        console.error('[CLIENT-EVENTS] getClientActivitySummaries fetch error:', error.message)
+      }
+      return result
+    }
+
+    for (const row of (data || []) as Record<string, unknown>[]) {
+      const eventType = String(row.event_type || '')
+      if (!SIGNIFICANT_CLIENT_EVENT_TYPES.has(eventType as ClientEventType)) continue
+
+      const projectId = String(row.project_id || '')
+      if (!projectId) continue
+
+      const createdAt = row.created_at ? String(row.created_at) : null
+
+      const existing = result.get(projectId)
+      if (!existing) {
+        // Premier événement rencontré pour ce projet = le plus récent
+        // (tri created_at desc), donc c'est le "dernier événement".
+        result.set(projectId, { unreadCount: 0, lastEventType: eventType, lastEventAt: createdAt })
+      }
+
+      const lastSeenAt = lastSeenAtByProjectId.get(projectId) ?? null
+      const isUnread = !lastSeenAt || (createdAt !== null && createdAt > lastSeenAt)
+      if (isUnread) {
+        const entry = result.get(projectId)
+        if (entry) entry.unreadCount += 1
+      }
+    }
+
+    return result
+  } catch (e) {
+    console.error('[CLIENT-EVENTS] getClientActivitySummaries threw:', e instanceof Error ? e.message : String(e))
+    return result
+  }
+}
+
 export const VISIBILITIES = ['client', 'internal'] as const
 export type ClientEventVisibility = (typeof VISIBILITIES)[number]
 

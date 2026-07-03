@@ -5,6 +5,7 @@ import { sendClientProjectConfirmationEmailBestEffort } from '@/src/lib/email/cl
 import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
 import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
+import { getClientActivitySummaries } from '@/src/lib/client-events';
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo';
 
@@ -38,6 +39,31 @@ export async function GET(request: Request) {
     }
 
     let projects = (data || []).map(mapSupabaseProject);
+
+    // Colonne "Activité" du suivi commercial (nouveautés client) : une seule
+    // requête groupée sur ProjectClientEvents pour tous les projets affichés
+    // plutôt qu'un N+1. Tolérant si la table n'existe pas encore (renvoie
+    // simplement une map vide, cf. src/lib/client-events.ts).
+    if (projects.length) {
+      const lastSeenAtByProjectId = new Map(
+        projects.map((project) => [project.id, project.clientActivityLastSeenAt] as const),
+      );
+      const summaries = await getClientActivitySummaries(
+        projects.map((project) => project.id),
+        lastSeenAtByProjectId,
+      );
+      projects = projects.map((project) => {
+        const summary = summaries.get(project.id);
+        return {
+          ...project,
+          clientActivity: {
+            unreadCount: summary?.unreadCount ?? 0,
+            lastEventType: summary?.lastEventType ?? null,
+            lastEventAt: summary?.lastEventAt ?? null,
+          },
+        };
+      });
+    }
 
     if (status) {
       projects = projects.filter((project) => project.status === status);
