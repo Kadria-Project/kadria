@@ -170,6 +170,21 @@ function getContrastColor(hex: string, light = '#ffffff', dark = '#04110a') {
   return relativeLuminance(hex) > 0.45 ? dark : light
 }
 
+function buildReadableHeaderTokens(backgroundColor: string) {
+  const textPrimary = getContrastColor(backgroundColor, '#ffffff', '#0f172a')
+  const prefersDarkText = textPrimary.toLowerCase() !== '#ffffff'
+
+  return {
+    textPrimary,
+    textMuted: prefersDarkText ? hexToRgba('#0f172a', 0.78) : hexToRgba('#ffffff', 0.84),
+    badgeBackground: prefersDarkText ? hexToRgba('#ffffff', 0.28) : hexToRgba('#0f172a', 0.18),
+    badgeBorder: prefersDarkText ? hexToRgba('#ffffff', 0.42) : hexToRgba('#0f172a', 0.22),
+    badgeText: textPrimary,
+    pillBackground: prefersDarkText ? hexToRgba('#ffffff', 0.2) : hexToRgba('#0f172a', 0.14),
+    pillBorder: prefersDarkText ? hexToRgba('#ffffff', 0.32) : hexToRgba('#0f172a', 0.18),
+  }
+}
+
 function buildWidgetBrandTheme({
   primaryColor,
   secondaryColor,
@@ -182,6 +197,7 @@ function buildWidgetBrandTheme({
   const primary = normalizeHex(primaryColor, '#22c55e')
   const secondary = normalizeHex(secondaryColor, '#18181b')
   const primaryContrast = getContrastColor(primary)
+  const headerTokens = buildReadableHeaderTokens(primary)
 
   if (mode === 'immersive') {
     const shell = mixHex(primary, '#ffffff', 0.9)
@@ -193,9 +209,13 @@ function buildWidgetBrandTheme({
       panelBorder: hexToRgba(primary, 0.18),
       textPrimary: getContrastColor(shell, '#ffffff', '#0f172a'),
       textMuted: '#475569',
-      badgeBackground: hexToRgba(secondary, 0.1),
-      badgeBorder: hexToRgba(secondary, 0.14),
-      badgeText: secondary,
+      headerTextPrimary: headerTokens.textPrimary,
+      headerTextMuted: headerTokens.textMuted,
+      badgeBackground: headerTokens.badgeBackground,
+      badgeBorder: headerTokens.badgeBorder,
+      badgeText: headerTokens.badgeText,
+      headerPillBackground: headerTokens.pillBackground,
+      headerPillBorder: headerTokens.pillBorder,
       cardBackground: '#ffffff',
       cardBorder: hexToRgba(primary, 0.14),
       welcomeBackground: `linear-gradient(180deg, ${hexToRgba(mixHex(primary, '#ffffff', 0.72), 0.92)} 0%, ${hexToRgba(mixHex(primary, '#ffffff', 0.86), 0.98)} 100%)`,
@@ -222,9 +242,13 @@ function buildWidgetBrandTheme({
       panelBorder: 'rgba(148,163,184,0.18)',
       textPrimary: '#f8fafc',
       textMuted: '#94a3b8',
+      headerTextPrimary: '#f8fafc',
+      headerTextMuted: 'rgba(226,232,240,0.84)',
       badgeBackground: hexToRgba(secondary, 0.18),
       badgeBorder: hexToRgba(secondary, 0.24),
       badgeText: '#e2e8f0',
+      headerPillBackground: 'rgba(255,255,255,0.08)',
+      headerPillBorder: 'rgba(255,255,255,0.14)',
       cardBackground: '#111827',
       cardBorder: 'rgba(148,163,184,0.16)',
       welcomeBackground: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(11,18,32,0.98) 100%)',
@@ -250,9 +274,13 @@ function buildWidgetBrandTheme({
     panelBorder: 'rgba(148,163,184,0.2)',
     textPrimary: '#0f172a',
     textMuted: '#64748b',
-    badgeBackground: hexToRgba(secondary, 0.08),
-    badgeBorder: hexToRgba(secondary, 0.12),
-    badgeText: secondary,
+    headerTextPrimary: headerTokens.textPrimary,
+    headerTextMuted: headerTokens.textMuted,
+    badgeBackground: headerTokens.badgeBackground,
+    badgeBorder: headerTokens.badgeBorder,
+    badgeText: headerTokens.badgeText,
+    headerPillBackground: headerTokens.pillBackground,
+    headerPillBorder: headerTokens.pillBorder,
     cardBackground: '#ffffff',
     cardBorder: 'rgba(148,163,184,0.16)',
     welcomeBackground: 'linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(15,23,42,0.94) 100%)',
@@ -936,10 +964,10 @@ export default function ChatWidgetInline({
               )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <p style={{ margin: 0, color: theme.textPrimary, fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{resolvedBrandName}</p>
+                  <p style={{ margin: 0, color: theme.headerTextPrimary, fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{resolvedBrandName}</p>
                   <span style={{
-                    border: `1px solid ${hexToRgba(theme.secondaryAccent, 0.22)}`,
-                    background: hexToRgba(theme.secondaryAccent, 0.1),
+                    border: `1px solid ${theme.badgeBorder}`,
+                    background: theme.badgeBackground,
                     color: theme.badgeText,
                     borderRadius: '999px',
                     padding: '2px 8px',
@@ -964,16 +992,16 @@ export default function ChatWidgetInline({
                     </span>
                   )}
                 </div>
-                <p style={{ margin: '2px 0 0', color: theme.textMuted, fontSize: isProjectExperience ? '12.5px' : '12px' }}>
+                <p style={{ margin: '2px 0 0', color: theme.headerTextMuted, fontSize: isProjectExperience ? '12.5px' : '12px' }}>
                   Votre assistant de confiance pour vos travaux
                 </p>
               </div>
             </div>
             {isProjectExperience && (
               <div style={{
-                border: `1px solid ${hexToRgba(theme.primaryColor, 0.2)}`,
-                background: hexToRgba(theme.primaryColor, 0.08),
-                color: theme.textPrimary,
+                border: `1px solid ${theme.headerPillBorder}`,
+                background: theme.headerPillBackground,
+                color: theme.headerTextPrimary,
                 borderRadius: '999px',
                 padding: '8px 12px',
                 fontSize: '12px',
