@@ -66,6 +66,7 @@ import {
 } from '@/src/lib/commercial-actions';
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
+import { getProjectLifecycle, PROJECT_STATUS_OPTIONS } from '@/src/lib/project-lifecycle';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
@@ -255,6 +256,10 @@ const STATUS_OPTIONS = [
   { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
   { value: 'En cours', label: 'En cours', cls: 'bg-purple-500/20 text-purple-400' },
   { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'bg-blue-500/20 text-blue-400' },
+  { value: 'Devis accepté', label: 'Devis accepté', cls: 'bg-emerald-500/20 text-emerald-300' },
+  { value: 'Acompte demandé', label: 'Acompte demandé', cls: 'bg-cyan-500/20 text-cyan-300' },
+  { value: 'Acompte payé', label: 'Acompte payé', cls: 'bg-teal-500/20 text-teal-300' },
+  { value: 'Réalisation du projet', label: 'Réalisation du projet', cls: 'bg-lime-500/20 text-lime-300' },
   { value: 'En risque', label: 'En risque', cls: 'bg-red-500/20 text-red-300' },
   { value: 'A relancer', label: 'A relancer', cls: 'bg-amber-500/20 text-amber-300' },
   { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
@@ -266,12 +271,36 @@ export const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   'À rappeler':   { bg: 'var(--badge-callback-bg)',  color: 'var(--badge-callback-text)' },
   'Qualifié':     { bg: 'var(--badge-qualified-bg)', color: 'var(--badge-qualified-text)' },
   'Devis envoyé': { bg: 'var(--badge-quote-bg)',     color: 'var(--badge-quote-text)' },
+  'Devis accepté': { bg: 'rgba(16,185,129,0.16)', color: '#6ee7b7' },
+  'Acompte demandé': { bg: 'rgba(6,182,212,0.16)', color: '#67e8f9' },
+  'Acompte payé': { bg: 'rgba(20,184,166,0.16)', color: '#5eead4' },
+  'Réalisation du projet': { bg: 'rgba(132,204,22,0.16)', color: '#bef264' },
   'En risque':    { bg: 'var(--badge-risk-bg)',      color: 'var(--badge-risk-text)' },
   'A relancer':   { bg: 'var(--badge-callback-bg)',  color: 'var(--badge-callback-text)' },
   'En cours':     { bg: 'var(--badge-progress-bg)',  color: 'var(--badge-progress-text)' },
   'Gagné':        { bg: 'var(--badge-won-bg)',       color: 'var(--badge-won-text)' },
   'Perdu':        { bg: 'var(--badge-lost-bg)',      color: 'var(--badge-lost-text)' },
 };
+
+function getDashboardLifecycle(project: Project) {
+  return getProjectLifecycle({
+    status: project.status,
+    completenessScore: project.completenessScore,
+    clientUpdateCount: project.clientUpdateCount,
+    unreadClientActivityCount: project.clientActivity?.unreadCount,
+    clientLastUpdateAt: project.clientLastUpdateAt,
+    callbackDate: project.callbackDate,
+    desiredTimeline: project.desiredTimeline,
+    quoteSentAt: project.quoteSentAt,
+    acceptedAt: project.acceptedAt,
+    depositStatus: project.depositStatus,
+    depositAmount: project.depositAmount,
+    depositPaymentUrl: project.depositPaymentUrl,
+    depositPaidAt: project.depositPaidAt,
+    appointment: project.appointment?.start ? { start: project.appointment.start } : null,
+    actionEngineInput: projectToActionEngineInput(project),
+  });
+}
 
 export default function ArtisanDashboardPage({
   plan = 'essentiel',
@@ -829,29 +858,25 @@ function computeRelationshipStatus(projects: Project[]): ClientRelationshipStatu
 }
 
 function computeNextAction(projects: Project[]): { label: string; project?: Project } {
+  const priorityRank: Record<string, number> = { high: 0, normal: 1, low: 2, none: 3 };
   const active = [...projects]
     .filter((p) => !isWonProject(p) && !isLostProject(p) && !isArchivedProject(p))
-    .sort((a, b) => getReceivedSortTimestamp(b.createdAt) - getReceivedSortTimestamp(a.createdAt));
+    .map((project) => ({ project, lifecycle: getDashboardLifecycle(project) }))
+    .sort((a, b) => {
+      const priorityDelta =
+        (priorityRank[a.lifecycle.recommendedAction.priority] ?? 9)
+        - (priorityRank[b.lifecycle.recommendedAction.priority] ?? 9);
+      if (priorityDelta !== 0) return priorityDelta;
+      return getReceivedSortTimestamp(b.project.createdAt) - getReceivedSortTimestamp(a.project.createdAt);
+    });
 
-  const needsFollowUp = active.find((p) => {
-    const risk = getProjectRiskStatus(p);
-    return (risk.status === 'followUp' || risk.status === 'atRisk') && isQuoteSentProject(p);
-  });
-  if (needsFollowUp) return { label: 'Relancer devis', project: needsFollowUp };
+  const next = active.find((entry) => entry.lifecycle.recommendedAction.priority !== 'none');
+  if (!next) return { label: 'Aucune action' };
 
-  const needsQuote = active.find((p) => !isQuoteSentProject(p) && Number(p.completenessScore || 0) >= 80);
-  if (needsQuote) return { label: 'Envoyer devis', project: needsQuote };
-
-  const needsCallback = active.find((p) => p.status === 'À rappeler' || p.callbackDate);
-  if (needsCallback) return { label: 'Rappeler', project: needsCallback };
-
-  const hotUncontacted = active.find((p) => isHotLead(p));
-  if (hotUncontacted) return { label: 'Rappeler', project: hotUncontacted };
-
-  const incomplete = active.find((p) => Number(p.completenessScore || 0) < 80);
-  if (incomplete) return { label: 'Compléter dossier', project: incomplete };
-
-  return { label: 'Aucune action' };
+  return {
+    label: next.lifecycle.recommendedAction.title,
+    project: next.project,
+  };
 }
 
 export function groupProjectsByClient(projects: Project[]): ClientSummary[] {
@@ -1878,15 +1903,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const overdueCount = overdueEvents.length;
   const todayCount = todayEvents.length;
 
-  const pipelineSteps = [
-    { label: 'Nouveau', value: allProjects.filter((p) => p.status === 'Nouveau').length },
-    { label: 'À rappeler', value: allProjects.filter((p) => p.status === 'À rappeler').length },
-    { label: 'Qualifié', value: allProjects.filter((p) => p.status === 'Qualifié').length },
-    { label: 'Devis envoyé', value: allProjects.filter((p) => p.status === 'Devis envoyé').length },
-    { label: 'A relancer', value: allProjects.filter((p) => p.status === 'A relancer').length },
-    { label: 'En risque', value: allProjects.filter((p) => p.status === 'En risque').length },
-    { label: 'Gagné', value: allProjects.filter((p) => p.status === 'Gagné').length },
-  ];
+  const pipelineSteps = PROJECT_STATUS_OPTIONS.map((label) => ({
+    label,
+    value: allProjects.filter((project) => getDashboardLifecycle(project).displayStatus === label).length,
+  }));
 
   const topOpportunities = [...activeProjects]
     .filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu')

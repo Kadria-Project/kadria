@@ -1,16 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig, getDevisByProjet, getUserByArtisanIdentifier } from '@/src/lib/airtable'
 import { createClientEvent, getPublicTimelineEvents } from '@/src/lib/client-events'
 import { resolveDevisBranding } from '@/src/lib/devis-branding'
 import { normalizePlan } from '@/src/lib/plans'
 import { getBaseUrl } from '@/src/lib/base-url'
+import { getClientPublicStatus } from '@/src/lib/project-lifecycle'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { normalizePublicDepositStatus } from '@/src/lib/deposit'
 
-// Portail client V1 : page publique de suivi + complément d'une demande,
-// sécurisée par token opaque (même convention que sms_completion_token /
-// devis token). Jamais d'accès par projectId brut, jamais de donnée interne
-// (score commercial, notes internes, relances...) exposée ici.
+// Portail client V1 : page publique de suivi + complÃ©ment d'une demande,
+// sÃ©curisÃ©e par token opaque (mÃªme convention que sms_completion_token /
+// devis token). Jamais d'accÃ¨s par projectId brut, jamais de donnÃ©e interne
+// (score commercial, notes internes, relances...) exposÃ©e ici.
 
 function isValidToken(token: string | undefined): token is string {
   return !!token && /^[0-9a-f]{48}$/i.test(token)
@@ -21,26 +22,11 @@ function isValidEmail(value: string): boolean {
 }
 
 function tokenRef(token: string): string {
-  return `${token.slice(0, 6)}…`
-}
-
-// Statuts internes -> libellé client, jamais l'inverse. Toute valeur
-// inconnue retombe sur un libellé neutre plutôt que d'exposer le brut.
-const CLIENT_STATUS_MAP: Record<string, string> = {
-  Nouveau: 'Demande reçue',
-  Qualifié: "Demande en cours d'analyse",
-  'À rappeler': "Demande en cours d'analyse",
-  'En cours': 'Étude en cours',
-  'Devis envoyé': 'Devis envoyé',
-  Gagné: 'Devis accepté',
-  Perdu: 'Demande clôturée',
+  return `${token.slice(0, 6)}â€¦`
 }
 
 function resolveClientStatus(status: string, completenessScore: number): string {
-  if (completenessScore > 0 && completenessScore < 40) {
-    return 'Informations à compléter'
-  }
-  return CLIENT_STATUS_MAP[status] || 'Demande reçue'
+  return getClientPublicStatus(status, completenessScore)
 }
 
 function normalizeCompare(value: unknown): string {
@@ -48,17 +34,17 @@ function normalizeCompare(value: unknown): string {
 }
 
 // Champs strictement publics du projet : jamais de score commercial, notes
-// internes, maturité, relances, coûts/marges, etc. deposit_* proviennent du
-// pipeline acompte existant (src/lib/deposit.ts) — jamais de nouveau champ
-// paiement créé ici, simple lecture si déjà renseigné par l'artisan.
+// internes, maturitÃ©, relances, coÃ»ts/marges, etc. deposit_* proviennent du
+// pipeline acompte existant (src/lib/deposit.ts) â€” jamais de nouveau champ
+// paiement crÃ©Ã© ici, simple lecture si dÃ©jÃ  renseignÃ© par l'artisan.
 const PUBLIC_PROJECT_COLUMNS =
   'id, artisan_id, status, completeness_score, client_first_name, client_name, client_email, ' +
   'client_phone, site_address, city, postal_code, project_type, trade, budget, desired_timeline, ' +
   'ai_summary, photos, created_at, client_portal_token, client_messages, client_last_update_at, ' +
   'client_update_count, deposit_payment_url, deposit_amount, deposit_status, deposit_paid_at'
 
-// Seul un lien http(s) valide est exposé au client — jamais une valeur vide,
-// malformée, ou un schéma non http(s).
+// Seul un lien http(s) valide est exposÃ© au client â€” jamais une valeur vide,
+// malformÃ©e, ou un schÃ©ma non http(s).
 function isValidHttpUrl(value: unknown): value is string {
   if (typeof value !== 'string' || !value.trim()) return false
   try {
@@ -70,9 +56,9 @@ function isValidHttpUrl(value: unknown): value is string {
 }
 
 // Statut devis interne -> statut public client, jamais l'inverse. Toute
-// valeur inconnue retombe sur un libellé neutre. "Expiré" seulement si une
-// date de validité est dépassée et que le devis n'a pas déjà été
-// accepté/refusé (sinon son état définitif prime).
+// valeur inconnue retombe sur un libellÃ© neutre. "ExpirÃ©" seulement si une
+// date de validitÃ© est dÃ©passÃ©e et que le devis n'a pas dÃ©jÃ  Ã©tÃ©
+// acceptÃ©/refusÃ© (sinon son Ã©tat dÃ©finitif prime).
 function resolveQuotePublicStatus(params: {
   hasQuote: boolean
   sent: boolean
@@ -96,20 +82,20 @@ function resolveQuotePublicStatus(params: {
 
 const QUOTE_PUBLIC_STATUS_LABEL: Record<string, string> = {
   no_quote: "Votre devis n'est pas encore disponible.",
-  in_preparation: 'Votre devis est en préparation.',
+  in_preparation: 'Votre devis est en prÃ©paration.',
   available: 'Devis disponible',
-  accepted: 'Devis accepté',
-  declined: 'Devis refusé',
-  expired: 'Devis expiré',
+  accepted: 'Devis acceptÃ©',
+  declined: 'Devis refusÃ©',
+  expired: 'Devis expirÃ©',
 }
 
-// Construit le bloc "quote" strictement public renvoyé au portail client.
-// Reprend le devis le plus récent du projet (getDevisByProjet trie déjà du
-// plus récent au plus ancien). Ne renvoie jamais l'id technique du devis, ni
-// le token public du devis à nu au-delà de l'URL déjà construite vers la
-// page publique existante (/devis/[token]) : cette page gère elle-même
+// Construit le bloc "quote" strictement public renvoyÃ© au portail client.
+// Reprend le devis le plus rÃ©cent du projet (getDevisByProjet trie dÃ©jÃ  du
+// plus rÃ©cent au plus ancien). Ne renvoie jamais l'id technique du devis, ni
+// le token public du devis Ã  nu au-delÃ  de l'URL dÃ©jÃ  construite vers la
+// page publique existante (/devis/[token]) : cette page gÃ¨re elle-mÃªme
 // l'acceptation/le refus avec sa propre protection (rate-limit IP,
-// idempotence déjà en place côté /api/devis/public/accept|decline/[token]),
+// idempotence dÃ©jÃ  en place cÃ´tÃ© /api/devis/public/accept|decline/[token]),
 // on ne duplique jamais cette logique ici pour ce lot.
 async function buildPublicQuoteBlock(project: Record<string, any>) {
   let quoteRow: Awaited<ReturnType<typeof getDevisByProjet>>[number] | null = null
@@ -124,9 +110,9 @@ async function buildPublicQuoteBlock(project: Record<string, any>) {
   const depositPaymentUrl = isValidHttpUrl(project.deposit_payment_url) ? String(project.deposit_payment_url).trim() : null
   const depositAmountRaw = Number(project.deposit_amount)
   const depositAmount = Number.isFinite(depositAmountRaw) && depositAmountRaw > 0 ? depositAmountRaw : null
-  // Statut réel écrit par le webhook (app/api/stripe/connect/deposit-webhook/
-  // route.ts) : littéralement 'paid' au succès. normalizePublicDepositStatus
-  // reste défensif sur d'autres valeurs possibles mais 'paid' est la seule
+  // Statut rÃ©el Ã©crit par le webhook (app/api/stripe/connect/deposit-webhook/
+  // route.ts) : littÃ©ralement 'paid' au succÃ¨s. normalizePublicDepositStatus
+  // reste dÃ©fensif sur d'autres valeurs possibles mais 'paid' est la seule
   // effectivement produite aujourd'hui par ce pipeline.
   const depositPublicStatus = normalizePublicDepositStatus(project.deposit_status)
   const depositIsPaid = depositPublicStatus === 'paid'
@@ -174,16 +160,16 @@ async function buildPublicQuoteBlock(project: Record<string, any>) {
     hasQuote: true,
     sent: Boolean(quoteRow.sent),
     accepted: Boolean(quoteRow.accepted),
-    declined: quoteRow.statut === 'Refusé' || Boolean(quoteRow.declinedAt),
+    declined: quoteRow.statut === 'RefusÃ©' || Boolean(quoteRow.declinedAt),
     dateValidite: quoteRow.dateValidite || null,
   })
 
   const publicQuoteUrl = quoteRow.token ? `${getBaseUrl()}/devis/${quoteRow.token}` : null
 
-  // Lien/montant d'acompte affiché seulement si le devis est accepté ou
-  // disponible (pas de sens tant qu'un devis n'existe pas / est refusé) —
-  // n'affecte jamais si le champ existe réellement, seulement la pertinence
-  // d'affichage côté portail.
+  // Lien/montant d'acompte affichÃ© seulement si le devis est acceptÃ© ou
+  // disponible (pas de sens tant qu'un devis n'existe pas / est refusÃ©) â€”
+  // n'affecte jamais si le champ existe rÃ©ellement, seulement la pertinence
+  // d'affichage cÃ´tÃ© portail.
   const showDeposit = publicStatus === 'accepted' || publicStatus === 'available'
 
   return {
@@ -200,8 +186,8 @@ async function buildPublicQuoteBlock(project: Record<string, any>) {
     depositPaymentUrl: showDeposit ? depositPaymentUrl : null,
     depositAmount: showDeposit ? depositAmount : null,
     deposit: buildDepositBlock(showDeposit),
-    // Acceptation/refus restent gérés par la page publique existante
-    // (/devis/[token]) dans ce lot — pas d'intégration directe dans le
+    // Acceptation/refus restent gÃ©rÃ©s par la page publique existante
+    // (/devis/[token]) dans ce lot â€” pas d'intÃ©gration directe dans le
         // portail, voir limites du rapport final.
     canAccept: false,
     canDecline: false,
@@ -229,15 +215,15 @@ export async function GET(
     const { token } = await params
 
     if (!isValidToken(token)) {
-      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
+      return NextResponse.json({ error: 'Lien invalide ou expirÃ©' }, { status: 404 })
     }
 
     const { data: project, error } = await findProjectByToken(token)
 
     if (error || !project) {
-      // Ne jamais préciser si le token n'existe pas vs projet supprimé :
-      // même message neutre dans tous les cas.
-      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
+      // Ne jamais prÃ©ciser si le token n'existe pas vs projet supprimÃ© :
+      // mÃªme message neutre dans tous les cas.
+      return NextResponse.json({ error: 'Lien invalide ou expirÃ©' }, { status: 404 })
     }
 
     const [config, user] = await Promise.all([
@@ -306,21 +292,21 @@ export async function PATCH(
     const { token } = await params
 
     if (!isValidToken(token)) {
-      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
+      return NextResponse.json({ error: 'Lien invalide ou expirÃ©' }, { status: 404 })
     }
 
     let body: unknown
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
+      return NextResponse.json({ error: 'RequÃªte invalide' }, { status: 400 })
     }
 
     const b = (body || {}) as Record<string, unknown>
 
-    // Liste blanche explicite des champs autorisés — tout autre champ
-    // (artisan_id, project_id, status, notes internes...) est ignoré,
-    // jamais accepté en passthrough.
+    // Liste blanche explicite des champs autorisÃ©s â€” tout autre champ
+    // (artisan_id, project_id, status, notes internes...) est ignorÃ©,
+    // jamais acceptÃ© en passthrough.
     const firstName = typeof b.firstName === 'string' ? b.firstName.trim().slice(0, 120) : ''
     const lastName = typeof b.lastName === 'string' ? b.lastName.trim().slice(0, 120) : ''
     const email = typeof b.email === 'string' ? b.email.trim().slice(0, 200) : ''
@@ -350,23 +336,23 @@ export async function PATCH(
       availability || urgency || message || photoUrls.length > 0
 
     if (!hasAnyUpdate) {
-      return NextResponse.json({ error: 'Aucune information à enregistrer.' }, { status: 400 })
+      return NextResponse.json({ error: 'Aucune information Ã  enregistrer.' }, { status: 400 })
     }
 
     const { data: project, error: fetchError } = await findProjectByToken(token)
 
     if (fetchError || !project) {
-      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
+      return NextResponse.json({ error: 'Lien invalide ou expirÃ©' }, { status: 404 })
     }
 
-    // Anti-spam serveur : on ne considère qu'il y a un changement réel que
-    // si une valeur envoyée diffère (après trim) de la valeur actuellement
-    // en base, ou s'il s'agit d'un contenu additif (précisions/message/
-    // photos) qui n'a pas déjà été enregistré tel quel. Objectif : un clic
+    // Anti-spam serveur : on ne considÃ¨re qu'il y a un changement rÃ©el que
+    // si une valeur envoyÃ©e diffÃ¨re (aprÃ¨s trim) de la valeur actuellement
+    // en base, ou s'il s'agit d'un contenu additif (prÃ©cisions/message/
+    // photos) qui n'a pas dÃ©jÃ  Ã©tÃ© enregistrÃ© tel quel. Objectif : un clic
     // sur "Envoyer mes informations" sans aucune modification ne doit
-    // jamais créer d'événement, ni incrémenter les compteurs, ni polluer
-    // l'activité du dossier — même si le front (gating bouton) est
-    // contourné ou en retard sur une resoumission.
+    // jamais crÃ©er d'Ã©vÃ©nement, ni incrÃ©menter les compteurs, ni polluer
+    // l'activitÃ© du dossier â€” mÃªme si le front (gating bouton) est
+    // contournÃ© ou en retard sur une resoumission.
     const existingValues = {
       firstName: normalizeCompare(project.client_first_name),
       lastName: normalizeCompare(project.client_name),
@@ -378,27 +364,27 @@ export async function PATCH(
     }
 
     const changedFieldLabels: string[] = []
-    if (firstName && firstName !== existingValues.firstName) changedFieldLabels.push('prénom')
+    if (firstName && firstName !== existingValues.firstName) changedFieldLabels.push('prÃ©nom')
     if (lastName && lastName !== existingValues.lastName) changedFieldLabels.push('nom')
     if (email && email !== existingValues.email) changedFieldLabels.push('email')
-    if (phone && phone !== existingValues.phone) changedFieldLabels.push('téléphone')
+    if (phone && phone !== existingValues.phone) changedFieldLabels.push('tÃ©lÃ©phone')
     if (address && address !== existingValues.address) changedFieldLabels.push('adresse')
     if (budget && budget !== existingValues.budget) changedFieldLabels.push('budget')
-    if (timeline && timeline !== existingValues.timeline) changedFieldLabels.push('délai souhaité')
+    if (timeline && timeline !== existingValues.timeline) changedFieldLabels.push('dÃ©lai souhaitÃ©')
 
-    // Précisions / disponibilités / urgence : ajoutées de façon additive au
-    // résumé, jamais en écrasant l'existant (même approche que /completer).
-    // On ne les considère "changées" que si ce bloc exact n'est pas déjà la
-    // dernière chose ajoutée au résumé (évite d'empiler la même précision à
+    // PrÃ©cisions / disponibilitÃ©s / urgence : ajoutÃ©es de faÃ§on additive au
+    // rÃ©sumÃ©, jamais en Ã©crasant l'existant (mÃªme approche que /completer).
+    // On ne les considÃ¨re "changÃ©es" que si ce bloc exact n'est pas dÃ©jÃ  la
+    // derniÃ¨re chose ajoutÃ©e au rÃ©sumÃ© (Ã©vite d'empiler la mÃªme prÃ©cision Ã 
     // chaque clic).
     const extraNotes: string[] = []
-    if (details) extraNotes.push(`Précisions complémentaires (client) : ${details}`)
-    if (availability) extraNotes.push(`Disponibilités (client) : ${availability}`)
-    if (urgency) extraNotes.push(`Urgence signalée par le client : ${urgency}`)
+    if (details) extraNotes.push(`PrÃ©cisions complÃ©mentaires (client) : ${details}`)
+    if (availability) extraNotes.push(`DisponibilitÃ©s (client) : ${availability}`)
+    if (urgency) extraNotes.push(`Urgence signalÃ©e par le client : ${urgency}`)
     const existingSummary = String(project.ai_summary || '').trim()
     const notesBlock = extraNotes.join('\n\n')
     const notesChanged = extraNotes.length > 0 && !(existingSummary && existingSummary.endsWith(notesBlock))
-    if (notesChanged) changedFieldLabels.push('précisions')
+    if (notesChanged) changedFieldLabels.push('prÃ©cisions')
 
     const existingPhotoUrls = new Set(
       (Array.isArray(project.photos) ? project.photos : [])
@@ -414,9 +400,9 @@ export async function PATCH(
 
     const infoChanged = changedFieldLabels.length > 0
 
-    // Rien de réellement nouveau : réponse neutre, aucune écriture (pas
-    // d'événement, pas de compteur, pas d'activité). Empêche le spam par
-    // double-clic ou resoumission identique, même si le front est contourné.
+    // Rien de rÃ©ellement nouveau : rÃ©ponse neutre, aucune Ã©criture (pas
+    // d'Ã©vÃ©nement, pas de compteur, pas d'activitÃ©). EmpÃªche le spam par
+    // double-clic ou resoumission identique, mÃªme si le front est contournÃ©.
     if (!infoChanged && !messageIsNew) {
       return NextResponse.json({
         success: true,
@@ -451,11 +437,11 @@ export async function PATCH(
     }
 
     // Important : `client_name` correspond au champ "Nom" (nom de famille
-    // seul) tel qu'affiché/édité dans la fiche projet artisan — ce n'est
-    // PAS un nom complet. On ne le compose donc jamais avec le prénom, sous
-    // peine d'écraser le "Nom" avec "Prénom Nom" et de désynchroniser
-    // l'affichage côté artisan. On n'écrit un champ que s'il a été renseigné
-    // (jamais d'écrasement par une valeur vide non intentionnelle).
+    // seul) tel qu'affichÃ©/Ã©ditÃ© dans la fiche projet artisan â€” ce n'est
+    // PAS un nom complet. On ne le compose donc jamais avec le prÃ©nom, sous
+    // peine d'Ã©craser le "Nom" avec "PrÃ©nom Nom" et de dÃ©synchroniser
+    // l'affichage cÃ´tÃ© artisan. On n'Ã©crit un champ que s'il a Ã©tÃ© renseignÃ©
+    // (jamais d'Ã©crasement par une valeur vide non intentionnelle).
     if (firstName) update.client_first_name = firstName
     if (lastName) update.client_name = lastName
     if (email) update.client_email = email
@@ -489,18 +475,18 @@ export async function PATCH(
     const updateError = updateResult.error
 
     if (updateError || !updated) {
-      console.error(`[CLIENT-PORTAL] Échec mise à jour (token ${tokenRef(token)}):`, updateError?.message)
+      console.error(`[CLIENT-PORTAL] Ã‰chec mise Ã  jour (token ${tokenRef(token)}):`, updateError?.message)
       return NextResponse.json({ error: "Erreur lors de l'enregistrement" }, { status: 500 })
     }
 
-    // Source unique pour l'activité du dossier ("Activité du dossier") :
-    // ProjectClientEvents. On n'écrit plus jamais de ligne dans la table
-    // Activity pour cette action, afin d'éviter le doublon
-    // "Informations complétées par le client" / "Informations complétées
-    // via le portail client." observé précédemment (les deux lignes
-    // provenaient de deux sources différentes pour la même action). Le
-    // message client a son propre événement dédié, distinct de
-    // 'client_info_updated', et n'est jamais affiché dans l'activité du
+    // Source unique pour l'activitÃ© du dossier ("ActivitÃ© du dossier") :
+    // ProjectClientEvents. On n'Ã©crit plus jamais de ligne dans la table
+    // Activity pour cette action, afin d'Ã©viter le doublon
+    // "Informations complÃ©tÃ©es par le client" / "Informations complÃ©tÃ©es
+    // via le portail client." observÃ© prÃ©cÃ©demment (les deux lignes
+    // provenaient de deux sources diffÃ©rentes pour la mÃªme action). Le
+    // message client a son propre Ã©vÃ©nement dÃ©diÃ©, distinct de
+    // 'client_info_updated', et n'est jamais affichÃ© dans l'activitÃ© du
     // dossier (il vit uniquement dans la section "Discussion client").
     if (messageIsNew) {
       await createClientEvent({
@@ -521,8 +507,8 @@ export async function PATCH(
         eventType: 'client_info_updated',
         visibility: 'client',
         source: 'client',
-        title: 'Informations complétées par le client',
-        message: `Le client a complété des informations depuis le portail client. Champs modifiés : ${changedFieldLabels.join(', ')}.`,
+        title: 'Informations complÃ©tÃ©es par le client',
+        message: `Le client a complÃ©tÃ© des informations depuis le portail client. Champs modifiÃ©s : ${changedFieldLabels.join(', ')}.`,
         metadata: { changedFields: changedFieldLabels, source: 'Portail client' },
       })
     }
@@ -556,3 +542,4 @@ export async function PATCH(
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }
+

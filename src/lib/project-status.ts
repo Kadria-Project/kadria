@@ -1,40 +1,31 @@
-export const PROJECT_STATUS_NORMALIZATION: Record<string, string> = {
-  'A rappeler': 'À rappeler',
-  Qualifie: 'Qualifié',
-  'Devis envoye': 'Devis envoyé',
-  'Devis accepte': 'Devis accepté',
-  'Acompte demande': 'Acompte demandé',
-  'Acompte paye': 'Acompte payé',
-  'Realisation du projet': 'Réalisation du projet',
-  Gagne: 'Gagné',
-}
+import {
+  normalizeProjectStatus,
+  PROJECT_STATUS_NORMALIZATION,
+  PROJECT_STATUS_OPTIONS as LIFECYCLE_STATUS_OPTIONS,
+} from '@/src/lib/project-lifecycle'
 
-export function normalizeProjectStatus(status?: string | null): string {
-  const value = String(status || '').trim()
-  if (!value) return 'Nouveau'
-  return PROJECT_STATUS_NORMALIZATION[value] || value
-}
+export { PROJECT_STATUS_NORMALIZATION, normalizeProjectStatus }
 
-export const PROJECT_STATUS_OPTIONS = [
-  { value: 'Nouveau', label: 'Nouveau', cls: 'bg-[var(--bg-hover)] text-[var(--text-1)]' },
-  { value: 'À rappeler', label: 'À rappeler', cls: 'bg-amber-500/20 text-amber-400' },
-  { value: 'Qualifié', label: 'Qualifié', cls: 'bg-green-500/20 text-green-400' },
-  { value: 'En cours', label: 'En cours', cls: 'bg-purple-500/20 text-purple-400' },
-  { value: 'Devis envoyé', label: 'Devis envoyé', cls: 'bg-blue-500/20 text-blue-400' },
-  { value: 'En risque', label: 'En risque', cls: 'bg-red-500/20 text-red-300' },
-  { value: 'A relancer', label: 'A relancer', cls: 'bg-amber-500/20 text-amber-300' },
-  { value: 'Devis accepté', label: 'Devis accepté', cls: 'bg-emerald-500/20 text-emerald-300' },
-  { value: 'Acompte demandé', label: 'Acompte demandé', cls: 'bg-cyan-500/20 text-cyan-300' },
-  { value: 'Acompte payé', label: 'Acompte payé', cls: 'bg-teal-500/20 text-teal-300' },
-  { value: 'Réalisation du projet', label: 'Réalisation du projet', cls: 'bg-indigo-500/20 text-indigo-300' },
-  { value: 'Gagné', label: 'Gagné', cls: 'bg-green-600/20 text-green-300' },
-  { value: 'Perdu', label: 'Perdu', cls: 'bg-red-500/20 text-red-400' },
-] as const
+export const PROJECT_STATUS_OPTIONS = LIFECYCLE_STATUS_OPTIONS.map((value) => ({
+  value,
+  label: value,
+  cls:
+    value === 'Nouveau' ? 'bg-[var(--bg-hover)] text-[var(--text-1)]' :
+    value === 'À rappeler' ? 'bg-amber-500/20 text-amber-400' :
+    value === 'Qualifié' ? 'bg-green-500/20 text-green-400' :
+    value === 'En cours' ? 'bg-purple-500/20 text-purple-400' :
+    value === 'Devis envoyé' ? 'bg-blue-500/20 text-blue-400' :
+    value === 'Devis accepté' ? 'bg-emerald-500/20 text-emerald-300' :
+    value === 'Acompte demandé' ? 'bg-cyan-500/20 text-cyan-300' :
+    value === 'Acompte payé' ? 'bg-teal-500/20 text-teal-300' :
+    value === 'Réalisation du projet' ? 'bg-indigo-500/20 text-indigo-300' :
+    value === 'Gagné' ? 'bg-green-600/20 text-green-300' :
+    value === 'Perdu' ? 'bg-red-500/20 text-red-400' :
+    'bg-red-500/20 text-red-300',
+}))
 
 export const QUOTE_STAGE_STATUSES = [
   'Devis envoyé',
-  'A relancer',
-  'En risque',
   'Devis accepté',
   'Acompte demandé',
   'Acompte payé',
@@ -78,7 +69,7 @@ export function isProjectExecutionStatus(status?: string | null): boolean {
 
 export function isProjectQuoteSentStatus(status?: string | null): boolean {
   const normalized = normalizeProjectStatus(status)
-  return normalized === 'Devis envoyé' || normalized === 'A relancer' || normalized === 'En risque' || isProjectQuoteAcceptedStatus(normalized)
+  return normalized === 'Devis envoyé' || isProjectQuoteAcceptedStatus(normalized)
 }
 
 export function isProjectQuoteStageStatus(status?: string | null): boolean {

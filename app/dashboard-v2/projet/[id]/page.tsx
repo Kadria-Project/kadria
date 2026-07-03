@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -33,16 +33,17 @@ import { getQuoteSuggestions, buildQuoteDraftPayload, getQuoteDraftStorageKey, g
 import { matchProjectToServices, type ServiceMatcherBusinessProfile, type ServiceMatcherServiceProfile, type ServiceMatchResult } from '@/src/lib/service-matcher';
 import { computeNextAction } from '@/src/lib/action-engine';
 import { getProjectDecisionState } from '@/src/lib/quote-status';
+import { getProjectLifecycle } from '@/src/lib/project-lifecycle';
 import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
 import { computeRecommendedDeposit, formatEuro, normalizeDepositStatus, normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
-  'À rappeler':   { bg: 'rgba(217,119,6,0.15)', text: '#d97706', border: 'rgba(217,119,6,0.3)' },
-  'Qualifié':     { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' },
-  'Devis envoyé': { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' },
-  'Gagné':        { bg: 'rgba(21,128,61,0.15)', text: '#15803d', border: 'rgba(21,128,61,0.3)' },
+  'Ã€ rappeler':   { bg: 'rgba(217,119,6,0.15)', text: '#d97706', border: 'rgba(217,119,6,0.3)' },
+  'QualifiÃ©':     { bg: 'rgba(22,163,74,0.15)', text: '#16a34a', border: 'rgba(22,163,74,0.3)' },
+  'Devis envoyÃ©': { bg: 'rgba(37,99,235,0.15)', text: '#2563eb', border: 'rgba(37,99,235,0.3)' },
+  'GagnÃ©':        { bg: 'rgba(21,128,61,0.15)', text: '#15803d', border: 'rgba(21,128,61,0.3)' },
   'Perdu':        { bg: 'rgba(220,38,38,0.15)', text: '#dc2626', border: 'rgba(220,38,38,0.3)' },
 };
 
@@ -74,7 +75,7 @@ interface DevisListItem {
   follow_up_disabled_at?: string | null;
 }
 
-type CommercialClosureStatus = 'Gagné' | 'Perdu';
+type CommercialClosureStatus = 'GagnÃ©' | 'Perdu';
 
 type CommercialClosureConfirmState = {
   status: CommercialClosureStatus;
@@ -84,19 +85,19 @@ type CommercialClosureConfirmState = {
 };
 
 function getCommercialClosureConfirmState(status: CommercialClosureStatus): CommercialClosureConfirmState {
-  if (status === 'Gagné') {
+  if (status === 'GagnÃ©') {
     return {
       status,
-      title: 'Confirmer le dossier gagné',
-      description: 'Le dossier sera marqué comme gagné et sortira du suivi commercial en cours.',
-      confirmLabel: 'Marquer gagné',
+      title: 'Confirmer le dossier gagnÃ©',
+      description: 'Le dossier sera marquÃ© comme gagnÃ© et sortira du suivi commercial en cours.',
+      confirmLabel: 'Marquer gagnÃ©',
     };
   }
 
   return {
     status,
     title: 'Confirmer le dossier perdu',
-    description: 'Le dossier sera clôturé comme perdu et sortira du suivi commercial en cours.',
+    description: 'Le dossier sera clÃ´turÃ© comme perdu et sortira du suivi commercial en cours.',
     confirmLabel: 'Marquer perdu',
   };
 }
@@ -113,7 +114,7 @@ const quickActionButtonStyle: CSSProperties = {
 };
 
 function formatDevisDate(value: string) {
-  if (!value) return '—';
+  if (!value) return 'â€”';
   const d = new Date(value);
   if (isNaN(d.getTime())) return value;
   return formatMediumDate(value, value);
@@ -143,12 +144,12 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('fr-FR', {
   hour12: false,
 });
 
-// Construit un instant (Date, donc UTC en interne) correspondant à
-// hour:minute en heure de Paris pour la date "YYYY-MM-DD" donnée, en tenant
-// compte du décalage saisonnier (CET/CEST) — même algorithme que
-// buildParisDateTime dans src/lib/appointment-slots.ts (server-only), copié
-// ici côté client pour la sélection d'amplitude du rendez-vous, afin de ne
-// jamais produire un start_time/end_time naïf ou décalé pour Google Calendar.
+// Construit un instant (Date, donc UTC en interne) correspondant Ã 
+// hour:minute en heure de Paris pour la date "YYYY-MM-DD" donnÃ©e, en tenant
+// compte du dÃ©calage saisonnier (CET/CEST) â€” mÃªme algorithme que
+// buildParisDateTime dans src/lib/appointment-slots.ts (server-only), copiÃ©
+// ici cÃ´tÃ© client pour la sÃ©lection d'amplitude du rendez-vous, afin de ne
+// jamais produire un start_time/end_time naÃ¯f ou dÃ©calÃ© pour Google Calendar.
 function parisOffsetHoursFor(date: Date): number {
   const utcHour = date.getUTCHours();
   const parisHour = Number(
@@ -200,27 +201,27 @@ function parseValidDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function formatShortDate(value?: string | null, fallback = 'Non renseigné') {
+function formatShortDate(value?: string | null, fallback = 'Non renseignÃ©') {
   const date = parseValidDate(value);
   return date ? SHORT_DATE_FORMATTER.format(date) : fallback;
 }
 
-function formatMediumDate(value?: string | null, fallback = 'Non renseigné') {
+function formatMediumDate(value?: string | null, fallback = 'Non renseignÃ©') {
   const date = parseValidDate(value);
   return date ? MEDIUM_DATE_FORMATTER.format(date) : fallback;
 }
 
-function formatDateTime(value?: string | null, fallback = 'Date non renseignée') {
+function formatDateTime(value?: string | null, fallback = 'Date non renseignÃ©e') {
   const date = parseValidDate(value);
   return date ? DATE_TIME_FORMATTER.format(date) : fallback;
 }
 
 // Messages client (portail V1) : la colonne client_messages est aujourd'hui
-// écrite par l'API comme une chaîne accumulée ("[date] message" séparés par
-// des lignes vides — voir app/api/client-portal/[token]/route.ts, PATCH).
-// On reste toutefois tolérant à d'autres formats possibles (tableau
-// d'objets, objet unique, JSON stringifié) pour ne jamais faire planter la
-// fiche projet, quel que soit l'état réel de la donnée en base.
+// Ã©crite par l'API comme une chaÃ®ne accumulÃ©e ("[date] message" sÃ©parÃ©s par
+// des lignes vides â€” voir app/api/client-portal/[token]/route.ts, PATCH).
+// On reste toutefois tolÃ©rant Ã  d'autres formats possibles (tableau
+// d'objets, objet unique, JSON stringifiÃ©) pour ne jamais faire planter la
+// fiche projet, quel que soit l'Ã©tat rÃ©el de la donnÃ©e en base.
 type ClientPortalMessage = { text: string; date: string | null };
 
 function extractMessageFromObject(obj: Record<string, unknown>): ClientPortalMessage {
@@ -251,13 +252,13 @@ function parseClientMessages(raw: unknown): ClientPortalMessage[] {
         try {
           return parseClientMessages(JSON.parse(trimmed));
         } catch {
-          // Pas du JSON valide malgré les apparences : on retombe sur le
+          // Pas du JSON valide malgrÃ© les apparences : on retombe sur le
           // traitement "texte brut" ci-dessous.
         }
       }
 
-      // Texte brut : chaque complément est ajouté sous la forme
-      // "[dd/mm/yyyy hh:mm:ss] message", séparé par une ligne vide.
+      // Texte brut : chaque complÃ©ment est ajoutÃ© sous la forme
+      // "[dd/mm/yyyy hh:mm:ss] message", sÃ©parÃ© par une ligne vide.
       return trimmed.split(/\n\s*\n/).filter(Boolean).map((entry) => {
         const match = entry.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
         if (match) return { text: match[2].trim() || entry.trim(), date: match[1] };
@@ -281,7 +282,7 @@ function parseClientMessages(raw: unknown): ClientPortalMessage[] {
 
     return [{ text: String(raw), date: null }];
   } catch {
-    // Format totalement inattendu : on affiche la valeur brute plutôt que
+    // Format totalement inattendu : on affiche la valeur brute plutÃ´t que
     // de faire planter la fiche projet.
     try {
       return [{ text: String(raw), date: null }];
@@ -291,10 +292,10 @@ function parseClientMessages(raw: unknown): ClientPortalMessage[] {
   }
 }
 
-// Timeline client (lot messagerie/timeline V1) : événements issus de la
+// Timeline client (lot messagerie/timeline V1) : Ã©vÃ©nements issus de la
 // table ProjectClientEvents (client_message, artisan_reply,
-// client_info_updated, + futurs types réservés). Distinct des notes
-// internes (jamais mélangés) et distinct de l'Activity interne générique.
+// client_info_updated, + futurs types rÃ©servÃ©s). Distinct des notes
+// internes (jamais mÃ©langÃ©s) et distinct de l'Activity interne gÃ©nÃ©rique.
 type ClientTimelineEvent = {
   id: string;
   type: string;
@@ -305,10 +306,10 @@ type ClientTimelineEvent = {
   metadata: Record<string, unknown>;
 };
 
-// Résumé compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
-// distingue un RDV court (avec durée), une demi-journée / journée complète
+// RÃ©sumÃ© compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
+// distingue un RDV court (avec durÃ©e), une demi-journÃ©e / journÃ©e complÃ¨te
 // (amplitude, sans heure de fin explicite) et un chantier multi-jours
-// (plage de dates), en se basant uniquement sur start/end déjà stockés.
+// (plage de dates), en se basant uniquement sur start/end dÃ©jÃ  stockÃ©s.
 function summarizeAppointment(appointment: { start: string; end: string } | null, synced = true): { title: string; detail: string } {
   if (!appointment) {
     return { title: 'Rendez-vous', detail: 'Planifier un rendez-vous' };
@@ -323,24 +324,24 @@ function summarizeAppointment(appointment: { start: string; end: string } | null
   const isMultiDay = dayKey(start) !== dayKey(end);
   const durationMs = end.getTime() - start.getTime();
   const durationHours = durationMs / (1000 * 60 * 60);
-  const syncLine = synced ? 'Synchronisé Google Calendar' : 'Synchronisation Google Calendar à vérifier';
+  const syncLine = synced ? 'SynchronisÃ© Google Calendar' : 'Synchronisation Google Calendar Ã  vÃ©rifier';
 
   if (isMultiDay) {
     return {
       title: 'Rendez-vous',
-      detail: `Chantier prévu du ${formatShortDate(appointment.start)} au ${formatShortDate(appointment.end)} · Amplitude : plusieurs jours · ${syncLine}`,
+      detail: `Chantier prÃ©vu du ${formatShortDate(appointment.start)} au ${formatShortDate(appointment.end)} Â· Amplitude : plusieurs jours Â· ${syncLine}`,
     };
   }
   if (durationHours >= 9.5) {
     return {
       title: 'Rendez-vous',
-      detail: `RDV prévu le ${formatShortDate(appointment.start)} · Amplitude : journée complète · ${syncLine}`,
+      detail: `RDV prÃ©vu le ${formatShortDate(appointment.start)} Â· Amplitude : journÃ©e complÃ¨te Â· ${syncLine}`,
     };
   }
   const durationLabel = Number.isInteger(durationHours) ? `${durationHours}h` : `${durationHours.toFixed(1).replace('.', 'h')}`;
   return {
     title: 'Rendez-vous',
-    detail: `RDV prévu le ${formatShortDate(appointment.start)} à ${TIME_FORMATTER.format(start)} · Durée : ${durationLabel} · ${syncLine}`,
+    detail: `RDV prÃ©vu le ${formatShortDate(appointment.start)} Ã  ${TIME_FORMATTER.format(start)} Â· DurÃ©e : ${durationLabel} Â· ${syncLine}`,
   };
 }
 
@@ -425,9 +426,9 @@ function getActivityPresentation(activity: { action?: string; description?: stri
       id: activity.id || `activity-item-${index}`,
       action,
       createdAt: activity.createdAt,
-      title: 'Informations complétées par le client',
+      title: 'Informations complÃ©tÃ©es par le client',
       detail: sanitizeActivityDetail(description, 'info')
-        || 'Le client a complété des informations depuis le portail client. Source : Portail client.',
+        || 'Le client a complÃ©tÃ© des informations depuis le portail client. Source : Portail client.',
       tone: 'info',
     };
   }
@@ -571,17 +572,17 @@ function normalizeSmsStatus(status?: string | null) {
   return String(status || '').trim().toLowerCase();
 }
 
-// Un projet est considéré "sourcé Vapi" uniquement via des champs qui ne
-// sont écrits QUE par le flux d'appel vocal (app/api/vapi/create-project) :
-// - la colonne `source` ('vapi'), posée une seule fois à la création
-// - `call_id`, jamais renseigné ailleurs
+// Un projet est considÃ©rÃ© "sourcÃ© Vapi" uniquement via des champs qui ne
+// sont Ã©crits QUE par le flux d'appel vocal (app/api/vapi/create-project) :
+// - la colonne `source` ('vapi'), posÃ©e une seule fois Ã  la crÃ©ation
+// - `call_id`, jamais renseignÃ© ailleurs
 // Les champs sms_completion_token / sms_status / completion_source ne
-// suffisent PAS à eux seuls : ils peuvent aussi être écrits par la route
+// suffisent PAS Ã  eux seuls : ils peuvent aussi Ãªtre Ã©crits par la route
 // manuelle app/api/projects/[id]/send-completion-sms (qui n'exige pas que
 // le projet vienne de Vapi). Les utiliser comme signal de provenance
-// ferait donc apparaître ce bloc pour des dossiers classiques dès qu'un
-// SMS de complément est envoyé manuellement. Règle de repli : provenance
-// inconnue => on masque (mieux vaut cacher à tort que montrer à tort).
+// ferait donc apparaÃ®tre ce bloc pour des dossiers classiques dÃ¨s qu'un
+// SMS de complÃ©ment est envoyÃ© manuellement. RÃ¨gle de repli : provenance
+// inconnue => on masque (mieux vaut cacher Ã  tort que montrer Ã  tort).
 function isVapiSourcedProject(project: any) {
   const source = String(project?.source || '').trim().toLowerCase();
   const projectSource = String(project?.projectSource || '').trim().toLowerCase();
@@ -603,11 +604,11 @@ function shouldShowSmsCompletionCard(project: any) {
   const hasPhone = hasMeaningfulValue(project?.clientPhone);
 
   // Pertinence : on ne montre le bloc que si les infos client peuvent
-  // encore être complétées (pas déjà complété), et soit le SMS n'a pas
-  // encore été envoyé/a échoué, soit il est en attente de complétion, soit
-  // le téléphone est manquant (état compact non prioritaire à afficher).
-  if (completionStatus === 'completed') return true; // état compact "complété" à titre informatif
-  if (!hasPhone) return true; // état compact "Téléphone manquant"
+  // encore Ãªtre complÃ©tÃ©es (pas dÃ©jÃ  complÃ©tÃ©), et soit le SMS n'a pas
+  // encore Ã©tÃ© envoyÃ©/a Ã©chouÃ©, soit il est en attente de complÃ©tion, soit
+  // le tÃ©lÃ©phone est manquant (Ã©tat compact non prioritaire Ã  afficher).
+  if (completionStatus === 'completed') return true; // Ã©tat compact "complÃ©tÃ©" Ã  titre informatif
+  if (!hasPhone) return true; // Ã©tat compact "TÃ©lÃ©phone manquant"
 
   return smsStatus === '' || smsStatus === 'not_sent' || smsStatus === 'pending' || smsStatus === 'sent' || smsStatus === 'failed';
 }
@@ -615,7 +616,7 @@ function shouldShowSmsCompletionCard(project: any) {
 function getSmsCompletionBadge(status: string, completionCompletedAt?: string | null) {
   if (completionCompletedAt || status === 'completed') {
     return {
-      label: 'Informations complétées',
+      label: 'Informations complÃ©tÃ©es',
       styles: {
         background: 'rgba(34,197,94,0.12)',
         border: '1px solid rgba(34,197,94,0.24)',
@@ -626,7 +627,7 @@ function getSmsCompletionBadge(status: string, completionCompletedAt?: string | 
 
   if (status === 'sent') {
     return {
-      label: 'SMS envoyé',
+      label: 'SMS envoyÃ©',
       styles: {
         background: 'rgba(59,130,246,0.12)',
         border: '1px solid rgba(59,130,246,0.24)',
@@ -637,7 +638,7 @@ function getSmsCompletionBadge(status: string, completionCompletedAt?: string | 
 
   if (status === 'failed') {
     return {
-      label: 'SMS échoué',
+      label: 'SMS Ã©chouÃ©',
       styles: {
         background: 'rgba(239,68,68,0.12)',
         border: '1px solid rgba(239,68,68,0.24)',
@@ -647,7 +648,7 @@ function getSmsCompletionBadge(status: string, completionCompletedAt?: string | 
   }
 
   return {
-    label: 'SMS non envoyé',
+    label: 'SMS non envoyÃ©',
     styles: {
       background: 'rgba(245,158,11,0.10)',
       border: '1px solid rgba(245,158,11,0.24)',
@@ -674,7 +675,7 @@ function formatRecommendedTime(minutes: number) {
 }
 
 function extractRecommendedWindows(...slots: Array<string | undefined>) {
-  const pattern = /(\d{1,2})\s*h(?:\s*(\d{2}))?\s*(?:à|a|et|-)\s*(\d{1,2})\s*h(?:\s*(\d{2}))?/gi;
+  const pattern = /(\d{1,2})\s*h(?:\s*(\d{2}))?\s*(?:Ã |a|et|-)\s*(\d{1,2})\s*h(?:\s*(\d{2}))?/gi;
   const windows: FollowUpRecommendedWindow[] = [];
 
   slots.forEach((slot) => {
@@ -746,7 +747,7 @@ function ProjectDetail() {
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const actionsAndQuoteRef = useRef<HTMLDivElement>(null);
-  // --- Rendez-vous assisté (Google Calendar) ---
+  // --- Rendez-vous assistÃ© (Google Calendar) ---
   const [appointment, setAppointment] = useState<{
     id: string;
     start: string;
@@ -762,10 +763,10 @@ function ProjectDetail() {
   const [bookingSlot, setBookingSlot] = useState<{ start: string; end: string } | null>(null);
   const [appointmentError, setAppointmentError] = useState<string | null>(null);
   const [appointmentDate, setAppointmentDate] = useState<string>('');
-  // Amplitude / durée du rendez-vous (Part 5) : 'slot' = flux existant
-  // (créneaux 1h proposés par Google Calendar) ; les autres valeurs
-  // basculent sur une plage calculée manuellement (durée personnalisée,
-  // demi-journée, journée complète, plusieurs jours).
+  // Amplitude / durÃ©e du rendez-vous (Part 5) : 'slot' = flux existant
+  // (crÃ©neaux 1h proposÃ©s par Google Calendar) ; les autres valeurs
+  // basculent sur une plage calculÃ©e manuellement (durÃ©e personnalisÃ©e,
+  // demi-journÃ©e, journÃ©e complÃ¨te, plusieurs jours).
   const [appointmentAmplitude, setAppointmentAmplitude] = useState<'slot' | 'custom' | 'half_day' | 'full_day' | 'multi_day'>('slot');
   const [customDurationMin, setCustomDurationMin] = useState<number>(60);
   const [appointmentStartTime, setAppointmentStartTime] = useState<string>('09:00');
@@ -947,7 +948,7 @@ function ProjectDetail() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Accordéons de la fiche projet mobile native (détails secondaires repliés).
+  // AccordÃ©ons de la fiche projet mobile native (dÃ©tails secondaires repliÃ©s).
   const [openMobileSections, setOpenMobileSections] = useState<Set<string>>(new Set());
   function toggleMobileSection(key: string) {
     setOpenMobileSections((prev) => {
@@ -958,18 +959,18 @@ function ProjectDetail() {
     });
   }
 
-  // Option A (préférée) : lecture combinée — les événements
-  // 'client_info_updated' issus de ProjectClientEvents sont ajoutés à la
-  // source de l'activité du dossier sans jamais écrire dans la table
-  // Activity, pour ne pas polluer une convention qu'on ne maîtrise pas
-  // entièrement. Les messages (client_message/artisan_reply) n'apparaissent
+  // Option A (prÃ©fÃ©rÃ©e) : lecture combinÃ©e â€” les Ã©vÃ©nements
+  // 'client_info_updated' issus de ProjectClientEvents sont ajoutÃ©s Ã  la
+  // source de l'activitÃ© du dossier sans jamais Ã©crire dans la table
+  // Activity, pour ne pas polluer une convention qu'on ne maÃ®trise pas
+  // entiÃ¨rement. Les messages (client_message/artisan_reply) n'apparaissent
   // volontairement jamais ici : ils vivent exclusivement dans la section
   // "Discussion client" plus haut.
   const clientInfoActivityItems = clientTimelineEvents
     .filter((ev) => ev.type === 'client_info_updated')
     .map((ev) => ({
       id: `client-event-${ev.id}`,
-      description: ev.message || 'Le client a complété son adresse, budget, délai ou précisions depuis le portail.',
+      description: ev.message || 'Le client a complÃ©tÃ© son adresse, budget, dÃ©lai ou prÃ©cisions depuis le portail.',
       createdAt: ev.createdAt,
       action: 'CLIENT_INFO_UPDATED',
     }));
@@ -982,7 +983,7 @@ function ProjectDetail() {
       if (devis.date_emission) {
         items.push({
           id: `${devis.id}-created`,
-          description: `Devis ${devis.numero} cree — ${formatMoney(devis.amount)} € TTC`,
+          description: `Devis ${devis.numero} cree â€” ${formatMoney(devis.amount)} â‚¬ TTC`,
           createdAt: devis.date_emission,
           action: 'DEVIS',
         });
@@ -990,7 +991,7 @@ function ProjectDetail() {
       if (devis.sent && devis.quote_sent_at) {
         items.push({
           id: `${devis.id}-sent`,
-          description: `Devis ${devis.numero} envoye — ${formatMoney(devis.amount)} € TTC`,
+          description: `Devis ${devis.numero} envoye â€” ${formatMoney(devis.amount)} â‚¬ TTC`,
           createdAt: devis.quote_sent_at,
           action: 'DEVIS',
         });
@@ -1015,7 +1016,7 @@ function ProjectDetail() {
         items.push({
           id: `${devis.id}-declined`,
           description: devis.decline_reason
-            ? `Devis ${devis.numero} refuse — Motif : ${devis.decline_reason}`
+            ? `Devis ${devis.numero} refuse â€” Motif : ${devis.decline_reason}`
             : `Devis ${devis.numero} refuse`,
           createdAt: devis.declined_at,
           action: 'DEVIS',
@@ -1025,7 +1026,7 @@ function ProjectDetail() {
     }),
     {
       id: 'creation',
-      description: `Dossier cree — statut initial : ${project?.status || 'Nouveau'}`,
+      description: `Dossier cree â€” statut initial : ${project?.status || 'Nouveau'}`,
       createdAt: project?.createdAt,
       action: 'CREATED',
     },
@@ -1109,9 +1110,9 @@ function ProjectDetail() {
       .catch(() => {});
   }, []);
 
-  // Timeline client (lot messagerie/timeline V1) : tolérant à l'absence de
-  // la table ProjectClientEvents (migration pas encore appliquée) — l'API
-  // renvoie alors simplement un tableau vide plutôt qu'une erreur.
+  // Timeline client (lot messagerie/timeline V1) : tolÃ©rant Ã  l'absence de
+  // la table ProjectClientEvents (migration pas encore appliquÃ©e) â€” l'API
+  // renvoie alors simplement un tableau vide plutÃ´t qu'une erreur.
   async function loadClientTimeline() {
     if (!id) return;
     try {
@@ -1128,10 +1129,10 @@ function ProjectDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Marque les nouveautés client comme lues à l'ouverture de la fiche projet
-  // (colonne Activité du suivi commercial). Appel unique, best-effort : ne
-  // doit jamais bloquer/casser l'affichage de la fiche si ça échoue (table
-  // ou colonne pas encore migrée, réseau, etc.).
+  // Marque les nouveautÃ©s client comme lues Ã  l'ouverture de la fiche projet
+  // (colonne ActivitÃ© du suivi commercial). Appel unique, best-effort : ne
+  // doit jamais bloquer/casser l'affichage de la fiche si Ã§a Ã©choue (table
+  // ou colonne pas encore migrÃ©e, rÃ©seau, etc.).
   useEffect(() => {
     if (!id) return;
     fetch(`/api/projects/${id}/mark-activity-seen`, { method: 'POST' }).catch(() => {});
@@ -1147,7 +1148,7 @@ function ProjectDetail() {
       return;
     }
     if (trimmed.length > 2000) {
-      setClientReplyError('Le message est trop long (2000 caractères maximum).');
+      setClientReplyError('Le message est trop long (2000 caractÃ¨res maximum).');
       return;
     }
 
@@ -1160,14 +1161,14 @@ function ProjectDetail() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setClientReplyError(data.error || "Erreur lors de l'envoi de la réponse.");
+        setClientReplyError(data.error || "Erreur lors de l'envoi de la rÃ©ponse.");
         return;
       }
       setClientReplyMessage('');
-      setClientReplySuccess('Réponse ajoutée au portail client');
+      setClientReplySuccess('RÃ©ponse ajoutÃ©e au portail client');
       await loadClientTimeline();
     } catch {
-      setClientReplyError("Erreur lors de l'envoi de la réponse.");
+      setClientReplyError("Erreur lors de l'envoi de la rÃ©ponse.");
     } finally {
       setClientReplySending(false);
     }
@@ -1212,9 +1213,9 @@ function ProjectDetail() {
     }
   }
 
-  // Référentiel métier (profil métier + profils de prestations) : utilisé
+  // RÃ©fÃ©rentiel mÃ©tier (profil mÃ©tier + profils de prestations) : utilisÃ©
   // uniquement pour enrichir les suggestions de lignes de devis ci-dessous,
-  // jamais pour le chat, le vocal ou l'Action Engine à ce stade.
+  // jamais pour le chat, le vocal ou l'Action Engine Ã  ce stade.
   useEffect(() => {
     fetch('/api/artisan/business-profile')
       .then((r) => r.json())
@@ -1252,7 +1253,7 @@ function ProjectDetail() {
         }
       })
       .catch((error) => {
-        console.error('[DEVIS LIST] Erreur réseau chargement devis du projet:', error);
+        console.error('[DEVIS LIST] Erreur rÃ©seau chargement devis du projet:', error);
       });
   }, [id]);
 
@@ -1317,7 +1318,7 @@ function ProjectDetail() {
             : item
         )
       );
-      setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyée. Le client a reçu un email lui rappelant ce devis en attente.' });
+      setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyÃ©e. Le client a reÃ§u un email lui rappelant ce devis en attente.' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Impossible de relancer le devis';
       setFollowUpConfirmError(message);
@@ -1352,8 +1353,8 @@ function ProjectDetail() {
         setClientPortalToast({
           type: 'error',
           message: response.status === 401
-            ? 'Session expirée, reconnectez-vous.'
-            : (data.error || 'Impossible de récupérer le lien du portail client.'),
+            ? 'Session expirÃ©e, reconnectez-vous.'
+            : (data.error || 'Impossible de rÃ©cupÃ©rer le lien du portail client.'),
         });
         return;
       }
@@ -1374,14 +1375,14 @@ function ProjectDetail() {
           document.execCommand('copy');
           document.body.removeChild(tempInput);
         }
-        setClientPortalToast({ type: 'success', message: 'Lien portail client copié' });
+        setClientPortalToast({ type: 'success', message: 'Lien portail client copiÃ©' });
       } catch (copyError) {
         console.error('[CLIENT PORTAL COPY LINK]', copyError);
         setClientPortalToast({ type: 'error', message: `Impossible de copier automatiquement. Lien : ${url}` });
       }
     } catch (error) {
       console.error('[CLIENT PORTAL LINK]', error);
-      setClientPortalToast({ type: 'error', message: 'Erreur réseau, réessayez.' });
+      setClientPortalToast({ type: 'error', message: 'Erreur rÃ©seau, rÃ©essayez.' });
     } finally {
       setClientPortalLoading(false);
     }
@@ -1465,8 +1466,8 @@ function ProjectDetail() {
       setFollowUpToast({
         type: 'success',
         message: nextDisabled
-          ? 'Relances désactivées. Ce devis ne sera plus relancé automatiquement.'
-          : 'Relances réactivées. Ce devis sera de nouveau relancé automatiquement si besoin.',
+          ? 'Relances dÃ©sactivÃ©es. Ce devis ne sera plus relancÃ© automatiquement.'
+          : 'Relances rÃ©activÃ©es. Ce devis sera de nouveau relancÃ© automatiquement si besoin.',
       });
     } catch (error) {
       setFollowUpToast({
@@ -1528,11 +1529,11 @@ function ProjectDetail() {
         await reloadProject();
       }
       await loadActivities();
-      setSmsCompletionToast({ type: 'success', message: data.message || 'SMS de complément envoyé.' });
+      setSmsCompletionToast({ type: 'success', message: data.message || 'SMS de complÃ©ment envoyÃ©.' });
     } catch (error) {
       setSmsCompletionToast({
         type: 'error',
-        message: error instanceof Error ? error.message : "Erreur lors de l'envoi du SMS de complément",
+        message: error instanceof Error ? error.message : "Erreur lors de l'envoi du SMS de complÃ©ment",
       });
       try {
         await reloadProject();
@@ -1546,7 +1547,7 @@ function ProjectDetail() {
 
   async function archiveProject() {
     const confirmed = window.confirm(
-      'Archiver ce dossier ? Il restera disponible dans l’historique client mais ne sera plus affiché dans les actions prioritaires.',
+      'Archiver ce dossier ? Il restera disponible dans lâ€™historique client mais ne sera plus affichÃ© dans les actions prioritaires.',
     );
     if (!confirmed) return;
 
@@ -1610,7 +1611,7 @@ function ProjectDetail() {
       const res = await fetch(url);
       const data = await res.json();
       if (!data.success) {
-        setAppointmentError('Erreur Google Calendar — réessayez.');
+        setAppointmentError('Erreur Google Calendar â€” rÃ©essayez.');
         setAppointmentConnected(true);
         setAppointmentSlots([]);
         return;
@@ -1618,7 +1619,7 @@ function ProjectDetail() {
       setAppointmentConnected(!!data.connected);
       setAppointmentSlots(data.connected ? data.slots || [] : []);
     } catch {
-      setAppointmentError('Erreur Google Calendar — réessayez.');
+      setAppointmentError('Erreur Google Calendar â€” rÃ©essayez.');
     } finally {
       setLoadingSlots(false);
     }
@@ -1647,10 +1648,10 @@ function ProjectDetail() {
   }
 
   // Calcule la plage start/end (ISO) pour les amplitudes manuelles
-  // (durée personnalisée / demi-journée / journée complète / plusieurs
-  // jours), en heure de Paris, avec un end toujours cohérent et jamais
-  // réduit à 30/60 min par défaut. Retourne null tant que les champs
-  // requis ne sont pas renseignés.
+  // (durÃ©e personnalisÃ©e / demi-journÃ©e / journÃ©e complÃ¨te / plusieurs
+  // jours), en heure de Paris, avec un end toujours cohÃ©rent et jamais
+  // rÃ©duit Ã  30/60 min par dÃ©faut. Retourne null tant que les champs
+  // requis ne sont pas renseignÃ©s.
   function computeManualAppointmentRange(): { start: string; end: string } | null {
     if (!appointmentDate) return null;
     if (appointmentAmplitude === 'custom') {
@@ -1698,11 +1699,11 @@ function ProjectDetail() {
       const data = await res.json();
       if (!data.success) {
         if (data.error === 'slot_unavailable') {
-          setAppointmentError('Créneau indisponible entre-temps.');
+          setAppointmentError('CrÃ©neau indisponible entre-temps.');
           setBookingSlot(null);
           await refreshAppointmentSlots();
         } else {
-          setAppointmentError('Erreur Google Calendar — réessayez.');
+          setAppointmentError('Erreur Google Calendar â€” rÃ©essayez.');
         }
         return;
       }
@@ -1710,7 +1711,7 @@ function ProjectDetail() {
       setShowAppointmentModal(false);
       setBookingSlot(null);
     } catch {
-      setAppointmentError('Erreur Google Calendar — réessayez.');
+      setAppointmentError('Erreur Google Calendar â€” rÃ©essayez.');
     }
   }
 
@@ -1744,15 +1745,15 @@ function ProjectDetail() {
 
   const currentStyle = statusStyles[project.status] || statusStyles['Nouveau'];
   const latestDevis = devisList[0];
-  // Montant du devis : jamais de saisie libre. On distingue "devis envoyé"
-  // (montant figé, priorité absolue) de "devis préparé mais non envoyé"
-  // (montant indicatif). devisList est trié par date_emission décroissante
-  // (cf. /api/devis), donc le premier devis envoyé trouvé est le plus récent.
+  // Montant du devis : jamais de saisie libre. On distingue "devis envoyÃ©"
+  // (montant figÃ©, prioritÃ© absolue) de "devis prÃ©parÃ© mais non envoyÃ©"
+  // (montant indicatif). devisList est triÃ© par date_emission dÃ©croissante
+  // (cf. /api/devis), donc le premier devis envoyÃ© trouvÃ© est le plus rÃ©cent.
   const sentDevis = devisList.find((d) => d.sent || d.statut?.startsWith('Envoy'));
   const preparedDevis = !sentDevis ? latestDevis : undefined;
   // Base la plus fiable disponible pour le calcul d'acompte : montant du
-  // devis envoyé (figé) en priorité, sinon montant préparé — jamais un
-  // montant saisi à la main.
+  // devis envoyÃ© (figÃ©) en prioritÃ©, sinon montant prÃ©parÃ© â€” jamais un
+  // montant saisi Ã  la main.
   const safeDevisAmount = sentDevis?.amount ?? preparedDevis?.amount ?? null;
   const recommendedDeposit = computeRecommendedDeposit({
     depositEnabled: artisanConfig?.depositEnabled,
@@ -1769,7 +1770,7 @@ function ProjectDetail() {
   // Signal frais de deplacement pour l'Analyse Kadria : reprend les memes
   // helpers que la card "Frais de deplacement estimes" ci-dessous. Ne rien
   // produire si la feature est verrouillee (plan) ou si une donnee
-  // necessaire manque (coordonnees, motorisation...) — comportement de
+  // necessaire manque (coordonnees, motorisation...) â€” comportement de
   // scoring identique a avant dans ce cas.
   const travelCostSignal = (() => {
     if (!canTravelCost) return undefined;
@@ -1807,12 +1808,12 @@ function ProjectDetail() {
     });
   })();
 
-  // Source de vérité métier : Profil métier Supabase (primary_trade +
-  // covered_trades) en priorité, avec repli sur les métiers legacy
-  // (Artisan_config.trades) si le Profil métier n'est pas encore renseigné —
-  // même ordre de résolution que resolveArtisanTradeContext côté serveur
-  // (src/lib/business-profile.ts), recalculé ici côté client puisque cette
-  // page charge déjà les deux sources séparément.
+  // Source de vÃ©ritÃ© mÃ©tier : Profil mÃ©tier Supabase (primary_trade +
+  // covered_trades) en prioritÃ©, avec repli sur les mÃ©tiers legacy
+  // (Artisan_config.trades) si le Profil mÃ©tier n'est pas encore renseignÃ© â€”
+  // mÃªme ordre de rÃ©solution que resolveArtisanTradeContext cÃ´tÃ© serveur
+  // (src/lib/business-profile.ts), recalculÃ© ici cÃ´tÃ© client puisque cette
+  // page charge dÃ©jÃ  les deux sources sÃ©parÃ©ment.
   const businessProfileRow = businessProfile as unknown as { primary_trade?: string | null; covered_trades?: string[] | null } | null;
   const resolvedPrimaryTrade = (businessProfileRow?.primary_trade || '').trim() || (artisanConfig?.trades?.[0] || '');
   const resolvedCoveredTrades = (() => {
@@ -1860,7 +1861,7 @@ function ProjectDetail() {
 
   // Action Engine V1 : moteur de decision central, independant de cette
   // page (cf. src/lib/action-engine.ts). Ne remplace pas l'Analyse Kadria
-  // ci-dessus ni les statuts existants — calcule juste "que faire maintenant".
+  // ci-dessus ni les statuts existants â€” calcule juste "que faire maintenant".
   const nextAction = computeNextAction({
     status: project.status,
     clientName: project.clientName,
@@ -1891,11 +1892,11 @@ function ProjectDetail() {
       : null,
   });
 
-  // Source unique de la décision commerciale (src/lib/quote-status.ts) :
-  // tous les blocs de la page (Action recommandée, cartes rapides, Analyse
-  // Kadria, Moment idéal, Actions et devis) doivent lire ce même état
-  // plutôt que recalculer chacun leur propre condition de relance, pour
-  // éviter les contradictions entre blocs.
+  // Source unique de la dÃ©cision commerciale (src/lib/quote-status.ts) :
+  // tous les blocs de la page (Action recommandÃ©e, cartes rapides, Analyse
+  // Kadria, Moment idÃ©al, Actions et devis) doivent lire ce mÃªme Ã©tat
+  // plutÃ´t que recalculer chacun leur propre condition de relance, pour
+  // Ã©viter les contradictions entre blocs.
   const decision = getProjectDecisionState(
     { status: project.status },
     latestDevis
@@ -1919,13 +1920,75 @@ function ProjectDetail() {
     nextAction,
   );
 
+  const lifecycle = getProjectLifecycle({
+    status: project.status,
+    completenessScore: project.completenessScore,
+    unreadClientActivityCount: project.clientActivity?.unreadCount,
+    clientUpdateCount: project.clientUpdateCount,
+    clientLastUpdateAt: project.clientLastUpdateAt,
+    callbackDate: project.callbackDate,
+    desiredTimeline: project.desiredTimeline,
+    quoteSentAt: latestDevis?.quote_sent_at || null,
+    acceptedAt: latestDevis?.accepted_at || null,
+    depositStatus: project.depositStatus,
+    depositAmount: project.depositAmount,
+    depositPaymentUrl,
+    depositPaidAt: project.depositPaidAt,
+    appointment: appointment ? { start: appointment.start } : null,
+    latestDevis: latestDevis
+      ? {
+          sent: latestDevis.sent,
+          statut: latestDevis.statut,
+          accepted: latestDevis.accepted,
+          accepted_at: latestDevis.accepted_at,
+          declined: latestDevis.declined,
+          declined_at: latestDevis.declined_at,
+          decline_reason: latestDevis.decline_reason,
+          date_validite: latestDevis.date_validite,
+          quote_sent_at: latestDevis.quote_sent_at,
+          first_opened_at: latestDevis.first_opened_at,
+          last_follow_up_at: latestDevis.last_follow_up_at,
+          follow_up_count: latestDevis.follow_up_count,
+          follow_up_disabled: latestDevis.follow_up_disabled,
+          client_email: project.clientEmail,
+        }
+      : null,
+    actionEngineInput: {
+      status: project.status,
+      clientName: project.clientName,
+      clientFirstName: project.clientFirstName,
+      clientPhone: project.clientPhone,
+      clientEmail: project.clientEmail,
+      trade: project.trade,
+      projectType: project.projectType,
+      aiSummary: project.aiSummary,
+      tradeAnswers: project.tradeAnswers,
+      budget: project.budget,
+      desiredTimeline: project.desiredTimeline,
+      city: project.city,
+      siteAddress: project.siteAddress,
+      photos: project.photos,
+      completenessScore: project.completenessScore,
+      appointment: appointment ? { start: appointment.start } : null,
+      latestDevis: latestDevis
+        ? {
+            sent: latestDevis.sent,
+            accepted: latestDevis.accepted,
+            declined: latestDevis.declined,
+            sentAt: latestDevis.quote_sent_at || null,
+            declineReason: latestDevis.decline_reason || null,
+          }
+        : null,
+    },
+  });
+
   const NEXT_ACTION_CTA_LABEL: Record<string, string> = {
-    complete_qualification: 'Compléter',
+    complete_qualification: 'ComplÃ©ter',
     request_photos: 'Demander photos',
     schedule_appointment: 'Planifier',
-    send_quote: 'Préparer le devis',
+    send_quote: 'PrÃ©parer le devis',
     follow_up_quote: 'Relancer',
-    review_quote_decline: 'Créer un nouveau devis',
+    review_quote_decline: 'CrÃ©er un nouveau devis',
     schedule_intervention: 'Programmer',
     ask_review: 'Demander un avis',
     monitor: 'Consulter',
@@ -1938,14 +2001,14 @@ function ProjectDetail() {
     follow_up_quote: () => { if (latestDevis && decision.canFollowUpQuote) requestQuoteFollowUp(latestDevis); },
     ask_review: () => { requestGoogleReview(); },
     review_quote_decline: () => { router.push(`/dashboard-v2/projet/${id}/devis/new`); },
-    // Reprend le canal email/téléphone déjà utilisé ailleurs sur cette page
-    // pour contacter le client (cf. boutons "✉️ Message" / "tel:") plutôt
+    // Reprend le canal email/tÃ©lÃ©phone dÃ©jÃ  utilisÃ© ailleurs sur cette page
+    // pour contacter le client (cf. boutons "âœ‰ï¸ Message" / "tel:") plutÃ´t
     // que d'inventer une nouvelle API de demande de photos.
     request_photos: () => {
       if (project.clientEmail) {
         const subject = encodeURIComponent('Photos pour votre projet');
         const body = encodeURIComponent(
-          'Bonjour,\n\nPourriez-vous nous envoyer quelques photos de votre projet afin de mieux préparer votre devis ?\n\nMerci.'
+          'Bonjour,\n\nPourriez-vous nous envoyer quelques photos de votre projet afin de mieux prÃ©parer votre devis ?\n\nMerci.'
         );
         window.location.href = `mailto:${project.clientEmail}?subject=${subject}&body=${body}`;
       } else if (project.clientPhone) {
@@ -1953,8 +2016,8 @@ function ProjectDetail() {
       }
     },
   };
-  // Raison affichée quand le CTA n'est pas actionnable, plutôt qu'un bouton
-  // grisé silencieux (ex: "Demander photos" sans email ni téléphone client).
+  // Raison affichÃ©e quand le CTA n'est pas actionnable, plutÃ´t qu'un bouton
+  // grisÃ© silencieux (ex: "Demander photos" sans email ni tÃ©lÃ©phone client).
   const NEXT_ACTION_CTA_DISABLED_REASON: Partial<Record<string, string>> = {
     ask_review: !project.clientEmail
       ? 'Email client manquant'
@@ -1963,12 +2026,12 @@ function ProjectDetail() {
         : undefined,
     request_photos: project.clientEmail || project.clientPhone
       ? undefined
-      : 'Aucun email ni téléphone client renseigné',
+      : 'Aucun email ni tÃ©lÃ©phone client renseignÃ©',
   };
 
-  // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
-  // calculées à la demande, jamais persistées, basées sur les mêmes signaux
-  // que l'analyse Kadria ci-dessus (métier, projet, déplacement).
+  // V1 lÃ©gÃ¨re "devis assistÃ© mÃ©tier" (Mission 4) : suggestions de lignes
+  // calculÃ©es Ã  la demande, jamais persistÃ©es, basÃ©es sur les mÃªmes signaux
+  // que l'analyse Kadria ci-dessus (mÃ©tier, projet, dÃ©placement).
   const projectTitle = getProjectHeadline(project);
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
   const sourceLabel = getSourceLabel(project.source);
@@ -1980,146 +2043,73 @@ function ProjectDetail() {
   const smsCompletionHasPhone = hasMeaningfulValue(project.clientPhone);
   const smsCompletionHasLink = hasMeaningfulValue(project.smsCompletionUrl);
   const smsCompletionPhotosCount = Array.isArray(project.photos) ? project.photos.length : 0;
-  const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' · ');
+  const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' Â· ');
   const budgetLabel = project.budget || 'Budget non renseigne';
   const timelineLabel = project.desiredTimeline || 'Delai non precise';
   const scrollToActionsAndQuote = () => {
     actionsAndQuoteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const recommendedAction = (() => {
-    if (project.status === 'Perdu' || decision.state === 'quote_declined') {
-      // Le devis a été refusé (ou le dossier déjà marqué perdu) : l'action
-      // doit clôturer directement le dossier, plutôt que de renvoyer vers
-      // "Actions et devis" qui ne porte plus les boutons de statut.
-      const alreadyClosed = project.status === 'Perdu';
-      return {
-        title: 'Clôturer le dossier',
-        ctaLabel: alreadyClosed ? 'Dossier clôturé (perdu)' : 'Marquer comme perdu',
-        onClick: alreadyClosed ? undefined : () => requestCommercialClosure('Perdu'),
-        meta: latestDevis?.decline_reason || 'Motif de refus à consigner si besoin.',
-      };
-    }
-    if (project.status === 'Gagné' || decision.state === 'quote_accepted') {
-      // Regle acompte : quand les acomptes sont actives pour l'artisan, le
-      // devis accepte seul ne suffit plus a "gagner" le dossier — l'acompte
-      // devient l'etape commerciale intermediaire avant la planification.
-      // Reutilise le meme etat (normalizedDepositStatus) et le meme handler
-      // (handleCreateDepositCheckout) que la carte acompte existante, sans
-      // dupliquer la logique Stripe.
-      if (artisanConfig?.depositEnabled) {
-        if (normalizedDepositStatus === 'paid') {
-          // Cas C — acompte paye : chantier securise, place a la planification.
-          return {
-            title: 'Planifier le chantier',
-            ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier un rendez-vous',
-            onClick: appointment ? scrollToActionsAndQuote : () => { if (!appointment) openAppointmentModal(); },
-            meta: appointment
-              ? `L’acompte est payé, rendez-vous prévu le ${formatDateTime(appointment.start)}.`
-              : 'L’acompte est payé. Le chantier est sécurisé.',
-          };
-        }
-        if (normalizedDepositStatus === 'requested' && depositPaymentUrl) {
-          // Cas B — lien genere, paiement en attente.
-          return {
-            title: 'Suivre l’acompte',
-            ctaLabel: 'Ouvrir le lien',
-            onClick: () => window.open(depositPaymentUrl, '_blank', 'noopener,noreferrer'),
-            meta: 'Le lien d’acompte a été généré. Le paiement est encore en attente.',
-          };
-        }
-        // Cas A — devis accepte, aucun lien d'acompte genere pour le moment.
+    const action = lifecycle.recommendedAction;
+    switch (action.key) {
+      case 'reply_client':
+      case 'complete_project':
+      case 'qualify_project':
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: scrollToActionsAndQuote, meta: action.meta };
+      case 'schedule_sales_appointment':
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: () => { if (!appointment) openAppointmentModal(); else scrollToActionsAndQuote(); }, meta: action.meta };
+      case 'prepare_quote':
+      case 'send_quote':
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: () => handleNextBestAction('quote'), meta: action.meta };
+      case 'track_quote':
+        return { title: action.title, ctaLabel: 'Voir le devis', onClick: latestDevis ? () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`) : scrollToActionsAndQuote, meta: action.meta };
+      case 'follow_up_quote':
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: latestDevis ? () => requestQuoteFollowUp(latestDevis) : undefined, meta: action.meta };
+      case 'request_deposit':
         return {
-          title: 'Demander l’acompte',
-          ctaLabel: 'Créer le lien d’acompte',
-          onClick: handleCreateDepositCheckout,
-          meta: 'Le devis est accepté. Sécurisez le chantier avant de le planifier.',
+          title: action.title,
+          ctaLabel: artisanConfig?.depositEnabled ? 'Créer le lien d’acompte' : 'Planifier le chantier',
+          onClick: artisanConfig?.depositEnabled ? handleCreateDepositCheckout : () => { if (!appointment) openAppointmentModal(); else scrollToActionsAndQuote(); },
+          meta: action.meta,
         };
-      }
-      // Cas D — acompte non active : comportement historique inchange.
-      return {
-        title: 'Planifier l’intervention chantier',
-        ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier l’intervention',
-        onClick: appointment ? scrollToActionsAndQuote : () => { if (!appointment) openAppointmentModal(); },
-        meta: appointment
-          ? `Rendez-vous prévu le ${formatDateTime(appointment.start)}.`
-          : 'Le devis est accepté : proposez un créneau d’intervention et préparez le passage en production.',
-      };
+      case 'follow_up_deposit':
+        return {
+          title: action.title,
+          ctaLabel: depositPaymentUrl ? 'Voir le paiement' : action.ctaLabel,
+          onClick: depositPaymentUrl ? () => window.open(depositPaymentUrl, '_blank', 'noopener,noreferrer') : handleCreateDepositCheckout,
+          meta: action.meta,
+        };
+      case 'schedule_worksite':
+        return {
+          title: action.title,
+          ctaLabel: appointment ? 'Voir le rendez-vous' : 'Planifier le chantier',
+          onClick: appointment ? scrollToActionsAndQuote : () => openAppointmentModal(),
+          meta: action.meta,
+        };
+      case 'move_to_execution':
+        return { title: action.title, ctaLabel: 'Passer en réalisation', onClick: () => updateStatus('Réalisation du projet'), meta: action.meta };
+      case 'close_project':
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: () => requestCommercialClosure('GagnÃ©'), meta: action.meta };
+      case 'view_reason':
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: scrollToActionsAndQuote, meta: latestDevis?.decline_reason || action.meta };
+      default:
+        return { title: action.title, ctaLabel: action.ctaLabel, onClick: scrollToActionsAndQuote, meta: action.meta };
     }
-    const budgetMissing = nextAction.blockingReasons.includes('Budget absent');
-    if (!latestDevis && budgetMissing) {
-      return {
-        title: 'Compléter le budget',
-        ctaLabel: 'Contacter le client',
-        onClick: scrollToActionsAndQuote,
-        meta: 'Le besoin est identifié, mais le budget manque pour préparer un devis fiable.',
-      };
-    }
-    const appointmentMissing = nextAction.blockingReasons.includes('Rendez-vous non planifié');
-    if (!latestDevis && appointmentMissing) {
-      return {
-        title: 'Planifier un rendez-vous',
-        ctaLabel: 'Planifier',
-        onClick: () => { if (!appointment) openAppointmentModal(); },
-        meta: 'Un échange ou une visite permettra de verrouiller les derniers éléments avant chiffrage.',
-      };
-    }
-    if (!latestDevis) {
-      return {
-        title: 'Créer le devis',
-        ctaLabel: 'Créer un devis',
-        onClick: () => handleNextBestAction('quote'),
-        meta: 'Le dossier contient assez d’éléments pour préparer une première proposition.',
-      };
-    }
-    if (!latestDevis.sent) {
-      return {
-        title: 'Finaliser et envoyer le devis',
-        ctaLabel: 'Voir le devis',
-        onClick: () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`),
-        meta: 'Le devis existe déjà mais attend encore un envoi au client.',
-      };
-    }
-    if (decision.canFollowUpQuote) {
-      return {
-        title: 'Relancer le devis',
-        ctaLabel: 'Relancer le client',
-        onClick: () => requestQuoteFollowUp(latestDevis),
-        meta: latestDevis.opens_count > 0
-          ? `Le devis a été consulté ${latestDevis.opens_count} fois. Relancez le client pendant que le projet est encore chaud.`
-          : 'Le devis a été envoyé. Relancez le client pendant que le projet est encore chaud.',
-      };
-    }
-    if (latestDevis.sent) {
-      return {
-        title: 'Suivre le devis envoyé',
-        ctaLabel: 'Voir le devis',
-        onClick: () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`),
-        meta: decision.followUpAvailableAt
-          ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}.`
-          : 'Le devis a été envoyé, gardez la conversation ouverte.',
-      };
-    }
-    return {
-      title: 'Clarifier le besoin',
-      ctaLabel: 'Appeler le client',
-      onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else scrollToActionsAndQuote(); },
-      meta: 'Contactez le prospect pour compléter les informations manquantes et qualifier le dossier.',
-    };
   })();
   // Acompte : etape commerciale intermediaire, affichee uniquement quand les
   // acomptes sont actives pour l'artisan (sinon on ne l'insere pas du tout
-  // dans le stepper, cf. brief — comportement historique inchange sinon).
+  // dans le stepper, cf. brief â€” comportement historique inchange sinon).
   const depositStepDone = normalizedDepositStatus === 'paid';
   const depositStepLabel = normalizedDepositStatus === 'paid'
-    ? 'Acompte payé'
+    ? 'Acompte payÃ©'
     : normalizedDepositStatus === 'requested'
-      ? 'Acompte demandé'
-      : 'Acompte à demander';
+      ? 'Acompte demandÃ©'
+      : 'Acompte Ã  demander';
   const commercialTimeline = [
-    { id: 'received', label: 'Reçu', done: Boolean(project.createdAt) },
-    { id: 'qualified', label: 'Qualifié', done: project.status !== 'Nouveau' },
-    { id: 'draft', label: 'Préparé', done: Boolean(latestDevis) },
-    { id: 'sent', label: 'Envoyé', done: Boolean(latestDevis?.sent) },
+    { id: 'received', label: 'ReÃ§u', done: Boolean(project.createdAt) },
+    { id: 'qualified', label: 'QualifiÃ©', done: project.status !== 'Nouveau' },
+    { id: 'draft', label: 'PrÃ©parÃ©', done: Boolean(latestDevis) },
+    { id: 'sent', label: 'EnvoyÃ©', done: Boolean(latestDevis?.sent) },
     {
       id: 'followup',
       label: 'Ouvert / relance',
@@ -2127,16 +2117,16 @@ function ProjectDetail() {
     },
     {
       id: 'decision',
-      label: 'Décision',
-      done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'Gagné' || project.status === 'Perdu'),
+      label: 'DÃ©cision',
+      done: Boolean(latestDevis?.accepted || latestDevis?.declined || project.status === 'GagnÃ©' || project.status === 'Perdu'),
     },
     ...(artisanConfig?.depositEnabled
       ? [{ id: 'deposit', label: depositStepLabel, done: depositStepDone }]
       : []),
     {
       id: 'outcome',
-      label: 'Gagné / perdu',
-      done: project.status === 'Gagné' || project.status === 'Perdu' || depositStepDone,
+      label: 'GagnÃ© / perdu',
+      done: project.status === 'GagnÃ©' || project.status === 'Perdu' || depositStepDone,
     },
   ];
 
@@ -2175,10 +2165,10 @@ function ProjectDetail() {
     businessConfig: quoteSuggestionBusinessConfig,
   });
 
-  // Référentiel métier (profil métier + profils de prestations) : suggestions
-  // explicables, prioritaires sur les suggestions génériques. Si aucun
+  // RÃ©fÃ©rentiel mÃ©tier (profil mÃ©tier + profils de prestations) : suggestions
+  // explicables, prioritaires sur les suggestions gÃ©nÃ©riques. Si aucun
   // service ne correspond, ce tableau est vide et le comportement existant
-  // (moteur générique seul) est inchangé — aucune régression.
+  // (moteur gÃ©nÃ©rique seul) est inchangÃ© â€” aucune rÃ©gression.
   const serviceMatches: ServiceMatchResult[] = matchProjectToServices(
     {
       trade: project.trade,
@@ -2211,7 +2201,7 @@ function ProjectDetail() {
     linesToAdd.forEach((line) => {
       referentialSuggestions.push({
         label: line.label || baseLabel,
-        reason: match.reasons.join(' · '),
+        reason: match.reasons.join(' Â· '),
         source: 'project',
         suggestedAmount: typeof line.unitPriceHT === 'number' ? line.unitPriceHT : undefined,
         vatRate: typeof line.vatRate === 'number' ? line.vatRate : match.vatRate ?? undefined,
@@ -2224,9 +2214,9 @@ function ProjectDetail() {
     });
   });
 
-  // Référentiel métier en premier, suggestions génériques en fallback —
-  // dédoublonnées par libellé (le référentiel prime en cas de doublon avec
-  // une suggestion générique ou un autre profil de prestation).
+  // RÃ©fÃ©rentiel mÃ©tier en premier, suggestions gÃ©nÃ©riques en fallback â€”
+  // dÃ©doublonnÃ©es par libellÃ© (le rÃ©fÃ©rentiel prime en cas de doublon avec
+  // une suggestion gÃ©nÃ©rique ou un autre profil de prestation).
   const allSuggestions: ReferentialSuggestionLine[] = [];
   {
     const seen = new Set<string>();
@@ -2240,13 +2230,13 @@ function ProjectDetail() {
 
   function getSuggestionCategory(line: { label: string; source: string }): string {
     const text = line.label.toLowerCase();
-    if (text.includes('déplacement')) return 'Déplacement';
-    if (text.includes("main d'œuvre") || text.includes('main d’œuvre')) return 'Main d’œuvre';
+    if (text.includes('dÃ©placement')) return 'DÃ©placement';
+    if (text.includes("main d'Å“uvre") || text.includes('main dâ€™Å“uvre')) return 'Main dâ€™Å“uvre';
     if (text.includes('fourniture')) return 'Fournitures';
     if (text.includes('diagnostic') || text.includes('recherche')) return 'Diagnostic';
-    if (text.includes('pièce')) return 'Pièces';
-    if (line.source === 'template') return 'Modèle';
-    if (line.source === 'trade') return 'Main d’œuvre';
+    if (text.includes('piÃ¨ce')) return 'PiÃ¨ces';
+    if (line.source === 'template') return 'ModÃ¨le';
+    if (line.source === 'trade') return 'Main dâ€™Å“uvre';
     return 'Autres';
   }
 
@@ -2255,7 +2245,7 @@ function ProjectDetail() {
   );
   const quoteSuggestionCategories: { name: string; lines: typeof allSuggestions }[] = [];
   filteredQuoteSuggestions.forEach((line) => {
-    const category = (line as ReferentialSuggestionLine).fromReferential ? 'Référentiel métier' : getSuggestionCategory(line);
+    const category = (line as ReferentialSuggestionLine).fromReferential ? 'RÃ©fÃ©rentiel mÃ©tier' : getSuggestionCategory(line);
     let group = quoteSuggestionCategories.find((g) => g.name === category);
     if (!group) {
       group = { name: category, lines: [] };
@@ -2263,10 +2253,10 @@ function ProjectDetail() {
     }
     group.lines.push(line);
   });
-  // Le groupe "Référentiel métier" apparaît toujours en premier.
+  // Le groupe "RÃ©fÃ©rentiel mÃ©tier" apparaÃ®t toujours en premier.
   quoteSuggestionCategories.sort((a, b) => {
-    if (a.name === 'Référentiel métier') return -1;
-    if (b.name === 'Référentiel métier') return 1;
+    if (a.name === 'RÃ©fÃ©rentiel mÃ©tier') return -1;
+    if (b.name === 'RÃ©fÃ©rentiel mÃ©tier') return 1;
     return 0;
   });
 
@@ -2279,17 +2269,17 @@ function ProjectDetail() {
     ? highConfidenceSuggestions
     : mediumConfidenceSuggestions;
   // "Ajouter les recommandations" ne doit jamais ajouter automatiquement les
-  // suggestions génériques : si le référentiel a au moins une correspondance
-  // à confiance élevée, on n'ajoute que celles-ci ; sinon on retombe sur le
-  // comportement générique existant (aucune régression).
+  // suggestions gÃ©nÃ©riques : si le rÃ©fÃ©rentiel a au moins une correspondance
+  // Ã  confiance Ã©levÃ©e, on n'ajoute que celles-ci ; sinon on retombe sur le
+  // comportement gÃ©nÃ©rique existant (aucune rÃ©gression).
   const recommendedSuggestions = highConfidenceReferentialSuggestions.length > 0
     ? highConfidenceReferentialSuggestions
     : fallbackRecommendedSuggestions;
 
   function getConfidenceBadge(confidence?: 'high' | 'medium' | 'low'): { icon: string; label: string } {
-    if (confidence === 'high') return { icon: '🟢', label: 'Confiance élevée' };
-    if (confidence === 'medium') return { icon: '🟡', label: 'Confiance moyenne' };
-    return { icon: '⚪', label: 'À vérifier' };
+    if (confidence === 'high') return { icon: 'ðŸŸ¢', label: 'Confiance Ã©levÃ©e' };
+    if (confidence === 'medium') return { icon: 'ðŸŸ¡', label: 'Confiance moyenne' };
+    return { icon: 'âšª', label: 'Ã€ vÃ©rifier' };
   }
 
   function addSuggestionLinesToSelection(lines: typeof quoteSuggestions) {
@@ -2306,7 +2296,7 @@ function ProjectDetail() {
       if (added) {
         setFollowUpToast({
           type: 'success',
-          message: lines.length === 1 ? 'Ligne ajoutée au devis' : 'Lignes ajoutées au devis',
+          message: lines.length === 1 ? 'Ligne ajoutÃ©e au devis' : 'Lignes ajoutÃ©es au devis',
         });
       }
       return next;
@@ -2322,15 +2312,15 @@ function ProjectDetail() {
     followUpIdealActionLabel.mainSlot,
     followUpIdealActionLabel.secondarySlot
   );
-  const followUpClientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client non renseigné';
-  const followUpProjectLabel = [project?.projectType, project?.trade].filter(Boolean).join(' · ') || 'Projet non renseigné';
+  const followUpClientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || 'Client non renseignÃ©';
+  const followUpProjectLabel = [project?.projectType, project?.trade].filter(Boolean).join(' Â· ') || 'Projet non renseignÃ©';
 
   function getNextActionCtaLabel(type: NextActionType): string {
     switch (type) {
       case 'call': return 'Appeler le prospect';
-      case 'quote': return 'Préparer un devis';
+      case 'quote': return 'PrÃ©parer un devis';
       case 'followup': return 'Relancer';
-      case 'ask_info': return 'Demander des précisions';
+      case 'ask_info': return 'Demander des prÃ©cisions';
       case 'archive': return 'Archiver le dossier';
       case 'wait': return 'Attendre';
       default: return 'Voir';
@@ -2412,7 +2402,7 @@ function ProjectDetail() {
     };
   }
 
-  // Fiche projet mobile native — experience dediee terrain (pas un responsive
+  // Fiche projet mobile native â€” experience dediee terrain (pas un responsive
   // du desktop). N'utilise que des donnees reelles deja chargees plus haut
   // (project, nextAction, appointment, latestDevis, analysis, activities).
   if (isMobile) {
@@ -2421,14 +2411,14 @@ function ProjectDetail() {
     const devisStatusLabel = !latestDevis
       ? 'Aucun devis'
       : latestDevis.accepted
-        ? 'Devis accepté'
+        ? 'Devis acceptÃ©'
         : latestDevis.declined
-          ? 'Devis refusé'
+          ? 'Devis refusÃ©'
           : latestDevis.sent
-            ? decision.state === 'quote_followup_available' ? 'Devis à relancer' : 'Devis envoyé'
-            : 'Devis en préparation';
+            ? decision.state === 'quote_followup_available' ? 'Devis Ã  relancer' : 'Devis envoyÃ©'
+            : 'Devis en prÃ©paration';
     const devisCtaLabel = !latestDevis
-      ? 'Créer'
+      ? 'CrÃ©er'
       : latestDevis.sent && !latestDevis.accepted && !latestDevis.declined
         ? decision.canFollowUpQuote ? 'Relancer' : 'Consulter'
         : 'Voir';
@@ -2444,12 +2434,12 @@ function ProjectDetail() {
     const mobileAccordions: Array<{ key: string; title: string; content: ReactNode }> = [
       {
         key: 'contact',
-        title: 'Coordonnées',
+        title: 'CoordonnÃ©es',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>📞 {project.clientPhone || 'Non renseigné'}</p>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>✉️ {project.clientEmail || 'Non renseigné'}</p>
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>📍 {project.siteAddress || project.city || 'Non renseignée'}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>ðŸ“ž {project.clientPhone || 'Non renseignÃ©'}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>âœ‰ï¸ {project.clientEmail || 'Non renseignÃ©'}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-1)' }}>ðŸ“ {project.siteAddress || project.city || 'Non renseignÃ©e'}</p>
             <button
               onClick={() => {
                 setContactForm({
@@ -2467,14 +2457,14 @@ function ProjectDetail() {
               }}
               style={{ marginTop: '4px', alignSelf: 'flex-start', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-2)', borderRadius: '8px', padding: '6px 12px', fontSize: '12px' }}
             >
-              ✏️ Modifier
+              âœï¸ Modifier
             </button>
           </div>
         ),
       },
       {
         key: 'description',
-        title: 'Description complète',
+        title: 'Description complÃ¨te',
         content: (
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)', whiteSpace: 'pre-wrap' }}>
             {project.aiSummary || 'Aucune description disponible.'}
@@ -2492,13 +2482,13 @@ function ProjectDetail() {
       },
       {
         key: 'analyse',
-        title: 'Analyse détaillée',
+        title: 'Analyse dÃ©taillÃ©e',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-2)' }}>
-            <p style={{ margin: 0 }}>Score : {analysis.score}/100 — {analysis.temperatureLabel}</p>
-            {analysis.strengths.length > 0 && <p style={{ margin: 0 }}>✓ {analysis.strengths.join(' · ')}</p>}
-            {analysis.weaknesses.length > 0 && <p style={{ margin: 0 }}>⚠ {analysis.weaknesses.join(' · ')}</p>}
-            {analysis.missingInfo.length > 0 && <p style={{ margin: 0 }}>À compléter : {analysis.missingInfo.join(' · ')}</p>}
+            <p style={{ margin: 0 }}>Score : {analysis.score}/100 â€” {analysis.temperatureLabel}</p>
+            {analysis.strengths.length > 0 && <p style={{ margin: 0 }}>âœ“ {analysis.strengths.join(' Â· ')}</p>}
+            {analysis.weaknesses.length > 0 && <p style={{ margin: 0 }}>âš  {analysis.weaknesses.join(' Â· ')}</p>}
+            {analysis.missingInfo.length > 0 && <p style={{ margin: 0 }}>Ã€ complÃ©ter : {analysis.missingInfo.join(' Â· ')}</p>}
           </div>
         ),
       },
@@ -2516,7 +2506,7 @@ function ProjectDetail() {
                 rel="noreferrer"
                 style={{ fontSize: '13px', color: d.pdf_url ? 'var(--accent)' : 'var(--text-3)', pointerEvents: d.pdf_url ? 'auto' : 'none' }}
               >
-                📄 Devis {d.numero} — {formatMoney(d.amount)} €
+                ðŸ“„ Devis {d.numero} â€” {formatMoney(d.amount)} â‚¬
               </a>
             ))}
           </div>
@@ -2529,7 +2519,7 @@ function ProjectDetail() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {activityUnavailable && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Activite indisponible pour le moment.</p>}
             {!activityUnavailable && recentActivityItems.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucune activite enregistree pour le moment. Les relances, demandes d'avis et changements importants apparaitront ici.</p>}
-            {false && activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
+            {false && activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun Ã©vÃ¨nement enregistrÃ©</p>}
             {!activityUnavailable && recentActivityItems.map((item) => {
               const tone = getActivityToneStyles(item.tone);
               return (
@@ -2561,7 +2551,7 @@ function ProjectDetail() {
             })}
             {false && activities.map((a, i) => (
               <p key={a.id || i} style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
-                {formatShortDate(a.createdAt)} — {a.description}
+                {formatShortDate(a.createdAt)} â€” {a.description}
               </p>
             ))}
           </div>
@@ -2585,21 +2575,21 @@ function ProjectDetail() {
               {projectTitle}
             </p>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {clientLabel} · {project.city || 'Ville non renseignée'} · {sourceLabel}
+              {clientLabel} Â· {project.city || 'Ville non renseignÃ©e'} Â· {sourceLabel}
             </p>
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '6px' }}>
               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: `1px solid ${statusStyles[project.status]?.border || 'var(--border)'}`, color: statusStyles[project.status]?.text || 'var(--text-2)', background: statusStyles[project.status]?.bg || 'transparent' }}>
-                {project.status || 'Nouveau'}
+                {lifecycle.displayStatus || 'Nouveau'}
               </span>
               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
-                Maturité {nextAction.maturityScore}/100
+                MaturitÃ© {nextAction.maturityScore}/100
               </span>
               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)' }}>
-                Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+                PrioritÃ© {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
               </span>
               {nextAction.urgency !== 'none' && (
                 <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.urgency === 'overdue' ? '#dc2626' : nextAction.urgency === 'today' ? '#ea580c' : 'var(--text-2)' }}>
-                  {nextAction.urgency === 'overdue' ? 'En retard' : nextAction.urgency === 'today' ? "Aujourd'hui" : 'Bientôt'}
+                  {nextAction.urgency === 'overdue' ? 'En retard' : nextAction.urgency === 'today' ? "Aujourd'hui" : 'BientÃ´t'}
                 </span>
               )}
             </div>
@@ -2607,16 +2597,16 @@ function ProjectDetail() {
         </div>
 
         <main style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Carte Action recommandée */}
+          {/* Carte Action recommandÃ©e */}
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
             <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', margin: '0 0 6px' }}>
-              Action recommandée
+              Action recommandÃ©e
             </p>
             <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>{recommendedAction.title}</p>
             <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>{recommendedAction.meta}</p>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
               <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)' }}>
-                Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+                PrioritÃ© {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>~{nextAction.estimatedDuration}</span>
             </div>
@@ -2647,20 +2637,20 @@ function ProjectDetail() {
             })()}
           </div>
 
-          {/* Résumé IA court */}
+          {/* RÃ©sumÃ© IA court */}
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', fontSize: '13px', color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>Résumé</p>
-            <p style={{ margin: 0 }}>Besoin : {project.projectType || project.trade || 'Non renseigné'}</p>
-            <p style={{ margin: 0 }}>Urgence : {project.desiredTimeline || 'Non renseignée'}</p>
-            <p style={{ margin: 0 }}>Budget : {project.budget || 'Non renseigné'}</p>
-            <p style={{ margin: 0 }}>Localisation : {project.siteAddress || project.city || 'Non renseignée'}</p>
-            <p style={{ margin: 0 }}>Devis : {devisStatusLabel}{latestDevis?.amount ? ` (${formatMoney(latestDevis.amount)} €)` : ''}</p>
-            <p style={{ margin: 0 }}>RDV : {appointment ? formatDateTime(appointment.start) : 'Non planifié'}</p>
+            <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)' }}>RÃ©sumÃ©</p>
+            <p style={{ margin: 0 }}>Besoin : {project.projectType || project.trade || 'Non renseignÃ©'}</p>
+            <p style={{ margin: 0 }}>Urgence : {project.desiredTimeline || 'Non renseignÃ©e'}</p>
+            <p style={{ margin: 0 }}>Budget : {project.budget || 'Non renseignÃ©'}</p>
+            <p style={{ margin: 0 }}>Localisation : {project.siteAddress || project.city || 'Non renseignÃ©e'}</p>
+            <p style={{ margin: 0 }}>Devis : {devisStatusLabel}{latestDevis?.amount ? ` (${formatMoney(latestDevis.amount)} â‚¬)` : ''}</p>
+            <p style={{ margin: 0 }}>RDV : {appointment ? formatDateTime(appointment.start) : 'Non planifiÃ©'}</p>
           </div>
 
-          {/* Complément client (SMS) — uniquement pour les dossiers
-              sourcés Vapi/appel vocal, cf. shouldShowSmsCompletionCard.
-              Volontairement placé après Action recommandée et Résumé,
+          {/* ComplÃ©ment client (SMS) â€” uniquement pour les dossiers
+              sourcÃ©s Vapi/appel vocal, cf. shouldShowSmsCompletionCard.
+              Volontairement placÃ© aprÃ¨s Action recommandÃ©e et RÃ©sumÃ©,
               en carte compacte (pas de slab pleine hauteur en haut de
               page) : cf. lot correctif affichage mobile. */}
           {showSmsCompletionCard && (
@@ -2676,10 +2666,10 @@ function ProjectDetail() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 700, margin: '0 0 2px' }}>
-                    Complément client
+                    ComplÃ©ment client
                   </p>
                   <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: 0, lineHeight: 1.4 }}>
-                    Envoyer un lien au client pour compléter adresse, coordonnées ou photos.
+                    Envoyer un lien au client pour complÃ©ter adresse, coordonnÃ©es ou photos.
                   </p>
                 </div>
                 <span style={{
@@ -2691,19 +2681,19 @@ function ProjectDetail() {
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
                 }}>
-                  {!smsCompletionHasPhone && smsCompletionStatus !== 'completed' ? 'Téléphone manquant' : smsCompletionBadge.label}
+                  {!smsCompletionHasPhone && smsCompletionStatus !== 'completed' ? 'TÃ©lÃ©phone manquant' : smsCompletionBadge.label}
                 </span>
               </div>
 
               {smsCompletionStatus === 'completed' ? (
                 <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '11px' }}>
-                  Complété le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
-                  {' · '}{smsCompletionPhotosCount} photo{smsCompletionPhotosCount > 1 ? 's' : ''}
+                  ComplÃ©tÃ© le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
+                  {' Â· '}{smsCompletionPhotosCount} photo{smsCompletionPhotosCount > 1 ? 's' : ''}
                 </p>
               ) : smsCompletionStatus === 'sent' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '11px' }}>
-                    Envoyé le {formatDateTime(project.smsSentAt)} · en attente de complétion
+                    EnvoyÃ© le {formatDateTime(project.smsSentAt)} Â· en attente de complÃ©tion
                   </p>
                   {smsCompletionHasLink && (
                     <button
@@ -2711,7 +2701,7 @@ function ProjectDetail() {
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(project.smsCompletionUrl);
-                          setSmsCompletionToast({ type: 'success', message: 'Lien de complément copié.' });
+                          setSmsCompletionToast({ type: 'success', message: 'Lien de complÃ©ment copiÃ©.' });
                         } catch {
                           setSmsCompletionToast({ type: 'error', message: 'Impossible de copier le lien.' });
                         }
@@ -2738,7 +2728,7 @@ function ProjectDetail() {
                     width: '100%',
                   }}
                 >
-                  {smsCompletionLoading ? 'Envoi...' : smsCompletionStatus === 'failed' ? "Réessayer l'envoi" : 'Envoyer le SMS'}
+                  {smsCompletionLoading ? 'Envoi...' : smsCompletionStatus === 'failed' ? "RÃ©essayer l'envoi" : 'Envoyer le SMS'}
                 </button>
               ) : null}
             </div>
@@ -2775,28 +2765,28 @@ function ProjectDetail() {
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
             {nextAction.blockingReasons.length > 0 ? (
               <>
-                <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#ea580c' }}>⚠ À compléter</p>
+                <p style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#ea580c' }}>âš  Ã€ complÃ©ter</p>
                 <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: 'var(--text-2)' }}>
                   {nextAction.blockingReasons.map((r) => <li key={r}>{r}</li>)}
                 </ul>
               </>
             ) : (
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>✓ Dossier exploitable</p>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--accent)' }}>âœ“ Dossier exploitable</p>
             )}
           </div>
 
           {/* Actions rapides */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {[
-              { label: '📞 Appeler', disabled: !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; } },
-              { label: '✉️ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
-              { label: '📅 RDV', disabled: !!appointment, onClick: () => { if (!appointment) openAppointmentModal(); } },
-              { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
+              { label: 'ðŸ“ž Appeler', disabled: !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; } },
+              { label: 'âœ‰ï¸ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
+              { label: 'ðŸ“… RDV', disabled: !!appointment, onClick: () => { if (!appointment) openAppointmentModal(); } },
+              { label: 'ðŸ“„ Devis', disabled: false, onClick: devisCtaAction },
               decision.canFollowUpQuote
-                ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && requestQuoteFollowUp(latestDevis) }
-                : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
+                ? { label: 'ðŸ” Relancer', disabled: false, onClick: () => latestDevis && requestQuoteFollowUp(latestDevis) }
+                : { label: 'ðŸ“ž Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
               {
-                label: '⭐ Avis Google',
+                label: 'â­ Avis Google',
                 disabled: !project.clientEmail || !artisanConfig?.googleReviewUrl,
                 onClick: requestGoogleReview,
               },
@@ -2819,7 +2809,7 @@ function ProjectDetail() {
             <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
               {!artisanConfig?.googleReviewUrl ? (
                 <>
-                  Ajoutez votre lien de demande d&apos;avis Google dans vos paramètres pour utiliser cette action.
+                  Ajoutez votre lien de demande d&apos;avis Google dans vos paramÃ¨tres pour utiliser cette action.
                   <button
                     type="button"
                     onClick={() => router.push('/parametres?section=entreprise')}
@@ -2829,7 +2819,7 @@ function ProjectDetail() {
                   </button>
                 </>
               ) : (
-                'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
+                'Ajoutez un email client pour pouvoir envoyer une demande dâ€™avis.'
               )}
             </div>
           )}
@@ -2842,8 +2832,8 @@ function ProjectDetail() {
             ) : appointment ? (
               <div>
                 <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{formatDateTime(appointment.start)}</p>
-                {appointment.location && <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>📍 {appointment.location}</p>}
-                <p style={{ margin: 0, fontSize: '11px', color: 'var(--accent)' }}>✓ Synchronisé Google Calendar</p>
+                {appointment.location && <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>ðŸ“ {appointment.location}</p>}
+                <p style={{ margin: 0, fontSize: '11px', color: 'var(--accent)' }}>âœ“ SynchronisÃ© Google Calendar</p>
               </div>
             ) : (
               <div>
@@ -2859,27 +2849,27 @@ function ProjectDetail() {
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
             <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>Devis</p>
             <p style={{ margin: '0 0 4px', fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>{devisStatusLabel}</p>
-            {latestDevis && <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-2)' }}>{formatMoney(latestDevis.amount)} €</p>}
+            {latestDevis && <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-2)' }}>{formatMoney(latestDevis.amount)} â‚¬</p>}
             <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>
               {!latestDevis
-                ? 'Aucune proposition envoyée pour le moment.'
+                ? 'Aucune proposition envoyÃ©e pour le moment.'
                 : latestDevis.accepted
-                  ? `Accepté le ${formatShortDate(latestDevis.accepted_at)}`
+                  ? `AcceptÃ© le ${formatShortDate(latestDevis.accepted_at)}`
                   : latestDevis.declined
-                    ? `Refusé le ${formatShortDate(latestDevis.declined_at)}`
+                    ? `RefusÃ© le ${formatShortDate(latestDevis.declined_at)}`
                     : latestDevis.sent
-                      ? `Envoyé le ${formatShortDate(latestDevis.quote_sent_at)}${latestDevis.opens_count ? ` · Ouvert ${latestDevis.opens_count} fois` : ''}`
-                      : 'Devis brouillon, pas encore envoyé.'}
+                      ? `EnvoyÃ© le ${formatShortDate(latestDevis.quote_sent_at)}${latestDevis.opens_count ? ` Â· Ouvert ${latestDevis.opens_count} fois` : ''}`
+                      : 'Devis brouillon, pas encore envoyÃ©.'}
             </p>
             <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'var(--text-3)' }}>
               {!latestDevis
-                ? 'Prochaine action : créer le devis.'
+                ? 'Prochaine action : crÃ©er le devis.'
                 : latestDevis.accepted
                   ? 'Prochaine action : planifier la suite du chantier.'
                   : latestDevis.declined
-                    ? 'Prochaine action : clôturer ou clarifier le besoin.'
+                    ? 'Prochaine action : clÃ´turer ou clarifier le besoin.'
                     : latestDevis.sent
-                      ? `Prochaine action : ${decision.canFollowUpQuote ? 'relancer le client' : 'attendre la réponse'}.`
+                      ? `Prochaine action : ${decision.canFollowUpQuote ? 'relancer le client' : 'attendre la rÃ©ponse'}.`
                       : 'Prochaine action : finaliser et envoyer le devis.'}
             </p>
             <button onClick={devisCtaAction} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
@@ -2887,7 +2877,7 @@ function ProjectDetail() {
             </button>
           </div>
 
-          {/* Détails secondaires en accordéons */}
+          {/* DÃ©tails secondaires en accordÃ©ons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {mobileAccordions.filter((section) => section.key !== 'activity').map((section) => {
               const open = openMobileSections.has(section.key);
@@ -2990,20 +2980,20 @@ function ProjectDetail() {
             onClick={() => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; }}
             style={{ padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg)', color: project.clientPhone ? 'var(--text-1)' : 'var(--text-3)', fontSize: '13px', fontWeight: 700, opacity: project.clientPhone ? 1 : 0.5 }}
           >
-            📞 Appeler
+            ðŸ“ž Appeler
           </button>
           <button
             disabled={!!appointment}
             onClick={() => { if (!appointment) openAppointmentModal(); }}
             style={{ padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg)', color: appointment ? 'var(--text-3)' : 'var(--text-1)', fontSize: '13px', fontWeight: 700, opacity: appointment ? 0.5 : 1 }}
           >
-            📅 RDV
+            ðŸ“… RDV
           </button>
           <button
             onClick={devisCtaAction}
             style={{ padding: '12px', borderRadius: '10px', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: '13px', fontWeight: 700 }}
           >
-            📄 Devis
+            ðŸ“„ Devis
           </button>
         </div>
 
@@ -3011,12 +3001,12 @@ function ProjectDetail() {
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Planifier un rendez-vous</h2>
+                <h2 className="text-[var(--text-1)] font-bold text-lg">ðŸ“… Planifier un rendez-vous</h2>
                 <button
                   onClick={() => { setShowAppointmentModal(false); setBookingSlot(null); setAppointmentError(null); }}
                   className="text-[var(--text-2)] hover:text-[var(--text-1)]"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
 
@@ -3036,10 +3026,10 @@ function ProjectDetail() {
                 <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Amplitude</p>
                 <div className="flex flex-wrap gap-2">
                   {([
-                    { key: 'slot', label: '1h (créneau proposé)' },
-                    { key: 'custom', label: 'Durée personnalisée' },
-                    { key: 'half_day', label: 'Demi-journée' },
-                    { key: 'full_day', label: 'Journée complète' },
+                    { key: 'slot', label: '1h (crÃ©neau proposÃ©)' },
+                    { key: 'custom', label: 'DurÃ©e personnalisÃ©e' },
+                    { key: 'half_day', label: 'Demi-journÃ©e' },
+                    { key: 'full_day', label: 'JournÃ©e complÃ¨te' },
                     { key: 'multi_day', label: 'Plusieurs jours' },
                   ] as const).map((opt) => (
                     <button
@@ -3060,20 +3050,20 @@ function ProjectDetail() {
 
               {appointmentAmplitude === 'slot' ? (
                 <div>
-                  <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
+                  <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">CrÃ©neaux disponibles</p>
 
                   {loadingSlots ? (
-                    <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+                    <p className="text-sm text-[var(--text-2)]">Recherche de crÃ©neaux disponibles...</p>
                   ) : !appointmentConnected ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
-                      <p className="text-sm text-[var(--text-2)]">Connecter votre agenda débloquera des rendez-vous synchronisés et un planning fiable.</p>
+                      <p className="text-sm text-[var(--text-2)]">Connecter votre agenda dÃ©bloquera des rendez-vous synchronisÃ©s et un planning fiable.</p>
                       <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
                     </div>
                   ) : appointmentError ? (
                     <p className="text-sm text-red-400">{appointmentError}</p>
                   ) : appointmentSlots.length === 0 ? (
                     <p className="text-sm text-[var(--text-2)]">
-                      {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
+                      {appointmentDate ? 'Aucun crÃ©neau disponible ce jour.' : 'Aucun crÃ©neau disponible'}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -3097,14 +3087,14 @@ function ProjectDetail() {
                 <div className="space-y-3">
                   {!appointmentConnected && (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
-                      <p className="text-sm text-[var(--text-2)]">Connecter votre agenda débloquera des rendez-vous synchronisés et un planning fiable.</p>
+                      <p className="text-sm text-[var(--text-2)]">Connecter votre agenda dÃ©bloquera des rendez-vous synchronisÃ©s et un planning fiable.</p>
                       <a href="/dashboard-v2" className="text-sm font-semibold text-[var(--accent)] whitespace-nowrap">Connecter Google Calendar</a>
                     </div>
                   )}
                   {appointmentAmplitude === 'custom' && (
                     <>
                       <div>
-                        <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Heure de début</label>
+                        <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Heure de dÃ©but</label>
                         <input
                           type="time"
                           value={appointmentStartTime}
@@ -3132,7 +3122,7 @@ function ProjectDetail() {
                   )}
                   {appointmentAmplitude === 'half_day' && (
                     <div className="flex flex-wrap gap-2">
-                      {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'Après-midi (14h-18h)' }] as const).map((opt) => (
+                      {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'AprÃ¨s-midi (14h-18h)' }] as const).map((opt) => (
                         <button
                           key={opt.key}
                           type="button"
@@ -3149,7 +3139,7 @@ function ProjectDetail() {
                     </div>
                   )}
                   {appointmentAmplitude === 'full_day' && (
-                    <p className="text-sm text-[var(--text-2)]">Amplitude par défaut : 08h00 - 18h00.</p>
+                    <p className="text-sm text-[var(--text-2)]">Amplitude par dÃ©faut : 08h00 - 18h00.</p>
                   )}
                   {appointmentAmplitude === 'multi_day' && (
                     <div>
@@ -3161,7 +3151,7 @@ function ProjectDetail() {
                         onChange={(e) => setMultiDayEndDate(e.target.value)}
                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
                       />
-                      <p className="mt-1 text-xs text-[var(--text-2)]">Chantier de {formatShortDate(appointmentDate)} 08h00 à {multiDayEndDate ? formatShortDate(multiDayEndDate) : '…'} 18h00.</p>
+                      <p className="mt-1 text-xs text-[var(--text-2)]">Chantier de {formatShortDate(appointmentDate)} 08h00 Ã  {multiDayEndDate ? formatShortDate(multiDayEndDate) : 'â€¦'} 18h00.</p>
                     </div>
                   )}
                   {appointmentError && <p className="text-sm text-red-400">{appointmentError}</p>}
@@ -3173,10 +3163,10 @@ function ProjectDetail() {
                     const end = new Date(range.end);
                     return (
                       <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-xs text-[var(--text-2)]">
-                        <p className="mb-1 font-semibold text-[var(--text-1)]">Récapitulatif</p>
-                        <p>Début : {formatDateTime(start.toISOString())}</p>
+                        <p className="mb-1 font-semibold text-[var(--text-1)]">RÃ©capitulatif</p>
+                        <p>DÃ©but : {formatDateTime(start.toISOString())}</p>
                         <p>Fin : {formatDateTime(end.toISOString())}</p>
-                        <p>{appointmentConnected ? 'Sera synchronisé avec Google Calendar.' : 'Google Calendar non connecté — synchronisation impossible.'}</p>
+                        <p>{appointmentConnected ? 'Sera synchronisÃ© avec Google Calendar.' : 'Google Calendar non connectÃ© â€” synchronisation impossible.'}</p>
                       </div>
                     );
                   })()}
@@ -3242,7 +3232,7 @@ function ProjectDetail() {
             }}
           >
             {!canExportPdf && <Lock size={14} />}
-            📄 Exporter PDF
+            ðŸ“„ Exporter PDF
           </button>
         </div>
 
@@ -3258,10 +3248,10 @@ function ProjectDetail() {
           >
             <AlertTriangle className="w-5 h-5 flex-shrink-0" style={{ color: '#f59e0b' }} />
             <p className="text-sm text-[var(--text-2)] flex-1 m-0">
-              Complétez vos informations légales pour générer des devis professionnels.
+              ComplÃ©tez vos informations lÃ©gales pour gÃ©nÃ©rer des devis professionnels.
             </p>
             <a href="/parametres" className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--accent)' }}>
-              Compléter mon profil →
+              ComplÃ©ter mon profil â†’
             </a>
           </div>
         )}
@@ -3331,7 +3321,7 @@ function ProjectDetail() {
                   fontWeight: 600,
                   alignSelf: 'flex-start',
                 }}>
-                  {project.status || 'Nouveau'}
+                  {lifecycle.displayStatus || 'Nouveau'}
                 </span>
               </div>
               <div style={{
@@ -3374,7 +3364,7 @@ function ProjectDetail() {
           }}>
             {[
               `Budget ${budgetLabel}`,
-              `Délai ${timelineLabel}`,
+              `DÃ©lai ${timelineLabel}`,
               `Source ${sourceLabel}`,
             ].map((badge) => (
               <span
@@ -3394,7 +3384,7 @@ function ProjectDetail() {
             ))}
           </div>
 
-          {/* Séparateur */}
+          {/* SÃ©parateur */}
           <hr style={{
             border: 'none',
             borderTop: '1px solid var(--border)',
@@ -3414,7 +3404,7 @@ function ProjectDetail() {
                 display: 'flex', alignItems: 'center', gap: '6px',
                 color: 'var(--text-1)', textDecoration: 'none', fontSize: '13px',
               }}>
-                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>📞</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>ðŸ“ž</span>
                 {project.clientPhone}
               </a>
             )}
@@ -3423,7 +3413,7 @@ function ProjectDetail() {
                 display: 'flex', alignItems: 'center', gap: '6px',
                 color: 'var(--text-1)', textDecoration: 'none', fontSize: '13px',
               }}>
-                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✉️</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>âœ‰ï¸</span>
                 {project.clientEmail}
               </a>
             )}
@@ -3432,7 +3422,7 @@ function ProjectDetail() {
                 display: 'flex', alignItems: 'center', gap: '6px',
                 color: 'var(--text-1)', fontSize: '13px',
               }}>
-                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>📍</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>ðŸ“</span>
                 {(() => {
                   const addr = project.siteAddress || '';
                   const city = project.city || '';
@@ -3448,8 +3438,8 @@ function ProjectDetail() {
               color: 'var(--text-3)', fontSize: '12px',
               marginLeft: 'auto',
             }}>
-              <span>📅</span>
-              Créé le {formatShortDate(project.createdAt)}
+              <span>ðŸ“…</span>
+              CrÃ©Ã© le {formatShortDate(project.createdAt)}
             </div>
             <button
               onClick={() => {
@@ -3482,16 +3472,16 @@ function ProjectDetail() {
                 justifyContent: 'center',
               }}
             >
-              ✏️ Modifier
+              âœï¸ Modifier
             </button>
           </div>
         </div>
 
-        {/* Pilotage commercial — fusion de "Action recommandée" et
+        {/* Pilotage commercial â€” fusion de "Action recommandÃ©e" et
             "Avancement commercial" (sortie de l'Action Engine, src/lib/action-engine.ts,
             + timeline commerciale) dans une seule carte pleine largeur, pour
-            réduire la hauteur totale sans perdre la hiérarchie : action à
-            gauche (CTA toujours visible), timeline compacte à droite. */}
+            rÃ©duire la hauteur totale sans perdre la hiÃ©rarchie : action Ã 
+            gauche (CTA toujours visible), timeline compacte Ã  droite. */}
         <div style={{
           background: 'var(--bg-elevated)',
           border: '1px solid rgba(34,197,94,0.35)',
@@ -3509,10 +3499,10 @@ function ProjectDetail() {
             gap: isMobile ? '18px' : '28px',
             alignItems: 'start',
           }}>
-            {/* Action recommandée */}
+            {/* Action recommandÃ©e */}
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Action recommandée
+                Action recommandÃ©e
               </p>
               <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
                 {recommendedAction.title}
@@ -3529,7 +3519,7 @@ function ProjectDetail() {
                   border: '1px solid var(--border)',
                   color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)',
                 }}>
-                  Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
+                  PrioritÃ© {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
                 </span>
                 <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
                   Impact {nextAction.impact === 'high' ? 'fort' : nextAction.impact === 'medium' ? 'moyen' : 'faible'}
@@ -3540,7 +3530,7 @@ function ProjectDetail() {
               </div>
               {nextAction.blockingReasons.length > 0 && (
                 <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '0 0 6px' }}>
-                  Blocages : {nextAction.blockingReasons.join(' · ')}
+                  Blocages : {nextAction.blockingReasons.join(' Â· ')}
                 </p>
               )}
               {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
@@ -3576,18 +3566,18 @@ function ProjectDetail() {
                   </button>
                 );
               })()}
-              {/* Décision commerciale manuelle — seul endroit de la fiche
-                  permettant de marquer un dossier gagné/perdu à la main
-                  (ex. accord verbal, refus téléphonique), en plus du
+              {/* DÃ©cision commerciale manuelle â€” seul endroit de la fiche
+                  permettant de marquer un dossier gagnÃ©/perdu Ã  la main
+                  (ex. accord verbal, refus tÃ©lÃ©phonique), en plus du
                   passage automatique via l'acceptation/le refus du devis
-                  en ligne. Remplace les anciens boutons dupliqués de
-                  "Actions et devis" (Faire avancer le dossier / Clôture). */}
-              {project.status !== 'Gagné' && project.status !== 'Perdu' && (
+                  en ligne. Remplace les anciens boutons dupliquÃ©s de
+                  "Actions et devis" (Faire avancer le dossier / ClÃ´ture). */}
+              {(lifecycle.allowMarkWon || lifecycle.allowMarkLost) && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     disabled={updating}
-                    onClick={() => requestCommercialClosure('Gagné')}
+                    onClick={() => requestCommercialClosure('GagnÃ©')}
                     style={{
                       background: 'transparent',
                       border: '1px solid rgba(22,163,74,0.4)',
@@ -3600,7 +3590,7 @@ function ProjectDetail() {
                       opacity: updating ? 0.6 : 1,
                     }}
                   >
-                    🏆 Marquer gagné
+                    ðŸ† Marquer gagnÃ©
                   </button>
                   <button
                     type="button"
@@ -3618,14 +3608,14 @@ function ProjectDetail() {
                       opacity: updating ? 0.6 : 1,
                     }}
                   >
-                    🗄️ Marquer perdu
+                    ðŸ—„ï¸ Marquer perdu
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Avancement commercial — timeline verticale compacte pour ne
-                jamais prendre plus de place que l'action recommandée. */}
+            {/* Avancement commercial â€” timeline verticale compacte pour ne
+                jamais prendre plus de place que l'action recommandÃ©e. */}
             <div style={{
               borderLeft: isMobile ? 'none' : '1px solid var(--border)',
               borderTop: isMobile ? '1px solid var(--border)' : 'none',
@@ -3655,7 +3645,7 @@ function ProjectDetail() {
                           border: `2px solid ${step.done ? 'rgba(34,197,94,0.5)' : isCurrent ? '#ea580c' : 'var(--border)'}`,
                           color: step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)',
                         }}>
-                          {step.done ? '✓' : index + 1}
+                          {step.done ? 'âœ“' : index + 1}
                         </span>
                         {!isLast && (
                           <span style={{ width: '2px', flex: 1, minHeight: '10px', background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)' }} />
@@ -3684,9 +3674,9 @@ function ProjectDetail() {
           gap: '10px',
           marginBottom: '16px',
         }}>
-          {/* Rendez-vous — porte désormais le résumé compact du RDV (date,
-              amplitude/durée, statut de synchronisation Google Calendar),
-              la carte "Rendez-vous" dédiée ayant été retirée (doublon). */}
+          {/* Rendez-vous â€” porte dÃ©sormais le rÃ©sumÃ© compact du RDV (date,
+              amplitude/durÃ©e, statut de synchronisation Google Calendar),
+              la carte "Rendez-vous" dÃ©diÃ©e ayant Ã©tÃ© retirÃ©e (doublon). */}
           <button
             onClick={() => {
               if (!appointment) openAppointmentModal();
@@ -3702,15 +3692,15 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📅 Rendez-vous
+              ðŸ“… Rendez-vous
             </p>
             <p style={{ fontSize: '13px', color: appointment ? 'var(--accent)' : 'var(--text-1)', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
               {loadingAppointment ? 'Chargement...' : summarizeAppointment(appointment).detail}
             </p>
           </button>
 
-          {/* Suivi client — uniquement actionnable quand decision.canFollowUpQuote
-              est vraie, pour ne jamais contredire l'Action recommandée */}
+          {/* Suivi client â€” uniquement actionnable quand decision.canFollowUpQuote
+              est vraie, pour ne jamais contredire l'Action recommandÃ©e */}
           <button
             onClick={() => decision.canFollowUpQuote && latestDevis ? requestQuoteFollowUp(latestDevis) : handleNextBestAction(latestDevis ? 'followup' : 'call')}
             disabled={!decision.canFollowUpQuote && !latestDevis && !project.clientPhone}
@@ -3725,14 +3715,14 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📞 Suivi client
+              ðŸ“ž Suivi client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {decision.canFollowUpQuote
                 ? 'Relancer le client'
                 : decision.followUpAvailableAt
-                  ? `Possible à partir du ${formatShortDate(decision.followUpAvailableAt)}`
-                  : 'Contacter le client si nécessaire'}
+                  ? `Possible Ã  partir du ${formatShortDate(decision.followUpAvailableAt)}`
+                  : 'Contacter le client si nÃ©cessaire'}
             </p>
           </button>
 
@@ -3749,33 +3739,33 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📄 Devis client
+              ðŸ“„ Devis client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {!latestDevis
-                ? 'Préparer un devis'
+                ? 'PrÃ©parer un devis'
                 : decision.state === 'quote_draft'
                   ? 'Reprendre le devis'
                   : decision.state === 'quote_accepted'
-                    ? 'Devis accepté'
+                    ? 'Devis acceptÃ©'
                     : decision.state === 'quote_declined'
-                      ? 'Devis refusé'
+                      ? 'Devis refusÃ©'
                       : decision.canFollowUpQuote
                         ? 'Consulter / relancer'
                         : 'Consulter le devis'}
             </p>
           </button>
 
-          {/* Avis Google — même logique/handler que l'action rapide mobile
+          {/* Avis Google â€” mÃªme logique/handler que l'action rapide mobile
               (requestGoogleReview) ; auparavant absente en desktop (bug
-              d'affichage), pas de condition métier supplémentaire ajoutée. */}
+              d'affichage), pas de condition mÃ©tier supplÃ©mentaire ajoutÃ©e. */}
           <button
             onClick={requestGoogleReview}
             disabled={!project.clientEmail || !artisanConfig?.googleReviewUrl}
             title={!artisanConfig?.googleReviewUrl
-              ? "Ajoutez votre lien de demande d'avis Google dans vos paramètres."
+              ? "Ajoutez votre lien de demande d'avis Google dans vos paramÃ¨tres."
               : !project.clientEmail
-                ? 'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
+                ? 'Ajoutez un email client pour pouvoir envoyer une demande dâ€™avis.'
                 : undefined}
             style={{
               background: 'var(--bg-elevated)',
@@ -3788,7 +3778,7 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              ⭐ Avis client
+              â­ Avis client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               Demander avis Google
@@ -3796,10 +3786,10 @@ function ProjectDetail() {
           </button>
         </div>
 
-        {/* Portail client — reprend la logique de l'endpoint interne
-            /api/projects/[id]/client-portal-link (token généré paresseusement
-            côté serveur). Le front ne fait qu'appeler l'endpoint et copier
-            l'URL renvoyée, aucune génération de token côté client. */}
+        {/* Portail client â€” reprend la logique de l'endpoint interne
+            /api/projects/[id]/client-portal-link (token gÃ©nÃ©rÃ© paresseusement
+            cÃ´tÃ© serveur). Le front ne fait qu'appeler l'endpoint et copier
+            l'URL renvoyÃ©e, aucune gÃ©nÃ©ration de token cÃ´tÃ© client. */}
         <div style={{
           marginBottom: '16px',
           padding: isMobile ? '14px' : '16px',
@@ -3815,7 +3805,7 @@ function ProjectDetail() {
               Portail client
             </p>
             <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
-              Partagez ce lien avec le client pour qu'il consulte et complète sa demande.
+              Partagez ce lien avec le client pour qu'il consulte et complÃ¨te sa demande.
             </p>
           </div>
           <button
@@ -3833,12 +3823,12 @@ function ProjectDetail() {
           </button>
         </div>
 
-        {/* Retours client / Compléments client — distinct des notes internes
+        {/* Retours client / ComplÃ©ments client â€” distinct des notes internes
             (section plus bas) : ce bloc n'affiche QUE ce qui vient du client
-            via le portail (messages, dernière mise à jour, complétions),
-            jamais les notes internes de l'artisan. Tolérant à tous les
-            formats de client_messages et à l'absence des colonnes portail
-            (migration non encore appliquée). */}
+            via le portail (messages, derniÃ¨re mise Ã  jour, complÃ©tions),
+            jamais les notes internes de l'artisan. TolÃ©rant Ã  tous les
+            formats de client_messages et Ã  l'absence des colonnes portail
+            (migration non encore appliquÃ©e). */}
         {(() => {
           const clientMessages = parseClientMessages(project?.clientMessages);
           const clientUpdateCount = Number(project?.clientUpdateCount) || 0;
@@ -3870,27 +3860,27 @@ function ProjectDetail() {
                     fontSize: '11px',
                     fontWeight: 700,
                   }}>
-                    {clientUpdateCount > 0 ? 'Infos complétées par le client' : 'Complément client reçu'}
+                    {clientUpdateCount > 0 ? 'Infos complÃ©tÃ©es par le client' : 'ComplÃ©ment client reÃ§u'}
                   </span>
                 )}
               </div>
 
               <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
                 {clientLastUpdateAt
-                  ? `Dernière mise à jour client : ${formatDateTime(clientLastUpdateAt)}`
-                  : 'Aucune mise à jour client pour le moment'}
+                  ? `DerniÃ¨re mise Ã  jour client : ${formatDateTime(clientLastUpdateAt)}`
+                  : 'Aucune mise Ã  jour client pour le moment'}
               </p>
 
               {!hasClientActivity && (
                 <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
-                  Aucun complément reçu via le portail client pour le moment.
+                  Aucun complÃ©ment reÃ§u via le portail client pour le moment.
                 </p>
               )}
 
               {hasClientActivity && (
                 <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
-                  Le client a complété certaines informations depuis le portail.
-                  {project?.siteAddress || project?.budget || project?.desiredTimeline ? ' Résumé :' : ''}
+                  Le client a complÃ©tÃ© certaines informations depuis le portail.
+                  {project?.siteAddress || project?.budget || project?.desiredTimeline ? ' RÃ©sumÃ© :' : ''}
                 </p>
               )}
 
@@ -3898,18 +3888,18 @@ function ProjectDetail() {
                 <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
                   {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
                   {project?.budget && <li>Budget : {project.budget}</li>}
-                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
+                  {project?.desiredTimeline && <li>DÃ©lai souhaitÃ© : {project.desiredTimeline}</li>}
                 </ul>
               )}
 
-              {/* Discussion client — bulles façon iOS, réservées aux SEULS
+              {/* Discussion client â€” bulles faÃ§on iOS, rÃ©servÃ©es aux SEULS
                   types de discussion (client_message / artisan_reply).
-                  client_info_updated et les autres événements système ne
-                  sont jamais rendus ici : ils vivent dans l'activité du
+                  client_info_updated et les autres Ã©vÃ©nements systÃ¨me ne
+                  sont jamais rendus ici : ils vivent dans l'activitÃ© du
                   dossier plus bas sur la page. Repli sur l'ancien champ
-                  client_messages (texte accumulé) uniquement si la nouvelle
+                  client_messages (texte accumulÃ©) uniquement si la nouvelle
                   table ne renvoie aucun message de discussion (anciens
-                  projets / migration pas encore appliquée). */}
+                  projets / migration pas encore appliquÃ©e). */}
               {(() => {
                 const discussionEvents = clientTimelineEvents.filter(
                   (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
@@ -3943,7 +3933,7 @@ function ProjectDetail() {
                               }}
                             >
                               <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
-                                Client{msg.date ? ` · ${msg.date}` : ''}
+                                Client{msg.date ? ` Â· ${msg.date}` : ''}
                               </div>
                               <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                 {msg.text}
@@ -3975,7 +3965,7 @@ function ProjectDetail() {
                                   }}
                                 >
                                   {isClient ? 'Client' : 'Vous'}
-                                  {ev.createdAt ? ` · ${formatDateTime(ev.createdAt)}` : ''}
+                                  {ev.createdAt ? ` Â· ${formatDateTime(ev.createdAt)}` : ''}
                                 </div>
                                 <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                   {ev.message || ev.title}
@@ -3989,9 +3979,9 @@ function ProjectDetail() {
                 );
               })()}
 
-              {/* Réponse artisan — publiée dans le portail client (visible
+              {/* RÃ©ponse artisan â€” publiÃ©e dans le portail client (visible
                   du client final), strictement distincte des notes internes
-                  (section séparée plus bas dans la page). */}
+                  (section sÃ©parÃ©e plus bas dans la page). */}
               <div style={{
                 marginTop: '4px',
                 paddingTop: '12px',
@@ -4001,7 +3991,7 @@ function ProjectDetail() {
                 gap: '8px',
               }}>
                 <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                  Répondre au client
+                  RÃ©pondre au client
                 </p>
                 <textarea
                   value={clientReplyMessage}
@@ -4010,7 +4000,7 @@ function ProjectDetail() {
                     setClientReplyError('');
                     setClientReplySuccess('');
                   }}
-                  placeholder="Votre réponse sera visible par le client dans son portail..."
+                  placeholder="Votre rÃ©ponse sera visible par le client dans son portail..."
                   rows={3}
                   maxLength={2000}
                   style={{
@@ -4132,15 +4122,15 @@ function ProjectDetail() {
         </section>
         )}
 
-        {/* Analyse Kadria — bloc secondaire d'aide à la lecture du dossier,
-            volontairement plus neutre que l'Action recommandée. */}
+        {/* Analyse Kadria â€” bloc secondaire d'aide Ã  la lecture du dossier,
+            volontairement plus neutre que l'Action recommandÃ©e. */}
         <div style={{
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
         }}>
-          {/* Header avec badge température + score */}
+          {/* Header avec badge tempÃ©rature + score */}
           <div style={{
             padding: isMobile ? '16px' : '16px 20px',
             borderBottom: '1px solid var(--border)',
@@ -4151,7 +4141,7 @@ function ProjectDetail() {
             gap: isMobile ? '10px' : 0,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '16px', color: 'var(--accent)' }}>✦</span>
+              <span style={{ fontSize: '16px', color: 'var(--accent)' }}>âœ¦</span>
               <span style={{
                 color: 'var(--text-1)',
                 fontWeight: 700,
@@ -4190,7 +4180,7 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Correspondance métier — basé sur les métiers déclarés dans les paramètres */}
+          {/* Correspondance mÃ©tier â€” basÃ© sur les mÃ©tiers dÃ©clarÃ©s dans les paramÃ¨tres */}
           {analysis.tradeFit && (
             <div style={{
               padding: isMobile ? '10px 16px' : '10px 20px',
@@ -4219,7 +4209,7 @@ function ProjectDetail() {
                 {analysis.tradeFit.label}
               </span>
               <span style={{ color: 'var(--text-3)', fontSize: '11px' }}>
-                Basé sur les métiers déclarés dans vos paramètres.
+                BasÃ© sur les mÃ©tiers dÃ©clarÃ©s dans vos paramÃ¨tres.
               </span>
             </div>
           )}
@@ -4236,7 +4226,7 @@ function ProjectDetail() {
             justifyContent: 'space-between',
           }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>ðŸ’¡</span>
               <div>
                 <p style={{
                   color: 'var(--accent)',
@@ -4270,13 +4260,13 @@ function ProjectDetail() {
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
               }}>
-                📁 Dossier archivé
+                ðŸ“ Dossier archivÃ©
               </span>
             ) : analysis.nextBestAction.type === 'followup' && !decision.canFollowUpQuote ? (
-              // Le devis vient d'être envoyé ou n'est pas encore éligible à la
+              // Le devis vient d'Ãªtre envoyÃ© ou n'est pas encore Ã©ligible Ã  la
               // relance (cf. decision.canFollowUpQuote, source unique) : on
               // n'affiche jamais de bouton "Relancer" actif ici, pour ne pas
-              // contredire l'Action recommandée et la carte Devis.
+              // contredire l'Action recommandÃ©e et la carte Devis.
               <span style={{
                 color: 'var(--text-3)',
                 fontSize: '12px',
@@ -4285,8 +4275,8 @@ function ProjectDetail() {
                 flexShrink: 0,
               }}>
                 {decision.followUpAvailableAt
-                  ? `Relance possible à partir du ${formatShortDate(decision.followUpAvailableAt)}`
-                  : 'En attente de réponse client'}
+                  ? `Relance possible Ã  partir du ${formatShortDate(decision.followUpAvailableAt)}`
+                  : 'En attente de rÃ©ponse client'}
               </span>
             ) : analysis.nextBestAction.type !== 'wait' && (
               <button
@@ -4327,7 +4317,7 @@ function ProjectDetail() {
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {analysis.strengths.map((item, i) => (
                     <li key={i} style={{ color: 'var(--text-1)', fontSize: '12px', display: 'flex', gap: '6px' }}>
-                      <span style={{ color: 'var(--accent)' }}>✓</span>{item}
+                      <span style={{ color: 'var(--accent)' }}>âœ“</span>{item}
                     </li>
                   ))}
                 </ul>
@@ -4343,7 +4333,7 @@ function ProjectDetail() {
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {analysis.missingInfo.map((item, i) => (
                     <li key={i} style={{ color: 'var(--text-2)', fontSize: '12px', display: 'flex', gap: '6px' }}>
-                      <span style={{ color: '#f59e0b' }}>•</span>{item}
+                      <span style={{ color: '#f59e0b' }}>â€¢</span>{item}
                     </li>
                   ))}
                 </ul>
@@ -4359,21 +4349,21 @@ function ProjectDetail() {
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {analysis.riskFlags.map((item, i) => (
                     <li key={i} style={{ color: '#dc2626', fontSize: '12px', display: 'flex', gap: '6px' }}>
-                      <span>⚠</span>{item}
+                      <span>âš </span>{item}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Aucun risque identifié</p>
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Aucun risque identifiÃ©</p>
               )}
             </div>
           </div>
 
-          {/* Complément client (SMS) — Actions complémentaires, uniquement
-              pour les dossiers sourcés Vapi/appel vocal (cf.
-              shouldShowSmsCompletionCard). Anciennement piégé dans le modal
-              de clôture commerciale (rendu invisible en usage normal) ;
-              déplacé ici en carte contextuelle standalone. */}
+          {/* ComplÃ©ment client (SMS) â€” Actions complÃ©mentaires, uniquement
+              pour les dossiers sourcÃ©s Vapi/appel vocal (cf.
+              shouldShowSmsCompletionCard). Anciennement piÃ©gÃ© dans le modal
+              de clÃ´ture commerciale (rendu invisible en usage normal) ;
+              dÃ©placÃ© ici en carte contextuelle standalone. */}
           {showSmsCompletionCard && (
             <div style={{
               background: 'var(--bg-elevated)',
@@ -4386,15 +4376,15 @@ function ProjectDetail() {
               gap: '12px',
             }}>
               <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Actions complémentaires
+                Actions complÃ©mentaires
               </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>
-                    Complément client
+                    ComplÃ©ment client
                   </p>
                   <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
-                    Envoyer un lien au client pour compléter adresse, coordonnées ou photos.
+                    Envoyer un lien au client pour complÃ©ter adresse, coordonnÃ©es ou photos.
                   </p>
                 </div>
                 <span style={{
@@ -4405,37 +4395,37 @@ function ProjectDetail() {
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
                 }}>
-                  {!smsCompletionHasPhone && smsCompletionStatus !== 'completed' ? 'Téléphone manquant' : smsCompletionBadge.label}
+                  {!smsCompletionHasPhone && smsCompletionStatus !== 'completed' ? 'TÃ©lÃ©phone manquant' : smsCompletionBadge.label}
                 </span>
               </div>
 
               {smsCompletionStatus === 'completed' ? (
                 <div style={{ display: 'grid', gap: '8px' }}>
                   <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
-                    Complété le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
+                    ComplÃ©tÃ© le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
                   </p>
                   <div style={{ display: 'grid', gap: '6px', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                     <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
                       Client : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{clientLabel}</span>
                     </p>
                     <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
-                      Email : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.clientEmail || 'Non renseigné'}</span>
+                      Email : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.clientEmail || 'Non renseignÃ©'}</span>
                     </p>
                     <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
-                      Adresse : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.siteAddress || 'Non renseignée'}</span>
+                      Adresse : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{project.siteAddress || 'Non renseignÃ©e'}</span>
                     </p>
                     <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
-                      Ville / CP : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{[project.city, project.postalCode].filter(Boolean).join(' ') || 'Non renseignés'}</span>
+                      Ville / CP : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{[project.city, project.postalCode].filter(Boolean).join(' ') || 'Non renseignÃ©s'}</span>
                     </p>
                   </div>
                   <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
-                    Photos ajoutées : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{smsCompletionPhotosCount}</span>
+                    Photos ajoutÃ©es : <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{smsCompletionPhotosCount}</span>
                   </p>
                 </div>
               ) : smsCompletionStatus === 'sent' ? (
                 <div style={{ display: 'grid', gap: '10px' }}>
                   <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
-                    Envoyé le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.smsSentAt)}</span> · en attente de complétion
+                    EnvoyÃ© le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.smsSentAt)}</span> Â· en attente de complÃ©tion
                   </p>
                   {smsCompletionHasLink && (
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -4444,7 +4434,7 @@ function ProjectDetail() {
                         onClick={async () => {
                           try {
                             await navigator.clipboard.writeText(project.smsCompletionUrl);
-                            setSmsCompletionToast({ type: 'success', message: 'Lien de complément copié.' });
+                            setSmsCompletionToast({ type: 'success', message: 'Lien de complÃ©ment copiÃ©.' });
                           } catch {
                             setSmsCompletionToast({ type: 'error', message: 'Impossible de copier le lien.' });
                           }
@@ -4483,13 +4473,13 @@ function ProjectDetail() {
                     width: 'fit-content',
                   }}
                 >
-                  {smsCompletionLoading ? 'Envoi...' : smsCompletionStatus === 'failed' ? "Réessayer l'envoi" : 'Envoyer le SMS'}
+                  {smsCompletionLoading ? 'Envoi...' : smsCompletionStatus === 'failed' ? "RÃ©essayer l'envoi" : 'Envoyer le SMS'}
                 </button>
               ) : null}
             </div>
           )}
 
-          {/* Résumé structuré */}
+          {/* RÃ©sumÃ© structurÃ© */}
           <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <p style={{
               color: 'var(--text-3)',
@@ -4499,13 +4489,13 @@ function ProjectDetail() {
               textTransform: 'uppercase',
               margin: '0 0 10px',
             }}>
-              Résumé du projet
+              RÃ©sumÃ© du projet
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
-                { icon: '🏗️', label: 'Le projet', value: summary.projet },
-                { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
-                { icon: '🎯', label: 'Priorité', value: summary.priorite },
+                { icon: 'ðŸ—ï¸', label: 'Le projet', value: summary.projet },
+                { icon: 'ðŸ’¶', label: 'L\'enjeu', value: summary.enjeu },
+                { icon: 'ðŸŽ¯', label: 'PrioritÃ©', value: summary.priorite },
               ].map((item, i) => (
                 <div key={i} style={{
                   display: 'flex',
@@ -4529,10 +4519,10 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Frais de déplacement estimés — intégré à Analyse Kadria (source
-              unique pour ce sujet, l'ancienne carte isolée a été retirée).
-              Reprend exactement les mêmes helpers de calcul que l'ancienne
-              carte, sans inventer de logique supplémentaire. */}
+          {/* Frais de dÃ©placement estimÃ©s â€” intÃ©grÃ© Ã  Analyse Kadria (source
+              unique pour ce sujet, l'ancienne carte isolÃ©e a Ã©tÃ© retirÃ©e).
+              Reprend exactement les mÃªmes helpers de calcul que l'ancienne
+              carte, sans inventer de logique supplÃ©mentaire. */}
           <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
             <p style={{
               color: 'var(--text-3)',
@@ -4542,12 +4532,12 @@ function ProjectDetail() {
               textTransform: 'uppercase',
               margin: '0 0 10px',
             }}>
-              🚗 Frais de déplacement
+              ðŸš— Frais de dÃ©placement
             </p>
             {!canTravelCost ? (
               <div style={{ filter: 'blur(3px)', pointerEvents: 'none', userSelect: 'none' }}>
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                  Distance aller, aller-retour et coût de déplacement estimé (vol d&apos;oiseau).
+                  Distance aller, aller-retour et coÃ»t de dÃ©placement estimÃ© (vol d&apos;oiseau).
                 </p>
               </div>
             ) : (() => {
@@ -4559,7 +4549,7 @@ function ProjectDetail() {
               const destLat = project?.latitude;
               const destLng = project?.longitude;
 
-              // Cas 3 — pas d'adresse chantier : non disponible.
+              // Cas 3 â€” pas d'adresse chantier : non disponible.
               if (!siteAddress) {
                 return (
                   <>
@@ -4575,24 +4565,24 @@ function ProjectDetail() {
                   <>
                     <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Non disponible</p>
                     <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
-                      Adresse professionnelle manquante dans vos paramètres.
+                      Adresse professionnelle manquante dans vos paramÃ¨tres.
                     </p>
                   </>
                 );
               }
-              // Cas 2 — adresse(s) présente(s) mais coordonnées GPS ou
-              // motorisation manquantes : estimation à fiabiliser.
+              // Cas 2 â€” adresse(s) prÃ©sente(s) mais coordonnÃ©es GPS ou
+              // motorisation manquantes : estimation Ã  fiabiliser.
               if (
                 originLat === undefined || originLng === undefined
                 || destLat === null || destLat === undefined || destLng === null || destLng === undefined
               ) {
                 return (
                   <>
-                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation à fiabiliser</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation Ã  fiabiliser</p>
                     <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
                       {originLat === undefined || originLng === undefined
-                        ? "Adresse professionnelle non géocodée. Resélectionnez-la via l'autocomplete dans Paramètres."
-                        : "Adresse chantier renseignée mais coordonnées GPS manquantes. Ressaisissez-la via l'autocomplete pour fiabiliser l'estimation."}
+                        ? "Adresse professionnelle non gÃ©ocodÃ©e. ResÃ©lectionnez-la via l'autocomplete dans ParamÃ¨tres."
+                        : "Adresse chantier renseignÃ©e mais coordonnÃ©es GPS manquantes. Ressaisissez-la via l'autocomplete pour fiabiliser l'estimation."}
                     </p>
                   </>
                 );
@@ -4600,16 +4590,16 @@ function ProjectDetail() {
               if (!travelConfig?.vehicleType) {
                 return (
                   <>
-                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation à fiabiliser</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation Ã  fiabiliser</p>
                     <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
-                      Motorisation non renseignée dans vos paramètres.
+                      Motorisation non renseignÃ©e dans vos paramÃ¨tres.
                     </p>
                   </>
                 );
               }
 
-              // Cas 1 — toutes les données sont disponibles : estimation
-              // fiable, calculée avec les mêmes helpers que précédemment.
+              // Cas 1 â€” toutes les donnÃ©es sont disponibles : estimation
+              // fiable, calculÃ©e avec les mÃªmes helpers que prÃ©cÃ©demment.
               const distanceKm = haversineDistanceKm(originLat, originLng, destLat, destLng);
               const result = calculateTravelCost(distanceKm, {
                 vehicleType: travelConfig.vehicleType as VehicleType,
@@ -4620,8 +4610,8 @@ function ProjectDetail() {
               if (!result) {
                 return (
                   <>
-                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation à fiabiliser</p>
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Impossible de calculer le déplacement.</p>
+                    <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>Estimation Ã  fiabiliser</p>
+                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>Impossible de calculer le dÃ©placement.</p>
                   </>
                 );
               }
@@ -4634,14 +4624,14 @@ function ProjectDetail() {
               return (
                 <>
                   <p style={{ color: 'var(--accent)', fontSize: '15px', fontWeight: 700, margin: '0 0 4px' }}>
-                    ≈ {result.cost.toFixed(2)} € estimés
+                    â‰ˆ {result.cost.toFixed(2)} â‚¬ estimÃ©s
                   </p>
                   <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: '0 0 6px' }}>
-                    {result.distanceKm.toFixed(1)} km aller · {result.distanceKmAR.toFixed(1)} km aller-retour ({result.energyLabel})
+                    {result.distanceKm.toFixed(1)} km aller Â· {result.distanceKmAR.toFixed(1)} km aller-retour ({result.energyLabel})
                   </p>
                   <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: 0 }}>
-                    À intégrer dans votre tarification (forfait déplacement) — {recommendation.isFreeZone
-                      ? 'chantier en zone proche, aucun frais spécifique n’est suggéré.'
+                    Ã€ intÃ©grer dans votre tarification (forfait dÃ©placement) â€” {recommendation.isFreeZone
+                      ? 'chantier en zone proche, aucun frais spÃ©cifique nâ€™est suggÃ©rÃ©.'
                       : recommendation.reason}
                   </p>
                 </>
@@ -4676,7 +4666,7 @@ function ProjectDetail() {
             )}
           </div>
 
-          {/* Synthèse IA longue */}
+          {/* SynthÃ¨se IA longue */}
           {project.aiSummary && (
             <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <p style={{
@@ -4687,7 +4677,7 @@ function ProjectDetail() {
                 textTransform: 'uppercase',
                 margin: '0 0 8px',
               }}>
-                Synthèse IA
+                SynthÃ¨se IA
               </p>
               <p style={{
                 color: 'var(--text-2)',
@@ -4702,8 +4692,8 @@ function ProjectDetail() {
           )}
         </div>
 
-        {/* Photos du projet — galerie visible (auparavant, seul un compte
-            texte "X photo(s) jointe(s)" existait, aucune image affichée). */}
+        {/* Photos du projet â€” galerie visible (auparavant, seul un compte
+            texte "X photo(s) jointe(s)" existait, aucune image affichÃ©e). */}
         {project.photos && project.photos.length > 0 && (
           <div style={{
             background: 'var(--bg-elevated)',
@@ -4746,7 +4736,7 @@ function ProjectDetail() {
           </div>
         )}
 
-        {showIdealFollowUp && (idealActionLabel.title !== 'Moment idéal pour relancer le devis' || decision.shouldShowFollowupBlock) && (
+        {showIdealFollowUp && (idealActionLabel.title !== 'Moment idÃ©al pour relancer le devis' || decision.shouldShowFollowupBlock) && (
           <div style={{
             background: 'rgba(34,197,94,0.06)',
             border: '1px solid rgba(34,197,94,0.22)',
@@ -4781,18 +4771,18 @@ function ProjectDetail() {
 
             <div style={{ color: 'var(--text-2)', fontSize: '12px', minWidth: isMobile ? '100%' : '220px' }}>
               <p style={{ margin: '0 0 4px' }}>
-                Dernier échange :{' '}
+                Dernier Ã©change :{' '}
                 <span style={{ color: 'var(--text-1)' }}>
                   {followUpTime.lastInteractionDate
                     ? formatShortDate(followUpTime.lastInteractionDate)
-                    : 'Non renseigné'}
+                    : 'Non renseignÃ©'}
                 </span>
               </p>
               <p style={{ margin: 0 }}>
                 Sans interaction :{' '}
                 <span style={{ color: 'var(--text-1)' }}>
                   {followUpTime.daysWithoutInteraction === null
-                    ? 'Non renseigné'
+                    ? 'Non renseignÃ©'
                     : `${followUpTime.daysWithoutInteraction} jour(s)`}
                 </span>
               </p>
@@ -4847,9 +4837,9 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Statut commercial (Gagné/Perdu/etc.) piloté depuis la carte
-              "Pilotage commercial" plus haut — plus de bloc "Faire avancer
-              le dossier" ici, pour éviter la double commande de statut. */}
+          {/* Statut commercial (GagnÃ©/Perdu/etc.) pilotÃ© depuis la carte
+              "Pilotage commercial" plus haut â€” plus de bloc "Faire avancer
+              le dossier" ici, pour Ã©viter la double commande de statut. */}
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
             borderBottom: '1px solid var(--border)',
@@ -5062,8 +5052,8 @@ function ProjectDetail() {
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
                         {normalizedStripeConnectStatus === 'pending' || normalizedStripeConnectStatus === 'restricted'
-                          ? 'Terminez la configuration Stripe pour creer un lien d’acompte.'
-                          : 'Connectez Stripe pour creer un lien d’acompte.'}
+                          ? 'Terminez la configuration Stripe pour creer un lien dâ€™acompte.'
+                          : 'Connectez Stripe pour creer un lien dâ€™acompte.'}
                       </span>
                     </div>
                     <button
@@ -5118,7 +5108,7 @@ function ProjectDetail() {
                             : 'Stripe connecte'}
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                        Stripe est connecte. La generation des liens d’acompte sera activee dans la prochaine etape.
+                        Stripe est connecte. La generation des liens dâ€™acompte sera activee dans la prochaine etape.
                       </span>
                     </div>
                     {depositActionMessage && (
@@ -5167,10 +5157,10 @@ function ProjectDetail() {
               }}>
                 Montant du devis
               </p>
-              {/* Lecture seule : le montant du devis ne doit jamais être
+              {/* Lecture seule : le montant du devis ne doit jamais Ãªtre
                   saisi librement dans la fiche projet (raison juridique/
-                  business), il vient uniquement du devis réellement généré/
-                  envoyé, figé à l'envoi. */}
+                  business), il vient uniquement du devis rÃ©ellement gÃ©nÃ©rÃ©/
+                  envoyÃ©, figÃ© Ã  l'envoi. */}
               <div style={{
                 border: '1px solid var(--border)',
                 borderRadius: '10px',
@@ -5180,28 +5170,28 @@ function ProjectDetail() {
                 {sentDevis ? (
                   <>
                     <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>
-                      Devis envoyé : {formatInteger(sentDevis.amount)} €
+                      Devis envoyÃ© : {formatInteger(sentDevis.amount)} â‚¬
                     </p>
                     <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
-                      Montant figé à l&apos;envoi client.
+                      Montant figÃ© Ã  l&apos;envoi client.
                     </p>
                   </>
                 ) : preparedDevis ? (
                   <>
                     <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>
-                      Montant préparé : {formatInteger(preparedDevis.amount)} €
+                      Montant prÃ©parÃ© : {formatInteger(preparedDevis.amount)} â‚¬
                     </p>
                     <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
-                      Non figé juridiquement tant que le devis n&apos;a pas été envoyé au client.
+                      Non figÃ© juridiquement tant que le devis n&apos;a pas Ã©tÃ© envoyÃ© au client.
                     </p>
                   </>
                 ) : (
                   <>
                     <p style={{ margin: 0, color: 'var(--text-1)', fontSize: '14px', fontWeight: 700 }}>
-                      Aucun devis envoyé
+                      Aucun devis envoyÃ©
                     </p>
                     <p style={{ margin: '4px 0 0', color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
-                      Le montant sera renseigné automatiquement après génération et envoi du devis au client.
+                      Le montant sera renseignÃ© automatiquement aprÃ¨s gÃ©nÃ©ration et envoi du devis au client.
                     </p>
                   </>
                 )}
@@ -5223,7 +5213,7 @@ function ProjectDetail() {
                   router.push(`/dashboard-v2/projet/${id}/devis/new`);
                 }}
                 disabled={!legalComplete && canQuote}
-                title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
+                title={!legalComplete ? 'ComplÃ©tez vos infos lÃ©gales d\'abord' : undefined}
                 style={{
                   width: '100%',
                   background: 'var(--bg-elevated)',
@@ -5249,7 +5239,7 @@ function ProjectDetail() {
                 }}
               >
                 {!canQuote && <Lock size={14} />}
-                📄 Générer un devis
+                ðŸ“„ GÃ©nÃ©rer un devis
               </button>
 
               {devisList.length > 0 && (
@@ -5296,14 +5286,14 @@ function ProjectDetail() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, width: isMobile ? '100%' : undefined, flexWrap: 'wrap' }}>
                           <FileTextIcon size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                           <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
-                          <span style={{ color: 'var(--text-3)' }}>·</span>
+                          <span style={{ color: 'var(--text-3)' }}>Â·</span>
                           <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                            {formatMoney(devis.amount)} €
+                            {formatMoney(devis.amount)} â‚¬
                           </span>
                         </div>
 
                         <div style={{ fontSize: '12px', color: 'var(--text-3)', display: 'flex', flexDirection: 'column', gap: '2px', width: isMobile ? '100%' : undefined }}>
-                          <span>Généré le {formatDevisDate(devis.date_emission)}</span>
+                          <span>GÃ©nÃ©rÃ© le {formatDevisDate(devis.date_emission)}</span>
                           <span>Expire le {formatDevisDate(devis.date_validite)}</span>
                         </div>
 
@@ -5318,7 +5308,7 @@ function ProjectDetail() {
                               fontSize: '12px',
                               fontWeight: 600,
                             }}>
-                              ✕ Refusé
+                              âœ• RefusÃ©
                             </span>
                           ) : devis.accepted ? (
                             <span style={{
@@ -5330,7 +5320,7 @@ function ProjectDetail() {
                               fontSize: '12px',
                               fontWeight: 600,
                             }}>
-                              ✓ Accepté le {formatDevisDate(devis.accepted_at || '')}
+                              âœ“ AcceptÃ© le {formatDevisDate(devis.accepted_at || '')}
                             </span>
                           ) : devis.sent || devis.statut?.startsWith('Envoy') ? (
                             <span style={{
@@ -5342,7 +5332,7 @@ function ProjectDetail() {
                               fontSize: '12px',
                               fontWeight: 600,
                             }}>
-                              ✓ {latestDevis && devis.id === latestDevis.id && decision.state === 'quote_followup_available' ? 'Devis à relancer' : 'Envoyé'}
+                              âœ“ {latestDevis && devis.id === latestDevis.id && decision.state === 'quote_followup_available' ? 'Devis Ã  relancer' : 'EnvoyÃ©'}
                             </span>
                           ) : (
                             <span style={{
@@ -5354,7 +5344,7 @@ function ProjectDetail() {
                               fontSize: '12px',
                               fontWeight: 600,
                             }}>
-                              📄 Enregistré · Non envoyé
+                              ðŸ“„ EnregistrÃ© Â· Non envoyÃ©
                             </span>
                           )}
                           <ChevronRight size={14} style={{ color: 'var(--text-3)', marginLeft: '4px' }} />
@@ -5372,7 +5362,7 @@ function ProjectDetail() {
                               gap: '2px',
                             }}>
                               <span style={{ color: '#dc2626', fontSize: '12px', fontWeight: 600 }}>
-                                Refusé le {formatDevisDate(devis.declined_at || '')}
+                                RefusÃ© le {formatDevisDate(devis.declined_at || '')}
                               </span>
                               {devis.decline_reason && (
                                 <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>
@@ -5384,11 +5374,11 @@ function ProjectDetail() {
 
                           {(() => {
                             const followupState = getQuoteFollowupState(devis);
-                            // Pour le devis courant, on recoupe l'éligibilité
-                            // quote-followup.ts avec le délai de grâce 48h de
+                            // Pour le devis courant, on recoupe l'Ã©ligibilitÃ©
+                            // quote-followup.ts avec le dÃ©lai de grÃ¢ce 48h de
                             // l'Action Engine (decision.canFollowUpQuote) afin
                             // de ne jamais afficher un bouton "Relancer" actif
-                            // alors que l'Action recommandée dit d'attendre.
+                            // alors que l'Action recommandÃ©e dit d'attendre.
                             const effectiveCanFollowUp = latestDevis && devis.id === latestDevis.id
                               ? decision.canFollowUpQuote
                               : followupState.canFollowUp;
@@ -5412,11 +5402,11 @@ function ProjectDetail() {
                                   width: isMobile ? '100%' : undefined,
                                 }}
                               >
-                                Créer un nouveau devis
+                                CrÃ©er un nouveau devis
                               </button>
                             ) : devis.accepted ? (
                               <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                                Devis accepté — aucune relance nécessaire
+                                Devis acceptÃ© â€” aucune relance nÃ©cessaire
                               </span>
                             ) : followupState.stage === 'expired' ? (
                               <button
@@ -5438,7 +5428,7 @@ function ProjectDetail() {
                                   width: isMobile ? '100%' : undefined,
                                 }}
                               >
-                                Créer un nouveau devis
+                                CrÃ©er un nouveau devis
                               </button>
                             ) : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -5489,7 +5479,7 @@ function ProjectDetail() {
                                         width: isMobile ? '100%' : undefined,
                                       }}
                                     >
-                                      {devis.follow_up_disabled ? 'Relances désactivées' : 'Désactiver les relances'}
+                                      {devis.follow_up_disabled ? 'Relances dÃ©sactivÃ©es' : 'DÃ©sactiver les relances'}
                                     </button>
                                   )}
                                 </div>
@@ -5497,19 +5487,19 @@ function ProjectDetail() {
                                 {(devis.sent || devis.statut?.startsWith('Envoy')) && (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px', color: 'var(--text-3)' }}>
                                     <span>
-                                      {devis.follow_up_count ? `${devis.follow_up_count} relance(s) envoyée(s)` : 'Aucune relance envoyée'}
-                                      {devis.last_follow_up_at ? ` · Dernière le ${formatDevisDate(devis.last_follow_up_at)}` : ''}
+                                      {devis.follow_up_count ? `${devis.follow_up_count} relance(s) envoyÃ©e(s)` : 'Aucune relance envoyÃ©e'}
+                                      {devis.last_follow_up_at ? ` Â· DerniÃ¨re le ${formatDevisDate(devis.last_follow_up_at)}` : ''}
                                     </span>
                                     <span>
                                       {devis.follow_up_disabled
-                                        ? 'Relances désactivées'
+                                        ? 'Relances dÃ©sactivÃ©es'
                                         : effectiveCanFollowUp && followupState.nextFollowupAt
                                           ? followupState.shouldAutoFollowUp
-                                            ? `Relance prévue : ${followupState.reason}`
-                                            : `Prochaine relance prévue le ${formatDevisDate(followupState.nextFollowupAt)}`
+                                            ? `Relance prÃ©vue : ${followupState.reason}`
+                                            : `Prochaine relance prÃ©vue le ${formatDevisDate(followupState.nextFollowupAt)}`
                                           : latestDevis && devis.id === latestDevis.id && decision.followUpAvailableAt
-                                            ? `Relance possible à partir du ${formatDevisDate(decision.followUpAvailableAt)}`
-                                            : 'Aucune relance nécessaire pour le moment'}
+                                            ? `Relance possible Ã  partir du ${formatDevisDate(decision.followUpAvailableAt)}`
+                                            : 'Aucune relance nÃ©cessaire pour le moment'}
                                     </span>
                                   </div>
                                 )}
@@ -5561,7 +5551,7 @@ function ProjectDetail() {
                     >
                       <span>
                         <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {suggestionsOpen ? '▼' : '▶'} Suggestions de lignes de devis
+                          {suggestionsOpen ? 'â–¼' : 'â–¶'} Suggestions de lignes de devis
                           {highConfidenceSuggestions.length > 0 && (
                             <span style={{
                               fontSize: '11px',
@@ -5576,7 +5566,7 @@ function ProjectDetail() {
                           )}
                         </span>
                         <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                          Kadria vous propose des lignes adaptées au projet.
+                          Kadria vous propose des lignes adaptÃ©es au projet.
                         </span>
                       </span>
                       <ChevronDown
@@ -5594,11 +5584,11 @@ function ProjectDetail() {
                       <div style={{ marginTop: '12px' }}>
                         {matchedQuoteTemplateName && (
                           <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '0 0 8px', fontWeight: 600 }}>
-                            Modèle suggéré : {matchedQuoteTemplateName}
+                            ModÃ¨le suggÃ©rÃ© : {matchedQuoteTemplateName}
                           </p>
                         )}
                         <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
-                          Kadria a identifié les prestations les plus probables pour ce chantier.
+                          Kadria a identifiÃ© les prestations les plus probables pour ce chantier.
                         </p>
 
                         {serviceProfiles.length === 0 && (
@@ -5608,13 +5598,13 @@ function ProjectDetail() {
                             padding: '8px 10px', marginBottom: '10px', flexWrap: 'wrap',
                           }}>
                             <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                              Configurer cette étape débloquera des suggestions personnalisées et des devis préremplis.
+                              Configurer cette Ã©tape dÃ©bloquera des suggestions personnalisÃ©es et des devis prÃ©remplis.
                             </span>
                             <a
                               href="/parametres/profil-metier"
                               style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}
                             >
-                              Configurer mon métier
+                              Configurer mon mÃ©tier
                             </a>
                           </div>
                         )}
@@ -5721,7 +5711,7 @@ function ProjectDetail() {
                                               type="button"
                                               onClick={() => addSuggestionLinesToSelection([line])}
                                               disabled={isSelected}
-                                              aria-label={isSelected ? 'Ligne déjà ajoutée' : 'Ajouter la ligne'}
+                                              aria-label={isSelected ? 'Ligne dÃ©jÃ  ajoutÃ©e' : 'Ajouter la ligne'}
                                               style={{
                                                 width: '20px',
                                                 height: '20px',
@@ -5744,7 +5734,7 @@ function ProjectDetail() {
                                             </span>
                                             {(line as ReferentialSuggestionLine).fromReferential && (
                                               <span
-                                                title={((line as ReferentialSuggestionLine).referentialReasons || []).join(' · ')}
+                                                title={((line as ReferentialSuggestionLine).referentialReasons || []).join(' Â· ')}
                                                 style={{
                                                   fontSize: '10px',
                                                   fontWeight: 600,
@@ -5756,7 +5746,7 @@ function ProjectDetail() {
                                                   whiteSpace: 'nowrap',
                                                 }}
                                               >
-                                                Référentiel métier · {(line as ReferentialSuggestionLine).referentialConfidence}%
+                                                RÃ©fÃ©rentiel mÃ©tier Â· {(line as ReferentialSuggestionLine).referentialConfidence}%
                                               </span>
                                             )}
                                             <span style={{
@@ -5774,7 +5764,7 @@ function ProjectDetail() {
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                             {line.suggestedAmount !== undefined && (
                                               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)' }}>
-                                                {formatInteger(line.suggestedAmount)} € HT
+                                                {formatInteger(line.suggestedAmount)} â‚¬ HT
                                               </span>
                                             )}
                                           </div>
@@ -5809,7 +5799,7 @@ function ProjectDetail() {
                             router.push(`/dashboard-v2/projet/${id}/devis/new`);
                           }}
                           disabled={!legalComplete && canQuote}
-                          title={!legalComplete ? 'Complétez vos infos légales d\'abord' : undefined}
+                          title={!legalComplete ? 'ComplÃ©tez vos infos lÃ©gales d\'abord' : undefined}
                           style={{
                             marginTop: '12px',
                             width: '100%',
@@ -5859,7 +5849,7 @@ function ProjectDetail() {
                 textAlign: 'left',
               }}
             >
-              <span>📝</span>
+              <span>ðŸ“</span>
               <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>Notes internes</span>
               {note && (
                 <span style={{
@@ -5876,7 +5866,7 @@ function ProjectDetail() {
                 fontSize: '12px',
                 color: 'var(--accent)',
               }}>
-                {note ? 'Voir / modifier →' : '+ Ajouter une note →'}
+                {note ? 'Voir / modifier â†’' : '+ Ajouter une note â†’'}
               </span>
             </button>
             {note && (
@@ -5898,7 +5888,7 @@ function ProjectDetail() {
               alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '12px', gap: '12px',
             }}>
               <h3 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>
-                📝 Notes internes
+                ðŸ“ Notes internes
               </h3>
               <button
                 onClick={() => setShowNotes(false)}
@@ -5906,7 +5896,7 @@ function ProjectDetail() {
                   background: 'transparent', border: 'none',
                   color: 'var(--text-3)', cursor: 'pointer', fontSize: '18px',
                 }}
-              >✕</button>
+              >âœ•</button>
             </div>
             <textarea
               ref={noteRef}
@@ -6028,15 +6018,15 @@ function ProjectDetail() {
               <div>
                 <h2 className="text-[var(--text-1)] font-bold text-lg m-0">
                   {followUpRecommendedMoment.hasRecommendation && !followUpRecommendedMoment.isInRecommendedSlot
-                    ? 'Confirmer l’envoi maintenant ?'
+                    ? 'Confirmer lâ€™envoi maintenant ?'
                     : 'Confirmer la relance du devis'}
                 </h2>
                 <p className="text-sm text-[var(--text-2)] mt-1 mb-0">
                   {followUpRecommendedMoment.hasRecommendation
                     ? followUpRecommendedMoment.isInRecommendedSlot
-                      ? 'Vous êtes dans le créneau recommandé pour relancer ce client.'
-                      : `Pour maximiser les chances d’ouverture, il est conseillé d’envoyer cette relance ${followUpRecommendedMoment.recommendedLabel}.`
-                    : 'Une relance sera envoyée au client pour ce devis.'}
+                      ? 'Vous Ãªtes dans le crÃ©neau recommandÃ© pour relancer ce client.'
+                      : `Pour maximiser les chances dâ€™ouverture, il est conseillÃ© dâ€™envoyer cette relance ${followUpRecommendedMoment.recommendedLabel}.`
+                    : 'Une relance sera envoyÃ©e au client pour ce devis.'}
                 </p>
               </div>
               <button
@@ -6050,7 +6040,7 @@ function ProjectDetail() {
                 disabled={Boolean(followingUpDevisId)}
                 className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -6059,7 +6049,7 @@ function ProjectDetail() {
                 Client : <span className="text-[var(--text-1)] font-semibold">{followUpClientLabel}</span>
               </p>
               <p className="m-0 mt-2 text-[var(--text-2)]">
-                Devis : <span className="text-[var(--text-1)] font-semibold">{followUpConfirmDevis.numero || 'Non renseigné'}</span>
+                Devis : <span className="text-[var(--text-1)] font-semibold">{followUpConfirmDevis.numero || 'Non renseignÃ©'}</span>
               </p>
               <p className="m-0 mt-2 text-[var(--text-2)]">
                 Projet : <span className="text-[var(--text-1)] font-semibold">{followUpProjectLabel}</span>
@@ -6121,7 +6111,7 @@ function ProjectDetail() {
               <div>
                 <h2 className="text-[var(--text-1)] font-bold text-lg m-0">Demander un avis Google</h2>
                 <p className="text-sm text-[var(--text-2)] mt-1 mb-0">
-                  Un email sera envoyé au client avec votre lien d&apos;avis Google.
+                  Un email sera envoyÃ© au client avec votre lien d&apos;avis Google.
                 </p>
               </div>
               <button
@@ -6135,7 +6125,7 @@ function ProjectDetail() {
                 disabled={sendingReviewRequest}
                 className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -6144,7 +6134,7 @@ function ProjectDetail() {
                 Client : <span className="text-[var(--text-1)] font-semibold">{clientLabel}</span>
               </p>
               <p className="m-0 mt-2 text-[var(--text-2)]">
-                Email : <span className="text-[var(--text-1)] font-semibold">{project?.clientEmail || 'Non renseigné'}</span>
+                Email : <span className="text-[var(--text-1)] font-semibold">{project?.clientEmail || 'Non renseignÃ©'}</span>
               </p>
               <p className="m-0 mt-2 text-[var(--text-2)]">
                 Projet : <span className="text-[var(--text-1)] font-semibold">{projectTitle}</span>
@@ -6188,12 +6178,12 @@ function ProjectDetail() {
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-[var(--text-1)] font-bold text-lg">📅 Planifier un rendez-vous</h2>
+              <h2 className="text-[var(--text-1)] font-bold text-lg">ðŸ“… Planifier un rendez-vous</h2>
               <button
                 onClick={() => { setShowAppointmentModal(false); setBookingSlot(null); setAppointmentError(null); }}
                 className="text-[var(--text-2)] hover:text-[var(--text-1)]"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -6213,10 +6203,10 @@ function ProjectDetail() {
               <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Amplitude</p>
               <div className="flex flex-wrap gap-2">
                 {([
-                  { key: 'slot', label: '1h (créneau proposé)' },
-                  { key: 'custom', label: 'Durée personnalisée' },
-                  { key: 'half_day', label: 'Demi-journée' },
-                  { key: 'full_day', label: 'Journée complète' },
+                  { key: 'slot', label: '1h (crÃ©neau proposÃ©)' },
+                  { key: 'custom', label: 'DurÃ©e personnalisÃ©e' },
+                  { key: 'half_day', label: 'Demi-journÃ©e' },
+                  { key: 'full_day', label: 'JournÃ©e complÃ¨te' },
                   { key: 'multi_day', label: 'Plusieurs jours' },
                 ] as const).map((opt) => (
                   <button
@@ -6237,17 +6227,17 @@ function ProjectDetail() {
 
             {appointmentAmplitude === 'slot' ? (
               <div>
-                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">Créneaux disponibles</p>
+                <p className="text-xs text-[var(--text-2)] uppercase tracking-wide mb-2">CrÃ©neaux disponibles</p>
 
                 {loadingSlots ? (
-                  <p className="text-sm text-[var(--text-2)]">Recherche de créneaux disponibles...</p>
+                  <p className="text-sm text-[var(--text-2)]">Recherche de crÃ©neaux disponibles...</p>
                 ) : !appointmentConnected ? (
-                  <p className="text-sm text-[var(--text-2)]">Agenda non connecté</p>
+                  <p className="text-sm text-[var(--text-2)]">Agenda non connectÃ©</p>
                 ) : appointmentError ? (
                   <p className="text-sm text-red-400">{appointmentError}</p>
                 ) : appointmentSlots.length === 0 ? (
                   <p className="text-sm text-[var(--text-2)]">
-                    {appointmentDate ? 'Aucun créneau disponible ce jour.' : 'Aucun créneau disponible'}
+                    {appointmentDate ? 'Aucun crÃ©neau disponible ce jour.' : 'Aucun crÃ©neau disponible'}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -6270,12 +6260,12 @@ function ProjectDetail() {
             ) : (
               <div className="space-y-3">
                 {!appointmentConnected && (
-                  <p className="text-sm text-[var(--text-2)]">Agenda non connecté — la synchronisation ne sera pas possible.</p>
+                  <p className="text-sm text-[var(--text-2)]">Agenda non connectÃ© â€” la synchronisation ne sera pas possible.</p>
                 )}
                 {appointmentAmplitude === 'custom' && (
                   <>
                     <div>
-                      <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Heure de début</label>
+                      <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">Heure de dÃ©but</label>
                       <input
                         type="time"
                         value={appointmentStartTime}
@@ -6303,7 +6293,7 @@ function ProjectDetail() {
                 )}
                 {appointmentAmplitude === 'half_day' && (
                   <div className="flex flex-wrap gap-2">
-                    {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'Après-midi (14h-18h)' }] as const).map((opt) => (
+                    {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'AprÃ¨s-midi (14h-18h)' }] as const).map((opt) => (
                       <button
                         key={opt.key}
                         type="button"
@@ -6320,7 +6310,7 @@ function ProjectDetail() {
                   </div>
                 )}
                 {appointmentAmplitude === 'full_day' && (
-                  <p className="text-sm text-[var(--text-2)]">Amplitude par défaut : 08h00 - 18h00.</p>
+                  <p className="text-sm text-[var(--text-2)]">Amplitude par dÃ©faut : 08h00 - 18h00.</p>
                 )}
                 {appointmentAmplitude === 'multi_day' && (
                   <div>
@@ -6332,7 +6322,7 @@ function ProjectDetail() {
                       onChange={(e) => setMultiDayEndDate(e.target.value)}
                       className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
                     />
-                    <p className="mt-1 text-xs text-[var(--text-2)]">Chantier de {formatShortDate(appointmentDate)} 08h00 à {multiDayEndDate ? formatShortDate(multiDayEndDate) : '…'} 18h00.</p>
+                    <p className="mt-1 text-xs text-[var(--text-2)]">Chantier de {formatShortDate(appointmentDate)} 08h00 Ã  {multiDayEndDate ? formatShortDate(multiDayEndDate) : 'â€¦'} 18h00.</p>
                   </div>
                 )}
                 {appointmentError && <p className="text-sm text-red-400">{appointmentError}</p>}
@@ -6344,10 +6334,10 @@ function ProjectDetail() {
                   const end = new Date(range.end);
                   return (
                     <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-xs text-[var(--text-2)]">
-                      <p className="mb-1 font-semibold text-[var(--text-1)]">Récapitulatif</p>
-                      <p>Début : {formatDateTime(start.toISOString())}</p>
+                      <p className="mb-1 font-semibold text-[var(--text-1)]">RÃ©capitulatif</p>
+                      <p>DÃ©but : {formatDateTime(start.toISOString())}</p>
                       <p>Fin : {formatDateTime(end.toISOString())}</p>
-                      <p>{appointmentConnected ? 'Sera synchronisé avec Google Calendar.' : 'Google Calendar non connecté — synchronisation impossible.'}</p>
+                      <p>{appointmentConnected ? 'Sera synchronisÃ© avec Google Calendar.' : 'Google Calendar non connectÃ© â€” synchronisation impossible.'}</p>
                     </div>
                   );
                 })()}
@@ -6371,20 +6361,20 @@ function ProjectDetail() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-[var(--text-1)] font-bold text-lg">✏️ Modifier les informations</h2>
+              <h2 className="text-[var(--text-1)] font-bold text-lg">âœï¸ Modifier les informations</h2>
 
               <button
                 onClick={() => setEditingContact(false)}
                 className="text-[var(--text-2)] hover:text-[var(--text-1)]"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Prénom</label>
+                  <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">PrÃ©nom</label>
                   <input
                     type="text"
                     value={contactForm.clientFirstName}
@@ -6405,7 +6395,7 @@ function ProjectDetail() {
               </div>
 
               <div>
-                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">Téléphone</label>
+                <label className="text-xs text-[var(--text-2)] uppercase tracking-wide">TÃ©lÃ©phone</label>
                 <input
                   type="text"
                   value={contactForm.clientPhone}
@@ -6585,7 +6575,7 @@ function ProjectDetail() {
                 disabled={updating}
                 className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -6594,7 +6584,7 @@ function ProjectDetail() {
                 Dossier : <span className="text-[var(--text-1)] font-semibold">{clientLabel || project.projectType || 'Projet'}</span>
               </p>
               <p className="m-0 mt-2 text-[var(--text-2)]">
-                Statut actuel : <span className="text-[var(--text-1)] font-semibold">{project.status || 'Non renseigné'}</span>
+                Statut actuel : <span className="text-[var(--text-1)] font-semibold">{project.status || 'Non renseignÃ©'}</span>
               </p>
             </div>
 
@@ -6614,12 +6604,12 @@ function ProjectDetail() {
                 onClick={confirmCommercialClosure}
                 disabled={updating}
                 className={`rounded-xl px-4 py-2.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60 ${
-                  commercialClosureConfirm.status === 'Gagné'
+                  commercialClosureConfirm.status === 'GagnÃ©'
                     ? 'bg-[var(--accent)] text-black'
                     : 'bg-red-500 text-white'
                 }`}
               >
-                {updating ? 'Mise à jour...' : commercialClosureConfirm.confirmLabel}
+                {updating ? 'Mise Ã  jour...' : commercialClosureConfirm.confirmLabel}
               </button>
             </div>
           </div>
@@ -6643,9 +6633,11 @@ function getStructuredSummary(project: any) {
     projet: [project.projectType, project.trade]
       .filter(Boolean)
       .filter((v, i, arr) => arr.indexOf(v) === i)
-      .join(' · ') || 'Non renseigné',
-    enjeu: [project.budget, project.desiredTimeline].filter(Boolean).join(' — ') || 'Non renseigné',
-    priorite: project.maturity || 'Non renseignée',
+      .join(' Â· ') || 'Non renseignÃ©',
+    enjeu: [project.budget, project.desiredTimeline].filter(Boolean).join(' â€” ') || 'Non renseignÃ©',
+    priorite: project.maturity || 'Non renseignÃ©e',
   };
 }
+
+
 

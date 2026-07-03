@@ -1,13 +1,6 @@
 import { getQuoteFollowupState, type QuoteFollowupInput } from '@/src/lib/quote-followup'
 import type { NextAction } from '@/src/lib/action-engine'
-import {
-  isProjectClosedStatus,
-  isProjectLostStatus,
-  isProjectQuoteAcceptedStatus,
-  isProjectQuoteSentStatus,
-  isProjectWonStatus,
-  normalizeProjectStatus,
-} from '@/src/lib/project-status'
+import { getProjectLifecycle, normalizeProjectStatus } from '@/src/lib/project-lifecycle'
 
 export type QuoteLifecycleState = 'draft' | 'sent' | 'accepted' | 'declined' | 'unknown'
 
@@ -53,15 +46,16 @@ export interface ProjectCommercialInput {
 }
 
 export function getProjectCommercialState(project: ProjectCommercialInput | null | undefined): ProjectCommercialState {
-  const status = normalizeProjectStatus(project?.status)
-  if (isProjectWonStatus(status)) return 'won'
-  if (isProjectLostStatus(status)) return 'lost'
-  if (isProjectQuoteSentStatus(status)) return 'quote_sent'
+  const lifecycle = getProjectLifecycle({ status: project?.status })
+  if (lifecycle.stage === 'won') return 'won'
+  if (lifecycle.stage === 'lost') return 'lost'
+  if (['quote_sent', 'quote_accepted', 'deposit_requested', 'deposit_paid', 'execution'].includes(lifecycle.stage)) return 'quote_sent'
   return 'open'
 }
 
 export function isProjectClosed(project: ProjectCommercialInput | null | undefined): boolean {
-  return isProjectClosedStatus(project?.status)
+  const stage = getProjectLifecycle({ status: project?.status }).stage
+  return stage === 'won' || stage === 'lost'
 }
 
 export function shouldShowAsPriorityAction(
@@ -112,11 +106,13 @@ export function getProjectDecisionState(
     primaryActionType: nextAction.actionType,
   }
 
-  if (isProjectLostStatus(project?.status)) {
+  const lifecycle = getProjectLifecycle({ status: project?.status, latestDevis: devis || null })
+
+  if (lifecycle.stage === 'lost') {
     return { ...base, state: 'lost', label: 'Dossier perdu', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'none' }
   }
 
-  if (isProjectWonStatus(project?.status) && isQuoteAccepted(devis)) {
+  if (lifecycle.stage === 'won' && isQuoteAccepted(devis)) {
     return { ...base, state: 'won', label: 'Dossier gagné', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'none' }
   }
 
@@ -124,7 +120,7 @@ export function getProjectDecisionState(
     return { ...base, state: 'quote_declined', label: 'Devis refusé', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'low' }
   }
 
-  if (isQuoteAccepted(devis) || isProjectQuoteAcceptedStatus(project?.status)) {
+  if (isQuoteAccepted(devis) || ['quote_accepted', 'deposit_requested', 'deposit_paid', 'execution'].includes(lifecycle.stage)) {
     return { ...base, state: 'quote_accepted', label: 'Devis accepté', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority }
   }
 
