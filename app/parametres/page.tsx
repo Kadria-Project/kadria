@@ -19,6 +19,8 @@ import {
 } from '@/src/config/travel'
 import { normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit'
 
+type WidgetColorMode = 'sobriety' | 'immersive' | 'premium_dark'
+
 const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }> = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
@@ -398,6 +400,7 @@ function ParametresPageContent() {
     welcomeMessage: '',
     primaryColor: '#22c55e',
     secondaryColor: '#18181b',
+    widgetColorMode: 'sobriety' as WidgetColorMode,
     websiteUrl: '',
     googleReviewUrl: '',
     depositEnabled: false,
@@ -598,6 +601,9 @@ function ParametresPageContent() {
             welcomeMessage: data.config.welcomeMessage || '',
             primaryColor: data.config.primaryColor || '#22c55e',
             secondaryColor: data.config.secondaryColor || '#18181b',
+            widgetColorMode: data.config.widgetColorMode === 'immersive' || data.config.widgetColorMode === 'premium_dark'
+              ? data.config.widgetColorMode
+              : 'sobriety',
             websiteUrl: data.config.websiteUrl || '',
             googleReviewUrl: data.config.googleReviewUrl || '',
             depositEnabled: Boolean(data.config.depositEnabled),
@@ -1910,6 +1916,7 @@ function ParametresPageContent() {
                     artisanName={config.companyName || "l'artisan"}
                     primaryColor={config.primaryColor}
                     secondaryColor={config.secondaryColor}
+                    widgetColorMode={config.widgetColorMode}
                     welcomeNameOverride={config.welcomeName}
                     welcomeMessageOverride={config.welcomeMessage}
                     assistantAvatarType={config.assistantAvatarType}
@@ -3536,6 +3543,47 @@ function ParametresPageContent() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                <div style={{ marginTop: '16px' }}>
+                  <label style={labelStyle}>Mode de couleur</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+                    {([
+                      { value: 'sobriety', label: 'Sobre', description: 'Fond clair, accents marque et intro premium sombre.' },
+                      { value: 'immersive', label: 'Immersif', description: 'Univers plus coloré, basé sur votre couleur principale.' },
+                      { value: 'premium_dark', label: 'Sombre premium', description: 'Fond sombre premium, accents principaux et secondaires.' },
+                    ] as Array<{ value: WidgetColorMode; label: string; description: string }>).map((mode) => {
+                      const active = config.widgetColorMode === mode.value
+                      return (
+                        <button
+                          key={mode.value}
+                          type="button"
+                          onClick={() => setConfig(c => ({ ...c, widgetColorMode: mode.value }))}
+                          style={{
+                            textAlign: 'left',
+                            padding: '14px',
+                            borderRadius: '12px',
+                            border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                            background: active ? 'var(--accent-soft, rgba(34,197,94,0.12))' : 'var(--bg-hover)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                          }}
+                        >
+                          <span style={{ color: active ? 'var(--accent)' : 'var(--text-1)', fontSize: '13px', fontWeight: 700 }}>
+                            {mode.label}
+                          </span>
+                          <span style={{ color: 'var(--text-3)', fontSize: '12px', lineHeight: 1.5 }}>
+                            {mode.description}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '8px 0 0' }}>
+                    Choisit la base visuelle du widget sans changer vos contenus ni votre logique de qualification.
+                  </p>
                 </div>
               </div>
 

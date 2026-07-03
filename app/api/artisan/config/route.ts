@@ -18,6 +18,10 @@ function isValidDepositType(value: unknown): boolean {
   return value === undefined || value === null || value === 'percentage' || value === 'fixed'
 }
 
+function isValidWidgetColorMode(value: unknown): boolean {
+  return value === undefined || value === null || value === 'sobriety' || value === 'immersive' || value === 'premium_dark'
+}
+
 export async function GET() {
   try {
     const session = await getSession()
@@ -93,6 +97,13 @@ export async function PATCH(request: NextRequest) {
     if (!isValidDepositType(body.depositType)) {
       return NextResponse.json(
         { success: false, error: 'depositType doit etre percentage ou fixed' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidWidgetColorMode(body.widgetColorMode)) {
+      return NextResponse.json(
+        { success: false, error: 'widgetColorMode doit etre sobriety, immersive ou premium_dark' },
         { status: 400 }
       )
     }
@@ -254,6 +265,7 @@ export async function PATCH(request: NextRequest) {
     if (body.welcomeMessage !== undefined) fields['welcome_message'] = body.welcomeMessage
     if (body.primaryColor !== undefined) fields['primary_color'] = body.primaryColor
     if (body.secondaryColor !== undefined) fields['secondary_color'] = body.secondaryColor
+    if (body.widgetColorMode !== undefined) fields['widget_color_mode'] = body.widgetColorMode || 'sobriety'
     if (body.websiteUrl !== undefined) fields['website_url'] = body.websiteUrl
     if (body.googleReviewUrl !== undefined) fields['google_review_url'] = body.googleReviewUrl
     if (body.depositEnabled !== undefined) fields['deposit_enabled'] = body.depositEnabled

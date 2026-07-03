@@ -145,6 +145,7 @@ export interface SupabaseArtisanConfig {
   welcomeMessage: string
   primaryColor: string
   secondaryColor: string
+  widgetColorMode: string
   qualificationFlow: string
   websiteUrl: string
   active: boolean
@@ -279,6 +280,7 @@ export function mapSupabaseArtisanConfig(row: RawRow): SupabaseArtisanConfig {
     welcomeMessage: getString(row, 'welcome_message', 'Welcome Message'),
     primaryColor: getString(row, 'primary_color', 'Primary Color') || '#22c55e',
     secondaryColor: getString(row, 'secondary_color', 'Secondary Color') || '#18181b',
+    widgetColorMode: getString(row, 'widget_color_mode', 'Widget Color Mode') || 'sobriety',
     qualificationFlow: getString(row, 'qualification_flow', 'Qualification Flow'),
     websiteUrl: getString(row, 'website_url', 'Website URL'),
     active: getBoolean(row, 'active', 'Active'),

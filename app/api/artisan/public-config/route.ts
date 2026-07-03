@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         welcomeMessage: config.welcomeMessage,
         primaryColor:   config.primaryColor,
         secondaryColor: config.secondaryColor,
+        widgetColorMode: config.widgetColorMode || 'sobriety',
         logoUrl:        config.logoUrl,
         primaryTrade:   config.primaryTrade,
         active:         config.active,

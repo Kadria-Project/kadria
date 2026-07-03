@@ -25,6 +25,7 @@ interface Props {
   artisanName?: string
   primaryColor?: string
   secondaryColor?: string
+  widgetColorMode?: 'sobriety' | 'immersive' | 'premium_dark'
   welcomeNameOverride?: string
   welcomeMessageOverride?: string
   inline?: boolean
@@ -128,6 +129,148 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function normalizeHex(hex: string, fallback: string) {
+  const trimmed = String(hex || '').trim()
+  return /^#([a-f\d]{6})$/i.test(trimmed) ? trimmed : fallback
+}
+
+function hexToRgb(hex: string) {
+  const normalized = normalizeHex(hex, '#22c55e')
+  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(normalized)
+  if (!match) return { r: 34, g: 197, b: 94 }
+  return {
+    r: parseInt(match[1], 16),
+    g: parseInt(match[2], 16),
+    b: parseInt(match[3], 16),
+  }
+}
+
+function mixHex(hex: string, target: string, weight: number) {
+  const sourceRgb = hexToRgb(hex)
+  const targetRgb = hexToRgb(target)
+  const ratio = clamp(weight, 0, 1)
+  const toHex = (value: number) => Math.round(value).toString(16).padStart(2, '0')
+  return `#${toHex(sourceRgb.r + (targetRgb.r - sourceRgb.r) * ratio)}${toHex(sourceRgb.g + (targetRgb.g - sourceRgb.g) * ratio)}${toHex(sourceRgb.b + (targetRgb.b - sourceRgb.b) * ratio)}`
+}
+
+function relativeLuminance(hex: string) {
+  const { r, g, b } = hexToRgb(hex)
+  const srgb = [r, g, b].map((channel) => {
+    const normalized = channel / 255
+    return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2]
+}
+
+function getContrastColor(hex: string, light = '#ffffff', dark = '#04110a') {
+  return relativeLuminance(hex) > 0.45 ? dark : light
+}
+
+function buildWidgetBrandTheme({
+  primaryColor,
+  secondaryColor,
+  mode,
+}: {
+  primaryColor: string
+  secondaryColor: string
+  mode: 'sobriety' | 'immersive' | 'premium_dark'
+}) {
+  const primary = normalizeHex(primaryColor, '#22c55e')
+  const secondary = normalizeHex(secondaryColor, '#18181b')
+  const primaryContrast = getContrastColor(primary)
+
+  if (mode === 'immersive') {
+    const shell = mixHex(primary, '#ffffff', 0.9)
+    const surface = mixHex(primary, '#ffffff', 0.84)
+    return {
+      shellBackground: shell,
+      headerBackground: `linear-gradient(180deg, ${hexToRgba(primary, 0.94)} 0%, ${hexToRgba(mixHex(primary, secondary, 0.22), 0.98)} 100%)`,
+      progressBackground: hexToRgba(primary, 0.12),
+      panelBorder: hexToRgba(primary, 0.18),
+      textPrimary: getContrastColor(shell, '#ffffff', '#0f172a'),
+      textMuted: '#475569',
+      badgeBackground: hexToRgba(secondary, 0.1),
+      badgeBorder: hexToRgba(secondary, 0.14),
+      badgeText: secondary,
+      cardBackground: '#ffffff',
+      cardBorder: hexToRgba(primary, 0.14),
+      welcomeBackground: `linear-gradient(180deg, ${hexToRgba(mixHex(primary, '#ffffff', 0.72), 0.92)} 0%, ${hexToRgba(mixHex(primary, '#ffffff', 0.86), 0.98)} 100%)`,
+      inputBackground: '#ffffff',
+      inputBorder: hexToRgba(primary, 0.18),
+      footerBackground: surface,
+      progressTrack: hexToRgba(primary, 0.14),
+      stepInactiveBackground: 'rgba(15,23,42,0.08)',
+      stepInactiveText: '#64748b',
+      primaryColor: primary,
+      primaryContrast,
+      secondaryAccent: secondary,
+      assistantBubbleBackground: '#ffffff',
+      assistantBubbleText: '#0f172a',
+      shadow: '0 24px 72px rgba(15,23,42,0.14)',
+    }
+  }
+
+  if (mode === 'premium_dark') {
+    return {
+      shellBackground: '#0B1220',
+      headerBackground: 'linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(15,23,42,0.96) 100%)',
+      progressBackground: 'rgba(11,18,32,0.92)',
+      panelBorder: 'rgba(148,163,184,0.18)',
+      textPrimary: '#f8fafc',
+      textMuted: '#94a3b8',
+      badgeBackground: hexToRgba(secondary, 0.18),
+      badgeBorder: hexToRgba(secondary, 0.24),
+      badgeText: '#e2e8f0',
+      cardBackground: '#111827',
+      cardBorder: 'rgba(148,163,184,0.16)',
+      welcomeBackground: 'linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(11,18,32,0.98) 100%)',
+      inputBackground: '#111827',
+      inputBorder: 'rgba(148,163,184,0.22)',
+      footerBackground: '#0B1220',
+      progressTrack: 'rgba(148,163,184,0.16)',
+      stepInactiveBackground: 'rgba(255,255,255,0.08)',
+      stepInactiveText: '#94a3b8',
+      primaryColor: primary,
+      primaryContrast,
+      secondaryAccent: secondary,
+      assistantBubbleBackground: '#111827',
+      assistantBubbleText: '#f8fafc',
+      shadow: '0 28px 80px rgba(2,6,23,0.42)',
+    }
+  }
+
+  return {
+    shellBackground: '#f8fafc',
+    headerBackground: `linear-gradient(180deg, ${hexToRgba(primary, 0.95)} 0%, ${hexToRgba(mixHex(primary, secondary, 0.16), 0.98)} 100%)`,
+    progressBackground: '#ffffff',
+    panelBorder: 'rgba(148,163,184,0.2)',
+    textPrimary: '#0f172a',
+    textMuted: '#64748b',
+    badgeBackground: hexToRgba(secondary, 0.08),
+    badgeBorder: hexToRgba(secondary, 0.12),
+    badgeText: secondary,
+    cardBackground: '#ffffff',
+    cardBorder: 'rgba(148,163,184,0.16)',
+    welcomeBackground: 'linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(15,23,42,0.94) 100%)',
+    inputBackground: '#ffffff',
+    inputBorder: 'rgba(148,163,184,0.2)',
+    footerBackground: '#f8fafc',
+    progressTrack: 'rgba(148,163,184,0.18)',
+    stepInactiveBackground: 'rgba(15,23,42,0.08)',
+    stepInactiveText: '#64748b',
+    primaryColor: primary,
+    primaryContrast,
+    secondaryAccent: secondary,
+    assistantBubbleBackground: '#ffffff',
+    assistantBubbleText: '#0f172a',
+    shadow: '0 24px 72px rgba(15,23,42,0.14)',
+  }
+}
+
 // ─── Address autocomplete ─────────────────────────────────────────────────────
 interface AdresseSuggestion { label: string; city: string; postcode: string; score: number | null; latitude: number | null; longitude: number | null }
 
@@ -161,6 +304,7 @@ export default function ChatWidgetInline({
   artisanName = "l'artisan",
   primaryColor = '#22c55e',
   secondaryColor,
+  widgetColorMode = 'sobriety',
   welcomeNameOverride,
   welcomeMessageOverride,
   inline = true,
@@ -216,6 +360,7 @@ export default function ChatWidgetInline({
   // Config artisan
   const [primaryColorLocal, setPrimaryColorLocal] = useState(primaryColor)
   const [secondaryColorLocal, setSecondaryColorLocal] = useState('#09090b')
+  const [widgetColorModeLocal, setWidgetColorModeLocal] = useState<'sobriety' | 'immersive' | 'premium_dark'>(widgetColorMode)
   const [widgetName, setWidgetName] = useState('Kadria')
   const [customWelcomeMessage, setCustomWelcomeMessage] = useState('')
   const [assistantAvatarTypeLocal, setAssistantAvatarTypeLocal] = useState('kadria_default')
@@ -255,6 +400,11 @@ export default function ChatWidgetInline({
         if (data.success && data.config) {
           if (data.config.primaryColor && !primaryColor) setPrimaryColorLocal(data.config.primaryColor)
           if (data.config.secondaryColor) setSecondaryColorLocal(data.config.secondaryColor)
+          if (data.config.widgetColorMode === 'immersive' || data.config.widgetColorMode === 'premium_dark') {
+            setWidgetColorModeLocal(data.config.widgetColorMode)
+          } else {
+            setWidgetColorModeLocal('sobriety')
+          }
           if (data.config.welcomeName) setWidgetName(data.config.welcomeName)
           if (data.config.welcomeMessage) setCustomWelcomeMessage(data.config.welcomeMessage)
           if (data.config.assistantAvatarType) setAssistantAvatarTypeLocal(data.config.assistantAvatarType)
@@ -277,6 +427,13 @@ export default function ChatWidgetInline({
   useEffect(() => {
     if (secondaryColor) setSecondaryColorLocal(secondaryColor)
   }, [secondaryColor])
+  useEffect(() => {
+    if (widgetColorMode === 'immersive' || widgetColorMode === 'premium_dark') {
+      setWidgetColorModeLocal(widgetColorMode)
+      return
+    }
+    setWidgetColorModeLocal('sobriety')
+  }, [widgetColorMode])
   useEffect(() => {
     if (welcomeNameOverride) setWidgetName(welcomeNameOverride)
   }, [welcomeNameOverride])
@@ -693,23 +850,29 @@ export default function ChatWidgetInline({
   ]
 
   // ── Container styles ──────────────────────────────────────────────────────
+  const theme = buildWidgetBrandTheme({
+    primaryColor: primaryColorLocal,
+    secondaryColor: secondaryColorLocal,
+    mode: widgetColorModeLocal,
+  })
+
   const containerStyle: React.CSSProperties = fullPage ? {
     width: '100%',
     height: '100%',
     borderRadius: isProjectExperience ? '28px' : '0',
-    border: isProjectExperience ? '1px solid rgba(255,255,255,0.08)' : 'none',
+    border: isProjectExperience ? `1px solid ${theme.panelBorder}` : 'none',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
     background: isProjectExperience
-      ? `linear-gradient(180deg, ${hexToRgba(secondaryColorLocal, 0.94)} 0%, ${hexToRgba(secondaryColorLocal, 0.98)} 100%)`
-      : secondaryColorLocal,
-    boxShadow: isProjectExperience ? '0 28px 80px rgba(0,0,0,0.36)' : 'none',
+      ? theme.headerBackground
+      : theme.shellBackground,
+    boxShadow: isProjectExperience ? theme.shadow : 'none',
     fontFamily: 'system-ui, sans-serif',
   } : {
     width: '100%', height: fitParentHeight ? '100%' : '600px', borderRadius: '16px',
-    border: '1px solid #27272a', display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', background: secondaryColorLocal, fontFamily: 'system-ui, sans-serif',
+    border: `1px solid ${theme.panelBorder}`, display: 'flex', flexDirection: 'column',
+    overflow: 'hidden', background: theme.shellBackground, fontFamily: 'system-ui, sans-serif',
   }
 
   // ── Centered wrapper for full-page mode ──────────────────────────────────
@@ -727,10 +890,8 @@ export default function ChatWidgetInline({
 
         {/* Header */}
         <div className={isProjectExperience ? 'project-mobile-hide-header' : undefined} style={{
-          background: isProjectExperience
-            ? `linear-gradient(180deg, ${hexToRgba(secondaryColorLocal, 0.96)} 0%, ${hexToRgba(secondaryColorLocal, 0.88)} 100%)`
-            : `linear-gradient(180deg, ${hexToRgba(secondaryColorLocal, 0.97)} 0%, ${hexToRgba(secondaryColorLocal, 0.97)} 100%)`,
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: theme.headerBackground,
+          borderBottom: `1px solid ${theme.panelBorder}`,
           padding: isProjectExperience ? '18px 20px 16px' : '14px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -750,8 +911,8 @@ export default function ChatWidgetInline({
                     height: isProjectExperience ? '44px' : '38px',
                     borderRadius: isProjectExperience ? '14px' : '12px',
                     objectFit: 'contain',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                    background: theme.badgeBackground,
+                    border: isProjectExperience ? 'none' : `1px solid ${theme.badgeBorder}`,
                     flexShrink: 0,
                   }}
                 />
@@ -764,22 +925,22 @@ export default function ChatWidgetInline({
                   logoUrl={logoUrlLocal}
                   primaryColor={primaryColorLocal}
                   fallbackGradient={isProjectExperience
-                    ? `linear-gradient(135deg, ${primaryColorLocal} 0%, #a3e635 100%)`
-                    : `linear-gradient(145deg, ${primaryColorLocal} 0%, #0f3d24 130%)`}
+                    ? `linear-gradient(135deg, ${theme.primaryColor} 0%, ${mixHex(theme.primaryColor, '#ffffff', 0.28)} 100%)`
+                    : `linear-gradient(145deg, ${theme.primaryColor} 0%, ${mixHex(theme.primaryColor, theme.secondaryAccent, 0.58)} 130%)`}
                   fontSize={isProjectExperience ? '18px' : '15px'}
                   fontWeight={800}
-                  textColor={isProjectExperience ? '#04110a' : '#ecfdf5'}
-                  boxShadow={isProjectExperience ? `0 12px 28px ${hexToRgba(primaryColorLocal, 0.18)}` : `0 6px 18px ${hexToRgba(primaryColorLocal, 0.22)}`}
-                  border={isProjectExperience ? 'none' : '1px solid rgba(255,255,255,0.12)'}
+                  textColor={theme.primaryContrast}
+                  boxShadow={isProjectExperience ? `0 12px 28px ${hexToRgba(theme.primaryColor, 0.18)}` : `0 6px 18px ${hexToRgba(theme.primaryColor, 0.22)}`}
+                  border={isProjectExperience ? 'none' : `1px solid ${theme.badgeBorder}`}
                 />
               )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <p style={{ margin: 0, color: 'white', fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{resolvedBrandName}</p>
+                  <p style={{ margin: 0, color: theme.textPrimary, fontWeight: 700, fontSize: isProjectExperience ? '15px' : '14.5px', letterSpacing: '-0.01em' }}>{resolvedBrandName}</p>
                   <span style={{
-                    border: `1px solid ${hexToRgba(primaryColorLocal, 0.22)}`,
-                    background: hexToRgba(primaryColorLocal, 0.08),
-                    color: '#86efac',
+                    border: `1px solid ${hexToRgba(theme.secondaryAccent, 0.22)}`,
+                    background: hexToRgba(theme.secondaryAccent, 0.1),
+                    color: theme.badgeText,
                     borderRadius: '999px',
                     padding: '2px 8px',
                     fontSize: '10.5px',
@@ -803,16 +964,16 @@ export default function ChatWidgetInline({
                     </span>
                   )}
                 </div>
-                <p style={{ margin: '2px 0 0', color: '#a1a1aa', fontSize: isProjectExperience ? '12.5px' : '12px' }}>
+                <p style={{ margin: '2px 0 0', color: theme.textMuted, fontSize: isProjectExperience ? '12.5px' : '12px' }}>
                   Votre assistant de confiance pour vos travaux
                 </p>
               </div>
             </div>
             {isProjectExperience && (
               <div style={{
-                border: `1px solid ${hexToRgba(primaryColorLocal, 0.2)}`,
-                background: hexToRgba(primaryColorLocal, 0.08),
-                color: '#dcfce7',
+                border: `1px solid ${hexToRgba(theme.primaryColor, 0.2)}`,
+                background: hexToRgba(theme.primaryColor, 0.08),
+                color: theme.textPrimary,
                 borderRadius: '999px',
                 padding: '8px 12px',
                 fontSize: '12px',
@@ -828,29 +989,29 @@ export default function ChatWidgetInline({
         {/* Progress bar */}
         <div className={isProjectExperience ? 'project-progress-wrap' : undefined} style={{
           padding: isProjectExperience ? '16px 20px 18px' : '8px 16px',
-          background: isProjectExperience ? hexToRgba(secondaryColorLocal, 0.68) : secondaryColorLocal,
-          borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+          background: theme.progressBackground,
+          borderBottom: `1px solid ${theme.panelBorder}`, flexShrink: 0,
         }}>
           <div style={centerStyle}>
             {isProjectExperience && (
               <div className="project-progress-compact-row" style={{ display: 'none', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#d4d4d8', fontWeight: 600 }}>
+                <span style={{ fontSize: '12px', color: theme.textMuted, fontWeight: 600 }}>
                   Étape {visualStep}/4 · {PROJECT_STEP_LABELS[visualStep - 1]}
                 </span>
               </div>
             )}
             <div className={isProjectExperience ? 'project-progress-full-row' : undefined} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: isProjectExperience ? '12px' : '5px', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: isProjectExperience ? '#d4d4d8' : '#a1a1aa', fontWeight: isProjectExperience ? 600 : 400 }}>
+              <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: theme.textMuted, fontWeight: isProjectExperience ? 600 : 400 }}>
                 {isProjectExperience ? 'Parcours de qualification' : 'Votre projet'}
               </span>
-              <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: '#a1a1aa' }}>
+              <span style={{ fontSize: isProjectExperience ? '12px' : '11px', color: theme.textMuted }}>
                 Étape {isProjectExperience ? visualStep : step} sur 4{isProjectExperience ? '' : ` — ${stepLabel}`}
               </span>
             </div>
-            <div style={{ height: isProjectExperience ? '6px' : '3px', background: isProjectExperience ? 'rgba(255,255,255,0.08)' : '#27272a', borderRadius: '999px', overflow: 'hidden' }}>
+            <div style={{ height: isProjectExperience ? '6px' : '3px', background: theme.progressTrack, borderRadius: '999px', overflow: 'hidden' }}>
               <div style={{
                 height: '100%', width: `${(isProjectExperience ? visualStep : step) * 25}%`,
-                background: isProjectExperience ? `linear-gradient(90deg, ${primaryColorLocal} 0%, #86efac 100%)` : primaryColorLocal, borderRadius: '999px',
+                background: isProjectExperience ? `linear-gradient(90deg, ${theme.primaryColor} 0%, ${mixHex(theme.primaryColor, '#ffffff', 0.32)} 100%)` : theme.primaryColor, borderRadius: '999px',
                 transition: 'width 0.5s ease',
               }} />
             </div>
@@ -865,8 +1026,8 @@ export default function ChatWidgetInline({
                         width: '18px',
                         height: '18px',
                         borderRadius: '999px',
-                        background: isActive || isDone ? primaryColorLocal : 'rgba(255,255,255,0.08)',
-                        color: isActive || isDone ? '#04110a' : '#a1a1aa',
+                        background: isActive || isDone ? theme.primaryColor : theme.stepInactiveBackground,
+                        color: isActive || isDone ? theme.primaryContrast : theme.stepInactiveText,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -876,7 +1037,7 @@ export default function ChatWidgetInline({
                       }}>
                         {isDone ? '✓' : index + 1}
                       </span>
-                      <span style={{ color: isActive ? 'white' : '#71717a', fontSize: '12px', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap' }}>
+                      <span style={{ color: isActive ? theme.textPrimary : theme.stepInactiveText, fontSize: '12px', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap' }}>
                         {label}
                       </span>
                     </div>
@@ -892,10 +1053,10 @@ export default function ChatWidgetInline({
           <div className="project-welcome-wrap project-mobile-welcome-wrap" style={{ flex: 1, padding: '20px 0 24px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{ marginBottom: '16px' }}>
-                <h2 className="project-welcome-title" style={{ margin: '0 0 6px', color: 'white', fontSize: '20px', lineHeight: 1.25, fontWeight: 700 }}>
+                <h2 className="project-welcome-title" style={{ margin: '0 0 6px', color: theme.textPrimary, fontSize: '20px', lineHeight: 1.25, fontWeight: 700 }}>
                   Parlez-moi de votre projet
                 </h2>
-                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, color: theme.textMuted, fontSize: '13px', lineHeight: 1.5 }}>
                   {customWelcomeMessage || 'Je vous guide en quelques questions pour transmettre une demande claire à l’artisan.'}
                 </p>
               </div>
@@ -908,9 +1069,9 @@ export default function ChatWidgetInline({
                     }}
                     className="project-mobile-quick-card"
                     style={{
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: 'white',
+                      background: theme.cardBackground,
+                      border: `1px solid ${theme.cardBorder}`,
+                      color: theme.textPrimary,
                       borderRadius: '16px',
                       padding: '14px 12px',
                       cursor: 'pointer',
@@ -926,8 +1087,8 @@ export default function ChatWidgetInline({
                         height: '32px',
                         borderRadius: '10px',
                         flexShrink: 0,
-                        background: hexToRgba(primaryColorLocal, 0.08),
-                        border: `1px solid ${hexToRgba(primaryColorLocal, 0.18)}`,
+                        background: hexToRgba(theme.primaryColor, 0.08),
+                        border: `1px solid ${hexToRgba(theme.primaryColor, 0.18)}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -938,8 +1099,8 @@ export default function ChatWidgetInline({
                       <span style={{ color: '#52525b', fontSize: '16px', flexShrink: 0 }}>›</span>
                     </div>
                     <div>
-                      <div style={{ color: 'white', fontSize: '13.5px', fontWeight: 650, marginBottom: '2px' }}>{card.title}</div>
-                      <div style={{ color: '#a1a1aa', fontSize: '11.5px', lineHeight: 1.4 }}>{card.subtitle}</div>
+                      <div style={{ color: theme.textPrimary, fontSize: '13.5px', fontWeight: 650, marginBottom: '2px' }}>{card.title}</div>
+                      <div style={{ color: theme.textMuted, fontSize: '11.5px', lineHeight: 1.4 }}>{card.subtitle}</div>
                     </div>
                   </button>
                 ))}
@@ -957,8 +1118,8 @@ export default function ChatWidgetInline({
                   }}
                   placeholder="Ou décrivez directement votre besoin..."
                   style={{
-                    flex: 1, background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px', padding: '10px 12px', color: 'white', fontSize: '13px', outline: 'none',
+                    flex: 1, background: theme.inputBackground, border: `1px solid ${theme.inputBorder}`,
+                    borderRadius: '12px', padding: '10px 12px', color: theme.textPrimary, fontSize: '13px', outline: 'none',
                   }}
                 />
                 <button
@@ -971,8 +1132,8 @@ export default function ChatWidgetInline({
                   disabled={!input.trim()}
                   style={{
                     width: '40px', height: '40px', borderRadius: '12px', border: 'none',
-                    background: input.trim() ? primaryColorLocal : '#27272a',
-                    color: input.trim() ? 'black' : '#71717a',
+                    background: input.trim() ? theme.primaryColor : theme.progressTrack,
+                    color: input.trim() ? theme.primaryContrast : theme.stepInactiveText,
                     cursor: input.trim() ? 'pointer' : 'default',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}
@@ -989,10 +1150,10 @@ export default function ChatWidgetInline({
           <div className="project-welcome-wrap" style={{ flex: 1, padding: '24px 0 28px', overflowY: 'auto' }}>
             <div style={centerStyle}>
               <div style={{ marginBottom: '20px' }}>
-                <h2 className="project-welcome-title" style={{ margin: '0 0 6px', color: 'white', fontSize: '22px', lineHeight: 1.25, fontWeight: 700 }}>
+                <h2 className="project-welcome-title" style={{ margin: '0 0 6px', color: theme.textPrimary, fontSize: '22px', lineHeight: 1.25, fontWeight: 700 }}>
                   Quel type de demande souhaitez-vous transmettre ?
                 </h2>
-                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13.5px', lineHeight: 1.6 }}>
+                <p style={{ margin: 0, color: theme.textMuted, fontSize: '13.5px', lineHeight: 1.6 }}>
                   {customWelcomeMessage || 'Choisissez l’option la plus proche de votre besoin. Vous pourrez préciser ensuite.'}
                 </p>
               </div>
@@ -1005,9 +1166,9 @@ export default function ChatWidgetInline({
                     }}
                     className="project-choice-card"
                     style={{
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: 'white',
+                      background: theme.cardBackground,
+                      border: `1px solid ${theme.cardBorder}`,
+                      color: theme.textPrimary,
                       borderRadius: '18px',
                       padding: '14px 16px',
                       cursor: 'pointer',
@@ -1023,8 +1184,8 @@ export default function ChatWidgetInline({
                       height: '38px',
                       borderRadius: '12px',
                       flexShrink: 0,
-                      background: hexToRgba(primaryColorLocal, 0.08),
-                      border: `1px solid ${hexToRgba(primaryColorLocal, 0.18)}`,
+                      background: hexToRgba(theme.primaryColor, 0.08),
+                      border: `1px solid ${hexToRgba(theme.primaryColor, 0.18)}`,
                       color: '#86efac',
                       display: 'flex',
                       alignItems: 'center',
@@ -1038,8 +1199,8 @@ export default function ChatWidgetInline({
                       })()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: 'white', fontSize: '14.5px', fontWeight: 650, marginBottom: '2px' }}>{opt}</div>
-                      <div style={{ color: '#a1a1aa', fontSize: '12.5px', lineHeight: 1.5 }}>
+                      <div style={{ color: theme.textPrimary, fontSize: '14.5px', fontWeight: 650, marginBottom: '2px' }}>{opt}</div>
+                      <div style={{ color: theme.textMuted, fontSize: '12.5px', lineHeight: 1.5 }}>
                         {WELCOME_OPTION_DETAILS[opt]?.description}
                       </div>
                     </div>
@@ -1052,17 +1213,17 @@ export default function ChatWidgetInline({
         ) : (
           <div style={{ flex: 1, padding: '18px 16px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{
-              background: 'linear-gradient(180deg, rgba(24,24,27,0.9) 0%, rgba(13,18,15,0.88) 100%)',
-              border: `1px solid ${hexToRgba(primaryColorLocal, 0.14)}`,
+              background: theme.welcomeBackground,
+              border: `1px solid ${theme.cardBorder}`,
               borderRadius: '18px',
               padding: '18px',
               marginBottom: '14px',
-              boxShadow: '0 14px 36px rgba(0,0,0,0.22)',
+              boxShadow: theme.shadow,
             }}>
-              <p style={{ margin: '0 0 6px', color: 'white', fontSize: '17px', fontWeight: 700, letterSpacing: '-0.01em' }}>
+              <p style={{ margin: '0 0 6px', color: widgetColorModeLocal === 'sobriety' ? '#ffffff' : theme.textPrimary, fontSize: '17px', fontWeight: 700, letterSpacing: '-0.01em' }}>
                 Parlez-moi de votre projet
               </p>
-              <p style={{ margin: 0, color: '#a1a1aa', fontSize: '13px', lineHeight: 1.6 }}>
+              <p style={{ margin: 0, color: widgetColorModeLocal === 'sobriety' ? '#cbd5e1' : theme.textMuted, fontSize: '13px', lineHeight: 1.6 }}>
                 {customWelcomeMessage || 'Je vous guide en quelques questions pour transmettre une demande claire à l’artisan.'}
               </p>
             </div>
@@ -1075,9 +1236,9 @@ export default function ChatWidgetInline({
                   }}
                   className="widget-quick-card"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.015) 100%)',
-                    border: '1px solid rgba(255,255,255,0.09)',
-                    color: 'white',
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.cardBorder}`,
+                    color: theme.textPrimary,
                     borderRadius: '16px',
                     padding: '14px',
                     cursor: 'pointer',
@@ -1094,8 +1255,8 @@ export default function ChatWidgetInline({
                     <span style={{ color: '#52525b', fontSize: '13px' }}>→</span>
                   </div>
                   <div>
-                    <div style={{ color: 'white', fontSize: '13.5px', fontWeight: 650, marginBottom: '3px' }}>{card.title}</div>
-                    <div style={{ color: '#a1a1aa', fontSize: '11.5px', lineHeight: 1.5 }}>{card.subtitle}</div>
+                    <div style={{ color: theme.textPrimary, fontSize: '13.5px', fontWeight: 650, marginBottom: '3px' }}>{card.title}</div>
+                    <div style={{ color: theme.textMuted, fontSize: '11.5px', lineHeight: 1.5 }}>{card.subtitle}</div>
                   </div>
                 </button>
               ))}
@@ -1114,8 +1275,8 @@ export default function ChatWidgetInline({
                 }}
                 placeholder="Ou décrivez directement votre besoin..."
                 style={{
-                  flex: 1, background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px', padding: '10px 12px', color: 'white', fontSize: '13px', outline: 'none',
+                  flex: 1, background: theme.inputBackground, border: `1px solid ${theme.inputBorder}`,
+                  borderRadius: '12px', padding: '10px 12px', color: theme.textPrimary, fontSize: '13px', outline: 'none',
                 }}
               />
               <button
@@ -1128,8 +1289,8 @@ export default function ChatWidgetInline({
                 disabled={!input.trim()}
                 style={{
                   width: '40px', height: '40px', borderRadius: '12px', border: 'none',
-                  background: input.trim() ? primaryColorLocal : '#27272a',
-                  color: input.trim() ? 'black' : '#71717a',
+                  background: input.trim() ? theme.primaryColor : theme.progressTrack,
+                  color: input.trim() ? theme.primaryContrast : theme.stepInactiveText,
                   cursor: input.trim() ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}
@@ -1163,9 +1324,9 @@ export default function ChatWidgetInline({
                     <div style={{
                       maxWidth: isProjectExperience ? '82%' : '78%', padding: isProjectExperience ? '12px 15px' : '10px 14px',
                       borderRadius: msg.role === 'user' ? '16px 6px 16px 16px' : '6px 16px 16px 16px',
-                      background: msg.role === 'user' ? primaryColorLocal : isExcluded ? 'rgba(217,119,6,0.12)' : '#27272a',
+                      background: msg.role === 'user' ? theme.primaryColor : isExcluded ? 'rgba(217,119,6,0.12)' : theme.assistantBubbleBackground,
                       border: isExcluded ? '1px solid rgba(217,119,6,0.35)' : 'none',
-                      color: msg.role === 'user' ? 'black' : isExcluded ? '#fde68a' : 'white',
+                      color: msg.role === 'user' ? theme.primaryContrast : isExcluded ? '#fde68a' : theme.assistantBubbleText,
                       fontSize: isProjectExperience ? '14px' : '13.5px', lineHeight: '1.7',
                       boxShadow: isProjectExperience ? '0 10px 24px rgba(0,0,0,0.14)' : 'none',
                     }}>
@@ -1187,7 +1348,7 @@ export default function ChatWidgetInline({
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{
                     padding: '10px 14px', borderRadius: '4px 12px 12px 12px',
-                    background: '#27272a', display: 'flex', gap: '4px', alignItems: 'center',
+                    background: theme.assistantBubbleBackground, display: 'flex', gap: '4px', alignItems: 'center',
                   }}>
                     {[0, 1, 2].map(i => (
                       <div key={i} style={{
@@ -1213,9 +1374,9 @@ export default function ChatWidgetInline({
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingPhotos}
                     style={{
-                      background: '#18181b',
-                      border: `1px solid ${primaryColorLocal}`,
-                      color: primaryColorLocal,
+                      background: theme.inputBackground,
+                      border: `1px solid ${theme.primaryColor}`,
+                      color: theme.primaryColor,
                       borderRadius: '20px',
                       padding: '8px 16px',
                       fontSize: '13px',
@@ -1230,9 +1391,9 @@ export default function ChatWidgetInline({
                   <button
                     onClick={() => sendMessage("Je n'ai pas de photos pour le moment")}
                     style={{
-                      background: '#18181b',
-                      border: '1px solid #3f3f46',
-                      color: '#a1a1aa',
+                      background: theme.inputBackground,
+                      border: `1px solid ${theme.inputBorder}`,
+                      color: theme.textMuted,
                       borderRadius: '20px',
                       padding: '8px 16px',
                       fontSize: '13px',
@@ -1255,20 +1416,20 @@ export default function ChatWidgetInline({
                   {quickReplies.map(opt => (
                     <button key={opt} onClick={() => sendMessage(opt)}
                       style={{
-                        background: '#18181b', border: '1px solid #3f3f46',
-                        color: 'white', borderRadius: '20px',
+                        background: theme.inputBackground, border: `1px solid ${theme.inputBorder}`,
+                        color: theme.textPrimary, borderRadius: '20px',
                         padding: '6px 14px', fontSize: '12.5px', cursor: 'pointer',
                         transition: 'all 0.15s', flexShrink: 0,
                       }}
                       onMouseEnter={e => {
-                        (e.target as HTMLButtonElement).style.background = primaryColorLocal;
-                        (e.target as HTMLButtonElement).style.color = 'black';
-                        (e.target as HTMLButtonElement).style.borderColor = primaryColorLocal
+                        (e.target as HTMLButtonElement).style.background = theme.primaryColor;
+                        (e.target as HTMLButtonElement).style.color = theme.primaryContrast;
+                        (e.target as HTMLButtonElement).style.borderColor = theme.primaryColor
                       }}
                       onMouseLeave={e => {
-                        (e.target as HTMLButtonElement).style.background = '#18181b';
-                        (e.target as HTMLButtonElement).style.color = 'white';
-                        (e.target as HTMLButtonElement).style.borderColor = '#3f3f46'
+                        (e.target as HTMLButtonElement).style.background = theme.inputBackground;
+                        (e.target as HTMLButtonElement).style.color = theme.textPrimary;
+                        (e.target as HTMLButtonElement).style.borderColor = theme.inputBorder
                       }}
                     >
                       {opt}
@@ -1283,13 +1444,13 @@ export default function ChatWidgetInline({
             {isAddressMode && (adresseLoading || adresseSuggestions.length > 0 || (adresseSearched && input.trim().length >= 3)) && (
               <div style={centerStyle}>
                 <div style={{
-                  background: '#18181b', border: '1px solid #27272a',
+                  background: theme.cardBackground, border: `1px solid ${theme.cardBorder}`,
                   borderRadius: '8px', margin: fullPage ? 0 : '0 12px',
                   overflow: 'hidden', flexShrink: 0,
                   maxHeight: '220px', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 }}>
                   {adresseLoading && (
-                    <div style={{ padding: '10px 14px', fontSize: '13px', color: '#a1a1aa' }}>
+                      <div style={{ padding: '10px 14px', fontSize: '13px', color: theme.textMuted }}>
                       Recherche en cours...
                     </div>
                   )}
@@ -1315,14 +1476,14 @@ export default function ChatWidgetInline({
                       style={{
                         padding: '10px 14px', cursor: 'pointer',
                         borderBottom: i < adresseSuggestions.length - 1 ? '1px solid #27272a' : 'none',
-                        color: 'white', fontSize: '13px',
+                        color: theme.textPrimary, fontSize: '13px',
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = '#27272a')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                       <div>📍 {s.label}</div>
                       {(s.postcode || s.city) && (
-                        <div style={{ color: '#a1a1aa', fontSize: '11.5px', marginTop: '2px' }}>
+                          <div style={{ color: theme.textMuted, fontSize: '11.5px', marginTop: '2px' }}>
                           {s.postcode} {s.city}
                         </div>
                       )}
@@ -1331,7 +1492,7 @@ export default function ChatWidgetInline({
 
                   {!adresseLoading && adresseSuggestions.length === 0 && adresseSearched && input.trim().length >= 3 && (
                     <div style={{ padding: '10px 14px' }}>
-                      <p style={{ margin: '0 0 8px', color: '#a1a1aa', fontSize: '12.5px', lineHeight: 1.5 }}>
+                      <p style={{ margin: '0 0 8px', color: theme.textMuted, fontSize: '12.5px', lineHeight: 1.5 }}>
                         {adresseError
                           ? "L'adresse n'a pas pu être vérifiée pour le moment."
                           : "Je n'ai pas trouvé d'adresse exacte. Pouvez-vous préciser la commune ou le code postal ?"}
@@ -1348,8 +1509,8 @@ export default function ChatWidgetInline({
                           }}
                           style={{
                             background: 'transparent',
-                            border: `1px solid ${primaryColorLocal}`,
-                            color: primaryColorLocal,
+                            border: `1px solid ${theme.primaryColor}`,
+                            color: theme.primaryColor,
                             borderRadius: '8px',
                             padding: '6px 12px',
                             fontSize: '12.5px',
@@ -1373,8 +1534,8 @@ export default function ChatWidgetInline({
                   ...(fullPage ? { padding: isProjectExperience ? '0 20px' : '0 24px' } : { padding: '0 12px' }),
                 }}>
                   <div style={{
-                    background: '#18181b',
-                    border: '1px solid #27272a',
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.cardBorder}`,
                     borderRadius: '16px',
                     padding: '20px',
                     margin: '8px 0',
@@ -1384,7 +1545,7 @@ export default function ChatWidgetInline({
                   }}>
                     <p style={{
                       margin: '0 0 4px',
-                      color: primaryColorLocal,
+                      color: theme.primaryColor,
                       fontSize: '11px',
                       fontWeight: 600,
                       letterSpacing: '0.08em',
@@ -1422,11 +1583,11 @@ export default function ChatWidgetInline({
                             }))}
                             style={{
                               width: '100%',
-                              background: '#27272a',
-                              border: '1px solid #3f3f46',
+                              background: theme.inputBackground,
+                              border: `1px solid ${theme.inputBorder}`,
                               borderRadius: '8px',
                               padding: '8px 10px',
-                              color: 'white',
+                              color: theme.textPrimary,
                               fontSize: '16px',
                               outline: 'none',
                               boxSizing: 'border-box',
@@ -1455,9 +1616,9 @@ export default function ChatWidgetInline({
                         await sendMessage(summary)
                       }}
                       style={{
-                        background: primaryColorLocal,
+                        background: theme.primaryColor,
                         border: 'none',
-                        color: 'black',
+                        color: theme.primaryContrast,
                         fontWeight: 700,
                         borderRadius: '10px',
                         padding: '12px',
@@ -1478,7 +1639,7 @@ export default function ChatWidgetInline({
             {photos.length > 0 && !saved && (
               <div style={{
                 padding: fullPage ? '0' : '0 12px',
-                flexShrink: 0, background: '#09090b',
+                flexShrink: 0, background: theme.footerBackground,
               }}>
                 <div style={{
                   ...centerStyle,
@@ -1511,8 +1672,8 @@ export default function ChatWidgetInline({
             {readyToSave && !showModal && !saved && (
               <div style={{
                 padding: '8px 12px',
-                borderTop: '1px solid #27272a',
-                background: '#09090b',
+                borderTop: `1px solid ${theme.cardBorder}`,
+                background: theme.footerBackground,
                 display: 'flex',
                 justifyContent: 'center',
               }}>
@@ -1520,8 +1681,8 @@ export default function ChatWidgetInline({
                   onClick={() => setShowModal(true)}
                   style={{
                     background: 'transparent',
-                    border: `1px solid ${primaryColorLocal}`,
-                    color: primaryColorLocal,
+                    border: `1px solid ${theme.primaryColor}`,
+                    color: theme.primaryColor,
                     borderRadius: '10px',
                     padding: '8px 20px',
                     fontSize: '13px',
@@ -1539,14 +1700,14 @@ export default function ChatWidgetInline({
 
             {/* CTA vers la page complète */}
             {!isProjectExperience && !saved && (
-              <div style={{ padding: '0 12px 8px', flexShrink: 0, background: '#09090b', textAlign: 'center' }}>
+              <div style={{ padding: '0 12px 8px', flexShrink: 0, background: theme.footerBackground, textAlign: 'center' }}>
                 <a
                   href={`/projet?artisan_id=${encodeURIComponent(artisanId)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="widget-footer-cta"
                   style={{
-                    color: '#a1a1aa',
+                    color: theme.textMuted,
                     fontSize: '11.5px',
                     textDecoration: 'none',
                     borderBottom: '1px solid rgba(255,255,255,0.14)',
@@ -1562,8 +1723,8 @@ export default function ChatWidgetInline({
             {/* Input */}
             {!saved && !showContactForm && (
               <div className="chat-input-container" style={{
-                padding: fullPage ? '10px 0' : '10px 12px', borderTop: '1px solid #27272a',
-                flexShrink: 0, background: isProjectExperience ? hexToRgba(secondaryColorLocal, 0.86) : secondaryColorLocal,
+                padding: fullPage ? '10px 0' : '10px 12px', borderTop: `1px solid ${theme.cardBorder}`,
+                flexShrink: 0, background: theme.footerBackground,
                 position: 'relative',
               }}>
                 <div style={{
@@ -1608,10 +1769,10 @@ export default function ChatWidgetInline({
                     placeholder={isAddressMode ? "Tapez votre adresse..." : "Écrivez votre message..."}
                     disabled={loading}
                     style={{
-                      flex: 1, background: '#18181b', border: `1px solid ${isProjectExperience ? 'rgba(255,255,255,0.1)' : '#3f3f46'}`,
+                      flex: 1, background: theme.inputBackground, border: `1px solid ${theme.inputBorder}`,
                       borderRadius: isProjectExperience ? '14px' : '8px',
                       padding: fullPage ? '14px 16px' : '8px 12px',
-                      color: 'white', fontSize: fullPage ? '16px' : '13.5px', outline: 'none',
+                      color: theme.textPrimary, fontSize: fullPage ? '16px' : '13.5px', outline: 'none',
                     }}
                   />
                   <input
@@ -1628,8 +1789,8 @@ export default function ChatWidgetInline({
                   {isPhotoMode && !photosAnswered && (
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhotos}
                       style={{
-                        width: '42px', height: '42px', borderRadius: isProjectExperience ? '14px' : '8px', border: '1px solid #3f3f46',
-                        background: '#18181b', color: 'white',
+                        width: '42px', height: '42px', borderRadius: isProjectExperience ? '14px' : '8px', border: `1px solid ${theme.inputBorder}`,
+                        background: theme.inputBackground, color: theme.textPrimary,
                         cursor: uploadingPhotos ? 'default' : 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         flexShrink: 0, fontSize: '16px',
@@ -1640,8 +1801,8 @@ export default function ChatWidgetInline({
                   <button onClick={() => sendMessage()} disabled={loading || !input.trim()}
                     style={{
                        width: '42px', height: '42px', borderRadius: isProjectExperience ? '14px' : '8px', border: 'none',
-                      background: loading || !input.trim() ? '#27272a' : primaryColorLocal,
-                      color: loading || !input.trim() ? '#71717a' : 'black',
+                      background: loading || !input.trim() ? theme.progressTrack : theme.primaryColor,
+                      color: loading || !input.trim() ? theme.stepInactiveText : theme.primaryContrast,
                       cursor: loading || !input.trim() ? 'default' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0,
