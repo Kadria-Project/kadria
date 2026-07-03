@@ -1,14 +1,16 @@
-// Source de vérité unique pour la lecture des statuts devis/projet à travers
-// le dashboard, la fiche projet, l'action engine et les relances. N'invente
-// aucune nouvelle valeur de statut : se contente de lire/normaliser celles qui
-// existent déjà (Devis.statut, Devis.sent/accepted/declined, Project.status).
 import { getQuoteFollowupState, type QuoteFollowupInput } from '@/src/lib/quote-followup'
 import type { NextAction } from '@/src/lib/action-engine'
+import {
+  isProjectClosedStatus,
+  isProjectLostStatus,
+  isProjectQuoteAcceptedStatus,
+  isProjectQuoteSentStatus,
+  isProjectWonStatus,
+  normalizeProjectStatus,
+} from '@/src/lib/project-status'
 
 export type QuoteLifecycleState = 'draft' | 'sent' | 'accepted' | 'declined' | 'unknown'
 
-// Accepte indifféremment les objets camelCase (SupabaseDevis) et les réponses
-// API déjà sérialisées en snake_case (DevisListItem), comme QuoteFollowupInput.
 export interface QuoteLifecycleInput extends QuoteFollowupInput {}
 
 export function isQuoteAccepted(devis: QuoteLifecycleInput | null | undefined): boolean {
@@ -35,9 +37,6 @@ export function getQuoteLifecycleState(devis: QuoteLifecycleInput | null | undef
   return 'draft'
 }
 
-// Délègue à la logique déjà éprouvée de quote-followup.ts plutôt que de
-// dupliquer les règles d'éligibilité (statut clos, expiration, relances
-// désactivées, etc.).
 export function canFollowUpQuote(devis: QuoteLifecycleInput | null | undefined): boolean {
   if (!devis) return false
   return getQuoteFollowupState(devis).canFollowUp
@@ -54,44 +53,26 @@ export interface ProjectCommercialInput {
 }
 
 export function getProjectCommercialState(project: ProjectCommercialInput | null | undefined): ProjectCommercialState {
-  const status = (project?.status || '').trim()
-  if (status === 'Gagné') return 'won'
-  if (status === 'Perdu') return 'lost'
-  if (status.startsWith('Devis')) return 'quote_sent'
+  const status = normalizeProjectStatus(project?.status)
+  if (isProjectWonStatus(status)) return 'won'
+  if (isProjectLostStatus(status)) return 'lost'
+  if (isProjectQuoteSentStatus(status)) return 'quote_sent'
   return 'open'
 }
 
-// Un dossier gagné ou perdu est clos : plus de relance automatique, plus
-// d'affichage en opportunité chaude/à traiter dans le dashboard.
 export function isProjectClosed(project: ProjectCommercialInput | null | undefined): boolean {
-  const state = getProjectCommercialState(project)
-  return state === 'won' || state === 'lost'
+  return isProjectClosedStatus(project?.status)
 }
 
 export function shouldShowAsPriorityAction(
   project: ProjectCommercialInput | null | undefined,
-  devis?: QuoteLifecycleInput | null
+  devis?: QuoteLifecycleInput | null,
 ): boolean {
   if (isProjectClosed(project)) return false
   if (isQuoteAccepted(devis) || isQuoteDeclined(devis)) return false
   return true
 }
 
-// Source unique de la décision commerciale affichée sur la fiche projet.
-// Tous les blocs (Action recommandée, cartes rapides, Analyse Kadria,
-// "Moment idéal pour relancer", Gestion du dossier, Suivi commercial)
-// doivent lire ce même état plutôt que recalculer chacun leur propre
-// condition de relance — c'est ce qui produisait des contradictions
-// (ex : un bloc dit "attendre" pendant qu'un autre propose "relancer").
-//
-// canFollowUpQuote combine volontairement DEUX gardes :
-//  - nextAction.actionType === 'follow_up_quote' : le délai de grâce
-//    48h de l'Action Engine (jamais de relance immédiate après envoi) ;
-//  - canFollowUpQuote(devis) : les règles d'éligibilité déjà éprouvées
-//    de quote-followup.ts (clos, expiré, relances désactivées, quota
-//    de relances atteint...).
-// Les deux doivent être vraies pour qu'un bouton de relance soit montré —
-// ça évite toute divergence sans modifier quote-followup.ts.
 export type ProjectDecisionStateKey =
   | 'no_quote'
   | 'quote_draft'
@@ -131,11 +112,11 @@ export function getProjectDecisionState(
     primaryActionType: nextAction.actionType,
   }
 
-  if (project?.status === 'Perdu') {
+  if (isProjectLostStatus(project?.status)) {
     return { ...base, state: 'lost', label: 'Dossier perdu', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'none' }
   }
 
-  if (project?.status === 'Gagné' && isQuoteAccepted(devis)) {
+  if (isProjectWonStatus(project?.status) && isQuoteAccepted(devis)) {
     return { ...base, state: 'won', label: 'Dossier gagné', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'none' }
   }
 
@@ -143,7 +124,7 @@ export function getProjectDecisionState(
     return { ...base, state: 'quote_declined', label: 'Devis refusé', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority: 'low' }
   }
 
-  if (isQuoteAccepted(devis)) {
+  if (isQuoteAccepted(devis) || isProjectQuoteAcceptedStatus(project?.status)) {
     return { ...base, state: 'quote_accepted', label: 'Devis accepté', canFollowUpQuote: false, shouldShowFollowupBlock: false, priority }
   }
 
@@ -164,7 +145,7 @@ export function getProjectDecisionState(
     return {
       ...base,
       state: 'quote_followup_available',
-      label: 'Devis envoyé — relance recommandée',
+      label: 'Devis envoyé - relance recommandée',
       canFollowUpQuote: true,
       shouldShowFollowupBlock: true,
       priority,
@@ -174,7 +155,7 @@ export function getProjectDecisionState(
   return {
     ...base,
     state: 'quote_recently_sent',
-    label: 'Devis envoyé — en attente de réponse client',
+    label: 'Devis envoyé - en attente de réponse client',
     canFollowUpQuote: false,
     shouldShowFollowupBlock: false,
     followUpAvailableAt: nextAction.followUpAvailableAt,

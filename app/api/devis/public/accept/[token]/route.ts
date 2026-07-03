@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig, getDevisByToken, updateDevis } from '@/src/lib/airtable'
 import { notifyArtisanQuoteAccepted } from '@/src/lib/artisan-notifications'
+import { createAcceptedDevisSnapshot, createSentDevisSnapshot, getExistingSnapshot } from '@/src/lib/devis-snapshots'
+import { normalizeProjectStatus } from '@/src/lib/project-status'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import {
-  createAcceptedDevisSnapshot,
-  createSentDevisSnapshot,
-  getExistingSnapshot,
-} from '@/src/lib/devis-snapshots'
 
 const MAX_REQUESTS_PER_IP = 5
 const requestCounts = new Map<string, number>()
@@ -17,8 +14,8 @@ async function logDevisAcceptedActivity(projectId: string, devisNumber: string, 
     project_id: projectId,
     action: 'Devis accepté',
     description: depositEnabled
-      ? `Devis ${devisNumber} accepté — acompte à demander avant de sécuriser le chantier.`
-      : `Devis ${devisNumber} accepté — dossier passé en Gagné automatiquement.`,
+      ? `Devis ${devisNumber} accepté - acompte à demander avant de sécuriser le chantier.`
+      : `Devis ${devisNumber} accepté - dossier passé en Devis accepté.`,
     created_at: new Date().toISOString(),
   })
 
@@ -29,7 +26,7 @@ async function logDevisAcceptedActivity(projectId: string, devisNumber: string, 
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string }> },
 ) {
   try {
     const { token } = await params
@@ -59,8 +56,6 @@ export async function POST(
     const now = new Date().toISOString()
     const config = await getArtisanConfig(devis.artisanId)
 
-    // Route publique sans session artisan : on charge le projet lié en amont pour
-    // pouvoir resoudre artisan_id via project.artisan_id si devis.artisan_id manquait.
     const { data: projectRowForSnapshot, error: projectFetchForSnapshotError } = await supabaseAdmin
       .from(TABLES.projects)
       .select('*')
@@ -73,14 +68,9 @@ export async function POST(
     }
 
     const projectForSnapshot = projectRowForSnapshot ? mapSupabaseProject(projectRowForSnapshot) : null
-
-    // Le frontend public n'envoie pas de nom/email distinct a l'acceptation —
-    // on retombe sur les coordonnees client deja connues du devis.
     const acceptedByName = devis.clientName || null
     const acceptedByEmail = devis.clientEmail || null
 
-    // Garantit qu'un snapshot "sent" existe toujours avant l'acceptation,
-    // meme si l'envoi initial n'a pas pu en creer un (mode fallback).
     const existingSentSnapshot = await getExistingSnapshot(devis.id, 'sent')
     if (!existingSentSnapshot) {
       await createSentDevisSnapshot({
@@ -116,20 +106,14 @@ export async function POST(
     })
 
     const projectRow = projectRowForSnapshot
-
-    // Regle acompte : si les acomptes sont actives pour l'artisan, l'acceptation
-    // du devis seule ne suffit plus a considerer le chantier comme gagne —
-    // l'acompte devient l'etape commerciale intermediaire. On ne passe donc
-    // PAS le statut en "Gagné" dans ce cas : le projet garde son statut actuel
-    // (typiquement "Devis envoyé"), et acceptedAt (deja enregistre sur le
-    // devis ci-dessus) + deposit_status pilotent la suite (cf. src/lib/deposit.ts,
-    // src/lib/quote-status.ts). Aucune nouvelle valeur de statut n'est inventee.
     const depositEnabledForArtisan = Boolean(config?.depositEnabled)
 
-    if (projectRow && !depositEnabledForArtisan) {
+    if (projectRow) {
+      const currentStatus = normalizeProjectStatus(projectRow.status)
+      const nextStatus = currentStatus === 'Perdu' ? 'Perdu' : 'Devis accepté'
       const { error: projectUpdateError } = await supabaseAdmin
         .from(TABLES.projects)
-        .update({ status: 'Gagné' })
+        .update({ status: nextStatus })
         .eq('id', devis.projectId)
 
       if (projectUpdateError) {
@@ -155,7 +139,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       accepted_at: now,
-      status: depositEnabledForArtisan ? (projectRow?.status || 'Devis envoyé') : 'Gagné',
+      status: 'Devis accepté',
     })
   } catch (error) {
     console.error('[DEVIS PUBLIC ACCEPT]', error)

@@ -189,9 +189,11 @@ export async function POST(request: Request) {
     }
 
     const paidAt = new Date().toISOString()
+    const nextStatus = String(project.status || '').trim() === 'Perdu' ? 'Perdu' : 'Acompte payé'
     const { error: updateError } = await supabaseAdmin
       .from(TABLES.projects)
       .update({
+        status: nextStatus,
         deposit_status: 'paid',
         deposit_paid_at: paidAt,
         deposit_amount: confirmedAmount,

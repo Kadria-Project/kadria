@@ -3,6 +3,7 @@ import { TABLES, getArtisanConfig } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
 import { getBaseUrl } from '@/src/lib/base-url'
 import { computeRecommendedDeposit, normalizeStripeConnectStatus } from '@/src/lib/deposit'
+import { normalizeProjectStatus } from '@/src/lib/project-status'
 import { StripeNotConfiguredError, getStripeClient } from '@/src/lib/stripe'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
@@ -169,9 +170,12 @@ export async function POST(
     }
 
     const now = new Date().toISOString()
+    const currentStatus = normalizeProjectStatus(String(project.status || ''))
+    const nextStatus = currentStatus === 'Perdu' ? 'Perdu' : 'Acompte demandé'
     const { data: updatedProject, error: updateError } = await supabaseAdmin
       .from(TABLES.projects)
       .update({
+        status: nextStatus,
         deposit_status: 'requested',
         deposit_amount: computedDeposit.amount,
         deposit_requested_at: now,
