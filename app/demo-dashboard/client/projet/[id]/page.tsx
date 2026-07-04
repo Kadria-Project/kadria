@@ -402,27 +402,94 @@ export default function DemoClientPortalPage() {
                 PDF fictif de demonstration
               </span>
             </div>
-            <button
-              onClick={() => {
-                setDepositToast("Simulation : ceci est une demonstration. Aucun paiement reel n'est declenche.");
-                window.setTimeout(() => setDepositToast(null), 5000);
-              }}
-              style={{
-                display: 'inline-block',
-                background: '#111827',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '13px',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {devis.amount
-                ? `Regler l'acompte (${formatAmount(Math.round(devis.amount * 0.3))}) - demo`
-                : "Regler l'acompte - demo"}
-            </button>
+            {/* Acompte — reprend le vocabulaire public de src/lib/deposit.ts
+                (paid/pending/failed/unavailable), sur les champs depositStatus/
+                depositAmount portes par DemoProject. Simulation uniquement :
+                aucun vrai lien Stripe, aucun paiement reel. */}
+            {(() => {
+              const depositStatus = project.depositStatus || 'not_requested';
+              const depositAmount = project.depositAmount || (devis.amount ? Math.round(devis.amount * 0.3) : 0);
+
+              if (depositStatus === 'paid') {
+                return (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    ✓ Acompte payé{depositAmount ? ` (${formatAmount(depositAmount)})` : ''}
+                  </div>
+                );
+              }
+
+              if (depositStatus === 'requested') {
+                return (
+                  <>
+                    <button
+                      onClick={() => {
+                        updateProjectFields(project.id, { depositStatus: 'paid', depositPaidAt: new Date().toISOString() });
+                        setDepositToast('Paiement simulé dans la démo — merci, votre acompte est marqué comme réglé.');
+                        window.setTimeout(() => setDepositToast(null), 5000);
+                      }}
+                      style={{
+                        display: 'inline-block',
+                        background: '#111827',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {depositAmount ? `Régler l'acompte (${formatAmount(depositAmount)}) - démo` : "Régler l'acompte - démo"}
+                    </button>
+                    <p style={{ marginTop: '8px', fontSize: '12px', color: '#92400e', fontWeight: 600 }}>Paiement en cours de traitement.</p>
+                  </>
+                );
+              }
+
+              if (depositStatus === 'cancelled') {
+                return (
+                  <>
+                    <p style={{ fontSize: '13px', color: '#b91c1c', fontWeight: 600, margin: '0 0 8px' }}>Le paiement précédent n&apos;a pas abouti.</p>
+                    <button
+                      onClick={() => {
+                        updateProjectFields(project.id, { depositStatus: 'requested', depositRequestedAt: new Date().toISOString() });
+                        setDepositToast('Simulation : nouvelle tentative de paiement (démo).');
+                        window.setTimeout(() => setDepositToast(null), 5000);
+                      }}
+                      style={{
+                        display: 'inline-block',
+                        background: '#111827',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Réessayer - démo
+                    </button>
+                  </>
+                );
+              }
+
+              return (
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>Acompte non disponible pour le moment.</p>
+              );
+            })()}
             {depositToast && (
               <p style={{ marginTop: '10px', fontSize: '12px', color: '#b45309', fontWeight: 600 }}>
                 {depositToast}

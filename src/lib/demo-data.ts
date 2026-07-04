@@ -52,6 +52,10 @@ export interface DemoQuoteBuilder {
   lines: DemoQuoteBuilderLine[];
 }
 
+// Statut acompte interne cote artisan (memes valeurs que src/lib/deposit.ts
+// DepositStatus) : not_requested/recommended/requested/paid/cancelled.
+export type DemoDepositStatus = 'not_requested' | 'recommended' | 'requested' | 'paid' | 'cancelled';
+
 export interface DemoProject {
   id: string;
   projectNumber: string;
@@ -83,6 +87,7 @@ export interface DemoProject {
   updatedAt?: string;
   lastInteractionAt?: string;
   quoteSentAt?: string | null;
+  acceptedAt?: string | null;
   opensCount?: number;
   callbackDate: string | null;
   notes: string;
@@ -90,6 +95,17 @@ export interface DemoProject {
   followUp?: DemoFollowUpState;
   activity?: DemoActivityItem[];
   quoteBuilder?: DemoQuoteBuilder;
+  // Acompte par dossier — memes champs que ceux lus par project-lifecycle.ts
+  // (depositStatus/depositAmount/depositPaymentUrl/depositPaidAt) et par
+  // src/lib/deposit.ts (normalizeDepositStatus / normalizePublicDepositStatus).
+  // Jamais de vrai lien Stripe : depositPaymentUrl est un identifiant factice
+  // uniquement utilise pour driver l'affichage ("lien envoye" / non envoye),
+  // le bouton de paiement demo affiche systematiquement un toast simule.
+  depositStatus?: DemoDepositStatus;
+  depositAmount?: number | null;
+  depositPaymentUrl?: string | null;
+  depositRequestedAt?: string | null;
+  depositPaidAt?: string | null;
 }
 
 export interface DemoClientEvent {
@@ -584,6 +600,12 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-15T11:30:00.000Z',
     callbackDate: null,
     notes: 'Chantier planifie la semaine prochaine.',
+    acceptedAt: '2026-06-17T09:30:00.000Z',
+    depositStatus: 'paid',
+    depositAmount: 1260,
+    depositPaymentUrl: 'demo-deposit-link-004',
+    depositRequestedAt: '2026-06-17T10:00:00.000Z',
+    depositPaidAt: '2026-06-17T15:20:00.000Z',
     quote: {
       status: 'accepted',
       amount: 4200,
@@ -647,6 +669,11 @@ export const DEMO_PROJECTS: DemoProject[] = [
     createdAt: '2026-06-12T16:45:00.000Z',
     callbackDate: null,
     notes: 'La cliente a choisi un autre prestataire.',
+    depositStatus: 'cancelled',
+    depositAmount: 178,
+    depositPaymentUrl: 'demo-deposit-link-005',
+    depositRequestedAt: '2026-06-13T10:30:00.000Z',
+    depositPaidAt: null,
     quote: {
       status: 'declined',
       amount: 890,
@@ -834,6 +861,12 @@ export const DEMO_PROJECTS: DemoProject[] = [
     lastInteractionAt: '2026-06-19T10:20:00.000Z',
     callbackDate: '2026-06-30T09:00:00.000Z',
     notes: 'Acompte attendu avant commande du materiel. Priorite commerciale forte.',
+    acceptedAt: '2026-06-19T07:55:00.000Z',
+    depositStatus: 'requested',
+    depositAmount: 2992,
+    depositPaymentUrl: 'demo-deposit-link-009',
+    depositRequestedAt: '2026-06-19T08:10:00.000Z',
+    depositPaidAt: null,
     quote: {
       status: 'accepted',
       amount: 7480,
@@ -1033,6 +1066,12 @@ export const DEMO_PROJECTS: DemoProject[] = [
     lastInteractionAt: '2026-06-27T11:00:00.000Z',
     callbackDate: '2026-07-01T08:30:00.000Z',
     notes: 'Acompte annonce comme envoye. Verifier la reception puis confirmer la date de lancement.',
+    acceptedAt: '2026-06-27T10:20:00.000Z',
+    depositStatus: 'requested',
+    depositAmount: 4496,
+    depositPaymentUrl: 'demo-deposit-link-012',
+    depositRequestedAt: '2026-06-27T11:10:00.000Z',
+    depositPaidAt: null,
     quote: {
       status: 'accepted',
       amount: 11240,

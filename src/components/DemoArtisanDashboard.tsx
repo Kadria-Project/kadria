@@ -64,6 +64,7 @@ import {
 } from '@/src/lib/commercial-actions';
 import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
+import { normalizeDepositStatus } from '@/src/lib/deposit';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
 import { computeKadriaCoach, type KadriaCoachProjectEntry, type KadriaCoachResult, type CoachActionType, type CoachPriorityLevel } from '@/src/lib/kadria-coach';
 
@@ -276,7 +277,7 @@ const ACTION_TYPE_COUNTER_LABEL: Record<ActionType, string> = {
 // (Qualifier / Chiffrer / Securiser / Realiser & fideliser), portee depuis
 // ArtisanDashboard.tsx pour rester 1:1 avec la production. Ne recalcule rien,
 // reutilise uniquement des compteurs deja calcules ailleurs (actionEngineCounters).
-type GuidelineFilterValue = 'critical' | 'today' | 'week' | ActionType;
+type GuidelineFilterValue = 'critical' | 'today' | 'week' | ActionType | 'deposits' | 'deposits_paid';
 
 type GuidelineRow = {
   label: string;
@@ -976,6 +977,16 @@ export function getClientGroupKey(p: Project): string {
 
 function projectValueAmount(p: Project): number {
   return p.devisAmount || parseBudget(p.budget || '');
+}
+
+// Reprend la meme regle que isDepositRelevantProject() cote production
+// (src/components/ArtisanDashboard.tsx) : un dossier est pertinent pour
+// l'acompte s'il a un montant, n'est pas perdu, et a un devis envoye/accepte
+// ou est deja gagne.
+function isDepositRelevantDemoProject(p: Project): boolean {
+  const amount = projectValueAmount(p);
+  if (amount <= 0 || p.status === 'Perdu') return false;
+  return p.status === 'Devis envoyé' || p.status === 'Gagné' || Boolean(p.quoteSentAt) || Boolean(p.acceptedAt);
 }
 
 function isWonProject(p: Project): boolean {
@@ -1689,7 +1700,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | 'deposits' | 'deposits_paid' | null>(null);
   const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | ActionType | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
@@ -2003,6 +2014,30 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const hotLeads = activeProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
   const riskProjects = activeProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
+
+  // Acomptes par dossier — reprend le meme calcul que depositProjects cote
+  // production (src/components/ArtisanDashboard.tsx), a partir des champs
+  // depositStatus/depositAmount desormais portes par DemoProject.
+  const depositProjects = useMemo(() => {
+    const toAsk = activeProjects.filter((project) => {
+      const depositStatus = normalizeDepositStatus(project.depositStatus);
+      return isDepositRelevantDemoProject(project) && (depositStatus === 'not_requested' || depositStatus === 'recommended');
+    });
+    const requested = activeProjects.filter((project) => normalizeDepositStatus(project.depositStatus) === 'requested');
+    const paid = activeProjects.filter((project) => normalizeDepositStatus(project.depositStatus) === 'paid');
+    const requestedAmount = requested.reduce((sum, project) => sum + Math.max(0, Number(project.depositAmount) || 0), 0);
+    const paidAmount = paid.reduce((sum, project) => sum + Math.max(0, Number(project.depositAmount) || 0), 0);
+
+    return {
+      toAsk,
+      requested,
+      paid,
+      requestedAmount,
+      paidAmount,
+      securedRate: requestedAmount > 0 ? (paidAmount / requestedAmount) * 100 : 0,
+    };
+  }, [activeProjects]);
+
   const todayTasks = buildAutomaticTasks(activeProjects).filter((task) => {
     const due = new Date(task.dueDate);
     return !Number.isNaN(due.getTime()) && due <= new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -2094,7 +2129,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     ? quotesProjects
                     : quickFilter === 'followups'
                       ? followupsProjects
-                      : sortedProjects;
+                      : quickFilter === 'deposits'
+                        ? [...depositProjects.toAsk, ...depositProjects.requested]
+                        : quickFilter === 'deposits_paid'
+                          ? depositProjects.paid
+                          : sortedProjects;
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
@@ -2110,6 +2149,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const goToCommercialFilter = (value: 'calls' | 'quotes' | 'followups') => {
+    setDashboardMode('commercial');
+    applyQuickFilter(value);
+  };
+
+  // Navigation Guideline commerciale (groupe "Sécuriser") -> liste filtree
+  // des dossiers, en reutilisant le meme mecanisme que goToCommercialFilter.
+  const goToDepositFilter = (value: 'deposits' | 'deposits_paid') => {
     setDashboardMode('commercial');
     applyQuickFilter(value);
   };
@@ -2263,8 +2309,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
 
   // Navigation Guideline commerciale -> onglet "Mes taches a faire" filtre.
+  // Les lignes acompte ("Sécuriser") redirigent vers la liste de dossiers
+  // filtree (Suivi commercial), seul mecanisme de filtrage reellement branche
+  // sur un affichage de dossiers en demo — cf. goToDepositFilter.
   const goToTasksFilter = (filterValue: GuidelineFilterValue) => {
-    setActionEngineFilter(filterValue);
+    if (filterValue === 'deposits' || filterValue === 'deposits_paid') {
+      goToDepositFilter(filterValue);
+      return;
+    }
+    setActionEngineFilter(filterValue as 'critical' | 'today' | 'week' | ActionType);
     setDashboardMode('tasks');
   };
 
@@ -2320,11 +2373,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   );
 
   // "Guideline commerciale" : regroupe les compteurs deja calcules
-  // (actionEngineCounters) par etape du pipeline commercial. Simplification
-  // assumee vs prod : le groupe "Sécuriser" n'inclut pas de sous-metriques
-  // d'acompte (montant demande/recu), le modele de donnees demo (DemoProject)
-  // ne portant pas encore de depositStatus/depositAmount par dossier — cf.
-  // rapport final, écart volontaire documenté.
+  // (actionEngineCounters, depositProjects) par etape du pipeline commercial.
   const guidelineGroups: { title: string; subtitle: string; rows: GuidelineRow[] }[] = [
     {
       title: 'Qualifier',
@@ -2347,6 +2396,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       title: 'Sécuriser',
       subtitle: 'Les devis acceptés à verrouiller avant intervention.',
       rows: [
+        { label: 'Acomptes à demander', value: depositProjects.toAsk.length, filterValue: 'deposits' },
+        { label: 'Acomptes demandés', value: depositProjects.requested.length, displayValue: formatCurrency(depositProjects.requestedAmount), filterValue: 'deposits' },
+        { label: 'Acomptes reçus', value: depositProjects.paid.length, displayValue: formatCurrency(depositProjects.paidAmount), filterValue: 'deposits_paid' },
+        { label: 'CA sécurisé', value: depositProjects.paidAmount, displayValue: formatCurrency(depositProjects.paidAmount), filterValue: 'deposits_paid' },
+        { label: 'Taux de sécurisation', value: depositProjects.securedRate, displayValue: `${Math.round(depositProjects.securedRate)} %` },
         { label: 'Relances à faire', value: actionEngineCounters.follow_up_quote, filterValue: 'follow_up_quote' },
         { label: 'Dossiers en risque', value: riskProjects.length },
       ],
@@ -2361,6 +2415,16 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     },
   ];
 
+  // Reflete l'etat "actif" des lignes Guideline quelle que soit la
+  // mecanique de filtre utilisee derriere (actionEngineFilter -> onglet
+  // "Mes taches", quickFilter -> Suivi commercial pour les acomptes).
+  const guidelineActiveFilter: GuidelineFilterValue | null =
+    dashboardMode === 'commercial' && (quickFilter === 'deposits' || quickFilter === 'deposits_paid')
+      ? quickFilter
+      : dashboardMode === 'tasks'
+        ? actionEngineFilter
+        : null;
+
   const guidelineCommercialeSection = (
     <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
       <p className="font-bold text-[var(--text-1)]">Guideline commerciale</p>
@@ -2372,7 +2436,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             title={group.title}
             subtitle={group.subtitle}
             rows={group.rows}
-            activeFilter={actionEngineFilter}
+            activeFilter={guidelineActiveFilter}
             onSelect={goToTasksFilter}
           />
         ))}
@@ -4642,7 +4706,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                                   ? 'Devis à envoyer'
                                   : quickFilter === 'followups'
                                     ? 'Relances à faire'
-                                    : 'Priorites du jour'}
+                                    : quickFilter === 'deposits'
+                                      ? 'Acomptes à suivre'
+                                      : quickFilter === 'deposits_paid'
+                                        ? 'Acomptes reçus'
+                                        : 'Priorites du jour'}
                   </span>
                 </p>
 
@@ -4664,7 +4732,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <p className="font-bold text-[var(--text-1)]">{showClientsWorkspace ? 'Aucun client trouvé' : 'Aucun dossier trouvé'}</p>
 
                 <p className="text-[var(--text-2)] mt-1">
-                  {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups'
+                  {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups' || quickFilter === 'deposits' || quickFilter === 'deposits_paid'
                     ? 'Aucun dossier dans cette catégorie.'
                     : filters.search
                       ? `Aucun résultat pour '${filters.search}'`

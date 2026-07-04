@@ -3350,6 +3350,72 @@ function ProjectDetail() {
           </div>
         </div>
 
+        {/* Acompte — reprend le vocabulaire de src/lib/deposit.ts (DepositStatus)
+            sur les champs depositStatus/depositAmount/depositPaymentUrl portés
+            par DemoProject. Aucun appel Stripe : toute action affiche un toast
+            "Paiement simulé dans la démo" et met seulement à jour l'état local. */}
+        {(() => {
+          const depositStatus = project.depositStatus || 'not_requested';
+          const depositLabel: Record<string, string> = {
+            not_requested: 'Aucun acompte demandé',
+            recommended: 'Acompte recommandé',
+            requested: 'Acompte demandé — en attente de paiement',
+            paid: 'Acompte payé',
+            cancelled: 'Acompte annulé / expiré',
+          };
+          const depositColor =
+            depositStatus === 'paid' ? '#16a34a' : depositStatus === 'requested' ? '#f59e0b' : depositStatus === 'cancelled' ? '#ef4444' : 'var(--text-3)';
+          return (
+            <div style={{
+              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+              borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div>
+                  <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>💶 Acompte</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: depositColor, fontWeight: 600 }}>{depositLabel[depositStatus]}</p>
+                  {typeof project.depositAmount === 'number' && project.depositAmount > 0 && (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
+                      Montant : {project.depositAmount.toLocaleString('fr-FR')} €
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {depositStatus === 'not_requested' || depositStatus === 'recommended' ? (
+                    <button
+                      onClick={() => {
+                        const amount = project.devisAmount ? Math.round(project.devisAmount * 0.3) : 0;
+                        updateProjectFields(project.id, {
+                          depositStatus: 'requested',
+                          depositAmount: amount || project.depositAmount || 0,
+                          depositPaymentUrl: `demo-deposit-link-${project.id}`,
+                          depositRequestedAt: new Date().toISOString(),
+                        });
+                        setCopyPortalToast('Simulation : lien d’acompte envoyé au client (démo)');
+                        window.setTimeout(() => setCopyPortalToast(null), 4000);
+                      }}
+                      style={{ background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '12px', padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                    >
+                      Demander l&apos;acompte
+                    </button>
+                  ) : depositStatus === 'requested' ? (
+                    <button
+                      onClick={() => {
+                        updateProjectFields(project.id, { depositStatus: 'paid', depositPaidAt: new Date().toISOString() });
+                        setCopyPortalToast('Paiement simulé dans la démo — acompte marqué comme payé');
+                        window.setTimeout(() => setCopyPortalToast(null), 4000);
+                      }}
+                      style={{ background: 'transparent', color: 'var(--text-1)', fontWeight: 600, fontSize: '12px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                    >
+                      Simuler le paiement
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Portail client — mirroring app/dashboard-v2/projet/[id]/page.tsx :
             copie d'un lien fictif (jamais un vrai token /api/.../client-portal-link),
             aucune écriture réelle. */}
