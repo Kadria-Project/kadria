@@ -2475,7 +2475,7 @@ function ProjectDetail() {
         : () => router.push(`/dashboard-v2/projet/${id}/devis/${latestDevis.id}`);
 
 
-    const mobileAccordions: Array<{ key: string; title: string; content: ReactNode }> = [
+    const mobileAccordions: Array<{ key: string; title: string; summary?: string | null; content: ReactNode }> = [
       {
         key: 'contact',
         title: 'Coordonnées',
@@ -2731,45 +2731,71 @@ function ProjectDetail() {
       {
         key: 'activity',
         title: 'Activite du dossier',
+        summary: activityUnavailable
+          ? 'Activite indisponible'
+          : recentActivityItems.length > 0
+            ? `${activityItems.length} evenement${activityItems.length > 1 ? 's' : ''} enregistre${activityItems.length > 1 ? 's' : ''}`
+            : 'Aucune activite enregistree',
         content: (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {activityUnavailable && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Activite indisponible pour le moment.</p>}
-            {!activityUnavailable && recentActivityItems.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucune activite enregistree pour le moment. Les relances, demandes d'avis et changements importants apparaitront ici.</p>}
-            {false && activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-sm text-[var(--text-2)]">
+                Les dernieres actions enregistrees sur ce projet.
+              </p>
+            </div>
+            {!activityUnavailable && recentActivityItems.length > 0 && (
+              <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
+                {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
+              </span>
+            )}
+            {activityUnavailable && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                Activite indisponible pour le moment.
+              </div>
+            )}
+            {!activityUnavailable && recentActivityItems.length === 0 && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                Aucune activite enregistree pour le moment.
+                Les relances, demandes d'avis et changements importants apparaitront ici.
+              </div>
+            )}
             {!activityUnavailable && recentActivityItems.map((item) => {
               const tone = getActivityToneStyles(item.tone);
               return (
-                <div key={item.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <span style={{
-                    width: '10px',
-                    height: '10px',
-                    marginTop: '5px',
-                    borderRadius: '999px',
-                    background: tone.dotBg,
-                    border: `1px solid ${tone.badgeBorder}`,
-                    flexShrink: 0,
-                  }} />
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4"
+                >
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
+                      {item.detail && item.detail !== item.title && (
+                        <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-start gap-2">
+                    <span
+                      className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                      style={{
+                        background: tone.badgeBg,
+                        borderColor: tone.badgeBorder,
+                        color: tone.badgeColor,
+                      }}
+                    >
+                      {tone.badgeLabel}
+                    </span>
+                    <p className="text-xs text-[var(--text-3)]">
                       {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
                     </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-1)', fontWeight: 600 }}>
-                      {item.title}
-                    </p>
-                    {item.detail && item.detail !== item.title && (
-                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
-                        {item.detail}
-                      </p>
-                    )}
                   </div>
                 </div>
               );
             })}
-            {false && activities.map((a, i) => (
-              <p key={a.id || i} style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
-                {formatShortDate(a.createdAt)} — {a.description}
-              </p>
-            ))}
           </div>
         ),
       },
@@ -3097,94 +3123,27 @@ function ProjectDetail() {
 
           {/* Détails secondaires en accordéons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {mobileAccordions.filter((section) => section.key !== 'activity').map((section) => {
+            {mobileAccordions.map((section) => {
               const open = openMobileSections.has(section.key);
               return (
                 <div key={section.key} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
                   <button
                     onClick={() => toggleMobileSection(section.key)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '12px 14px', background: 'transparent', border: 'none', textAlign: 'left', color: 'var(--text-1)' }}
                   >
-                    {section.title}
-                    <ChevronDown style={{ width: '16px', height: '16px', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }} />
+                    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: section.summary ? '2px' : 0 }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{section.title}</span>
+                      {section.summary && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{section.summary}</span>
+                      )}
+                    </div>
+                    <ChevronDown style={{ width: '16px', height: '16px', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }} />
                   </button>
                   {open && <div style={{ padding: '0 14px 14px' }}>{section.content}</div>}
                 </div>
               );
             })}
           </div>
-
-          <section
-            className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"
-            style={{ marginTop: '16px', marginBottom: '12px' }}
-          >
-            <div className="flex flex-col gap-2">
-              <div>
-                <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
-                <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Les dernieres actions enregistrees sur ce projet.
-                </p>
-              </div>
-              {!activityUnavailable && recentActivityItems.length > 0 && (
-                <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
-                  {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-
-            <div className="mt-5 flex flex-col gap-3">
-              {activityUnavailable && (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                  Activite indisponible pour le moment.
-                </div>
-              )}
-
-              {!activityUnavailable && recentActivityItems.length === 0 && (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                  Aucune activite enregistree pour le moment.
-                  Les relances, demandes d'avis et changements importants apparaitront ici.
-                </div>
-              )}
-
-              {!activityUnavailable && recentActivityItems.map((item) => {
-                const tone = getActivityToneStyles(item.tone);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4"
-                  >
-                    <div className="flex min-w-0 gap-3">
-                      <span
-                        className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
-                        style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
-                        {item.detail && item.detail !== item.title && (
-                          <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-start gap-2">
-                      <span
-                        className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                        style={{
-                          background: tone.badgeBg,
-                          borderColor: tone.badgeBorder,
-                          color: tone.badgeColor,
-                        }}
-                      >
-                        {tone.badgeLabel}
-                      </span>
-                      <p className="text-xs text-[var(--text-3)]">
-                        {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
         </main>
 
         {/* Bottom action bar sticky */}
