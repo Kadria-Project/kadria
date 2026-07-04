@@ -34,6 +34,11 @@ interface DemoAccessRequest {
   internal_note: string | null;
 }
 
+type DemoAccessIdentity = {
+  requestId: string | null;
+  email: string | null;
+};
+
 const STATUS_LABELS: Record<DemoAccessStatus, string> = {
   pending: 'En attente',
   approved: 'Approuve',
@@ -71,6 +76,26 @@ function formatDateTime(value: string | null) {
   });
 }
 
+function normalizeIdentityText(value: unknown) {
+  const normalized = String(value || '').trim();
+  return normalized || null;
+}
+
+function getDemoRequestIdentity(request: Partial<DemoAccessRequest> & Record<string, unknown> | null | undefined): DemoAccessIdentity {
+  if (!request) {
+    return { requestId: null, email: null };
+  }
+
+  return {
+    requestId:
+      normalizeIdentityText(request.id)
+      || normalizeIdentityText(request.requestId)
+      || normalizeIdentityText(request.request_id)
+      || normalizeIdentityText(request.record_id),
+    email: normalizeIdentityText(request.email)?.toLowerCase() || null,
+  };
+}
+
 export default function AdminDemoAccessPage() {
   const [requests, setRequests] = useState<DemoAccessRequest[]>([]);
   const [selectedId, setSelectedId] = useState('');
@@ -82,16 +107,24 @@ export default function AdminDemoAccessPage() {
   const [generatedLink, setGeneratedLink] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
 
-  async function loadRequests() {
+  function patchRequestInState(requestId: string, updater: (current: DemoAccessRequest) => DemoAccessRequest) {
+    setRequests((current) => current.map((request) => (request.id === requestId ? updater(request) : request)));
+  }
+
+  async function loadRequests(preferredSelectedId?: string) {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/demo-access');
       const data = await response.json();
       if (Array.isArray(data)) {
         setRequests(data);
-        if (!selectedId && data[0]?.id) {
-          setSelectedId(data[0].id);
-          setNoteDraft(data[0].internal_note || '');
+        const nextSelectedId = preferredSelectedId || selectedId || data[0]?.id || '';
+        if (nextSelectedId) {
+          setSelectedId(nextSelectedId);
+          const nextSelected = data.find((item) => item.id === nextSelectedId) || data[0] || null;
+          if (nextSelected) {
+            setNoteDraft(nextSelected.internal_note || '');
+          }
         }
       }
     } catch {
@@ -133,6 +166,10 @@ export default function AdminDemoAccessPage() {
     || requests.find((request) => request.id === selectedId)
     || filteredRequests[0]
     || null;
+  const selectedIdentity = useMemo(
+    () => getDemoRequestIdentity(selectedRequest as (Partial<DemoAccessRequest> & Record<string, unknown>) | null),
+    [selectedRequest],
+  );
 
   const requestStats = useMemo(() => ({
     total: requests.length,
@@ -150,6 +187,10 @@ export default function AdminDemoAccessPage() {
 
   async function handleApprove(sendEmail: boolean) {
     if (!selectedRequest) return;
+    if (!selectedIdentity.requestId && !selectedIdentity.email) {
+      setFeedback('Impossible d’identifier la demande selectionnee.');
+      return;
+    }
     setSubmitting(true);
     setFeedback('');
 
@@ -157,7 +198,11 @@ export default function AdminDemoAccessPage() {
       const response = await fetch('/api/admin/demo-access/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: selectedRequest.id, sendEmail }),
+        body: JSON.stringify({
+          requestId: selectedIdentity.requestId,
+          email: selectedIdentity.email,
+          sendEmail,
+        }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -165,6 +210,15 @@ export default function AdminDemoAccessPage() {
       }
 
       setGeneratedLink(data.verifyUrl || '');
+      if (selectedIdentity.requestId) {
+        patchRequestInState(selectedIdentity.requestId, (current) => ({
+          ...current,
+          status: 'approved',
+          effective_status: 'approved',
+          expires_at: data.expiresAt || current.expires_at,
+          internal_note: noteDraft,
+        }));
+      }
       setFeedback(
         sendEmail
           ? data.emailed
@@ -172,7 +226,7 @@ export default function AdminDemoAccessPage() {
             : 'Acces approuve. Email non envoye, mais le lien est disponible a copier.'
           : 'Acces approuve. Le lien est pret a etre copie.'
       );
-      await loadRequests();
+      await loadRequests(selectedIdentity.requestId || undefined);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Erreur lors de l’approbation');
     } finally {
@@ -182,13 +236,21 @@ export default function AdminDemoAccessPage() {
 
   async function handleRevoke() {
     if (!selectedRequest) return;
+    if (!selectedIdentity.requestId && !selectedIdentity.email) {
+      setFeedback('Impossible d’identifier la demande selectionnee.');
+      return;
+    }
     setSubmitting(true);
     setFeedback('');
     try {
       const response = await fetch('/api/admin/demo-access/revoke', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: selectedRequest.id, internalNote: noteDraft }),
+        body: JSON.stringify({
+          requestId: selectedIdentity.requestId,
+          email: selectedIdentity.email,
+          internalNote: noteDraft,
+        }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -196,8 +258,16 @@ export default function AdminDemoAccessPage() {
       }
 
       setGeneratedLink('');
+      if (selectedIdentity.requestId) {
+        patchRequestInState(selectedIdentity.requestId, (current) => ({
+          ...current,
+          status: 'revoked',
+          effective_status: 'revoked',
+          internal_note: noteDraft,
+        }));
+      }
       setFeedback('Acces revoque.');
-      await loadRequests();
+      await loadRequests(selectedIdentity.requestId || undefined);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Erreur lors de la revocation');
     } finally {
@@ -207,13 +277,21 @@ export default function AdminDemoAccessPage() {
 
   async function handleReject() {
     if (!selectedRequest) return;
+    if (!selectedIdentity.requestId && !selectedIdentity.email) {
+      setFeedback('Impossible d’identifier la demande selectionnee.');
+      return;
+    }
     setSubmitting(true);
     setFeedback('');
     try {
       const response = await fetch('/api/admin/demo-access/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: selectedRequest.id, internalNote: noteDraft }),
+        body: JSON.stringify({
+          requestId: selectedIdentity.requestId,
+          email: selectedIdentity.email,
+          internalNote: noteDraft,
+        }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -221,8 +299,16 @@ export default function AdminDemoAccessPage() {
       }
 
       setGeneratedLink('');
+      if (selectedIdentity.requestId) {
+        patchRequestInState(selectedIdentity.requestId, (current) => ({
+          ...current,
+          status: 'rejected',
+          effective_status: 'rejected',
+          internal_note: noteDraft,
+        }));
+      }
       setFeedback('Demande refusee.');
-      await loadRequests();
+      await loadRequests(selectedIdentity.requestId || undefined);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Erreur lors du refus');
     } finally {
@@ -232,10 +318,14 @@ export default function AdminDemoAccessPage() {
 
   async function handleSaveNote() {
     if (!selectedRequest) return;
+    if (!selectedIdentity.requestId) {
+      setFeedback('Impossible d’identifier la demande selectionnee.');
+      return;
+    }
     setSubmitting(true);
     setFeedback('');
     try {
-      const response = await fetch(`/api/admin/demo-access/${selectedRequest.id}`, {
+      const response = await fetch(`/api/admin/demo-access/${selectedIdentity.requestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ internalNote: noteDraft }),
@@ -245,8 +335,12 @@ export default function AdminDemoAccessPage() {
         throw new Error(data.error || 'Erreur lors de la sauvegarde');
       }
 
+      patchRequestInState(selectedIdentity.requestId, (current) => ({
+        ...current,
+        internal_note: noteDraft,
+      }));
       setFeedback('Note interne sauvegardee.');
-      await loadRequests();
+      await loadRequests(selectedIdentity.requestId);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde');
     } finally {
@@ -255,7 +349,10 @@ export default function AdminDemoAccessPage() {
   }
 
   async function handleCopyLink() {
-    if (!generatedLink) return;
+    if (!generatedLink) {
+      setFeedback('Aucun lien disponible a copier. Generez ou regenerez un lien d acces.');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(generatedLink);
       setFeedback('Lien copie.');

@@ -50,7 +50,8 @@ type ApproveDemoAccessInput = {
 }
 
 type UpdateStatusInput = {
-  requestId: string
+  requestId?: string
+  email?: string
   internalNote?: string
 }
 
@@ -318,6 +319,11 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
 }
 
 export async function revokeDemoAccessRequest(input: UpdateStatusInput) {
+  const row = await findDemoAccessRequest({ requestId: input.requestId, email: input.email })
+  if (!row) {
+    throw new Error('REQUEST_NOT_FOUND')
+  }
+
   const { error } = await supabaseAdmin
     .from('demo_access_requests')
     .update({
@@ -325,36 +331,52 @@ export async function revokeDemoAccessRequest(input: UpdateStatusInput) {
       revoked_at: new Date().toISOString(),
       internal_note: input.internalNote ?? undefined,
     })
-    .eq('id', input.requestId)
+    .eq('id', row.id)
 
   if (error) {
     throw error
   }
+
+  return row.id
 }
 
 export async function rejectDemoAccessRequest(input: UpdateStatusInput) {
+  const row = await findDemoAccessRequest({ requestId: input.requestId, email: input.email })
+  if (!row) {
+    throw new Error('REQUEST_NOT_FOUND')
+  }
+
   const { error } = await supabaseAdmin
     .from('demo_access_requests')
     .update({
       status: 'rejected',
       internal_note: input.internalNote ?? undefined,
     })
-    .eq('id', input.requestId)
+    .eq('id', row.id)
 
   if (error) {
     throw error
   }
+
+  return row.id
 }
 
 export async function updateDemoAccessInternalNote(input: UpdateStatusInput) {
+  const row = await findDemoAccessRequest({ requestId: input.requestId, email: input.email })
+  if (!row) {
+    throw new Error('REQUEST_NOT_FOUND')
+  }
+
   const { error } = await supabaseAdmin
     .from('demo_access_requests')
     .update({
       internal_note: input.internalNote ?? '',
     })
-    .eq('id', input.requestId)
+    .eq('id', row.id)
 
   if (error) {
     throw error
   }
+
+  return row.id
 }
