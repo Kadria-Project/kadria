@@ -216,20 +216,27 @@ const ACTION_TYPE_COUNTER_LABEL: Record<ActionType, string> = {
 // (Qualifier / Chiffrer / Securiser / Realiser & fideliser). Ne recalcule
 // rien - reutilise uniquement des valeurs deja calculees ailleurs
 // (actionEngineCounters, depositProjects, ...).
+type GuidelineFilterValue = 'critical' | 'today' | 'week' | 'deposits' | 'deposits_paid' | ActionType;
+
 type GuidelineRow = {
   label: string;
   value: number;
   displayValue?: string;
+  filterValue?: GuidelineFilterValue;
 };
 
 function GuidelineGroupCard({
   title,
   subtitle,
   rows,
+  activeFilter,
+  onSelect,
 }: {
   title: string;
   subtitle: string;
   rows: GuidelineRow[];
+  activeFilter?: GuidelineFilterValue | null;
+  onSelect?: (value: GuidelineFilterValue) => void;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
@@ -238,6 +245,41 @@ function GuidelineGroupCard({
       <div className="mt-3 space-y-1.5">
         {rows.map((row) => {
           const active = row.value > 0;
+          const clickable = active && Boolean(row.filterValue) && Boolean(onSelect);
+          const isCurrentFilter = clickable && activeFilter === row.filterValue;
+          const content = (
+            <>
+              <span className={active ? 'text-[var(--text-1)]' : 'text-[var(--text-3)]'}>{row.label}</span>
+              <span className="flex shrink-0 items-center gap-1">
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+                    active ? 'bg-[var(--accent-dim)] text-[var(--accent)]' : 'text-[var(--text-3)]'
+                  }`}
+                >
+                  {row.displayValue ?? row.value}
+                </span>
+                {clickable && <ChevronRight className="h-3.5 w-3.5 text-[var(--text-3)]" />}
+              </span>
+            </>
+          );
+
+          if (clickable) {
+            return (
+              <button
+                key={row.label}
+                type="button"
+                onClick={() => onSelect?.(row.filterValue!)}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors sm:py-1.5 ${
+                  isCurrentFilter
+                    ? 'bg-[var(--accent-dim)]'
+                    : 'bg-[var(--bg-hover)] hover:bg-[var(--accent-dim)]/60'
+                } cursor-pointer`}
+              >
+                {content}
+              </button>
+            );
+          }
+
           return (
             <div
               key={row.label}
@@ -245,14 +287,7 @@ function GuidelineGroupCard({
                 active ? 'bg-[var(--bg-hover)]' : ''
               }`}
             >
-              <span className={active ? 'text-[var(--text-1)]' : 'text-[var(--text-3)]'}>{row.label}</span>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
-                  active ? 'bg-[var(--accent-dim)] text-[var(--accent)]' : 'text-[var(--text-3)]'
-                }`}
-              >
-                {row.displayValue ?? row.value}
-              </span>
+              {content}
             </div>
           );
         })}
@@ -296,7 +331,7 @@ type DepositPriorityAction = {
   subtitle: string;
   estimatedDuration: string;
   priorityRank: number;
-  filterKey: 'deposits';
+  filterKey: 'deposits' | 'deposits_paid';
   icon: string;
 };
 
@@ -1581,7 +1616,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
-  const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | 'deposits' | ActionType | null>(null);
+  const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | 'deposits' | 'deposits_paid' | ActionType | null>(null);
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
@@ -1983,6 +2018,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     };
   }, [activeProjects]);
 
+  // Navigation Guideline commerciale -> onglet "Mes taches a faire" filtre.
+  // Reutilise l'etat de filtre existant (actionEngineFilter), deja consomme
+  // par priorityActionItems / mesTachesItems : aucune nouvelle architecture.
+  const goToTasksFilter = (filterValue: GuidelineFilterValue) => {
+    setActionEngineFilter(filterValue);
+    setDashboardMode('tasks');
+  };
+
+  const actionEngineFilterLabel = (filter: typeof actionEngineFilter): string | null => {
+    if (!filter) return null;
+    if (filter === 'critical') return 'Actions critiques';
+    if (filter === 'today') return "A traiter aujourd'hui";
+    if (filter === 'week') return 'A traiter cette semaine';
+    if (filter === 'deposits') return 'Acomptes a suivre';
+    if (filter === 'deposits_paid') return 'Acomptes recus';
+    return ACTION_TYPE_COUNTER_LABEL[filter];
+  };
+
   // "Guideline commerciale" : regroupe les compteurs deja calcules
   // (actionEngineCounters, depositProjects) par etape du pipeline commercial.
   // Aucun recalcul de regle metier ici.
@@ -1991,27 +2044,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       title: 'Qualifier',
       subtitle: 'Les dossiers qui manquent encore d’informations pour avancer.',
       rows: [
-        { label: 'Qualification à terminer', value: actionEngineCounters.complete_qualification },
-        { label: 'Photos à demander', value: actionEngineCounters.request_photos },
-        { label: 'Rendez-vous à planifier', value: actionEngineCounters.schedule_appointment },
+        { label: 'Qualification à terminer', value: actionEngineCounters.complete_qualification, filterValue: 'complete_qualification' },
+        { label: 'Photos à demander', value: actionEngineCounters.request_photos, filterValue: 'request_photos' },
+        { label: 'Rendez-vous à planifier', value: actionEngineCounters.schedule_appointment, filterValue: 'schedule_appointment' },
       ],
     },
     {
       title: 'Chiffrer',
       subtitle: 'Les opportunités à transformer en proposition claire.',
       rows: [
-        { label: 'Devis à envoyer', value: actionEngineCounters.send_quote },
-        { label: 'Devis refusés à traiter', value: actionEngineCounters.review_quote_decline },
+        { label: 'Devis à envoyer', value: actionEngineCounters.send_quote, filterValue: 'send_quote' },
+        { label: 'Devis refusés à traiter', value: actionEngineCounters.review_quote_decline, filterValue: 'review_quote_decline' },
       ],
     },
     {
       title: 'Sécuriser',
       subtitle: 'Les dossiers à verrouiller avant intervention.',
       rows: [
-        { label: 'Acomptes à demander', value: depositProjects.toAsk.length },
-        { label: 'Acomptes demandés', value: depositProjects.requested.length, displayValue: formatCurrency(depositProjects.requestedAmount) },
-        { label: 'Acomptes reçus', value: depositProjects.paid.length, displayValue: formatCurrency(depositProjects.paidAmount) },
-        { label: 'CA sécurisé', value: depositProjects.paidAmount, displayValue: formatCurrency(depositProjects.paidAmount) },
+        { label: 'Acomptes à demander', value: depositProjects.toAsk.length, filterValue: 'deposits' },
+        { label: 'Acomptes demandés', value: depositProjects.requested.length, displayValue: formatCurrency(depositProjects.requestedAmount), filterValue: 'deposits' },
+        { label: 'Acomptes reçus', value: depositProjects.paid.length, displayValue: formatCurrency(depositProjects.paidAmount), filterValue: 'deposits_paid' },
+        { label: 'CA sécurisé', value: depositProjects.paidAmount, displayValue: formatCurrency(depositProjects.paidAmount), filterValue: 'deposits_paid' },
         { label: 'Taux de sécurisation', value: depositProjects.securedRate, displayValue: `${Math.round(depositProjects.securedRate)} %` },
       ],
     },
@@ -2019,9 +2072,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       title: 'Réaliser & fidéliser',
       subtitle: 'Les actions de fin de cycle pour terminer proprement et générer de la preuve.',
       rows: [
-        { label: 'Interventions à programmer', value: actionEngineCounters.schedule_intervention },
-        { label: 'Avis clients à demander', value: actionEngineCounters.ask_review },
-        { label: 'Relances', value: actionEngineCounters.follow_up_quote },
+        { label: 'Interventions à programmer', value: actionEngineCounters.schedule_intervention, filterValue: 'schedule_intervention' },
+        { label: 'Avis clients à demander', value: actionEngineCounters.ask_review, filterValue: 'ask_review' },
+        { label: 'Relances', value: actionEngineCounters.follow_up_quote, filterValue: 'follow_up_quote' },
       ],
     },
   ];
@@ -2032,7 +2085,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       <p className="mt-1 text-sm text-[var(--text-2)]">Les points à surveiller pour faire avancer vos dossiers.</p>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {guidelineGroups.map((group) => (
-          <GuidelineGroupCard key={group.title} title={group.title} subtitle={group.subtitle} rows={group.rows} />
+          <GuidelineGroupCard
+            key={group.title}
+            title={group.title}
+            subtitle={group.subtitle}
+            rows={group.rows}
+            activeFilter={actionEngineFilter}
+            onSelect={goToTasksFilter}
+          />
         ))}
       </div>
     </div>
@@ -2475,6 +2535,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     [depositProjects],
   );
 
+  // Acomptes recus : ne sont pas des actions a faire (rien a relancer), mais
+  // le filtre "Acomptes recus"/"CA securise" de la Guideline doit malgre tout
+  // pouvoir lister les dossiers concernes dans "Mes taches a faire".
+  const paidDepositActions = useMemo<DepositPriorityAction[]>(
+    () =>
+      depositProjects.paid.map((project) => ({
+        kind: 'deposit' as const,
+        project,
+        title: 'Acompte encaissé',
+        subtitle: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier',
+        estimatedDuration: '2 min',
+        priorityRank: 40,
+        filterKey: 'deposits_paid' as const,
+        icon: '🟢',
+      })),
+    [depositProjects],
+  );
+
   const priorityActionItems = useMemo(() => {
     const actionEngineItems = filteredActionEngineEntries.map(({ project, action }) => ({
       kind: 'engine' as const,
@@ -2489,10 +2567,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       return depositPriorityActions;
     }
 
+    if (actionEngineFilter === 'deposits_paid') {
+      return paidDepositActions;
+    }
+
     return [...depositPriorityActions, ...actionEngineItems]
       .sort((a, b) => b.priorityRank - a.priorityRank)
       .slice(0, 8);
-  }, [actionEngineFilter, depositPriorityActions, filteredActionEngineEntries]);
+  }, [actionEngineFilter, depositPriorityActions, paidDepositActions, filteredActionEngineEntries]);
 
   // "Mes taches a faire" — liste unifiee : les appels (uniquement portes par
   // buildAutomaticTasks, absents de l'Action Engine) + les priorites deja
@@ -2509,6 +2591,60 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const mesTachesItems = useMemo(
     () => [...callTaskItems, ...priorityActionItems].slice(0, 8),
     [callTaskItems, priorityActionItems],
+  );
+
+  // Carte compacte "Actions à traiter" (Suivi commercial) — reutilise
+  // uniquement les compteurs deja calcules (taskCounts, actionEngineCounters,
+  // depositProjects), sans dependre du filtre actionEngineFilter ni de la
+  // liste complete "Mes taches a faire" (reservee a son onglet dedie).
+  const actionsATraiterCounts = {
+    calls: taskCounts.call || 0,
+    quotes: taskCounts.quote || 0,
+    followups: (taskCounts.followUp || 0) + (taskCounts.email || 0),
+    appointments: actionEngineCounters.schedule_appointment || 0,
+    deposits: depositProjects.toAsk.length + depositProjects.requested.length,
+  };
+  const actionsATraiterTotal =
+    actionsATraiterCounts.calls +
+    actionsATraiterCounts.quotes +
+    actionsATraiterCounts.followups +
+    actionsATraiterCounts.appointments +
+    actionsATraiterCounts.deposits;
+  const actionsATraiterParts = [
+    actionsATraiterCounts.calls > 0 ? `${actionsATraiterCounts.calls} appel${actionsATraiterCounts.calls > 1 ? 's' : ''}` : null,
+    actionsATraiterCounts.quotes > 0 ? `${actionsATraiterCounts.quotes} devis` : null,
+    actionsATraiterCounts.followups > 0 ? `${actionsATraiterCounts.followups} relance${actionsATraiterCounts.followups > 1 ? 's' : ''}` : null,
+    actionsATraiterCounts.appointments > 0 ? `${actionsATraiterCounts.appointments} rendez-vous` : null,
+    actionsATraiterCounts.deposits > 0 ? `${actionsATraiterCounts.deposits} acompte${actionsATraiterCounts.deposits > 1 ? 's' : ''}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const actionsATraiterCard = (
+    <div className="flex h-full flex-col justify-between gap-4">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-bold text-[var(--text-1)]">Actions à traiter</p>
+          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{actionsATraiterTotal} action(s)</span>
+        </div>
+        <p className="mt-1 text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
+      </div>
+      {actionsATraiterTotal > 0 ? (
+        <div>
+          <p className="text-xl font-bold text-[var(--text-1)]">{actionsATraiterTotal} action{actionsATraiterTotal > 1 ? 's' : ''} en attente</p>
+          {actionsATraiterParts && <p className="mt-1 text-sm text-[var(--text-2)]">{actionsATraiterParts}</p>}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--text-2)]">Aucune action urgente pour le moment.</p>
+      )}
+      <button
+        type="button"
+        onClick={() => setDashboardMode('tasks')}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent-dim)] px-4 py-2.5 text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim)]/80 sm:w-auto"
+      >
+        Voir mes tâches <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
   );
 
   // --- Vue "Valeur générée par Kadria" — calculs V1 sans nouvelle API ---
@@ -3565,6 +3701,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {(showTasksOverview || showBusinessOverviewDesktop) && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
+            {showTasksOverview ? (
+            <>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-bold text-[var(--text-1)]">Mes tâches à faire</p>
@@ -3572,6 +3710,20 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{mesTachesItems.length} action(s)</span>
             </div>
+            {actionEngineFilter && (
+              <div className="mb-3 flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-[var(--text-2)]">
+                  Filtre actif : <span className="font-semibold text-[var(--text-1)]">{actionEngineFilterLabel(actionEngineFilter)}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActionEngineFilter(null)}
+                  className="text-xs font-semibold text-[var(--accent)] hover:underline"
+                >
+                  Afficher toutes les actions
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} onClick={() => goToCommercialFilter('calls')} />
               <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
@@ -3661,13 +3813,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 </div>
               )}
             </div>
-            {mesTachesItems.length > 0 && !showBusinessOverviewDesktop && (
-              <button
-                onClick={() => setDashboardMode('commercial')}
-                className="mt-3 text-sm font-semibold text-[var(--accent)] hover:underline"
-              >
-                Voir toutes les actions
-              </button>
+            </>
+            ) : (
+              actionsATraiterCard
             )}
           </div>
 
@@ -3889,6 +4037,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
       {isMobile && showCommercialWorkspace && (
         <MobileDevisView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
+      )}
+
+      {isMobile && showCommercialWorkspace && !loading && (
+        <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+          {actionsATraiterCard}
+        </div>
       )}
 
       {isMobile && showCommercialWorkspace && !loading && guidelineCommercialeSection}
