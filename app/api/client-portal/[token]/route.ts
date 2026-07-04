@@ -34,6 +34,10 @@ function normalizeCompare(value: unknown): string {
   return String(value ?? '').trim()
 }
 
+function normalizeClientSupplement(value: string): string {
+  return value.trim().replace(/\s+/g, ' ')
+}
+
 // Champs strictement publics du projet : jamais de score commercial, notes
 // internes, maturité, relances, coûts/marges, etc. deposit_* proviennent du
 // pipeline acompte existant (src/lib/deposit.ts) — jamais de nouveau champ
@@ -373,19 +377,19 @@ export async function PATCH(
     if (budget && budget !== existingValues.budget) changedFieldLabels.push('budget')
     if (timeline && timeline !== existingValues.timeline) changedFieldLabels.push('délai souhaité')
 
-    // Précisions / disponibilités / urgence : ajoutées de façon additive au
-    // résumé, jamais en écrasant l'existant (même approche que /completer).
-    // On ne les considère "changées" que si ce bloc exact n'est pas déjà la
-    // dernière chose ajoutée au résumé (évite d'empiler la même précision à
-    // chaque clic).
-    const extraNotes: string[] = []
-    if (details) extraNotes.push(`Précisions complémentaires (client) : ${details}`)
-    if (availability) extraNotes.push(`Disponibilités (client) : ${availability}`)
-    if (urgency) extraNotes.push(`Urgence signalée par le client : ${urgency}`)
     const existingSummary = String(project.ai_summary || '').trim()
-    const notesBlock = extraNotes.join('\n\n')
-    const notesChanged = extraNotes.length > 0 && !(existingSummary && existingSummary.endsWith(notesBlock))
-    if (notesChanged) changedFieldLabels.push('précisions')
+    const normalizedSummary = normalizeClientSupplement(existingSummary)
+
+    const detailsChanged = Boolean(details)
+      && !normalizedSummary.includes(normalizeClientSupplement(`Précisions complémentaires (client) : ${details}`))
+    const availabilityChanged = Boolean(availability)
+      && !normalizedSummary.includes(normalizeClientSupplement(`Disponibilités (client) : ${availability}`))
+    const urgencyChanged = Boolean(urgency)
+      && !normalizedSummary.includes(normalizeClientSupplement(`Urgence signalée par le client : ${urgency}`))
+
+    if (detailsChanged) changedFieldLabels.push('précisions complémentaires')
+    if (availabilityChanged) changedFieldLabels.push('disponibilités')
+    if (urgencyChanged) changedFieldLabels.push('urgence')
 
     const existingPhotoUrls = new Set(
       (Array.isArray(project.photos) ? project.photos : [])
@@ -451,10 +455,6 @@ export async function PATCH(
     if (budget) update.budget = budget
     if (timeline) update.desired_timeline = timeline
 
-    if (notesChanged) {
-      update.ai_summary = [existingSummary, ...extraNotes].filter(Boolean).join('\n\n')
-    }
-
     if (newPhotoUrls.length > 0) {
       const existingPhotos = Array.isArray(project.photos) ? project.photos : []
       update.photos = [...existingPhotos, ...newPhotoUrls.map((url) => ({ url }))]
@@ -511,6 +511,21 @@ export async function PATCH(
     }
 
     if (infoChanged) {
+      const clientSupplementMetadata: Record<string, unknown> = {
+        changedFields: changedFieldLabels,
+        source: 'Portail client',
+      }
+      if (detailsChanged) clientSupplementMetadata.details = details
+      if (availabilityChanged) clientSupplementMetadata.availability = availability
+      if (urgencyChanged) clientSupplementMetadata.urgency = urgency
+      if (address && address !== existingValues.address) clientSupplementMetadata.siteAddress = address
+      if (budget && budget !== existingValues.budget) clientSupplementMetadata.budget = budget
+      if (timeline && timeline !== existingValues.timeline) clientSupplementMetadata.desiredTimeline = timeline
+      if (newPhotoUrls.length > 0) {
+        clientSupplementMetadata.addedPhotoCount = newPhotoUrls.length
+        clientSupplementMetadata.addedPhotos = newPhotoUrls
+      }
+
       await createClientEvent({
         projectId: String(project.id),
         artisanId: String(project.artisan_id),
@@ -519,7 +534,7 @@ export async function PATCH(
         source: 'client',
         title: 'Informations complétées par le client',
         message: `Le client a complété des informations depuis le portail client. Champs modifiés : ${changedFieldLabels.join(', ')}.`,
-        metadata: { changedFields: changedFieldLabels, source: 'Portail client' },
+        metadata: clientSupplementMetadata,
       })
       await createProjectNotification(
         { id: String(project.id), artisanId: String(project.artisan_id) },

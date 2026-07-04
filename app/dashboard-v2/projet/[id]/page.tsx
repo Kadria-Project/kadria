@@ -307,6 +307,79 @@ type ClientTimelineEvent = {
   metadata: Record<string, unknown>;
 };
 
+type ClientPortalSupplement = {
+  details: string | null;
+  availability: string | null;
+  urgency: string | null;
+  siteAddress: string | null;
+  budget: string | null;
+  desiredTimeline: string | null;
+  addedPhotoCount: number;
+  updatedAt: string | null;
+};
+
+const CLIENT_SUMMARY_NOISE_PATTERNS = [
+  /(?:^|\s)Précisions complémentaires \(client\)\s*:\s*[\s\S]*?(?=(?:\s(?:Précisions complémentaires \(client\)|Disponibilités \(client\)|Urgence signalée par le client|Une photo a été ajoutée\.|Adresse chantier renseignée\.))|$)/gi,
+  /(?:^|\s)Disponibilités \(client\)\s*:\s*[\s\S]*?(?=(?:\s(?:Précisions complémentaires \(client\)|Disponibilités \(client\)|Urgence signalée par le client|Une photo a été ajoutée\.|Adresse chantier renseignée\.))|$)/gi,
+  /(?:^|\s)Urgence signalée par le client\s*:\s*[\s\S]*?(?=(?:\s(?:Précisions complémentaires \(client\)|Disponibilités \(client\)|Urgence signalée par le client|Une photo a été ajoutée\.|Adresse chantier renseignée\.))|$)/gi,
+  /\s*Une photo a été ajoutée\./gi,
+  /\s*Adresse chantier renseignée\./gi,
+];
+
+function cleanAiSummaryForDisplay(summary: unknown): string {
+  let cleaned = String(summary || '').trim();
+  if (!cleaned) return '';
+
+  for (const pattern of CLIENT_SUMMARY_NOISE_PATTERNS) {
+    cleaned = cleaned.replace(pattern, ' ');
+  }
+
+  return cleaned
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([.?!])(?=[^\s])/g, '$1 ')
+    .trim();
+}
+
+function getLatestClientSupplement(
+  events: ClientTimelineEvent[],
+  project: {
+    clientLastUpdateAt?: string | null;
+    siteAddress?: string | null;
+    budget?: string | null;
+    desiredTimeline?: string | null;
+  } | null | undefined,
+): ClientPortalSupplement {
+  const latestInfoUpdate = [...events]
+    .filter((event) => event.type === 'client_info_updated')
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+
+  const metadata = latestInfoUpdate?.metadata && typeof latestInfoUpdate.metadata === 'object'
+    ? latestInfoUpdate.metadata
+    : {};
+
+  const readString = (key: string) => {
+    const value = metadata[key];
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  };
+
+  const addedPhotoCountRaw = metadata.addedPhotoCount;
+  const addedPhotoCount = typeof addedPhotoCountRaw === 'number'
+    ? addedPhotoCountRaw
+    : Number(addedPhotoCountRaw || 0);
+
+  return {
+    details: readString('details'),
+    availability: readString('availability'),
+    urgency: readString('urgency'),
+    siteAddress: readString('siteAddress') || (project?.siteAddress ? String(project.siteAddress) : null),
+    budget: readString('budget') || (project?.budget ? String(project.budget) : null),
+    desiredTimeline: readString('desiredTimeline') || (project?.desiredTimeline ? String(project.desiredTimeline) : null),
+    addedPhotoCount: Number.isFinite(addedPhotoCount) && addedPhotoCount > 0 ? addedPhotoCount : 0,
+    updatedAt: latestInfoUpdate?.createdAt || project?.clientLastUpdateAt || null,
+  };
+}
+
 // Résumé compact du rendez-vous pour la quick action "Rendez-vous" (Part 4) :
 // distingue un RDV court (avec durée), une demi-journée / journée complète
 // (amplitude, sans heure de fin explicite) et un chantier multi-jours
@@ -1004,6 +1077,24 @@ function ProjectDetail() {
       createdAt: ev.createdAt,
       action: 'CLIENT_INFO_UPDATED',
     }));
+
+  const cleanedAiSummary = cleanAiSummaryForDisplay(project?.aiSummary);
+  const latestClientSupplement = getLatestClientSupplement(clientTimelineEvents, project ? {
+    clientLastUpdateAt: project.clientLastUpdateAt,
+    siteAddress: project.siteAddress,
+    budget: project.budget,
+    desiredTimeline: project.desiredTimeline,
+  } : null);
+  const hasStructuredClientSupplement = Boolean(
+    latestClientSupplement.details
+      || latestClientSupplement.availability
+      || latestClientSupplement.urgency
+      || latestClientSupplement.siteAddress
+      || latestClientSupplement.budget
+      || latestClientSupplement.desiredTimeline
+      || latestClientSupplement.addedPhotoCount > 0
+      || clientInfoActivityItems.length > 0,
+  );
 
   const dossierActivitySource = [
     ...activities,
@@ -2511,7 +2602,7 @@ function ProjectDetail() {
         title: 'Description complète',
         content: (
           <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)', whiteSpace: 'pre-wrap' }}>
-            {project.aiSummary || 'Aucune description disponible.'}
+            {cleanedAiSummary || project.aiSummary || 'Aucune description disponible.'}
           </p>
         ),
       },
@@ -2536,11 +2627,15 @@ function ProjectDetail() {
                   : 'Aucune mise à jour client pour le moment'}
               </p>
 
-              {hasClientActivity && (project?.siteAddress || project?.budget || project?.desiredTimeline) && (
+              {hasStructuredClientSupplement && (
                 <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
-                  {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
-                  {project?.budget && <li>Budget : {project.budget}</li>}
-                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
+                  {latestClientSupplement.details && <li>Précisions : {latestClientSupplement.details}</li>}
+                  {latestClientSupplement.urgency && <li>Urgence signalée : {latestClientSupplement.urgency}</li>}
+                  {latestClientSupplement.availability && <li>Disponibilités : {latestClientSupplement.availability}</li>}
+                  {latestClientSupplement.siteAddress && <li>Adresse chantier : {latestClientSupplement.siteAddress}</li>}
+                  {latestClientSupplement.budget && <li>Budget : {latestClientSupplement.budget}</li>}
+                  {latestClientSupplement.desiredTimeline && <li>Délai souhaité : {latestClientSupplement.desiredTimeline}</li>}
+                  {latestClientSupplement.addedPhotoCount > 0 && <li>Photos ajoutées : {latestClientSupplement.addedPhotoCount}</li>}
                 </ul>
               )}
 
@@ -4541,7 +4636,7 @@ function ProjectDetail() {
           </div>
 
           {/* Synthèse IA longue */}
-          {project.aiSummary && (
+          {(cleanedAiSummary || project.aiSummary) && (
             <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <p style={{
                 color: 'var(--accent)',
@@ -4560,8 +4655,18 @@ function ProjectDetail() {
                 margin: 0,
                 fontStyle: 'italic',
               }}>
-                {project.aiSummary}
+                {cleanedAiSummary || project.aiSummary}
               </p>
+              {hasStructuredClientSupplement && (
+                <p style={{
+                  color: 'var(--text-3)',
+                  fontSize: '12px',
+                  lineHeight: '1.6',
+                  margin: '8px 0 0',
+                }}>
+                  Des compléments client sont disponibles dans la section Retours client.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -4623,15 +4728,19 @@ function ProjectDetail() {
               {hasClientActivity && (
                 <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
                   Le client a complété certaines informations depuis le portail.
-                  {project?.siteAddress || project?.budget || project?.desiredTimeline ? ' Résumé :' : ''}
+                  {hasStructuredClientSupplement ? ' Résumé :' : ''}
                 </p>
               )}
 
-              {hasClientActivity && (project?.siteAddress || project?.budget || project?.desiredTimeline) && (
+              {hasStructuredClientSupplement && (
                 <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
-                  {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
-                  {project?.budget && <li>Budget : {project.budget}</li>}
-                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
+                  {latestClientSupplement.details && <li>Précisions : {latestClientSupplement.details}</li>}
+                  {latestClientSupplement.urgency && <li>Urgence signalée : {latestClientSupplement.urgency}</li>}
+                  {latestClientSupplement.availability && <li>Disponibilités : {latestClientSupplement.availability}</li>}
+                  {latestClientSupplement.siteAddress && <li>Adresse chantier : {latestClientSupplement.siteAddress}</li>}
+                  {latestClientSupplement.budget && <li>Budget : {latestClientSupplement.budget}</li>}
+                  {latestClientSupplement.desiredTimeline && <li>Délai souhaité : {latestClientSupplement.desiredTimeline}</li>}
+                  {latestClientSupplement.addedPhotoCount > 0 && <li>Photos ajoutées : {latestClientSupplement.addedPhotoCount}</li>}
                 </ul>
               )}
 
