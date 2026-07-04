@@ -3670,7 +3670,7 @@ function ProjectDetail() {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, 1fr)',
           gap: '10px',
           marginBottom: '16px',
         }}>
@@ -3784,343 +3784,36 @@ function ProjectDetail() {
               Demander avis Google
             </p>
           </button>
-        </div>
 
-        {/* Portail client — reprend la logique de l'endpoint interne
-            /api/projects/[id]/client-portal-link (token généré paresseusement
-            côté serveur). Le front ne fait qu'appeler l'endpoint et copier
-            l'URL renvoyée, aucune génération de token côté client. */}
-        <div style={{
-          marginBottom: '16px',
-          padding: isMobile ? '14px' : '16px',
-          borderRadius: '14px',
-          border: '1px solid var(--border)',
-          background: 'var(--bg-elevated)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-        }}>
-          <div>
-            <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px' }}>
-              Portail client
-            </p>
-            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
-              Partagez ce lien avec le client pour qu'il consulte et complète sa demande.
-            </p>
-          </div>
+          {/* Portail client — devenu une action compacte de la grille (au lieu
+              d'une grande section pleine largeur). Reprend la logique de
+              l'endpoint interne /api/projects/[id]/client-portal-link (token
+              généré paresseusement côté serveur). Le front ne fait qu'appeler
+              l'endpoint et copier l'URL renvoyée, aucune génération de token
+              côté client. */}
           <button
             type="button"
             onClick={copyClientPortalLink}
             disabled={clientPortalLoading || !project?.id}
             style={{
-              ...quickActionButtonStyle,
-              width: isMobile ? '100%' : 'fit-content',
-              opacity: (clientPortalLoading || !project?.id) ? 0.6 : 1,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
               cursor: (clientPortalLoading || !project?.id) ? 'not-allowed' : 'pointer',
+              opacity: (clientPortalLoading || !project?.id) ? 0.6 : 1,
             }}
           >
-            {clientPortalLoading ? 'Copie en cours...' : 'Copier le lien'}
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              🔗 Portail client
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              {clientPortalLoading ? 'Copie en cours...' : 'Copier le lien'}
+            </p>
           </button>
         </div>
 
-        {/* Retours client / Compléments client — distinct des notes internes
-            (section plus bas) : ce bloc n'affiche QUE ce qui vient du client
-            via le portail (messages, dernière mise à jour, complétions),
-            jamais les notes internes de l'artisan. Tolérant à tous les
-            formats de client_messages et à l'absence des colonnes portail
-            (migration non encore appliquée). */}
-        {(() => {
-          const clientMessages = parseClientMessages(project?.clientMessages);
-          const clientUpdateCount = Number(project?.clientUpdateCount) || 0;
-          const clientLastUpdateAt = project?.clientLastUpdateAt || null;
-          const hasClientActivity = clientUpdateCount > 0 || !!clientLastUpdateAt || clientMessages.length > 0;
-
-          return (
-            <div style={{
-              marginBottom: '16px',
-              padding: isMobile ? '14px' : '16px',
-              borderRadius: '14px',
-              border: '1px solid var(--border)',
-              background: 'var(--bg-elevated)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-                <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: 0 }}>
-                  Retours client
-                </p>
-                {hasClientActivity && (
-                  <span style={{
-                    background: 'rgba(22,163,74,0.15)',
-                    color: '#16a34a',
-                    border: '1px solid rgba(22,163,74,0.3)',
-                    borderRadius: '999px',
-                    padding: '3px 10px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                  }}>
-                    {clientUpdateCount > 0 ? 'Infos complétées par le client' : 'Complément client reçu'}
-                  </span>
-                )}
-              </div>
-
-              <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
-                {clientLastUpdateAt
-                  ? `Dernière mise à jour client : ${formatDateTime(clientLastUpdateAt)}`
-                  : 'Aucune mise à jour client pour le moment'}
-              </p>
-
-              {!hasClientActivity && (
-                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
-                  Aucun complément reçu via le portail client pour le moment.
-                </p>
-              )}
-
-              {hasClientActivity && (
-                <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
-                  Le client a complété certaines informations depuis le portail.
-                  {project?.siteAddress || project?.budget || project?.desiredTimeline ? ' Résumé :' : ''}
-                </p>
-              )}
-
-              {hasClientActivity && (project?.siteAddress || project?.budget || project?.desiredTimeline) && (
-                <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
-                  {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
-                  {project?.budget && <li>Budget : {project.budget}</li>}
-                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
-                </ul>
-              )}
-
-              {/* Discussion client — bulles façon iOS, réservées aux SEULS
-                  types de discussion (client_message / artisan_reply).
-                  client_info_updated et les autres événements système ne
-                  sont jamais rendus ici : ils vivent dans l'activité du
-                  dossier plus bas sur la page. Repli sur l'ancien champ
-                  client_messages (texte accumulé) uniquement si la nouvelle
-                  table ne renvoie aucun message de discussion (anciens
-                  projets / migration pas encore appliquée). */}
-              {(() => {
-                const discussionEvents = clientTimelineEvents.filter(
-                  (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
-                );
-                const useLegacyFallback = discussionEvents.length === 0 && clientMessages.length > 0;
-
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                    <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                      Discussion client
-                    </p>
-
-                    {discussionEvents.length === 0 && !useLegacyFallback && (
-                      <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '4px 0 0', fontStyle: 'italic' }}>
-                        Aucun message client pour le moment.
-                      </p>
-                    )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
-                      {useLegacyFallback
-                        ? clientMessages.map((msg, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                            <div
-                              style={{
-                                maxWidth: isMobile ? '88%' : '72%',
-                                background: '#f1f5f9',
-                                color: '#0f172a',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '16px 16px 16px 4px',
-                                padding: '10px 14px',
-                              }}
-                            >
-                              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
-                                Client{msg.date ? ` Â· ${msg.date}` : ''}
-                              </div>
-                              <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                {msg.text}
-                              </p>
-                            </div>
-                          </div>
-                        ))
-                        : discussionEvents.map((ev) => {
-                          const isClient = ev.type === 'client_message';
-                          return (
-                            <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
-                              <div
-                                style={{
-                                  maxWidth: isMobile ? '88%' : '72%',
-                                  background: isClient ? '#f1f5f9' : 'var(--accent)',
-                                  color: isClient ? '#0f172a' : '#ffffff',
-                                  border: isClient ? '1px solid #e2e8f0' : 'none',
-                                  borderRadius: isClient ? '16px 16px 16px 4px' : '16px 16px 4px 16px',
-                                  padding: '10px 14px',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    marginBottom: '4px',
-                                    color: isClient ? '#64748b' : 'rgba(255,255,255,0.8)',
-                                    textAlign: isClient ? 'left' : 'right',
-                                  }}
-                                >
-                                  {isClient ? 'Client' : 'Vous'}
-                                  {ev.createdAt ? ` Â· ${formatDateTime(ev.createdAt)}` : ''}
-                                </div>
-                                <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {ev.message || ev.title}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Réponse artisan — publiée dans le portail client (visible
-                  du client final), strictement distincte des notes internes
-                  (section séparée plus bas dans la page). */}
-              <div style={{
-                marginTop: '4px',
-                paddingTop: '12px',
-                borderTop: '1px solid var(--border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}>
-                <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                  Répondre au client
-                </p>
-                <textarea
-                  value={clientReplyMessage}
-                  onChange={(e) => {
-                    setClientReplyMessage(e.target.value);
-                    setClientReplyError('');
-                    setClientReplySuccess('');
-                  }}
-                  placeholder="Votre réponse sera visible par le client dans son portail..."
-                  rows={3}
-                  maxLength={2000}
-                  style={{
-                    width: '100%',
-                    border: '1px solid var(--border)',
-                    borderRadius: '10px',
-                    padding: '10px 12px',
-                    fontSize: '13px',
-                    fontFamily: 'inherit',
-                    color: 'var(--text-1)',
-                    background: 'var(--bg-hover)',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {clientReplyError && (
-                  <p style={{ fontSize: '12px', color: '#dc2626', margin: 0 }}>{clientReplyError}</p>
-                )}
-                {clientReplySuccess && (
-                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, fontWeight: 600 }}>{clientReplySuccess}</p>
-                )}
-                <button
-                  type="button"
-                  onClick={submitClientReply}
-                  disabled={clientReplySending || !clientReplyMessage.trim()}
-                  style={{
-                    width: isMobile ? '100%' : 'fit-content',
-                    border: 'none',
-                    borderRadius: '999px',
-                    padding: '9px 18px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    background: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--bg-elevated)' : 'var(--accent)',
-                    color: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--text-3)' : '#ffffff',
-                    boxShadow: (clientReplySending || !clientReplyMessage.trim()) ? 'none' : '0 2px 10px rgba(0,0,0,0.18)',
-                    opacity: (clientReplySending || !clientReplyMessage.trim()) ? 0.7 : 1,
-                    cursor: (clientReplySending || !clientReplyMessage.trim()) ? 'not-allowed' : 'pointer',
-                    transition: 'background 0.15s ease, box-shadow 0.15s ease',
-                  }}
-                >
-                  {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}
-                </button>
-              </div>
-            </div>
-          );
-        })()}
-
-        {false && (
-        <section
-          className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
-          style={{ marginBottom: '16px' }}
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
-              <p className="mt-1 text-sm text-[var(--text-2)]">
-                Les dernieres actions enregistrees sur ce projet.
-              </p>
-            </div>
-            {!activityUnavailable && recentActivityItems.length > 0 && (
-              <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
-                {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3">
-            {activityUnavailable && (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Activite indisponible pour le moment.
-              </div>
-            )}
-
-            {!activityUnavailable && recentActivityItems.length === 0 && (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Aucune activite enregistree pour le moment.
-                Les relances, demandes d'avis et changements importants apparaitront ici.
-              </div>
-            )}
-
-            {!activityUnavailable && recentActivityItems.map((item) => {
-              const tone = getActivityToneStyles(item.tone);
-              return (
-                <div
-                  key={item.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
-                >
-                  <div className="flex min-w-0 gap-3">
-                    <span
-                      className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
-                      style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
-                      {item.detail && item.detail !== item.title && (
-                        <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-start gap-2 sm:items-end">
-                    <span
-                      className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-                      style={{
-                        background: tone.badgeBg,
-                        borderColor: tone.badgeBorder,
-                        color: tone.badgeColor,
-                      }}
-                    >
-                      {tone.badgeLabel}
-                    </span>
-                    <p className="text-xs text-[var(--text-3)]">
-                      {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-        )}
 
         {/* Analyse Kadria — bloc secondaire d'aide à la lecture du dossier,
             volontairement plus neutre que l'Action recommandée. */}
@@ -4692,6 +4385,304 @@ function ProjectDetail() {
           )}
         </div>
 
+        {/* Retours client / Compléments client — distinct des notes internes
+            (section plus bas) : ce bloc n'affiche QUE ce qui vient du client
+            via le portail (messages, dernière mise à jour, complétions),
+            jamais les notes internes de l'artisan. Tolérant à tous les
+            formats de client_messages et à l'absence des colonnes portail
+            (migration non encore appliquée). */}
+        {(() => {
+          const clientMessages = parseClientMessages(project?.clientMessages);
+          const clientUpdateCount = Number(project?.clientUpdateCount) || 0;
+          const clientLastUpdateAt = project?.clientLastUpdateAt || null;
+          const hasClientActivity = clientUpdateCount > 0 || !!clientLastUpdateAt || clientMessages.length > 0;
+
+          return (
+            <div style={{
+              marginBottom: '16px',
+              padding: isMobile ? '14px' : '16px',
+              borderRadius: '14px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-elevated)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: 0 }}>
+                  Retours client
+                </p>
+                {hasClientActivity && (
+                  <span style={{
+                    background: 'rgba(22,163,74,0.15)',
+                    color: '#16a34a',
+                    border: '1px solid rgba(22,163,74,0.3)',
+                    borderRadius: '999px',
+                    padding: '3px 10px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                  }}>
+                    {clientUpdateCount > 0 ? 'Infos complétées par le client' : 'Complément client reçu'}
+                  </span>
+                )}
+              </div>
+
+              <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                {clientLastUpdateAt
+                  ? `Dernière mise à jour client : ${formatDateTime(clientLastUpdateAt)}`
+                  : 'Aucune mise à jour client pour le moment'}
+              </p>
+
+              {!hasClientActivity && (
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
+                  Aucun complément reçu via le portail client pour le moment.
+                </p>
+              )}
+
+              {hasClientActivity && (
+                <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: 0 }}>
+                  Le client a complété certaines informations depuis le portail.
+                  {project?.siteAddress || project?.budget || project?.desiredTimeline ? ' Résumé :' : ''}
+                </p>
+              )}
+
+              {hasClientActivity && (project?.siteAddress || project?.budget || project?.desiredTimeline) && (
+                <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
+                  {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
+                  {project?.budget && <li>Budget : {project.budget}</li>}
+                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
+                </ul>
+              )}
+
+              {/* Discussion client — bulles façon iOS, réservées aux SEULS
+                  types de discussion (client_message / artisan_reply).
+                  client_info_updated et les autres événements système ne
+                  sont jamais rendus ici : ils vivent dans l'activité du
+                  dossier plus bas sur la page. Repli sur l'ancien champ
+                  client_messages (texte accumulé) uniquement si la nouvelle
+                  table ne renvoie aucun message de discussion (anciens
+                  projets / migration pas encore appliquée). */}
+              {(() => {
+                const discussionEvents = clientTimelineEvents.filter(
+                  (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
+                );
+                const useLegacyFallback = discussionEvents.length === 0 && clientMessages.length > 0;
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                    <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                      Discussion client
+                    </p>
+
+                    {discussionEvents.length === 0 && !useLegacyFallback && (
+                      <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '4px 0 0', fontStyle: 'italic' }}>
+                        Aucun message client pour le moment.
+                      </p>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                      {useLegacyFallback
+                        ? clientMessages.map((msg, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <div
+                              style={{
+                                maxWidth: isMobile ? '88%' : '72%',
+                                background: '#f1f5f9',
+                                color: '#0f172a',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '16px 16px 16px 4px',
+                                padding: '10px 14px',
+                              }}
+                            >
+                              <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
+                                Client{msg.date ? ` Â· ${msg.date}` : ''}
+                              </div>
+                              <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                {msg.text}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                        : discussionEvents.map((ev) => {
+                          const isClient = ev.type === 'client_message';
+                          return (
+                            <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
+                              <div
+                                style={{
+                                  maxWidth: isMobile ? '88%' : '72%',
+                                  background: isClient ? '#f1f5f9' : 'var(--accent)',
+                                  color: isClient ? '#0f172a' : '#ffffff',
+                                  border: isClient ? '1px solid #e2e8f0' : 'none',
+                                  borderRadius: isClient ? '16px 16px 16px 4px' : '16px 16px 4px 16px',
+                                  padding: '10px 14px',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    marginBottom: '4px',
+                                    color: isClient ? '#64748b' : 'rgba(255,255,255,0.8)',
+                                    textAlign: isClient ? 'left' : 'right',
+                                  }}
+                                >
+                                  {isClient ? 'Client' : 'Vous'}
+                                  {ev.createdAt ? ` Â· ${formatDateTime(ev.createdAt)}` : ''}
+                                </div>
+                                <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {ev.message || ev.title}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Réponse artisan — publiée dans le portail client (visible
+                  du client final), strictement distincte des notes internes
+                  (section séparée plus bas dans la page). */}
+              <div style={{
+                marginTop: '4px',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                  Répondre au client
+                </p>
+                <textarea
+                  value={clientReplyMessage}
+                  onChange={(e) => {
+                    setClientReplyMessage(e.target.value);
+                    setClientReplyError('');
+                    setClientReplySuccess('');
+                  }}
+                  placeholder="Votre réponse sera visible par le client dans son portail..."
+                  rows={3}
+                  maxLength={2000}
+                  style={{
+                    width: '100%',
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    color: 'var(--text-1)',
+                    background: 'var(--bg-hover)',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {clientReplyError && (
+                  <p style={{ fontSize: '12px', color: '#dc2626', margin: 0 }}>{clientReplyError}</p>
+                )}
+                {clientReplySuccess && (
+                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, fontWeight: 600 }}>{clientReplySuccess}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={submitClientReply}
+                  disabled={clientReplySending || !clientReplyMessage.trim()}
+                  style={{
+                    width: isMobile ? '100%' : 'fit-content',
+                    border: 'none',
+                    borderRadius: '999px',
+                    padding: '9px 18px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    background: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--bg-elevated)' : 'var(--accent)',
+                    color: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--text-3)' : '#ffffff',
+                    boxShadow: (clientReplySending || !clientReplyMessage.trim()) ? 'none' : '0 2px 10px rgba(0,0,0,0.18)',
+                    opacity: (clientReplySending || !clientReplyMessage.trim()) ? 0.7 : 1,
+                    cursor: (clientReplySending || !clientReplyMessage.trim()) ? 'not-allowed' : 'pointer',
+                    transition: 'background 0.15s ease, box-shadow 0.15s ease',
+                  }}
+                >
+                  {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {false && (
+        <section
+          className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
+          style={{ marginBottom: '16px' }}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
+              <p className="mt-1 text-sm text-[var(--text-2)]">
+                Les dernieres actions enregistrees sur ce projet.
+              </p>
+            </div>
+            {!activityUnavailable && recentActivityItems.length > 0 && (
+              <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
+                {activityItems.length} evenement{activityItems.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3">
+            {activityUnavailable && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                Activite indisponible pour le moment.
+              </div>
+            )}
+
+            {!activityUnavailable && recentActivityItems.length === 0 && (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                Aucune activite enregistree pour le moment.
+                Les relances, demandes d'avis et changements importants apparaitront ici.
+              </div>
+            )}
+
+            {!activityUnavailable && recentActivityItems.map((item) => {
+              const tone = getActivityToneStyles(item.tone);
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
+                      {item.detail && item.detail !== item.title && (
+                        <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <span
+                      className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                      style={{
+                        background: tone.badgeBg,
+                        borderColor: tone.badgeBorder,
+                        color: tone.badgeColor,
+                      }}
+                    >
+                      {tone.badgeLabel}
+                    </span>
+                    <p className="text-xs text-[var(--text-3)]">
+                      {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+        )}
         {/* Photos du projet — galerie visible (auparavant, seul un compte
             texte "X photo(s) jointe(s)" existait, aucune image affichée). */}
         {project.photos && project.photos.length > 0 && (
