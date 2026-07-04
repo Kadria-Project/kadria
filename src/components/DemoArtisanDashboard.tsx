@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
 import { Button } from '@/src/components/ui/button';
+import DemoNotificationBell from '@/src/components/notifications/DemoNotificationBell';
 import { Input } from '@/src/components/ui/input';
 import {
   Select,
@@ -270,6 +271,90 @@ const ACTION_TYPE_COUNTER_LABEL: Record<ActionType, string> = {
   ask_review: 'Avis clients à demander',
   monitor: 'Surveillance',
 };
+
+// "Guideline commerciale" (Suivi commercial) : lecture du pipeline par etape
+// (Qualifier / Chiffrer / Securiser / Realiser & fideliser), portee depuis
+// ArtisanDashboard.tsx pour rester 1:1 avec la production. Ne recalcule rien,
+// reutilise uniquement des compteurs deja calcules ailleurs (actionEngineCounters).
+type GuidelineFilterValue = 'critical' | 'today' | 'week' | ActionType;
+
+type GuidelineRow = {
+  label: string;
+  value: number;
+  displayValue?: string;
+  filterValue?: GuidelineFilterValue;
+};
+
+function GuidelineGroupCard({
+  title,
+  subtitle,
+  rows,
+  activeFilter,
+  onSelect,
+}: {
+  title: string;
+  subtitle: string;
+  rows: GuidelineRow[];
+  activeFilter?: GuidelineFilterValue | null;
+  onSelect?: (value: GuidelineFilterValue) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+      <p className="font-bold text-[var(--text-1)]">{title}</p>
+      <p className="mt-1 text-xs text-[var(--text-2)]">{subtitle}</p>
+      <div className="mt-3 space-y-1.5">
+        {rows.map((row) => {
+          const active = row.value > 0;
+          const clickable = active && Boolean(row.filterValue) && Boolean(onSelect);
+          const isCurrentFilter = clickable && activeFilter === row.filterValue;
+          const content = (
+            <>
+              <span className={active ? 'text-[var(--text-1)]' : 'text-[var(--text-3)]'}>{row.label}</span>
+              <span className="flex shrink-0 items-center gap-1">
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+                    active ? 'bg-[var(--accent-dim)] text-[var(--accent)]' : 'text-[var(--text-3)]'
+                  }`}
+                >
+                  {row.displayValue ?? row.value}
+                </span>
+                {clickable && <ChevronRight className="h-3.5 w-3.5 text-[var(--text-3)]" />}
+              </span>
+            </>
+          );
+
+          if (clickable) {
+            return (
+              <button
+                key={row.label}
+                type="button"
+                onClick={() => onSelect?.(row.filterValue!)}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors sm:py-1.5 ${
+                  isCurrentFilter
+                    ? 'bg-[var(--accent-dim)]'
+                    : 'bg-[var(--bg-hover)] hover:bg-[var(--accent-dim)]/60'
+                } cursor-pointer`}
+              >
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <div
+              key={row.label}
+              className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm ${
+                active ? 'bg-[var(--bg-hover)]' : ''
+              }`}
+            >
+              {content}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function sortNextActions<T extends { action: NextAction }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
@@ -2176,6 +2261,125 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   );
 
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
+
+  // Navigation Guideline commerciale -> onglet "Mes taches a faire" filtre.
+  const goToTasksFilter = (filterValue: GuidelineFilterValue) => {
+    setActionEngineFilter(filterValue);
+    setDashboardMode('tasks');
+  };
+
+  // Carte compacte "Actions à traiter" (Suivi commercial) — reutilise
+  // uniquement les compteurs deja calcules (taskCounts, actionEngineCounters),
+  // sans dependre du filtre actionEngineFilter ni de la liste complete
+  // "Mes taches a faire" (reservee a son onglet dedie).
+  const actionsATraiterCounts = {
+    calls: taskCounts.call || 0,
+    quotes: taskCounts.quote || 0,
+    followups: (taskCounts.followUp || 0) + (taskCounts.email || 0),
+    appointments: actionEngineCounters.schedule_appointment || 0,
+  };
+  const actionsATraiterTotal =
+    actionsATraiterCounts.calls +
+    actionsATraiterCounts.quotes +
+    actionsATraiterCounts.followups +
+    actionsATraiterCounts.appointments;
+  const actionsATraiterParts = [
+    actionsATraiterCounts.calls > 0 ? `${actionsATraiterCounts.calls} appel${actionsATraiterCounts.calls > 1 ? 's' : ''}` : null,
+    actionsATraiterCounts.quotes > 0 ? `${actionsATraiterCounts.quotes} devis` : null,
+    actionsATraiterCounts.followups > 0 ? `${actionsATraiterCounts.followups} relance${actionsATraiterCounts.followups > 1 ? 's' : ''}` : null,
+    actionsATraiterCounts.appointments > 0 ? `${actionsATraiterCounts.appointments} rendez-vous` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const actionsATraiterCard = (
+    <div className="flex h-full flex-col justify-between gap-4">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-bold text-[var(--text-1)]">Actions à traiter</p>
+          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{actionsATraiterTotal} action(s)</span>
+        </div>
+        <p className="mt-1 text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
+      </div>
+      {actionsATraiterTotal > 0 ? (
+        <div>
+          <p className="text-xl font-bold text-[var(--text-1)]">{actionsATraiterTotal} action{actionsATraiterTotal > 1 ? 's' : ''} en attente</p>
+          {actionsATraiterParts && <p className="mt-1 text-sm text-[var(--text-2)]">{actionsATraiterParts}</p>}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--text-2)]">Aucune action urgente pour le moment.</p>
+      )}
+      <button
+        type="button"
+        onClick={() => setDashboardMode('tasks')}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent-dim)] px-4 py-2.5 text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent-dim)]/80 sm:w-auto"
+      >
+        Voir mes tâches <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  // "Guideline commerciale" : regroupe les compteurs deja calcules
+  // (actionEngineCounters) par etape du pipeline commercial. Simplification
+  // assumee vs prod : le groupe "Sécuriser" n'inclut pas de sous-metriques
+  // d'acompte (montant demande/recu), le modele de donnees demo (DemoProject)
+  // ne portant pas encore de depositStatus/depositAmount par dossier — cf.
+  // rapport final, écart volontaire documenté.
+  const guidelineGroups: { title: string; subtitle: string; rows: GuidelineRow[] }[] = [
+    {
+      title: 'Qualifier',
+      subtitle: 'Les dossiers qui manquent encore d’informations pour avancer.',
+      rows: [
+        { label: 'Qualification à terminer', value: actionEngineCounters.complete_qualification, filterValue: 'complete_qualification' },
+        { label: 'Photos à demander', value: actionEngineCounters.request_photos, filterValue: 'request_photos' },
+        { label: 'Rendez-vous à planifier', value: actionEngineCounters.schedule_appointment, filterValue: 'schedule_appointment' },
+      ],
+    },
+    {
+      title: 'Chiffrer',
+      subtitle: 'Les opportunités à transformer en proposition claire.',
+      rows: [
+        { label: 'Devis à envoyer', value: actionEngineCounters.send_quote, filterValue: 'send_quote' },
+        { label: 'Devis refusés à traiter', value: actionEngineCounters.review_quote_decline, filterValue: 'review_quote_decline' },
+      ],
+    },
+    {
+      title: 'Sécuriser',
+      subtitle: 'Les devis acceptés à verrouiller avant intervention.',
+      rows: [
+        { label: 'Relances à faire', value: actionEngineCounters.follow_up_quote, filterValue: 'follow_up_quote' },
+        { label: 'Dossiers en risque', value: riskProjects.length },
+      ],
+    },
+    {
+      title: 'Réaliser & fidéliser',
+      subtitle: 'Les actions de fin de cycle pour terminer proprement et générer de la preuve.',
+      rows: [
+        { label: 'Interventions à programmer', value: actionEngineCounters.schedule_intervention, filterValue: 'schedule_intervention' },
+        { label: 'Avis clients à demander', value: actionEngineCounters.ask_review, filterValue: 'ask_review' },
+      ],
+    },
+  ];
+
+  const guidelineCommercialeSection = (
+    <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
+      <p className="font-bold text-[var(--text-1)]">Guideline commerciale</p>
+      <p className="mt-1 text-sm text-[var(--text-2)]">Les points à surveiller pour faire avancer vos dossiers.</p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {guidelineGroups.map((group) => (
+          <GuidelineGroupCard
+            key={group.title}
+            title={group.title}
+            subtitle={group.subtitle}
+            rows={group.rows}
+            activeFilter={actionEngineFilter}
+            onSelect={goToTasksFilter}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   const showValueOverview = dashboardMode === 'value';
   const showBusinessOverview = dashboardMode === 'commercial';
   const showTasksOverview = dashboardMode === 'tasks';
@@ -2622,6 +2826,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
+      {!isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <DemoNotificationBell variant="desktop" />
+        </div>
+      )}
       {!coachCardDismissed && isMobile && (
         <MobileCoachKadriaCard
           coach={kadriaCoach}
@@ -2919,6 +3128,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           settingsHref="/demo-parametres"
           onSupportClick={() => showToast('Action simulée — aucune donnée réelle modifiée.')}
           onSubscriptionClick={() => showToast('Action simulée — aucune donnée réelle modifiée.')}
+          notificationBellSlot={<DemoNotificationBell variant="mobile" />}
           createProject={(form) => {
             const createdProject = createDemoProject(form);
             showToast('Action simulée — aucune donnée réelle modifiée.');
@@ -3403,117 +3613,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showBusinessOverviewDesktop && !loading && (
+      {(showTasksOverview || showBusinessOverviewDesktop) && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-bold text-[var(--text-1)]">Actions prioritaires</p>
-              <div className="flex flex-wrap gap-2">
-                {([
-                  { key: 'critical', label: 'Actions critiques' },
-                  { key: 'today', label: "Aujourd'hui" },
-                  { key: 'week', label: 'Cette semaine' },
-                  { key: 'follow_up_quote', label: 'Relances' },
-                  { key: 'send_quote', label: 'Devis' },
-                  { key: 'schedule_appointment', label: 'Rendez-vous' },
-                ] as const).map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setActionEngineFilter(actionEngineFilter === f.key ? null : f.key)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                      actionEngineFilter === f.key
-                        ? 'border-green-500/40 bg-green-500/15 text-green-400'
-                        : 'border-[var(--border)] text-[var(--text-2)] hover:border-green-500/30'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              {filteredActionEngineEntries.slice(0, 8).map(({ project, action }) => (
-                <button
-                  key={project.id}
-                  onClick={() => router.push(`/demo-dashboard/projet/${project.id}`)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="text-lg shrink-0">{ACTION_TYPE_EMOJI[action.actionType]}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--text-1)]">{action.title}</p>
-                      <p className="truncate text-xs text-[var(--text-2)]">
-                        {[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-[var(--text-2)]">{action.estimatedDuration}</span>
-                </button>
-              ))}
-              {filteredActionEngineEntries.length === 0 && (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
-                  <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-              <p className="font-bold text-[var(--text-1)]">Santé commerciale</p>
-              <p className="mt-2 flex items-center gap-2 text-lg font-bold" style={{ color: businessHealth.color }}>
-                <span>{businessHealth.emoji}</span> {businessHealth.label}
-              </p>
-              {averageMaturityScore !== null && (
-                <p className="mt-1 text-xs text-[var(--text-2)]">
-                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} action(s) critique(s) · {highActionsCount} action(s) prioritaire(s)
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-              <p className="font-bold text-[var(--text-1)]">Aujourd&apos;hui</p>
-              {todayActionEntries.length > 0 ? (
-                <>
-                  <ul className="mt-2 space-y-1 text-sm text-[var(--text-2)]">
-                    {todayActionsByType.send_quote > 0 && <li>Envoyer {todayActionsByType.send_quote} devis</li>}
-                    {todayActionsByType.follow_up_quote > 0 && <li>Relancer {todayActionsByType.follow_up_quote} client(s)</li>}
-                    {todayActionsByType.schedule_appointment > 0 && <li>Programmer {todayActionsByType.schedule_appointment} rendez-vous</li>}
-                  </ul>
-                  <p className="mt-2 text-xs text-[var(--text-3)]">Durée totale estimée : {todayEstimatedMinutes} minutes</p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-[var(--text-2)]">Rien d&apos;urgent identifié pour aujourd&apos;hui.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-3">
-            <p className="mb-3 font-bold text-[var(--text-1)]">Compteurs</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-              {(Object.keys(ACTION_TYPE_COUNTER_LABEL) as ActionType[])
-                .filter((type) => type !== 'monitor')
-                .map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setActionEngineFilter(actionEngineFilter === type ? null : type)}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left hover:border-green-500/25"
-                  >
-                    <p className="text-xs text-[var(--text-2)]">{ACTION_TYPE_COUNTER_LABEL[type]}</p>
-                    <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{actionEngineCounters[type]}</p>
-                  </button>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showTasksOverview && !loading && (
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
+            {showTasksOverview ? (
+            <>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[var(--text-1)]">À traiter maintenant</p>
+                <p className="font-bold text-[var(--text-1)]">Mes tâches à faire</p>
                 <p className="text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
               </div>
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
@@ -3588,9 +3695,27 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 Voir toutes les actions
               </button>
             )}
+            </>
+            ) : (
+              actionsATraiterCard
+            )}
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-[var(--text-1)]">Santé commerciale</p>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: businessHealth.color }} />
+              </div>
+              <p className="mt-1 text-sm font-semibold" style={{ color: businessHealth.color }}>{businessHealth.label}</p>
+              {averageMaturityScore !== null && (
+                <p className="mt-1 text-xs text-[var(--text-2)]">
+                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} critique(s) · {highActionsCount} action(s) à traiter
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="mb-4 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <div>
@@ -3673,9 +3798,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 Voir tous les dossiers en risque
               </button>
             )}
+            </div>
           </div>
         </div>
       )}
+
+      {showBusinessOverviewDesktop && !loading && guidelineCommercialeSection}
 
       {/* Alertes */}
       {showBusinessOverviewDesktop && !loading && (overdueCount > 0 || todayCount > 0) && (

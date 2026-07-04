@@ -105,6 +105,13 @@ export interface MobileDashboardViewProps {
     completenessScore?: number;
     source?: string;
   }) => Promise<{ success: boolean; projectId?: string; recordId?: string; error?: string; project?: { id?: string } }> | { success: boolean; projectId?: string; recordId?: string; error?: string; project?: { id?: string } };
+  /**
+   * Override du bouton de notifications (bulle mobile). Par défaut, on
+   * réutilise le vrai NotificationBell branché sur l'API (`/api/notifications`).
+   * La démo injecte ici sa propre bulle branchée sur DemoModeContext, pour
+   * ne jamais déclencher d'appel réseau réel depuis un contexte non connecté.
+   */
+  notificationBellSlot?: React.ReactNode;
 }
 
 const NEED_TYPE_OPTIONS = ['Dépannage', 'Installation', 'Rénovation', 'Entretien', 'Devis / étude', 'Autre'];
@@ -299,6 +306,7 @@ export default function MobileDashboardView({
   onSubscriptionClick,
   onSupportClick,
   createProject,
+  notificationBellSlot,
 }: MobileDashboardViewProps) {
   const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -402,7 +410,7 @@ export default function MobileDashboardView({
           <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
             {firstName ? `Bonjour ${firstName} 👋` : 'Bonjour 👋'}
           </h1>
-          <NotificationBell variant="mobile" />
+          {notificationBellSlot ?? <NotificationBell variant="mobile" />}
         </div>
         <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>
           Voici vos priorités aujourd&apos;hui.

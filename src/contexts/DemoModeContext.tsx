@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { DEMO_ARTISAN, DEMO_CLIENT_EVENTS, DEMO_EVENTS, DEMO_PROJECTS, type DemoClientEvent, type DemoEvent, type DemoProject } from '@/src/lib/demo-data';
+import { DEMO_ARTISAN, DEMO_CLIENT_EVENTS, DEMO_EVENTS, DEMO_NOTIFICATIONS, DEMO_PROJECTS, type DemoClientEvent, type DemoEvent, type DemoNotification, type DemoProject } from '@/src/lib/demo-data';
 
 type DemoArtisan = typeof DEMO_ARTISAN;
 
@@ -40,6 +40,11 @@ interface DemoModeContextValue {
   updateArtisanConfig: (fields: Partial<DemoArtisan>) => void;
   clientEvents: Record<string, DemoClientEvent[]>;
   addClientEvent: (projectId: string, event: Omit<DemoClientEvent, 'id' | 'createdAt'> & { createdAt?: string }) => void;
+  notifications: DemoNotification[];
+  unreadNotificationCount: number;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  addNotification: (notification: Omit<DemoNotification, 'id' | 'createdAt' | 'status'>) => void;
 }
 
 const DemoModeContext = createContext<DemoModeContextValue | null>(null);
@@ -50,6 +55,7 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
   const [artisan, setArtisan] = useState<DemoArtisan>(DEMO_ARTISAN);
   const [theme, setThemeState] = useState<'dark' | 'light'>(DEMO_ARTISAN.theme);
   const [clientEvents, setClientEvents] = useState<Record<string, DemoClientEvent[]>>(DEMO_CLIENT_EVENTS);
+  const [notifications, setNotifications] = useState<DemoNotification[]>(DEMO_NOTIFICATIONS);
 
   const addClientEvent = useCallback((projectId: string, event: Omit<DemoClientEvent, 'id' | 'createdAt'> & { createdAt?: string }) => {
     setClientEvents((current) => {
@@ -160,6 +166,31 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
     setEvents((current) => current.filter((event) => event.id !== id));
   }, []);
 
+  const markNotificationRead = useCallback((id: string) => {
+    setNotifications((current) => current.map((n) => (n.id === id ? { ...n, status: 'read' as const } : n)));
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications((current) => current.map((n) => ({ ...n, status: 'read' as const })));
+  }, []);
+
+  const addNotification = useCallback((notification: Omit<DemoNotification, 'id' | 'createdAt' | 'status'>) => {
+    setNotifications((current) => [
+      {
+        ...notification,
+        id: `demo_notif_${Date.now()}`,
+        status: 'unread' as const,
+        createdAt: new Date().toISOString(),
+      },
+      ...current,
+    ]);
+  }, []);
+
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter((n) => n.status === 'unread').length,
+    [notifications],
+  );
+
   const updateArtisanConfig = useCallback((fields: Partial<DemoArtisan>) => {
     setArtisan((current) => ({ ...current, ...fields }));
     if (fields.theme === 'dark' || fields.theme === 'light') {
@@ -186,8 +217,13 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       updateArtisanConfig,
       clientEvents,
       addClientEvent,
+      notifications,
+      unreadNotificationCount,
+      markNotificationRead,
+      markAllNotificationsRead,
+      addNotification,
     }),
-    [artisan, clientEvents, addClientEvent, createEvent, createProject, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus],
+    [artisan, clientEvents, addClientEvent, createEvent, createProject, deleteEvent, events, projects, setTheme, theme, updateArtisanConfig, updateEvent, updateProjectCallback, updateProjectFields, updateProjectNote, updateProjectStatus, notifications, unreadNotificationCount, markNotificationRead, markAllNotificationsRead, addNotification],
   );
 
   return <DemoModeContext.Provider value={value}>{children}</DemoModeContext.Provider>;

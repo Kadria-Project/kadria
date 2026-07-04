@@ -1332,6 +1332,102 @@ export function buildDemoDevisList(project: DemoProject | null | undefined): Dem
   ];
 }
 
+// Notifications artisan mockees, alignees sur la forme reelle
+// (ArtisanNotification, src/lib/notifications.ts) mais tenues localement :
+// jamais d'appel a /api/notifications depuis la demo (cf. DemoNotificationBell).
+export interface DemoNotification {
+  id: string;
+  projectId: string | null;
+  type:
+    | 'new_project'
+    | 'client_message'
+    | 'client_info_updated'
+    | 'quote_sent'
+    | 'quote_accepted'
+    | 'quote_declined'
+    | 'deposit_requested'
+    | 'deposit_paid'
+    | 'followup_due'
+    | 'appointment_due'
+    | 'status_changed'
+    | 'system';
+  title: string;
+  message: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'unread' | 'read';
+  actionUrl: string | null;
+  createdAt: string;
+}
+
+export const DEMO_NOTIFICATIONS: DemoNotification[] = [
+  {
+    id: 'demo_notif_001',
+    projectId: 'demo_003',
+    type: 'client_message',
+    title: 'Nouveau message client',
+    message: 'Camille Durand : "Le montant me semble correct, je regarde avec mon conjoint."',
+    priority: 'high',
+    status: 'unread',
+    actionUrl: '/demo-dashboard/projet/demo_003',
+    createdAt: '2026-06-19T09:40:00.000Z',
+  },
+  {
+    id: 'demo_notif_002',
+    projectId: 'demo_012',
+    type: 'deposit_paid',
+    title: 'Acompte encaisse',
+    message: 'L\'acompte du dossier de Marc Petit a ete regle en ligne.',
+    priority: 'high',
+    status: 'unread',
+    actionUrl: '/demo-dashboard/projet/demo_012',
+    createdAt: '2026-06-27T11:00:00.000Z',
+  },
+  {
+    id: 'demo_notif_003',
+    projectId: 'demo_004',
+    type: 'quote_accepted',
+    title: 'Devis accepte',
+    message: 'Le devis a ete accepte par le client. Pensez a demander l\'acompte.',
+    priority: 'medium',
+    status: 'unread',
+    actionUrl: '/demo-dashboard/projet/demo_004',
+    createdAt: '2026-06-17T09:30:00.000Z',
+  },
+  {
+    id: 'demo_notif_004',
+    projectId: 'demo_010',
+    type: 'client_info_updated',
+    title: 'Informations completees',
+    message: 'Le client a complete des informations et ajoute des photos sur son dossier.',
+    priority: 'medium',
+    status: 'read',
+    actionUrl: '/demo-dashboard/projet/demo_010',
+    createdAt: '2026-06-27T18:05:00.000Z',
+  },
+  {
+    id: 'demo_notif_005',
+    projectId: 'demo_005',
+    type: 'quote_declined',
+    title: 'Devis refuse',
+    message: 'Le client a decline le devis : budget reporte, autre prestataire choisi.',
+    priority: 'medium',
+    status: 'read',
+    actionUrl: '/demo-dashboard/projet/demo_005',
+    createdAt: '2026-06-14T09:00:00.000Z',
+  },
+  {
+    id: 'demo_notif_006',
+    projectId: null,
+    type: 'new_project',
+    title: 'Nouveau dossier recu',
+    message: 'Une nouvelle demande est arrivee via le widget Kadria.',
+    priority: 'low',
+    status: 'read',
+    actionUrl: null,
+    createdAt: '2026-06-13T08:00:00.000Z',
+  },
+];
+
 export function computeDemoKPIs(projects: DemoProject[]) {
   const parseBudget = (budget: string) => {
     const matches = budget.match(/\d+[\s\d]*/g);
