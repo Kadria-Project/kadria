@@ -99,7 +99,7 @@ function getDemoRequestIdentity(request: Partial<DemoAccessRequest> & Record<str
 export default function AdminDemoAccessPage() {
   const [requests, setRequests] = useState<DemoAccessRequest[]>([]);
   const [selectedId, setSelectedId] = useState('');
-  const [filter, setFilter] = useState<DemoAccessFilter>('all');
+  const [filter, setFilter] = useState<DemoAccessFilter>('pending');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -498,6 +498,24 @@ export default function AdminDemoAccessPage() {
                 <AdminBadge label={selectedRequest.objective || 'Objectif non renseigne'} tone="info" variant="feature" />
               </div>
 
+              {selectedRequest.effective_status === 'approved' ? (
+                <div
+                  style={{
+                    marginBottom: '16px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(74,222,128,0.22)',
+                    background: 'rgba(74,222,128,0.08)',
+                    padding: '12px 14px',
+                    fontSize: '13px',
+                    color: '#dcfce7',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Cette demande est deja approuvee. Elle ne fait plus partie des demandes a traiter et vous pouvez
+                  regenerer ou recopier son lien d&apos;acces si besoin.
+                </div>
+              ) : null}
+
               <div style={{ display: 'grid', gap: '12px', marginBottom: '16px' }}>
                 <DetailRow label="Telephone" value={selectedRequest.phone} />
                 <DetailRow label="Besoin principal" value={selectedRequest.main_need} />
@@ -546,10 +564,10 @@ export default function AdminDemoAccessPage() {
 
               <div style={{ display: 'grid', gap: '10px', marginBottom: '16px' }}>
                 <AdminButton onClick={() => handleApprove(false)} disabled={submitting}>
-                  {selectedRequest.effective_status === 'approved' ? 'Regenerer le lien' : 'Approuver'}
+                  {selectedRequest.effective_status === 'approved' ? 'Regenerer le lien d acces' : 'Approuver'}
                 </AdminButton>
                 <AdminButton variant="secondary" onClick={() => handleApprove(true)} disabled={submitting}>
-                  Approuver + envoyer email
+                  {selectedRequest.effective_status === 'approved' ? 'Renvoyer email d acces' : 'Approuver + envoyer email'}
                 </AdminButton>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} className="admin-demo-access-actions">
                   <AdminButton variant="danger" onClick={handleRevoke} disabled={submitting}>
