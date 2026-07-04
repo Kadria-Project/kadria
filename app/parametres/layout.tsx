@@ -1,5 +1,14 @@
+import type { Metadata } from 'next';
 import KadriaAssistantGlobalMount from '@/src/components/kadria-assistant/KadriaAssistantGlobalMount'
 import { KadriaPageContextProvider } from '@/src/components/kadria-assistant/KadriaPageContext'
+
+export const metadata: Metadata = {
+  title: 'Parametres',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function ParametresLayout({
   children,
