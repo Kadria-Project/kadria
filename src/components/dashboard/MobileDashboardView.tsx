@@ -39,6 +39,7 @@ import {
   type DashboardMode,
 } from '@/src/components/ArtisanDashboard';
 import type { ProgressRecommendations } from '@/src/lib/progression-engine';
+import AddressAutocomplete, { type AddressSelection } from '@/components/AddressAutocomplete';
 
 type Router = ReturnType<typeof useRouter>;
 
@@ -88,8 +89,57 @@ export interface MobileDashboardViewProps {
     clientPhone: string;
     clientEmail: string;
     siteAddress: string;
-  }) => Promise<{ success: boolean; projectId?: string; error?: string; project?: { id?: string } }> | { success: boolean; projectId?: string; error?: string; project?: { id?: string } };
+    city?: string;
+    postalCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    addressLabel?: string;
+    addressSource?: string;
+    trade?: string;
+    projectType?: string;
+    aiSummary?: string;
+    budget?: string;
+    desiredTimeline?: string;
+    maturity?: string;
+    completenessScore?: number;
+    source?: string;
+  }) => Promise<{ success: boolean; projectId?: string; recordId?: string; error?: string; project?: { id?: string } }> | { success: boolean; projectId?: string; recordId?: string; error?: string; project?: { id?: string } };
 }
+
+const NEED_TYPE_OPTIONS = ['Dépannage', 'Installation', 'Rénovation', 'Entretien', 'Devis / étude', 'Autre'];
+
+const URGENCY_OPTIONS: { label: string; maturity: string }[] = [
+  { label: 'Dès que possible', maturity: 'Prêt à démarrer, urgent' },
+  { label: 'Cette semaine', maturity: 'Prêt à démarrer sous 7 jours' },
+  { label: 'Ce mois-ci', maturity: 'En réflexion, démarrage ce mois-ci' },
+  { label: 'Pas urgent', maturity: 'Se renseigne, pas urgent' },
+];
+
+const BUDGET_OPTIONS = ['Moins de 500 €', '500 à 1 500 €', '1 500 à 5 000 €', 'Plus de 5 000 €', 'À définir'];
+
+const TIMELINE_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Dès que possible', value: 'Dès que possible, urgent' },
+  { label: 'Sous 7 jours', value: 'Sous 7 jours' },
+  { label: 'Sous 30 jours', value: 'Sous 30 jours' },
+  { label: 'Flexible', value: 'Flexible' },
+];
+
+const emptyCreateForm = {
+  clientName: '',
+  clientPhone: '',
+  clientEmail: '',
+  siteAddress: '',
+  city: '',
+  postalCode: '',
+  latitude: null as number | null,
+  longitude: null as number | null,
+  addressLabel: '',
+  needType: '',
+  description: '',
+  urgency: '',
+  budget: '',
+  timeline: '',
+};
 
 function clientLabel(p: Project): string {
   return [(p as any).clientFirstName, (p as any).clientName].filter(Boolean).join(' ').trim() || (p as any).projectType || 'Dossier';
@@ -202,8 +252,29 @@ const sectionTitle: React.CSSProperties = {
   marginBottom: '10px',
 };
 
+const quickFormSectionTitle: React.CSSProperties = {
+  fontSize: '12px',
+  fontWeight: 700,
+  color: 'var(--text-2)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  marginBottom: '8px',
+};
+
+const quickFormInputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--bg-hover)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-1)',
+  borderRadius: '8px',
+  padding: '10px 12px',
+  fontSize: '16px',
+  boxSizing: 'border-box',
+};
+
 export default function MobileDashboardView({
   firstName,
+  artisanTrades,
   priorityProjects,
   topOpportunities,
   hotLeads,
@@ -232,7 +303,7 @@ export default function MobileDashboardView({
   const [moreOpen, setMoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ clientName: '', clientPhone: '', clientEmail: '', siteAddress: '' });
+  const [form, setForm] = useState(emptyCreateForm);
 
   const openProject = (projectId: string) => router.push(getProjectHref(projectId));
 
@@ -250,19 +321,67 @@ export default function MobileDashboardView({
   const wonCard = kpiCards.find((k) => k.label === 'Chantiers gagnés');
 
   const submitCreate = async () => {
-    if (!form.clientName.trim() || !form.clientPhone.trim() || !form.clientEmail.trim() || !form.siteAddress.trim()) {
-      showToast('Merci de remplir tous les champs', true);
+    // Le nom du client et l'adresse du chantier sont toujours indispensables.
+    // Téléphone et email restent individuellement optionnels (prospect capté
+    // sur place / de bouche à oreille) mais au moins un des deux est requis
+    // pour garder le dossier exploitable — cf. app/api/projects/route.ts.
+    if (!form.clientName.trim() || !form.siteAddress.trim()) {
+      showToast('Merci de renseigner au moins le nom du client et l\'adresse du chantier', true);
+      return;
+    }
+    if (!form.clientPhone.trim() && !form.clientEmail.trim()) {
+      showToast('Merci de renseigner au moins un téléphone ou un email', true);
       return;
     }
     setCreating(true);
     try {
-      const data = await createProject(form);
+      // Complétude simple, déterministe, côté client : sert de signal
+      // supplémentaire pour completeness_score, sans remplacer le scoring
+      // commercial (src/lib/project-scoring.ts), qui reste inchangé.
+      const fields = [
+        form.clientPhone,
+        form.clientEmail,
+        form.city || form.postalCode,
+        form.needType,
+        form.description,
+        form.urgency,
+        form.budget,
+        form.timeline,
+      ];
+      const filledCount = fields.filter((v) => v && v.trim().length > 0).length;
+      const completenessScore = Math.round((filledCount / fields.length) * 100);
+
+      const urgencyOption = URGENCY_OPTIONS.find((o) => o.label === form.urgency);
+      const timelineOption = TIMELINE_OPTIONS.find((o) => o.label === form.timeline);
+
+      const payload = {
+        clientName: form.clientName.trim(),
+        clientPhone: form.clientPhone.trim(),
+        clientEmail: form.clientEmail.trim(),
+        siteAddress: form.siteAddress.trim(),
+        city: form.city.trim(),
+        postalCode: form.postalCode.trim(),
+        latitude: form.latitude,
+        longitude: form.longitude,
+        addressLabel: form.addressLabel || form.siteAddress.trim(),
+        addressSource: form.latitude !== null && form.longitude !== null ? 'api_adresse' : 'manual',
+        trade: artisanTrades[0] || '',
+        projectType: form.needType,
+        aiSummary: form.description.trim(),
+        budget: form.budget,
+        desiredTimeline: timelineOption?.value || form.timeline,
+        maturity: urgencyOption?.maturity || form.urgency,
+        completenessScore,
+        source: 'mobile-quick-create',
+      };
+
+      const data = await createProject(payload);
       if (data?.success) {
         showToast('Dossier créé');
         setCreateOpen(false);
         setFabOpen(false);
-        setForm({ clientName: '', clientPhone: '', clientEmail: '', siteAddress: '' });
-        const createdProjectId = data.projectId || data.project?.id;
+        setForm(emptyCreateForm);
+        const createdProjectId = data.projectId || data.recordId || data.project?.id;
         if (createdProjectId) router.push(getProjectHref(createdProjectId));
       } else {
         showToast(data?.error || 'Erreur lors de la création', true);
@@ -728,47 +847,170 @@ export default function MobileDashboardView({
 
       {createOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ ...cardBase, width: '100%', maxWidth: '380px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Nouveau dossier</span>
-              <button type="button" onClick={() => setCreateOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer' }}>
-                <X style={{ width: 18, height: 18 }} />
-              </button>
+          <div
+            style={{
+              ...cardBase,
+              width: '100%',
+              maxWidth: '380px',
+              maxHeight: '86dvh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Nouveau dossier</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-2)', marginTop: '2px' }}>
+                    Ajoutez les informations essentielles du client
+                  </div>
+                </div>
+                <button type="button" onClick={() => setCreateOpen(false)} aria-label="Fermer" style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer', padding: '2px' }}>
+                  <X style={{ width: 18, height: 18 }} />
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {([
-                { key: 'clientName', placeholder: 'Nom du client' },
-                { key: 'clientPhone', placeholder: 'Téléphone' },
-                { key: 'clientEmail', placeholder: 'Email' },
-                { key: 'siteAddress', placeholder: 'Adresse du chantier' },
-              ] as const).map((field) => (
-                <input
-                  key={field.key}
-                  value={form[field.key]}
-                  onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
-                  style={{
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-1)',
-                    borderRadius: '8px',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                  }}
+
+            <div style={{ overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* CLIENT */}
+              <div>
+                <div style={quickFormSectionTitle}>Client</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input
+                    value={form.clientName}
+                    onChange={(e) => setForm((f) => ({ ...f, clientName: e.target.value }))}
+                    placeholder="Nom du client"
+                    style={quickFormInputStyle}
+                  />
+                  <input
+                    value={form.clientPhone}
+                    onChange={(e) => setForm((f) => ({ ...f, clientPhone: e.target.value }))}
+                    placeholder="Téléphone"
+                    type="tel"
+                    inputMode="tel"
+                    style={quickFormInputStyle}
+                  />
+                  <input
+                    value={form.clientEmail}
+                    onChange={(e) => setForm((f) => ({ ...f, clientEmail: e.target.value }))}
+                    placeholder="Email"
+                    type="email"
+                    inputMode="email"
+                    style={quickFormInputStyle}
+                  />
+                </div>
+              </div>
+
+              {/* CHANTIER */}
+              <div>
+                <div style={quickFormSectionTitle}>Chantier</div>
+                <AddressAutocomplete
+                  value={form.siteAddress}
+                  onChange={(value) => setForm((f) => ({ ...f, siteAddress: value, addressLabel: '', latitude: null, longitude: null }))}
+                  onSelect={(selection: AddressSelection) =>
+                    setForm((f) => ({
+                      ...f,
+                      siteAddress: selection.address,
+                      addressLabel: selection.address,
+                      city: selection.city,
+                      postalCode: selection.postalCode,
+                      latitude: selection.latitude,
+                      longitude: selection.longitude,
+                    }))
+                  }
+                  placeholder="Adresse du chantier"
+                  style={quickFormInputStyle}
                 />
-              ))}
+                <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '4px' }}>
+                  Sélectionnez une adresse dans la liste, ou saisissez-la manuellement si besoin.
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <input
+                    value={form.city}
+                    onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                    placeholder="Ville"
+                    style={{ ...quickFormInputStyle, flex: 2 }}
+                  />
+                  <input
+                    value={form.postalCode}
+                    onChange={(e) => setForm((f) => ({ ...f, postalCode: e.target.value }))}
+                    placeholder="Code postal"
+                    inputMode="numeric"
+                    style={{ ...quickFormInputStyle, flex: 1 }}
+                  />
+                </div>
+              </div>
+
+              {/* BESOIN */}
+              <div>
+                <div style={quickFormSectionTitle}>Besoin</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <select
+                    value={form.needType}
+                    onChange={(e) => setForm((f) => ({ ...f, needType: e.target.value }))}
+                    style={quickFormInputStyle}
+                  >
+                    <option value="">Type de besoin</option>
+                    {NEED_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Ex : fuite sous évier, tableau électrique à remplacer, terrasse à rénover…"
+                    rows={3}
+                    style={{ ...quickFormInputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                  <select
+                    value={form.urgency}
+                    onChange={(e) => setForm((f) => ({ ...f, urgency: e.target.value }))}
+                    style={quickFormInputStyle}
+                  >
+                    <option value="">Urgence</option>
+                    {URGENCY_OPTIONS.map((opt) => (
+                      <option key={opt.label} value={opt.label}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={form.budget}
+                    onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
+                    style={quickFormInputStyle}
+                  >
+                    <option value="">Budget indicatif</option>
+                    {BUDGET_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={form.timeline}
+                    onChange={(e) => setForm((f) => ({ ...f, timeline: e.target.value }))}
+                    style={quickFormInputStyle}
+                  >
+                    <option value="">Délai souhaité</option>
+                    {TIMELINE_OPTIONS.map((opt) => (
+                      <option key={opt.label} value={opt.label}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
               <button
                 type="button"
                 disabled={creating}
                 onClick={submitCreate}
                 style={{
-                  marginTop: '4px',
+                  width: '100%',
                   background: 'var(--accent)',
                   border: 'none',
                   color: '#052e16',
                   fontWeight: 700,
                   borderRadius: '10px',
-                  padding: '10px 0',
+                  padding: '12px 0',
                   fontSize: '14px',
                   cursor: 'pointer',
                   opacity: creating ? 0.6 : 1,

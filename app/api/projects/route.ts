@@ -125,8 +125,15 @@ export async function POST(request: Request) {
       });
     }
 
-    const artisanId =
-      typeof input.artisanId === 'string' && input.artisanId.trim()
+    // Si une session artisan authentifiee existe (creation depuis le dashboard,
+    // ex. "Nouveau dossier" mobile), l'artisan_id vient TOUJOURS de la session
+    // et ne peut jamais etre force par le front-end — evite qu'un artisan cree
+    // un dossier pour un autre. Sans session (ex. widget public /projet), on
+    // conserve le comportement existant base sur l'artisanId transmis.
+    const session = await getSession();
+    const artisanId = session?.artisanId
+      ? session.artisanId
+      : typeof input.artisanId === 'string' && input.artisanId.trim()
         ? input.artisanId.trim()
         : FALLBACK_ARTISAN_ID;
 
@@ -137,9 +144,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const requiredStrings = ['clientName', 'clientPhone', 'clientEmail', 'siteAddress'];
+    // clientName et siteAddress restent toujours obligatoires. clientPhone et
+    // clientEmail restent individuellement optionnels (ex. prospect capté
+    // rapidement sans email) mais au moins un moyen de contact est requis
+    // pour garder le dossier exploitable.
+    const requiredStrings = ['clientName', 'siteAddress'];
     const missingField = requiredStrings.find((field) => typeof input[field] !== 'string' || !input[field].trim());
-    if (missingField) {
+    const hasPhone = typeof input.clientPhone === 'string' && input.clientPhone.trim().length > 0;
+    const hasEmail = typeof input.clientEmail === 'string' && input.clientEmail.trim().length > 0;
+    if (missingField || (!hasPhone && !hasEmail)) {
       return NextResponse.json(
         { success: false, error: 'Payload invalide' },
         { status: 400 },

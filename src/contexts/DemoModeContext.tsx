@@ -17,6 +17,18 @@ interface DemoModeContextValue {
     clientPhone: string;
     clientEmail: string;
     siteAddress: string;
+    city?: string;
+    postalCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    trade?: string;
+    projectType?: string;
+    aiSummary?: string;
+    budget?: string;
+    desiredTimeline?: string;
+    maturity?: string;
+    completenessScore?: number;
+    source?: string;
   }) => DemoProject;
   updateProjectStatus: (id: string, status: string) => void;
   updateProjectFields: (id: string, fields: Partial<DemoProject>) => void;
@@ -68,6 +80,18 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
     clientPhone: string;
     clientEmail: string;
     siteAddress: string;
+    city?: string;
+    postalCode?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    trade?: string;
+    projectType?: string;
+    aiSummary?: string;
+    budget?: string;
+    desiredTimeline?: string;
+    maturity?: string;
+    completenessScore?: number;
+    source?: string;
   }) => {
     const now = new Date().toISOString();
     const trimmedName = projectInput.clientName.trim();
@@ -82,17 +106,17 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       clientPhone: projectInput.clientPhone.trim(),
       clientEmail: projectInput.clientEmail.trim(),
       siteAddress: projectInput.siteAddress.trim(),
-      city: '',
-      postalCode: '',
-      trade: artisan.primaryTrade || 'Projet',
-      projectType: 'Projet a qualifier',
-      budget: '',
-      desiredTimeline: '',
-      maturity: 'A qualifier',
-      aiSummary: 'Nouveau dossier cree en mode demo. Aucune donnee reelle n a ete enregistree.',
-      completenessScore: 42,
+      city: projectInput.city || '',
+      postalCode: projectInput.postalCode || '',
+      trade: projectInput.trade || artisan.primaryTrade || 'Projet',
+      projectType: projectInput.projectType || 'Projet a qualifier',
+      budget: projectInput.budget || '',
+      desiredTimeline: projectInput.desiredTimeline || '',
+      maturity: projectInput.maturity || 'A qualifier',
+      aiSummary: projectInput.aiSummary || 'Nouveau dossier cree en mode demo. Aucune donnee reelle n a ete enregistree.',
+      completenessScore: projectInput.completenessScore ?? 42,
       status: 'Nouveau',
-      source: 'demo-mobile',
+      source: projectInput.source || 'demo-mobile',
       devisAmount: null,
       photos: [],
       createdAt: now,
