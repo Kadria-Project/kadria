@@ -17,6 +17,7 @@ interface AdminMarginsResponse {
     costPerSmsEur: number;
     costPerEmailEur: number;
     costPerProjectAiEur: number;
+    costPerAssistantMessageAiEur: number;
     fixedCostPerArtisanEur: number;
   };
   kpis: {
@@ -32,7 +33,9 @@ interface AdminMarginsResponse {
     voice: number;
     sms: number;
     email: number;
-    openai: number;
+    openaiProjects: number;
+    openaiAssistant: number;
+    openaiTotal: number;
     other: number;
     total: number;
   };
@@ -52,10 +55,14 @@ interface AdminMarginsResponse {
     smsTracked: boolean;
     emailsSentThisMonth: number;
     emailsTracked: boolean;
+    assistantMessagesThisMonth: number;
+    assistantMessagesTracked: boolean;
     costVoiceEstimated: number;
     costSmsEstimated: number;
     costEmailEstimated: number;
-    costOpenAiEstimated: number;
+    costOpenAiProjectsEstimated: number;
+    costOpenAiAssistantEstimated: number;
+    costOpenAiTotalEstimated: number;
     costOtherEstimated: number;
     costFixedEstimated: number;
     totalCostEstimated: number;
@@ -85,12 +92,26 @@ const TRACKING_TONES: Record<'tracked' | 'estimated' | 'not_tracked', AdminBadge
 };
 
 function formatEuro(value: number) {
-  return `${value.toLocaleString('fr-FR', { minimumFractionDigits: value % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })} €`;
+  if (value > 0 && value < 0.01) return '< 0,01 €';
+  return `${value.toLocaleString('fr-FR', {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })} €`;
+}
+
+function formatEuroExact(value: number, fractionDigits = 3) {
+  return `${value.toLocaleString('fr-FR', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })} €`;
 }
 
 function formatPercent(value: number | null) {
   if (value === null || !Number.isFinite(value)) return '—';
-  return `${(value * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+  return `${(value * 100).toLocaleString('fr-FR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} %`;
 }
 
 function formatTrackedCount(value: number, tracked: boolean) {
@@ -124,9 +145,10 @@ export default function AdminMarginsPage() {
   return (
     <div style={{ display: 'grid', gap: '24px' }}>
       <div style={{ marginBottom: '4px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Coûts & marge</h1>
+        <h1 style={{ fontSize: '28px', fontWeight: 800, margin: 0 }}>Couts & marge</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: '6px 0 0', maxWidth: '760px', lineHeight: 1.6 }}>
-          Cockpit SaaS du mois courant pour comparer le revenu mensuel estimé, les coûts d’usage suivis ou estimés, et la marge brute par artisan.
+          Cockpit SaaS du mois courant pour comparer le revenu mensuel estime, les couts d&apos;usage suivis ou estimes,
+          et la marge brute par artisan.
         </p>
       </div>
 
@@ -142,22 +164,22 @@ export default function AdminMarginsPage() {
       {data && (
         <>
           <div className="admin-margins-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-            <AdminCard title="Revenu mensuel estimé" subtitle={`Mois ${data.periodMonth}`}>
+            <AdminCard title="Revenu mensuel estime" subtitle={`Mois ${data.periodMonth}`}>
               <p style={{ fontSize: '30px', fontWeight: 900, color: 'var(--accent)', margin: 0, letterSpacing: '-0.03em' }}>
                 {formatEuro(data.kpis.revenueMonthlyEstimated)}
               </p>
             </AdminCard>
-            <AdminCard title="Coûts d’usage estimés" subtitle="Vocal, SMS, email, assistant, autres">
+            <AdminCard title="Couts d'usage estimes" subtitle="Vocal, SMS, email, OpenAI, autres">
               <p style={{ fontSize: '30px', fontWeight: 900, margin: 0, letterSpacing: '-0.03em' }}>
                 {formatEuro(data.kpis.costsUsageEstimated)}
               </p>
             </AdminCard>
-            <AdminCard title="Marge brute estimée" subtitle="Revenu estimé - coûts estimés">
+            <AdminCard title="Marge brute estimee" subtitle="Revenu estime - couts estimes">
               <p style={{ fontSize: '30px', fontWeight: 900, color: data.kpis.grossMarginEstimated >= 0 ? '#86efac' : '#fca5a5', margin: 0, letterSpacing: '-0.03em' }}>
                 {formatEuro(data.kpis.grossMarginEstimated)}
               </p>
             </AdminCard>
-            <AdminCard title="Taux de marge brute" subtitle={`${highRiskCount} artisan${highRiskCount > 1 ? 's' : ''} à risque élevé`}>
+            <AdminCard title="Taux de marge brute" subtitle={`${highRiskCount} artisan${highRiskCount > 1 ? 's' : ''} a risque eleve`}>
               <p style={{ fontSize: '30px', fontWeight: 900, margin: 0, letterSpacing: '-0.03em' }}>
                 {formatPercent(data.kpis.grossMarginRate)}
               </p>
@@ -165,29 +187,35 @@ export default function AdminMarginsPage() {
             <AdminCard title="Artisans actifs" subtitle="Actifs + essais en cours">
               <p style={{ fontSize: '26px', fontWeight: 800, margin: 0 }}>{data.kpis.activeArtisans}</p>
             </AdminCard>
-            <AdminCard title="Coût moyen par artisan" subtitle="Réparti sur les comptes actifs">
+            <AdminCard title="Cout moyen par artisan" subtitle="Reparti sur les comptes actifs">
               <p style={{ fontSize: '26px', fontWeight: 800, margin: 0 }}>{formatEuro(data.kpis.averageCostPerArtisan)}</p>
             </AdminCard>
-            <AdminCard title="Marge moyenne par artisan" subtitle="Répartie sur les comptes actifs">
+            <AdminCard title="Marge moyenne par artisan" subtitle="Repartie sur les comptes actifs">
               <p style={{ fontSize: '26px', fontWeight: 800, margin: 0 }}>{formatEuro(data.kpis.averageMarginPerArtisan)}</p>
             </AdminCard>
-            <AdminCard title="Couverture des données" subtitle="Niveau de suivi par poste">
+            <AdminCard title="Couverture des donnees" subtitle="Niveau de suivi par poste">
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {Object.entries(data.tracked).map(([key, value]) => (
-                  <AdminBadge key={key} label={`${key} · ${value === 'tracked' ? 'suivi' : value === 'estimated' ? 'estimé' : 'non suivi'}`} tone={TRACKING_TONES[value]} />
+                  <AdminBadge
+                    key={key}
+                    label={`${key} · ${value === 'tracked' ? 'suivi' : value === 'estimated' ? 'estime' : 'non suivi'}`}
+                    tone={TRACKING_TONES[value]}
+                  />
                 ))}
               </div>
             </AdminCard>
           </div>
 
           <div className="admin-margins-panels" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '16px' }}>
-            <AdminCard title="Ventilation globale des coûts" subtitle="Montants estimés pour le mois courant">
+            <AdminCard title="Ventilation globale des couts" subtitle="Montants estimes pour le mois courant">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
                 {[
                   ['Vocal', data.breakdown.voice],
                   ['SMS', data.breakdown.sms],
                   ['Email', data.breakdown.email],
-                  ['OpenAI / assistant', data.breakdown.openai],
+                  ['OpenAI projets', data.breakdown.openaiProjects],
+                  ['OpenAI assistant', data.breakdown.openaiAssistant],
+                  ['Total OpenAI', data.breakdown.openaiTotal],
                   ['Autres / estimation', data.breakdown.other],
                   ['Total', data.breakdown.total],
                 ].map(([label, amount]) => (
@@ -199,21 +227,22 @@ export default function AdminMarginsPage() {
               </div>
             </AdminCard>
 
-            <AdminCard title="Hypothèses codées" subtitle="Point unique à ajuster quand les coûts réels évoluent">
+            <AdminCard title="Hypotheses codees" subtitle="Point unique a ajuster quand les couts reels evoluent">
               <div style={{ display: 'grid', gap: '10px', fontSize: '13px', color: 'var(--text-2)' }}>
                 <div>Essentiel : <strong>{formatEuro(data.assumptions.revenueByPlan.Essentiel)}</strong> / mois</div>
                 <div>Performance : <strong>{formatEuro(data.assumptions.revenueByPlan.Performance)}</strong> / mois</div>
-                <div>Agence : <strong>sur devis / prix non renseigné</strong></div>
-                <div>Coût Vapi : <strong>{formatEuro(data.assumptions.costPerVapiMinuteEur)}</strong> / minute</div>
-                <div>Coût SMS : <strong>{formatEuro(data.assumptions.costPerSmsEur)}</strong> / SMS</div>
-                <div>Coût email : <strong>{formatEuro(data.assumptions.costPerEmailEur)}</strong> / email</div>
-                <div>Coût OpenAI : <strong>{formatEuro(data.assumptions.costPerProjectAiEur)}</strong> / projet</div>
-                <div>Coût fixe artisan : <strong>{formatEuro(data.assumptions.fixedCostPerArtisanEur)}</strong> / mois</div>
+                <div>Agence : <strong>sur devis / prix non renseigne</strong></div>
+                <div>Cout Vapi : <strong>{formatEuro(data.assumptions.costPerVapiMinuteEur)}</strong> / minute</div>
+                <div>Cout SMS : <strong>{formatEuro(data.assumptions.costPerSmsEur)}</strong> / SMS</div>
+                <div>Cout email : <strong>{formatEuro(data.assumptions.costPerEmailEur)}</strong> / email</div>
+                <div>Cout OpenAI projet : <strong>{formatEuroExact(data.assumptions.costPerProjectAiEur)}</strong> / projet</div>
+                <div>Cout OpenAI assistant : <strong>{formatEuroExact(data.assumptions.costPerAssistantMessageAiEur)}</strong> / message</div>
+                <div>Cout fixe artisan : <strong>{formatEuro(data.assumptions.fixedCostPerArtisanEur)}</strong> / mois</div>
               </div>
             </AdminCard>
           </div>
 
-          <AdminTable className="admin-margins-table-wrap" minWidth="2300px">
+          <AdminTable className="admin-margins-table-wrap" minWidth="2600px">
             <thead>
               <tr style={{ background: 'var(--border)' }}>
                 {[
@@ -221,17 +250,20 @@ export default function AdminMarginsPage() {
                   'Artisan ID',
                   'Plan',
                   'Statut',
-                  'Revenu mensuel estimé',
+                  'Revenu mensuel estime',
                   'Dossiers',
                   'Appels vocaux',
                   'Minutes vocales',
                   'SMS',
                   'Emails',
-                  'Coût vocal',
-                  'Coût SMS',
-                  'Coût email',
-                  'Coût OpenAI',
-                  'Coût total',
+                  'Messages assistant',
+                  'Cout vocal',
+                  'Cout SMS',
+                  'Cout email',
+                  'Cout OpenAI projets',
+                  'Cout OpenAI assistant',
+                  'Cout OpenAI total',
+                  'Cout total',
                   'Marge brute',
                   'Taux de marge',
                   'Alerte',
@@ -245,8 +277,8 @@ export default function AdminMarginsPage() {
             <tbody>
               {data.artisans.length === 0 && (
                 <tr>
-                  <td colSpan={18}>
-                    <AdminEmptyState compact title="Aucun artisan à afficher" description="La vue coûts & marge se remplira dès qu’il y aura des comptes artisans." />
+                  <td colSpan={21}>
+                    <AdminEmptyState compact title="Aucun artisan a afficher" description="La vue couts & marge se remplira des qu'il y aura des comptes artisans." />
                   </td>
                 </tr>
               )}
@@ -257,7 +289,7 @@ export default function AdminMarginsPage() {
                     <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-2)' }}>{artisan.companyName}</p>
                   </td>
                   <td style={{ padding: '12px 20px', minWidth: '150px', fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-2)' }}>
-                    {artisan.artisanId || 'Non renseigné'}
+                    {artisan.artisanId || 'Non renseigne'}
                   </td>
                   <td style={{ padding: '12px 20px' }}>{artisan.planLabel}</td>
                   <td style={{ padding: '12px 20px' }}>{artisan.status}</td>
@@ -269,10 +301,13 @@ export default function AdminMarginsPage() {
                   <td style={{ padding: '12px 20px' }}>{artisan.voiceMinutesThisMonth}</td>
                   <td style={{ padding: '12px 20px' }}>{formatTrackedCount(artisan.smsSentThisMonth, artisan.smsTracked)}</td>
                   <td style={{ padding: '12px 20px' }}>{formatTrackedCount(artisan.emailsSentThisMonth, artisan.emailsTracked)}</td>
+                  <td style={{ padding: '12px 20px' }}>{formatTrackedCount(artisan.assistantMessagesThisMonth, artisan.assistantMessagesTracked)}</td>
                   <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costVoiceEstimated)}</td>
                   <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costSmsEstimated)}</td>
                   <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costEmailEstimated)}</td>
-                  <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costOpenAiEstimated)}</td>
+                  <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costOpenAiProjectsEstimated)}</td>
+                  <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costOpenAiAssistantEstimated)}</td>
+                  <td style={{ padding: '12px 20px' }}>{formatEuro(artisan.costOpenAiTotalEstimated)}</td>
                   <td style={{ padding: '12px 20px', fontWeight: 700 }}>{formatEuro(artisan.totalCostEstimated)}</td>
                   <td style={{ padding: '12px 20px', color: artisan.grossMarginEstimated >= 0 ? '#dcfce7' : '#fecaca', fontWeight: 700 }}>
                     {formatEuro(artisan.grossMarginEstimated)}
@@ -299,11 +334,11 @@ export default function AdminMarginsPage() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '13px' }}>
                   <div><strong>Revenu</strong><br />{formatEuro(artisan.revenueMonthlyEstimated)}</div>
-                  <div><strong>Coût total</strong><br />{formatEuro(artisan.totalCostEstimated)}</div>
+                  <div><strong>Cout total</strong><br />{formatEuro(artisan.totalCostEstimated)}</div>
                   <div><strong>Marge</strong><br />{formatEuro(artisan.grossMarginEstimated)}</div>
                   <div><strong>Taux</strong><br />{formatPercent(artisan.grossMarginRate)}</div>
                   <div><strong>Dossiers</strong><br />{artisan.projectsCreatedThisMonth}</div>
-                  <div><strong>Minutes vocales</strong><br />{artisan.voiceMinutesThisMonth}</div>
+                  <div><strong>Messages assistant</strong><br />{formatTrackedCount(artisan.assistantMessagesThisMonth, artisan.assistantMessagesTracked)}</div>
                 </div>
                 <p style={{ margin: '12px 0 0', fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.5 }}>
                   {artisan.alertReason}

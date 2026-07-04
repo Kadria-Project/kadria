@@ -2,6 +2,7 @@ import 'server-only'
 import { getAllUsers, type UserRecord } from '@/src/lib/airtable'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentPeriodMonth, getMonthlyUsageSummary } from '@/src/lib/usage/quotas'
+import { getKadriaAssistantUsageSummary } from '@/src/lib/kadria-assistant/quotas'
 import { getPlanLabel, normalizePlan } from '@/src/lib/plans'
 
 type CostAlertLevel = 'ok' | 'warning' | 'danger' | 'non_rentable' | 'no_revenue' | 'price_missing' | 'unknown_plan'
@@ -14,7 +15,9 @@ interface UsageCostBreakdown {
   voice: number
   sms: number
   email: number
-  openai: number
+  openaiProjects: number
+  openaiAssistant: number
+  openaiTotal: number
   other: number
   fixed: number
   total: number
@@ -43,10 +46,14 @@ interface MarginRow {
   smsTracked: boolean
   emailsSentThisMonth: number
   emailsTracked: boolean
+  assistantMessagesThisMonth: number
+  assistantMessagesTracked: boolean
   costVoiceEstimated: number
   costSmsEstimated: number
   costEmailEstimated: number
-  costOpenAiEstimated: number
+  costOpenAiProjectsEstimated: number
+  costOpenAiAssistantEstimated: number
+  costOpenAiTotalEstimated: number
   costOtherEstimated: number
   costFixedEstimated: number
   totalCostEstimated: number
@@ -65,7 +72,8 @@ export interface AdminMarginsData {
     voice: TrackedMetricStatus
     sms: TrackedMetricStatus
     email: TrackedMetricStatus
-    openai: TrackedMetricStatus
+    openaiProject: TrackedMetricStatus
+    openaiAssistant: TrackedMetricStatus
     other: TrackedMetricStatus
   }
   assumptions: {
@@ -74,6 +82,7 @@ export interface AdminMarginsData {
     costPerSmsEur: number
     costPerEmailEur: number
     costPerProjectAiEur: number
+    costPerAssistantMessageAiEur: number
     fixedCostPerArtisanEur: number
   }
   kpis: {
@@ -98,7 +107,8 @@ const PLAN_REVENUE_DEFAULTS = {
 const COST_PER_VAPI_MINUTE_EUR = 0.12
 const COST_PER_SMS_EUR = 0.08
 const COST_PER_EMAIL_EUR = 0
-const COST_PER_PROJECT_AI_EUR = 0.18
+const COST_PER_PROJECT_AI_EUR = 0.005
+const COST_PER_ASSISTANT_MESSAGE_AI_EUR = 0.001
 const FIXED_COST_PER_ARTISAN_EUR = 0
 
 const USER_PRICE_KEYS = [
@@ -380,6 +390,9 @@ export async function getAdminMarginsData(): Promise<AdminMarginsData> {
     users.map(async (user) => {
       const usageSummary = user.artisanId ? await getMonthlyUsageSummary(user.artisanId) : null
       const usageData = usageSummary?.success ? usageSummary.data : null
+      const assistantUsage = user.artisanId
+        ? await getKadriaAssistantUsageSummary(user.artisanId, user.plan)
+        : { used: 0, limit: 0, tracked: false }
       const userRow = userRowsMap.get(user.id) || userRowsMap.get(user.artisanId) || null
       const revenue = buildRevenueSummary(user, userRow)
       const planKey = normalizeSupportedPlan(user.plan)
@@ -391,17 +404,20 @@ export async function getAdminMarginsData(): Promise<AdminMarginsData> {
 
       const smsSentThisMonth = smsData.counts.get(user.artisanId) || 0
       const emailsSentThisMonth = 0
+      const assistantMessagesThisMonth = assistantUsage.used ?? 0
 
       const voiceCostTracked = voiceData.totals.get(user.artisanId)?.trackedCost ?? 0
       const voiceCostFallback = voiceMinutesThisMonth * COST_PER_VAPI_MINUTE_EUR
       const costVoiceEstimated = roundCurrency(voiceCostTracked > 0 ? voiceCostTracked : voiceCostFallback)
       const costSmsEstimated = roundCurrency(smsSentThisMonth * COST_PER_SMS_EUR)
       const costEmailEstimated = roundCurrency(emailsSentThisMonth * COST_PER_EMAIL_EUR)
-      const costOpenAiEstimated = roundCurrency(projectsCreatedThisMonth * COST_PER_PROJECT_AI_EUR)
+      const costOpenAiProjectsEstimated = roundCurrency(projectsCreatedThisMonth * COST_PER_PROJECT_AI_EUR)
+      const costOpenAiAssistantEstimated = roundCurrency(assistantMessagesThisMonth * COST_PER_ASSISTANT_MESSAGE_AI_EUR)
+      const costOpenAiTotalEstimated = roundCurrency(costOpenAiProjectsEstimated + costOpenAiAssistantEstimated)
       const costOtherEstimated = 0
       const costFixedEstimated = roundCurrency(FIXED_COST_PER_ARTISAN_EUR)
       const totalCostEstimated = roundCurrency(
-        costVoiceEstimated + costSmsEstimated + costEmailEstimated + costOpenAiEstimated + costOtherEstimated + costFixedEstimated,
+        costVoiceEstimated + costSmsEstimated + costEmailEstimated + costOpenAiTotalEstimated + costOtherEstimated + costFixedEstimated,
       )
       const grossMarginEstimated = roundCurrency(revenue.amount - totalCostEstimated)
       const grossMarginRate = revenue.amount > 0 ? grossMarginEstimated / revenue.amount : null
@@ -425,10 +441,14 @@ export async function getAdminMarginsData(): Promise<AdminMarginsData> {
         smsTracked: smsData.tracked,
         emailsSentThisMonth,
         emailsTracked: false,
+        assistantMessagesThisMonth,
+        assistantMessagesTracked: assistantUsage.tracked === true,
         costVoiceEstimated,
         costSmsEstimated,
         costEmailEstimated,
-        costOpenAiEstimated,
+        costOpenAiProjectsEstimated,
+        costOpenAiAssistantEstimated,
+        costOpenAiTotalEstimated,
         costOtherEstimated,
         costFixedEstimated,
         totalCostEstimated,
@@ -448,7 +468,9 @@ export async function getAdminMarginsData(): Promise<AdminMarginsData> {
     voice: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costVoiceEstimated, 0)),
     sms: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costSmsEstimated, 0)),
     email: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costEmailEstimated, 0)),
-    openai: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costOpenAiEstimated, 0)),
+    openaiProjects: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costOpenAiProjectsEstimated, 0)),
+    openaiAssistant: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costOpenAiAssistantEstimated, 0)),
+    openaiTotal: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costOpenAiTotalEstimated, 0)),
     other: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costOtherEstimated + artisan.costFixedEstimated, 0)),
     fixed: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.costFixedEstimated, 0)),
     total: roundCurrency(artisans.reduce((sum, artisan) => sum + artisan.totalCostEstimated, 0)),
@@ -465,7 +487,8 @@ export async function getAdminMarginsData(): Promise<AdminMarginsData> {
       voice: voiceData.costTracked ? 'tracked' : 'estimated',
       sms: smsData.tracked ? 'tracked' : 'not_tracked',
       email: 'not_tracked',
-      openai: 'estimated',
+      openaiProject: 'estimated',
+      openaiAssistant: artisans.some((artisan) => artisan.assistantMessagesTracked) ? 'estimated' : 'not_tracked',
       other: FIXED_COST_PER_ARTISAN_EUR > 0 ? 'estimated' : 'not_tracked',
     },
     assumptions: {
@@ -478,6 +501,7 @@ export async function getAdminMarginsData(): Promise<AdminMarginsData> {
       costPerSmsEur: COST_PER_SMS_EUR,
       costPerEmailEur: COST_PER_EMAIL_EUR,
       costPerProjectAiEur: COST_PER_PROJECT_AI_EUR,
+      costPerAssistantMessageAiEur: COST_PER_ASSISTANT_MESSAGE_AI_EUR,
       fixedCostPerArtisanEur: FIXED_COST_PER_ARTISAN_EUR,
     },
     kpis: {
