@@ -2577,54 +2577,6 @@ function ParametresPageContent() {
                 </div>
               </div>
 
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Zone d&apos;intervention
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <label style={labelStyle}>Zone d&apos;intervention</label>
-                    <input
-                      value={config.serviceArea}
-                      onChange={e => setConfig(c => ({ ...c, serviceArea: e.target.value }))}
-                      placeholder="Paris et proche banlieue"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Rayon d&apos;intervention (km)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={config.interventionRadius}
-                      onChange={e => setConfig(c => ({ ...c, interventionRadius: Number(e.target.value) }))}
-                      placeholder="30"
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Horaires d&apos;ouverture
-                </h3>
-                <div>
-                  <label style={labelStyle}>Horaires (affiché dans le widget)</label>
-                  <textarea
-                    value={config.hours}
-                    onChange={e => setConfig(c => ({ ...c, hours: e.target.value }))}
-                    placeholder={"Lun-Ven : 8h-18h\nSam : 9h-12h"}
-                    rows={3}
-                    style={{
-                      ...inputStyle,
-                      resize: 'vertical',
-                      lineHeight: 1.6,
-                    }}
-                  />
-                </div>
-              </div>
-
             </div>
           )}
 
