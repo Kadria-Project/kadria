@@ -24,6 +24,7 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import LoadingSkeleton from '@/src/components/ui/loading/LoadingSkeleton';
 import LoadingForm from '@/src/components/ui/loading/LoadingForm';
 import LoadingCard from '@/src/components/ui/loading/LoadingCard';
+import { KadriaPageContextSync } from '@/src/components/kadria-assistant/KadriaPageContext';
 import { hasFeature, normalizePlan, type PlanFeatureKey, type PlanKey } from '@/src/lib/plans';
 import { haversineDistanceKm, calculateTravelCost, calculateTravelFeeRecommendation, type VehicleType, type ChargingType } from '@/src/config/travel';
 import { getBestFollowUpTime, getIdealActionLabel, shouldShowIdealFollowUp } from '@/src/lib/commercial-actions';
@@ -2130,6 +2131,15 @@ function ProjectDetail() {
         return { title: action.title, ctaLabel: action.ctaLabel, onClick: scrollToActionsAndQuote, meta: action.meta };
     }
   })();
+  const assistantPageContext = {
+    pageType: 'project_detail' as const,
+    projectId: project.id || id,
+    projectTitle,
+    clientName: clientLabel !== 'Client non renseigne' ? clientLabel : undefined,
+    status: project.status || undefined,
+    lifecycleStage: lifecycle.stage,
+    recommendedAction: lifecycle.recommendedAction.title,
+  };
   // Acompte : etape commerciale intermediaire, affichee uniquement quand les
   // acomptes sont actives pour l'artisan (sinon on ne l'insere pas du tout
   // dans le stepper, cf. brief — comportement historique inchange sinon).
@@ -3399,6 +3409,7 @@ function ProjectDetail() {
 
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
+      <KadriaPageContextSync value={assistantPageContext} />
       <main className="mx-auto max-w-[1500px] space-y-6 px-4 py-5 sm:px-6 sm:py-8">
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: '24px', gap: isMobile ? '12px' : '16px' }}>
           <Button variant="ghost" onClick={() => router.push('/dashboard-v2')}>

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
+import { useKadriaPageContext } from '@/src/components/kadria-assistant/KadriaPageContext';
+import type { AssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 
 interface NavigationAction {
   label: string;
@@ -54,6 +56,37 @@ interface ChatMessage {
 interface AssistantUsage {
   used: number;
   limit: number;
+}
+
+function getQuickStarts(pageContext: AssistantPageContext) {
+  if (pageContext.pageType === 'project_detail') {
+    return [
+      'Resumer ce dossier',
+      'Que faire maintenant ?',
+      'Quels elements manquent ?',
+      'Preparer une relance',
+      'Quel est le statut du devis ?',
+      "L'acompte est-il paye ?",
+    ];
+  }
+
+  if (pageContext.pageType === 'settings') {
+    return [
+      'Comment configurer mon widget ?',
+      'Pourquoi mes quotas sont limites ?',
+      'Que dois-je configurer en priorite ?',
+      'Comment ameliorer mon profil metier ?',
+    ];
+  }
+
+  return [
+    "Que dois-je faire aujourd'hui ?",
+    'Quels dossiers traiter en priorite ?',
+    'Quels devis sont a relancer ?',
+    "Quels projets n'ont pas encore de rendez-vous ?",
+    'Aide-moi a ameliorer mon profil metier',
+    'Comment mieux convertir mes prospects ?',
+  ];
 }
 
 // Rendu markdown minimal et sûr (V1) : pas de dangerouslySetInnerHTML.
@@ -175,6 +208,7 @@ const QUICK_STARTS = [
 // produit : ce composant ne fait qu'afficher la conversation et appeler
 // l'API serveur dédiée /api/kadria-assistant/chat.
 export default function KadriaAssistantWidget() {
+  const { pageContext } = useKadriaPageContext();
   const [open, setOpen] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -188,6 +222,7 @@ export default function KadriaAssistantWidget() {
   const [todayActionsLoading, setTodayActionsLoading] = useState(false);
   const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const quickStarts = getQuickStarts(pageContext);
 
   function isTodayActionsPrompt(value: string) {
     return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour/i.test(value.trim());
@@ -341,7 +376,7 @@ export default function KadriaAssistantWidget() {
       const res = await fetch('/api/kadria-assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({ messages: nextMessages, pageContext }),
       });
       const data = await res.json();
 
@@ -704,7 +739,7 @@ export default function KadriaAssistantWidget() {
                   {!todayActionsLoading && !todayActionsError && todayActions.length > 0 && renderTodayActionCards(todayActions.slice(0, 3))}
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {QUICK_STARTS.map((q) => (
+                  {quickStarts.map((q) => (
                     <button
                       key={q}
                       type="button"
@@ -732,7 +767,7 @@ export default function KadriaAssistantWidget() {
                 </button>
                 {!suggestionsCollapsed && (
                   <div className="mt-2 grid grid-cols-1 gap-2">
-                    {QUICK_STARTS.map((q) => (
+                    {quickStarts.map((q) => (
                       <button
                         key={q}
                         type="button"

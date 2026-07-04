@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { buildArtisanAssistantContext, getAssistantPriorities, type KadriaAssistantContext } from '@/src/lib/kadria-assistant/context'
-import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
 import { getKadriaAssistantOpenAIClient, KADRIA_ASSISTANT_MODEL } from '@/src/lib/kadria-assistant/openai-client'
+import { sanitizeAssistantPageContext, type AssistantPageContext } from '@/src/lib/kadria-assistant/page-context'
 import { canUseKadriaAssistant, recordKadriaAssistantUsage } from '@/src/lib/kadria-assistant/quotas'
-import { buildProposedAction, type ProposedAction } from '@/src/lib/assistant/propose-action'
+import { buildKadriaAssistantSystemPrompt } from '@/src/lib/kadria-assistant/system-prompt'
+import {
+  buildProposedAction,
+  type ProposedAction,
+} from '@/src/lib/assistant/propose-action'
 import { logAssistantAction } from '@/src/lib/assistant/actions'
-
-// Assistant IA interne pour l'artisan connecté : strictement en lecture
-// seule, contextualisé au compte de l'artisan, jamais exposé côté client.
-// Ne touche à aucune route de mutation métier (config, devis, emails...).
+import {
+  formatProjectSummaryForAssistant,
+  getProjectSummaryForAssistant,
+  listProjectsWithDepositPaidForAssistant,
+  listProjectsWithoutAppointmentForAssistant,
+  listQuoteFollowUpsForAssistant,
+  listTasksToDoForAssistant,
+  listUpcomingAppointmentsForAssistant,
+  searchProjectsForAssistant,
+  type AssistantProjectSummary,
+} from '@/src/lib/kadria-assistant/tools'
 
 const MAX_HISTORY_MESSAGES = 8
 const MAX_MESSAGE_LENGTH = 2000
@@ -29,15 +40,32 @@ interface DeterministicAssistantReply {
   navigationActions?: NavigationAction[]
 }
 
+interface ContextualAssistantReply extends DeterministicAssistantReply {}
+
+function buildProjectHref(projectId: string) {
+  return `/dashboard-v2/projet/${encodeURIComponent(projectId)}`
+}
+
+function buildProjectAction(projectId: string, label = 'Ouvrir le dossier'): NavigationAction {
+  return { label, href: buildProjectHref(projectId) }
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 function buildDeterministicReply(userQuestion: string, context: KadriaAssistantContext): DeterministicAssistantReply | null {
-  const text = userQuestion.toLowerCase()
+  const text = normalizeText(userQuestion)
 
   if (/google review|avis google|demande d'avis|lien google review/.test(text)) {
     if (context.googleReview.configured) {
       return {
         answer: "Oui. Kadria peut preparer une demande d'avis Google depuis une fiche projet. L'envoi reste manuel : vous ouvrez un dossier gagne, cliquez sur 'Avis Google', puis vous confirmez l'envoi.",
         navigationActions: [
-          { label: "Voir les dossiers concernes", href: '/dashboard-v2' },
+          { label: 'Voir les dossiers concernes', href: '/dashboard-v2' },
           { label: 'Ouvrir les actions du jour', href: '/dashboard-v2' },
         ],
       }
@@ -45,9 +73,7 @@ function buildDeterministicReply(userQuestion: string, context: KadriaAssistantC
 
     return {
       answer: "Oui, Kadria peut vous aider a envoyer une demande d'avis Google depuis un dossier, mais il faut d'abord renseigner votre URL avis Google dans les parametres.",
-      navigationActions: [
-        { label: "Configurer l'URL avis Google", href: '/parametres?section=entreprise' },
-      ],
+      navigationActions: [{ label: "Configurer l'URL avis Google", href: '/parametres?section=entreprise' }],
     }
   }
 
@@ -56,7 +82,7 @@ function buildDeterministicReply(userQuestion: string, context: KadriaAssistantC
       answer: "Je peux vous aider a traiter les devis a relancer. Ouvrez les dossiers concernes depuis les actions du jour : chaque relance se fera ensuite depuis la fiche projet, avec confirmation avant envoi.",
       navigationActions: [
         { label: 'Ouvrir les actions du jour', href: '/dashboard-v2' },
-        { label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' },
+        { label: 'Ouvrir mon tableau de bord', href: '/dashboard-v2' },
       ],
     }
   }
@@ -64,43 +90,33 @@ function buildDeterministicReply(userQuestion: string, context: KadriaAssistantC
   if (/actions du jour|priorites du jour|que dois-je faire aujourd'hui|que faire aujourd'hui/.test(text)) {
     return {
       answer: "Je peux vous proposer vos priorites du jour a partir de votre configuration, de vos devis et de votre suivi commercial, sans lancer d'action automatique.",
-      navigationActions: [
-        { label: 'Ouvrir les actions du jour', href: '/dashboard-v2' },
-      ],
+      navigationActions: [{ label: 'Ouvrir les actions du jour', href: '/dashboard-v2' }],
     }
   }
 
   if (/configur|parametr|url avis google/.test(text) && context.progressionCenter.percent < 100) {
     return {
       answer: `Votre configuration actuelle est a ${context.progressionCenter.percent} %. Je peux vous orienter vers le prochain reglage utile sans rien modifier a votre place.`,
-      navigationActions: [
-        { label: 'Ouvrir Parametres', href: '/parametres' },
-      ],
+      navigationActions: [{ label: 'Ouvrir Parametres', href: '/parametres' }],
     }
   }
 
   return null
 }
 
-// Détermine de simples suggestions de navigation (non destructives) à partir
-// de mots-clés présents dans la question de l'artisan, complétées par les
-// priorités détectées dans le contexte réel du compte (centre de
-// progression, profil métier, widget...). Volontairement très simple (pas
-// de routeur complexe) : un mapping mot-clé/priorité -> lien existant, sans
-// jamais créer d'ancre vers une route qui n'existe pas.
 function buildNavigationActions(userQuestion: string, context: KadriaAssistantContext): NavigationAction[] | undefined {
-  const text = userQuestion.toLowerCase()
+  const text = normalizeText(userQuestion)
   const actions: NavigationAction[] = []
 
   const addOnce = (action: NavigationAction) => {
-    if (!actions.some((a) => a.href === action.href)) actions.push(action)
+    if (!actions.some((entry) => entry.href === action.href)) actions.push(action)
   }
 
-  if (/m[ée]tier|prestation|sp[ée]cialit[ée]|question/.test(text)) {
-    addOnce({ label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' })
+  if (/metier|prestation|specialite|question/.test(text)) {
+    addOnce({ label: 'Ouvrir Profil metier', href: '/parametres/profil-metier' })
   }
   if (/tarif|prix|devis/.test(text)) {
-    addOnce({ label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' })
+    addOnce({ label: 'Ouvrir Profil metier', href: '/parametres/profil-metier' })
   }
   if (/marque blanche/.test(text)) {
     addOnce({ label: 'Ouvrir Marque blanche', href: '/parametres?section=widget' })
@@ -112,28 +128,26 @@ function buildNavigationActions(userQuestion: string, context: KadriaAssistantCo
   } else if (/abonnement|offre|plan/.test(text)) {
     addOnce({ label: 'Ouvrir Offre / Quotas', href: '/parametres?section=offre' })
   }
-  if (/progression|optimiser|priorit[ée]|[ée]tape|conseille/.test(text)) {
+  if (/progression|optimiser|priorite|etape|conseille/.test(text)) {
     addOnce({ label: 'Ouvrir le Centre de progression', href: '/dashboard-v2' })
   }
   if (/relance|prospect|convert/.test(text)) {
-    addOnce({ label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' })
+    addOnce({ label: 'Ouvrir mon tableau de bord', href: '/dashboard-v2' })
   }
-  if (/param[èe]tre|g[ée]n[ée]ral/.test(text)) {
-    addOnce({ label: 'Ouvrir Paramètres', href: '/parametres' })
+  if (/parametre|general/.test(text)) {
+    addOnce({ label: 'Ouvrir Parametres', href: '/parametres' })
   }
 
-  // Complète avec les destinations des priorités réelles du compte si la
-  // question est large/générale et n'a pas déjà produit d'action ciblée.
   if (actions.length === 0) {
     const priorities = getAssistantPriorities(context)
     const destinationToAction: Record<string, NavigationAction> = {
-      'Profil métier': { label: 'Ouvrir Profil métier', href: '/parametres/profil-metier' },
+      'Profil métier': { label: 'Ouvrir Profil metier', href: '/parametres/profil-metier' },
       'Mon widget': { label: 'Ouvrir Mon widget', href: '/parametres?section=widget' },
-      'Paramètres': { label: 'Ouvrir Paramètres', href: '/parametres' },
-      'Tableau de bord': { label: 'Ouvrir mon Tableau de bord', href: '/dashboard-v2' },
+      'Paramètres': { label: 'Ouvrir Parametres', href: '/parametres' },
+      'Tableau de bord': { label: 'Ouvrir mon tableau de bord', href: '/dashboard-v2' },
     }
-    for (const p of priorities) {
-      const action = destinationToAction[p.destination]
+    for (const priority of priorities) {
+      const action = destinationToAction[priority.destination]
       if (action) addOnce(action)
     }
   }
@@ -144,16 +158,345 @@ function buildNavigationActions(userQuestion: string, context: KadriaAssistantCo
 function sanitizeMessages(raw: unknown): { role: 'user' | 'assistant'; content: string }[] {
   if (!Array.isArray(raw)) return []
 
-  const cleaned = (raw as IncomingMessage[])
-    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim().length > 0)
-    .map((m) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content.slice(0, MAX_MESSAGE_LENGTH),
+  return (raw as IncomingMessage[])
+    .filter((message) => message && (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string' && message.content.trim().length > 0)
+    .map((message) => ({
+      role: message.role as 'user' | 'assistant',
+      content: message.content.slice(0, MAX_MESSAGE_LENGTH),
     }))
+    .slice(-MAX_HISTORY_MESSAGES)
+}
 
-  // On ne garde que les derniers messages pour limiter le coût et la taille
-  // du contexte envoyé à OpenAI.
-  return cleaned.slice(-MAX_HISTORY_MESSAGES)
+function buildPageContextSummary(pageContext: AssistantPageContext | null, currentProjectSummary: AssistantProjectSummary | null) {
+  if (!pageContext) return null
+
+  const lines = [`Type de page : ${pageContext.pageType}`]
+  if (pageContext.projectId) lines.push(`ProjectId transmis par le front : ${pageContext.projectId}`)
+  if (pageContext.projectTitle) lines.push(`Titre visible : ${pageContext.projectTitle}`)
+  if (pageContext.clientName) lines.push(`Client visible : ${pageContext.clientName}`)
+  if (pageContext.status) lines.push(`Statut visible : ${pageContext.status}`)
+  if (pageContext.lifecycleStage) lines.push(`Etape visible : ${pageContext.lifecycleStage}`)
+  if (pageContext.recommendedAction) lines.push(`Action recommandee visible : ${pageContext.recommendedAction}`)
+  if (currentProjectSummary) lines.push(`Projet serveur verifie : ${currentProjectSummary.projectTitle}`)
+  return lines.join('\n')
+}
+
+function extractSearchQuery(message: string) {
+  const trimmed = message.trim()
+  const explicit = /(?:cherche|recherche|trouve)\s+(?:le\s+|la\s+|les\s+)?(?:dossier|projet|client)?\s*(.+)$/i.exec(trimmed)
+  if (explicit?.[1]) return explicit[1].trim().replace(/[?.!]+$/, '')
+  return null
+}
+
+function isProjectQuestion(text: string) {
+  return /dossier|projet|devis|acompte|photo|photos|message|retour client|rendez-vous|rdv|activite|historique/.test(text)
+}
+
+function formatProjectSummaryAnswer(summary: AssistantProjectSummary) {
+  const lines = [
+    `Voici l'essentiel du dossier ${summary.clientName} :`,
+    `- Statut : ${summary.status}`,
+    `- Projet : ${summary.projectTitle}`,
+    `- Budget : ${summary.budget || 'non renseigne'}`,
+    `- Delai : ${summary.desiredTimeline || 'non renseigne'}`,
+    `- Devis : ${summary.quote.status}${summary.quote.amount ? ` (${summary.quote.amount} EUR)` : ''}`,
+    `- Acompte : ${summary.deposit.status}${summary.deposit.amount ? ` (${summary.deposit.amount} EUR)` : ''}`,
+    `- Photos : ${summary.photos.count}`,
+    `- Messages client : ${summary.clientMessages.count}`,
+    `- Rendez-vous : ${summary.appointment.start || 'non planifie'}`,
+    `- Action recommandee : ${summary.recommendedAction}`,
+  ]
+
+  if (summary.missingItems.length > 0) {
+    lines.push(`- Elements encore manquants : ${summary.missingItems.join(', ')}`)
+  }
+
+  return lines.join('\n')
+}
+
+function formatRecommendedActionAnswer(summary: AssistantProjectSummary) {
+  return [
+    `La prochaine etape utile sur ce dossier est : ${summary.recommendedAction}.`,
+    `- Pourquoi : ${summary.recommendedActionMeta}`,
+    `- Statut actuel : ${summary.status}`,
+    `- Devis : ${summary.quote.status}`,
+    `- Acompte : ${summary.deposit.status}`,
+    summary.missingItems.length > 0
+      ? `- A verifier en plus : ${summary.missingItems.join(', ')}`
+      : `- Le dossier est deja assez complet pour avancer sans attendre un nouveau complement.`,
+  ].join('\n')
+}
+
+function formatPriorityReasonAnswer(summary: AssistantProjectSummary) {
+  const reasons = [
+    `Ce dossier ressort avec un score d'opportunite estime a ${summary.opportunityScore}/100.`,
+    `- Statut : ${summary.status}`,
+    `- Etape actuelle : ${summary.lifecycleStage}`,
+    `- Action recommandee : ${summary.recommendedAction}`,
+  ]
+
+  if (summary.budget) reasons.push(`- Budget : ${summary.budget}`)
+  if (summary.desiredTimeline) reasons.push(`- Delai : ${summary.desiredTimeline}`)
+  if (summary.quote.status !== 'aucun devis') reasons.push(`- Devis : ${summary.quote.status}`)
+  return reasons.join('\n')
+}
+
+function formatMissingItemsAnswer(summary: AssistantProjectSummary) {
+  if (summary.missingItems.length === 0) {
+    return "Je n'ai pas detecte d'element bloquant majeur sur ce dossier. Vous pouvez surtout vous concentrer sur l'etape commerciale suivante."
+  }
+
+  return [
+    `Voici ce qui manque encore sur ce dossier :`,
+    ...summary.missingItems.map((item) => `- ${item}`),
+    `Impact : ces manques peuvent freiner le devis, la qualification ou la planification du chantier.`,
+  ].join('\n')
+}
+
+function formatPhotosAnswer(summary: AssistantProjectSummary) {
+  if (summary.photos.count > 0) {
+    return `Oui. Le client a deja envoye ${summary.photos.count} photo(s) sur ce dossier. Vous pouvez les retrouver dans la fiche projet.`
+  }
+  return "Non, je ne vois pas de photo client sur ce dossier pour le moment."
+}
+
+function formatQuoteStatusAnswer(summary: AssistantProjectSummary) {
+  const lines = [`Statut du devis : ${summary.quote.status}.`]
+  if (summary.quote.amount) lines.push(`- Montant : ${summary.quote.amount} EUR`)
+  if (summary.quote.sentAt) lines.push(`- Envoye le : ${summary.quote.sentAt}`)
+  if (summary.quote.acceptedAt) lines.push(`- Accepte le : ${summary.quote.acceptedAt}`)
+  if (summary.quote.declinedAt) lines.push(`- Refuse le : ${summary.quote.declinedAt}`)
+  if (summary.quote.declineReason) lines.push(`- Motif du refus : ${summary.quote.declineReason}`)
+  if (summary.quote.followUpReason) lines.push(`- Suivi commercial : ${summary.quote.followUpReason}`)
+  lines.push(`- Prochaine action : ${summary.recommendedAction}`)
+  return lines.join('\n')
+}
+
+function formatDepositStatusAnswer(summary: AssistantProjectSummary) {
+  const lines = [`Statut de l'acompte : ${summary.deposit.status}.`]
+  if (summary.deposit.amount) lines.push(`- Montant : ${summary.deposit.amount} EUR`)
+  if (summary.deposit.requestedAt) lines.push(`- Demande le : ${summary.deposit.requestedAt}`)
+  if (summary.deposit.paidAt) lines.push(`- Paye le : ${summary.deposit.paidAt}`)
+  lines.push(`- Suite logique : ${summary.recommendedAction}`)
+  return lines.join('\n')
+}
+
+function formatMessagesAnswer(summary: AssistantProjectSummary) {
+  if (summary.clientMessages.count === 0) {
+    return "Je ne vois pas de message client recent sur ce dossier."
+  }
+
+  return [
+    `Oui, il y a ${summary.clientMessages.count} message(s) ou retour(s) client sur ce dossier.`,
+    summary.clientMessages.latestAt ? `- Dernier signal : ${summary.clientMessages.latestAt}` : null,
+    `- Ouvrez la fiche projet pour voir le detail de la discussion et de l'activite.`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function formatAppointmentAnswer(summary: AssistantProjectSummary) {
+  if (!summary.appointment.present || !summary.appointment.start) {
+    return "Je ne vois pas de rendez-vous planifie sur ce dossier pour le moment."
+  }
+
+  return [
+    `Prochain rendez-vous : ${summary.appointment.start}`,
+    summary.appointment.end ? `- Fin prevue : ${summary.appointment.end}` : null,
+    summary.appointment.location ? `- Lieu : ${summary.appointment.location}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function formatActivityAnswer(summary: AssistantProjectSummary) {
+  if (summary.activity.length === 0) {
+    return "Je n'ai pas trouve d'activite recente sur ce dossier."
+  }
+
+  return [
+    `Derniers evenements du dossier :`,
+    ...summary.activity.slice(0, 4).map((entry) => `- ${entry.title} : ${entry.description}`),
+  ].join('\n')
+}
+
+async function buildContextualReadOnlyReply(params: {
+  lastUserMessage: string
+  pageContext: AssistantPageContext | null
+  currentProjectSummary: AssistantProjectSummary | null
+  artisanId: string
+}): Promise<ContextualAssistantReply | null> {
+  const normalized = normalizeText(params.lastUserMessage)
+  const currentProject = params.currentProjectSummary
+  const searchQuery = extractSearchQuery(params.lastUserMessage)
+
+  if (searchQuery) {
+    const matches = await searchProjectsForAssistant(searchQuery, params.artisanId)
+    if (matches.length === 0) {
+      return { answer: `Je n'ai pas trouve de dossier correspondant a "${searchQuery}".` }
+    }
+
+    return {
+      answer: [
+        `J'ai trouve ${matches.length} dossier(s) pour "${searchQuery}" :`,
+        ...matches.map((match) => `- ${match.clientName} - ${match.projectTitle} (${match.status}) [${match.projectNumber}]`),
+      ].join('\n'),
+      navigationActions: matches.slice(0, 3).map((match) => buildProjectAction(match.id, `Ouvrir ${match.clientName}`)),
+    }
+  }
+
+  if (currentProject && /resum|resume ce dossier|resumer ce dossier/.test(normalized)) {
+    return {
+      answer: formatProjectSummaryAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /(que dois-je faire|que faire maintenant|prochaine etape|action recommandee)/.test(normalized)) {
+    return {
+      answer: formatRecommendedActionAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /pourquoi.*priorit|pourquoi ce dossier/.test(normalized)) {
+    return {
+      answer: formatPriorityReasonAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /quels?.*manqu|que manque/.test(normalized)) {
+    return {
+      answer: formatMissingItemsAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /photo/.test(normalized)) {
+    return {
+      answer: formatPhotosAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId, 'Voir le dossier')],
+    }
+  }
+
+  if (currentProject && /devis/.test(normalized) && /statut|ou en est|quel/.test(normalized)) {
+    return {
+      answer: formatQuoteStatusAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /acompte/.test(normalized)) {
+    return {
+      answer: formatDepositStatusAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /(message|retour).*(client)|y a-t-il des messages|a-t-il envoye/.test(normalized)) {
+    return {
+      answer: formatMessagesAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /(prochain rendez-vous|rendez-vous|rdv)/.test(normalized)) {
+    return {
+      answer: formatAppointmentAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (currentProject && /(activite du dossier|historique|timeline|activite)/.test(normalized)) {
+    return {
+      answer: formatActivityAnswer(currentProject),
+      navigationActions: [buildProjectAction(currentProject.projectId)],
+    }
+  }
+
+  if (params.pageContext?.pageType === 'project_detail' && params.pageContext.projectId && !currentProject && isProjectQuestion(normalized)) {
+    return {
+      answer: "Je n'ai pas pu verifier le dossier courant. Il est peut-etre introuvable ou non accessible avec votre session.",
+    }
+  }
+
+  if (/quels devis sont a relancer|devis.*relancer|devis.*a relancer/.test(normalized)) {
+    const items = await listQuoteFollowUpsForAssistant(params.artisanId)
+    if (items.length === 0) {
+      return { answer: "Je n'ai pas detecte de devis a relancer pour le moment." }
+    }
+
+    return {
+      answer: [
+        `Voici les devis a relancer en priorite :`,
+        ...items.map((item) => `- ${item.clientName} - ${item.projectTitle} (${item.status}) : ${item.reason}`),
+      ].join('\n'),
+      navigationActions: items.slice(0, 3).map((item) => buildProjectAction(item.projectId, `Ouvrir ${item.clientName}`)),
+    }
+  }
+
+  if (/acompte/.test(normalized) && /(paye|payes|regle|regles)/.test(normalized)) {
+    const items = await listProjectsWithDepositPaidForAssistant(params.artisanId)
+    if (items.length === 0) {
+      return { answer: "Je ne vois pas de dossier avec acompte paye pour le moment." }
+    }
+
+    return {
+      answer: [
+        `Voici les dossiers avec acompte paye :`,
+        ...items.map((item) => `- ${item.clientName || item.clientFirstName || 'Client'} - ${item.projectTitle || item.projectType || item.trade || 'Projet'} (${item.status})`),
+      ].join('\n'),
+      navigationActions: items.slice(0, 3).map((item) => buildProjectAction(item.id, `Ouvrir ${item.clientName || 'le dossier'}`)),
+    }
+  }
+
+  if (/pas encore de rendez-vous|sans rendez-vous|sans rdv|n'ont pas encore de rendez-vous/.test(normalized)) {
+    const items = await listProjectsWithoutAppointmentForAssistant(params.artisanId)
+    if (items.length === 0) {
+      return { answer: "Je ne vois pas de dossier ouvert sans rendez-vous dans la selection recente." }
+    }
+
+    return {
+      answer: [
+        `Voici les dossiers sans rendez-vous planifie :`,
+        ...items.map((item) => `- ${item.clientName || item.clientFirstName || 'Client'} - ${item.projectTitle || item.projectType || item.trade || 'Projet'} (${item.status})`),
+      ].join('\n'),
+      navigationActions: items.slice(0, 3).map((item) => buildProjectAction(item.id, `Ouvrir ${item.clientName || 'le dossier'}`)),
+    }
+  }
+
+  if (/(taches|actions).*(aujourd'hui|a faire)|que dois-je traiter aujourd'hui/.test(normalized)) {
+    const tasks = await listTasksToDoForAssistant(params.artisanId)
+    if (tasks.length === 0) {
+      return { answer: "Je n'ai pas detecte de tache prioritaire pour le moment." }
+    }
+
+    return {
+      answer: [
+        `Voici les taches a traiter en priorite :`,
+        ...tasks.map((task) => `- ${task.clientName} - ${task.title} (${task.priority})`),
+      ].join('\n'),
+      navigationActions: tasks.slice(0, 3).map((task) => buildProjectAction(task.projectId, `Ouvrir ${task.clientName}`)),
+    }
+  }
+
+  if (/(rendez-vous|rdv).*(cette semaine|a venir|prochains)/.test(normalized)) {
+    const appointments = await listUpcomingAppointmentsForAssistant(params.artisanId)
+    if (appointments.length === 0) {
+      return { answer: "Je ne vois pas de rendez-vous a venir pour le moment." }
+    }
+
+    return {
+      answer: [
+        `Voici vos prochains rendez-vous :`,
+        ...appointments.map((appointment) => `- ${appointment.clientName} - ${appointment.start}`),
+      ].join('\n'),
+      navigationActions: appointments.slice(0, 3).map((appointment) => buildProjectAction(appointment.projectId, `Ouvrir ${appointment.clientName}`)),
+    }
+  }
+
+  return null
 }
 
 export async function POST(request: NextRequest) {
@@ -163,40 +506,37 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
     if (!session || !session.artisanId) {
-      return NextResponse.json(
-        { success: false, error: 'Non authentifié' },
-        { status: 401 }
-      )
+      return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
     }
     artisanIdForLog = session.artisanId
 
-    let body: { messages?: unknown }
+    let body: { messages?: unknown; pageContext?: unknown }
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { success: false, error: 'Corps de requête invalide' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: 'Corps de requete invalide' }, { status: 400 })
     }
 
     const messages = sanitizeMessages(body?.messages)
     if (messages.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Aucun message fourni' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: 'Aucun message fourni' }, { status: 400 })
     }
 
+    const pageContext = sanitizeAssistantPageContext(body?.pageContext)
+    const currentProjectSummary = pageContext?.projectId
+      ? await getProjectSummaryForAssistant(pageContext.projectId, session.artisanId)
+      : null
+
     const context = await buildArtisanAssistantContext(session.artisanId, session.plan || 'essentiel')
-    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.content || ''
+    const contextualReply = await buildContextualReadOnlyReply({
+      lastUserMessage,
+      pageContext,
+      currentProjectSummary,
+      artisanId: session.artisanId,
+    })
     const deterministicReply = buildDeterministicReply(lastUserMessage, context)
 
-    // Détection déterministe (mots-clés) d'une action contrôlée éventuelle.
-    // Ne modifie JAMAIS la base ici : uniquement une proposition affichée à
-    // l'artisan, qui devra cliquer "Appliquer" pour déclencher une écriture
-    // via /api/assistant/actions/execute. Best-effort : une erreur ici ne
-    // doit jamais empêcher la réponse conversationnelle de partir.
     let proposedAction: ProposedAction | null = null
     try {
       proposedAction = await buildProposedAction(lastUserMessage, session.artisanId)
@@ -214,12 +554,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (deterministicReply) {
+    const immediateReply = contextualReply || deterministicReply
+    if (immediateReply) {
       return NextResponse.json({
         success: true,
-        answer: deterministicReply.answer,
+        answer: immediateReply.answer,
         usage: null,
-        ...(deterministicReply.navigationActions ? { navigationActions: deterministicReply.navigationActions } : {}),
+        ...(immediateReply.navigationActions ? { navigationActions: immediateReply.navigationActions } : {}),
         ...(proposedAction ? { proposedAction } : {}),
       })
     }
@@ -233,7 +574,7 @@ export async function POST(request: NextRequest) {
           error: 'Votre quota mensuel de questions Assistant Kadria est atteint.',
           usage: { used: quotaCheck.used, limit: quotaCheck.limit },
         },
-        { status: 403 }
+        { status: 403 },
       )
     }
 
@@ -243,12 +584,15 @@ export async function POST(request: NextRequest) {
     } catch {
       console.error('[KADRIA-ASSISTANT] OPENAI_API_KEY manquante')
       return NextResponse.json(
-        { success: false, error: "L'assistant est temporairement indisponible. Merci de réessayer plus tard." },
-        { status: 503 }
+        { success: false, error: "L'assistant est temporairement indisponible. Merci de reessayer plus tard." },
+        { status: 503 },
       )
     }
 
-    const systemPrompt = buildKadriaAssistantSystemPrompt(context)
+    const systemPrompt = buildKadriaAssistantSystemPrompt(context, {
+      pageContextSummary: buildPageContextSummary(pageContext, currentProjectSummary),
+      currentProjectSummary: currentProjectSummary ? formatProjectSummaryForAssistant(currentProjectSummary) : null,
+    })
 
     const response = await client.chat.completions.create({
       model: KADRIA_ASSISTANT_MODEL,
@@ -263,10 +607,10 @@ export async function POST(request: NextRequest) {
     const answer = response.choices?.[0]?.message?.content?.trim() || ''
 
     if (!answer) {
-      console.error('[KADRIA-ASSISTANT] Réponse vide de OpenAI', { artisanId: artisanIdForLog })
+      console.error('[KADRIA-ASSISTANT] Reponse vide de OpenAI', { artisanId: artisanIdForLog })
       return NextResponse.json(
-        { success: false, error: "L'assistant n'a pas pu générer de réponse. Merci de reformuler votre question." },
-        { status: 502 }
+        { success: false, error: "L'assistant n'a pas pu generer de reponse. Merci de reformuler votre question." },
+        { status: 502 },
       )
     }
 
@@ -275,9 +619,6 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     })
 
-    // Incrément du compteur de quota uniquement après succès OpenAI. Ne doit
-    // jamais empêcher la réponse d'être retournée à l'utilisateur en cas
-    // d'échec (table/colonne absente, etc.) : on logge et on continue.
     const incrementResult = await recordKadriaAssistantUsage(session.artisanId)
     const usage = {
       used: incrementResult.success && typeof incrementResult.used === 'number'
@@ -306,10 +647,10 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: isQuotaOrTimeout
-          ? "L'assistant est momentanément surchargé. Merci de réessayer dans quelques instants."
-          : "Une erreur est survenue. Merci de réessayer plus tard.",
+          ? "L'assistant est momentanement surcharge. Merci de reessayer dans quelques instants."
+          : "Une erreur est survenue. Merci de reessayer plus tard.",
       },
-      { status: 502 }
+      { status: 502 },
     )
   }
 }

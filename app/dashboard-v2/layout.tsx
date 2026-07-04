@@ -1,4 +1,5 @@
 import KadriaAssistantGlobalMount from '@/src/components/kadria-assistant/KadriaAssistantGlobalMount'
+import { KadriaPageContextProvider } from '@/src/components/kadria-assistant/KadriaPageContext'
 
 export default function DashboardLayout({
   children,
@@ -19,8 +20,10 @@ export default function DashboardLayout({
           `,
         }}
       />
-      {children}
-      <KadriaAssistantGlobalMount />
+      <KadriaPageContextProvider>
+        {children}
+        <KadriaAssistantGlobalMount />
+      </KadriaPageContextProvider>
     </>
   )
 }
