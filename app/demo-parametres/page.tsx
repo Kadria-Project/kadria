@@ -44,6 +44,18 @@ type DemoSettingsState = {
     acceptsEmergencies: boolean;
     priorityRequests: string[];
     filteredRequests: string[];
+    // Sous-sections enrichies (alignees sur les 6 premieres sous-sections de
+    // la page prod app/parametres/profil-metier/page.tsx : zone, horaires,
+    // chiffrage, marques/preferences).
+    workingDays: string[];
+    workStartTime: string;
+    workEndTime: string;
+    hourlyRateHt: string;
+    diagnosticFeeHt: string;
+    defaultVatRate: string;
+    defaultMarginPercent: string;
+    preferredBrands: string;
+    avoidedBrands: string;
   };
   contact: {
     contactName: string;
@@ -149,15 +161,15 @@ const DEMO_SETTINGS_GROUPS: SettingsShellGroup[] = [
     label: 'Configuration',
     items: [
       { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
-      { id: 'profil-metier', label: 'Profil metier', icon: '🛠️' },
-      { id: 'contact', label: 'Coordonnees', icon: '📍' },
-      { id: 'legal', label: 'Infos legales', icon: '📋' },
+      { id: 'profil-metier', label: 'Profil métier', icon: '🛠️' },
+      { id: 'contact', label: 'Coordonnées', icon: '📍' },
+      { id: 'legal', label: 'Infos légales', icon: '📋' },
     ],
   },
   {
-    label: 'Activite',
+    label: 'Activité',
     items: [
-      { id: 'vehicule', label: 'Deplacements', icon: '🚗' },
+      { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
       { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
       { id: 'widget', label: 'Mon widget', icon: '🎨' },
     ],
@@ -700,7 +712,7 @@ export default function DemoParametresPage() {
   };
 
   const toggleProfileArrayValue = (
-    key: 'secondaryTrades' | 'offeredServices' | 'clientTypes' | 'priorityRequests' | 'filteredRequests',
+    key: 'secondaryTrades' | 'offeredServices' | 'clientTypes' | 'priorityRequests' | 'filteredRequests' | 'workingDays',
     value: string
   ) => {
     setSettings((current) => {
@@ -862,7 +874,7 @@ export default function DemoParametresPage() {
 
   const renderProfileSection = () => (
     <div>
-      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🛠️ Profil metier</h2>
+      <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>🛠️ Profil métier</h2>
 
       <DemoSectionCard
         title="Positionnement metier"
@@ -917,6 +929,135 @@ export default function DemoParametresPage() {
             selected={settings.profile.filteredRequests}
             onToggle={(value) => toggleProfileArrayValue('filteredRequests', value)}
           />
+        </div>
+      </DemoSectionCard>
+
+      {/* Zone d'intervention — reprend les memes champs que la section
+          "Deplacements" (settings.travel), en lecture/ecriture partagee pour
+          eviter de dupliquer une source de verite locale dans la demo. */}
+      <DemoSectionCard
+        title="Zone d'intervention"
+        description="Memes donnees que l'onglet Deplacements, affichees ici pour rester alignees sur la page prod Profil metier."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Ville de depart" value={settings.travel.departureAddress} onChange={(value) => updateTravelField('departureAddress', value)} />
+          <Field label="Rayon d'intervention (km)" value={settings.travel.radiusKm} onChange={(value) => updateTravelField('radiusKm', value)} />
+          <Field label="Frais standards (EUR)" value={settings.travel.standardFee} onChange={(value) => updateTravelField('standardFee', value)} />
+        </div>
+        <p style={{ margin: '12px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
+          Zone principale : {settings.entreprise.interventionArea || 'Non renseignee'}.
+        </p>
+      </DemoSectionCard>
+
+      {/* Prestations (deja couvertes plus haut par "Prestations proposees")
+          + activation/desactivation simulee du catalogue, alignee sur le
+          catalogue reel demo (settings.catalogue). */}
+      <DemoSectionCard title="Prestations configurees" description="Activation/desactivation simulee localement, sans ecriture Supabase.">
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {settings.catalogue.services.map((service) => (
+            <div key={service.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{service.title}</p>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>{service.priceLabel}</p>
+              </div>
+              <ToggleField
+                label=""
+                checked={service.enabled}
+                onChange={(value) => updateCatalogueService(service.id, 'enabled', value)}
+              />
+            </div>
+          ))}
+        </div>
+      </DemoSectionCard>
+
+      {/* Questions de qualification — exemples statiques presentes dans la
+          demo (aucune ecriture, illustration du niveau de detail attendu par
+          l'assistant lors de la qualification d'un dossier). */}
+      <DemoSectionCard title="Questions de qualification" description="Questions posees au client par l'assistant demo pour qualifier un dossier avant devis.">
+        <ul style={{ margin: 0, paddingLeft: '20px', display: 'grid', gap: '6px', fontSize: '13px', color: 'var(--text-2)' }}>
+          <li>Quel est le type de probleme ou de projet electrique ? (panne, renovation, mise aux normes...)</li>
+          <li>Le tableau electrique est-il aux normes actuelles ?</li>
+          <li>Quel budget envisagez-vous pour ce projet ?</li>
+          <li>Sous quel delai souhaitez-vous intervenir ?</li>
+          <li>Pouvez-vous joindre des photos du chantier ou de l'installation actuelle ?</li>
+        </ul>
+      </DemoSectionCard>
+
+      {/* Regles de qualification / scoring — reprend les signaux utilises par
+          l'analyse Kadria demo (completude, urgence, budget, delai, photos),
+          purement informatif ici (aucun recalcul reel). */}
+      <DemoSectionCard title="Regles de qualification (scoring)" description="Signaux pris en compte par l'analyse Kadria demo pour prioriser un dossier.">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+          {[
+            { label: 'Completude du dossier', weight: '30%' },
+            { label: 'Urgence detectee', weight: '25%' },
+            { label: 'Budget renseigne', weight: '20%' },
+            { label: 'Delai souhaite', weight: '15%' },
+            { label: 'Photos jointes', weight: '10%' },
+          ].map((rule) => (
+            <div key={rule.label} style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 12px' }}>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>{rule.label}</p>
+              <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700, color: 'var(--text-1)' }}>{rule.weight}</p>
+            </div>
+          ))}
+        </div>
+      </DemoSectionCard>
+
+      {/* Horaires / disponibilite */}
+      <DemoSectionCard title="Horaires et disponibilite" description="Jours travailles et amplitude horaire, modifiables localement.">
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+          {[
+            { value: 'lundi', label: 'Lun' },
+            { value: 'mardi', label: 'Mar' },
+            { value: 'mercredi', label: 'Mer' },
+            { value: 'jeudi', label: 'Jeu' },
+            { value: 'vendredi', label: 'Ven' },
+            { value: 'samedi', label: 'Sam' },
+            { value: 'dimanche', label: 'Dim' },
+          ].map((d) => {
+            const active = settings.profile.workingDays.includes(d.value);
+            return (
+              <button
+                key={d.value}
+                type="button"
+                onClick={() => toggleProfileArrayValue('workingDays', d.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  background: active ? 'rgba(34,197,94,0.12)' : 'var(--bg-hover)',
+                  color: active ? '#4ade80' : 'var(--text-2)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
+          <Field label="Heure de debut" value={settings.profile.workStartTime} onChange={(value) => updateProfileField('workStartTime', value)} />
+          <Field label="Heure de fin" value={settings.profile.workEndTime} onChange={(value) => updateProfileField('workEndTime', value)} />
+        </div>
+      </DemoSectionCard>
+
+      {/* Chiffrage */}
+      <DemoSectionCard title="Chiffrage" description="Parametres par defaut utilises pour preparer un devis demo.">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
+          <Field label="TVA par defaut (%)" value={settings.profile.defaultVatRate} onChange={(value) => updateProfileField('defaultVatRate', value)} />
+          <Field label="Tarif horaire HT (EUR)" value={settings.profile.hourlyRateHt} onChange={(value) => updateProfileField('hourlyRateHt', value)} />
+          <Field label="Forfait diagnostic (EUR)" value={settings.profile.diagnosticFeeHt} onChange={(value) => updateProfileField('diagnosticFeeHt', value)} />
+          <Field label="Marge par defaut (%)" value={settings.profile.defaultMarginPercent} onChange={(value) => updateProfileField('defaultMarginPercent', value)} />
+        </div>
+      </DemoSectionCard>
+
+      {/* Marques / preferences */}
+      <DemoSectionCard title="Marques et preferences" description="Preferences de marques utilisees pour illustrer un profil artisan credible.">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <Field label="Marques installees" value={settings.profile.preferredBrands} onChange={(value) => updateProfileField('preferredBrands', value)} />
+          <Field label="Marques evitees" value={settings.profile.avoidedBrands} onChange={(value) => updateProfileField('avoidedBrands', value)} />
         </div>
       </DemoSectionCard>
     </div>

@@ -824,6 +824,23 @@ function ProjectDetail() {
     }
   }
 
+  // Avis Google — action purement simulée : jamais d'appel API Google, pas
+  // d'email/SMS réel. Ne devient pertinente qu'une fois le dossier
+  // Gagné/en réalisation (cf. isGoogleReviewEligibleStatus plus bas).
+  function requestGoogleReview() {
+    const now = new Date().toISOString();
+    setProject((current: any) => (current
+      ? {
+          ...current,
+          activity: [
+            { id: `demo_review_request_${Date.now()}`, label: 'Demande d’avis Google envoyée (démo)', date: now, kind: 'decision' },
+            ...(current.activity || []),
+          ],
+        }
+      : current));
+    setFollowUpToast({ type: 'success', message: 'Demande d’avis simulée dans la démo. En production, un email/SMS serait envoyé au client avec votre lien Google.' });
+  }
+
   async function saveNote() {
     try {
       setUpdating(true);
@@ -1059,6 +1076,10 @@ function ProjectDetail() {
   // (nextAction.title, expose par decision.primaryActionLabel) plutot qu un
   // mapping local sur le libelle de statut devis.
   const nextCommercialAction = decision.primaryActionLabel;
+  // Avis Google — n'est pertinent qu'une fois le projet Gagné ou en
+  // réalisation (jamais sur Nouveau/Perdu/en cours de négociation), même
+  // logique que la fiche prod (isGoogleReviewEligibleStatus).
+  const isGoogleReviewEligibleStatus = project.status === 'Gagné' || project.status === 'Réalisation du projet';
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
   const projectLabel = getProjectHeadline(project);
   const score = Number(project.completenessScore || 0);
@@ -1759,7 +1780,7 @@ function ProjectDetail() {
 
   return (
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-1)]">
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-5 sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-[1500px] space-y-6 px-4 py-5 sm:px-6 sm:py-8">
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: '24px', gap: isMobile ? '12px' : '16px' }}>
           <Button variant="ghost" onClick={() => router.push('/demo-dashboard')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -2253,68 +2274,153 @@ function ProjectDetail() {
             };
           })();
 
+          // Pilotage commercial — fusion "Action recommandée" (avec décision
+          // commerciale manuelle) + "Avancement commercial", alignée sur la
+          // structure de la fiche prod (app/dashboard-v2/projet/[id]/page.tsx,
+          // bloc "Pilotage commercial"). Toutes les actions restent locales
+          // (état React + toast), aucun appel réseau.
+          const allowMarkWon = project.status !== 'Gagné' && project.status !== 'Perdu';
+          const allowMarkLost = project.status !== 'Gagné' && project.status !== 'Perdu';
+
           return (
             <>
               <div style={{
                 background: 'var(--bg-elevated)',
-                border: '1px solid var(--border)',
+                border: '1px solid rgba(34,197,94,0.35)',
+                boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 4px 16px rgba(34,197,94,0.08)',
                 borderRadius: '14px',
-                padding: isMobile ? '16px' : '22px',
+                padding: isMobile ? '16px' : '18px 20px',
                 marginBottom: '16px',
               }}>
-                <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 18px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Avancement commercial
+                <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Pilotage commercial
                 </p>
                 <div style={{
-                  display: isMobile ? 'flex' : 'grid',
-                  flexDirection: isMobile ? 'column' : undefined,
-                  gridTemplateColumns: isMobile ? undefined : 'repeat(7, minmax(0, 1fr))',
-                  gap: isMobile ? '10px' : '6px',
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.3fr) minmax(0, 1fr)',
+                  gap: isMobile ? '18px' : '28px',
+                  alignItems: 'start',
                 }}>
+                  {/* Action recommandée */}
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Action recommandée
+                    </p>
+                    <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
+                      {recommendedAction.title}
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
+                      {recommendedAction.meta}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={recommendedAction.onClick}
+                      style={{
+                        marginTop: '4px',
+                        background: 'var(--accent)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#000',
+                        cursor: 'pointer',
+                        width: isMobile ? '100%' : undefined,
+                      }}
+                    >
+                      {recommendedAction.ctaLabel}
+                    </button>
+
+                    {/* Décision commerciale manuelle — permet de marquer un
+                        dossier gagné/perdu à la main (simulation locale
+                        uniquement), en complément du passage automatique via
+                        acceptation/refus du devis démo. */}
+                    {(allowMarkWon || allowMarkLost) && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          disabled={updating}
+                          onClick={() => {
+                            updateStatus('Gagné');
+                            setFollowUpToast({ type: 'success', message: 'Action simulée dans la démo : dossier marqué gagné.' });
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(22,163,74,0.4)',
+                            color: '#15803d',
+                            borderRadius: '999px',
+                            padding: '5px 12px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: updating ? 'default' : 'pointer',
+                            opacity: updating ? 0.6 : 1,
+                          }}
+                        >
+                          🏆 Marquer gagné
+                        </button>
+                        <button
+                          type="button"
+                          disabled={updating}
+                          onClick={() => {
+                            updateStatus('Perdu');
+                            setFollowUpToast({ type: 'success', message: 'Action simulée dans la démo : dossier marqué perdu.' });
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(220,38,38,0.35)',
+                            color: '#b91c1c',
+                            borderRadius: '999px',
+                            padding: '5px 12px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: updating ? 'default' : 'pointer',
+                            opacity: updating ? 0.6 : 1,
+                          }}
+                        >
+                          🗄️ Marquer perdu
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Avancement commercial */}
+                  <div style={{
+                    borderLeft: isMobile ? 'none' : '1px solid var(--border)',
+                    borderTop: isMobile ? '1px solid var(--border)' : 'none',
+                    paddingLeft: isMobile ? 0 : '24px',
+                    paddingTop: isMobile ? '14px' : 0,
+                  }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-3)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Avancement commercial
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {commercialTimeline.map((step, index) => {
                     const isCurrent = !step.done && commercialTimeline.slice(0, index).every((s) => s.done);
+                    const isLast = index === commercialTimeline.length - 1;
                     return (
-                      <div
-                        key={step.id}
-                        style={{
-                          display: 'flex',
-                          flexDirection: isMobile ? 'row' : 'column',
-                          alignItems: isMobile ? 'center' : 'stretch',
-                          gap: '10px',
-                        }}
-                      >
-                        <div style={{
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                        }}>
+                      <div key={step.id} style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                           <span style={{
-                            width: '26px',
-                            height: '26px',
+                            width: '20px',
+                            height: '20px',
                             borderRadius: '999px',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '12px',
+                            fontSize: '10px',
                             fontWeight: 700,
                             background: step.done ? 'rgba(34,197,94,0.18)' : isCurrent ? 'rgba(234,88,12,0.14)' : 'var(--bg)',
                             border: `2px solid ${step.done ? 'rgba(34,197,94,0.5)' : isCurrent ? '#ea580c' : 'var(--border)'}`,
                             color: step.done ? 'var(--accent)' : isCurrent ? '#ea580c' : 'var(--text-3)',
-                            flexShrink: 0,
                           }}>
                             {step.done ? '✓' : index + 1}
                           </span>
-                          {!isMobile && index < commercialTimeline.length - 1 && (
-                            <span style={{
-                              flex: 1,
-                              height: '2px',
-                              background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)',
-                            }} />
+                          {!isLast && (
+                            <span style={{ width: '2px', flex: 1, minHeight: '10px', background: step.done ? 'rgba(34,197,94,0.35)' : 'var(--border)' }} />
                           )}
                         </div>
                         <p style={{
-                          margin: isMobile ? 0 : '10px 0 0',
+                          margin: isLast ? '2px 0 0' : '2px 0 10px',
                           fontSize: '12px',
                           color: step.done ? 'var(--text-1)' : isCurrent ? '#ea580c' : 'var(--text-3)',
                           fontWeight: step.done || isCurrent ? 700 : 500,
@@ -2332,6 +2438,8 @@ function ProjectDetail() {
                     return `${current.label} — ${recommendedAction.title.charAt(0).toLowerCase()}${recommendedAction.title.slice(1)}.`;
                   })()}
                 </p>
+                  </div>
+                </div>
               </div>
             </>
           );
@@ -3588,6 +3696,43 @@ function ProjectDetail() {
           {copyPortalToast && (
             <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{copyPortalToast}</p>
           )}
+        </div>
+
+        {/* Avis Google — mirroring app/dashboard-v2/projet/[id]/page.tsx :
+            uniquement actionnable une fois le dossier Gagné/en réalisation,
+            jamais sur Nouveau/Perdu. Action 100% simulée : aucun email, SMS
+            ou appel API Google réel. */}
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
+          opacity: isGoogleReviewEligibleStatus ? 1 : 0.6,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>⭐ Avis Google</p>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
+                {isGoogleReviewEligibleStatus
+                  ? "Le projet est terminé : c'est le bon moment pour demander un avis client."
+                  : 'Disponible une fois le projet Gagné ou en réalisation.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={requestGoogleReview}
+              disabled={!isGoogleReviewEligibleStatus}
+              title={!isGoogleReviewEligibleStatus ? 'Disponible une fois le projet terminé.' : undefined}
+              style={{
+                background: isGoogleReviewEligibleStatus ? 'var(--accent)' : 'var(--bg)',
+                color: isGoogleReviewEligibleStatus ? 'black' : 'var(--text-3)',
+                fontWeight: 700, fontSize: '12px',
+                padding: '8px 14px', borderRadius: '8px',
+                border: isGoogleReviewEligibleStatus ? 'none' : '1px solid var(--border)',
+                cursor: isGoogleReviewEligibleStatus ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Demander un avis Google
+            </button>
+          </div>
         </div>
 
         {/* Retours client — bulles de discussion + activité du dossier,
