@@ -891,10 +891,13 @@ export default function DesktopAgendaView() {
                   {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => (
                     <div
                       key={i}
-                      className="relative border-t border-[var(--border)] text-right"
-                      style={{ height: HOUR_HEIGHT }}
+                      className="relative border-t text-right"
+                      style={{ height: HOUR_HEIGHT, borderColor: 'var(--border-soft)', background: 'var(--bg-elevated)' }}
                     >
-                      <span className="absolute -top-2 right-2 text-[11px] text-[var(--text-3)]">
+                      <span
+                        className="absolute right-2 z-10 rounded-full px-1.5 text-[11px] font-medium text-[var(--text-3)]"
+                        style={{ top: '6px', background: 'var(--bg-elevated)' }}
+                      >
                         {String(GRID_START_HOUR + i).padStart(2, '0')}:00
                       </span>
                     </div>
@@ -913,7 +916,7 @@ export default function DesktopAgendaView() {
                       style={{ borderColor: 'var(--border)', background: isToday ? 'rgba(52,211,153,0.04)' : 'transparent' }}
                     >
                       {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => (
-                        <div key={i} className="border-t border-[var(--border)]" style={{ height: HOUR_HEIGHT }} />
+                        <div key={i} className="border-t" style={{ height: HOUR_HEIGHT, borderColor: 'var(--border-soft)' }} />
                       ))}
 
                       {positioned.map(({ event, top, height, column, columns }) => {
@@ -924,7 +927,7 @@ export default function DesktopAgendaView() {
                             key={event.id}
                             type="button"
                             onClick={() => setSelectedEvent(event)}
-                            className="absolute overflow-hidden rounded-md border px-2 py-1 text-left text-xs shadow-sm transition hover:z-10 hover:brightness-110"
+                            className="absolute overflow-hidden rounded-lg border px-2 py-1 text-left text-xs shadow-sm transition hover:z-10 hover:-translate-y-[1px] hover:shadow-md"
                             style={{
                               top,
                               height,
@@ -932,12 +935,15 @@ export default function DesktopAgendaView() {
                               width: `calc(${widthPct}% - 4px)`,
                               background: style.bg,
                               borderColor: style.border,
+                              borderLeftColor: style.dot,
+                              borderLeftWidth: '4px',
                               color: style.text,
+                              boxShadow: '0 1px 2px rgba(15,23,42,0.06)',
                             }}
                             title={event.title}
                           >
                             <p className="truncate font-semibold">{event.title}</p>
-                            {height > 32 && <p className="truncate opacity-80">{eventTimeRangeLabel(event)}</p>}
+                            {height > 32 && <p className="truncate opacity-90">{eventTimeRangeLabel(event)}</p>}
                             {height > 46 && event.projectReference && (
                               <p className="truncate opacity-80">{event.projectReference}</p>
                             )}
