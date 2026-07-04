@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { Resend } from 'resend'
+import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import {
   getRequiredPlanForFeature,
   hasFeature,
@@ -51,7 +52,7 @@ interface PlatformAccessInput {
 
 const AUTHORIZED_BILLING_STATUSES = new Set(['active', 'trialing'])
 const AUTHORIZED_STATUTS = new Set(['actif'])
-const BLOCKED_STATUTS = new Set(['pending_payment', 'payment_abandoned', 'inactive', 'suspended', 'suspendu', 'résilié', 'resilie'])
+const BLOCKED_STATUTS = new Set(['pending_payment', 'payment_abandoned', 'inactive', 'suspended', 'suspendu', 'resilie', 'résilié'])
 const BLOCKED_BILLING_STATUSES = new Set(['pending_payment', 'payment_abandoned', 'incomplete', 'incomplete_expired', 'past_due', 'canceled', 'unpaid'])
 
 function normalizeAccessValue(value?: string | null): string {
@@ -235,35 +236,34 @@ export async function sendPlatformMagicLinkEmail(input: {
   const resend = getResendClient()
   const magicToken = await createMagicToken(input.email)
   const magicUrl = `${getAuthBaseUrl()}/api/auth/verify?token=${magicToken}`
-
-  const recipientLabel = input.firstName || input.companyName || 'bonjour'
+  const greeting = input.firstName ? `Bonjour ${input.firstName},` : 'Bonjour,'
 
   const { error } = await resend.emails.send({
     from: 'Kadria <contact@kadria.fr>',
     to: input.email,
     subject: 'Votre lien de connexion Kadria',
-    html: `
-      <div style="font-family:system-ui;max-width:500px;margin:0 auto;padding:40px 20px;background:#09090b;color:white;">
-        <h1 style="margin:0 0 24px;">
-          <span style="color:#22c55e">K</span><span style="color:white">adria</span>
-        </h1>
-        <h2 style="color:white;font-size:20px;margin:0 0 12px;font-weight:600;">
-          Votre lien de connexion
-        </h2>
-        <p style="color:#a1a1aa;line-height:1.6;margin:0 0 24px;">
-          Bonjour ${recipientLabel}, cliquez sur le bouton ci-dessous pour accéder à votre espace Kadria Pro.<br/>
-          Ce lien expire dans <strong style="color:white">10 minutes</strong>.
-        </p>
-        <a href="${magicUrl}"
-           style="display:inline-block;background:#22c55e;color:black;font-weight:700;border-radius:10px;padding:14px 28px;font-size:16px;text-decoration:none;">
-          Accéder à mon espace →
-        </a>
-        <p style="color:#52525b;font-size:12px;margin:24px 0 0;line-height:1.6;">
-          Si vous n'avez pas demandé ce lien, ignorez cet email.<br/>
-          Lien valable une seule fois pendant 10 minutes.
-        </p>
-      </div>
-    `,
+    text: renderBaseEmailText({
+      preheader: 'Connectez-vous a votre espace securise. Ce lien expire dans 10 minutes.',
+      brand: 'Kadria',
+      title: 'Connexion a votre espace Kadria',
+      intro: `${greeting}\n\nVous avez demande a vous connecter a votre espace Kadria. Cliquez sur le bouton ci-dessous pour ouvrir votre session.`,
+      ctaLabel: 'Acceder a mon espace',
+      ctaUrl: magicUrl,
+      secondaryText: `Ce lien est valable 10 minutes et ne peut etre utilise qu'une seule fois.\n\nSi le bouton ne fonctionne pas, copiez ce lien dans votre navigateur : ${magicUrl}\n\nSi vous n'etes pas a l'origine de cette demande, vous pouvez ignorer cet email. Aucun acces ne sera accorde sans ce lien.`,
+      footerNote: 'Kadria - Assistant commercial pour artisans',
+      accentColor: '#22c55e',
+    }),
+    html: renderBaseEmail({
+      preheader: 'Connectez-vous a votre espace securise. Ce lien expire dans 10 minutes.',
+      brand: 'Kadria',
+      title: 'Connexion a votre espace Kadria',
+      intro: `${greeting}\n\nVous avez demande a vous connecter a votre espace Kadria. Cliquez sur le bouton ci-dessous pour ouvrir votre session.`,
+      ctaLabel: 'Acceder a mon espace',
+      ctaUrl: magicUrl,
+      secondaryText: `Ce lien est valable 10 minutes et ne peut etre utilise qu'une seule fois.\n\nSi le bouton ne fonctionne pas, copiez ce lien dans votre navigateur : ${magicUrl}\n\nSi vous n'etes pas a l'origine de cette demande, vous pouvez ignorer cet email. Aucun acces ne sera accorde sans ce lien.`,
+      footerNote: 'Kadria - Assistant commercial pour artisans',
+      accentColor: '#22c55e',
+    }),
   })
 
   if (error) {
