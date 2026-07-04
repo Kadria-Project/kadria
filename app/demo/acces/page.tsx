@@ -64,6 +64,7 @@ export default function DemoAccessPage() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [reason, setReason] = useState('')
+  const [verifyingToken, setVerifyingToken] = useState(false)
 
   function update<K extends keyof DemoAccessForm>(key: K, value: DemoAccessForm[K]) {
     setForm((current) => ({ ...current, [key]: value }))
@@ -96,7 +97,16 @@ export default function DemoAccessPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const token = params.get('token') || ''
     setReason(params.get('reason') || '')
+
+    if (!token) {
+      setVerifyingToken(false)
+      return
+    }
+
+    setVerifyingToken(true)
+    window.location.replace(`/api/demo-access/verify?token=${encodeURIComponent(token)}`)
   }, [])
 
   const inputClassName = 'w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-500 focus:border-green-500'
@@ -141,7 +151,11 @@ export default function DemoAccessPage() {
           </section>
 
           <section className="rounded-[28px] border border-zinc-800 bg-zinc-900/80 p-6 sm:p-8">
-            {reason ? (
+            {verifyingToken ? (
+              <div className="mb-6 rounded-2xl border border-green-500/20 bg-green-500/[0.08] p-4 text-sm leading-7 text-zinc-200">
+                Verification de votre acces demo en cours...
+              </div>
+            ) : reason ? (
               <div className="mb-6 rounded-2xl border border-green-500/20 bg-green-500/[0.08] p-4 text-sm leading-7 text-zinc-200">
                 {reason === 'demo_access_required'
                   ? 'La demonstration complete est accessible sur demande.'
@@ -153,7 +167,7 @@ export default function DemoAccessPage() {
               </div>
             ) : null}
 
-            {!submitted ? (
+            {!submitted && !verifyingToken ? (
               <>
                 <div className="mb-6">
                   <h2 className="text-2xl font-semibold">Demander un acces demo</h2>
@@ -251,7 +265,7 @@ export default function DemoAccessPage() {
                   </button>
                 </div>
               </>
-            ) : (
+            ) : !verifyingToken ? (
               <div className="flex min-h-[520px] flex-col items-center justify-center text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full border border-green-500/20 bg-green-500/[0.08] text-2xl text-green-500">
                   OK
@@ -266,6 +280,16 @@ export default function DemoAccessPage() {
                 >
                   Revenir a la page demo
                 </Link>
+              </div>
+            ) : (
+              <div className="flex min-h-[520px] flex-col items-center justify-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-green-500/20 bg-green-500/[0.08] text-2xl text-green-500">
+                  ...
+                </div>
+                <h2 className="mt-6 text-2xl font-semibold">Verification de l'acces demo</h2>
+                <p className="mt-4 max-w-md text-sm leading-7 text-zinc-400">
+                  Nous validons votre lien securise avant d'ouvrir la demonstration complete.
+                </p>
               </div>
             )}
           </section>

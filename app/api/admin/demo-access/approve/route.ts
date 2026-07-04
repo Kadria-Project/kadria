@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       requestId: result.requestId,
       status: result.status,
       expiresAt: result.expiresAt,
+      accessUrl: result.accessUrl,
       verifyUrl: result.verifyUrl,
       emailed: result.emailed,
     })

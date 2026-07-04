@@ -209,7 +209,7 @@ export default function AdminDemoAccessPage() {
         throw new Error(data.error || 'Erreur lors de l’approbation');
       }
 
-      setGeneratedLink(data.verifyUrl || '');
+      setGeneratedLink(data.accessUrl || data.verifyUrl || '');
       if (selectedIdentity.requestId) {
         patchRequestInState(selectedIdentity.requestId, (current) => ({
           ...current,

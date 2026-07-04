@@ -159,6 +159,10 @@ export function buildDemoAccessVerifyUrl(token: string) {
   return `${getDemoAccessBaseUrl()}/api/demo-access/verify?token=${encodeURIComponent(token)}`
 }
 
+export function buildDemoAccessAccessUrl(token: string) {
+  return `${getDemoAccessBaseUrl()}/demo/acces?token=${encodeURIComponent(token)}`
+}
+
 export function getEffectiveDemoAccessStatus(record: Pick<DemoAccessRequestRecord, 'status' | 'expires_at' | 'revoked_at'>): DemoAccessStatus {
   if (record.revoked_at || record.status === 'revoked') {
     return 'revoked'
@@ -252,6 +256,7 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
   const rawToken = generateDemoAccessToken()
   const tokenHash = await hashDemoAccessToken(rawToken)
   const expiresAt = new Date(Date.now() + DEMO_ACCESS_DEFAULT_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+  const accessUrl = buildDemoAccessAccessUrl(rawToken)
   const verifyUrl = buildDemoAccessVerifyUrl(rawToken)
 
   const { error: updateError } = await supabaseAdmin
@@ -286,7 +291,7 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
             intro: `Bonjour ${row.first_name || ''}, votre acces a la demonstration Kadria a ete active.`,
             body: 'Cliquez sur le bouton ci-dessous pour ouvrir la demo complete.',
             ctaLabel: 'Ouvrir la demo Kadria',
-            ctaUrl: verifyUrl,
+            ctaUrl: accessUrl,
             secondaryText: `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')} et peut etre revoque a tout moment.`,
             footerNote: 'Kadria aide les artisans a qualifier, suivre et securiser leurs demandes clients.',
           }),
@@ -296,7 +301,7 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
             intro: `Bonjour ${row.first_name || ''}, votre accès à la démonstration Kadria a été activé.`,
             body: 'Cliquez sur le bouton ci-dessous pour ouvrir la démo complète.',
             ctaLabel: 'Ouvrir la démo Kadria',
-            ctaUrl: verifyUrl,
+            ctaUrl: accessUrl,
             secondaryText: `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')} et peut être révoqué à tout moment.`,
             footerNote: 'Kadria aide les artisans à qualifier, suivre et sécuriser leurs demandes clients.',
           }),
@@ -312,6 +317,7 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
     requestId: row.id,
     status: 'approved' as const,
     expiresAt: expiresAt.toISOString(),
+    accessUrl,
     verifyUrl,
     tokenHash,
     emailed,
