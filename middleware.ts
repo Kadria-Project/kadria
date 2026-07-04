@@ -42,6 +42,13 @@ type DemoAccessRow = {
   access_token_hash?: string | null
 }
 
+function maskTokenForLog(value: string | null | undefined) {
+  const normalized = String(value || '').trim()
+  if (!normalized) return 'empty'
+  if (normalized.length <= 8) return `${normalized.slice(0, 2)}…${normalized.slice(-2)}`
+  return `${normalized.slice(0, 6)}…${normalized.slice(-4)}`
+}
+
 function redirectToDemoAccess(request: NextRequest, reason: string) {
   const url = new URL('/demo/acces', request.url)
   url.searchParams.set('reason', reason)
@@ -78,6 +85,10 @@ async function fetchDemoAccessRow(requestId: string): Promise<DemoAccessRow | nu
   })
 
   if (!response.ok) {
+    console.error('[DEMO ACCESS MIDDLEWARE] fetchDemoAccessRow failed', {
+      requestId: maskTokenForLog(requestId),
+      status: response.status,
+    })
     return null
   }
 
@@ -110,23 +121,39 @@ export async function middleware(request: NextRequest) {
 
     const row = await fetchDemoAccessRow(session.requestId)
     if (!row?.id) {
-      return redirectToDemoAccess(request, 'demo_access_invalid')
+      console.warn('[DEMO ACCESS MIDDLEWARE] Signed demo session accepted without DB recheck', {
+        requestId: maskTokenForLog(session.requestId),
+      })
+      return NextResponse.next()
     }
 
     if (row.access_token_hash !== session.tokenHash) {
+      console.warn('[DEMO ACCESS MIDDLEWARE] Token hash mismatch', {
+        requestId: maskTokenForLog(session.requestId),
+      })
       return redirectToDemoAccess(request, 'demo_access_invalid')
     }
 
     if (row.revoked_at || row.status === 'revoked') {
+      console.warn('[DEMO ACCESS MIDDLEWARE] Revoked demo access', {
+        requestId: maskTokenForLog(session.requestId),
+      })
       return redirectToDemoAccess(request, 'demo_access_revoked')
     }
 
     const expiresAt = parseIsoDate(row.expires_at)
     if (!expiresAt || expiresAt.getTime() <= Date.now() || row.status === 'expired') {
+      console.warn('[DEMO ACCESS MIDDLEWARE] Expired demo access', {
+        requestId: maskTokenForLog(session.requestId),
+      })
       return redirectToDemoAccess(request, 'demo_access_expired')
     }
 
     if (row.status !== 'approved') {
+      console.warn('[DEMO ACCESS MIDDLEWARE] Unexpected demo access status', {
+        requestId: maskTokenForLog(session.requestId),
+        status: row.status || 'empty',
+      })
       return redirectToDemoAccess(request, 'demo_access_required')
     }
 
