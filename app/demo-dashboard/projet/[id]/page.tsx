@@ -1271,12 +1271,134 @@ function ProjectDetail() {
         ),
       },
       {
+        key: 'retours',
+        title: 'Retours client',
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(clientEvents[project.id] || []).length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+                  Aucun échange pour le moment sur ce dossier démo.
+                </p>
+              ) : (
+                (clientEvents[project.id] || []).map((ev) => {
+                  const isClient = ev.type === 'client_message';
+                  const isArtisan = ev.type === 'artisan_reply';
+                  if (!isClient && !isArtisan) {
+                    return (
+                      <div key={ev.id} style={{
+                        background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                        borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: 'var(--text-2)',
+                      }}>
+                        <strong style={{ color: 'var(--text-1)' }}>{ev.title}</strong>
+                        {ev.message ? ` — ${ev.message}` : ''}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
+                      <div style={{
+                        maxWidth: '88%',
+                        background: isClient ? 'var(--bg-inset)' : 'var(--accent)',
+                        color: isClient ? 'var(--text-1)' : 'black',
+                        border: isClient ? '1px solid var(--border)' : 'none',
+                        borderRadius: isClient ? '14px 14px 14px 4px' : '14px 14px 4px 14px',
+                        padding: '10px 14px',
+                      }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', opacity: 0.75 }}>
+                          {isClient ? 'Client' : 'Vous (artisan)'}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.message}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <textarea
+              value={artisanReplyText}
+              onChange={(e) => setArtisanReplyText(e.target.value)}
+              placeholder="Votre réponse sera visible par le client dans son portail (simulation démo)..."
+              rows={3}
+              maxLength={2000}
+              style={{
+                width: '100%', background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                borderRadius: '10px', padding: '10px', color: 'var(--text-1)', fontSize: '13px',
+                fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
+              }}
+            />
+            <button
+              onClick={() => {
+                const text = artisanReplyText.trim();
+                if (!text || sendingReply) return;
+                setSendingReply(true);
+                addClientEvent(project.id, { type: 'artisan_reply', title: 'Réponse artisan', message: text, source: 'artisan' });
+                setArtisanReplyText('');
+                setReplyToast('Simulation : réponse publiée dans le portail client (démo)');
+                window.setTimeout(() => setReplyToast(null), 4000);
+                setSendingReply(false);
+              }}
+              disabled={!artisanReplyText.trim() || sendingReply}
+              style={{
+                background: !artisanReplyText.trim() || sendingReply ? 'var(--border)' : 'var(--accent)',
+                color: !artisanReplyText.trim() || sendingReply ? 'var(--text-3)' : 'black',
+                fontWeight: 700, fontSize: '13px', padding: '10px 16px', borderRadius: '8px',
+                border: 'none', cursor: !artisanReplyText.trim() || sendingReply ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {sendingReply ? 'Publication...' : 'Publier dans le portail client'}
+            </button>
+            {replyToast && (
+              <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{replyToast}</p>
+            )}
+          </div>
+        ),
+      },
+      {
         key: 'photos',
         title: 'Photos',
         content: (
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
-            {project.photos && project.photos.length > 0 ? `${project.photos.length} photo(s) jointe(s)` : 'Aucune photo'}
-          </p>
+          project.photos && project.photos.length > 0 ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: project.photos.length === 1 ? 'minmax(0, 60%)' : 'repeat(2, 1fr)',
+              gap: '8px',
+            }}>
+              {project.photos.slice(0, 4).map((photo: { url: string; thumbnailUrl?: string }, i: number) => (
+                <a
+                  key={`${photo.url}-${i}`}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={photo.thumbnailUrl || photo.url}
+                    alt={`Photo ${i + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
+              ))}
+              {project.photos.length > 4 && (
+                <a
+                  href={project.photos[4].url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    aspectRatio: '1', borderRadius: '10px', border: '1px solid var(--border)',
+                    background: 'var(--bg)', color: 'var(--text-2)', fontSize: '12px', fontWeight: 700,
+                  }}
+                >
+                  +{project.photos.length - 4} · Voir toutes les photos
+                </a>
+              )}
+            </div>
+          ) : (
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
+              Aucune photo jointe
+            </p>
+          )
         ),
       },
       {
