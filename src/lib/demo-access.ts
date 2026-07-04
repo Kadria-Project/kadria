@@ -49,6 +49,11 @@ type ApproveDemoAccessInput = {
   sendEmail?: boolean
 }
 
+type UpdatedDemoAccessRequest = Pick<
+  DemoAccessRequestRecord,
+  'id' | 'status' | 'approved_at' | 'revoked_at' | 'expires_at' | 'access_token_hash' | 'access_sent_at' | 'approved_by' | 'internal_note'
+>
+
 type UpdateStatusInput = {
   requestId?: string
   email?: string
@@ -247,10 +252,42 @@ async function findDemoAccessRequest(input: { requestId?: string; email?: string
   return (data as DemoAccessRequestRecord | null) || null
 }
 
+async function updateDemoAccessRequestById(
+  requestId: string,
+  patch: Record<string, unknown>,
+) {
+  const normalizedRequestId = normalizeText(requestId)
+  if (!normalizedRequestId) {
+    throw new Error('REQUEST_ID_MISSING')
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('demo_access_requests')
+    .update(patch)
+    .eq('id', normalizedRequestId)
+    .select('id, status, approved_at, revoked_at, expires_at, access_token_hash, access_sent_at, approved_by, internal_note')
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    throw new Error('REQUEST_UPDATE_CONFLICT')
+  }
+
+  return data as UpdatedDemoAccessRequest
+}
+
 export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
   const row = await findDemoAccessRequest({ requestId: input.requestId, email: input.email })
   if (!row) {
     throw new Error('REQUEST_NOT_FOUND')
+  }
+
+  const stableRequestId = normalizeText(row.id)
+  if (!stableRequestId) {
+    throw new Error('REQUEST_ID_MISSING')
   }
 
   const rawToken = generateDemoAccessToken()
@@ -259,22 +296,18 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
   const accessUrl = buildDemoAccessAccessUrl(rawToken)
   const verifyUrl = buildDemoAccessVerifyUrl(rawToken)
 
-  const { error: updateError } = await supabaseAdmin
-    .from('demo_access_requests')
-    .update({
-      status: 'approved',
-      approved_at: new Date().toISOString(),
-      revoked_at: null,
-      expires_at: expiresAt.toISOString(),
-      access_token_hash: tokenHash,
-      access_sent_at: new Date().toISOString(),
-      approved_by: input.approvedBy,
-    })
-    .eq('id', row.id)
+  const approvedAt = new Date().toISOString()
+  const accessSentAt = new Date().toISOString()
 
-  if (updateError) {
-    throw updateError
-  }
+  const updatedRow = await updateDemoAccessRequestById(stableRequestId, {
+    status: 'approved',
+    approved_at: approvedAt,
+    revoked_at: null,
+    expires_at: expiresAt.toISOString(),
+    access_token_hash: tokenHash,
+    access_sent_at: accessSentAt,
+    approved_by: input.approvedBy,
+  })
 
   let emailed = false
   if (input.sendEmail && row.email) {
@@ -314,9 +347,9 @@ export async function approveDemoAccessRequest(input: ApproveDemoAccessInput) {
   }
 
   return {
-    requestId: row.id,
-    status: 'approved' as const,
-    expiresAt: expiresAt.toISOString(),
+    requestId: updatedRow.id,
+    status: updatedRow.status,
+    expiresAt: updatedRow.expires_at || expiresAt.toISOString(),
     accessUrl,
     verifyUrl,
     tokenHash,
@@ -330,20 +363,18 @@ export async function revokeDemoAccessRequest(input: UpdateStatusInput) {
     throw new Error('REQUEST_NOT_FOUND')
   }
 
-  const { error } = await supabaseAdmin
-    .from('demo_access_requests')
-    .update({
-      status: 'revoked',
-      revoked_at: new Date().toISOString(),
-      internal_note: input.internalNote ?? undefined,
-    })
-    .eq('id', row.id)
-
-  if (error) {
-    throw error
+  const stableRequestId = normalizeText(row.id)
+  if (!stableRequestId) {
+    throw new Error('REQUEST_ID_MISSING')
   }
 
-  return row.id
+  await updateDemoAccessRequestById(stableRequestId, {
+    status: 'revoked',
+    revoked_at: new Date().toISOString(),
+    internal_note: input.internalNote ?? undefined,
+  })
+
+  return stableRequestId
 }
 
 export async function rejectDemoAccessRequest(input: UpdateStatusInput) {
@@ -352,19 +383,17 @@ export async function rejectDemoAccessRequest(input: UpdateStatusInput) {
     throw new Error('REQUEST_NOT_FOUND')
   }
 
-  const { error } = await supabaseAdmin
-    .from('demo_access_requests')
-    .update({
-      status: 'rejected',
-      internal_note: input.internalNote ?? undefined,
-    })
-    .eq('id', row.id)
-
-  if (error) {
-    throw error
+  const stableRequestId = normalizeText(row.id)
+  if (!stableRequestId) {
+    throw new Error('REQUEST_ID_MISSING')
   }
 
-  return row.id
+  await updateDemoAccessRequestById(stableRequestId, {
+    status: 'rejected',
+    internal_note: input.internalNote ?? undefined,
+  })
+
+  return stableRequestId
 }
 
 export async function updateDemoAccessInternalNote(input: UpdateStatusInput) {
@@ -373,16 +402,14 @@ export async function updateDemoAccessInternalNote(input: UpdateStatusInput) {
     throw new Error('REQUEST_NOT_FOUND')
   }
 
-  const { error } = await supabaseAdmin
-    .from('demo_access_requests')
-    .update({
-      internal_note: input.internalNote ?? '',
-    })
-    .eq('id', row.id)
-
-  if (error) {
-    throw error
+  const stableRequestId = normalizeText(row.id)
+  if (!stableRequestId) {
+    throw new Error('REQUEST_ID_MISSING')
   }
 
-  return row.id
+  await updateDemoAccessRequestById(stableRequestId, {
+    internal_note: input.internalNote ?? '',
+  })
+
+  return stableRequestId
 }

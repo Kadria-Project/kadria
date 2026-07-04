@@ -69,6 +69,12 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === 'REQUEST_NOT_FOUND') {
       return NextResponse.json({ success: false, error: 'Demande introuvable.' }, { status: 404 })
     }
+    if (error instanceof Error && (error.message === 'REQUEST_ID_MISSING' || error.message === 'REQUEST_UPDATE_CONFLICT')) {
+      return NextResponse.json(
+        { success: false, error: 'Aucune demande mise a jour. Verifiez l identifiant de la demande.' },
+        { status: 409 },
+      )
+    }
 
     console.error('[DEMO ACCESS APPROVE] Error:', error instanceof Error ? error.message : String(error))
     return NextResponse.json({ success: false, error: 'Erreur serveur.' }, { status: 500 })
