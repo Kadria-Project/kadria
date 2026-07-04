@@ -959,6 +959,35 @@ function ProjectDetail() {
     });
   }
 
+  // Ouverture par défaut de l'accordéon "Discussion client" sur mobile dès
+  // qu'un message client/artisan ou une complétion récente existe — le fil
+  // ne doit jamais rester masqué silencieusement (cf. brief RÈGLE ABSOLUE
+  // mobile photos + discussion). Ne s'exécute qu'une fois par chargement de
+  // projet pour ne pas ré-ouvrir de force un accordéon que l'artisan a
+  // volontairement refermé.
+  const retoursAutoOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!project?.id) return;
+    if (retoursAutoOpenedRef.current === project.id) return;
+    const hasDiscussion = clientTimelineEvents.some(
+      (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
+    );
+    const hasLegacyMessages = parseClientMessages(project?.clientMessages).length > 0;
+    const hasClientActivity = Number(project?.clientUpdateCount) > 0
+      || !!project?.clientLastUpdateAt
+      || hasDiscussion
+      || hasLegacyMessages;
+    if (hasClientActivity) {
+      retoursAutoOpenedRef.current = project.id;
+      setOpenMobileSections((prev) => {
+        if (prev.has('retours')) return prev;
+        const next = new Set(prev);
+        next.add('retours');
+        return next;
+      });
+    }
+  }, [project?.id, project?.clientUpdateCount, project?.clientLastUpdateAt, project?.clientMessages, clientTimelineEvents]);
+
   // Option A (préférée) : lecture combinée — les événements
   // 'client_info_updated' issus de ProjectClientEvents sont ajoutés à la
   // source de l'activité du dossier sans jamais écrire dans la table
@@ -2472,12 +2501,184 @@ function ProjectDetail() {
         ),
       },
       {
+        key: 'retours',
+        title: 'Retours client',
+        content: (() => {
+          const clientMessages = parseClientMessages(project?.clientMessages);
+          const clientUpdateCount = Number(project?.clientUpdateCount) || 0;
+          const clientLastUpdateAt = project?.clientLastUpdateAt || null;
+          const hasClientActivity = clientUpdateCount > 0 || !!clientLastUpdateAt || clientMessages.length > 0;
+          const discussionEvents = clientTimelineEvents.filter(
+            (ev) => ev.type === 'client_message' || ev.type === 'artisan_reply',
+          );
+          const useLegacyFallback = discussionEvents.length === 0 && clientMessages.length > 0;
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
+                {clientLastUpdateAt
+                  ? `Dernière mise à jour client : ${formatDateTime(clientLastUpdateAt)}`
+                  : 'Aucune mise à jour client pour le moment'}
+              </p>
+
+              {hasClientActivity && (project?.siteAddress || project?.budget || project?.desiredTimeline) && (
+                <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.7 }}>
+                  {project?.siteAddress && <li>Adresse chantier : {project.siteAddress}</li>}
+                  {project?.budget && <li>Budget : {project.budget}</li>}
+                  {project?.desiredTimeline && <li>Délai souhaité : {project.desiredTimeline}</li>}
+                </ul>
+              )}
+
+              <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                Discussion client
+              </p>
+
+              {discussionEvents.length === 0 && !useLegacyFallback && (
+                <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
+                  Aucun message client pour le moment.
+                </p>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {useLegacyFallback
+                  ? clientMessages.map((msg, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                      <div style={{ maxWidth: '88%', background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '16px 16px 16px 4px', padding: '10px 14px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
+                          Client{msg.date ? ` · ${msg.date}` : ''}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {msg.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                  : discussionEvents.map((ev) => {
+                    const isClient = ev.type === 'client_message';
+                    return (
+                      <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
+                        <div style={{
+                          maxWidth: '88%',
+                          background: isClient ? '#f1f5f9' : 'var(--accent)',
+                          color: isClient ? '#0f172a' : '#ffffff',
+                          border: isClient ? '1px solid #e2e8f0' : 'none',
+                          borderRadius: isClient ? '16px 16px 16px 4px' : '16px 16px 4px 16px',
+                          padding: '10px 14px',
+                        }}>
+                          <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', color: isClient ? '#64748b' : 'rgba(255,255,255,0.8)', textAlign: isClient ? 'left' : 'right' }}>
+                            {isClient ? 'Client' : 'Vous'}{ev.createdAt ? ` · ${formatDateTime(ev.createdAt)}` : ''}
+                          </div>
+                          <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {ev.message || ev.title}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
+                  Répondre au client
+                </p>
+                <textarea
+                  value={clientReplyMessage}
+                  onChange={(e) => {
+                    setClientReplyMessage(e.target.value);
+                    setClientReplyError('');
+                    setClientReplySuccess('');
+                  }}
+                  placeholder="Votre réponse sera visible par le client dans son portail..."
+                  rows={3}
+                  maxLength={2000}
+                  style={{
+                    width: '100%',
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    color: 'var(--text-1)',
+                    background: 'var(--bg-hover)',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {clientReplyError && (
+                  <p style={{ fontSize: '12px', color: '#dc2626', margin: 0 }}>{clientReplyError}</p>
+                )}
+                {clientReplySuccess && (
+                  <p style={{ fontSize: '12px', color: '#16a34a', margin: 0, fontWeight: 600 }}>{clientReplySuccess}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={submitClientReply}
+                  disabled={clientReplySending || !clientReplyMessage.trim()}
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    borderRadius: '999px',
+                    padding: '10px 18px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    background: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--bg-elevated)' : 'var(--accent)',
+                    color: (clientReplySending || !clientReplyMessage.trim()) ? 'var(--text-3)' : '#ffffff',
+                    opacity: (clientReplySending || !clientReplyMessage.trim()) ? 0.7 : 1,
+                    cursor: (clientReplySending || !clientReplyMessage.trim()) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}
+                </button>
+              </div>
+            </div>
+          );
+        })(),
+      },
+      {
         key: 'photos',
         title: 'Photos',
         content: (
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
-            {project.photos && project.photos.length > 0 ? `${project.photos.length} photo(s) jointe(s)` : 'Aucune photo'}
-          </p>
+          project.photos && project.photos.length > 0 ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: project.photos.length === 1 ? 'minmax(0, 60%)' : 'repeat(2, 1fr)',
+              gap: '8px',
+            }}>
+              {project.photos.slice(0, 4).map((photo: { url: string; thumbnailUrl?: string; filename?: string }, i: number) => (
+                <a
+                  key={`${photo.url}-${i}`}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={photo.thumbnailUrl || photo.url}
+                    alt={photo.filename || `Photo ${i + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
+              ))}
+              {project.photos.length > 4 && (
+                <a
+                  href={project.photos[4].url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    aspectRatio: '1', borderRadius: '10px', border: '1px solid var(--border)',
+                    background: 'var(--bg)', color: 'var(--text-2)', fontSize: '12px', fontWeight: 700,
+                  }}
+                >
+                  +{project.photos.length - 4} · Voir toutes les photos
+                </a>
+              )}
+            </div>
+          ) : (
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
+              Aucune photo jointe
+            </p>
+          )
         ),
       },
       {
