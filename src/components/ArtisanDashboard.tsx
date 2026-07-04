@@ -2390,6 +2390,23 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       .slice(0, 8);
   }, [actionEngineFilter, depositPriorityActions, filteredActionEngineEntries]);
 
+  // "Mes taches a faire" — liste unifiee : les appels (uniquement portes par
+  // buildAutomaticTasks, absents de l'Action Engine) + les priorites deja
+  // calculees par l'Action Engine / les acomptes (priorityActionItems),
+  // sans dupliquer de logique metier.
+  const callTaskItems = useMemo(
+    () =>
+      todayTasks
+        .filter((task) => task.type === 'call')
+        .map((task) => ({ kind: 'call' as const, task })),
+    [todayTasks],
+  );
+
+  const mesTachesItems = useMemo(
+    () => [...callTaskItems, ...priorityActionItems].slice(0, 8),
+    [callTaskItems, priorityActionItems],
+  );
+
   // --- Vue "Valeur générée par Kadria" — calculs V1 sans nouvelle API ---
   // Règles métriques figées : CA potentiel = tous les projets sauf Gagné/Perdu ;
   // CA gagné = projets Gagné + devis acceptés (acceptedAt), sans double comptage ;
@@ -3441,270 +3458,72 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {showBusinessOverviewDesktop && (
-        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-stretch">
-          {!loading && (
-            <FeatureGate
-              feature="topAiOpportunities"
-              requiredPlan="performance"
-              title="Priorités intelligentes disponibles avec Performance"
-              message="Passez au plan Performance pour débloquer les priorités du jour : opportunités prioritaires, relances à effectuer, dossiers en risque et prospects chauds."
-              className="lg:flex-[70] lg:basis-[70%]"
-            >
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-base font-bold text-[var(--text-1)]">Priorites du jour</p>
-                    <p className="mt-1 text-sm text-[var(--text-2)]">Qui rappeler maintenant, sans disperser les signaux.</p>
-                  </div>
-
-                  <button
-                    onClick={() => canAccessFeature('topAiOpportunities') ? applyQuickFilter('priority') : openUpgradeModal('topAiOpportunities')}
-                    className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-green-500/30 bg-green-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-green-400 sm:w-auto"
-                  >
-                    Voir les priorites
-                  </button>
-                </div>
-
-                {canAccessFeature('topAiOpportunities') ? (
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <PriorityMetric
-                      label="Opportunites prioritaires"
-                      value={topOpportunities.length}
-                      active={quickFilter === 'opportunities'}
-                      onClick={() => applyQuickFilter('opportunities')}
-                    />
-                    <PriorityMetric
-                      label="Relances a effectuer"
-                      value={relanceCount}
-                      active={quickFilter === 'relance'}
-                      onClick={() => applyQuickFilter('relance')}
-                    />
-                    <PriorityMetric
-                      label="Opportunités à sécuriser"
-                      value={riskProjects.length}
-                      active={quickFilter === 'risk'}
-                      onClick={() => applyQuickFilter('risk')}
-                    />
-                    <PriorityMetric
-                      label="Prospects chauds"
-                      value={hotLeads.length}
-                      active={quickFilter === 'hot'}
-                      onClick={() => applyQuickFilter('hot')}
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {['Opportunites prioritaires', 'Relances a effectuer', 'Opportunités à sécuriser', 'Prospects chauds'].map((label) => (
-                      <div
-                        key={label}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left"
-                      >
-                        <p className="text-xs text-[var(--text-2)]">{label}</p>
-                        <p className="mt-1 flex items-center gap-1 text-lg font-bold text-[var(--text-1)]">
-                          ••
-                          <Lock className="h-3.5 w-3.5 text-green-500" />
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </FeatureGate>
-          )}
-
-          <div className="lg:flex-[30] lg:basis-[30%]" ref={monthlyUsageSectionRef}>
-            <MonthlyUsageCard usage={monthlyUsage} loading={monthlyUsageLoading} error={monthlyUsageError} isMobile={isMobile} />
-          </div>
-        </div>
-      )}
-
-      {showBusinessOverviewDesktop && !loading && (
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-bold text-[var(--text-1)]">Actions prioritaires</p>
-              <div className="flex flex-wrap gap-2">
-                {([
-                  { key: 'critical', label: 'Actions critiques' },
-                  { key: 'today', label: "Aujourd'hui" },
-                  { key: 'week', label: 'Cette semaine' },
-                  { key: 'deposits', label: 'Acomptes' },
-                  { key: 'follow_up_quote', label: 'Relances' },
-                  { key: 'send_quote', label: 'Devis' },
-                  { key: 'schedule_appointment', label: 'Rendez-vous' },
-                ] as const).map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setActionEngineFilter(actionEngineFilter === f.key ? null : f.key)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                      actionEngineFilter === f.key
-                        ? 'border-green-500/40 bg-green-500/15 text-green-400'
-                        : 'border-[var(--border)] text-[var(--text-2)] hover:border-green-500/30'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              {priorityActionItems.map((item) => (
-                <button
-                  key={`${item.kind}-${item.project.id}`}
-                  onClick={() => router.push(`/dashboard-v2/projet/${item.project.id}`)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="text-lg shrink-0">{item.kind === 'deposit' ? item.icon : ACTION_TYPE_EMOJI[item.action.actionType]}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--text-1)]">
-                        {item.kind === 'deposit' ? item.title : item.action.title}
-                      </p>
-                      <p className="truncate text-xs text-[var(--text-2)]">
-                        {item.kind === 'deposit'
-                          ? item.subtitle
-                          : ([item.project.clientFirstName, item.project.clientName].filter(Boolean).join(' ') || item.project.projectType || 'Dossier')}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-[var(--text-2)]">
-                    {item.kind === 'deposit' ? item.estimatedDuration : item.action.estimatedDuration}
-                  </span>
-                </button>
-              ))}
-              {priorityActionItems.length === 0 && (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
-                  <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-              <p className="font-bold text-[var(--text-1)]">Santé commerciale</p>
-              <p className="mt-2 flex items-center gap-2 text-lg font-bold" style={{ color: businessHealth.color }}>
-                <span>{businessHealth.emoji}</span> {businessHealth.label}
-              </p>
-              {averageMaturityScore !== null && (
-                <p className="mt-1 text-xs text-[var(--text-2)]">
-                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} action(s) critique(s) · {highActionsCount} action(s) prioritaire(s)
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-              <p className="font-bold text-[var(--text-1)]">Aujourd&apos;hui</p>
-              {todayActionEntries.length > 0 ? (
-                <>
-                  <ul className="mt-2 space-y-1 text-sm text-[var(--text-2)]">
-                    {todayActionsByType.send_quote > 0 && <li>Envoyer {todayActionsByType.send_quote} devis</li>}
-                    {todayActionsByType.follow_up_quote > 0 && <li>Relancer {todayActionsByType.follow_up_quote} client(s)</li>}
-                    {todayActionsByType.schedule_appointment > 0 && <li>Programmer {todayActionsByType.schedule_appointment} rendez-vous</li>}
-                  </ul>
-                  <p className="mt-2 text-xs text-[var(--text-3)]">Durée totale estimée : {todayEstimatedMinutes} minutes</p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-[var(--text-2)]">Rien d&apos;urgent identifié pour aujourd&apos;hui.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-3">
-            <p className="mb-3 font-bold text-[var(--text-1)]">Compteurs</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-              {[
-                {
-                  label: 'Acomptes à demander',
-                  value: `${depositProjects.toAsk.length}`,
-                  tone: depositProjects.toAsk.length > 0 ? 'text-amber-300' : 'text-[var(--text-1)]',
-                },
-                {
-                  label: 'Acomptes demandés',
-                  value: `${depositProjects.requested.length} · ${formatCurrency(depositProjects.requestedAmount)}`,
-                  tone: depositProjects.requested.length > 0 ? 'text-blue-300' : 'text-[var(--text-1)]',
-                },
-                {
-                  label: 'Acomptes reçus',
-                  value: `${depositProjects.paid.length} · ${formatCurrency(depositProjects.paidAmount)}`,
-                  tone: depositProjects.paid.length > 0 ? 'text-green-300' : 'text-[var(--text-1)]',
-                },
-                {
-                  label: 'CA sécurisé',
-                  value: formatCurrency(depositProjects.paidAmount),
-                  tone: depositProjects.paidAmount > 0 ? 'text-green-300' : 'text-[var(--text-1)]',
-                },
-                {
-                  label: 'Taux de sécurisation',
-                  value: `${Math.round(depositProjects.securedRate)}%`,
-                  tone: 'text-[var(--text-1)]',
-                },
-              ].map((counter) => (
-                <div
-                  key={counter.label}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left"
-                >
-                  <p className="text-xs text-[var(--text-2)]">{counter.label}</p>
-                  <p className={`mt-1 text-lg font-bold ${counter.tone}`}>{counter.value}</p>
-                </div>
-              ))}
-              {(Object.keys(ACTION_TYPE_COUNTER_LABEL) as ActionType[])
-                .filter((type) => type !== 'monitor')
-                .map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setActionEngineFilter(actionEngineFilter === type ? null : type)}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3 text-left hover:border-green-500/25"
-                  >
-                    <p className="text-xs text-[var(--text-2)]">{ACTION_TYPE_COUNTER_LABEL[type]}</p>
-                    <p className="mt-1 text-lg font-bold text-[var(--text-1)]">{actionEngineCounters[type]}</p>
-                  </button>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showTasksOverview && !loading && (
+      {(showTasksOverview || showBusinessOverviewDesktop) && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[var(--text-1)]">À traiter maintenant</p>
+                <p className="font-bold text-[var(--text-1)]">Mes tâches à faire</p>
                 <p className="text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
               </div>
-              <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{todayTasks.length} action(s)</span>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{mesTachesItems.length} action(s)</span>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} onClick={() => goToCommercialFilter('calls')} />
               <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
               <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} onClick={() => goToCommercialFilter('followups')} />
+              <ActionSummary
+                icon={CalendarDays}
+                label="rendez-vous a planifier"
+                value={actionEngineCounters.schedule_appointment || 0}
+                onClick={() => setActionEngineFilter(actionEngineFilter === 'schedule_appointment' ? null : 'schedule_appointment')}
+              />
+              <ActionSummary
+                icon={CreditCard}
+                label="acomptes a suivre"
+                value={depositProjects.toAsk.length + depositProjects.requested.length}
+                onClick={() => setActionEngineFilter(actionEngineFilter === 'deposits' ? null : 'deposits')}
+              />
             </div>
             <p className="mt-2 text-xs text-[var(--text-3)]">Cliquer pour filtrer le suivi commercial</p>
             <div className="mt-4 space-y-2">
-              {todayTasks.slice(0, 5).map((task, index) => {
-                const project = allProjects.find((p) => p.id === task.projectId);
-                const amount = project ? projectValue(project) : 0;
-                const amountLabel = amount > 0
-                  ? task.type === 'followUp' || task.type === 'email'
-                    ? `${formatCurrency(amount)} en attente`
-                    : `Budget estime ${formatCurrency(amount)}`
-                  : null;
+              {mesTachesItems.map((item, index) => {
+                const project = item.kind === 'call' ? allProjects.find((p) => p.id === item.task.projectId) : item.project;
+                const title = item.kind === 'call' ? item.task.title : item.kind === 'deposit' ? item.title : item.action.title;
                 const clientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier';
+                const amount = project ? projectValue(project) : 0;
+                const amountLabel = item.kind === 'call'
+                  ? (amount > 0
+                    ? (item.task.type === 'followUp' || item.task.type === 'email' ? `${formatCurrency(amount)} en attente` : `Budget estime ${formatCurrency(amount)}`)
+                    : null)
+                  : item.kind === 'deposit'
+                    ? item.subtitle
+                    : (amount > 0 ? `Budget estime ${formatCurrency(amount)}` : null);
+                const badgeLabel = item.kind === 'call'
+                  ? (item.task.priority === 'high' ? 'Priorite haute' : 'A faire')
+                  : item.kind === 'engine'
+                    ? (item.action.priority === 'critical' ? 'Critique' : item.action.priority === 'high' ? 'Priorite haute' : 'A faire')
+                    : 'A faire';
+                const badgeHigh = item.kind === 'call'
+                  ? item.task.priority === 'high'
+                  : item.kind === 'engine'
+                    ? item.action.priority === 'critical' || item.action.priority === 'high'
+                    : false;
+                const projectId = item.kind === 'call' ? item.task.projectId : item.project.id;
+                const key = item.kind === 'call' ? `call-${item.task.id}` : item.kind === 'deposit' ? `deposit-${item.project.id}` : `engine-${item.project.id}`;
 
                 if (index === 0) {
                   return (
                     <ImpactCard
-                      key={task.id}
+                      key={key}
                       variant="priority"
                       as="button"
-                      onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                      onClick={() => router.push(`/dashboard-v2/projet/${projectId}`)}
                       className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
-                        <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{task.title} — {clientLabel}</p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{title} — {clientLabel}</p>
                         {amountLabel && <p className="text-xs text-[var(--impact-text-soft)]">{amountLabel}</p>}
                       </div>
                       <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
@@ -3716,29 +3535,29 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                 return (
                   <button
-                    key={task.id}
-                    onClick={() => router.push(`/dashboard-v2/projet/${task.projectId}`)}
+                    key={key}
+                    onClick={() => router.push(`/dashboard-v2/projet/${projectId}`)}
                     className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--text-1)]">{task.title}</p>
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{title}</p>
                       <p className="text-xs text-[var(--text-2)]">{clientLabel}</p>
                       {amountLabel && <p className="text-xs text-green-400">{amountLabel}</p>}
                     </div>
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
-                      {task.priority === 'high' ? 'Priorite haute' : 'A faire'}
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${badgeHigh ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
+                      {badgeLabel}
                     </span>
                   </button>
                 );
               })}
-              {todayTasks.length === 0 && (
+              {mesTachesItems.length === 0 && (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
                   <p className="text-sm font-semibold text-[var(--text-1)]">Aucune action urgente pour le moment.</p>
                   <p className="mt-1 text-xs text-[var(--text-2)]">Les prochains dossiers a traiter apparaitront ici.</p>
                 </div>
               )}
             </div>
-            {todayTasks.length > 0 && (
+            {mesTachesItems.length > 0 && !showBusinessOverviewDesktop && (
               <button
                 onClick={() => setDashboardMode('commercial')}
                 className="mt-3 text-sm font-semibold text-[var(--accent)] hover:underline"
@@ -3748,7 +3567,21 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             )}
           </div>
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-[var(--text-1)]">Santé commerciale</p>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: businessHealth.color }} />
+              </div>
+              <p className="mt-1 text-sm font-semibold" style={{ color: businessHealth.color }}>{businessHealth.label}</p>
+              {averageMaturityScore !== null && (
+                <p className="mt-1 text-xs text-[var(--text-2)]">
+                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} critique(s) · {highActionsCount} action(s) à traiter
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
             <div className="mb-4 flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <div>
@@ -3832,6 +3665,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 Voir tous les dossiers en risque
               </button>
             )}
+            </div>
           </div>
         </div>
       )}
