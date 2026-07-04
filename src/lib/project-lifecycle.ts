@@ -259,12 +259,27 @@ export function getRecommendedProjectAction(input: ProjectLifecycleInput): Proje
 
   switch (stage) {
     case 'new':
+      // Ancien libellé "Ouvrir le dossier" : trompeur puisqu'on est déjà sur
+      // la fiche projet (aucune navigation possible vers la page courante).
+      // On propose désormais une action contextuelle réelle : planifier un
+      // rendez-vous si aucun n'est encore fixé, sinon rester sur la
+      // qualification sans bouton de navigation factice.
+      if (!appointmentExists) {
+        return {
+          key: 'schedule_sales_appointment',
+          title: 'Qualifier la demande',
+          ctaLabel: 'Planifier un rendez-vous',
+          meta: 'Planifiez un échange pour cadrer le besoin et vérifier les informations essentielles.',
+          priority: 'normal',
+          nextAction,
+        }
+      }
       return {
         key: 'qualify_project',
         title: 'Qualifier la demande',
-        ctaLabel: 'Ouvrir le dossier',
-        meta: 'Commencez par cadrer le besoin et vérifier les informations essentielles.',
-        priority: 'normal',
+        ctaLabel: 'Voir le résumé du dossier',
+        meta: 'Le rendez-vous est planifié, poursuivez la qualification du besoin en attendant.',
+        priority: 'low',
         nextAction,
       }
     case 'callback':

@@ -2058,6 +2058,11 @@ function ProjectDetail() {
       : 'Aucun email ni téléphone client renseigné',
   };
 
+  // Avis Google : ne jamais proposer l'action tant que le projet n'est pas
+  // terminé côté commercial (Gagné) ou en réalisation avancée. Condition
+  // partagée mobile/desktop pour rester cohérente.
+  const isGoogleReviewEligibleStatus = project.status === 'Gagné' || project.status === 'Réalisation du projet';
+
   // V1 légère "devis assisté métier" (Mission 4) : suggestions de lignes
   // calculées à la demande, jamais persistées, basées sur les mêmes signaux
   // que l'analyse Kadria ci-dessus (métier, projet, déplacement).
@@ -2976,21 +2981,23 @@ function ProjectDetail() {
             )}
           </div>
 
-          {/* Actions rapides */}
+          {/* Actions rapides — complète la barre sticky (Appeler / RDV /
+              Devis) sans la dupliquer. "Contacter" (qui appelait en fait le
+              même canal que "Appeler") est retiré : le portail client et un
+              accès direct à la complétion du dossier le remplacent. */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {[
-              { label: '📞 Appeler', disabled: !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; } },
               { label: '✉️ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
-              { label: '📅 RDV', disabled: !!appointment, onClick: () => { if (!appointment) openAppointmentModal(); } },
-              { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
-              decision.canFollowUpQuote
-                ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && requestQuoteFollowUp(latestDevis) }
-                : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => handleNextBestAction(latestDevis ? 'followup' : 'call') },
-              {
-                label: '⭐ Avis Google',
-                disabled: !project.clientEmail || !artisanConfig?.googleReviewUrl,
-                onClick: requestGoogleReview,
-              },
+              { label: '🔗 Portail client', disabled: clientPortalLoading || !project?.id, onClick: copyClientPortalLink },
+              { label: '🔁 Relancer', disabled: !decision.canFollowUpQuote, onClick: () => { if (decision.canFollowUpQuote && latestDevis) requestQuoteFollowUp(latestDevis); } },
+              ...(isGoogleReviewEligibleStatus
+                ? [{
+                    label: '⭐ Avis Google',
+                    disabled: !project.clientEmail || !artisanConfig?.googleReviewUrl,
+                    onClick: requestGoogleReview,
+                  }]
+                : []),
+              { label: '📝 Compléter', disabled: false, onClick: () => setEditingContact(true) },
             ].map((a) => (
               <button
                 key={a.label}
@@ -3006,7 +3013,7 @@ function ProjectDetail() {
               </button>
             ))}
           </div>
-          {(!artisanConfig?.googleReviewUrl || !project.clientEmail) && (
+          {isGoogleReviewEligibleStatus && (!artisanConfig?.googleReviewUrl || !project.clientEmail) && (
             <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>
               {!artisanConfig?.googleReviewUrl ? (
                 <>
@@ -3958,24 +3965,27 @@ function ProjectDetail() {
           </button>
 
           {/* Avis Google — même logique/handler que l'action rapide mobile
-              (requestGoogleReview) ; auparavant absente en desktop (bug
-              d'affichage), pas de condition métier supplémentaire ajoutée. */}
+              (requestGoogleReview). Ne devient actionnable qu'une fois le
+              projet Gagné/en réalisation (isGoogleReviewEligibleStatus),
+              pour ne jamais solliciter un avis avant la fin du projet. */}
           <button
             onClick={requestGoogleReview}
-            disabled={!project.clientEmail || !artisanConfig?.googleReviewUrl}
-            title={!artisanConfig?.googleReviewUrl
-              ? "Ajoutez votre lien de demande d'avis Google dans vos paramètres."
-              : !project.clientEmail
-                ? 'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
-                : undefined}
+            disabled={!isGoogleReviewEligibleStatus || !project.clientEmail || !artisanConfig?.googleReviewUrl}
+            title={!isGoogleReviewEligibleStatus
+              ? 'Disponible une fois le projet terminé.'
+              : !artisanConfig?.googleReviewUrl
+                ? "Ajoutez votre lien de demande d'avis Google dans vos paramètres."
+                : !project.clientEmail
+                  ? 'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
+                  : undefined}
             style={{
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border)',
               borderRadius: '12px',
               padding: '14px',
               textAlign: 'left',
-              cursor: (!project.clientEmail || !artisanConfig?.googleReviewUrl) ? 'not-allowed' : 'pointer',
-              opacity: (!project.clientEmail || !artisanConfig?.googleReviewUrl) ? 0.5 : 1,
+              cursor: (!isGoogleReviewEligibleStatus || !project.clientEmail || !artisanConfig?.googleReviewUrl) ? 'not-allowed' : 'pointer',
+              opacity: (!isGoogleReviewEligibleStatus || !project.clientEmail || !artisanConfig?.googleReviewUrl) ? 0.5 : 1,
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
