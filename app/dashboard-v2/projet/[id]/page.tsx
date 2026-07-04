@@ -2169,7 +2169,7 @@ function ProjectDetail() {
   const smsCompletionHasPhone = hasMeaningfulValue(project.clientPhone);
   const smsCompletionHasLink = hasMeaningfulValue(project.smsCompletionUrl);
   const smsCompletionPhotosCount = Array.isArray(project.photos) ? project.photos.length : 0;
-  const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' Â· ');
+  const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' · ');
   const budgetLabel = project.budget || 'Budget non renseigne';
   const timelineLabel = project.desiredTimeline || 'Delai non precise';
   const scrollToActionsAndQuote = () => {
@@ -2336,7 +2336,7 @@ function ProjectDetail() {
     linesToAdd.forEach((line) => {
       referentialSuggestions.push({
         label: line.label || baseLabel,
-        reason: match.reasons.join(' Â· '),
+        reason: match.reasons.join(' · '),
         source: 'project',
         suggestedAmount: typeof line.unitPriceHT === 'number' ? line.unitPriceHT : undefined,
         vatRate: typeof line.vatRate === 'number' ? line.vatRate : match.vatRate ?? undefined,
@@ -3025,7 +3025,7 @@ function ProjectDetail() {
               {smsCompletionStatus === 'completed' ? (
                 <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '11px' }}>
                   Complété le <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{formatDateTime(project.completionCompletedAt)}</span>
-                  {' Â· '}{smsCompletionPhotosCount} photo{smsCompletionPhotosCount > 1 ? 's' : ''}
+                  {' · '}{smsCompletionPhotosCount} photo{smsCompletionPhotosCount > 1 ? 's' : ''}
                 </p>
               ) : smsCompletionStatus === 'sent' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -3803,7 +3803,7 @@ function ProjectDetail() {
               </div>
               {nextAction.blockingReasons.length > 0 && (
                 <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '0 0 6px' }}>
-                  Blocages : {nextAction.blockingReasons.join(' Â· ')}
+                  Blocages : {nextAction.blockingReasons.join(' · ')}
                 </p>
               )}
               {NEXT_ACTION_CTA_DISABLED_REASON[nextAction.actionType] && (
@@ -4596,7 +4596,7 @@ function ProjectDetail() {
                     ≈ {result.cost.toFixed(2)} € estimés
                   </p>
                   <p style={{ color: 'var(--text-2)', fontSize: '12px', margin: '0 0 6px' }}>
-                    {result.distanceKm.toFixed(1)} km aller Â· {result.distanceKmAR.toFixed(1)} km aller-retour ({result.energyLabel})
+                    {result.distanceKm.toFixed(1)} km aller · {result.distanceKmAR.toFixed(1)} km aller-retour ({result.energyLabel})
                   </p>
                   <p style={{ color: 'var(--text-3)', fontSize: '11px', margin: 0 }}>
                     À intégrer dans votre tarification (forfait déplacement) — {recommendation.isFreeZone
@@ -4785,7 +4785,7 @@ function ProjectDetail() {
                               }}
                             >
                               <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
-                                Client{msg.date ? ` Â· ${msg.date}` : ''}
+                                Client{msg.date ? ` · ${msg.date}` : ''}
                               </div>
                               <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                 {msg.text}
@@ -4817,7 +4817,7 @@ function ProjectDetail() {
                                   }}
                                 >
                                   {isClient ? 'Client' : 'Vous'}
-                                  {ev.createdAt ? ` Â· ${formatDateTime(ev.createdAt)}` : ''}
+                                  {ev.createdAt ? ` · ${formatDateTime(ev.createdAt)}` : ''}
                                 </div>
                                 <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                   {ev.message || ev.title}
@@ -5567,7 +5567,7 @@ function ProjectDetail() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, width: isMobile ? '100%' : undefined, flexWrap: 'wrap' }}>
                           <FileTextIcon size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                           <span style={{ fontWeight: 600, fontSize: '13px' }}>{devis.numero}</span>
-                          <span style={{ color: 'var(--text-3)' }}>Â·</span>
+                          <span style={{ color: 'var(--text-3)' }}>·</span>
                           <span style={{ fontSize: '13px', fontWeight: 600 }}>
                             {formatMoney(devis.amount)} €
                           </span>
@@ -6015,7 +6015,7 @@ function ProjectDetail() {
                                             </span>
                                             {(line as ReferentialSuggestionLine).fromReferential && (
                                               <span
-                                                title={((line as ReferentialSuggestionLine).referentialReasons || []).join(' Â· ')}
+                                                title={((line as ReferentialSuggestionLine).referentialReasons || []).join(' · ')}
                                                 style={{
                                                   fontSize: '10px',
                                                   fontWeight: 600,
