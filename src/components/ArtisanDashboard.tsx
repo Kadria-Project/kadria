@@ -212,6 +212,55 @@ const ACTION_TYPE_COUNTER_LABEL: Record<ActionType, string> = {
   monitor: 'Surveillance',
 };
 
+// "Guideline commerciale" (Suivi commercial) : lecture du pipeline par etape
+// (Qualifier / Chiffrer / Securiser / Realiser & fideliser). Ne recalcule
+// rien - reutilise uniquement des valeurs deja calculees ailleurs
+// (actionEngineCounters, depositProjects, ...).
+type GuidelineRow = {
+  label: string;
+  value: number;
+  displayValue?: string;
+};
+
+function GuidelineGroupCard({
+  title,
+  subtitle,
+  rows,
+}: {
+  title: string;
+  subtitle: string;
+  rows: GuidelineRow[];
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+      <p className="font-bold text-[var(--text-1)]">{title}</p>
+      <p className="mt-1 text-xs text-[var(--text-2)]">{subtitle}</p>
+      <div className="mt-3 space-y-1.5">
+        {rows.map((row) => {
+          const active = row.value > 0;
+          return (
+            <div
+              key={row.label}
+              className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm ${
+                active ? 'bg-[var(--bg-hover)]' : ''
+              }`}
+            >
+              <span className={active ? 'text-[var(--text-1)]' : 'text-[var(--text-3)]'}>{row.label}</span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+                  active ? 'bg-[var(--accent-dim)] text-[var(--accent)]' : 'text-[var(--text-3)]'
+                }`}
+              >
+                {row.displayValue ?? row.value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function sortNextActions<T extends { action: NextAction }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     const p = (ACTION_PRIORITY_RANK[a.action.priority] ?? 9) - (ACTION_PRIORITY_RANK[b.action.priority] ?? 9);
@@ -1933,6 +1982,61 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       securedRate: requestedAmount > 0 ? (paidAmount / requestedAmount) * 100 : 0,
     };
   }, [activeProjects]);
+
+  // "Guideline commerciale" : regroupe les compteurs deja calcules
+  // (actionEngineCounters, depositProjects) par etape du pipeline commercial.
+  // Aucun recalcul de regle metier ici.
+  const guidelineGroups: { title: string; subtitle: string; rows: GuidelineRow[] }[] = [
+    {
+      title: 'Qualifier',
+      subtitle: 'Les dossiers qui manquent encore d’informations pour avancer.',
+      rows: [
+        { label: 'Qualification à terminer', value: actionEngineCounters.complete_qualification },
+        { label: 'Photos à demander', value: actionEngineCounters.request_photos },
+        { label: 'Rendez-vous à planifier', value: actionEngineCounters.schedule_appointment },
+      ],
+    },
+    {
+      title: 'Chiffrer',
+      subtitle: 'Les opportunités à transformer en proposition claire.',
+      rows: [
+        { label: 'Devis à envoyer', value: actionEngineCounters.send_quote },
+        { label: 'Devis refusés à traiter', value: actionEngineCounters.review_quote_decline },
+      ],
+    },
+    {
+      title: 'Sécuriser',
+      subtitle: 'Les dossiers à verrouiller avant intervention.',
+      rows: [
+        { label: 'Acomptes à demander', value: depositProjects.toAsk.length },
+        { label: 'Acomptes demandés', value: depositProjects.requested.length, displayValue: formatCurrency(depositProjects.requestedAmount) },
+        { label: 'Acomptes reçus', value: depositProjects.paid.length, displayValue: formatCurrency(depositProjects.paidAmount) },
+        { label: 'CA sécurisé', value: depositProjects.paidAmount, displayValue: formatCurrency(depositProjects.paidAmount) },
+        { label: 'Taux de sécurisation', value: depositProjects.securedRate, displayValue: `${Math.round(depositProjects.securedRate)} %` },
+      ],
+    },
+    {
+      title: 'Réaliser & fidéliser',
+      subtitle: 'Les actions de fin de cycle pour terminer proprement et générer de la preuve.',
+      rows: [
+        { label: 'Interventions à programmer', value: actionEngineCounters.schedule_intervention },
+        { label: 'Avis clients à demander', value: actionEngineCounters.ask_review },
+        { label: 'Relances', value: actionEngineCounters.follow_up_quote },
+      ],
+    },
+  ];
+
+  const guidelineCommercialeSection = (
+    <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
+      <p className="font-bold text-[var(--text-1)]">Guideline commerciale</p>
+      <p className="mt-1 text-sm text-[var(--text-2)]">Les points à surveiller pour faire avancer vos dossiers.</p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {guidelineGroups.map((group) => (
+          <GuidelineGroupCard key={group.title} title={group.title} subtitle={group.subtitle} rows={group.rows} />
+        ))}
+      </div>
+    </div>
+  );
 
   const hotLeads = activeProjects.filter((project) => project.status !== 'Gagné' && project.status !== 'Perdu' && isHotLead(project));
   const riskProjects = activeProjects.filter((project) => getProjectRiskStatus(project).status !== 'none');
@@ -3670,6 +3774,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
+      {showBusinessOverviewDesktop && !loading && guidelineCommercialeSection}
+
       {/* Alertes */}
       {showBusinessOverviewDesktop && !loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -3784,6 +3890,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {isMobile && showCommercialWorkspace && (
         <MobileDevisView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
       )}
+
+      {isMobile && showCommercialWorkspace && !loading && guidelineCommercialeSection}
 
       {isMobile && showPipelineWorkspace && (
         <MobilePipelineView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
