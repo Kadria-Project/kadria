@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { useRouter } from 'next/navigation';
+import NotificationBell from '@/src/components/notifications/NotificationBell';
 import {
   PhoneCall,
   Send,
@@ -397,9 +398,12 @@ export default function MobileDashboardView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '76px' }}>
       {/* HERO */}
       <div>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-          {firstName ? `Bonjour ${firstName} 👋` : 'Bonjour 👋'}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
+            {firstName ? `Bonjour ${firstName} 👋` : 'Bonjour 👋'}
+          </h1>
+          <NotificationBell variant="mobile" />
+        </div>
         <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>
           Voici vos priorités aujourd&apos;hui.
         </p>

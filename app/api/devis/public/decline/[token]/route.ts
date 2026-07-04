@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig, getDevisByToken, updateDevis } from '@/src/lib/airtable'
 import { notifyArtisanQuoteDeclined } from '@/src/lib/artisan-notifications'
+import { createProjectNotification } from '@/src/lib/notifications'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { createDeclinedDevisSnapshot } from '@/src/lib/devis-snapshots'
@@ -149,6 +150,15 @@ export async function POST(
         declineReason,
         projectId: devis.projectId,
       })
+      await createProjectNotification(
+        { id: devis.projectId, artisanId: project.artisanId },
+        'quote_declined',
+        {
+          title: 'Devis refusé',
+          message: 'Un client a refusé un devis.',
+          priority: 'high',
+        },
+      )
     }
 
     return NextResponse.json({ success: true, declined_at: now, decline_reason: declineReason, status: 'Perdu' })

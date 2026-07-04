@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { getProjects, updateProject } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
+import NotificationBell from '@/src/components/notifications/NotificationBell';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import {
@@ -2742,6 +2743,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       <div className="min-w-0 flex-1" style={{ padding: isMobile ? '16px 14px 32px' : '24px 32px 40px' }}>
+      {!isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <NotificationBell variant="desktop" />
+        </div>
+      )}
       {showTrialEndingBanner && (
         <div
           className="mb-5 flex flex-col gap-3 rounded-2xl border border-green-500/30 bg-green-500/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between"

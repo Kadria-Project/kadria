@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig, getDevisByToken, updateDevis } from '@/src/lib/airtable'
 import { notifyArtisanQuoteAccepted } from '@/src/lib/artisan-notifications'
+import { createProjectNotification } from '@/src/lib/notifications'
 import { createAcceptedDevisSnapshot, createSentDevisSnapshot, getExistingSnapshot } from '@/src/lib/devis-snapshots'
 import { normalizeProjectStatus } from '@/src/lib/project-status'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
@@ -134,6 +135,15 @@ export async function POST(
         totalTTC: devis.totalTTC,
         projectId: devis.projectId,
       })
+      await createProjectNotification(
+        { id: devis.projectId, artisanId: project.artisanId },
+        'quote_accepted',
+        {
+          title: 'Devis accepté',
+          message: 'Un client a accepté un devis.',
+          priority: 'high',
+        },
+      )
     }
 
     return NextResponse.json({

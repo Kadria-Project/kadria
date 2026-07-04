@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig, getDevisByProjet, getUserByArtisanIdentifier } from '@/src/lib/airtable'
 import { createClientEvent, getPublicTimelineEvents } from '@/src/lib/client-events'
+import { createProjectNotification } from '@/src/lib/notifications'
 import { resolveDevisBranding } from '@/src/lib/devis-branding'
 import { normalizePlan } from '@/src/lib/plans'
 import { getBaseUrl } from '@/src/lib/base-url'
@@ -498,6 +499,15 @@ export async function PATCH(
         title: 'Message du client',
         message,
       })
+      await createProjectNotification(
+        { id: String(project.id), artisanId: String(project.artisan_id) },
+        'client_message',
+        {
+          title: 'Nouveau message client',
+          message: 'Un client a répondu sur son dossier.',
+          priority: 'high',
+        },
+      )
     }
 
     if (infoChanged) {
@@ -511,6 +521,15 @@ export async function PATCH(
         message: `Le client a complété des informations depuis le portail client. Champs modifiés : ${changedFieldLabels.join(', ')}.`,
         metadata: { changedFields: changedFieldLabels, source: 'Portail client' },
       })
+      await createProjectNotification(
+        { id: String(project.id), artisanId: String(project.artisan_id) },
+        'client_info_updated',
+        {
+          title: 'Dossier complété',
+          message: "Le client a ajouté ou modifié des informations.",
+          priority: 'medium',
+        },
+      )
     }
 
     const photosOut = Array.isArray(updated.photos) ? updated.photos : []

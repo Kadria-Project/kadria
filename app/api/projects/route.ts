@@ -6,6 +6,7 @@ import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/
 import { supabaseAdmin } from '@/src/lib/supabase/server';
 import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
 import { getClientActivitySummaries } from '@/src/lib/client-events';
+import { createProjectNotification } from '@/src/lib/notifications';
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo';
 
@@ -256,6 +257,21 @@ export async function POST(request: Request) {
     if (!usageResult.success) {
       console.error('[PROJECT_QUOTA] Project created but usage tracking failed:', usageResult.error || 'unknown error');
     }
+
+    // Notification artisan (centre de notifications, best-effort) : ne doit
+    // jamais faire échouer la création du projet.
+    const clientLabel = typeof input.clientName === 'string' && input.clientName.trim()
+      ? input.clientName.trim()
+      : 'Un prospect';
+    await createProjectNotification(
+      { id: record.id, artisanId },
+      'new_project',
+      {
+        title: 'Nouveau dossier',
+        message: `${clientLabel} vient d'être créé.`,
+        priority: 'high',
+      },
+    );
 
     // Email de confirmation client (best-effort) : ne doit jamais faire
     // echouer la creation du projet, ni etre attendu de facon bloquante.

@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable'
 import { StripeNotConfiguredError, getStripeClient } from '@/src/lib/stripe'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { createProjectNotification } from '@/src/lib/notifications'
 
 async function createActivityLog(projectId: string, action: string, description: string) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
@@ -213,6 +214,16 @@ export async function POST(request: Request) {
         `Acompte paye : ${confirmedAmount.toFixed(2)} EUR`,
       )
     }
+
+    await createProjectNotification(
+      { id: String(project.id), artisanId },
+      'deposit_paid',
+      {
+        title: 'Acompte payé',
+        message: 'L\'acompte est réglé. Vous pouvez planifier le chantier.',
+        priority: 'high',
+      },
+    )
 
     return NextResponse.json({ received: true })
   } catch (error) {

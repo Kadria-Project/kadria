@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { TABLES } from '@/src/lib/airtable'
 import { notifyArtisanQuotaReached } from '@/src/lib/artisan-notifications'
+import { createProjectNotification } from '@/src/lib/notifications'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/src/lib/usage/quotas'
@@ -446,6 +447,17 @@ export async function POST(request: NextRequest) {
       console.error('[VAPI] Supabase error:', error.message)
     } else {
       console.log('[VAPI] Project created - recordId:', result.id)
+
+      // Notification artisan (centre de notifications, best-effort).
+      await createProjectNotification(
+        { id: result.id, artisanId },
+        'new_project',
+        {
+          title: 'Nouveau dossier',
+          message: `${clientName || 'Un prospect'} vient d'être créé.`,
+          priority: 'high',
+        },
+      )
 
       // SMS de complément (best-effort, n'affecte jamais la création du projet).
       await sendCompletionSmsBestEffort({ projectId: result.id, clientPhone })
