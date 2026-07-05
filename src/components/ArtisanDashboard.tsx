@@ -2390,6 +2390,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const showPipelineWorkspace = dashboardMode === 'pipeline';
   const showValueReportWorkspace = dashboardMode === 'value-report';
   const showBusinessOverviewDesktop = showBusinessOverview && !isMobile;
+  // Layout conditionnel du Suivi commercial desktop : la grande colonne
+  // gauche est portee par le bloc le plus utile selon la presence ou non
+  // de dossiers en risque.
+  const hasRiskProjects = riskProjects.length > 0;
 
 
   const kpiCards: {
@@ -3790,7 +3794,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {showBusinessOverviewDesktop && !loading && (
         <div className="mb-6 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
-            {opportunitesCard}
+            {hasRiskProjects ? opportunitesCard : actionsATraiterCard}
           </div>
 
           <div className="flex flex-col gap-4">
@@ -3808,7 +3812,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-              {actionsATraiterCard}
+              {hasRiskProjects ? actionsATraiterCard : opportunitesCard}
             </div>
           </div>
         </div>
