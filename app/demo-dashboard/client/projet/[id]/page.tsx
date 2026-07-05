@@ -214,8 +214,9 @@ export default function DemoClientPortalPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', color: '#111827' }}>
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '32px 20px 64px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+      <div className="max-w-[640px] lg:max-w-6xl mx-auto px-5 lg:px-8 py-8 lg:py-10">
+
+        <div className="lg:justify-start" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           <div
             style={{
               width: '44px',
@@ -237,6 +238,9 @@ export default function DemoClientPortalPage() {
             <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{artisan.primaryTrade}</p>
           </div>
         </div>
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.8fr)] lg:gap-6 lg:items-start">
+        <div className="lg:min-w-0">
 
         <div
           style={{
@@ -285,7 +289,7 @@ export default function DemoClientPortalPage() {
           }}
         >
           <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px' }}>Votre demande</h2>
-          <div style={{ display: 'grid', gap: '8px', fontSize: '13px', color: '#374151' }}>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-x-6" style={{ display: 'grid', gap: '8px', fontSize: '13px', color: '#374151' }}>
             {project.projectType && (
               <p style={{ margin: 0 }}>
                 <strong>Type de prestation :</strong> {project.projectType}
@@ -621,6 +625,10 @@ export default function DemoClientPortalPage() {
           )}
         </div>
 
+        </div>
+        {/* Colonne latérale (desktop) : formulaire + rappel */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+
         {done && (
           <div
             style={{
@@ -743,6 +751,16 @@ export default function DemoClientPortalPage() {
               Modifiez une information pour l&apos;envoyer.
             </p>
           )}
+        </div>
+
+        <div style={{
+          background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '12px',
+          padding: '12px 16px', marginBottom: '20px', color: '#6b7280', fontSize: '12px', textAlign: 'center',
+        }}>
+          Aucune création de compte n&apos;est nécessaire pour suivre votre demande.
+        </div>
+
+        </div>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af' }}>
