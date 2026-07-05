@@ -11,11 +11,21 @@ import {
   Receipt,
   LayoutDashboard,
   Folder,
-  Kanban,
   Bell,
   Calendar,
-  BookOpen,
   Settings,
+  Target,
+  Users,
+  BarChart3,
+  Flame,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  Star,
+  Home,
+  Building2,
+  Zap,
 } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 
@@ -35,7 +45,22 @@ type PremiumLandingHeroProps = {
   onOpenTrial: () => void;
 };
 
-const REASSURANCE_ITEMS = ['Sans engagement', 'Avec ou sans site', 'Pensé pour les artisans du bâtiment'];
+const REASSURANCE_ITEMS = ['Essai gratuit 7 jours', 'Avec ou sans site', 'Pensé pour les artisans du bâtiment'];
+
+const SOCIAL_PROOF = {
+  rating: '4,9/5',
+  count: '120+ artisans',
+  quote: 'Enfin un outil qui me fait gagner du temps et me rapporte plus de chantiers.',
+  avatars: 3,
+};
+
+const TRUST_LOGOS = [
+  { name: 'Artisan du Bâtiment', icon: Home },
+  { name: 'Bâtir Expert', icon: Building2 },
+  { name: 'Rénov’Habitat', icon: Home },
+  { name: 'Maison&Co Construction', icon: Home },
+  { name: 'Presto Rénovation', icon: Zap },
+];
 
 type SignalCard = {
   key: string;
@@ -134,33 +159,98 @@ const SIGNAL_CARDS: SignalCard[] = [
 const SIGNAL_CARDS_MOBILE = ['whatsapp', 'appel', 'formulaire', 'devis'];
 
 const SIDEBAR_ITEMS = [
-  { label: 'Vue d’ensemble', icon: LayoutDashboard, active: true },
+  { label: 'Cockpit', icon: LayoutDashboard, active: true },
+  { label: 'Opportunités', icon: Target, active: false },
   { label: 'Dossiers', icon: Folder, active: false },
-  { label: 'Pipeline', icon: Kanban, active: false },
   { label: 'Devis', icon: Receipt, active: false },
   { label: 'Relances', icon: Bell, active: false },
-  { label: 'Agenda', icon: Calendar, active: false },
-  { label: 'Catalogue', icon: BookOpen, active: false },
+  { label: 'Calendrier', icon: Calendar, active: false },
+  { label: 'Contacts', icon: Users, active: false },
+  { label: 'Analyses', icon: BarChart3, active: false },
   { label: 'Paramètres', icon: Settings, active: false },
 ];
 
-const PRIORITY_FOLDERS = [
-  { name: 'Rénovation salle de bain', city: 'Rouen', score: 86, badge: 'Très chaud', badgeStyle: 'hot' },
-  { name: 'Réfection toiture', city: 'Mont-Saint-Aignan', score: 78, badge: 'À rappeler', badgeStyle: 'warm' },
-  { name: 'Cuisine complète', city: 'Rouen', score: 72, badge: 'Devis à envoyer', badgeStyle: 'neutral' },
+const KPI_ROW_1 = [
+  {
+    key: 'complete',
+    label: 'Dossier complet',
+    value: '86%',
+    sub: 'Moyenne globale',
+    delta: '+12 pts vs semaine dernière',
+    variant: 'ring' as const,
+  },
+  {
+    key: 'hot',
+    label: 'Prospect chaud',
+    icon: Flame,
+    value: '12',
+    sub: 'À contacter en priorité',
+    variant: 'icon' as const,
+  },
+  {
+    key: 'action',
+    label: 'Action recommandée',
+    icon: CheckCircle2,
+    value: 'Relancer 5 devis',
+    sub: '3 aujourd’hui · 2 cette semaine',
+    variant: 'icon' as const,
+  },
 ] as const;
 
-const PIPELINE_COLUMNS = [
-  { label: 'Nouveau', count: 7 },
-  { label: 'Qualifié', count: 5 },
-  { label: 'Devis', count: 3 },
-  { label: 'Gagné', count: 2 },
+const KPI_ROW_2 = [
+  {
+    key: 'accepted',
+    label: 'Devis accepté',
+    value: '7',
+    amount: '120 450 € HT',
+    sub: 'Montant total',
+    variant: 'sparkline' as const,
+  },
+  {
+    key: 'reminder',
+    label: 'Relance aujourd’hui',
+    icon: Bell,
+    value: '3',
+    sub: 'À effectuer',
+    cta: 'Voir la liste',
+    variant: 'cta' as const,
+  },
+  {
+    key: 'upcoming',
+    label: 'Chantiers à venir',
+    icon: Calendar,
+    value: '4',
+    sub: 'Dans les 30 prochains jours',
+    cta: 'Voir le planning',
+    variant: 'cta' as const,
+  },
 ] as const;
 
-const TODAY_ACTIONS = [
-  { label: 'Relancer Mme Laurent', time: '09:30' },
-  { label: 'Appeler M. Durand', time: '10:15' },
-  { label: 'Envoyer devis cuisine', time: '14:00' },
+const OPPORTUNITIES = [
+  {
+    prospect: 'M. Durand',
+    project: 'Rénovation complète maison',
+    status: 'Prospect chaud',
+    statusStyle: 'hot',
+    score: '92%',
+    action: 'Appeler aujourd’hui',
+  },
+  {
+    prospect: 'Mme Martin',
+    project: 'Extension 20m²',
+    status: 'Dossier complet',
+    statusStyle: 'complete',
+    score: '88%',
+    action: 'Envoyer devis',
+  },
+  {
+    prospect: 'M. Bernard',
+    project: 'Rénovation salle de bain',
+    status: 'À relancer',
+    statusStyle: 'warm',
+    score: '65%',
+    action: 'Relancer aujourd’hui',
+  },
 ] as const;
 
 const fadeUp: Variants = {
@@ -319,113 +409,213 @@ function HeroFlowLines({ reduceMotion }: { reduceMotion: boolean }) {
   );
 }
 
-function HeroAttractionPoint() {
+function HeroAttractionPoint({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <div className="pointer-events-none absolute left-[58%] top-[48%] z-10 hidden -translate-x-1/2 -translate-y-1/2 lg:block">
-      <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,197,94,0.35)_0%,transparent_70%)] blur-xl" />
-      <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_18px_rgba(74,222,128,0.9)]" />
-      <div
-        className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle, rgba(74,222,128,0.6) 0.6px, transparent 0.6px)',
-          backgroundSize: '8px 8px',
-        }}
-      />
-    </div>
+    <>
+      {/* Convergence point sits at the right edge of the chaos zone, i.e. the
+          left edge of the dashboard panel — the beam narrows horizontally
+          toward it rather than floating in the middle of the section. */}
+      <div className="pointer-events-none absolute right-0 top-[56%] z-10 hidden translate-x-1/2 -translate-y-1/2 lg:block">
+        <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,197,94,0.4)_0%,transparent_70%)] blur-xl" />
+        <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_18px_rgba(74,222,128,0.9)]" />
+        <div
+          className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle, rgba(74,222,128,0.6) 0.6px, transparent 0.6px)',
+            backgroundSize: '8px 8px',
+          }}
+        />
+      </div>
+      <motion.div
+        className="pointer-events-none absolute right-[16%] top-[56%] z-10 hidden -translate-y-1/2 lg:block"
+        animate={reduceMotion ? {} : { x: [0, 6, 0], opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 1.8, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}
+      >
+        <ChevronRight className="h-6 w-6 text-white/80" />
+      </motion.div>
+    </>
   );
 }
 
 function DashboardSidebar() {
   return (
-    <div className="hidden w-[168px] shrink-0 flex-col gap-1 border-r border-zinc-800 py-6 pl-6 pr-4 md:flex">
-      <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wide text-[var(--accent)]">Kadria</p>
-      {SIDEBAR_ITEMS.map((item) => (
+    <div className="hidden w-[168px] shrink-0 flex-col border-r border-zinc-800 py-6 pl-6 pr-4 md:flex">
+      <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wide text-[var(--accent)]">K · Kadria</p>
+      <div className="flex flex-1 flex-col gap-1">
+        {SIDEBAR_ITEMS.map((item) => (
+          <div
+            key={item.label}
+            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] ${
+              item.active ? 'bg-[var(--accent-dim)] font-semibold text-[var(--accent)]' : 'text-zinc-500'
+            }`}
+          >
+            <item.icon className="h-3.5 w-3.5 shrink-0" />
+            {item.label}
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2 rounded-md border border-[rgba(113,113,122,0.28)] bg-black/30 px-2 py-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)] text-[10px] font-bold text-[var(--accent)]">
+          B
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-[10px] font-semibold text-zinc-200">Entreprise</p>
+          <p className="truncate text-[10px] text-zinc-500">Bâtir Plus</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardHeader() {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-base font-bold text-white">Cockpit</p>
+        <p className="mt-1 text-[11px] text-zinc-500">Vue d’ensemble de votre activité commerciale</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1 rounded-md border border-[rgba(113,113,122,0.28)] bg-black/30 px-2.5 py-1.5 text-[11px] text-zinc-300">
+        Cette semaine <ChevronDown className="h-3 w-3 text-zinc-500" />
+      </div>
+    </div>
+  );
+}
+
+function DashboardKpiRow1() {
+  return (
+    <div className="mt-4 grid grid-cols-3 gap-2.5">
+      {KPI_ROW_1.map((kpi) => (
         <div
-          key={item.label}
-          className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] ${
-            item.active ? 'bg-[var(--accent-dim)] font-semibold text-[var(--accent)]' : 'text-zinc-500'
-          }`}
+          key={kpi.key}
+          className="rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3"
         >
-          <item.icon className="h-3.5 w-3.5 shrink-0" />
-          {item.label}
+          <p className="text-[10px] font-semibold text-zinc-400">{kpi.label}</p>
+          {kpi.variant === 'ring' ? (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div
+                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                style={{
+                  background: `conic-gradient(var(--accent) ${86 * 3.6}deg, rgba(113,113,122,0.25) 0deg)`,
+                }}
+              >
+                <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-zinc-900 text-[8px] font-bold text-white">
+                  {kpi.value}
+                </div>
+              </div>
+              <p className="text-[9px] leading-tight text-zinc-500">{kpi.sub}</p>
+            </div>
+          ) : (
+            <div className="mt-1.5 flex items-center gap-2">
+              {'icon' in kpi && kpi.icon && (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)]">
+                  <kpi.icon className="h-3.5 w-3.5 text-[var(--accent)]" />
+                </span>
+              )}
+              <p className="truncate text-sm font-bold text-white">{kpi.value}</p>
+            </div>
+          )}
+          {'delta' in kpi && kpi.delta ? (
+            <p className="mt-1.5 text-[9px] font-medium text-[var(--accent)]">{kpi.delta}</p>
+          ) : (
+            <p className="mt-1.5 truncate text-[9px] text-zinc-500">{kpi.sub}</p>
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-function DashboardPriorityList() {
+function DashboardKpiRow2() {
   return (
-    <div className="mt-4 rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3.5">
-      <p className="text-xs font-semibold text-white">Dossiers prioritaires</p>
-      <div className="mt-2.5 space-y-2">
-        {PRIORITY_FOLDERS.map((folder) => (
-          <div
-            key={folder.name}
-            className="flex items-center justify-between gap-2 rounded-md bg-black/30 px-3 py-2 text-[11px]"
-          >
-            <div className="min-w-0">
-              <span className="font-semibold text-zinc-200">{folder.name}</span>
-              <span className="ml-2 truncate text-zinc-500">{folder.city}</span>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                  folder.badgeStyle === 'hot'
-                    ? 'bg-red-500/15 text-red-400'
-                    : folder.badgeStyle === 'warm'
-                      ? 'bg-amber-500/15 text-amber-400'
-                      : 'bg-[var(--accent-dim)] text-[var(--accent)]'
-                }`}
-              >
-                {folder.badge}
-              </span>
-              <span className="font-semibold text-white">{folder.score}</span>
-            </div>
+    <div className="mt-2.5 grid grid-cols-3 gap-2.5">
+      {KPI_ROW_2.map((kpi) => (
+        <div
+          key={kpi.key}
+          className="rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold text-zinc-400">{kpi.label}</p>
+            {'icon' in kpi && kpi.icon && <kpi.icon className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />}
           </div>
-        ))}
-      </div>
+          <p className="mt-1.5 text-sm font-bold text-white">{kpi.value}</p>
+          {'amount' in kpi && kpi.amount && (
+            <p className="text-[10px] font-semibold text-[var(--accent)]">{kpi.amount}</p>
+          )}
+          {kpi.variant === 'sparkline' ? (
+            <svg viewBox="0 0 100 24" className="mt-1.5 h-5 w-full" preserveAspectRatio="none">
+              <polyline
+                points="0,20 15,18 30,14 45,15 60,9 75,10 100,3"
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <p className="mt-1 text-[9px] text-zinc-500">{kpi.sub}</p>
+          )}
+          {'cta' in kpi && kpi.cta && (
+            <button
+              type="button"
+              className="mt-2 w-full rounded-md border border-[rgba(74,222,128,0.28)] bg-[var(--accent-dim)] px-2 py-1 text-[9px] font-semibold text-[var(--accent)]"
+            >
+              {kpi.cta}
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
 
-function DashboardPipelinePreview() {
+function DashboardOpportunitiesTable() {
   return (
     <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3.5">
-      <p className="text-xs font-semibold text-white">Pipeline commercial</p>
-      <div className="mt-2.5 grid grid-cols-4 gap-2">
-        {PIPELINE_COLUMNS.map((col) => (
-          <div key={col.label} className="rounded-md bg-black/30 px-2 py-2 text-center">
-            <p className="text-[10px] text-zinc-500">{col.label}</p>
-            <p className="mt-1 text-sm font-bold text-white">{col.count}</p>
-          </div>
-        ))}
+      <p className="text-xs font-semibold text-white">Opportunités prioritaires</p>
+      <div className="mt-2.5 grid grid-cols-[1.1fr_1.4fr_1fr_0.6fr_1.1fr] gap-2 px-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
+        <span>Prospect</span>
+        <span>Projet</span>
+        <span>Statut</span>
+        <span>Score</span>
+        <span>Prochaine action</span>
       </div>
-    </div>
-  );
-}
-
-function DashboardActionsPreview() {
-  return (
-    <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3.5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-white">Actions du jour</p>
-        <Link href="/demo-request" className="text-[10px] font-medium text-[var(--accent)] hover:underline">
-          Voir toutes les actions →
-        </Link>
-      </div>
-      <div className="mt-2.5 space-y-1.5">
-        {TODAY_ACTIONS.map((action) => (
+      <div className="mt-1.5 space-y-1.5">
+        {OPPORTUNITIES.map((opp) => (
           <div
-            key={action.label}
-            className="flex items-center justify-between gap-2 rounded-md bg-black/30 px-3 py-1.5 text-[11px]"
+            key={opp.prospect}
+            className="grid grid-cols-[1.1fr_1.4fr_1fr_0.6fr_1.1fr] items-center gap-2 rounded-md bg-black/30 px-1.5 py-1.5"
           >
-            <span className="truncate text-zinc-300">{action.label}</span>
-            <span className="shrink-0 font-semibold text-zinc-500">{action.time}</span>
+            <span className="truncate text-[10px] font-semibold text-zinc-200">{opp.prospect}</span>
+            <span className="truncate text-[10px] text-zinc-400">{opp.project}</span>
+            <span
+              className={`w-fit rounded-full px-1.5 py-0.5 text-[8px] font-semibold ${
+                opp.statusStyle === 'hot'
+                  ? 'bg-orange-500/15 text-orange-400'
+                  : opp.statusStyle === 'complete'
+                    ? 'bg-[var(--accent-dim)] text-[var(--accent)]'
+                    : 'bg-amber-500/15 text-amber-400'
+              }`}
+            >
+              {opp.status}
+            </span>
+            <span className="text-[10px] font-semibold text-white">{opp.score}</span>
+            <button
+              type="button"
+              className="truncate rounded-md border border-[rgba(74,222,128,0.28)] px-1.5 py-1 text-left text-[9px] font-medium text-[var(--accent)]"
+            >
+              {opp.action}
+            </button>
           </div>
         ))}
       </div>
+      <Link
+        href="/demo-request"
+        className="mt-2.5 inline-flex text-[10px] font-medium text-[var(--accent)] hover:underline"
+      >
+        Voir toutes les opportunités →
+      </Link>
     </div>
   );
 }
@@ -436,17 +626,10 @@ function HeroDashboardPreview() {
       <div className="flex">
         <DashboardSidebar />
         <div className="min-w-0 flex-1 px-6 py-6">
-          <div>
-            <p className="text-base font-bold text-white">Bonjour Thomas 👋</p>
-            <p className="mt-1 text-[11px] text-zinc-500">
-              <span className="font-semibold text-[var(--accent)]">7</span> nouveaux dossiers ·{' '}
-              <span className="font-semibold text-[var(--accent)]">4</span> relances ·{' '}
-              <span className="font-semibold text-[var(--accent)]">3</span> devis à suivre
-            </p>
-          </div>
-          <DashboardPriorityList />
-          <DashboardPipelinePreview />
-          <DashboardActionsPreview />
+          <DashboardHeader />
+          <DashboardKpiRow1 />
+          <DashboardKpiRow2 />
+          <DashboardOpportunitiesTable />
         </div>
       </div>
     </div>
@@ -488,8 +671,12 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             custom={0.1}
             className="mt-5 text-4xl font-bold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[3.4rem] xl:text-[3.8rem]"
           >
-            Passez du chaos commercial à{' '}
-            <span className="font-extrabold text-[var(--accent)]">des dossiers prêts à vendre.</span>
+            <span className="block">Passez du chaos commercial</span>
+            <span className="block">à des dossiers</span>
+            <span className="relative inline-block font-extrabold text-[var(--accent)]">
+              prêts à vendre.
+              <span className="absolute -bottom-1.5 left-0 h-[3px] w-16 rounded-full bg-[var(--accent)]" />
+            </span>
           </motion.h1>
 
           <motion.p
@@ -499,8 +686,9 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             custom={0.2}
             className="mt-5 text-base leading-relaxed text-zinc-400 sm:text-lg"
           >
-            Kadria capte chaque demande, structure l&rsquo;information, priorise vos actions et
-            vous aide à convertir plus de chantiers.
+            Appels, messages, formulaires, photos et devis à relancer&nbsp;: Kadria remet de
+            l&rsquo;ordre dans votre activité commerciale et vous aide à prioriser les bonnes
+            opportunités.
           </motion.p>
 
           <motion.div
@@ -521,7 +709,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
               href="/demo-request"
               className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-zinc-700 bg-black/30 px-6 py-3.5 text-sm font-medium text-zinc-300 transition-colors hover:border-[var(--accent-border)] hover:text-white sm:w-auto"
             >
-              Demander une démo
+              Demander un accès démo
             </Link>
           </motion.div>
 
@@ -532,21 +720,49 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             custom={0.4}
             className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400"
           >
-            {REASSURANCE_ITEMS.map((item, index) => (
-              <span key={item} className="flex items-center gap-2">
+            {REASSURANCE_ITEMS.map((item) => (
+              <span key={item} className="flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
                 {item}
-                {index < REASSURANCE_ITEMS.length - 1 && (
-                  <span className="hidden text-zinc-700 sm:inline">&bull;</span>
-                )}
               </span>
             ))}
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={0.5}
+            className="mt-6 flex flex-col gap-2"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {Array.from({ length: SOCIAL_PROOF.avatars }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="h-7 w-7 rounded-full border-2 border-zinc-950 bg-gradient-to-br from-zinc-600 to-zinc-800"
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="h-3.5 w-3.5 fill-[var(--accent)] text-[var(--accent)]" />
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-white">
+                {SOCIAL_PROOF.rating} <span className="font-normal text-zinc-400">sur {SOCIAL_PROOF.count}</span>
+              </span>
+            </div>
+            <p className="max-w-md text-sm italic leading-snug text-zinc-400">
+              &ldquo;{SOCIAL_PROOF.quote}&rdquo;
+            </p>
           </motion.div>
         </div>
 
         {/* Zone centrale — chaos commercial entrant */}
         <div className="relative hidden h-[520px] lg:block">
           <HeroFlowLines reduceMotion={reduceMotion} />
-          <HeroAttractionPoint />
+          <HeroAttractionPoint reduceMotion={reduceMotion} />
           {SIGNAL_CARDS.map((card) => (
             <HeroSignalCard key={card.key} card={card} reduceMotion={reduceMotion} />
           ))}
@@ -576,22 +792,31 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             custom={0.4}
             className="mt-4 rounded-xl border border-[rgba(74,222,128,0.28)] bg-[rgba(11,15,13,0.96)] p-4"
           >
-            <p className="text-sm font-bold text-white">Bonjour Thomas 👋</p>
-            <p className="mt-1 text-[11px] text-zinc-500">
-              <span className="font-semibold text-[var(--accent)]">7</span> nouveaux dossiers ·{' '}
-              <span className="font-semibold text-[var(--accent)]">4</span> relances ·{' '}
-              <span className="font-semibold text-[var(--accent)]">3</span> devis à suivre
-            </p>
+            <p className="text-sm font-bold text-white">Cockpit</p>
+            <p className="mt-1 text-[11px] text-zinc-500">Vue d’ensemble de votre activité commerciale</p>
             <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-black/30 px-3 py-2 text-[11px]">
               <span className="truncate text-zinc-300">
-                <span className="font-semibold text-zinc-200">{PRIORITY_FOLDERS[0].name}</span>{' '}
-                {PRIORITY_FOLDERS[0].city}
+                <span className="font-semibold text-zinc-200">{OPPORTUNITIES[0].prospect}</span>{' '}
+                {OPPORTUNITIES[0].project}
               </span>
-              <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-400">
-                {PRIORITY_FOLDERS[0].badge}
+              <span className="shrink-0 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
+                {OPPORTUNITIES[0].status}
               </span>
             </div>
           </motion.div>
+        </div>
+      </div>
+
+      {/* Bande de confiance — bas de section */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 hidden flex-col items-center gap-3 px-10 lg:flex">
+        <p className="text-xs text-zinc-500">Ils nous font confiance</p>
+        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-2 opacity-60 grayscale">
+          {TRUST_LOGOS.map((logo) => (
+            <span key={logo.name} className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <logo.icon className="h-3.5 w-3.5" />
+              {logo.name}
+            </span>
+          ))}
         </div>
       </div>
     </section>
