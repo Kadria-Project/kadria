@@ -171,77 +171,52 @@ export function SettingsPageShell({
         </div>
       )}
 
-      <div
-        className="mx-auto grid w-full max-w-full grid-cols-1 gap-4 px-3 py-4 sm:px-6 sm:py-8 md:max-w-[900px] md:grid-cols-[220px_1fr] md:gap-6"
-        style={{ alignItems: 'start' }}
-      >
-        <div className="min-w-0 md:sticky md:top-[80px]">
-          <div
-            className="flex gap-3 overflow-x-auto md:block"
-            style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
-              padding: '12px',
-              WebkitOverflowScrolling: 'touch',
-            }}
-          >
-            {groups.map((group, groupIndex) => (
-              <div key={group.label} className="flex gap-3 md:block">
-                <p
-                  className="hidden md:block"
+      {/*
+        Disposition alignée sur la prod (app/parametres/page.tsx) : onglets à
+        plat en haut (plus de menu latéral étroit ni de groupes), contenu en
+        dessous sur toute la largeur (max-w-[1500px], comme en prod).
+      */}
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 xl:px-10" style={{ alignItems: 'stretch' }}>
+        <div
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: '12px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '10px', minWidth: 'max-content' }}>
+            {groups.flatMap((group) => group.items).map((section) => {
+              const isActive = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => onSectionChange(section.id)}
                   style={{
-                    color: 'var(--text-3)',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    margin: groupIndex === 0 ? '2px 14px 6px' : '14px 14px 6px',
+                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '11px 14px',
+                    borderRadius: '12px',
+                    border: isActive ? '1px solid rgba(34,197,94,0.35)' : '1px solid var(--border)',
+                    background: isActive ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.02)',
+                    color: isActive ? 'var(--accent)' : 'var(--text-2)',
+                    fontSize: '13px',
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease',
                   }}
                 >
-                  {group.label}
-                </p>
-                {group.items.map((section) => (
-                  <button
-                    key={section.id}
-                    type="button"
-                    onClick={() => onSectionChange(section.id)}
-                    style={{
-                      width: 'auto',
-                      flexShrink: 0,
-                      background:
-                        activeSection === section.id
-                          ? 'rgba(34,197,94,0.1)'
-                          : 'transparent',
-                      border: 'none',
-                      borderBottom:
-                        activeSection === section.id
-                          ? '2px solid var(--accent)'
-                          : '2px solid transparent',
-                      color:
-                        activeSection === section.id
-                          ? 'var(--accent)'
-                          : 'var(--text-2)',
-                      borderRadius: '8px',
-                      padding: '10px 14px',
-                      fontSize: '14px',
-                      fontWeight: activeSection === section.id ? 600 : 400,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.15s',
-                    }}
-                    className="md:mb-1 md:w-full md:rounded-r-lg md:rounded-l-none md:border-b-0 md:border-l-2"
-                  >
-                    <span>{section.icon}</span>
-                    {section.label}
-                  </button>
-                ))}
-              </div>
-            ))}
+                  <span>{section.icon}</span>
+                  {section.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

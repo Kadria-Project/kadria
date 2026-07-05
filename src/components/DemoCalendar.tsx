@@ -48,7 +48,17 @@ export default function DemoCalendar({ events: demoEvents, onCreateEvent, onUpda
     type: 'RDV',
     notes: '',
     projectId: '',
+    durationMin: 60,
   })
+  // Toast simulé après réservation — même vocabulaire que la fiche projet
+  // démo (app/demo-dashboard/projet/[id]/page.tsx) : aucun appel Google
+  // Calendar réel, ajout local uniquement à DemoModeContext.
+  const [bookingToast, setBookingToast] = useState<string | null>(null)
+  useEffect(() => {
+    if (!bookingToast) return
+    const timeout = window.setTimeout(() => setBookingToast(null), 4200)
+    return () => window.clearTimeout(timeout)
+  }, [bookingToast])
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -135,7 +145,7 @@ export default function DemoCalendar({ events: demoEvents, onCreateEvent, onUpda
   // ── Modal ─────────────────────────────────────────────────────────────────
   const openNewEvent = (dateStr: string) => {
     setSelectedEvent(null)
-    setForm({ title: '', date: dateStr, time: '09:00', type: 'RDV', notes: '', projectId: '' })
+    setForm({ title: '', date: dateStr, time: '09:00', type: 'RDV', notes: '', projectId: '', durationMin: 60 })
     setShowModal(true)
   }
 
@@ -150,6 +160,7 @@ export default function DemoCalendar({ events: demoEvents, onCreateEvent, onUpda
       type: event.type || 'RDV',
       notes: event.notes || '',
       projectId: event.projectId || '',
+      durationMin: 60,
     })
     setShowModal(true)
   }
@@ -166,19 +177,25 @@ export default function DemoCalendar({ events: demoEvents, onCreateEvent, onUpda
 
     setSaving(true)
     try {
+      const durationLabel = form.durationMin < 60
+        ? `${form.durationMin}min`
+        : form.durationMin % 60 === 0
+          ? `${form.durationMin / 60}h`
+          : `${Math.floor(form.durationMin / 60)}h${form.durationMin % 60}`
       const payload = {
         title: form.title,
         date: `${form.date}T${form.time}:00`,
         type: form.type as CalendarEvent['type'],
-        notes: form.notes,
+        notes: form.notes ? `${form.notes} — Durée : ${durationLabel}` : `Durée : ${durationLabel}`,
         projectId: form.projectId,
       }
       if (selectedEvent) onUpdateEvent(selectedEvent.id, { ...payload, status: selectedEvent.status || 'Prévu' })
       else onCreateEvent({ ...payload, status: 'Prévu' })
       setShowModal(false)
+      setBookingToast('Rendez-vous simulé dans la démo. En production, il serait ajouté au planning Kadria.')
     } catch (err) {
       console.error('[CALENDAR] Network error:', err)
-      alert('Erreur reseau lors de la creation de l\'evenement')
+      setBookingToast("Erreur lors de l'enregistrement (simulation)")
     } finally {
       setSaving(false)
     }
@@ -709,6 +726,35 @@ export default function DemoCalendar({ events: demoEvents, onCreateEvent, onUpda
                 </div>
               </div>
 
+              {/* Amplitude / durée — mêmes options que la prod
+                  (app/dashboard-v2/projet/[id]/page.tsx), simulée localement. */}
+              <div>
+                <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                  DURÉE (AMPLITUDE)
+                </label>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[30, 60, 90, 120, 180, 240].map((min) => (
+                    <button
+                      key={min}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, durationMin: min }))}
+                      style={{
+                        background: form.durationMin === min ? 'var(--accent)' : 'var(--bg)',
+                        border: `1px solid ${form.durationMin === min ? 'var(--accent)' : 'var(--border)'}`,
+                        color: form.durationMin === min ? '#05130d' : 'var(--text-2)',
+                        borderRadius: '999px',
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        fontWeight: form.durationMin === min ? 700 : 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {min < 60 ? `${min}min` : min % 60 === 0 ? `${min / 60}h` : `${Math.floor(min / 60)}h${min % 60}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Notes */}
               <div>
                 <label style={{ color: 'var(--text-2)', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
@@ -767,6 +813,18 @@ export default function DemoCalendar({ events: demoEvents, onCreateEvent, onUpda
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {bookingToast && (
+        <div style={{
+          position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--bg-elevated)', border: '1px solid var(--accent)',
+          color: 'var(--text-1)', borderRadius: '10px', padding: '10px 16px',
+          fontSize: '13px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', zIndex: 100,
+          maxWidth: '90vw', textAlign: 'center',
+        }}>
+          {bookingToast}
         </div>
       )}
     </div>

@@ -1838,6 +1838,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [artisanFirstName, setArtisanFirstName] = useState('');
   const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null);
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
+  // Centre de progression réductible — même comportement que la prod
+  // (src/components/ArtisanDashboard.tsx) : replié par défaut avec un lien
+  // "Voir le détail", réductible dans tous les cas via "Réduire". État local
+  // uniquement (pas d'écriture Supabase depuis la démo).
+  const [progressCenterExpanded, setProgressCenterExpanded] = useState(false);
   const [coachCardDismissed, setCoachCardDismissed] = useState(false);
 
   const formattedToday = useMemo(() => {
@@ -3078,7 +3083,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 🚀 Centre de progression
               </div>
               <div style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                {progressRecommendations.globalMessage}
+                {progressCenterExpanded
+                  ? progressRecommendations.globalMessage
+                  : `Encore environ ${progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.`}
               </div>
             </div>
             <div style={{ color: 'var(--accent)', fontSize: '20px', fontWeight: 800, whiteSpace: 'nowrap' }}>
@@ -3090,40 +3097,84 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             <div style={{ height: '100%', width: `${progressRecommendations.progress.percent}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
           </div>
 
-          <div style={{ color: 'var(--text-3)', fontSize: '12px', marginBottom: '14px' }}>
-            Encore environ {progressRecommendations.estimatedCompletionTime} pour débloquer tout le potentiel de Kadria.
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-            {progressRecommendations.nextSteps.slice(0, 3).map((s) => (
-              <div
-                key={s.key}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-                  border: '1px solid var(--border)', borderRadius: '10px', padding: '8px 10px', background: 'var(--bg-elevated)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <span style={{ fontSize: '16px' }}>{s.icon}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>{s.title}</div>
-                    <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
-                      {s.estimatedTime} · ✓ {s.benefits[0]}
-                    </div>
-                  </div>
-                </div>
+          {!progressCenterExpanded ? (
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: '10px' }}>
+              <div style={{ color: 'var(--text-3)', fontSize: '12px', minWidth: 0 }}>
+                {progressRecommendations.nextSteps[0]
+                  ? `Prochaine étape : ${progressRecommendations.nextSteps[0].title}.`
+                  : 'Poursuivez votre configuration pour activer toutes les briques clés.'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+                {progressRecommendations.nextSteps[0] && (
+                  <button
+                    type="button"
+                    onClick={() => (progressRecommendations.nextSteps[0].key === 'calendar' ? setDashboardMode('calendar') : router.push(progressRecommendations.nextSteps[0].href))}
+                    style={{
+                      background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                      borderRadius: '8px', padding: '8px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Continuer la configuration
+                  </button>
+                )}
                 <button
-                  onClick={() => (s.key === 'calendar' ? setDashboardMode('calendar') : router.push(s.href))}
+                  type="button"
+                  onClick={() => setProgressCenterExpanded(true)}
                   style={{
-                    background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
-                    borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-1)', fontWeight: 700,
+                    borderRadius: '8px', padding: '8px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
                   }}
                 >
-                  {s.cta}
+                  Voir le détail
                 </button>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setProgressCenterExpanded(false)}
+                  style={{
+                    background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-1)', fontWeight: 700,
+                    borderRadius: '8px', padding: '8px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  Réduire
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {progressRecommendations.nextSteps.slice(0, 3).map((s) => (
+                  <div
+                    key={s.key}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                      border: '1px solid var(--border)', borderRadius: '10px', padding: '8px 10px', background: 'var(--bg-elevated)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <span style={{ fontSize: '16px' }}>{s.icon}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600 }}>{s.title}</div>
+                        <div style={{ color: 'var(--text-3)', fontSize: '11px' }}>
+                          {s.estimatedTime} · ✓ {s.benefits[0]}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => (s.key === 'calendar' ? setDashboardMode('calendar') : router.push(s.href))}
+                      style={{
+                        background: 'var(--accent)', border: 'none', color: 'black', fontWeight: 700,
+                        borderRadius: '8px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {s.cta}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
       {pathname.startsWith('/demo-parametres') && progressRecommendations && progressRecommendations.progress.percent === 100 && !setupCardDismissed && (

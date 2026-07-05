@@ -341,6 +341,13 @@ function ProjectDetail() {
   const [eventType, setEventType] = useState('Relance');
   const [eventDate, setEventDate] = useState(callbackDate || '');
   const [savingEvent, setSavingEvent] = useState(false);
+  // Amplitude du rendez-vous — reprend le vocabulaire/les options de la
+  // prod (app/dashboard-v2/projet/[id]/page.tsx : appointmentAmplitude,
+  // customDurationMin, halfDayPeriod), en version 100% simulée : aucun appel
+  // Google Calendar, juste un ajout local à DemoModeContext.
+  const [eventAmplitude, setEventAmplitude] = useState<'custom' | 'half_day' | 'full_day'>('custom');
+  const [eventDurationMin, setEventDurationMin] = useState(60);
+  const [eventHalfDayPeriod, setEventHalfDayPeriod] = useState<'morning' | 'afternoon'>('morning');
 
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -884,16 +891,32 @@ function ProjectDetail() {
     }
   }
 
+  // Libellé d'amplitude affiché dans les notes de l'événement simulé —
+  // mêmes options que la prod (Durée personnalisée / Demi-journée / Journée
+  // complète), sans dépendance à Google Calendar ni aux créneaux réels.
+  function amplitudeLabel() {
+    if (eventAmplitude === 'half_day') {
+      return eventHalfDayPeriod === 'morning' ? 'Demi-journée (08h-12h)' : 'Demi-journée (14h-18h)';
+    }
+    if (eventAmplitude === 'full_day') {
+      return 'Journée complète (08h-18h)';
+    }
+    const h = Math.floor(eventDurationMin / 60);
+    const m = eventDurationMin % 60;
+    return `Durée : ${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}min` : ''}`.trim();
+  }
+
   async function saveCalendarEvent() {
     if (!eventDate) return;
     setSavingEvent(true);
     try {
+      const baseDate = eventDate.includes('T') ? eventDate : `${eventDate}T09:00:00`;
       createEvent({
         title: `${eventType} - ${project.clientFirstName} ${project.clientName}`,
-        date: eventDate.includes('T') ? eventDate : `${eventDate}T09:00:00`,
+        date: baseDate,
         type: eventType as 'RDV' | 'Relance' | 'Rappel' | 'Intervention',
         projectId: project.id,
-        notes: 'Planifié depuis le dossier projet',
+        notes: `Planifié depuis le dossier projet — ${amplitudeLabel()}`,
         status: 'Prévu',
       });
       if (eventType === 'Relance') {
@@ -901,9 +924,12 @@ function ProjectDetail() {
         setProject((current: any) => (current ? { ...current, callbackDate: eventDate } : current));
       }
       setEventDate('');
-      alert(`${eventType} ajouté au calendrier ✓`);
+      setFollowUpToast({
+        type: 'success',
+        message: 'Rendez-vous simulé dans la démo. En production, il serait ajouté au planning Kadria.',
+      });
     } catch {
-      alert('Erreur lors de l\'enregistrement');
+      setFollowUpToast({ type: 'error', message: "Erreur lors de l'enregistrement" });
     } finally {
       setSavingEvent(false);
     }
@@ -2445,267 +2471,6 @@ function ProjectDetail() {
           );
         })()}
 
-        <section
-          ref={quoteSectionRef}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '18px',
-            padding: isMobile ? '18px 16px' : '22px',
-            marginBottom: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', marginBottom: '18px' }}>
-            <div>
-              <p style={{ margin: '0 0 6px', color: 'var(--accent)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                Actions et devis
-              </p>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>{quoteStatusLabel}</h2>
-              <p style={{ margin: '8px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-                Mode démo - toutes les actions ci-dessous sont simulées localement. Aucun devis réel, email ou PDF officiel n&apos;est envoyé.
-              </p>
-            </div>
-            <span
-              style={{
-                background: 'rgba(34,197,94,0.12)',
-                color: 'var(--accent)',
-                border: '1px solid rgba(34,197,94,0.24)',
-                borderRadius: '999px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-              }}
-            >
-              Demo
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Statut devis</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '20px', fontWeight: 800 }}>{quoteStatusLabel}</p>
-                </div>
-                <span
-                  style={{
-                    background: quoteStatusStyle.bg,
-                    color: quoteStatusStyle.text,
-                    border: `1px solid ${quoteStatusStyle.border}`,
-                    borderRadius: '999px',
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                  }}
-                >
-                  {quoteStatusLabel}
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Montant</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '18px', fontWeight: 700 }}>
-                    {latestDevis ? `${formatMoney(latestDevis.amount)} €` : 'Non renseigné'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Date d&apos;envoi</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
-                    {latestDevis?.quote_sent_at ? formatMediumDate(latestDevis.quote_sent_at) : 'Pas encore envoyé'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Dernière ouverture</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
-                    {latestDevis?.last_opened_date ? formatMediumDate(latestDevis.last_opened_date) : 'Aucune ouverture'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Ouvertures</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
-                    {latestDevis?.opens_count || 0} fois
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Validité</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
-                    {latestDevis?.date_validite ? formatMediumDate(latestDevis.date_validite) : '30 jours'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Prochaine action</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>{nextCommercialAction}</p>
-                </div>
-              </div>
-
-              {latestDevis?.decline_reason && (
-                <div style={{ borderRadius: '12px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.18)', padding: '12px 14px' }}>
-                  <p style={{ margin: 0, color: '#fca5a5', fontSize: '12px', fontWeight: 700 }}>Motif de refus</p>
-                  <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-                    {latestDevis.decline_reason}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px' }}>
-              <p style={{ margin: '0 0 12px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Relance commerciale
-              </p>
-              <div style={{ display: 'grid', gap: '12px' }}>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Statut</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                    {followUpState.status === 'late'
-                      ? 'Relance en retard'
-                      : followUpState.status === 'today'
-                        ? 'Relance aujourd hui'
-                        : followUpState.status === 'planned'
-                          ? 'Relance a venir'
-                          : followUpState.status === 'done'
-                            ? 'Relance effectuee'
-                            : 'Aucune relance'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Date</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
-                    {followUpState.date ? formatDateTime(followUpState.date) : 'Non planifiée'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Canal conseillé</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '14px', fontWeight: 600 }}>
-                    {followUpState.channel === 'phone' ? 'Appel' : 'Email'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Raison</p>
-                  <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.6 }}>
-                    {followUpState.reason}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Suggestions de lignes de devis — version démo allégée du bloc
-              prod (src/lib/quote-suggestions.ts + service profiles + modele
-              de devis matché), trop couplé à des données métier (référentiel
-              Supabase, profils de prestations) pour être repris à l'identique
-              en démo. On reprend ici la même structure visuelle (catalogue +
-              clic = ajout) avec un petit catalogue statique, en lecture
-              seule : le clic affiche un toast simulé, aucune ligne n'est
-              réellement ajoutée au devis démo. */}
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px', marginBottom: '16px' }}>
-            <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Suggestions de lignes de devis
-            </p>
-            <p style={{ margin: '0 0 14px', color: 'var(--text-3)', fontSize: '12px' }}>
-              Kadria vous propose des lignes adaptées au projet (catalogue de démonstration).
-            </p>
-            <div style={{ display: 'grid', gap: '8px' }}>
-              {DEMO_QUOTE_SUGGESTIONS_CATALOG.map((line) => (
-                <button
-                  key={line.id}
-                  type="button"
-                  onClick={() => setFollowUpToast({ type: 'success', message: 'Action simulée — aucune donnée réelle modifiée.' })}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '10px',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>{line.label}</span>
-                  <span style={{ fontSize: '12px', color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    {formatMoney(line.unitPriceHt)} € HT
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </section>
-
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid rgba(34,197,94,0.24)',
-          boxShadow: '0 0 0 1px rgba(34,197,94,0.06), 0 8px 28px rgba(34,197,94,0.08)',
-          borderRadius: '16px',
-          padding: isMobile ? '16px' : '18px 20px',
-          marginBottom: '16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: '16px',
-          flexWrap: 'wrap',
-          alignItems: isMobile ? 'flex-start' : 'center',
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{
-              color: 'var(--accent)',
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              margin: '0 0 6px',
-            }}>
-              Action recommandee
-            </p>
-            <p style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700, margin: '0 0 4px' }}>
-              {recommendation}
-            </p>
-            <p style={{ color: 'var(--text-2)', fontSize: '13px', margin: 0 }}>
-              {followUpTime.primarySlot} · {followUpTime.secondarySlot}
-            </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '3px 10px',
-                borderRadius: '999px',
-                border: '1px solid var(--border)',
-                color: nextAction.priority === 'critical' || nextAction.priority === 'high' ? 'var(--accent)' : nextAction.priority === 'medium' ? '#f59e0b' : 'var(--text-2)',
-              }}>
-                {actionPriority}
-              </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                {actionSummary}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ minWidth: isMobile ? '100%' : '220px', width: isMobile ? '100%' : undefined }}>
-            <button
-              type="button"
-              onClick={() => setShowCallback(true)}
-              style={{
-                width: '100%',
-                background: 'var(--accent)',
-                color: '#0b0f0d',
-                border: 'none',
-                borderRadius: '10px',
-                padding: '12px 16px',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Planifier la prochaine action
-            </button>
-            <p style={{ margin: '8px 0 0', color: 'var(--text-3)', fontSize: '11px' }}>
-              Simulation locale uniquement - aucune donnee reelle modifiee.
-            </p>
-          </div>
-        </div>
-
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
@@ -2841,7 +2606,7 @@ function ProjectDetail() {
               fontWeight: 600,
               margin: 0
             }}>
-              Suivi commercial
+              Actions et devis
             </h2>
             {/* ID + source */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2865,54 +2630,16 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* Pipeline — changer de statut */}
+          {/* Statut commercial (Gagné/Perdu/etc.) piloté depuis la carte
+              "Pilotage commercial" plus haut (Décision commerciale manuelle) —
+              plus de bloc "Faire avancer le dossier" ici, pour éviter la
+              double commande de statut, comme en prod (voir commentaire dans
+              app/dashboard-v2/projet/[id]/page.tsx). */}
           <div style={{
             padding: isMobile ? '14px 16px' : '14px 20px',
             borderBottom: '1px solid var(--border)',
           }}>
-            <p style={{
-              color: 'var(--text-3)',
-              fontSize: '11px',
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Faire avancer le dossier
-            </p>
-            <div style={{ display: 'flex', gap: isMobile ? '6px' : '8px', flexWrap: 'wrap' }}>
-              {['À rappeler', 'Qualifié', 'Devis envoyé', 'Gagné', 'Perdu'].map(s => (
-                <button
-                  key={s}
-                  disabled={updating}
-                  onClick={() => updateStatus(s)}
-                  style={{
-                    padding: isMobile ? '8px 10px' : '7px 14px',
-                    borderRadius: '8px',
-                    fontSize: isMobile ? '12px' : '13px',
-                    fontWeight: (project.status === s) ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    background: (project.status === s)
-                      ? statusColors[s].bg
-                      : 'var(--bg)',
-                    color: (project.status === s)
-                      ? statusColors[s].text
-                      : 'var(--text-2)',
-                    border: `1px solid ${statusColors[s].border}`,
-                    opacity: (project.status === s) ? 1 : 0.75,
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <div style={{
-              borderTop: '1px solid var(--border)',
-              marginTop: '12px',
-              paddingTop: '14px',
-            }}>
+            <div>
               <p style={{
                 color: 'var(--text-3)', fontSize: '11px', fontWeight: 600,
                 letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -3272,6 +2999,89 @@ function ProjectDetail() {
                     {t.value}
                   </button>
                 ))}
+              </div>
+
+              {/* Amplitude — mêmes options que la prod (Durée personnalisée /
+                  Demi-journée / Journée complète), 100% simulé : aucun appel
+                  Google Calendar, aucune écriture Supabase. */}
+              <div style={{ marginBottom: '10px' }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-3)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Amplitude
+                </p>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {([
+                    { key: 'custom', label: 'Durée personnalisée' },
+                    { key: 'half_day', label: 'Demi-journée' },
+                    { key: 'full_day', label: 'Journée complète' },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setEventAmplitude(opt.key)}
+                      style={{
+                        background: eventAmplitude === opt.key ? 'rgba(34,197,94,0.12)' : 'var(--border)',
+                        border: `1px solid ${eventAmplitude === opt.key ? 'var(--accent)' : 'var(--border)'}`,
+                        color: eventAmplitude === opt.key ? 'var(--text-1)' : 'var(--text-2)',
+                        borderRadius: '999px',
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        fontWeight: eventAmplitude === opt.key ? 700 : 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {eventAmplitude === 'custom' && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[30, 60, 90, 120, 180, 240].map((min) => (
+                      <button
+                        key={min}
+                        type="button"
+                        onClick={() => setEventDurationMin(min)}
+                        style={{
+                          background: eventDurationMin === min ? 'rgba(34,197,94,0.12)' : 'var(--border)',
+                          border: `1px solid ${eventDurationMin === min ? 'var(--accent)' : 'var(--border)'}`,
+                          color: eventDurationMin === min ? 'var(--text-1)' : 'var(--text-2)',
+                          borderRadius: '999px',
+                          padding: '4px 10px',
+                          fontSize: '11px',
+                          fontWeight: eventDurationMin === min ? 700 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {min < 60 ? `${min}min` : min % 60 === 0 ? `${min / 60}h` : `${Math.floor(min / 60)}h${min % 60}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {eventAmplitude === 'half_day' && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {([{ key: 'morning', label: 'Matin (08h-12h)' }, { key: 'afternoon', label: 'Après-midi (14h-18h)' }] as const).map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setEventHalfDayPeriod(opt.key)}
+                        style={{
+                          background: eventHalfDayPeriod === opt.key ? 'rgba(34,197,94,0.12)' : 'var(--border)',
+                          border: `1px solid ${eventHalfDayPeriod === opt.key ? 'var(--accent)' : 'var(--border)'}`,
+                          color: eventHalfDayPeriod === opt.key ? 'var(--text-1)' : 'var(--text-2)',
+                          borderRadius: '999px',
+                          padding: '4px 10px',
+                          fontSize: '11px',
+                          fontWeight: eventHalfDayPeriod === opt.key ? 700 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {eventAmplitude === 'full_day' && (
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '11px' }}>Amplitude par défaut : 08h00 - 18h00.</p>
+                )}
               </div>
 
               {/* Date + bouton */}
