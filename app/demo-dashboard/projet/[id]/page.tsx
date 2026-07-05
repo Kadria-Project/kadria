@@ -1372,22 +1372,6 @@ function ProjectDetail() {
   const clientLabel = [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || 'Client non renseigne';
   const projectLabel = getProjectHeadline(project);
   const score = Number(project.completenessScore || 0);
-  const projectIdentityItems = [
-    { label: 'Reference', value: project.projectNumber || project.id || 'Non renseignee' },
-    { label: 'Metier', value: project.trade || 'Non renseigne' },
-    { label: 'Budget', value: project.budget || 'Non renseigne' },
-    { label: 'Delai', value: project.desiredTimeline || 'Non renseigne' },
-    { label: 'Ville', value: project.city || 'Non renseignee' },
-    { label: 'Source', value: project.source || 'Demo Kadria' },
-  ];
-  const clientIdentityItems = [
-    { label: 'Nom', value: clientLabel },
-    { label: 'Telephone', value: project.clientPhone || 'Non renseigne' },
-    { label: 'Email', value: project.clientEmail || 'Non renseigne' },
-    { label: 'Adresse chantier', value: project.siteAddress || 'Non renseignee' },
-    { label: 'Maturite', value: project.maturity || 'A qualifier' },
-    { label: 'Cree le', value: formatShortDate(project.createdAt) },
-  ];
   // Priorite affichee derivee de nextAction.priority (Action Engine) plutot
   // que du score local de completude — le libelle reste identique, seul le
   // signal source change.
@@ -1896,16 +1880,34 @@ function ProjectDetail() {
             )}
           </div>
 
-          {/* Actions rapides */}
+          {/* Actions rapides — complète la barre sticky (Appeler / RDV /
+              Devis) sans la dupliquer, mirroir de app/dashboard-v2/projet/[id]/page.tsx. */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {[
-              { label: '📞 Appeler', disabled: !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; } },
               { label: '✉️ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
-              { label: '📅 RDV', disabled: !!project.appointment, onClick: () => { if (!project.appointment) setShowRdvModal(true); } },
-              { label: '📄 Devis', disabled: false, onClick: devisCtaAction },
-              decision.canFollowUpQuote
-                ? { label: '🔁 Relancer', disabled: false, onClick: () => latestDevis && followUpQuote(latestDevis) }
-                : { label: '📞 Contacter', disabled: !latestDevis && !project.clientPhone, onClick: () => { if (project.clientPhone) window.location.href = `tel:${project.clientPhone}`; else goToDevis(); } },
+              {
+                label: '🔗 Portail client',
+                disabled: false,
+                onClick: async () => {
+                  const url = `${window.location.origin}/demo-dashboard/client/projet/${project.id}`;
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    setCopyPortalToast('Simulation : lien portail client copié (démo)');
+                  } catch {
+                    setCopyPortalToast(`Simulation : lien portail — ${url}`);
+                  }
+                  window.setTimeout(() => setCopyPortalToast(null), 4000);
+                },
+              },
+              { label: '🔁 Relancer', disabled: !decision.canFollowUpQuote, onClick: () => { if (decision.canFollowUpQuote && latestDevis) followUpQuote(latestDevis); } },
+              ...(isGoogleReviewEligibleStatus
+                ? [{
+                    label: '⭐ Avis Google',
+                    disabled: !project.clientEmail,
+                    onClick: requestGoogleReview,
+                  }]
+                : []),
+              { label: '📝 Compléter', disabled: false, onClick: () => setEditingContact(true) },
             ].map((a) => (
               <button
                 key={a.label}
@@ -2379,49 +2381,6 @@ function ProjectDetail() {
           </div>
         </div>
 
-        {/* Photos du projet — galerie visible, mirroir du bloc desktop prod
-            (app/dashboard-v2/projet/[id]/page.tsx, "Photos du projet"). */}
-        {project.photos && project.photos.length > 0 && (
-          <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            padding: isMobile ? '14px 16px' : '16px 20px',
-            marginBottom: '16px',
-          }}>
-            <p style={{
-              color: 'var(--text-3)',
-              fontSize: '10px',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Photos du projet ({project.photos.length})
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(110px, 1fr))',
-              gap: '8px',
-            }}>
-              {project.photos.map((photo: { url: string; thumbnailUrl?: string }, i: number) => (
-                <a
-                  key={`${photo.url}-${i}`}
-                  href={photo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'block', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}
-                >
-                  <img
-                    src={photo.thumbnailUrl || photo.url}
-                    alt={`Photo ${i + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
 
         {showIdealFollowUp && (idealActionLabel.title !== 'Moment idéal pour relancer le devis' || decision.shouldShowFollowupBlock) && (
           <div style={{
@@ -2728,116 +2687,143 @@ function ProjectDetail() {
           );
         })()}
 
+        {/* Quick-actions — mirroir de app/dashboard-v2/projet/[id]/page.tsx :
+            5 raccourcis compacts (Rendez-vous / Suivi client / Devis client /
+            Avis client / Portail client), remplacent les anciens blocs
+            "Informations principales" / "Coordonnees et contexte" (doublons
+            des donnees deja affichees dans le header projet ci-dessus). */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-          gap: '16px',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, 1fr)',
+          gap: '10px',
           marginBottom: '16px',
         }}>
-          <section style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: isMobile ? '16px' : '16px 20px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: '12px',
-              alignItems: 'center',
-            }}>
-              <div>
-                <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Fiche projet
-                </p>
-                <h2 style={{ margin: 0, color: 'var(--text-1)', fontSize: '16px', fontWeight: 700 }}>
-                  Informations principales
-                </h2>
-              </div>
-              <span style={{
-                fontSize: '11px',
-                color: 'var(--text-2)',
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: '999px',
-                padding: '4px 10px',
-              }}>
-                {formatInteger(score)}% complet
-              </span>
-            </div>
-            <div style={{ padding: isMobile ? '16px' : '16px 20px', display: 'grid', gap: '12px' }}>
-              {projectIdentityItems.map((item) => (
-                <div key={item.label} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '6px', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{item.label}</span>
-                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, textAlign: isMobile ? 'left' : 'right' }}>
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+          <button
+            onClick={() => { if (!project.appointment) setShowRdvModal(true); }}
+            disabled={!!project.appointment}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: project.appointment ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: project.appointment ? 'default' : 'pointer',
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📅 Rendez-vous
+            </p>
+            <p style={{ fontSize: '13px', color: project.appointment ? 'var(--accent)' : 'var(--text-1)', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+              {project.appointment ? formatDateTime(project.appointment.start) : 'Planifier un rendez-vous'}
+            </p>
+          </button>
 
-          <section style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: isMobile ? '16px' : '16px 20px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: '12px',
-              alignItems: 'center',
-            }}>
-              <div>
-                <p style={{ margin: '0 0 4px', color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Client
-                </p>
-                <h2 style={{ margin: 0, color: 'var(--text-1)', fontSize: '16px', fontWeight: 700 }}>
-                  Coordonnees et contexte
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setContactForm({
-                    clientFirstName: project.clientFirstName || '',
-                    clientName: project.clientName || '',
-                    clientPhone: project.clientPhone || '',
-                    clientEmail: project.clientEmail || '',
-                    siteAddress: project.siteAddress || '',
-                  });
-                  setEditingContact(true);
-                }}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-2)',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Modifier
-              </button>
-            </div>
-            <div style={{ padding: isMobile ? '16px' : '16px 20px', display: 'grid', gap: '12px' }}>
-              {clientIdentityItems.map((item) => (
-                <div key={item.label} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '6px', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>{item.label}</span>
-                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, textAlign: isMobile ? 'left' : 'right' }}>
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+          <button
+            onClick={() => (decision.canFollowUpQuote && latestDevis ? followUpQuote(latestDevis) : (project.clientPhone ? (window.location.href = `tel:${project.clientPhone}`) : goToDevis()))}
+            disabled={!decision.canFollowUpQuote && !latestDevis && !project.clientPhone}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: (decision.canFollowUpQuote || latestDevis || project.clientPhone) ? 'pointer' : 'not-allowed',
+              opacity: (decision.canFollowUpQuote || latestDevis || project.clientPhone) ? 1 : 0.5,
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📞 Suivi client
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              {decision.canFollowUpQuote
+                ? 'Relancer le client'
+                : decision.followUpAvailableAt
+                  ? `Possible à partir du ${formatShortDate(decision.followUpAvailableAt)}`
+                  : 'Contacter le client si nécessaire'}
+            </p>
+          </button>
+
+          <button
+            onClick={() => goToDevis()}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📄 Devis client
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              {!latestDevis
+                ? 'Préparer un devis'
+                : latestDevis.accepted
+                  ? 'Devis accepté'
+                  : latestDevis.declined
+                    ? 'Devis refusé'
+                    : decision.canFollowUpQuote
+                      ? 'Consulter / relancer'
+                      : 'Consulter le devis'}
+            </p>
+          </button>
+
+          <button
+            onClick={requestGoogleReview}
+            disabled={!isGoogleReviewEligibleStatus || !project.clientEmail}
+            title={!isGoogleReviewEligibleStatus
+              ? 'Disponible une fois le projet terminé.'
+              : !project.clientEmail
+                ? 'Ajoutez un email client pour pouvoir envoyer une demande d’avis.'
+                : undefined}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: (!isGoogleReviewEligibleStatus || !project.clientEmail) ? 'not-allowed' : 'pointer',
+              opacity: (!isGoogleReviewEligibleStatus || !project.clientEmail) ? 0.5 : 1,
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              ⭐ Avis client
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              Demander avis Google
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              const url = `${window.location.origin}/demo-dashboard/client/projet/${project.id}`;
+              try {
+                await navigator.clipboard.writeText(url);
+                setCopyPortalToast('Simulation : lien portail client copié (démo)');
+              } catch {
+                setCopyPortalToast(`Simulation : lien portail — ${url}`);
+              }
+              window.setTimeout(() => setCopyPortalToast(null), 4000);
+            }}
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              padding: '14px',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
+              🔗 Portail client
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
+              Copier le lien
+            </p>
+          </button>
         </div>
 
         <div style={{
@@ -3711,94 +3697,11 @@ function ProjectDetail() {
           );
         })()}
 
-        {/* Portail client — mirroring app/dashboard-v2/projet/[id]/page.tsx :
-            copie d'un lien fictif (jamais un vrai token /api/.../client-portal-link),
-            aucune écriture réelle. */}
-        <div style={{
-          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-          borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div>
-              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>🔗 Portail client</p>
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
-                Lien fictif de démonstration — aucune donnée réelle exposée.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                onClick={async () => {
-                  const url = `${window.location.origin}/demo-dashboard/client/projet/${project.id}`;
-                  try {
-                    await navigator.clipboard.writeText(url);
-                    setCopyPortalToast('Simulation : lien portail client copié (démo)');
-                  } catch {
-                    setCopyPortalToast(`Simulation : lien portail — ${url}`);
-                  }
-                  window.setTimeout(() => setCopyPortalToast(null), 4000);
-                }}
-                style={{
-                  background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '12px',
-                  padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                }}
-              >
-                Copier le lien
-              </button>
-              <a
-                href={`/demo-dashboard/client/projet/${project.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  background: 'transparent', color: 'var(--text-1)', fontWeight: 600, fontSize: '12px',
-                  padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer',
-                  textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-                }}
-              >
-                Voir le portail
-              </a>
-            </div>
-          </div>
-          {copyPortalToast && (
-            <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{copyPortalToast}</p>
-          )}
-        </div>
-
-        {/* Avis Google — mirroring app/dashboard-v2/projet/[id]/page.tsx :
-            uniquement actionnable une fois le dossier Gagné/en réalisation,
-            jamais sur Nouveau/Perdu. Action 100% simulée : aucun email, SMS
-            ou appel API Google réel. */}
-        <div style={{
-          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-          borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
-          opacity: isGoogleReviewEligibleStatus ? 1 : 0.6,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div>
-              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>⭐ Avis Google</p>
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-3)' }}>
-                {isGoogleReviewEligibleStatus
-                  ? "Le projet est terminé : c'est le bon moment pour demander un avis client."
-                  : 'Disponible une fois le projet Gagné ou en réalisation.'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={requestGoogleReview}
-              disabled={!isGoogleReviewEligibleStatus}
-              title={!isGoogleReviewEligibleStatus ? 'Disponible une fois le projet terminé.' : undefined}
-              style={{
-                background: isGoogleReviewEligibleStatus ? 'var(--accent)' : 'var(--bg)',
-                color: isGoogleReviewEligibleStatus ? 'black' : 'var(--text-3)',
-                fontWeight: 700, fontSize: '12px',
-                padding: '8px 14px', borderRadius: '8px',
-                border: isGoogleReviewEligibleStatus ? 'none' : '1px solid var(--border)',
-                cursor: isGoogleReviewEligibleStatus ? 'pointer' : 'not-allowed',
-              }}
-            >
-              Demander un avis Google
-            </button>
-          </div>
-        </div>
+        {/* Portail client et Avis Google : plus de sections pleine largeur
+            dediees ici — mirroir strict de la prod, ou ces deux actions sont
+            uniquement les boutons compacts de la grille "Quick-actions"
+            ci-dessus (pas de doublon). copyPortalToast reste utilise par
+            cette grille et par le bloc Acompte plus bas. */}
 
         {/* Retours client — bulles de discussion + activité du dossier,
             reprend la logique de app/dashboard-v2/projet/[id]/page.tsx mais
@@ -3926,6 +3829,51 @@ function ProjectDetail() {
             {replyToast && (
               <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{replyToast}</p>
             )}
+          </div>
+        )}
+
+        {/* Photos du projet — galerie visible, mirroir du bloc desktop prod
+            (app/dashboard-v2/projet/[id]/page.tsx, "Photos du projet"),
+            placee apres Retours client comme en prod. */}
+        {project.photos && project.photos.length > 0 && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
+            marginBottom: '16px',
+          }}>
+            <p style={{
+              color: 'var(--text-3)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Photos du projet ({project.photos.length})
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(110px, 1fr))',
+              gap: '8px',
+            }}>
+              {project.photos.map((photo: { url: string; thumbnailUrl?: string }, i: number) => (
+                <a
+                  key={`${photo.url}-${i}`}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={photo.thumbnailUrl || photo.url}
+                    alt={`Photo ${i + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
+              ))}
+            </div>
           </div>
         )}
 
