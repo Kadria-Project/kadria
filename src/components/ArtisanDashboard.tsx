@@ -2593,6 +2593,98 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     [callTaskItems, priorityActionItems],
   );
 
+  // Bloc reutilisable "Opportunités à sécuriser" (Suivi commercial) — memes
+  // donnees/handlers que precedemment, extraits pour etre places dans la
+  // grande colonne gauche du Suivi commercial tout en restant utilisables
+  // tels quels dans la disposition de l'onglet "Mes taches".
+  const opportunitesCard = (
+    <>
+      <div className="mb-4 flex items-center gap-3">
+        <AlertTriangle className="h-5 w-5 text-red-400" />
+        <div>
+          <p className="font-bold text-[var(--text-1)]">Opportunités à sécuriser</p>
+          <p className="text-sm text-[var(--text-2)]">Actions rapides recommandees.</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {riskProjects.slice(0, 2).map((project) => {
+          const risk = getProjectRiskStatus(project);
+          return (
+            <div key={project.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}</p>
+                  <p className="mt-1 text-xs text-red-300">Dossier en risque - {risk.reason}</p>
+                </div>
+                <StatusBadge status={risk.label} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
+                  style={{
+                    background: 'var(--accent-dim)',
+                    border: '1px solid var(--accent-border)',
+                    color: 'var(--accent)',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Relancer
+                </button>
+                <button
+                  onClick={() => createFollowUpTask(project)}
+                  style={{
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-1)',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Creer une tache
+                </button>
+                <button
+                  onClick={() =>
+                    handleStatusChange(project.id, 'Perdu', {
+                      projectLabel: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'ce dossier',
+                    })
+                  }
+                  style={{
+                    background: 'rgba(239,68,68,0.1)',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    color: '#ef4444',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cloturer
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier en risque pour le moment.</p>}
+      </div>
+      {riskProjects.length > 2 && (
+        <button
+          onClick={() => { setQuickFilter('risk'); setFilters(DEFAULT_FILTERS); setSearchInput(''); }}
+          className="mt-4 w-full rounded-lg border border-red-500/25 bg-red-500/[0.04] px-4 py-2 text-sm font-semibold text-red-300"
+        >
+          Voir tous les dossiers en risque
+        </button>
+      )}
+    </>
+  );
+
   // Carte compacte "Actions à traiter" (Suivi commercial) — reutilise
   // uniquement les compteurs deja calcules (taskCounts, actionEngineCounters,
   // depositProjects), sans dependre du filtre actionEngineFilter ni de la
@@ -2621,13 +2713,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     .join(' · ');
 
   const actionsATraiterCard = (
-    <div className="flex h-full flex-col justify-between gap-4">
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-bold text-[var(--text-1)]">Actions à traiter</p>
-          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{actionsATraiterTotal} action(s)</span>
-        </div>
-        <p className="mt-1 text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-bold text-[var(--text-1)]">Actions à traiter</p>
+        <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{actionsATraiterTotal} action(s)</span>
       </div>
       {actionsATraiterTotal > 0 ? (
         <div>
@@ -3698,11 +3787,36 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {(showTasksOverview || showBusinessOverviewDesktop) && !loading && (
+      {showBusinessOverviewDesktop && !loading && (
+        <div className="mb-6 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
+            {opportunitesCard}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-[var(--text-1)]">Santé commerciale</p>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: businessHealth.color }} />
+              </div>
+              <p className="mt-1 text-sm font-semibold" style={{ color: businessHealth.color }}>{businessHealth.label}</p>
+              {averageMaturityScore !== null && (
+                <p className="mt-1 text-xs text-[var(--text-2)]">
+                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} critique(s) · {highActionsCount} action(s) à traiter
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              {actionsATraiterCard}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTasksOverview && !loading && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
-            {showTasksOverview ? (
-            <>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-bold text-[var(--text-1)]">Mes tâches à faire</p>
@@ -3813,10 +3927,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 </div>
               )}
             </div>
-            </>
-            ) : (
-              actionsATraiterCard
-            )}
           </div>
 
           <div className="flex flex-col gap-4">
@@ -3834,89 +3944,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
 
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-400" />
-              <div>
-                <p className="font-bold text-[var(--text-1)]">Opportunités à sécuriser</p>
-                <p className="text-sm text-[var(--text-2)]">Actions rapides recommandees.</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {riskProjects.slice(0, 2).map((project) => {
-                const risk = getProjectRiskStatus(project);
-                return (
-                  <div key={project.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--text-1)]">{[project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier'}</p>
-                        <p className="mt-1 text-xs text-red-300">Dossier en risque - {risk.reason}</p>
-                      </div>
-                      <StatusBadge status={risk.label} />
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        onClick={() => router.push(`/dashboard-v2/projet/${project.id}`)}
-                        style={{
-                          background: 'var(--accent-dim)',
-                          border: '1px solid var(--accent-border)',
-                          color: 'var(--accent)',
-                          borderRadius: '6px',
-                          padding: '6px 12px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Relancer
-                      </button>
-                      <button
-                        onClick={() => createFollowUpTask(project)}
-                        style={{
-                          background: 'var(--bg-hover)',
-                          border: '1px solid var(--border)',
-                          color: 'var(--text-1)',
-                          borderRadius: '6px',
-                          padding: '6px 12px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Creer une tache
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleStatusChange(project.id, 'Perdu', {
-                            projectLabel: [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'ce dossier',
-                          })
-                        }
-                        style={{
-                          background: 'rgba(239,68,68,0.1)',
-                          border: '1px solid rgba(239,68,68,0.3)',
-                          color: '#ef4444',
-                          borderRadius: '6px',
-                          padding: '6px 12px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Cloturer
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier en risque pour le moment.</p>}
-            </div>
-            {riskProjects.length > 2 && (
-              <button
-                onClick={() => { setQuickFilter('risk'); setFilters(DEFAULT_FILTERS); setSearchInput(''); }}
-                className="mt-4 w-full rounded-lg border border-red-500/25 bg-red-500/[0.04] px-4 py-2 text-sm font-semibold text-red-300"
-              >
-                Voir tous les dossiers en risque
-              </button>
-            )}
+              {opportunitesCard}
             </div>
           </div>
         </div>
