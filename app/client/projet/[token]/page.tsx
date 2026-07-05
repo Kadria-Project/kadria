@@ -410,7 +410,7 @@ export default function ClientPortalPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', color: '#111827' }}>
-      <div className="max-w-[640px] lg:max-w-7xl mx-auto px-5 lg:px-8 py-8 lg:py-10">
+      <div className="max-w-[640px] lg:max-w-6xl mx-auto px-5 lg:px-8 py-8 lg:py-10">
 
         {/* 1. Header artisan */}
         <div className="lg:justify-start" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
