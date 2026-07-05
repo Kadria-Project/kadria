@@ -144,8 +144,8 @@ function FloatingCards({ reduceMotion }: { reduceMotion: boolean }) {
           variants={floatCardVariants(card.delay)}
           initial="hidden"
           animate="show"
-          whileHover={reduceMotion ? undefined : { boxShadow: '0 0 40px rgba(34,197,94,0.25)' }}
-          className={`absolute z-20 hidden w-[190px] rounded-xl border border-[var(--accent-border)] bg-[var(--bg-elevated)]/90 p-3 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-md lg:block ${card.className}`}
+          whileHover={reduceMotion ? undefined : { boxShadow: '0 0 44px rgba(34,197,94,0.35)' }}
+          className={`absolute z-20 hidden w-[190px] rounded-xl border border-[rgba(74,222,128,0.25)] bg-[rgba(24,24,27,0.82)] p-3 shadow-[0_14px_44px_rgba(0,0,0,0.5),0_0_24px_rgba(34,197,94,0.12)] backdrop-blur-md lg:block ${card.className}`}
         >
           <motion.div animate={card.float} transition={{ duration: card.duration, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}>
             {card.content}
@@ -168,23 +168,23 @@ function GlowArcs() {
         cx="300"
         cy="300"
         r="260"
-        stroke="rgba(34,197,94,0.18)"
-        strokeWidth="1"
+        stroke="rgba(34,197,94,0.28)"
+        strokeWidth="1.5"
         strokeDasharray="6 10"
         initial={{ opacity: 0, rotate: 0 }}
-        animate={{ opacity: 0.7, rotate: 360 }}
-        transition={{ opacity: { duration: 1.2 }, rotate: { duration: 60, repeat: Infinity, ease: 'linear' } }}
+        animate={{ opacity: 0.8, rotate: 360 }}
+        transition={{ opacity: { duration: 1.2 }, rotate: { duration: 90, repeat: Infinity, ease: 'linear' } }}
       />
       <motion.circle
         cx="300"
         cy="300"
         r="210"
-        stroke="rgba(34,197,94,0.12)"
-        strokeWidth="1"
+        stroke="rgba(34,197,94,0.2)"
+        strokeWidth="1.5"
         strokeDasharray="2 14"
         initial={{ opacity: 0, rotate: 0 }}
-        animate={{ opacity: 0.5, rotate: -360 }}
-        transition={{ opacity: { duration: 1.4, delay: 0.2 }, rotate: { duration: 90, repeat: Infinity, ease: 'linear' } }}
+        animate={{ opacity: 0.6, rotate: -360 }}
+        transition={{ opacity: { duration: 1.4, delay: 0.2 }, rotate: { duration: 130, repeat: Infinity, ease: 'linear' } }}
       />
     </svg>
   );
@@ -193,8 +193,8 @@ function GlowArcs() {
 function CockpitMock({ compact = false }: { compact?: boolean }) {
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-2xl border border-[var(--accent-border)] bg-[var(--bg-elevated)]/95 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl ${
-        compact ? 'p-4' : 'p-5'
+      className={`relative w-full overflow-hidden rounded-2xl border border-[rgba(74,222,128,0.28)] bg-[var(--bg-elevated)]/[0.97] shadow-[0_30px_90px_rgba(0,0,0,0.6),0_0_60px_rgba(34,197,94,0.15),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-2xl ${
+        compact ? 'p-4' : 'p-6'
       }`}
     >
       <div className="flex gap-4">
@@ -228,40 +228,53 @@ function CockpitMock({ compact = false }: { compact?: boolean }) {
 
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {KPI_CARDS.map((kpi) => (
-              <div key={kpi.label} className="rounded-lg border border-zinc-800 bg-black/30 p-2.5">
-                <p className="text-[10px] text-zinc-500">{kpi.label}</p>
-                <p className="mt-1 text-sm font-semibold text-white">{kpi.value}</p>
+              <div
+                key={kpi.label}
+                className="rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-2.5"
+              >
+                <p className="text-[10px] text-zinc-400">{kpi.label}</p>
+                <p className="mt-1 text-base font-bold text-white">{kpi.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-3 rounded-lg border border-zinc-800 bg-black/30 p-3">
-            <p className="text-xs font-semibold text-white">Actions à traiter</p>
-            <p className="mt-1 text-[11px] text-zinc-500">
-              7 actions en attente · 3 appels · 2 devis · 2 rendez-vous
+          <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-white">Actions à traiter</p>
+              <span className="rounded-full bg-[var(--accent-dim)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                7 en attente
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-zinc-400">
+              3 appels · 2 devis · 2 rendez-vous
             </p>
-            <span className="mt-2 inline-block text-[11px] text-[var(--accent)]">Voir mes tâches</span>
+            <span className="mt-2 inline-block text-[11px] font-medium text-[var(--accent)]">Voir mes tâches</span>
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-zinc-800 bg-black/30 p-3">
-              <p className="text-xs font-semibold text-white">Santé commerciale</p>
-              <p className="mt-1 text-[11px] text-[var(--accent)]">En excellente santé</p>
-              <p className="mt-1 text-[11px] text-zinc-500">Maturité moyenne 82/100</p>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full w-[82%] rounded-full bg-[var(--accent)]" />
+            <div className="rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-white">Santé commerciale</p>
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_6px_rgba(34,197,94,0.9)]" />
+              </div>
+              <p className="mt-1 text-[11px] font-semibold text-[var(--accent)]">En excellente santé</p>
+              <p className="mt-1 text-[11px] text-zinc-400">Maturité moyenne 82/100</p>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full w-[82%] rounded-full bg-[var(--accent)] shadow-[0_0_10px_rgba(34,197,94,0.7)]" />
               </div>
             </div>
 
-            <div className="rounded-lg border border-zinc-800 bg-black/30 p-3">
+            <div className="rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
               <p className="text-xs font-semibold text-white">Zone active</p>
-              <p className="mt-1 text-[11px] text-zinc-500">3 dossiers autour de Rouen</p>
+              <p className="mt-1 text-[11px] text-zinc-400">3 dossiers autour de Rouen</p>
               <div className="mt-2 grid grid-cols-6 gap-1">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <span
                     key={i}
                     className={`h-2.5 w-2.5 rounded-sm ${
-                      [1, 4, 8].includes(i) ? 'bg-[var(--accent)]' : 'bg-zinc-800'
+                      [1, 4, 8].includes(i)
+                        ? 'bg-[var(--accent)] shadow-[0_0_6px_rgba(34,197,94,0.7)]'
+                        : 'bg-zinc-800'
                     }`}
                   />
                 ))}
@@ -270,17 +283,18 @@ function CockpitMock({ compact = false }: { compact?: boolean }) {
           </div>
 
           {!compact && (
-            <div className="mt-3 rounded-lg border border-zinc-800 bg-black/30 p-3">
+            <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
               <p className="text-xs font-semibold text-white">Opportunités prioritaires</p>
               <div className="mt-2 space-y-1.5">
                 {OPPORTUNITIES.map((opp) => (
                   <div
                     key={opp.name}
-                    className="flex items-center justify-between rounded-md bg-black/30 px-2 py-1.5 text-[11px]"
+                    className="flex items-center justify-between rounded-md bg-black/25 px-2 py-1.5 text-[11px]"
                   >
                     <span className="truncate text-zinc-300">{opp.name}</span>
-                    <span className="shrink-0 text-zinc-500">
-                      {opp.amount} · <span className="text-[var(--accent)]">{opp.score}</span>
+                    <span className="shrink-0 text-zinc-400">
+                      {opp.amount} ·{' '}
+                      <span className="font-semibold text-[var(--accent)]">{opp.score}</span>
                     </span>
                   </div>
                 ))}
@@ -289,12 +303,13 @@ function CockpitMock({ compact = false }: { compact?: boolean }) {
           )}
 
           {compact && (
-            <div className="mt-3 rounded-lg border border-zinc-800 bg-black/30 p-3">
+            <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
               <p className="text-xs font-semibold text-white">Opportunité prioritaire</p>
-              <div className="mt-2 flex items-center justify-between rounded-md bg-black/30 px-2 py-1.5 text-[11px]">
+              <div className="mt-2 flex items-center justify-between rounded-md bg-black/25 px-2 py-1.5 text-[11px]">
                 <span className="truncate text-zinc-300">{OPPORTUNITIES[0].name}</span>
-                <span className="shrink-0 text-zinc-500">
-                  {OPPORTUNITIES[0].amount} · <span className="text-[var(--accent)]">{OPPORTUNITIES[0].score}</span>
+                <span className="shrink-0 text-zinc-400">
+                  {OPPORTUNITIES[0].amount} ·{' '}
+                  <span className="font-semibold text-[var(--accent)]">{OPPORTUNITIES[0].score}</span>
                 </span>
               </div>
             </div>
@@ -309,17 +324,17 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-zinc-950 pt-[88px]">
+    <section className="relative flex min-h-[92dvh] w-full items-start overflow-hidden bg-zinc-950 pt-[88px] md:min-h-0">
       <div
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background: 'radial-gradient(ellipse 70% 50% at 50% 100%, transparent 40%, #09090b 80%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_70%_50%,rgba(34,197,94,0.08)_0%,transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.18)_0%,transparent_65%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_78%_45%,rgba(34,197,94,0.16)_0%,transparent_62%)]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 md:grid-cols-[0.95fr_1.05fr] md:items-center md:gap-10 md:py-10 lg:px-12">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-8 px-4 py-6 sm:px-6 md:grid-cols-[0.95fr_1.05fr] md:items-center md:gap-10 md:py-8 lg:px-12">
         {/* Colonne gauche — texte */}
         <div>
           <motion.div
@@ -327,8 +342,9 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0}
-            className="inline-flex max-w-full items-center rounded-full border border-[var(--accent-border)] bg-[var(--accent-dim)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)] sm:text-xs sm:tracking-[0.18em]"
+            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--accent-border)] bg-black/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)] shadow-[0_0_20px_rgba(34,197,94,0.12)] backdrop-blur-sm sm:text-xs sm:tracking-[0.18em]"
           >
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)] shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
             Le cockpit commercial des artisans du bâtiment
           </motion.div>
 
@@ -337,10 +353,10 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.1}
-            className="mt-5 max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]"
+            className="mt-4 max-w-2xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.3rem]"
           >
             Passez du chaos commercial à des{' '}
-            <span className="text-[var(--accent)]">dossiers prêts à vendre.</span>
+            <span className="font-extrabold text-[var(--accent)]">dossiers prêts à vendre.</span>
           </motion.h1>
 
           <motion.p
@@ -348,7 +364,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.2}
-            className="mt-5 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-lg"
+            className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg"
           >
             Kadria centralise vos demandes, structure vos dossiers, suit vos devis et vous montre
             les meilleures opportunités à traiter en priorité.
@@ -359,18 +375,18 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.3}
-            className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+            className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
           >
             <button
               type="button"
               onClick={onOpenTrial}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:brightness-110 sm:w-auto"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-7 py-3.5 text-base font-bold text-zinc-950 shadow-[0_8px_28px_rgba(34,197,94,0.4)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_10px_36px_rgba(34,197,94,0.55)] hover:brightness-110 sm:w-auto"
             >
-              Essayer gratuitement <ArrowRight className="h-4 w-4" />
+              Essayer gratuitement <ArrowRight className="h-5 w-5" />
             </button>
             <Link
               href="/demo-request"
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-700 px-6 py-3 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white sm:w-auto"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-800 px-6 py-3 text-sm font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200 sm:w-auto"
             >
               Demander un accès démo
             </Link>
@@ -399,7 +415,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.5}
-            className="mt-4 text-xs text-zinc-600"
+            className="mt-4 text-sm text-zinc-500"
           >
             Adopté par des artisans et petites entreprises du bâtiment
           </motion.p>
