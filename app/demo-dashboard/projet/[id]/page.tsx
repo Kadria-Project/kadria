@@ -1735,18 +1735,80 @@ function ProjectDetail() {
         ),
       },
       {
-        key: 'historique',
-        title: 'Historique',
-        content: (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {activities.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun évènement enregistré</p>}
-            {activities.map((a, i) => (
-              <p key={a.id || i} style={{ margin: 0, fontSize: '12px', color: 'var(--text-2)' }}>
-                {formatShortDate(a.createdAt)} — {a.description}
-              </p>
-            ))}
-          </div>
-        ),
+        key: 'activity',
+        title: 'Activité du dossier',
+        content: (() => {
+          const dossierActivitySource = [
+            ...activities,
+            {
+              id: 'creation',
+              description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
+              createdAt: project.createdAt,
+              action: 'CREATED',
+            },
+          ]
+            .filter((activity) => activity.createdAt || activity.description)
+            .sort((a, b) => {
+              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return timeB - timeA;
+            });
+
+          const activityItems = dossierActivitySource.map((activity, index) => getActivityPresentation(activity, index));
+          const recentActivityItems = showAllHistory ? activityItems : activityItems.slice(0, 8);
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {activityItems.length === 0 && (
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
+                  Aucune activité enregistrée pour le moment.
+                </p>
+              )}
+              {recentActivityItems.map((item) => {
+                const tone = getActivityToneStyles(item.tone);
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: 'flex', flexDirection: 'column', gap: '8px',
+                      borderRadius: '12px', border: '1px solid var(--border)',
+                      background: 'var(--bg-hover)', padding: '10px 12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '8px', minWidth: 0 }}>
+                      <span style={{ marginTop: '4px', width: '10px', height: '10px', flexShrink: 0, borderRadius: '999px', background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }} />
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{item.title}</p>
+                        {item.detail && item.detail !== item.title && (
+                          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-2)' }}>{item.detail}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, borderRadius: '999px', padding: '2px 8px',
+                        background: tone.badgeBg, border: `1px solid ${tone.badgeBorder}`, color: tone.badgeColor,
+                      }}>
+                        {tone.badgeLabel}
+                      </span>
+                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-3)' }}>
+                        {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              {activityItems.length > 8 && (
+                <button
+                  onClick={() => setShowAllHistory((v) => !v)}
+                  style={{ marginTop: '4px', background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '13px', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                >
+                  {showAllHistory ? 'Réduire' : "Voir toute l'activité"}
+                </button>
+              )}
+            </div>
+          );
+        })(),
       },
     ];
 
@@ -2831,6 +2893,517 @@ function ProjectDetail() {
           border: '1px solid var(--border)',
           borderRadius: '16px',
           overflow: 'hidden',
+        }}>
+          {/* Header avec badge verdict */}
+          <div style={{
+            padding: isMobile ? '16px' : '16px 20px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            justifyContent: 'space-between',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '10px' : 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '16px' }}>✦</span>
+              <span style={{
+                color: 'var(--accent)',
+                fontWeight: 700,
+                fontSize: '14px',
+                letterSpacing: '0.02em'
+              }}>
+                Analyse Kadria
+              </span>
+            </div>
+            {/* Badge verdict */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                color: 'var(--text-2)',
+                fontSize: '12px',
+                fontWeight: 600,
+              }}>
+                {formatInteger(score)}/100
+              </span>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: verdict.bg,
+                border: `1px solid ${verdict.border}`,
+                borderRadius: '20px',
+                padding: '4px 12px',
+              }}>
+                <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
+                <span style={{
+                  color: verdict.color,
+                  fontSize: '12px',
+                  fontWeight: 700
+                }}>
+                  {verdict.label}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Indicateurs qualité */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: '1px',
+            background: 'var(--border)',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            {indicators.map((ind, i) => {
+              if (i === 3 && project.photos && project.photos.length > 0) {
+                const photos = project.photos;
+
+                return (
+                  <div key={i} style={{
+                    background: 'var(--bg-elevated)',
+                    padding: isMobile ? '12px' : '12px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
+                      <span style={{ color: 'var(--text-1)', fontSize: '12px', fontWeight: 500 }}>
+                        Photos jointes
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', paddingLeft: isMobile ? '0' : '20px', flexWrap: 'wrap' }}>
+                      {photos.slice(0, 4).map((photo: any, idx: number) => {
+                        const url = photo.url || (typeof photo === 'string' ? photo : '#');
+                        const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
+
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid var(--border)',
+                              display: 'block',
+                            }}
+                          >
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </a>
+                        );
+                      })}
+                      {photos.length > 4 && (
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-elevated)',
+                          color: 'var(--text-2)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          +{photos.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={i} style={{
+                  background: 'var(--bg-elevated)',
+                  padding: isMobile ? '12px' : '12px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      color: ind.ok ? 'var(--accent)' : '#b91c1c',
+                      fontSize: '14px'
+                    }}>
+                      {ind.ok ? '✓' : '✗'}
+                    </span>
+                    <span style={{
+                      color: ind.ok ? 'var(--text-1)' : 'var(--text-2)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                    }}>
+                      {ind.label}
+                    </span>
+                  </div>
+                  <span style={{
+                    color: 'var(--text-3)',
+                    fontSize: '11px',
+                    paddingLeft: '20px',
+                  }}>
+                    {ind.detail}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Résumé structuré */}
+          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
+            <p style={{
+              color: 'var(--accent)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Résumé du projet
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { icon: '🏗️', label: 'Le projet', value: summary.projet },
+                { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
+                { icon: '🎯', label: 'Priorité', value: summary.priorite },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                }}>
+                  <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
+                  <span style={{
+                    color: 'var(--text-3)',
+                    fontSize: '12px',
+                      minWidth: isMobile ? '72px' : '80px',
+                    flexShrink: 0,
+                  }}>
+                    {item.label} :
+                  </span>
+                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 500 }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Synthèse IA longue */}
+          {project.aiSummary && (
+            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
+              <p style={{
+                color: 'var(--accent)',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                margin: '0 0 8px',
+              }}>
+                Synthèse IA
+              </p>
+              <p style={{
+                color: 'var(--text-2)',
+                fontSize: '13px',
+                lineHeight: '1.7',
+                margin: 0,
+                fontStyle: 'italic',
+              }}>
+                {project.aiSummary}
+              </p>
+            </div>
+          )}
+
+          {/* Recommandation IA */}
+          <div style={{
+            padding: isMobile ? '14px 16px' : '14px 20px',
+            background: 'rgba(34, 197, 94, 0.05)',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
+            <div>
+              <p style={{
+                color: 'var(--accent)',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                margin: '0 0 4px',
+              }}>
+                Recommandation Kadria
+              </p>
+              <p style={{
+                color: 'var(--text-2)',
+                fontSize: '13px',
+                lineHeight: '1.6',
+                margin: 0,
+              }}>
+                {recommendation}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Acompte — reprend le vocabulaire de src/lib/deposit.ts (DepositStatus)
+            sur les champs depositStatus/depositAmount/depositPaymentUrl portés
+            par DemoProject. Aucun appel Stripe : toute action affiche un toast
+            "Paiement simulé dans la démo" et met seulement à jour l'état local. */}
+        {(() => {
+          const depositStatus = project.depositStatus || 'not_requested';
+          const depositLabel: Record<string, string> = {
+            not_requested: 'Aucun acompte demandé',
+            recommended: 'Acompte recommandé',
+            requested: 'Acompte demandé — en attente de paiement',
+            paid: 'Acompte payé',
+            cancelled: 'Acompte annulé / expiré',
+          };
+          const depositColor =
+            depositStatus === 'paid' ? '#16a34a' : depositStatus === 'requested' ? '#f59e0b' : depositStatus === 'cancelled' ? '#ef4444' : 'var(--text-3)';
+          return (
+            <div style={{
+              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+              borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div>
+                  <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>💶 Acompte</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: depositColor, fontWeight: 600 }}>{depositLabel[depositStatus]}</p>
+                  {typeof project.depositAmount === 'number' && project.depositAmount > 0 && (
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
+                      Montant : {project.depositAmount.toLocaleString('fr-FR')} €
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {depositStatus === 'not_requested' || depositStatus === 'recommended' ? (
+                    <button
+                      onClick={() => {
+                        const amount = project.devisAmount ? Math.round(project.devisAmount * 0.3) : 0;
+                        updateProjectFields(project.id, {
+                          depositStatus: 'requested',
+                          depositAmount: amount || project.depositAmount || 0,
+                          depositPaymentUrl: `demo-deposit-link-${project.id}`,
+                          depositRequestedAt: new Date().toISOString(),
+                        });
+                        setCopyPortalToast('Simulation : lien d’acompte envoyé au client (démo)');
+                        window.setTimeout(() => setCopyPortalToast(null), 4000);
+                      }}
+                      style={{ background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '12px', padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                    >
+                      Demander l&apos;acompte
+                    </button>
+                  ) : depositStatus === 'requested' ? (
+                    <button
+                      onClick={() => {
+                        updateProjectFields(project.id, { depositStatus: 'paid', depositPaidAt: new Date().toISOString() });
+                        setCopyPortalToast('Paiement simulé dans la démo — acompte marqué comme payé');
+                        window.setTimeout(() => setCopyPortalToast(null), 4000);
+                      }}
+                      style={{ background: 'transparent', color: 'var(--text-1)', fontWeight: 600, fontSize: '12px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                    >
+                      Simuler le paiement
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Portail client et Avis Google : plus de sections pleine largeur
+            dediees ici — mirroir strict de la prod, ou ces deux actions sont
+            uniquement les boutons compacts de la grille "Quick-actions"
+            ci-dessus (pas de doublon). copyPortalToast reste utilise par
+            cette grille et par le bloc Acompte plus bas. */}
+
+        {/* Retours client — bulles de discussion + activité du dossier,
+            reprend la logique de app/dashboard-v2/projet/[id]/page.tsx mais
+            sur clientEvents locaux (DemoModeContext), aucun appel réseau. */}
+        {!showRetoursClient ? (
+          <div style={{
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
+          }}>
+            <button
+              onClick={() => setShowRetoursClient(true)}
+              style={{
+                background: 'transparent', border: 'none', color: 'var(--text-2)', cursor: 'pointer',
+                fontSize: '14px', padding: 0, width: '100%', display: 'flex', alignItems: 'center',
+                gap: '8px', textAlign: 'left',
+              }}
+            >
+              <span>💬</span>
+              <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>Retours client</span>
+              {(clientEvents[project.id]?.length || 0) > 0 && (
+                <span style={{
+                  background: 'var(--accent)', color: 'black', borderRadius: '10px',
+                  padding: '1px 7px', fontSize: '11px', fontWeight: 700,
+                }}>
+                  {clientEvents[project.id]?.length}
+                </span>
+              )}
+              <span style={{
+                marginLeft: isMobile ? 0 : 'auto', width: isMobile ? '100%' : undefined,
+                fontSize: '12px', color: 'var(--accent)',
+              }}>
+                Voir la discussion et l&apos;activité du dossier →
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: isMobile ? '16px' : '20px', marginBottom: '16px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
+              <h3 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>💬 Retours client</h3>
+              <button
+                onClick={() => setShowRetoursClient(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '13px' }}
+              >
+                Réduire
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {(clientEvents[project.id] || []).length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+                  Aucun échange pour le moment sur ce dossier démo.
+                </p>
+              ) : (
+                (clientEvents[project.id] || []).map((ev) => {
+                  const isClient = ev.type === 'client_message';
+                  const isArtisan = ev.type === 'artisan_reply';
+                  if (!isClient && !isArtisan) {
+                    return (
+                      <div key={ev.id} style={{
+                        background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                        borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: 'var(--text-2)',
+                      }}>
+                        <strong style={{ color: 'var(--text-1)' }}>{ev.title}</strong>
+                        {ev.message ? ` — ${ev.message}` : ''}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
+                      <div style={{
+                        maxWidth: '80%',
+                        background: isClient ? 'var(--bg-inset)' : 'var(--accent)',
+                        color: isClient ? 'var(--text-1)' : 'black',
+                        border: isClient ? '1px solid var(--border)' : 'none',
+                        borderRadius: isClient ? '14px 14px 14px 4px' : '14px 14px 4px 14px',
+                        padding: '10px 14px',
+                      }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', opacity: 0.75 }}>
+                          {isClient ? 'Client' : 'Vous (artisan)'}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.message}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <textarea
+              value={artisanReplyText}
+              onChange={(e) => setArtisanReplyText(e.target.value)}
+              placeholder="Votre réponse sera visible par le client dans son portail (simulation démo)..."
+              rows={3}
+              maxLength={2000}
+              style={{
+                width: '100%', background: 'var(--bg-inset)', border: '1px solid var(--border)',
+                borderRadius: '10px', padding: '10px', color: 'var(--text-1)', fontSize: '13px',
+                fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px',
+              }}
+            />
+            <button
+              onClick={() => {
+                const text = artisanReplyText.trim();
+                if (!text || sendingReply) return;
+                setSendingReply(true);
+                addClientEvent(project.id, { type: 'artisan_reply', title: 'Réponse artisan', message: text, source: 'artisan' });
+                setArtisanReplyText('');
+                setReplyToast('Simulation : réponse publiée dans le portail client (démo)');
+                window.setTimeout(() => setReplyToast(null), 4000);
+                setSendingReply(false);
+              }}
+              disabled={!artisanReplyText.trim() || sendingReply}
+              style={{
+                background: !artisanReplyText.trim() || sendingReply ? 'var(--border)' : 'var(--accent)',
+                color: !artisanReplyText.trim() || sendingReply ? 'var(--text-3)' : 'black',
+                fontWeight: 700, fontSize: '13px', padding: '10px 16px', borderRadius: '8px',
+                border: 'none', cursor: !artisanReplyText.trim() || sendingReply ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {sendingReply ? 'Publication...' : 'Publier dans le portail client'}
+            </button>
+            {replyToast && (
+              <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{replyToast}</p>
+            )}
+          </div>
+        )}
+
+        {/* Photos du projet — galerie visible, mirroir du bloc desktop prod
+            (app/dashboard-v2/projet/[id]/page.tsx, "Photos du projet"),
+            placee apres Retours client comme en prod. */}
+        {project.photos && project.photos.length > 0 && (
+          <div style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: isMobile ? '14px 16px' : '16px 20px',
+            marginBottom: '16px',
+          }}>
+            <p style={{
+              color: 'var(--text-3)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: '0 0 10px',
+            }}>
+              Photos du projet ({project.photos.length})
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(110px, 1fr))',
+              gap: '8px',
+            }}>
+              {project.photos.map((photo: { url: string; thumbnailUrl?: string }, i: number) => (
+                <a
+                  key={`${photo.url}-${i}`}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'block', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}
+                >
+                  <img
+                    src={photo.thumbnailUrl || photo.url}
+                    alt={`Photo ${i + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          overflow: 'hidden',
           marginBottom: '16px',
         }}>
           {/* Header */}
@@ -3365,517 +3938,6 @@ function ProjectDetail() {
             </div>
           </div>
         </div>
-
-        <div style={{
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          overflow: 'hidden',
-        }}>
-          {/* Header avec badge verdict */}
-          <div style={{
-            padding: isMobile ? '16px' : '16px 20px',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: isMobile ? 'flex-start' : 'center',
-            justifyContent: 'space-between',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '10px' : 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '16px' }}>✦</span>
-              <span style={{
-                color: 'var(--accent)',
-                fontWeight: 700,
-                fontSize: '14px',
-                letterSpacing: '0.02em'
-              }}>
-                Analyse Kadria
-              </span>
-            </div>
-            {/* Badge verdict */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{
-                color: 'var(--text-2)',
-                fontSize: '12px',
-                fontWeight: 600,
-              }}>
-                {formatInteger(score)}/100
-              </span>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: verdict.bg,
-                border: `1px solid ${verdict.border}`,
-                borderRadius: '20px',
-                padding: '4px 12px',
-              }}>
-                <span style={{ fontSize: '12px' }}>{verdict.icon}</span>
-                <span style={{
-                  color: verdict.color,
-                  fontSize: '12px',
-                  fontWeight: 700
-                }}>
-                  {verdict.label}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Indicateurs qualité */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-            gap: '1px',
-            background: 'var(--border)',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            {indicators.map((ind, i) => {
-              if (i === 3 && project.photos && project.photos.length > 0) {
-                const photos = project.photos;
-
-                return (
-                  <div key={i} style={{
-                    background: 'var(--bg-elevated)',
-                    padding: isMobile ? '12px' : '12px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
-                      <span style={{ color: 'var(--text-1)', fontSize: '12px', fontWeight: 500 }}>
-                        Photos jointes
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', paddingLeft: isMobile ? '0' : '20px', flexWrap: 'wrap' }}>
-                      {photos.slice(0, 4).map((photo: any, idx: number) => {
-                        const url = photo.url || (typeof photo === 'string' ? photo : '#');
-                        const thumbUrl = photo.thumbnailUrl || photo.url || (typeof photo === 'string' ? photo : '');
-
-                        return (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '6px',
-                              overflow: 'hidden',
-                              border: '1px solid var(--border)',
-                              display: 'block',
-                            }}
-                          >
-                            <img
-                              src={thumbUrl}
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          </a>
-                        );
-                      })}
-                      {photos.length > 4 && (
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-elevated)',
-                          color: 'var(--text-2)',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                          +{photos.length - 4}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={i} style={{
-                  background: 'var(--bg-elevated)',
-                  padding: isMobile ? '12px' : '12px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{
-                      color: ind.ok ? 'var(--accent)' : '#b91c1c',
-                      fontSize: '14px'
-                    }}>
-                      {ind.ok ? '✓' : '✗'}
-                    </span>
-                    <span style={{
-                      color: ind.ok ? 'var(--text-1)' : 'var(--text-2)',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                    }}>
-                      {ind.label}
-                    </span>
-                  </div>
-                  <span style={{
-                    color: 'var(--text-3)',
-                    fontSize: '11px',
-                    paddingLeft: '20px',
-                  }}>
-                    {ind.detail}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Résumé structuré */}
-          <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <p style={{
-              color: 'var(--accent)',
-              fontSize: '10px',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Résumé du projet
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {[
-                { icon: '🏗️', label: 'Le projet', value: summary.projet },
-                { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
-                { icon: '🎯', label: 'Priorité', value: summary.priorite },
-              ].map((item, i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                }}>
-                  <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
-                  <span style={{
-                    color: 'var(--text-3)',
-                    fontSize: '12px',
-                      minWidth: isMobile ? '72px' : '80px',
-                    flexShrink: 0,
-                  }}>
-                    {item.label} :
-                  </span>
-                  <span style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 500 }}>
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Synthèse IA longue */}
-          {project.aiSummary && (
-            <div style={{ padding: isMobile ? '16px' : '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <p style={{
-                color: 'var(--accent)',
-                fontSize: '10px',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                margin: '0 0 8px',
-              }}>
-                Synthèse IA
-              </p>
-              <p style={{
-                color: 'var(--text-2)',
-                fontSize: '13px',
-                lineHeight: '1.7',
-                margin: 0,
-                fontStyle: 'italic',
-              }}>
-                {project.aiSummary}
-              </p>
-            </div>
-          )}
-
-          {/* Recommandation IA */}
-          <div style={{
-            padding: isMobile ? '14px 16px' : '14px 20px',
-            background: 'rgba(34, 197, 94, 0.05)',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'flex-start',
-          }}>
-            <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
-            <div>
-              <p style={{
-                color: 'var(--accent)',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                margin: '0 0 4px',
-              }}>
-                Recommandation Kadria
-              </p>
-              <p style={{
-                color: 'var(--text-2)',
-                fontSize: '13px',
-                lineHeight: '1.6',
-                margin: 0,
-              }}>
-                {recommendation}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Acompte — reprend le vocabulaire de src/lib/deposit.ts (DepositStatus)
-            sur les champs depositStatus/depositAmount/depositPaymentUrl portés
-            par DemoProject. Aucun appel Stripe : toute action affiche un toast
-            "Paiement simulé dans la démo" et met seulement à jour l'état local. */}
-        {(() => {
-          const depositStatus = project.depositStatus || 'not_requested';
-          const depositLabel: Record<string, string> = {
-            not_requested: 'Aucun acompte demandé',
-            recommended: 'Acompte recommandé',
-            requested: 'Acompte demandé — en attente de paiement',
-            paid: 'Acompte payé',
-            cancelled: 'Acompte annulé / expiré',
-          };
-          const depositColor =
-            depositStatus === 'paid' ? '#16a34a' : depositStatus === 'requested' ? '#f59e0b' : depositStatus === 'cancelled' ? '#ef4444' : 'var(--text-3)';
-          return (
-            <div style={{
-              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-              borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <div>
-                  <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 600, color: 'var(--text-1)' }}>💶 Acompte</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: depositColor, fontWeight: 600 }}>{depositLabel[depositStatus]}</p>
-                  {typeof project.depositAmount === 'number' && project.depositAmount > 0 && (
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
-                      Montant : {project.depositAmount.toLocaleString('fr-FR')} €
-                    </p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {depositStatus === 'not_requested' || depositStatus === 'recommended' ? (
-                    <button
-                      onClick={() => {
-                        const amount = project.devisAmount ? Math.round(project.devisAmount * 0.3) : 0;
-                        updateProjectFields(project.id, {
-                          depositStatus: 'requested',
-                          depositAmount: amount || project.depositAmount || 0,
-                          depositPaymentUrl: `demo-deposit-link-${project.id}`,
-                          depositRequestedAt: new Date().toISOString(),
-                        });
-                        setCopyPortalToast('Simulation : lien d’acompte envoyé au client (démo)');
-                        window.setTimeout(() => setCopyPortalToast(null), 4000);
-                      }}
-                      style={{ background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '12px', padding: '8px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-                    >
-                      Demander l&apos;acompte
-                    </button>
-                  ) : depositStatus === 'requested' ? (
-                    <button
-                      onClick={() => {
-                        updateProjectFields(project.id, { depositStatus: 'paid', depositPaidAt: new Date().toISOString() });
-                        setCopyPortalToast('Paiement simulé dans la démo — acompte marqué comme payé');
-                        window.setTimeout(() => setCopyPortalToast(null), 4000);
-                      }}
-                      style={{ background: 'transparent', color: 'var(--text-1)', fontWeight: 600, fontSize: '12px', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer' }}
-                    >
-                      Simuler le paiement
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Portail client et Avis Google : plus de sections pleine largeur
-            dediees ici — mirroir strict de la prod, ou ces deux actions sont
-            uniquement les boutons compacts de la grille "Quick-actions"
-            ci-dessus (pas de doublon). copyPortalToast reste utilise par
-            cette grille et par le bloc Acompte plus bas. */}
-
-        {/* Retours client — bulles de discussion + activité du dossier,
-            reprend la logique de app/dashboard-v2/projet/[id]/page.tsx mais
-            sur clientEvents locaux (DemoModeContext), aucun appel réseau. */}
-        {!showRetoursClient ? (
-          <div style={{
-            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: isMobile ? '16px' : '16px 20px', marginBottom: '16px',
-          }}>
-            <button
-              onClick={() => setShowRetoursClient(true)}
-              style={{
-                background: 'transparent', border: 'none', color: 'var(--text-2)', cursor: 'pointer',
-                fontSize: '14px', padding: 0, width: '100%', display: 'flex', alignItems: 'center',
-                gap: '8px', textAlign: 'left',
-              }}
-            >
-              <span>💬</span>
-              <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>Retours client</span>
-              {(clientEvents[project.id]?.length || 0) > 0 && (
-                <span style={{
-                  background: 'var(--accent)', color: 'black', borderRadius: '10px',
-                  padding: '1px 7px', fontSize: '11px', fontWeight: 700,
-                }}>
-                  {clientEvents[project.id]?.length}
-                </span>
-              )}
-              <span style={{
-                marginLeft: isMobile ? 0 : 'auto', width: isMobile ? '100%' : undefined,
-                fontSize: '12px', color: 'var(--accent)',
-              }}>
-                Voir la discussion et l&apos;activité du dossier →
-              </span>
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: isMobile ? '16px' : '20px', marginBottom: '16px',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
-              <h3 style={{ color: 'var(--text-1)', fontSize: '15px', fontWeight: 600, margin: 0 }}>💬 Retours client</h3>
-              <button
-                onClick={() => setShowRetoursClient(false)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '13px' }}
-              >
-                Réduire
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-              {(clientEvents[project.id] || []).length === 0 ? (
-                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
-                  Aucun échange pour le moment sur ce dossier démo.
-                </p>
-              ) : (
-                (clientEvents[project.id] || []).map((ev) => {
-                  const isClient = ev.type === 'client_message';
-                  const isArtisan = ev.type === 'artisan_reply';
-                  if (!isClient && !isArtisan) {
-                    return (
-                      <div key={ev.id} style={{
-                        background: 'var(--bg-inset)', border: '1px solid var(--border)',
-                        borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: 'var(--text-2)',
-                      }}>
-                        <strong style={{ color: 'var(--text-1)' }}>{ev.title}</strong>
-                        {ev.message ? ` — ${ev.message}` : ''}
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={ev.id} style={{ display: 'flex', justifyContent: isClient ? 'flex-start' : 'flex-end' }}>
-                      <div style={{
-                        maxWidth: '80%',
-                        background: isClient ? 'var(--bg-inset)' : 'var(--accent)',
-                        color: isClient ? 'var(--text-1)' : 'black',
-                        border: isClient ? '1px solid var(--border)' : 'none',
-                        borderRadius: isClient ? '14px 14px 14px 4px' : '14px 14px 4px 14px',
-                        padding: '10px 14px',
-                      }}>
-                        <div style={{ fontSize: '10px', fontWeight: 700, marginBottom: '4px', opacity: 0.75 }}>
-                          {isClient ? 'Client' : 'Vous (artisan)'}
-                        </div>
-                        <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{ev.message}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <textarea
-              value={artisanReplyText}
-              onChange={(e) => setArtisanReplyText(e.target.value)}
-              placeholder="Votre réponse sera visible par le client dans son portail (simulation démo)..."
-              rows={3}
-              maxLength={2000}
-              style={{
-                width: '100%', background: 'var(--bg-inset)', border: '1px solid var(--border)',
-                borderRadius: '10px', padding: '10px', color: 'var(--text-1)', fontSize: '13px',
-                fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px',
-              }}
-            />
-            <button
-              onClick={() => {
-                const text = artisanReplyText.trim();
-                if (!text || sendingReply) return;
-                setSendingReply(true);
-                addClientEvent(project.id, { type: 'artisan_reply', title: 'Réponse artisan', message: text, source: 'artisan' });
-                setArtisanReplyText('');
-                setReplyToast('Simulation : réponse publiée dans le portail client (démo)');
-                window.setTimeout(() => setReplyToast(null), 4000);
-                setSendingReply(false);
-              }}
-              disabled={!artisanReplyText.trim() || sendingReply}
-              style={{
-                background: !artisanReplyText.trim() || sendingReply ? 'var(--border)' : 'var(--accent)',
-                color: !artisanReplyText.trim() || sendingReply ? 'var(--text-3)' : 'black',
-                fontWeight: 700, fontSize: '13px', padding: '10px 16px', borderRadius: '8px',
-                border: 'none', cursor: !artisanReplyText.trim() || sendingReply ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {sendingReply ? 'Publication...' : 'Publier dans le portail client'}
-            </button>
-            {replyToast && (
-              <p style={{ margin: '10px 0 0', fontSize: '12px', color: 'var(--accent)' }}>{replyToast}</p>
-            )}
-          </div>
-        )}
-
-        {/* Photos du projet — galerie visible, mirroir du bloc desktop prod
-            (app/dashboard-v2/projet/[id]/page.tsx, "Photos du projet"),
-            placee apres Retours client comme en prod. */}
-        {project.photos && project.photos.length > 0 && (
-          <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: '16px',
-            padding: isMobile ? '14px 16px' : '16px 20px',
-            marginBottom: '16px',
-          }}>
-            <p style={{
-              color: 'var(--text-3)',
-              fontSize: '10px',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              margin: '0 0 10px',
-            }}>
-              Photos du projet ({project.photos.length})
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(110px, 1fr))',
-              gap: '8px',
-            }}>
-              {project.photos.map((photo: { url: string; thumbnailUrl?: string }, i: number) => (
-                <a
-                  key={`${photo.url}-${i}`}
-                  href={photo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'block', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}
-                >
-                  <img
-                    src={photo.thumbnailUrl || photo.url}
-                    alt={`Photo ${i + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
 
         {!showNotes ? (
           <div style={{
