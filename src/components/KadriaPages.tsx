@@ -62,6 +62,7 @@ import {
 } from 'lucide-react';
 import { KadriaLogo } from '@/src/components/KadriaLogo';
 import { DarkNav } from '@/src/components/DarkNav';
+import { PremiumLandingHero } from '@/src/components/landing/PremiumLandingHero';
 import ChatWidget from '@/src/components/ChatWidget';
 import {
   BILLING_MODES,
@@ -3153,74 +3154,7 @@ export function LandingRoutePage() {
 
       <main>
         {/* 2. HERO */}
-        <section className="relative flex min-h-[100dvh] w-full items-center overflow-hidden bg-zinc-950 pt-[88px]">
-          {/* Three.js background — desktop uniquement */}
-          <div className="hidden md:block">
-            <DottedSurface
-              className="absolute inset-0 opacity-60"
-              style={{ zIndex: 0, pointerEvents: 'none' }}
-            />
-          </div>
-
-          {/* Gradient overlay pour lisibilité du texte */}
-          <div
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background: 'radial-gradient(ellipse 70% 50% at 50% 100%, transparent 40%, #09090b 80%)',
-            }}
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.12)_0%,transparent_65%)]" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_60%_at_70%_50%,rgba(34,197,94,0.08)_0%,transparent_60%)]" />
-          <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 md:grid-cols-[0.95fr_1.05fr] md:items-center md:gap-10 md:py-10 lg:px-12">
-            <div>
-              <div className="kr-reveal inline-flex max-w-full items-center rounded-full border border-green-500/20 bg-green-500/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-green-400 sm:text-xs sm:tracking-[0.18em]">
-                Assistant commercial IA pour artisans
-              </div>
-              <h1 className={`kr-reveal kr-reveal-delay-1 mt-5 max-w-3xl ${LANDING_H1_CLASS}`}>
-                Transformez chaque demande en chantier qualifi&eacute;.
-              </h1>
-              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5 max-w-3xl mx-0">
-                Kadria qualifie vos prospects 24h/24, sur votre site et par t&eacute;l&eacute;phone. Chaque conversation devient un dossier complet, prioris&eacute; et pr&ecirc;t &agrave; &ecirc;tre chiffr&eacute;.
-              </SectionDescription>
-              <div className="kr-reveal kr-reveal-delay-3 mt-7 flex flex-col items-start gap-3">
-                <button
-                  type="button"
-                  onClick={() => openTrialPlanModal()}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-green-500 px-6 py-3 text-sm font-semibold text-black transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-green-400 sm:w-auto"
-                >
-                  Essayer gratuitement 7 jours <ArrowRight className="h-4 w-4" />
-                </button>
-                <p className="text-xs text-zinc-500">
-                  Toutes les fonctionnalit&eacute;s Performance &bull; Aucun d&eacute;bit pendant 7 jours
-                </p>
-                <Link
-                  href="/demo-request"
-                  className="text-sm text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
-                >
-                  Vous pr&eacute;f&eacute;rez &ecirc;tre accompagn&eacute; ? Planifier une d&eacute;monstration.
-                </Link>
-              </div>
-              <div className="kr-reveal kr-reveal-delay-4 mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400">
-                {[
-                  'Installation en moins de 30 minutes',
-                  'Compatible avec votre site actuel',
-                  'Sans engagement',
-                ].map((item, index) => (
-                  <span key={item} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
-                    {item}
-                    {index < 2 && <span className="hidden text-zinc-700 sm:inline">&bull;</span>}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="kr-reveal kr-reveal-right min-w-0 rounded-xl shadow-[0_0_60px_rgba(34,197,94,0.08)]">
-              <QualificationShowcase />
-            </div>
-          </div>
-        </section>
+        <PremiumLandingHero onOpenTrial={() => openTrialPlanModal()} />
 
         {/* 3. SOCIAL PROOF */}
         <section className={`${LANDING_SECTION_CLASS} border-y border-zinc-800 bg-zinc-900`}>
