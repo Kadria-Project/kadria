@@ -3842,7 +3842,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             </div>
             <div className="space-y-3">
-              {riskProjects.slice(0, 3).map((project) => {
+              {riskProjects.slice(0, 2).map((project) => {
                 const risk = getProjectRiskStatus(project);
                 return (
                   <div key={project.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
@@ -3909,7 +3909,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               })}
               {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier en risque pour le moment.</p>}
             </div>
-            {riskProjects.length > 0 && (
+            {riskProjects.length > 2 && (
               <button
                 onClick={() => { setQuickFilter('risk'); setFilters(DEFAULT_FILTERS); setSearchInput(''); }}
                 className="mt-4 w-full rounded-lg border border-red-500/25 bg-red-500/[0.04] px-4 py-2 text-sm font-semibold text-red-300"
