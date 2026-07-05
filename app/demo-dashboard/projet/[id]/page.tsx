@@ -153,6 +153,251 @@ function formatDateTime(value?: string | null, fallback = 'Date non renseignée'
   return date ? DATE_TIME_FORMATTER.format(date) : fallback;
 }
 
+// Confirmation avant clôture commerciale (gagné/perdu), alignée sur
+// app/dashboard-v2/projet/[id]/page.tsx — aucune action sensible n'est
+// déclenchée sans passer par cette boîte de dialogue.
+type CommercialClosureStatus = 'Gagné' | 'Perdu';
+
+type CommercialClosureConfirmState = {
+  status: CommercialClosureStatus;
+  title: string;
+  description: string;
+  confirmLabel: string;
+};
+
+function getCommercialClosureConfirmState(status: CommercialClosureStatus): CommercialClosureConfirmState {
+  if (status === 'Gagné') {
+    return {
+      status,
+      title: 'Confirmer le dossier gagné',
+      description: 'Le dossier sera marqué comme gagné et sortira du suivi commercial en cours.',
+      confirmLabel: 'Marquer gagné',
+    };
+  }
+
+  return {
+    status,
+    title: 'Confirmer le dossier perdu',
+    description: 'Le dossier sera clôturé comme perdu et sortira du suivi commercial en cours.',
+    confirmLabel: 'Marquer perdu',
+  };
+}
+
+// "Activité du dossier" (aligné sur app/dashboard-v2/projet/[id]/page.tsx) :
+// reprend telle quelle la présentation prod des évènements (titre + détail +
+// ton + badge), appliquée ici aux activités mockées de la démo
+// (buildDemoActivities). Aucun appel réseau, aucune donnée réelle.
+type ActivityTone = 'success' | 'error' | 'info';
+
+interface ActivityFeedItem {
+  id: string;
+  action?: string;
+  createdAt?: string | null;
+  title: string;
+  detail?: string | null;
+  tone: ActivityTone;
+}
+
+function sanitizeActivityDetail(detail?: string | null, tone: ActivityTone = 'info') {
+  const normalized = String(detail || '').trim();
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+  const looksTechnical = lower.includes('provider_message_id')
+    || lower.includes('stack')
+    || lower.includes('trace')
+    || lower.includes('resend')
+    || lower.includes('smtp')
+    || normalized.includes('{')
+    || normalized.includes('[');
+
+  if (looksTechnical) {
+    return tone === 'error' ? "Echec de l'envoi. Reessayez." : null;
+  }
+
+  return normalized.length > 140 ? `${normalized.slice(0, 137)}...` : normalized;
+}
+
+function getActivityPresentation(activity: { action?: string; description?: string; createdAt?: string | null; id?: string }, index: number): ActivityFeedItem {
+  const action = String(activity.action || '').trim();
+  const description = String(activity.description || '').trim();
+
+  if (action === 'DEVIS_FOLLOW_UP_SENT') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Relance devis envoyee',
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
+  if (action === 'DEVIS_FOLLOW_UP_FAILED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Echec de la relance devis',
+      detail: sanitizeActivityDetail(description, 'error') || "Echec de l'envoi. Reessayez.",
+      tone: 'error',
+    };
+  }
+
+  if (action === 'GOOGLE_REVIEW_REQUEST_SENT') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: "Demande d'avis Google envoyee",
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
+  if (action === 'GOOGLE_REVIEW_REQUEST_FAILED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: "Echec de la demande d'avis Google",
+      detail: sanitizeActivityDetail(description, 'error') || "Echec de l'envoi. Reessayez.",
+      tone: 'error',
+    };
+  }
+
+  if (action === 'CLIENT_INFO_UPDATED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Informations complétées par le client',
+      detail: sanitizeActivityDetail(description, 'info')
+        || 'Le client a complété des informations depuis le portail client. Source : Portail client.',
+      tone: 'info',
+    };
+  }
+
+  if (action === 'CREATED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Dossier cree',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action.includes('STATUS')) {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Statut du dossier mis a jour',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action.includes('CALLBACK')) {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Rappel client programme',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action.includes('NOTE')) {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Note interne mise a jour',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action === 'DEVIS') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Mouvement sur le devis',
+      detail: sanitizeActivityDetail(description, 'info'),
+      tone: 'info',
+    };
+  }
+
+  if (action === 'ACOMPTE_PAYMENT_LINK_CREATED' || action === 'ACOMPTE_REQUESTED') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: "Lien d'acompte cree",
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
+  if (action === 'ACOMPTE_PAID') {
+    return {
+      id: activity.id || `activity-item-${index}`,
+      action,
+      createdAt: activity.createdAt,
+      title: 'Acompte paye',
+      detail: sanitizeActivityDetail(description, 'success'),
+      tone: 'success',
+    };
+  }
+
+  return {
+    id: activity.id || `activity-item-${index}`,
+    action,
+    createdAt: activity.createdAt,
+    title: description || 'Action enregistree',
+    detail: description && description !== 'Action enregistree' ? sanitizeActivityDetail(description, 'info') : null,
+    tone: 'info',
+  };
+}
+
+function getActivityToneStyles(tone: ActivityTone) {
+  if (tone === 'success') {
+    return {
+      dotBg: 'rgba(34, 197, 94, 0.16)',
+      dotColor: 'rgb(74, 222, 128)',
+      badgeBg: 'rgba(34, 197, 94, 0.14)',
+      badgeBorder: 'rgba(34, 197, 94, 0.22)',
+      badgeColor: 'rgb(134, 239, 172)',
+      badgeLabel: 'Succes',
+    };
+  }
+
+  if (tone === 'error') {
+    return {
+      dotBg: 'rgba(248, 113, 113, 0.16)',
+      dotColor: 'rgb(248, 113, 113)',
+      badgeBg: 'rgba(248, 113, 113, 0.12)',
+      badgeBorder: 'rgba(248, 113, 113, 0.24)',
+      badgeColor: 'rgb(252, 165, 165)',
+      badgeLabel: 'Echec',
+    };
+  }
+
+  return {
+    dotBg: 'rgba(148, 163, 184, 0.14)',
+    dotColor: 'rgb(203, 213, 225)',
+    badgeBg: 'rgba(148, 163, 184, 0.08)',
+    badgeBorder: 'rgba(148, 163, 184, 0.18)',
+    badgeColor: 'rgb(203, 213, 225)',
+    badgeLabel: 'Info',
+  };
+}
+
 function formatInteger(value?: number | null) {
   return INTEGER_FORMATTER.format(Number(value || 0));
 }
@@ -314,6 +559,7 @@ function ProjectDetail() {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [commercialClosureConfirm, setCommercialClosureConfirm] = useState<CommercialClosureConfirmState | null>(null);
   const [activities, setActivities] = useState<any[]>([]);
   const [note, setNote] = useState('');
   const [showNotes, setShowNotes] = useState(false);
@@ -829,6 +1075,23 @@ function ProjectDetail() {
     } finally {
       setUpdating(false);
     }
+  }
+
+  function requestCommercialClosure(status: 'Gagné' | 'Perdu') {
+    setCommercialClosureConfirm(getCommercialClosureConfirmState(status));
+  }
+
+  async function confirmCommercialClosure() {
+    if (!commercialClosureConfirm) return;
+    const nextStatus = commercialClosureConfirm.status;
+    setCommercialClosureConfirm(null);
+    await updateStatus(nextStatus);
+    setFollowUpToast({
+      type: 'success',
+      message: nextStatus === 'Gagné'
+        ? 'Action simulée dans la démo : dossier marqué gagné.'
+        : 'Action simulée dans la démo : dossier marqué perdu.',
+    });
   }
 
   // Avis Google — action purement simulée : jamais d'appel API Google, pas
@@ -2366,10 +2629,7 @@ function ProjectDetail() {
                         <button
                           type="button"
                           disabled={updating}
-                          onClick={() => {
-                            updateStatus('Gagné');
-                            setFollowUpToast({ type: 'success', message: 'Action simulée dans la démo : dossier marqué gagné.' });
-                          }}
+                          onClick={() => requestCommercialClosure('Gagné')}
                           style={{
                             background: 'transparent',
                             border: '1px solid rgba(22,163,74,0.4)',
@@ -2387,10 +2647,7 @@ function ProjectDetail() {
                         <button
                           type="button"
                           disabled={updating}
-                          onClick={() => {
-                            updateStatus('Perdu');
-                            setFollowUpToast({ type: 'success', message: 'Action simulée dans la démo : dossier marqué perdu.' });
-                          }}
+                          onClick={() => requestCommercialClosure('Perdu')}
                           style={{
                             background: 'transparent',
                             border: '1px solid rgba(220,38,38,0.35)',
@@ -2916,7 +3173,7 @@ function ProjectDetail() {
                   </p>
               <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px' }}>
                 <button
-                  onClick={() => updateStatus('Gagné')}
+                  onClick={() => requestCommercialClosure('Gagné')}
                   style={{
                     flex: 1,
                     background: project.status === 'Gagné'
@@ -2937,9 +3194,7 @@ function ProjectDetail() {
                   🏆 Chantier gagné
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm('Archiver ce dossier comme perdu ?')) updateStatus('Perdu');
-                  }}
+                  onClick={() => requestCommercialClosure('Perdu')}
                   style={{
                     flex: 1,
                     background: project.status === 'Perdu'
@@ -3776,44 +4031,99 @@ function ProjectDetail() {
           </div>
         )}
 
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-[var(--text-1)] mb-5">Historique du dossier</h2>
-
+        <section
+          className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-6"
+          style={{ marginBottom: '16px' }}
+        >
           {(() => {
-            const allEvents = [...activities, {
-              id: 'creation',
-              description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
-              createdAt: project.createdAt,
-              action: 'CREATED',
-            }];
-            const events = showAllHistory ? allEvents : allEvents.slice(0, 3);
+            const dossierActivitySource = [
+              ...activities,
+              {
+                id: 'creation',
+                description: `Dossier créé — statut initial : ${project.status || 'Nouveau'}`,
+                createdAt: project.createdAt,
+                action: 'CREATED',
+              },
+            ]
+              .filter((activity) => activity.createdAt || activity.description)
+              .sort((a, b) => {
+                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return timeB - timeA;
+              });
+
+            const activityItems = dossierActivitySource.map((activity, index) => getActivityPresentation(activity, index));
+            const recentActivityItems = showAllHistory ? activityItems : activityItems.slice(0, 8);
 
             return (
               <>
-                <div className="relative">
-                  <div className="absolute left-[15px] top-0 bottom-0 w-0.5 bg-[var(--bg-hover)]" />
-
-                  {events.map((activity) => (
-                    <div key={activity.id} className="relative pl-10 pb-5 last:pb-0">
-                      <TimelineIcon action={activity.action} />
-
-                      <p className="font-medium text-[var(--text-1)] text-sm">{activity.description}</p>
-
-                      <p className="text-xs text-[var(--text-2)] mt-0.5">
-                        {activity.createdAt
-                          ? formatDateTime(activity.createdAt)
-                          : 'Date inconnue'}
-                      </p>
-                    </div>
-                  ))}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-[var(--text-1)]">Activité du dossier</h2>
+                    <p className="mt-1 text-sm text-[var(--text-2)]">
+                      Les dernières actions enregistrées sur ce projet.
+                    </p>
+                  </div>
+                  {activityItems.length > 0 && (
+                    <span className="inline-flex w-fit rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1 text-xs font-medium text-[var(--text-2)]">
+                      {activityItems.length} évènement{activityItems.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
 
-                {allEvents.length > 3 && (
+                <div className="mt-5 flex flex-col gap-3">
+                  {activityItems.length === 0 && (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
+                      Aucune activité enregistrée pour le moment.
+                      Les relances, demandes d'avis et changements importants apparaîtront ici.
+                    </div>
+                  )}
+
+                  {recentActivityItems.map((item) => {
+                    const tone = getActivityToneStyles(item.tone);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
+                      >
+                        <div className="flex min-w-0 gap-3">
+                          <span
+                            className="mt-1 inline-flex h-3 w-3 flex-shrink-0 rounded-full"
+                            style={{ background: tone.dotBg, border: `1px solid ${tone.badgeBorder}` }}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
+                            {item.detail && item.detail !== item.title && (
+                              <p className="mt-1 text-sm leading-6 text-[var(--text-2)]">{item.detail}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-start gap-2 sm:items-end">
+                          <span
+                            className="inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                            style={{
+                              background: tone.badgeBg,
+                              borderColor: tone.badgeBorder,
+                              color: tone.badgeColor,
+                            }}
+                          >
+                            {tone.badgeLabel}
+                          </span>
+                          <p className="text-xs text-[var(--text-3)]">
+                            {item.createdAt ? formatDateTime(item.createdAt) : 'Date inconnue'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {activityItems.length > 8 && (
                   <button
                     onClick={() => setShowAllHistory((v) => !v)}
-                    className="text-sm text-green-500 hover:underline"
+                    className="mt-3 text-sm text-green-500 hover:underline"
                   >
-                    {showAllHistory ? 'Réduire' : "Voir tout l'historique"}
+                    {showAllHistory ? 'Réduire' : "Voir toute l'activité"}
                   </button>
                 )}
               </>
@@ -3822,6 +4132,73 @@ function ProjectDetail() {
         </section>
 
       </main>
+
+      {commercialClosureConfirm && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            if (!updating) setCommercialClosureConfirm(null);
+          }}
+        >
+          <div
+            className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 sm:p-6 max-w-lg w-full space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-[var(--text-1)] font-bold text-lg m-0">{commercialClosureConfirm.title}</h2>
+                <p className="text-sm text-[var(--text-2)] mt-1 mb-0">
+                  {commercialClosureConfirm.description}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!updating) setCommercialClosureConfirm(null);
+                }}
+                disabled={updating}
+                className="text-[var(--text-2)] hover:text-[var(--text-1)] disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3 text-sm">
+              <p className="m-0 text-[var(--text-2)]">
+                Dossier : <span className="text-[var(--text-1)] font-semibold">{clientLabel || project.projectType || 'Projet'}</span>
+              </p>
+              <p className="m-0 mt-2 text-[var(--text-2)]">
+                Statut actuel : <span className="text-[var(--text-1)] font-semibold">{project.status || 'Non renseigné'}</span>
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!updating) setCommercialClosureConfirm(null);
+                }}
+                disabled={updating}
+                className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-2.5 text-sm font-semibold text-[var(--text-1)] transition hover:border-green-500/40 hover:text-white disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmCommercialClosure}
+                disabled={updating}
+                className={`rounded-xl px-4 py-2.5 text-sm font-bold transition hover:brightness-110 disabled:opacity-60 ${
+                  commercialClosureConfirm.status === 'Gagné'
+                    ? 'bg-[var(--accent)] text-black'
+                    : 'bg-red-500 text-white'
+                }`}
+              >
+                {updating ? 'Mise à jour...' : commercialClosureConfirm.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRdvModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
