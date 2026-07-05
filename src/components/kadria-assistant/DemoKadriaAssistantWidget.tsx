@@ -2,109 +2,78 @@
 
 // Version demo, sobre et 100% locale, de l'Assistant Kadria interne
 // (KadriaAssistantWidget.tsx). Meme bulle flottante / tiroir visuel, mais
-// aucune vraie requete OpenAI : reponses simulees deterministes en fonction
-// de la page/du dossier courant, cf. brief "internal assistant demo".
+// assistant scenarise : uniquement des boutons de questions pre-etablies,
+// aucune saisie libre, aucune vraie requete OpenAI, aucune action reelle.
+// Les questions/reponses sont definies dans src/lib/demo-assistant-data.ts.
 
 import { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { MessageCircle, X, Send } from 'lucide-react';
+import { MessageCircle, X, Copy, Check } from 'lucide-react';
 import { useDemoMode } from '@/src/contexts/DemoModeContext';
+import {
+  getDemoAssistantAnswer,
+  getDemoAssistantSuggestions,
+  type DemoAssistantButton,
+  type DemoAssistantPageContext,
+} from '@/src/lib/demo-assistant-data';
 
 interface DemoChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  copyMessage?: string;
 }
 
-const GENERIC_QUICK_STARTS = [
-  'Résumer ce dossier',
-  'Que faire maintenant ?',
-  'Quels devis relancer ?',
-  'Quels acomptes suivre ?',
-];
-
-function buildProjectAnswer(question: string, project: ReturnType<typeof useDemoMode>['projects'][number] | undefined): string {
-  const q = question.toLowerCase();
-  if (!project) {
-    return "Je n'ai pas trouvé de dossier ouvert pour répondre précisément. Ouvrez un dossier puis reposez votre question.";
-  }
-  const client = `${project.clientFirstName} ${project.clientName}`.trim();
-  if (q.includes('résum') || q.includes('resum')) {
-    return `Dossier ${project.projectNumber} — ${client}, ${project.projectType}. Statut : ${project.status}. Budget estimé : ${project.budget || 'non renseigné'}. ${project.aiSummary || ''}`.trim();
-  }
-  if (q.includes('maintenant') || q.includes('faire')) {
-    if (project.status === 'Nouveau' || project.status === 'A rappeler') {
-      return `Prochaine étape recommandée : qualifier ${client} puis proposer un rendez-vous ou préparer un devis.`;
-    }
-    if (project.status === 'Qualifié') {
-      return `${client} est qualifié : préparez et envoyez le devis dès que possible pour ne pas perdre l'élan commercial.`;
-    }
-    if (project.status === 'Devis envoyé') {
-      return `Le devis a été envoyé à ${client}. Pensez à relancer si aucune réponse sous quelques jours.`;
-    }
-    if (project.status === 'Gagné') {
-      return `Le dossier ${client} est gagné. Pensez à demander un avis client si ce n'est pas déjà fait.`;
-    }
-    return `Suivez l'avancement du dossier ${client} et tenez le client informé des prochaines étapes.`;
-  }
-  if (q.includes('devis')) {
-    return project.devisAmount
-      ? `Le devis de ${client} est estimé à ${project.devisAmount} €. Vérifiez son statut dans la section Devis du dossier.`
-      : `Aucun devis chiffré n'est encore enregistré pour ${client}.`;
-  }
-  if (q.includes('acompte')) {
-    return `Consultez la section Acompte du dossier ${client} pour voir si une demande est en cours ou réglée.`;
-  }
-  if (q.includes('manque') || q.includes('élément') || q.includes('element')) {
-    return `Complétude du dossier : ${project.completenessScore ?? 'inconnue'} %. Vérifiez photos, coordonnées et description du besoin.`;
-  }
-  return `Sur le dossier ${client} (${project.status}), je vous recommande de suivre l'action prioritaire affichée dans la fiche projet.`;
-}
-
-function buildGlobalAnswer(question: string, projects: ReturnType<typeof useDemoMode>['projects']): string {
-  const q = question.toLowerCase();
-  if (q.includes('relancer') || q.includes('devis')) {
-    const toFollow = projects.filter((p) => p.status === 'Devis envoyé');
-    if (toFollow.length === 0) return "Aucun devis en attente de relance pour le moment.";
-    return `${toFollow.length} devis à relancer : ${toFollow.slice(0, 4).map((p) => `${p.clientFirstName} ${p.clientName}`).join(', ')}.`;
-  }
-  if (q.includes('acompte')) {
-    return "Consultez l'onglet Suivi commercial pour voir les acomptes demandés ou en attente de paiement.";
-  }
-  if (q.includes('maintenant') || q.includes('faire')) {
-    const priority = projects.find((p) => p.status === 'A rappeler') || projects[0];
-    return priority
-      ? `Priorité du moment : ${priority.clientFirstName} ${priority.clientName} (${priority.status}). Ouvrez son dossier pour voir l'action recommandée.`
-      : "Aucune action prioritaire identifiée pour le moment.";
-  }
-  return "Je peux vous aider à résumer un dossier, identifier les devis à relancer ou les acomptes à suivre. Ouvrez un dossier pour des réponses plus précises.";
+function resolvePageContext(pathname: string | null): DemoAssistantPageContext {
+  if (!pathname) return 'dashboard';
+  if (pathname.includes('/demo-dashboard/projet/')) return 'project';
+  if (pathname.startsWith('/demo-parametres')) return 'settings';
+  return 'dashboard';
 }
 
 export default function DemoKadriaAssistantWidget() {
   const pathname = usePathname();
   const { projects } = useDemoMode();
   const [open, setOpen] = useState(false);
-  const [input, setInput] = useState('');
   const [messages, setMessages] = useState<DemoChatMessage[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const projectIdMatch = pathname?.match(/\/demo-dashboard\/projet\/([^/]+)/);
+  const pageContext = resolvePageContext(pathname);
   const currentProject = useMemo(
     () => (projectIdMatch ? projects.find((p) => p.id === projectIdMatch[1]) : undefined),
     [projectIdMatch, projects],
   );
 
-  const quickStarts = currentProject
-    ? ['Résumer ce dossier', 'Que faire maintenant ?', 'Quels éléments manquent ?', 'Quel est le statut du devis ?']
-    : GENERIC_QUICK_STARTS;
+  const suggestions: DemoAssistantButton[] = useMemo(
+    () => getDemoAssistantSuggestions(pageContext, currentProject),
+    [pageContext, currentProject],
+  );
 
-  const ask = (question: string) => {
-    const trimmed = question.trim();
-    if (!trimmed) return;
-    const answer = currentProject
-      ? buildProjectAnswer(trimmed, currentProject)
-      : buildGlobalAnswer(trimmed, projects);
-    setMessages((prev) => [...prev, { role: 'user', content: trimmed }, { role: 'assistant', content: answer }]);
-    setInput('');
+  const [nextSuggestions, setNextSuggestions] = useState<DemoAssistantButton[]>([]);
+
+  const ask = (button: DemoAssistantButton) => {
+    const answer = getDemoAssistantAnswer(button.id, { project: currentProject, projects });
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: button.label },
+      { role: 'assistant', content: answer.text, copyMessage: answer.copyMessage },
+    ]);
+    setNextSuggestions(answer.followUps);
   };
+
+  const copyMessage = async (text: string, index: number) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      // ignore : simulation uniquement, pas d'action reelle requise
+    }
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex((current) => (current === index ? null : current)), 1600);
+  };
+
+  const activeSuggestions = messages.length === 0 ? suggestions : nextSuggestions;
 
   return (
     <>
@@ -129,9 +98,14 @@ export default function DemoKadriaAssistantWidget() {
               style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
             >
               <div className="min-w-0">
-                <h2 className="text-[19px] font-semibold leading-tight text-[#f8fafc]">Assistant Kadria</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[19px] font-semibold leading-tight text-[#f8fafc]">Assistant Kadria</h2>
+                  <span className="rounded-full border border-[#22c55e]/40 bg-[#22c55e]/10 px-2 py-0.5 text-[11px] font-medium text-[#22c55e]">
+                    Démo guidée
+                  </span>
+                </div>
                 <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
-                  Version démo — réponses simulées localement, aucun appel réel.
+                  Choisissez une question pour voir comment l’assistant Kadria peut vous aider en production.
                 </p>
               </div>
               <button
@@ -146,59 +120,76 @@ export default function DemoKadriaAssistantWidget() {
 
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {messages.length === 0 && (
-                <div className="flex flex-col gap-2">
+                <p className="mb-3 rounded-xl border border-[rgba(34,197,94,0.2)] bg-[rgba(34,197,94,0.06)] px-3 py-2 text-[13px] leading-snug text-[#d1fae5]">
+                  Mode démo : choisissez une question pour voir comment l’assistant Kadria peut vous aider en production.
+                </p>
+              )}
+
+              <div className="flex flex-col gap-3">
+                {messages.map((message, index) => (
+                  <div key={index} className="flex flex-col gap-1">
+                    <div
+                      className={`max-w-[85%] whitespace-pre-line rounded-2xl px-3 py-2 text-[13px] leading-snug ${
+                        message.role === 'user'
+                          ? 'ml-auto bg-[#22c55e] text-[#05130d]'
+                          : 'mr-auto border border-[rgba(255,255,255,0.08)] bg-[#101113] text-[#f8fafc]'
+                      }`}
+                    >
+                      {message.content}
+                    </div>
+                    {message.role === 'assistant' && message.copyMessage && (
+                      <button
+                        type="button"
+                        onClick={() => copyMessage(message.copyMessage as string, index)}
+                        className="mr-auto flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.12)] bg-[#101113] px-2.5 py-1 text-[12px] text-[#9ca3af] hover:border-[#22c55e]/40 hover:text-[#22c55e]"
+                      >
+                        {copiedIndex === index ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedIndex === index ? 'Copié' : 'Copier le message'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {activeSuggestions.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2">
                   <p className="text-[13px] text-[#9ca3af]">Suggestions :</p>
-                  {quickStarts.map((suggestion) => (
+                  {activeSuggestions.map((suggestion) => (
                     <button
-                      key={suggestion}
+                      key={suggestion.id}
                       type="button"
                       onClick={() => ask(suggestion)}
                       className="rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#101113] px-3 py-2 text-left text-[13px] text-[#f8fafc] hover:border-[#22c55e]/40"
                     >
-                      {suggestion}
+                      {suggestion.label}
                     </button>
                   ))}
                 </div>
               )}
 
-              <div className="mt-3 flex flex-col gap-3">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-snug ${
-                      message.role === 'user'
-                        ? 'ml-auto bg-[#22c55e] text-[#05130d]'
-                        : 'mr-auto bg-[#101113] text-[#f8fafc] border border-[rgba(255,255,255,0.08)]'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
-                ))}
-              </div>
+              {activeSuggestions.length === 0 && messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setNextSuggestions(suggestions)}
+                  className="mt-4 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#101113] px-3 py-2 text-left text-[13px] text-[#f8fafc] hover:border-[#22c55e]/40"
+                >
+                  Revenir aux suggestions
+                </button>
+              )}
             </div>
 
-            <form
-              className="flex shrink-0 items-center gap-2 border-t border-[rgba(255,255,255,0.08)] bg-[#101113] px-3 py-3"
+            <div
+              className="flex shrink-0 flex-col gap-1 border-t border-[rgba(255,255,255,0.08)] bg-[#101113] px-4 py-3"
               style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-              onSubmit={(e) => {
-                e.preventDefault();
-                ask(input);
-              }}
             >
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Posez votre question…"
-                className="flex-1 rounded-full border border-[rgba(255,255,255,0.12)] bg-transparent px-3 py-2 text-[13px] text-[#f8fafc] outline-none placeholder:text-[#6b7280]"
-              />
-              <button
-                type="submit"
-                aria-label="Envoyer"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-[#05130d]"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </form>
+              <div className="cursor-not-allowed rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3 py-2 text-[12px] leading-snug text-[#6b7280]">
+                Saisie libre désactivée dans cette démo
+              </div>
+              <p className="px-1 text-[11px] leading-snug text-[#6b7280]">
+                Dans cette démonstration, les réponses sont préconfigurées pour illustrer les usages. En production,
+                l’assistant peut répondre à vos questions sur vos propres dossiers.
+              </p>
+            </div>
           </section>
         </div>
       )}
