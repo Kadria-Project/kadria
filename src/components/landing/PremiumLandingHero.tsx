@@ -1,7 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Check } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  Phone,
+  MessageCircle,
+  FileText,
+  Camera,
+  StickyNote,
+  Receipt,
+  LayoutDashboard,
+  Target,
+  Folder,
+  Bell,
+  Calendar,
+  Users,
+  BarChart3,
+  Settings,
+} from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 
 /**
@@ -16,19 +33,6 @@ type PremiumLandingHeroProps = {
   onOpenTrial: () => void;
 };
 
-const KPI_CARDS = [
-  { label: 'CA potentiel', value: '5.8k €' },
-  { label: 'Devis envoyés', value: '276 €' },
-  { label: 'Chantiers gagnés', value: '276 €' },
-  { label: 'Taux de conversion', value: '33.3 %' },
-];
-
-const OPPORTUNITIES = [
-  { name: 'Rénovation complète maison', amount: '28 500 €', score: '88/100' },
-  { name: 'Extension maison 40m²', amount: '24 000 €', score: '82/100' },
-  { name: 'Dépannage plomberie', amount: '450 €', score: 'Nouveau' },
-];
-
 const REASSURANCE_ITEMS = [
   'Essai gratuit 7 jours',
   'Sans engagement',
@@ -37,17 +41,109 @@ const REASSURANCE_ITEMS = [
 ];
 
 const SIDEBAR_ITEMS = [
-  'Kadria',
-  'Cockpit',
-  'Demandes',
-  'Dossiers',
-  'Devis',
-  'Relances',
-  'Calendrier',
-  'Contacts',
-  'Reporting',
-  'Paramètres',
+  { label: 'Cockpit', icon: LayoutDashboard, active: true },
+  { label: 'Opportunités', icon: Target, active: false },
+  { label: 'Dossiers', icon: Folder, active: false },
+  { label: 'Devis', icon: Receipt, active: false },
+  { label: 'Relances', icon: Bell, active: false },
+  { label: 'Calendrier', icon: Calendar, active: false },
+  { label: 'Contacts', icon: Users, active: false },
+  { label: 'Analyses', icon: BarChart3, active: false },
+  { label: 'Paramètres', icon: Settings, active: false },
 ];
+
+const KPI_CARDS = [
+  { label: 'Dossier complet', value: '86%', ring: true },
+  { label: 'Prospect chaud', value: '12', accent: true },
+  { label: 'Action recommandée', value: 'Relancer 5 devis', wide: true },
+  { label: 'Devis accepté', value: '7' },
+  { label: 'Relance aujourd’hui', value: '3', accent: true },
+  { label: 'Chantiers à venir', value: '4' },
+];
+
+const KPI_CARDS_MOBILE = [
+  { label: 'Dossier complet', value: '86%' },
+  { label: 'Prospect chaud', value: '12' },
+  { label: 'Devis accepté', value: '7' },
+  { label: 'Relance aujourd’hui', value: '3' },
+];
+
+const OPPORTUNITIES = [
+  { name: 'M. Durand', detail: 'Rénovation complète maison', tag: 'Prospect chaud', score: '92%' },
+  { name: 'Mme Martin', detail: 'Extension 20m²', tag: 'Dossier complet', score: '88%' },
+  { name: 'M. Bernard', detail: 'Salle de bain', tag: 'À relancer', score: '65%' },
+];
+
+const CHAOS_CARDS = [
+  {
+    key: 'appel',
+    icon: Phone,
+    title: 'Appel manqué',
+    body: '06 72 11 47 09',
+    meta: 'Hier, 18:42',
+    className: 'left-[2%] top-[4%] rotate-[-6deg]',
+    delay: 0.9,
+    float: { y: [0, -8, 0] },
+    duration: 6,
+  },
+  {
+    key: 'whatsapp',
+    icon: MessageCircle,
+    title: 'Message WhatsApp',
+    body: 'Bonjour, j’aurais besoin d’un devis pour refaire ma salle de bain.',
+    meta: 'Hier, 17:32',
+    className: 'right-[0%] top-[0%] rotate-[4deg]',
+    delay: 1.0,
+    float: { y: [0, 9, 0] },
+    duration: 7,
+  },
+  {
+    key: 'formulaire',
+    icon: FileText,
+    title: 'Nouveau formulaire',
+    body: 'Rénovation complète',
+    meta: 'Incomplet',
+    className: 'left-[10%] top-[30%] rotate-[3deg]',
+    delay: 1.1,
+    float: { y: [0, -7, 0] },
+    duration: 6.5,
+  },
+  {
+    key: 'photo',
+    icon: Camera,
+    title: 'Photo chantier',
+    body: 'IMG_20240517.jpg',
+    meta: null,
+    className: 'right-[6%] top-[36%] rotate-[-5deg]',
+    delay: 1.2,
+    float: { y: [0, 8, 0] },
+    duration: 7.5,
+  },
+  {
+    key: 'note',
+    icon: StickyNote,
+    title: 'Note rappel',
+    body: 'M. Laurent — rappeler demain + voir pour devis urgente',
+    meta: null,
+    className: 'left-[0%] bottom-[6%] rotate-[5deg]',
+    delay: 1.3,
+    float: { y: [0, -9, 0] },
+    duration: 6.8,
+  },
+  {
+    key: 'devis',
+    icon: Receipt,
+    title: 'Devis à relancer',
+    body: 'Devis N°2024-0478',
+    meta: 'En retard',
+    className: 'right-[4%] bottom-[0%] rotate-[-3deg]',
+    delay: 1.4,
+    float: { y: [0, 8, 0] },
+    duration: 7.2,
+  },
+];
+
+const CHAOS_CARDS_MOBILE = ['appel', 'formulaire', 'devis'];
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 16 },
@@ -58,158 +154,181 @@ const fadeUp: Variants = {
   }),
 };
 
-const floatCardVariants = (delay: number): Variants => ({
-  hidden: { opacity: 0, y: 24, scale: 0.94 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: 'spring', stiffness: 120, damping: 16, delay },
-  },
-});
-
-function FloatingCards({ reduceMotion }: { reduceMotion: boolean }) {
-  const cards = [
-    {
-      key: 'hot',
-      className: 'left-[-6%] top-[8%]',
-      delay: 0.9,
-      float: reduceMotion ? {} : { y: [0, -8, 0] },
-      duration: 6,
-      content: (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Prospect chaud
-          </p>
-          <p className="mt-1 text-sm font-semibold text-white">Rénovation complète</p>
-          <p className="mt-0.5 text-xs text-zinc-400">28 500 € · 88/100</p>
-        </>
-      ),
-    },
-    {
-      key: 'relance',
-      className: 'right-[-8%] top-[2%]',
-      delay: 1.1,
-      float: reduceMotion ? {} : { y: [0, 9, 0] },
-      duration: 7,
-      content: (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Relance aujourd&rsquo;hui
-          </p>
-          <p className="mt-1 text-sm font-semibold text-white">7 devis en attente</p>
-          <p className="mt-0.5 text-xs text-zinc-400">Voir la liste</p>
-        </>
-      ),
-    },
-    {
-      key: 'qualifie',
-      className: 'left-[-4%] bottom-[16%]',
-      delay: 1.3,
-      float: reduceMotion ? {} : { y: [0, -7, 0] },
-      duration: 6.5,
-      content: (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Dossier qualifié
-          </p>
-          <p className="mt-1 text-sm font-semibold text-white">Extension maison</p>
-          <p className="mt-0.5 text-xs text-zinc-400">24 000 € · 82/100</p>
-        </>
-      ),
-    },
-    {
-      key: 'zone',
-      className: 'right-[-4%] bottom-[4%]',
-      delay: 1.5,
-      float: reduceMotion ? {} : { y: [0, 8, 0] },
-      duration: 7.5,
-      content: (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--accent)]">
-            Zone active
-          </p>
-          <p className="mt-1 text-sm font-semibold text-white">3 dossiers autour de Rouen</p>
-          <p className="mt-0.5 text-xs text-zinc-400">Voir sur la carte</p>
-        </>
-      ),
-    },
-  ];
-
+function ChaosCards({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <>
-      {cards.map((card) => (
-        <motion.div
-          key={card.key}
-          variants={floatCardVariants(card.delay)}
-          initial="hidden"
-          animate="show"
-          whileHover={reduceMotion ? undefined : { boxShadow: '0 0 44px rgba(34,197,94,0.35)' }}
-          className={`absolute z-20 hidden w-[190px] rounded-xl border border-[rgba(74,222,128,0.25)] bg-[rgba(24,24,27,0.82)] p-3 shadow-[0_14px_44px_rgba(0,0,0,0.5),0_0_24px_rgba(34,197,94,0.12)] backdrop-blur-md lg:block ${card.className}`}
-        >
-          <motion.div animate={card.float} transition={{ duration: card.duration, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}>
-            {card.content}
+      {CHAOS_CARDS.map((card) => {
+        const Icon = card.icon;
+        return (
+          <motion.div
+            key={card.key}
+            initial={{ opacity: 0, y: 26, scale: 0.92, rotate: 0 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 110, damping: 15, delay: card.delay }}
+            whileHover={
+              reduceMotion
+                ? undefined
+                : { scale: 1.04, boxShadow: '0 0 44px rgba(34,197,94,0.35)' }
+            }
+            className={`absolute z-20 w-[196px] rounded-xl border border-[rgba(74,222,128,0.22)] bg-[rgba(24,24,27,0.78)] p-3.5 shadow-[0_14px_44px_rgba(0,0,0,0.55),0_0_24px_rgba(34,197,94,0.12)] backdrop-blur-md ${card.className}`}
+          >
+            <motion.div
+              animate={reduceMotion ? {} : card.float}
+              transition={{ duration: card.duration, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)]">
+                  <Icon className="h-3.5 w-3.5 text-[var(--accent)]" />
+                </span>
+                <p className="text-[11px] font-semibold text-white">{card.title}</p>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-snug text-zinc-300">{card.body}</p>
+              {card.meta && <p className="mt-1 text-[10px] text-zinc-500">{card.meta}</p>}
+            </motion.div>
           </motion.div>
-        </motion.div>
-      ))}
+        );
+      })}
     </>
   );
 }
 
-function GlowArcs() {
+function ChaosCardsMobile() {
+  const cards = CHAOS_CARDS.filter((c) => CHAOS_CARDS_MOBILE.includes(c.key));
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-1">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.key}
+            className="w-[168px] shrink-0 rounded-xl border border-[rgba(74,222,128,0.22)] bg-[rgba(24,24,27,0.78)] p-3 shadow-[0_10px_28px_rgba(0,0,0,0.5)] backdrop-blur-md"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)]">
+                <Icon className="h-3.5 w-3.5 text-[var(--accent)]" />
+              </span>
+              <p className="text-[11px] font-semibold text-white">{card.title}</p>
+            </div>
+            <p className="mt-2 line-clamp-2 text-[11px] leading-snug text-zinc-300">{card.body}</p>
+            {card.meta && <p className="mt-1 text-[10px] text-zinc-500">{card.meta}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function FlowArcs({ reduceMotion }: { reduceMotion: boolean }) {
+  const paths = [
+    { d: 'M 10,90 C 220,40 420,150 780,110', delay: 0, duration: 3.2 },
+    { d: 'M 10,220 C 240,260 460,180 780,220', delay: 0.6, duration: 3.6 },
+    { d: 'M 10,340 C 230,320 470,380 780,300', delay: 1.1, duration: 3.9 },
+  ];
+
   return (
     <svg
-      className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full lg:block"
-      viewBox="0 0 600 600"
+      className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block"
+      viewBox="0 0 800 420"
+      preserveAspectRatio="none"
       fill="none"
       aria-hidden="true"
     >
-      <motion.circle
-        cx="300"
-        cy="300"
-        r="260"
-        stroke="rgba(34,197,94,0.28)"
-        strokeWidth="1.5"
-        strokeDasharray="6 10"
-        initial={{ opacity: 0, rotate: 0 }}
-        animate={{ opacity: 0.8, rotate: 360 }}
-        transition={{ opacity: { duration: 1.2 }, rotate: { duration: 90, repeat: Infinity, ease: 'linear' } }}
+      {paths.map((p, i) => (
+        <g key={i}>
+          <motion.path
+            d={p.d}
+            stroke="rgba(34,197,94,0.35)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={
+              reduceMotion
+                ? { pathLength: 1, opacity: 0.5 }
+                : { pathLength: 1, opacity: [0, 0.65, 0.65, 0] }
+            }
+            transition={
+              reduceMotion
+                ? { duration: 0.8, delay: p.delay }
+                : { duration: p.duration, repeat: Infinity, ease: 'easeInOut', delay: p.delay }
+            }
+          />
+          {!reduceMotion && (
+            <motion.circle
+              r="3.2"
+              fill="rgba(74,222,128,0.9)"
+              initial={{ opacity: 0 }}
+              animate={{
+                offsetDistance: ['0%', '100%'],
+                opacity: [0, 1, 1, 0],
+              }}
+              transition={{ duration: p.duration, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
+              style={{ offsetPath: `path('${p.d}')` }}
+            />
+          )}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function ProgressRing({ value }: { value: number }) {
+  const size = 40;
+  const stroke = 4;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (value / 100) * circumference;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="rgba(113,113,122,0.3)"
+        strokeWidth={stroke}
+        fill="none"
       />
-      <motion.circle
-        cx="300"
-        cy="300"
-        r="210"
-        stroke="rgba(34,197,94,0.2)"
-        strokeWidth="1.5"
-        strokeDasharray="2 14"
-        initial={{ opacity: 0, rotate: 0 }}
-        animate={{ opacity: 0.6, rotate: -360 }}
-        transition={{ opacity: { duration: 1.4, delay: 0.2 }, rotate: { duration: 130, repeat: Infinity, ease: 'linear' } }}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="var(--accent)"
+        strokeWidth={stroke}
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.7))' }}
       />
     </svg>
   );
 }
 
-function CockpitMock({ compact = false }: { compact?: boolean }) {
+function CockpitMock({ compact = false, reduceMotion = false }: { compact?: boolean; reduceMotion?: boolean }) {
+  const kpis = compact ? KPI_CARDS_MOBILE : KPI_CARDS;
+
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-2xl border border-[rgba(74,222,128,0.28)] bg-[var(--bg-elevated)]/[0.97] shadow-[0_30px_90px_rgba(0,0,0,0.6),0_0_60px_rgba(34,197,94,0.15),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-2xl ${
-        compact ? 'p-4' : 'p-6'
+      className={`relative w-full overflow-hidden rounded-2xl border border-[rgba(74,222,128,0.32)] bg-[rgba(9,12,10,0.94)] shadow-[0_40px_120px_rgba(0,0,0,0.65),0_0_70px_rgba(34,197,94,0.18),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-2xl ${
+        compact ? 'p-4' : 'p-6 lg:p-7'
       }`}
     >
-      <div className="flex gap-4">
+      <div className="flex gap-5">
         {!compact && (
-          <div className="hidden w-32 shrink-0 flex-col gap-2 border-r border-zinc-800 pr-3 md:flex">
-            {SIDEBAR_ITEMS.map((item, i) => (
+          <div className="hidden w-40 shrink-0 flex-col gap-1 border-r border-zinc-800 pr-4 md:flex">
+            <p className="mb-2 px-2 text-xs font-bold uppercase tracking-wide text-[var(--accent)]">Kadria</p>
+            {SIDEBAR_ITEMS.map((item) => (
               <div
-                key={item}
-                className={`rounded-md px-2 py-1.5 text-[11px] ${
-                  i === 1
+                key={item.label}
+                className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] ${
+                  item.active
                     ? 'bg-[var(--accent-dim)] font-semibold text-[var(--accent)]'
                     : 'text-zinc-500'
                 }`}
               >
-                {item}
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
               </div>
             ))}
           </div>
@@ -218,84 +337,64 @@ function CockpitMock({ compact = false }: { compact?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold text-white">Bonjour Julien 👋</p>
-              <p className="text-[11px] text-zinc-500">Vue d&rsquo;ensemble de votre activité commerciale</p>
+              <p className="text-base font-bold text-white">Cockpit</p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Vue d&rsquo;ensemble de votre activité commerciale</p>
             </div>
             <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-400">
               Cette semaine
             </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {KPI_CARDS.map((kpi) => (
+          <div className={`mt-4 grid grid-cols-2 gap-2.5 ${compact ? '' : 'sm:grid-cols-3'}`}>
+            {kpis.map((kpi) => (
               <div
                 key={kpi.label}
-                className="rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-2.5"
+                className={`flex items-center gap-2.5 rounded-lg border border-[rgba(113,113,122,0.32)] bg-[rgba(39,39,42,0.6)] p-3 ${
+                  !compact && 'wide' in kpi && kpi.wide ? 'col-span-2 sm:col-span-1' : ''
+                }`}
               >
-                <p className="text-[10px] text-zinc-400">{kpi.label}</p>
-                <p className="mt-1 text-base font-bold text-white">{kpi.value}</p>
+                {!compact && 'ring' in kpi && kpi.ring ? (
+                  <ProgressRing value={parseInt(kpi.value, 10)} />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="truncate text-[10px] text-zinc-400">{kpi.label}</p>
+                  <p
+                    className={`mt-0.5 truncate font-bold text-white ${
+                      !compact && 'accent' in kpi && kpi.accent ? 'text-[var(--accent)]' : ''
+                    } ${!compact && 'wide' in kpi && kpi.wide ? 'text-sm' : 'text-lg'}`}
+                  >
+                    {kpi.value}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-white">Actions à traiter</p>
-              <span className="rounded-full bg-[var(--accent-dim)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
-                7 en attente
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] text-zinc-400">
-              3 appels · 2 devis · 2 rendez-vous
-            </p>
-            <span className="mt-2 inline-block text-[11px] font-medium text-[var(--accent)]">Voir mes tâches</span>
-          </div>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-white">Santé commerciale</p>
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_6px_rgba(34,197,94,0.9)]" />
-              </div>
-              <p className="mt-1 text-[11px] font-semibold text-[var(--accent)]">En excellente santé</p>
-              <p className="mt-1 text-[11px] text-zinc-400">Maturité moyenne 82/100</p>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full w-[82%] rounded-full bg-[var(--accent)] shadow-[0_0_10px_rgba(34,197,94,0.7)]" />
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
-              <p className="text-xs font-semibold text-white">Zone active</p>
-              <p className="mt-1 text-[11px] text-zinc-400">3 dossiers autour de Rouen</p>
-              <div className="mt-2 grid grid-cols-6 gap-1">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2.5 w-2.5 rounded-sm ${
-                      [1, 4, 8].includes(i)
-                        ? 'bg-[var(--accent)] shadow-[0_0_6px_rgba(34,197,94,0.7)]'
-                        : 'bg-zinc-800'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
           {!compact && (
-            <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
+            <div className="mt-4 rounded-lg border border-[rgba(113,113,122,0.32)] bg-[rgba(39,39,42,0.6)] p-3.5">
               <p className="text-xs font-semibold text-white">Opportunités prioritaires</p>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-2.5 space-y-2">
                 {OPPORTUNITIES.map((opp) => (
                   <div
                     key={opp.name}
-                    className="flex items-center justify-between rounded-md bg-black/25 px-2 py-1.5 text-[11px]"
+                    className="flex items-center justify-between gap-2 rounded-md bg-black/30 px-3 py-2 text-[11px]"
                   >
-                    <span className="truncate text-zinc-300">{opp.name}</span>
-                    <span className="shrink-0 text-zinc-400">
-                      {opp.amount} ·{' '}
-                      <span className="font-semibold text-[var(--accent)]">{opp.score}</span>
-                    </span>
+                    <div className="min-w-0">
+                      <span className="font-semibold text-zinc-200">{opp.name}</span>
+                      <span className="ml-2 truncate text-zinc-400">{opp.detail}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          opp.tag === 'À relancer'
+                            ? 'bg-amber-500/15 text-amber-400'
+                            : 'bg-[var(--accent-dim)] text-[var(--accent)]'
+                        }`}
+                      >
+                        {opp.tag}
+                      </span>
+                      <span className="font-semibold text-white">{opp.score}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -303,16 +402,24 @@ function CockpitMock({ compact = false }: { compact?: boolean }) {
           )}
 
           {compact && (
-            <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.3)] bg-[rgba(39,39,42,0.55)] p-3">
-              <p className="text-xs font-semibold text-white">Opportunité prioritaire</p>
-              <div className="mt-2 flex items-center justify-between rounded-md bg-black/25 px-2 py-1.5 text-[11px]">
-                <span className="truncate text-zinc-300">{OPPORTUNITIES[0].name}</span>
-                <span className="shrink-0 text-zinc-400">
-                  {OPPORTUNITIES[0].amount} ·{' '}
-                  <span className="font-semibold text-[var(--accent)]">{OPPORTUNITIES[0].score}</span>
-                </span>
+            <>
+              <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.32)] bg-[rgba(39,39,42,0.6)] p-3">
+                <p className="text-xs font-semibold text-white">Actions recommandées</p>
+                <p className="mt-1 text-[11px] text-zinc-400">Relancer 5 devis</p>
               </div>
-            </div>
+              <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.32)] bg-[rgba(39,39,42,0.6)] p-3">
+                <p className="text-xs font-semibold text-white">Opportunité prioritaire</p>
+                <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-black/30 px-2.5 py-1.5 text-[11px]">
+                  <span className="truncate text-zinc-300">
+                    <span className="font-semibold text-zinc-200">{OPPORTUNITIES[0].name}</span>{' '}
+                    {OPPORTUNITIES[0].detail}
+                  </span>
+                  <span className="shrink-0 rounded-full bg-[var(--accent-dim)] px-2 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                    {OPPORTUNITIES[0].score}
+                  </span>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -321,7 +428,7 @@ function CockpitMock({ compact = false }: { compact?: boolean }) {
 }
 
 export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = !!useReducedMotion();
 
   return (
     <section className="relative flex min-h-[92dvh] w-full items-start overflow-hidden bg-zinc-950 pt-[88px] md:min-h-0">
@@ -331,12 +438,12 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
           background: 'radial-gradient(ellipse 70% 50% at 50% 100%, transparent 40%, #09090b 80%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(34,197,94,0.18)_0%,transparent_65%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_78%_45%,rgba(34,197,94,0.16)_0%,transparent_62%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_84%_50%,rgba(34,197,94,0.22)_0%,transparent_65%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_48%_45%,rgba(34,197,94,0.16)_0%,transparent_62%)]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-8 px-4 py-6 sm:px-6 md:grid-cols-[0.95fr_1.05fr] md:items-center md:gap-10 md:py-8 lg:px-12">
-        {/* Colonne gauche — texte */}
-        <div>
+      <div className="relative z-10 mx-auto grid w-full max-w-[1800px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[36%_26%_38%] lg:items-center lg:gap-6 lg:px-10 lg:py-10 xl:px-16">
+        {/* Zone gauche — texte / conversion */}
+        <div className="max-w-2xl lg:max-w-none">
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -353,10 +460,10 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.1}
-            className="mt-4 max-w-2xl text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.3rem]"
+            className="mt-5 text-4xl font-bold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[3.6rem] xl:text-[4rem]"
           >
-            Passez du chaos commercial à des{' '}
-            <span className="font-extrabold text-[var(--accent)]">dossiers prêts à vendre.</span>
+            Passez du chaos commercial{' '}
+            <span className="font-extrabold text-[var(--accent)]">à des dossiers prêts à vendre.</span>
           </motion.h1>
 
           <motion.p
@@ -364,10 +471,11 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.2}
-            className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg"
+            className="mt-5 text-base leading-relaxed text-zinc-400 sm:text-lg"
           >
-            Kadria centralise vos demandes, structure vos dossiers, suit vos devis et vous montre
-            les meilleures opportunités à traiter en priorité.
+            Appels, messages, formulaires, photos et devis à relancer&nbsp;: Kadria remet de
+            l&rsquo;ordre dans votre activité commerciale et vous aide à prioriser les bonnes
+            opportunités.
           </motion.p>
 
           <motion.div
@@ -375,18 +483,18 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.3}
-            className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+            className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
           >
             <button
               type="button"
               onClick={onOpenTrial}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-7 py-3.5 text-base font-bold text-zinc-950 shadow-[0_8px_28px_rgba(34,197,94,0.4)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_10px_36px_rgba(34,197,94,0.55)] hover:brightness-110 sm:w-auto"
+              className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-[var(--accent)] px-8 py-4 text-base font-bold text-zinc-950 shadow-[0_10px_32px_rgba(34,197,94,0.45)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_14px_40px_rgba(34,197,94,0.6)] hover:brightness-110 sm:w-auto"
             >
               Essayer gratuitement <ArrowRight className="h-5 w-5" />
             </button>
             <Link
               href="/demo-request"
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-zinc-800 px-6 py-3 text-sm font-medium text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200 sm:w-auto"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-zinc-700 bg-black/30 px-6 py-3.5 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white sm:w-auto"
             >
               Demander un accès démo
             </Link>
@@ -397,7 +505,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.4}
-            className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400"
+            className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400"
           >
             {REASSURANCE_ITEMS.map((item, index) => (
               <span key={item} className="flex items-center gap-2">
@@ -415,36 +523,40 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.5}
-            className="mt-4 text-sm text-zinc-500"
+            className="mt-5 text-sm text-zinc-500"
           >
             Adopté par des artisans et petites entreprises du bâtiment
           </motion.p>
         </div>
 
-        {/* Colonne droite — cockpit desktop */}
-        <div className="relative hidden md:block">
-          <GlowArcs />
+        {/* Zone centrale — chaos commercial */}
+        <div className="relative hidden h-[520px] lg:block">
+          <FlowArcs reduceMotion={reduceMotion} />
+          <ChaosCards reduceMotion={reduceMotion} />
+        </div>
+
+        {/* Zone droite — grand cockpit */}
+        <div className="relative hidden lg:block">
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4, type: 'spring', stiffness: 90, damping: 18 }}
-            className="relative"
+            initial={{ opacity: 0, scale: 0.94, y: 28, rotateY: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0, rotateY: -2 }}
+            transition={{ duration: 0.9, delay: 0.4, type: 'spring', stiffness: 85, damping: 18 }}
+            style={{ perspective: '1400px', transformStyle: 'preserve-3d' }}
+            className="relative w-full max-w-none lg:min-w-[560px] xl:min-w-[700px]"
           >
             <CockpitMock />
           </motion.div>
-          <FloatingCards reduceMotion={!!reduceMotion} />
         </div>
 
-        {/* Mini cockpit mobile */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          custom={0.35}
-          className="md:hidden"
-        >
-          <CockpitMock compact />
-        </motion.div>
+        {/* Mobile — chaos compact + mini cockpit */}
+        <div className="lg:hidden">
+          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.3} className="mt-2">
+            <ChaosCardsMobile />
+          </motion.div>
+          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.4} className="mt-4">
+            <CockpitMock compact reduceMotion={reduceMotion} />
+          </motion.div>
+        </div>
       </div>
     </section>
   );
