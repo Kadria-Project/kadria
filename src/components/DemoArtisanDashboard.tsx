@@ -2900,9 +2900,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 <div className="mt-1 text-sm text-[var(--text-3)]">
                   {formattedToday}
                 </div>
-                <div className="mt-1 text-[10px] text-[var(--text-3)]">
-                  Démo synchronisée prod
-                </div>
               </div>
             )}
             <button
