@@ -2638,9 +2638,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const valueTauxConversion = valueDevisEnvoyesCount > 0
     ? (valueDevisAcceptesCount / valueDevisEnvoyesCount) * 100
     : null;
-  const valueNouveauxCount = valueFilteredProjects.filter((p) => p.status === 'Nouveau').length;
-  const valueARappelerCount = valueFilteredProjects.filter((p) => p.status === 'À rappeler').length;
-  const valueARelancerCount = valueFilteredProjects.filter((p) => p.status === 'A relancer').length;
 
   // Comparaison période précédente (V1) : uniquement disponible si une période
   // limitée est sélectionnée — "Tout" n'a pas de période précédente comparable.
@@ -2727,8 +2724,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       amount > 0 ? `Informations manquantes · budget estimé ${formatCurrency(amount)}` : 'Informations manquantes — budget non renseigné',
     );
   });
-  const topValueActions = valueActions.slice(0, canSeeAdvancedValueDashboard ? 5 : 3);
-
   const priorityAction = valueActions[0] || null;
   const priorityActionTitle = priorityAction
     ? priorityAction.title === 'Devis à relancer'
@@ -3482,77 +3477,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               )}
             </div>
           )}
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-base font-bold text-[var(--text-1)]">À traiter maintenant</p>
-              <button
-                onClick={() => setDashboardMode('tasks')}
-                className="text-sm font-semibold text-[var(--accent)] hover:underline"
-              >
-                Voir toutes les tâches
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-[var(--text-3)]">
-              Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.
-            </p>
-            <div className="mt-3 space-y-2">
-              {topValueActions.map((action, index) =>
-                index === 0 ? (
-                  <ImpactCard
-                    key={action.key}
-                    variant="priority"
-                    as="button"
-                    onClick={() => router.push(`/demo-dashboard/projet/${action.projectId}`)}
-                    className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{action.title} — {action.client}</p>
-                      <p className="text-xs text-[var(--impact-text-soft)]">{action.context}</p>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
-                      Voir le dossier <ChevronRight className="h-4 w-4" />
-                    </span>
-                  </ImpactCard>
-                ) : (
-                  <button
-                    key={action.key}
-                    onClick={() => router.push(`/demo-dashboard/projet/${action.projectId}`)}
-                    className="flex w-full flex-col items-start gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                    title={action.title === 'Devis à relancer' ? 'Devis envoyé sans réponse du client.' : undefined}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--text-1)]">{action.title} — {action.client}</p>
-                      <p className="text-xs text-[var(--text-2)]">{action.context}</p>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-green-400">
-                      Voir le dossier <ChevronRight className="h-4 w-4" />
-                    </span>
-                  </button>
-                )
-              )}
-              {topValueActions.length === 0 && (
-                <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour le moment.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-            <p className="text-base font-bold text-[var(--text-1)]">Encours commercial</p>
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <ActionSummary icon={FolderOpen} label="dossiers nouveaux" value={valueNouveauxCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={PhoneCall} label="à rappeler" value={valueARappelerCount} onClick={() => setDashboardMode('commercial')} />
-              <ActionSummary icon={Send} label="devis à envoyer" value={valueQuotesProjects.length} onClick={() => goToCommercialFilter('quotes')} />
-              <ActionSummary icon={Clock} label="devis en attente" value={valueDevisEnvoyesCount} onClick={() => setDashboardMode('commercial')} />
-              {canSeeAdvancedValueDashboard && (
-                <>
-                  <ActionSummary icon={Mail} label="devis à relancer" value={valueARelancerCount} onClick={() => goToCommercialFilter('followups')} />
-                  <ActionSummary icon={Bell} label="opportunités chaudes" value={valueHotLeads.length} onClick={() => setDashboardMode('commercial')} />
-                </>
-              )}
-            </div>
-          </div>
 
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
