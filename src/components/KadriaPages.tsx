@@ -972,14 +972,23 @@ function ToolsMergeSummary({ reduceMotion }: { reduceMotion: boolean }) {
 }
 
 function QualificationShowcase() {
-  const [activeStep, setActiveStep] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 4 : 0
-  );
+  // Same hydration hazard as `usePrefersReducedMotion` above: reading
+  // `window.matchMedia` in the lazy `useState` initializer runs on the
+  // client's first render (server always sees `0` since there's no
+  // `window`), so a client with `prefers-reduced-motion` set would start
+  // at step 4 while the server-rendered markup reflects step 0 —
+  // diverging trees and triggering "Hydration failed". Always start at 0
+  // (matching the server) and let the `useEffect` below jump to the
+  // reduced-motion end state right after mount.
+  const [activeStep, setActiveStep] = useState(0);
   const [showDossier, setShowDossier] = useState(false);
 
   useEffect(() => {
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) return;
+    if (prefersReduced) {
+      setActiveStep(4);
+      return;
+    }
 
     const timeouts: ReturnType<typeof setTimeout>[] = [];
 
@@ -2615,18 +2624,28 @@ function BenefitsGrid() {
   );
 }
 function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  // `window.matchMedia` is read synchronously in the lazy `useState`
+  // initializer, which runs on the client's very first render (not gated
+  // by `useEffect`), while it always resolves to `false` on the server
+  // (no `window`). For visitors with `prefers-reduced-motion` set (common
+  // in headless/CI browsers), this makes the client's hydration-matching
+  // render diverge from the SSR output ("Hydration failed"). Stay `false`
+  // until mounted so both the server render and the client's
+  // pre-hydration render agree, then pick up the real preference right
+  // after mount.
+  const [reduced, setReduced] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
     const onChange = () => setReduced(mq.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  return reduced;
+  return mounted ? reduced : false;
 }
 
 const fmtNum = (n: number) => n.toLocaleString('fr-FR');
