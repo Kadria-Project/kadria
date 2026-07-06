@@ -1,25 +1,9 @@
 'use client';
 
-/**
- * Migrated from _v0-kadria-hero/components/kadria/floating-cards.tsx
- * Layout, composition and animation copied as-is; only the data (signals),
- * icon set (lucide-react, already used across Kadria) and color token
- * (`var(--kadria)` -> `var(--accent)`, already defined in app/globals.css)
- * were adapted.
- */
-
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { MessageCircle, Phone, FileText, Camera, Bell, Sparkles, AlertTriangle } from 'lucide-react';
+import { MessageCircle, Phone, FileText, Camera, Bell, StickyNote } from 'lucide-react';
 
-/* ── Live badge ──
-   `useReducedMotion()` reads `window.matchMedia` synchronously on the
-   client's first render (not gated by `useEffect`), while it always
-   returns `null` on the server. This can make the client's
-   hydration-matching render diverge from the SSR output for visitors
-   with `prefers-reduced-motion` set. Gate the real value behind a
-   mounted flag so SSR and the client's pre-hydration render agree
-   (false), then pick up the real preference right after mount. */
 function useStableReducedMotion() {
   const prefersReduced = useReducedMotion();
   const [mounted, setMounted] = useState(false);
@@ -27,209 +11,227 @@ function useStableReducedMotion() {
   return mounted ? prefersReduced : false;
 }
 
-function LiveBadge() {
-  const shouldReduce = useStableReducedMotion();
-  return (
-    <div
-      className="flex items-center gap-1 flex-shrink-0 ml-auto"
-      style={{
-        background: 'var(--accent-dim)',
-        border: '1px solid var(--accent-border)',
-        borderRadius: 6,
-        padding: '1px 5px',
-      }}
-    >
-      <motion.div
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ background: 'var(--accent)' }}
-        animate={shouldReduce ? {} : { opacity: [1, 0.3, 1] }}
-        transition={{ duration: 1.8, repeat: Infinity }}
-      />
-      <span className="text-[7.5px] font-bold" style={{ color: 'var(--accent)' }}>Live</span>
-    </div>
-  );
-}
-
-/* ── Single card ── */
-interface CardData {
-  label: string;
-  detail: string;
-  icon: React.ReactNode;
-  iconColor: string;
-  iconBg: string;
+/* ── Individual floating artifact ── */
+interface ArtifactProps {
+  children: React.ReactNode;
   delay: number;
   floatY?: number;
   floatDuration?: number;
-  accent?: boolean;
-  /** horizontal nudge in px — creates physical scatter */
-  offsetX?: number;
-  /** optional status badge shown instead of LiveBadge */
-  badge?: { text: string; color: string; bg: string };
+  /** absolute position within the 260×560 canvas */
+  x: number;
+  y: number;
+  rotate?: number;
+  opacity?: number;
+  scale?: number;
+  zIndex?: number;
 }
 
-function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 4, floatDuration = 3.8, accent, offsetX = 0, badge }: CardData) {
+function Artifact({
+  children, delay, floatY = 4, floatDuration = 3.8,
+  x, y, rotate = 0, opacity = 1, scale = 1, zIndex = 1,
+}: ArtifactProps) {
   const shouldReduce = useStableReducedMotion();
-
   return (
     <motion.div
-      initial={{ opacity: 0, x: -24, scale: 0.97 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      transition={{ duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] }}
-      style={{ marginLeft: offsetX > 0 ? offsetX : undefined, marginRight: offsetX < 0 ? -offsetX : undefined, transform: `translateX(${offsetX}px)` }}
+      className="absolute"
+      style={{ left: x, top: y, zIndex }}
+      initial={{ opacity: 0, scale: scale * 0.88, x: -16 }}
+      animate={{ opacity, scale, x: 0 }}
+      transition={{ duration: 0.65, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div
+        style={{ rotate, transformOrigin: 'center center' }}
         animate={shouldReduce ? {} : { y: [0, -floatY, 0] }}
-        transition={{ duration: floatDuration, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.6 }}
-        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl"
-        style={{
-          background: accent ? 'rgba(34,197,94,0.08)' : 'rgba(16,20,26,0.97)',
-          border: `1px solid ${accent ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
-        }}
+        transition={{ duration: floatDuration, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.4 }}
       >
-        {/* Icon */}
-        <div
-          className="w-[22px] h-[22px] rounded-md flex items-center justify-center flex-shrink-0"
-          style={{ background: iconBg, color: iconColor }}
-        >
-          {icon}
-        </div>
-
-        {/* Text */}
-        <div className="flex flex-col min-w-0 flex-1 gap-0">
-          <span className="text-[10.5px] font-semibold leading-tight truncate text-white">
-            {label}
-          </span>
-          <span className="text-[9px] truncate leading-tight text-zinc-500">
-            {detail}
-          </span>
-        </div>
-
-        {badge ? (
-          <div
-            className="flex-shrink-0 ml-auto"
-            style={{
-              background: badge.bg,
-              border: `1px solid ${badge.color}40`,
-              borderRadius: 6,
-              padding: '1px 6px',
-            }}
-          >
-            <span className="text-[7.5px] font-bold" style={{ color: badge.color }}>{badge.text}</span>
-          </div>
-        ) : (
-          <LiveBadge />
-        )}
+        {children}
       </motion.div>
     </motion.div>
   );
 }
 
-/* ── Connector between cards ── */
-function FlowConnector({ delay }: { delay: number }) {
+/* ── Card styles ── */
+const cardBase: React.CSSProperties = {
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)',
+};
+
+function PulseDot() {
   const shouldReduce = useStableReducedMotion();
   return (
-    <div className="flex justify-center" style={{ padding: '1px 0' }}>
-      <div className="relative" style={{ width: 1, height: 7 }}>
-        <div className="absolute inset-0" style={{ background: 'var(--accent-dim)' }} />
-        <motion.div
-          className="absolute top-0 left-0 right-0"
-          style={{ background: 'rgba(34,197,94,0.45)', transformOrigin: 'top' }}
-          initial={{ scaleY: 0, height: '100%' }}
-          animate={{ scaleY: 1 }}
-          transition={{ duration: 0.35, delay: shouldReduce ? 0 : delay, ease: 'easeOut' }}
-        />
-      </div>
+    <motion.div
+      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+      style={{ background: '#22c55e' }}
+      animate={shouldReduce ? {} : { opacity: [1, 0.25, 1] }}
+      transition={{ duration: 1.8, repeat: Infinity }}
+    />
+  );
+}
+
+function StatusPill({ text, color, bg }: { text: string; color: string; bg: string }) {
+  return (
+    <div
+      className="flex-shrink-0 px-1.5 py-0.5 rounded"
+      style={{ background: bg, border: `1px solid ${color}44`, lineHeight: 1 }}
+    >
+      <span className="text-[7px] font-bold" style={{ color }}>{text}</span>
     </div>
   );
 }
 
-// Signals fictifs Kadria — équivalents des données du prototype v0, en
-// cohérence avec les prospects/villes/montants déjà utilisés côté dashboard.
-const CARDS: CardData[] = [
-  {
-    label: 'Nouvelle demande',
-    detail: 'Carrelage salle de bain · Rouen',
-    icon: <MessageCircle className="h-3.5 w-3.5" />,
-    iconColor: 'var(--accent)',
-    iconBg: 'var(--accent-dim)',
-    delay: 0.9,
-    floatY: 3,
-    floatDuration: 4.2,
-    offsetX: -8,
-  },
-  {
-    label: 'Appel manqué',
-    detail: '06 72 11 47 09 · 18:42',
-    icon: <Phone className="h-3.5 w-3.5" />,
-    iconColor: '#f87171',
-    iconBg: 'rgba(239,68,68,0.12)',
-    delay: 1.05,
-    floatY: 5,
-    floatDuration: 3.6,
-    offsetX: 6,
-    badge: { text: 'Manqué', color: '#f87171', bg: 'rgba(239,68,68,0.12)' },
-  },
-  {
-    label: 'Nouveau formulaire',
-    detail: 'Rénovation complète',
-    icon: <FileText className="h-3.5 w-3.5" />,
-    iconColor: '#f59e0b',
-    iconBg: 'rgba(245,158,11,0.12)',
-    delay: 1.2,
-    floatY: 4,
-    floatDuration: 4.0,
-    offsetX: -12,
-    badge: { text: 'Incomplet', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  },
-  {
-    label: 'Photos reçues',
-    detail: '4 photos attachées · Live',
-    icon: <Camera className="h-3.5 w-3.5" />,
-    iconColor: '#60a5fa',
-    iconBg: 'rgba(96,165,250,0.12)',
-    delay: 1.35,
-    floatY: 5,
-    floatDuration: 3.7,
-    offsetX: 4,
-  },
-  {
-    label: 'Relance conseillée',
-    detail: 'Priorité haute · Live',
-    icon: <Bell className="h-3.5 w-3.5" />,
-    iconColor: '#22c55e',
-    iconBg: 'rgba(34,197,94,0.08)',
-    delay: 1.5,
-    floatY: 4,
-    floatDuration: 4.4,
-    accent: true,
-    offsetX: -6,
-  },
-  {
-    label: 'Devis à relancer',
-    detail: 'Devis N°2024-0478',
-    icon: <AlertTriangle className="h-3.5 w-3.5" />,
-    iconColor: '#f87171',
-    iconBg: 'rgba(239,68,68,0.12)',
-    delay: 1.65,
-    floatY: 5,
-    floatDuration: 3.9,
-    offsetX: 10,
-    badge: { text: 'En retard', color: '#f87171', bg: 'rgba(239,68,68,0.12)' },
-  },
-];
-
 export function FloatingCards() {
   return (
-    <div className="flex flex-col w-full select-none" aria-hidden>
-      {CARDS.map((card, i) => (
-        <div key={card.label}>
-          <FloatingCard {...card} />
-          {i < CARDS.length - 1 && <FlowConnector delay={card.delay + 0.45} />}
+    /*
+     * 260 × 560 absolute-position canvas.
+     * Cards float in space — no stack, no connectors.
+     * Each artifact has a unique position, rotation, opacity, and depth.
+     */
+    <div
+      className="relative select-none"
+      style={{ width: 260, height: 560 }}
+      aria-hidden
+    >
+
+      {/* ── 1. APPEL MANQUÉ — top, slight left tilt ── */}
+      <Artifact x={4} y={18} delay={0.85} rotate={-1.5} floatY={3} floatDuration={4.1} zIndex={4} opacity={1}>
+        <div
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
+          style={{
+            ...cardBase,
+            background: 'rgba(14,18,24,0.96)',
+            border: '1px solid rgba(255,255,255,0.09)',
+            width: 200,
+          }}
+        >
+          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239,68,68,0.14)' }}>
+            <Phone className="h-3.5 w-3.5" style={{ color: '#f87171' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-semibold text-white leading-tight">Appel manqué</div>
+            <div className="text-[8.5px] text-zinc-400 leading-tight">06 72 11 47 09 · 18:42</div>
+          </div>
+          <StatusPill text="Manqué" color="#f87171" bg="rgba(239,68,68,0.12)" />
         </div>
-      ))}
+      </Artifact>
+
+      {/* ── 2. WHATSAPP — wider, slight right tilt ── */}
+      <Artifact x={18} y={108} delay={1.0} rotate={0.8} floatY={5} floatDuration={3.7} zIndex={3} opacity={0.98}>
+        <div
+          className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl"
+          style={{
+            ...cardBase,
+            background: 'rgba(10,15,20,0.97)',
+            border: '1px solid rgba(34,197,94,0.14)',
+            width: 218,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34,197,94,0.12)' }}>
+              <MessageCircle className="h-3 w-3" style={{ color: '#22c55e' }} />
+            </div>
+            <span className="text-[9.5px] font-semibold text-white">WhatsApp</span>
+            <span className="ml-auto text-[7.5px] text-zinc-500">Hier, 17:32</span>
+          </div>
+          <div className="text-[8.5px] text-zinc-300 leading-[1.45]">
+            &ldquo;Bonjour, j&apos;aurais besoin d&apos;un devis pour refaire ma salle de bain…&rdquo;
+          </div>
+          <div className="flex justify-end">
+            <PulseDot />
+          </div>
+        </div>
+      </Artifact>
+
+      {/* ── 3. FORMULAIRE INCOMPLET — small, high opacity ── */}
+      <Artifact x={0} y={212} delay={1.12} rotate={-2.2} floatY={4} floatDuration={4.3} zIndex={5} opacity={1}>
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{
+            ...cardBase,
+            background: 'rgba(13,17,22,0.98)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            width: 194,
+          }}
+        >
+          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(245,158,11,0.12)' }}>
+            <FileText className="h-3.5 w-3.5" style={{ color: '#f59e0b' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[9.5px] font-semibold text-white leading-tight">Nouveau formulaire</div>
+            <div className="text-[8px] text-zinc-400 leading-tight">Rénovation complète</div>
+          </div>
+          <StatusPill text="Incomplet" color="#f59e0b" bg="rgba(245,158,11,0.12)" />
+        </div>
+      </Artifact>
+
+      {/* ── 4. PHOTO — thumbnail style, deeper in space ── */}
+      <Artifact x={20} y={302} delay={1.22} rotate={1.4} floatY={6} floatDuration={3.5} zIndex={2} opacity={0.82} scale={0.95}>
+        <div
+          className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+          style={{
+            ...cardBase,
+            background: 'rgba(11,15,20,0.92)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            width: 186,
+          }}
+        >
+          {/* Simulated photo thumbnail */}
+          <div
+            className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #1e3a2f 0%, #132518 100%)', border: '1px solid rgba(34,197,94,0.1)' }}
+          >
+            <Camera className="h-3.5 w-3.5" style={{ color: '#4ade80', opacity: 0.7 }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[9px] font-medium text-white leading-tight truncate">IMG_20240517.jpg</div>
+            <div className="text-[7.5px] text-zinc-500 leading-tight">12:14</div>
+          </div>
+        </div>
+      </Artifact>
+
+      {/* ── 5. NOTE COLLANTE — rotated, handwriting feel ── */}
+      <Artifact x={8} y={384} delay={1.32} rotate={-3.5} floatY={4} floatDuration={4.6} zIndex={3} opacity={0.92}>
+        <div
+          className="px-3 py-2.5 rounded-xl"
+          style={{
+            ...cardBase,
+            background: 'rgba(38,33,12,0.97)',
+            border: '1px solid rgba(245,198,11,0.18)',
+            width: 170,
+          }}
+        >
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <StickyNote className="h-3 w-3 flex-shrink-0" style={{ color: '#facc15', opacity: 0.7 }} />
+            <span className="text-[8px] font-medium" style={{ color: '#facc15', opacity: 0.8 }}>Note</span>
+          </div>
+          <div className="text-[8.5px] leading-[1.5]" style={{ color: 'rgba(250,220,100,0.85)', fontStyle: 'italic' }}>
+            M. Laurent<br />Rappeler demain<br />+ voir pour devis urgent
+          </div>
+        </div>
+      </Artifact>
+
+      {/* ── 6. DEVIS EN RETARD — bottom, strong ── */}
+      <Artifact x={6} y={476} delay={1.44} rotate={1.0} floatY={5} floatDuration={3.9} zIndex={4} opacity={1}>
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{
+            ...cardBase,
+            background: 'rgba(14,10,10,0.98)',
+            border: '1px solid rgba(239,68,68,0.18)',
+            width: 206,
+          }}
+        >
+          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239,68,68,0.1)' }}>
+            <Bell className="h-3.5 w-3.5" style={{ color: '#f87171' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[9.5px] font-semibold text-white leading-tight">Devis à relancer</div>
+            <div className="text-[8px] text-zinc-400 leading-tight">Devis N°2024-0478</div>
+          </div>
+          <StatusPill text="En retard" color="#f87171" bg="rgba(239,68,68,0.12)" />
+        </div>
+      </Artifact>
+
     </div>
   );
 }

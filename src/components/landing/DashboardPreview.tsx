@@ -173,21 +173,22 @@ function KpiTile({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 7 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex flex-col gap-1 p-2.5 rounded-xl"
+      transition={{ duration: 0.4, delay, ease: [0.25, 0.1, 0.25, 1] }}
+      className="flex flex-col gap-1.5 p-3 rounded-xl"
       style={{
-        background: accent ? 'var(--accent-dim)' : 'rgba(255,255,255,0.028)',
-        border: `1px solid ${accent ? 'var(--accent-border)' : 'rgba(255,255,255,0.07)'}`,
+        background: accent ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${accent ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.075)'}`,
+        boxShadow: accent ? 'inset 0 1px 0 rgba(34,197,94,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.03)',
       }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[7.5px] font-medium uppercase tracking-wide truncate text-zinc-500">{label}</span>
-        <div className="text-zinc-500" style={{ opacity: 0.7 }}>{icon}</div>
+        <span className="text-[8px] font-semibold uppercase tracking-[0.06em] truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</span>
+        <div style={{ color: accent ? 'var(--accent)' : 'rgba(255,255,255,0.3)', opacity: 0.85 }}>{icon}</div>
       </div>
-      <div className="text-[22px] font-black leading-none tracking-tight text-white">{value}</div>
-      <div className="text-[7.5px] font-medium leading-tight" style={{ color: subColor ?? 'var(--accent)' }}>{sub}</div>
+      <div className="text-[24px] font-black leading-none tracking-tight text-white">{value}</div>
+      <div className="text-[8px] font-medium leading-tight" style={{ color: subColor ?? 'var(--accent)' }}>{sub}</div>
     </motion.div>
   );
 }
@@ -220,13 +221,14 @@ function DCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 7 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: [0.25, 0.1, 0.25, 1] }}
-      className={`rounded-xl p-2 ${className}`}
+      transition={{ duration: 0.42, delay, ease: [0.25, 0.1, 0.25, 1] }}
+      className={`rounded-xl p-2.5 ${className}`}
       style={{
-        background: accent ? 'var(--accent-dim)' : 'rgba(255,255,255,0.028)',
-        border: `1px solid ${accent ? 'var(--accent-border)' : 'rgba(255,255,255,0.07)'}`,
+        background: accent ? 'rgba(34,197,94,0.055)' : 'rgba(255,255,255,0.025)',
+        border: `1px solid ${accent ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.07)'}`,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03)',
       }}
     >
       {children}
@@ -313,26 +315,103 @@ export function DashboardPreview() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 18 }}
+      initial={{ opacity: 0, scale: 0.94, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.85, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="relative w-full rounded-2xl overflow-hidden"
       style={{
-        background: '#0c0f14',
-        border: '1px solid rgba(255,255,255,0.09)',
-        boxShadow: '0 0 0 1px rgba(34,197,94,0.04), 0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(34,197,94,0.05)',
+        background: '#0b0e14',
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow:
+          '0 0 0 1px rgba(34,197,94,0.06), 0 50px 100px rgba(0,0,0,0.75), 0 0 80px rgba(34,197,94,0.07), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       {/* ── macOS window chrome ── */}
       <div
-        className="flex items-center gap-0 px-3 py-2 flex-shrink-0"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,11,16,0.98)' }}
+        className="flex items-center gap-0 px-4 py-2.5 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(7,10,15,0.99)' }}
       >
-        {/* Traffic lights */}
-        <div className="flex gap-1.5 mr-3">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#ff5f57' }} />
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#ffbd2e' }} />
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#28c840' }} />
+        <div className="flex gap-1.5 mr-4">
+          <div className="w-3 h-3 rounded-full" style={{ background: '#ff5f57' }} />
+          <div className="w-3 h-3 rounded-full" style={{ background: '#ffbd2e' }} />
+          <div className="w-3 h-3 rounded-full" style={{ background: '#28c840' }} />
+        </div>
+        <div
+          className="flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg mx-2"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', maxWidth: 240 }}
+        >
+          <Search className="h-3 w-3 text-white/30" />
+          <span className="text-[8.5px]" style={{ color: 'rgba(255,255,255,0.3)' }}>Rechercher un projet, un client...</span>
+        </div>
+        <div className="flex-1" />
+        <div className="flex items-center gap-3">
+          <LiveDot size="sm" />
+          <div className="relative">
+            <Bell className="h-3 w-3 text-zinc-500" />
+            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ background: '#ef4444' }} />
+          </div>
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0"
+            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}
+          >
+            AD
+          </div>
+        </div>
+      </div>
+
+      {/* ── App shell ── */}
+      <div className="flex" style={{ height: 660, overflow: 'hidden' }}>
+        {/* ── Sidebar — Cockpit nav matching reference ── */}
+        <div
+          className="flex flex-col flex-shrink-0 py-2"
+          style={{ width: 96, borderRight: '1px solid rgba(255,255,255,0.06)', background: 'rgba(5,8,12,0.95)' }}
+        >
+          {/* Logo */}
+          <div className="flex items-center gap-2 px-3 pb-2.5 mb-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div
+              className="w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black flex-shrink-0"
+              style={{ background: 'var(--accent)', color: '#041410' }}
+            >
+              K
+            </div>
+            <span className="text-[10.5px] font-bold text-white">Kadria</span>
+          </div>
+
+          {/* Nav — matches reference labels */}
+          {[
+            { label: 'Cockpit', active: true },
+            { label: 'Opportunités', active: false },
+            { label: 'Dossiers', active: false },
+            { label: 'Devis', active: false },
+            { label: 'Relances', active: false },
+            { label: 'Calendrier', active: false },
+            { label: 'Contacts', active: false },
+            { label: 'Analyses', active: false },
+            { label: 'Paramètres', active: false },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="mx-1.5 mb-0.5 px-2 py-1.5 rounded-lg text-[8.5px] font-medium leading-tight"
+              style={{
+                background: item.active ? 'var(--accent-dim)' : 'transparent',
+                color: item.active ? 'var(--accent)' : undefined,
+                borderLeft: item.active ? '2px solid var(--accent)' : '2px solid transparent',
+              }}
+            >
+              <span className={item.active ? '' : 'text-zinc-500'}>{item.label}</span>
+            </div>
+          ))}
+
+          <div className="flex-1" />
+
+          {/* Company switcher at bottom */}
+          <div
+            className="mx-1.5 mt-2 px-2 py-2 rounded-lg"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="text-[7.5px] text-zinc-500 leading-tight">Entreprise</div>
+            <div className="text-[8.5px] font-semibold text-white leading-tight mt-0.5">Bâtir Plus</div>
+          </div>
         </div>
         {/* Search bar */}
         <div
@@ -428,20 +507,21 @@ export function DashboardPreview() {
 
         {/* ── Main area ── */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Period + tabs bar */}
+          {/* Cockpit header */}
           <div
-            className="flex items-center justify-between px-3 py-1.5 flex-shrink-0"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+            className="flex items-center justify-between px-4 py-2.5 flex-shrink-0"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}
           >
-            <span className="text-[7.5px] text-zinc-500">
-              Période : Du 5 juin au 5 juillet 2026
-            </span>
+            <div>
+              <div className="text-[13px] font-bold text-white leading-tight">Cockpit</div>
+              <div className="text-[8px] text-zinc-500 leading-tight">Vue d&apos;ensemble de votre activité commerciale</div>
+            </div>
             <div className="flex gap-0.5">
               {['7 jours', 'Ce mois', '3 mois', 'Cette année'].map((t, i) => (
                 <button
                   key={t}
                   onClick={() => setActiveTab(i)}
-                  className="px-1.5 py-0.5 rounded text-[7.5px] font-medium transition-all"
+                  className="px-2 py-1 rounded-lg text-[8px] font-medium transition-all"
                   style={{
                     background: activeTab === i ? 'var(--accent-dim)' : 'transparent',
                     color: activeTab === i ? 'var(--accent)' : undefined,
@@ -455,7 +535,7 @@ export function DashboardPreview() {
           </div>
 
           {/* ── KPI grid 2 rows × 3 cols ── */}
-          <div className="grid grid-cols-3 gap-1.5 px-2.5 pt-2 pb-0 flex-shrink-0">
+          <div className="grid grid-cols-3 gap-2 px-3 pt-3 pb-0 flex-shrink-0">
             <KpiTile
               label="Dossier complet"
               value={`${dossierScore} %`}
@@ -505,7 +585,7 @@ export function DashboardPreview() {
           </div>
 
           {/* ── 3-column grid ── */}
-          <div className="flex-1 overflow-y-hidden px-2.5 py-2" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex-1 overflow-y-hidden px-3 py-2.5" style={{ scrollbarWidth: 'none' }}>
             <div className="grid grid-cols-[1fr_1.1fr_0.9fr] gap-2 h-full content-start">
               {/* ═══════════ COLONNE 1 — Pipeline + Agenda ═══════════ */}
               <div className="flex flex-col gap-2">
