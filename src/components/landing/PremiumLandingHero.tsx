@@ -321,17 +321,17 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                     href="/demo-request"
                     className="inline-flex items-center gap-2 px-5 py-[11px] rounded-xl text-[13.5px] font-medium transition-colors"
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.22)',
                       color: 'white',
                     }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.08)';
-                      (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.16)';
+                      (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.06)';
+                      (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.32)';
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)';
-                      (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.1)';
+                      (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.22)';
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -390,6 +390,23 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                   background: 'radial-gradient(ellipse at 55% 45%, rgba(34,197,94,0.08) 0%, transparent 65%)',
                   borderRadius: '40px',
                   filter: 'blur(20px)',
+                }}
+              />
+
+              {/* Concentrated convergence bloom — tight light source at connector focal point */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  /* Position at the connector focal point: left edge of the dashboard, vertical center */
+                  left: 'calc(224px + 24px)',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 220,
+                  height: 220,
+                  background: 'radial-gradient(circle, rgba(34,197,94,0.22) 0%, rgba(34,197,94,0.08) 30%, transparent 70%)',
+                  filter: 'blur(28px)',
+                  borderRadius: '50%',
+                  zIndex: 1,
                 }}
               />
 

@@ -10,7 +10,7 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { MessageCircle, Phone, FileText, Camera, Bell, Sparkles } from 'lucide-react';
+import { MessageCircle, Phone, FileText, Camera, Bell, Sparkles, AlertTriangle } from 'lucide-react';
 
 /* ── Live badge ──
    `useReducedMotion()` reads `window.matchMedia` synchronously on the
@@ -61,9 +61,13 @@ interface CardData {
   floatY?: number;
   floatDuration?: number;
   accent?: boolean;
+  /** horizontal nudge in px — creates physical scatter */
+  offsetX?: number;
+  /** optional status badge shown instead of LiveBadge */
+  badge?: { text: string; color: string; bg: string };
 }
 
-function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 4, floatDuration = 3.8, accent }: CardData) {
+function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 4, floatDuration = 3.8, accent, offsetX = 0, badge }: CardData) {
   const shouldReduce = useStableReducedMotion();
 
   return (
@@ -71,6 +75,7 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
       initial={{ opacity: 0, x: -24, scale: 0.97 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] }}
+      style={{ marginLeft: offsetX > 0 ? offsetX : undefined, marginRight: offsetX < 0 ? -offsetX : undefined, transform: `translateX(${offsetX}px)` }}
     >
       <motion.div
         animate={shouldReduce ? {} : { y: [0, -floatY, 0] }}
@@ -102,7 +107,21 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
           </span>
         </div>
 
-        <LiveBadge />
+        {badge ? (
+          <div
+            className="flex-shrink-0 ml-auto"
+            style={{
+              background: badge.bg,
+              border: `1px solid ${badge.color}40`,
+              borderRadius: 6,
+              padding: '1px 6px',
+            }}
+          >
+            <span className="text-[7.5px] font-bold" style={{ color: badge.color }}>{badge.text}</span>
+          </div>
+        ) : (
+          <LiveBadge />
+        )}
       </motion.div>
     </motion.div>
   );
@@ -139,16 +158,31 @@ const CARDS: CardData[] = [
     delay: 0.9,
     floatY: 3,
     floatDuration: 4.2,
+    offsetX: -8,
   },
   {
-    label: 'Budget détecté',
-    detail: '8 000 – 12 000€ · Live',
+    label: 'Appel manqué',
+    detail: '06 72 11 47 09 · 18:42',
     icon: <Phone className="h-3.5 w-3.5" />,
-    iconColor: '#f59e0b',
-    iconBg: 'rgba(245,158,11,0.12)',
+    iconColor: '#f87171',
+    iconBg: 'rgba(239,68,68,0.12)',
     delay: 1.05,
     floatY: 5,
     floatDuration: 3.6,
+    offsetX: 6,
+    badge: { text: 'Manqué', color: '#f87171', bg: 'rgba(239,68,68,0.12)' },
+  },
+  {
+    label: 'Nouveau formulaire',
+    detail: 'Rénovation complète',
+    icon: <FileText className="h-3.5 w-3.5" />,
+    iconColor: '#f59e0b',
+    iconBg: 'rgba(245,158,11,0.12)',
+    delay: 1.2,
+    floatY: 4,
+    floatDuration: 4.0,
+    offsetX: -12,
+    badge: { text: 'Incomplet', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   },
   {
     label: 'Photos reçues',
@@ -156,41 +190,34 @@ const CARDS: CardData[] = [
     icon: <Camera className="h-3.5 w-3.5" />,
     iconColor: '#60a5fa',
     iconBg: 'rgba(96,165,250,0.12)',
-    delay: 1.2,
-    floatY: 4,
-    floatDuration: 4.0,
-  },
-  {
-    label: 'Relance conseillée',
-    detail: 'Dans 2 jours · Live',
-    icon: <Bell className="h-3.5 w-3.5" />,
-    iconColor: '#22c55e',
-    iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.35,
     floatY: 5,
     floatDuration: 3.7,
-    accent: true,
+    offsetX: 4,
   },
   {
-    label: 'Score IA : 88/100',
+    label: 'Relance conseillée',
     detail: 'Priorité haute · Live',
-    icon: <Sparkles className="h-3.5 w-3.5" />,
+    icon: <Bell className="h-3.5 w-3.5" />,
     iconColor: '#22c55e',
     iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.5,
     floatY: 4,
     floatDuration: 4.4,
     accent: true,
+    offsetX: -6,
   },
   {
-    label: 'Devis à préparer',
-    detail: 'Prochaine étape · Live',
-    icon: <FileText className="h-3.5 w-3.5" />,
-    iconColor: '#a78bfa',
-    iconBg: 'rgba(167,139,250,0.12)',
+    label: 'Devis à relancer',
+    detail: 'Devis N°2024-0478',
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
+    iconColor: '#f87171',
+    iconBg: 'rgba(239,68,68,0.12)',
     delay: 1.65,
     floatY: 5,
     floatDuration: 3.9,
+    offsetX: 10,
+    badge: { text: 'En retard', color: '#f87171', bg: 'rgba(239,68,68,0.12)' },
   },
 ];
 

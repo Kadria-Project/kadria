@@ -11,7 +11,7 @@
 
 import { motion, useReducedMotion, animate } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { Euro, Send, Flag, Target as TargetIcon, TrendingUp, Bell, Search } from 'lucide-react';
+import { Euro, Send, Flag, Bell, Search, CalendarDays, Flame, CheckCircle2 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────
    Stable reduced-motion preference.
@@ -152,21 +152,21 @@ function LiveDot({ size = 'sm' }: { size?: 'sm' | 'md' }) {
 }
 
 /* ─────────────────────────────────────────────
-   KPI strip card
+   KPI tile — 2-row × 3-col grid, large metric
    ───────────────────────────────────────────── */
-function KpiStrip({
+function KpiTile({
   label,
   value,
-  delta,
-  deltaColor = 'var(--accent)',
+  sub,
+  subColor,
   icon,
   accent,
   delay,
 }: {
   label: string;
-  value: string;
-  delta: string;
-  deltaColor?: string;
+  value: React.ReactNode;
+  sub: string;
+  subColor?: string;
   icon: React.ReactNode;
   accent?: boolean;
   delay: number;
@@ -176,7 +176,7 @@ function KpiStrip({
       initial={{ opacity: 0, y: 7 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex flex-col gap-0.5 p-2 rounded-xl flex-1"
+      className="flex flex-col gap-1 p-2.5 rounded-xl"
       style={{
         background: accent ? 'var(--accent-dim)' : 'rgba(255,255,255,0.028)',
         border: `1px solid ${accent ? 'var(--accent-border)' : 'rgba(255,255,255,0.07)'}`,
@@ -186,8 +186,8 @@ function KpiStrip({
         <span className="text-[7.5px] font-medium uppercase tracking-wide truncate text-zinc-500">{label}</span>
         <div className="text-zinc-500" style={{ opacity: 0.7 }}>{icon}</div>
       </div>
-      <div className="text-[13px] font-bold leading-none tracking-tight text-white">{value}</div>
-      <div className="text-[7.5px] font-medium leading-tight" style={{ color: deltaColor }}>{delta}</div>
+      <div className="text-[22px] font-black leading-none tracking-tight text-white">{value}</div>
+      <div className="text-[7.5px] font-medium leading-tight" style={{ color: subColor ?? 'var(--accent)' }}>{sub}</div>
     </motion.div>
   );
 }
@@ -305,9 +305,11 @@ const NOTIFS = [
 export function DashboardPreview() {
   const shouldReduce = useStableReducedMotion();
   const [activeTab, setActiveTab] = useState(1);
-  const dossiers = useCounter(34, 0.9);
-  const opps = useCounter(11, 0.95);
-  const devisAtt = useCounter(6, 1.0);
+  const dossierScore = useCounter(86, 0.9);
+  const prospects = useCounter(12, 0.95);
+  const devisAcceptes = useCounter(7, 1.0);
+  const relances = useCounter(3, 1.05);
+  const chantiers = useCounter(4, 1.1);
 
   return (
     <motion.div
@@ -452,27 +454,54 @@ export function DashboardPreview() {
             </div>
           </div>
 
-          {/* ── Full-width KPI strip ── */}
-          <div className="flex gap-1.5 px-2.5 pt-2 pb-0 flex-shrink-0">
-            <KpiStrip label="Dossiers qualifiés" value={`${dossiers}`} delta="+9 ce mois" icon={<Flag className="h-2.5 w-2.5" />} delay={0.75} />
-            <KpiStrip
-              label="Opportunités chaudes"
-              value={`${opps}`}
-              delta="+3 cette semaine"
-              deltaColor="#ef4444"
-              icon={<TargetIcon className="h-2.5 w-2.5" />}
+          {/* ── KPI grid 2 rows × 3 cols ── */}
+          <div className="grid grid-cols-3 gap-1.5 px-2.5 pt-2 pb-0 flex-shrink-0">
+            <KpiTile
+              label="Dossier complet"
+              value={`${dossierScore} %`}
+              sub="+12 pts vs semaine dernière"
+              icon={<Flag className="h-2.5 w-2.5" />}
+              accent
+              delay={0.75}
+            />
+            <KpiTile
+              label="Prospect chaud"
+              value={`${prospects}`}
+              sub="+4 nouveaux"
+              subColor="#ef4444"
+              icon={<Flame className="h-2.5 w-2.5" />}
               delay={0.82}
             />
-            <KpiStrip
-              label="Devis en attente"
-              value={`${devisAtt}`}
-              delta="2 urgents"
-              deltaColor="#f59e0b"
-              icon={<Send className="h-2.5 w-2.5" />}
+            <KpiTile
+              label="Action recommandée"
+              value="5 devis"
+              sub="3 aujourd'hui · 2 cette semaine"
+              subColor="#f59e0b"
+              icon={<CheckCircle2 className="h-2.5 w-2.5" />}
               delay={0.89}
             />
-            <KpiStrip label="CA potentiel" value="5,8k€" delta="+1,9k€ ce mois" icon={<Euro className="h-2.5 w-2.5" />} accent delay={0.96} />
-            <KpiStrip label="Taux de conversion" value="33,3%" delta="+6,5% vs préc." icon={<TrendingUp className="h-2.5 w-2.5" />} delay={1.03} />
+            <KpiTile
+              label="Devis accepté"
+              value={`${devisAcceptes}`}
+              sub="120 450 € HT montant total"
+              icon={<Euro className="h-2.5 w-2.5" />}
+              delay={0.96}
+            />
+            <KpiTile
+              label="Relance aujourd'hui"
+              value={`${relances}`}
+              sub="À effectuer"
+              subColor="#f59e0b"
+              icon={<Send className="h-2.5 w-2.5" />}
+              delay={1.03}
+            />
+            <KpiTile
+              label="Chantiers à venir"
+              value={`${chantiers}`}
+              sub="Dans les 30 prochains jours"
+              icon={<CalendarDays className="h-2.5 w-2.5" />}
+              delay={1.1}
+            />
           </div>
 
           {/* ── 3-column grid ── */}
