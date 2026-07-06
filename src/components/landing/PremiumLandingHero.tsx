@@ -306,7 +306,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                   whileTap={shouldReduce ? {} : { scale: 0.975 }}
                   className="inline-flex items-center gap-2 px-5 py-[11px] rounded-xl text-[13.5px] font-semibold"
                   style={{
-                    background: 'var(--accent)',
+                    background: '#22c55e',
                     color: '#061410',
                     boxShadow: '0 0 28px rgba(34,197,94,0.28), 0 2px 8px rgba(0,0,0,0.3)',
                   }}

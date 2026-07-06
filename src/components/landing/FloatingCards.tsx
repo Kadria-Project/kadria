@@ -77,8 +77,8 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
         transition={{ duration: floatDuration, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.6 }}
         className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-xl"
         style={{
-          background: accent ? 'var(--accent-dim)' : 'rgba(16,20,26,0.97)',
-          border: `1px solid ${accent ? 'var(--accent-border)' : 'rgba(255,255,255,0.08)'}`,
+          background: accent ? 'rgba(34,197,94,0.08)' : 'rgba(16,20,26,0.97)',
+          border: `1px solid ${accent ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
           boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
@@ -164,8 +164,8 @@ const CARDS: CardData[] = [
     label: 'Relance conseillée',
     detail: 'Dans 2 jours · Live',
     icon: <Bell className="h-3 w-3" />,
-    iconColor: 'var(--accent)',
-    iconBg: 'var(--accent-dim)',
+    iconColor: '#22c55e',
+    iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.35,
     floatY: 5,
     floatDuration: 3.7,
@@ -175,8 +175,8 @@ const CARDS: CardData[] = [
     label: 'Score IA : 88/100',
     detail: 'Priorité haute · Live',
     icon: <Sparkles className="h-3 w-3" />,
-    iconColor: 'var(--accent)',
-    iconBg: 'var(--accent-dim)',
+    iconColor: '#22c55e',
+    iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.5,
     floatY: 4,
     floatDuration: 4.4,
