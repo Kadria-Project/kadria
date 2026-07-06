@@ -6,10 +6,9 @@ import {
   useReducedMotion,
   useMotionValue,
   useSpring,
-  animate,
 } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, Star } from 'lucide-react';
+import { ArrowRight, Check, Clock, Database, FileCheck } from 'lucide-react';
 import { DashboardPreview } from './DashboardPreview';
 import { FloatingCards } from './FloatingCards';
 
@@ -74,20 +73,6 @@ function useMouseParallax(strength = 0.007) {
 }
 
 /* ─────────────────────────────────────────────
-   Animated counter
-   ───────────────────────────────────────────── */
-function Counter({ to, suffix = '', prefix = '' }: { to: number; suffix?: string; prefix?: string }) {
-  const [val, setVal] = useState(0);
-  const shouldReduce = useStableReducedMotion();
-  useEffect(() => {
-    if (shouldReduce) { setVal(to); return; }
-    const c = animate(0, to, { duration: 1.8, ease: 'easeOut', onUpdate: (v) => setVal(Math.round(v)) });
-    return () => c.stop();
-  }, [to, shouldReduce]);
-  return <>{prefix}{val}{suffix}</>;
-}
-
-/* ─────────────────────────────────────────────
    Particle field — tiny dots drifting toward convergence
    ───────────────────────────────────────────── */
 function ParticleField({ count = 18 }: { count?: number }) {
@@ -138,98 +123,114 @@ function ParticleField({ count = 18 }: { count?: number }) {
    ───────────────────────────────────────────── */
 function ConvergenceConnector({ shouldReduce }: { shouldReduce: boolean | null }) {
   /*
-   * 6 fan curves from left (card strip) to right (dashboard entry).
-   * Each curve originates at a Y position matching the vertical center
-   * of each floating card (approximate), converges to a single focal
-   * point at (24, 280). Brightness increases as we approach focal pt.
+   * Cinematic aspiration effect: a wide fan of glowing green streaks
+   * that originate across the full height of the card canvas and pull
+   * inward to a single bright focal point on the dashboard's left edge.
+   * Streaks brighten dramatically as they approach the focal point.
    */
-  const ORIGINS = [42, 122, 206, 294, 376, 460];
-  const FOCAL_Y = 280;
-  const W = 40;
+  const H = 560;
+  const W = 90;
+  const FOCAL_Y = H / 2;
+  // 14 origins spread across the canvas height
+  const ORIGINS = Array.from({ length: 14 }, (_, i) => 20 + (i * (H - 40)) / 13);
 
   return (
     <div className="relative flex-shrink-0 flex items-center" style={{ width: W, alignSelf: 'stretch' }}>
-      {/* Particle field within connector */}
-      <ParticleField count={14} />
-
       <svg
-        viewBox={`0 0 ${W} 560`}
+        viewBox={`0 0 ${W} ${H}`}
         fill="none"
         className="w-full"
-        style={{ height: '100%', minHeight: 440 }}
+        style={{ height: '100%', minHeight: 460, overflow: 'visible' }}
         preserveAspectRatio="none"
       >
         <defs>
-          {/* Gradient: dim at origin → bright at focal point */}
-          <linearGradient id="cg0" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.08" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0.55" />
+          {/* Dim at origin → very bright at focal point */}
+          <linearGradient id="cgDim" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.02" />
+            <stop offset="60%" stopColor="#22c55e" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#4ade80" stopOpacity="0.85" />
           </linearGradient>
-          <linearGradient id="cg1" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.12" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0.65" />
+          <linearGradient id="cgBright" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.05" />
+            <stop offset="55%" stopColor="#4ade80" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#86efac" stopOpacity="1" />
           </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="1.2" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          <filter id="streakGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="1.6" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
 
         {ORIGINS.map((y, i) => {
-          const isMid = i === 2 || i === 3;
+          const isMid = Math.abs(y - FOCAL_Y) < 120;
           return (
             <motion.path
               key={i}
-              d={`M 0 ${y} C ${W * 0.5} ${y}, ${W * 0.5} ${FOCAL_Y}, ${W} ${FOCAL_Y}`}
-              stroke={isMid ? 'url(#cg1)' : 'url(#cg0)'}
-              strokeWidth={isMid ? '1.4' : '0.9'}
-              strokeDasharray={isMid ? 'none' : '2 3.5'}
+              d={`M 0 ${y} C ${W * 0.55} ${y}, ${W * 0.55} ${FOCAL_Y}, ${W} ${FOCAL_Y}`}
+              stroke={isMid ? 'url(#cgBright)' : 'url(#cgDim)'}
+              strokeWidth={isMid ? 1.8 : 1.1}
               fill="none"
-              filter={isMid ? 'url(#glow)' : undefined}
+              filter="url(#streakGlow)"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
+              animate={{ pathLength: 1, opacity: isMid ? 1 : 0.72 }}
               transition={{
-                duration: 0.75,
-                delay: shouldReduce ? 0 : 1.05 + i * 0.09,
+                duration: 0.85,
+                delay: shouldReduce ? 0 : 1.0 + i * 0.05,
                 ease: 'easeOut',
               }}
             />
           );
         })}
 
-        {/* Focal convergence dot — glowing */}
+        {/* Traveling light pulses along the brightest central streaks */}
+        {!shouldReduce &&
+          ORIGINS.filter((y) => Math.abs(y - FOCAL_Y) < 120).map((y, i) => (
+            <circle key={`pulse-${i}`} r={1.8} fill="#d9fbe5">
+              <animateMotion
+                dur="1.4s"
+                begin={`${2 + i * 0.25}s`}
+                repeatCount="indefinite"
+                path={`M 0 ${y} C ${W * 0.55} ${y}, ${W * 0.55} ${FOCAL_Y}, ${W} ${FOCAL_Y}`}
+              />
+              <animate
+                attributeName="opacity"
+                values="0;1;0"
+                dur="1.4s"
+                begin={`${2 + i * 0.25}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          ))}
+
+        {/* Focal convergence core — layered glow */}
         <motion.circle
-          cx={W}
-          cy={FOCAL_Y}
-          r={5}
-          fill="rgba(34,197,94,0.18)"
+          cx={W} cy={FOCAL_Y} r={12}
+          fill="rgba(34,197,94,0.22)"
           initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: shouldReduce ? 0 : 1.85, duration: 0.4, ease: 'backOut' }}
-          style={{ filter: 'blur(2px)' }}
+          animate={{ opacity: [0.6, 1, 0.6], scale: 1 }}
+          transition={{ opacity: { duration: 3, repeat: Infinity, ease: 'easeInOut' }, scale: { delay: shouldReduce ? 0 : 1.8, duration: 0.5, ease: 'backOut' } }}
+          style={{ filter: 'blur(4px)' }}
         />
         <motion.circle
-          cx={W}
-          cy={FOCAL_Y}
-          r={2.5}
-          fill="#22c55e"
+          cx={W} cy={FOCAL_Y} r={4}
+          fill="#86efac"
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: shouldReduce ? 0 : 1.95, duration: 0.3, ease: 'backOut' }}
+          transition={{ delay: shouldReduce ? 0 : 1.95, duration: 0.35, ease: 'backOut' }}
         />
       </svg>
 
-      {/* Large convergence bloom — tight radial on focal point */}
+      {/* Strong convergence bloom — bright radial on focal point */}
       <div
         className="absolute pointer-events-none"
         style={{
-          right: -40,
+          right: -70,
           top: '50%',
           transform: 'translateY(-50%)',
-          width: 160,
-          height: 160,
-          background: 'radial-gradient(circle, rgba(34,197,94,0.24) 0%, rgba(34,197,94,0.06) 35%, transparent 70%)',
-          filter: 'blur(22px)',
+          width: 240,
+          height: 240,
+          background: 'radial-gradient(circle, rgba(74,222,128,0.32) 0%, rgba(34,197,94,0.12) 32%, transparent 68%)',
+          filter: 'blur(24px)',
           borderRadius: '50%',
           zIndex: 2,
         }}
@@ -239,51 +240,28 @@ function ConvergenceConnector({ shouldReduce }: { shouldReduce: boolean | null }
 }
 
 /* ─────────────────────────────────────────────
-   Social proof block
+   Benefit metrics — 3 concrete outcomes (no fake social proof)
    ───────────────────────────────────────────── */
-function SocialProof() {
+function BenefitMetrics() {
+  const METRICS = [
+    { icon: Clock, value: '≈45 min', label: 'économisées par dossier' },
+    { icon: Database, value: '100 %', label: 'des informations centralisées avant votre rappel' },
+    { icon: FileCheck, value: '1 dossier', label: 'prêt à chiffrer dès le premier échange' },
+  ];
   return (
-    <div className="flex items-start gap-3 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-      {/* Overlapping avatars */}
-      <div className="flex flex-shrink-0" style={{ marginRight: -4 }}>
-        {[
-          { bg: '#1e3a2f', text: 'AD' },
-          { bg: '#1a2a3a', text: 'ML' },
-          { bg: '#2a1e1e', text: 'PB' },
-        ].map((a, i) => (
-          <div
-            key={a.text}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[7.5px] font-bold border-2 flex-shrink-0"
-            style={{
-              background: a.bg,
-              borderColor: '#0a0d12',
-              color: 'rgba(255,255,255,0.7)',
-              marginLeft: i > 0 ? -8 : 0,
-              zIndex: 3 - i,
-              position: 'relative',
-            }}
-          >
-            {a.text}
+    <div
+      className="grid grid-cols-3 gap-5 pt-5"
+      style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+    >
+      {METRICS.map(({ icon: Icon, value, label }) => (
+        <div key={value} className="flex flex-col gap-1.5">
+          <Icon className="h-4 w-4" style={{ color: 'var(--accent)' }} />
+          <div className="text-[19px] font-black leading-none tracking-tight" style={{ color: 'var(--accent)' }}>
+            {value}
           </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-0.5">
-        {/* Stars + score */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star key={i} className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-            ))}
-          </div>
-          <span className="text-[10px] font-semibold text-white">4,9/5</span>
-          <span className="text-[9px] text-zinc-500">· 120+ avis artisans</span>
+          <div className="text-[11px] leading-[1.35] text-zinc-400">{label}</div>
         </div>
-        {/* Quote */}
-        <p className="text-[9px] leading-[1.4] text-zinc-400" style={{ fontStyle: 'italic', maxWidth: 240 }}>
-          &ldquo;Un outil qui me fait gagner du temps et me rapporte plus de chantiers.&rdquo;
-        </p>
-      </div>
+      ))}
     </div>
   );
 }
@@ -391,21 +369,22 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                 </div>
               </motion.div>
 
-              {/* Headline — 3 lines, each on its own motion */}
+              {/* Headline — 4 lines, last two green, final underlined */}
               <div className="flex flex-col" style={{ gap: '2px' }}>
                 {[
-                  { text: 'Passez du chaos commercial', green: false, delay: 0.22 },
-                  { text: 'à des dossiers', green: false, delay: 0.34 },
-                  { text: 'prêts à vendre.', green: true, delay: 0.46 },
-                ].map(({ text, green, delay }) => (
+                  { text: 'Passez du', green: false, underline: false, delay: 0.20 },
+                  { text: 'chaos commercial', green: false, underline: false, delay: 0.30 },
+                  { text: 'à des dossiers', green: true, underline: false, delay: 0.40 },
+                  { text: 'prêts à vendre.', green: true, underline: true, delay: 0.50 },
+                ].map(({ text, green, underline, delay }) => (
                   <motion.h1
                     key={text}
                     {...fadeUp(delay)}
-                    className="leading-[1.06] tracking-[-0.035em] text-balance font-black"
+                    className="leading-[1.04] tracking-[-0.035em] text-balance font-black"
                     style={{
-                      fontSize: 'clamp(28px, 3.4vw, 48px)',
+                      fontSize: 'clamp(30px, 3.6vw, 52px)',
                       color: green ? '#22c55e' : 'white',
-                      ...(green && {
+                      ...(underline && {
                         textDecoration: 'underline',
                         textDecorationColor: 'rgba(34,197,94,0.28)',
                         textDecorationThickness: '3px',
@@ -478,24 +457,24 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                       <circle cx="7" cy="7" r="5.5" stroke="#22c55e" strokeWidth="1.5" />
                       <path d="M5.5 5.2v3.6l3.5-1.8-3.5-1.8z" fill="#22c55e" />
                     </svg>
-                    Demander un accès démo
+                    Demander une démo
                   </Link>
                 </motion.div>
               </motion.div>
 
-              {/* Reassurance */}
-              <motion.div {...fadeUp(0.76)} className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] text-zinc-400">
-                {['Essai gratuit 7 jours', 'Avec ou sans site', 'Pensé pour les artisans du bâtiment'].map((item) => (
-                  <span key={item} className="flex items-center gap-1.5">
-                    <Check className="h-3 w-3 flex-shrink-0" style={{ color: 'var(--accent)' }} />
+              {/* Reassurance — stacked, matching reference */}
+              <motion.div {...fadeUp(0.76)} className="flex flex-col gap-2 text-[12.5px] text-zinc-300">
+                {['Essai gratuit 7 jours', 'Mise en service en moins de 10 minutes', 'Pensé pour les artisans'].map((item) => (
+                  <span key={item} className="flex items-center gap-2">
+                    <Check className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--accent)' }} />
                     {item}
                   </span>
                 ))}
               </motion.div>
 
-              {/* Social proof */}
+              {/* Benefit metrics */}
               <motion.div {...fadeUp(0.84)}>
-                <SocialProof />
+                <BenefitMetrics />
               </motion.div>
 
             </div>
@@ -518,6 +497,11 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                   zIndex: 0,
                 }}
               />
+
+              {/* Drifting particles across the chaos zone */}
+              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+                <ParticleField count={24} />
+              </div>
 
               {/* Floating cards column */}
               <motion.div
