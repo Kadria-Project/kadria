@@ -468,6 +468,32 @@ function DashboardSidebar() {
   );
 }
 
+function DashboardWindowChrome({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-zinc-800 bg-black/40 px-4 py-2.5">
+      <div className="flex shrink-0 gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+        <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+      </div>
+      <div className="hidden max-w-[220px] flex-1 items-center rounded-md border border-[rgba(113,113,122,0.28)] bg-white/[0.04] px-2.5 py-1 text-[10px] text-zinc-500 sm:flex">
+        Rechercher un dossier, un client…
+      </div>
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <span className="relative flex h-2 w-2">
+          <motion.span
+            className="absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-60"
+            animate={reduceMotion ? {} : { scale: [1, 2.2, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2.2, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}
+          />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--accent)]" />
+        </span>
+        <span className="text-[10px] font-semibold text-[var(--accent)]">Live</span>
+      </div>
+    </div>
+  );
+}
+
 function DashboardHeader() {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -620,9 +646,10 @@ function DashboardOpportunitiesTable() {
   );
 }
 
-function HeroDashboardPreview() {
+function HeroDashboardPreview({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div className="relative w-full overflow-hidden rounded-[28px] border border-[rgba(74,222,128,0.28)] bg-[rgba(11,15,13,0.96)] shadow-[0_40px_120px_rgba(0,0,0,0.65),0_0_70px_rgba(34,197,94,0.16),inset_1px_0_0_rgba(74,222,128,0.25)]">
+      <DashboardWindowChrome reduceMotion={reduceMotion} />
       <div className="flex">
         <DashboardSidebar />
         <div className="min-w-0 flex-1 px-6 py-6">
@@ -776,7 +803,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             transition={{ duration: 0.9, delay: 0.4, type: 'spring', stiffness: 85, damping: 18 }}
             className="absolute right-[-160px] top-1/2 w-[760px] -translate-y-1/2 xl:right-[-220px] xl:w-[920px]"
           >
-            <HeroDashboardPreview />
+            <HeroDashboardPreview reduceMotion={reduceMotion} />
           </motion.div>
         </div>
 
