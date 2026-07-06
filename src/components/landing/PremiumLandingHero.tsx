@@ -165,7 +165,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
     <>
       <GlowCursor />
 
-      <section className="relative flex min-h-[92dvh] flex-col overflow-hidden pt-[88px] md:min-h-0 md:h-screen">
+      <section className="relative flex min-h-[92dvh] flex-col overflow-hidden pt-16 md:min-h-0 md:h-screen md:pt-[68px]">
         {/* ── Atmospheric background ── */}
         <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
           {/* Base */}
@@ -393,11 +393,11 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                 }}
               />
 
-              {/* Layout: cards | connector | dashboard */}
+              {/* Layout: cards (full height) | connector | dashboard */}
               <div className="flex items-stretch gap-3 xl:gap-4">
-                {/* Floating cards — flow narrative */}
+                {/* Floating cards — flow narrative, spread across full dashboard height */}
                 <motion.div
-                  className="flex-shrink-0 w-[224px] xl:w-[240px] flex flex-col justify-center"
+                  className="flex-shrink-0 w-[224px] xl:w-[240px] py-2"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}
@@ -405,22 +405,23 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                   <FloatingCards />
                 </motion.div>
 
-                {/* Connector — animated lines */}
-                <div className="flex-shrink-0 flex items-center" style={{ width: 24 }}>
+                {/* Connector — animated lines, evenly spaced over full height */}
+                <div className="flex-shrink-0 flex items-stretch" style={{ width: 24 }}>
                   <svg
-                    viewBox="0 0 24 560"
+                    viewBox="0 0 24 100"
                     fill="none"
                     className="w-full"
-                    style={{ height: '100%', minHeight: 420 }}
+                    style={{ height: '100%' }}
                     preserveAspectRatio="none"
                   >
-                    {[48, 130, 212, 294, 376, 458].map((y, i) => (
+                    {[10, 30, 50, 70, 90].map((y, i) => (
                       <motion.path
                         key={i}
-                        d={`M 0 ${y} C 12 ${y}, 12 280, 24 280`}
+                        d={`M 0 ${y} C 12 ${y}, 12 50, 24 50`}
                         stroke="rgba(34,197,94,0.22)"
                         strokeWidth="1.2"
                         strokeDasharray="2.5 3.5"
+                        vectorEffect="non-scaling-stroke"
                         fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 1 }}
@@ -431,11 +432,11 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                         }}
                       />
                     ))}
-                    {/* Center convergence dot */}
+                    {/* Center convergence glow */}
                     <motion.circle
                       cx="24"
-                      cy="280"
-                      r="3"
+                      cy="50"
+                      r="1.6"
                       fill="rgba(34,197,94,0.6)"
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}

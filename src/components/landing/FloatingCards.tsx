@@ -10,7 +10,7 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { MessageCircle, Phone, FileText, Camera, Bell, Sparkles } from 'lucide-react';
+import { PhoneMissed, MessageCircle, FileWarning, Camera, FileClock } from 'lucide-react';
 
 /* ── Live badge ──
    `useReducedMotion()` reads `window.matchMedia` synchronously on the
@@ -108,73 +108,53 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
   );
 }
 
-/* ── Connector between cards ── */
-function FlowConnector({ delay }: { delay: number }) {
-  const shouldReduce = useStableReducedMotion();
-  return (
-    <div className="flex justify-center" style={{ padding: '1px 0' }}>
-      <div className="relative" style={{ width: 1, height: 7 }}>
-        <div className="absolute inset-0" style={{ background: 'var(--accent-dim)' }} />
-        <motion.div
-          className="absolute top-0 left-0 right-0"
-          style={{ background: 'rgba(34,197,94,0.45)', transformOrigin: 'top' }}
-          initial={{ scaleY: 0, height: '100%' }}
-          animate={{ scaleY: 1 }}
-          transition={{ duration: 0.35, delay: shouldReduce ? 0 : delay, ease: 'easeOut' }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Signals fictifs Kadria — équivalents des données du prototype v0, en
-// cohérence avec les prospects/villes/montants déjà utilisés côté dashboard.
+// Signaux "chaos entrant" — les 5 sources de désordre que Kadria centralise,
+// en cohérence avec les prospects/villes/montants déjà utilisés côté dashboard.
 const CARDS: CardData[] = [
   {
-    label: 'Nouvelle demande',
-    detail: 'Carrelage salle de bain · Rouen',
-    icon: <MessageCircle className="h-3.5 w-3.5" />,
-    iconColor: 'var(--accent)',
-    iconBg: 'var(--accent-dim)',
+    label: 'Appel manqué',
+    detail: 'M. Bernard · il y a 12 min',
+    icon: <PhoneMissed className="h-3.5 w-3.5" />,
+    iconColor: '#f87171',
+    iconBg: 'rgba(248,113,113,0.12)',
     delay: 0.9,
-    floatY: 3,
+    floatY: 4,
     floatDuration: 4.2,
   },
   {
-    label: 'Budget détecté',
-    detail: '8 000 – 12 000€ · Live',
-    icon: <Phone className="h-3.5 w-3.5" />,
-    iconColor: '#f59e0b',
-    iconBg: 'rgba(245,158,11,0.12)',
+    label: 'Message WhatsApp',
+    detail: 'Carrelage salle de bain · Rouen',
+    icon: <MessageCircle className="h-3.5 w-3.5" />,
+    iconColor: '#4ade80',
+    iconBg: 'rgba(34,197,94,0.1)',
     delay: 1.05,
     floatY: 5,
-    floatDuration: 3.6,
+    floatDuration: 3.8,
   },
   {
-    label: 'Photos reçues',
-    detail: '4 photos attachées · Live',
-    icon: <Camera className="h-3.5 w-3.5" />,
-    iconColor: '#60a5fa',
-    iconBg: 'rgba(96,165,250,0.12)',
+    label: 'Formulaire incomplet',
+    detail: 'Budget manquant · Live',
+    icon: <FileWarning className="h-3.5 w-3.5" />,
+    iconColor: '#f59e0b',
+    iconBg: 'rgba(245,158,11,0.12)',
     delay: 1.2,
     floatY: 4,
     floatDuration: 4.0,
   },
   {
-    label: 'Relance conseillée',
-    detail: 'Dans 2 jours · Live',
-    icon: <Bell className="h-3.5 w-3.5" />,
-    iconColor: '#22c55e',
-    iconBg: 'rgba(34,197,94,0.08)',
+    label: 'Photo reçue',
+    detail: '4 photos attachées · Live',
+    icon: <Camera className="h-3.5 w-3.5" />,
+    iconColor: '#60a5fa',
+    iconBg: 'rgba(96,165,250,0.12)',
     delay: 1.35,
     floatY: 5,
-    floatDuration: 3.7,
-    accent: true,
+    floatDuration: 3.6,
   },
   {
-    label: 'Score IA : 88/100',
-    detail: 'Priorité haute · Live',
-    icon: <Sparkles className="h-3.5 w-3.5" />,
+    label: 'Devis à relancer',
+    detail: 'Dans 2 jours · M. Petit',
+    icon: <FileClock className="h-3.5 w-3.5" />,
     iconColor: '#22c55e',
     iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.5,
@@ -182,26 +162,13 @@ const CARDS: CardData[] = [
     floatDuration: 4.4,
     accent: true,
   },
-  {
-    label: 'Devis à préparer',
-    detail: 'Prochaine étape · Live',
-    icon: <FileText className="h-3.5 w-3.5" />,
-    iconColor: '#a78bfa',
-    iconBg: 'rgba(167,139,250,0.12)',
-    delay: 1.65,
-    floatY: 5,
-    floatDuration: 3.9,
-  },
 ];
 
 export function FloatingCards() {
   return (
-    <div className="flex flex-col w-full select-none" aria-hidden>
-      {CARDS.map((card, i) => (
-        <div key={card.label}>
-          <FloatingCard {...card} />
-          {i < CARDS.length - 1 && <FlowConnector delay={card.delay + 0.45} />}
-        </div>
+    <div className="flex h-full flex-col justify-between select-none" aria-hidden>
+      {CARDS.map((card) => (
+        <FloatingCard key={card.label} {...card} />
       ))}
     </div>
   );
