@@ -17,8 +17,7 @@
  * - copywriting: replaced by the Kadria copy already validated for this
  *   landing (badge, headline, subtitle, CTAs, reassurance) instead of the
  *   v0 placeholder text.
- * - data: fictitious names/numbers aligned with the rest of the product
- *   (M. Durand, Mme Martin, 120+ artisans...).
+ * - data: reassurance/metrics copy aligned with the rest of the product.
  * - CTA #1 triggers the existing trial modal (`onOpenTrial` prop) instead of
  *   a plain anchor, CTA #2 uses Next's `Link` to `/demo-request` — both
  *   required to keep this Hero wired into KadriaPages.tsx.
@@ -33,7 +32,7 @@ import {
   animate,
 } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Star, Check } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { DashboardPreview } from './DashboardPreview';
 import { FloatingCards } from './FloatingCards';
 
@@ -121,7 +120,7 @@ function useMouseParallax(strength = 0.012) {
 /* ─────────────────────────────────────────────
    Animated number counter
    ───────────────────────────────────────────── */
-function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
+function Counter({ to, suffix = '', prefix = '' }: { to: number; suffix?: string; prefix?: string }) {
   const [val, setVal] = useState(0);
   const shouldReduce = useStableReducedMotion();
   useEffect(() => {
@@ -138,21 +137,12 @@ function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
   }, [to, shouldReduce]);
   return (
     <>
+      {prefix}
       {val}
       {suffix}
     </>
   );
 }
-
-/* ─────────────────────────────────────────────
-   Social proof avatars
-   ───────────────────────────────────────────── */
-const AVATARS = [
-  { initials: 'MD', color: '#22c55e' },
-  { initials: 'CM', color: '#3b82f6' },
-  { initials: 'PB', color: '#a78bfa' },
-  { initials: 'SR', color: '#f59e0b' },
-];
 
 type PremiumLandingHeroProps = {
   onOpenTrial: () => void;
@@ -355,7 +345,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
 
               {/* Reassurance */}
               <motion.div {...fadeUp(0.72)} className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-zinc-400">
-                {['Essai gratuit 7 jours', 'Avec ou sans site', 'Pensé pour les artisans du bâtiment'].map((item) => (
+                {['Essai gratuit 7 jours', 'Mise en service en moins de 10 minutes', 'Pensé pour les artisans'].map((item) => (
                   <span key={item} className="flex items-center gap-1.5">
                     <Check className="h-3 w-3 shrink-0" style={{ color: 'var(--accent)' }} />
                     {item}
@@ -363,48 +353,20 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                 ))}
               </motion.div>
 
-              {/* Social proof + metrics — single compact row */}
+              {/* Metrics row */}
               <motion.div
                 {...fadeUp(0.76)}
-                className="flex items-center gap-4 pt-2"
+                className="flex items-center gap-5 pt-3"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
               >
-                {/* Avatars */}
-                <div className="flex -space-x-2 flex-shrink-0">
-                  {AVATARS.map(({ initials, color }) => (
-                    <div
-                      key={initials}
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-[8.5px] font-bold"
-                      style={{
-                        background: `${color}20`,
-                        color,
-                        border: '2px solid #0a0d12',
-                      }}
-                    >
-                      {initials}
-                    </div>
-                  ))}
-                </div>
-                {/* Stars + rating */}
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-2.5 w-2.5" fill="var(--accent)" stroke="none" />
-                  ))}
-                  <span className="text-[11px] font-bold ml-1 text-white">4,9/5</span>
-                  <span className="text-[10px] ml-1 text-zinc-500">· +120 artisans en France</span>
-                </div>
-              </motion.div>
-
-              {/* Metrics row */}
-              <motion.div {...fadeUp(0.84)} className="flex items-center gap-5">
                 {[
-                  { value: <Counter to={120} suffix="+" />, label: 'artisans actifs' },
-                  { value: <Counter to={29} suffix=" min" />, label: 'économisées / jour' },
-                  { value: '4,9/5', label: 'satisfaction moyenne' },
+                  { value: <Counter to={45} suffix=" min" prefix="≈" />, label: 'économisées par dossier' },
+                  { value: '100 %', label: 'des informations centralisées avant votre rappel' },
+                  { value: '1 dossier', label: 'prêt à chiffrer dès le premier échange' },
                 ].map(({ value, label }) => (
-                  <div key={label} className="flex flex-col gap-0">
+                  <div key={label} className="flex flex-col gap-0 max-w-[110px]">
                     <div className="text-[13px] font-black leading-none tracking-tight text-white">{value}</div>
-                    <div className="text-[9.5px] mt-0.5 text-zinc-500">{label}</div>
+                    <div className="text-[9.5px] mt-0.5 leading-snug text-zinc-500">{label}</div>
                   </div>
                 ))}
               </motion.div>
