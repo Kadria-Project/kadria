@@ -14,11 +14,28 @@ import { useEffect, useState } from 'react';
 import { Euro, Send, Flag, Target as TargetIcon, TrendingUp, Bell, Search } from 'lucide-react';
 
 /* ─────────────────────────────────────────────
+   Stable reduced-motion preference.
+   `useReducedMotion()` reads `window.matchMedia` synchronously on the
+   client's first render (not gated by `useEffect`), while it always
+   returns `null` on the server. This can make the client's
+   hydration-matching render diverge from the SSR output for visitors
+   with `prefers-reduced-motion` set. Gate the real value behind a
+   mounted flag so SSR and the client's pre-hydration render agree
+   (false), then pick up the real preference right after mount.
+   ───────────────────────────────────────────── */
+function useStableReducedMotion() {
+  const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? prefersReduced : false;
+}
+
+/* ─────────────────────────────────────────────
    Animated counter
    ───────────────────────────────────────────── */
 function useCounter(target: number, delay: number, duration = 1.1) {
   const [value, setValue] = useState(0);
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   useEffect(() => {
     if (shouldReduce) {
       setValue(target);
@@ -41,7 +58,7 @@ function useCounter(target: number, delay: number, duration = 1.1) {
    CA line chart — croissance exponentielle vers 5,8k€
    ───────────────────────────────────────────── */
 function CaChart() {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   const pts: [number, number][] = [
     [0, 58], [18, 57], [36, 56], [54, 55], [72, 53], [90, 50],
     [108, 44], [126, 35], [144, 22], [162, 10], [180, 3],
@@ -119,7 +136,7 @@ function CaChart() {
    Live pulse dot
    ───────────────────────────────────────────── */
 function LiveDot({ size = 'sm' }: { size?: 'sm' | 'md' }) {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   const s = size === 'md' ? 10 : 7;
   return (
     <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: s, height: s }}>
@@ -286,7 +303,7 @@ const NOTIFS = [
    Main dashboard
    ───────────────────────────────────────────── */
 export function DashboardPreview() {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   const [activeTab, setActiveTab] = useState(1);
   const dossiers = useCounter(34, 0.9);
   const opps = useCounter(11, 0.95);

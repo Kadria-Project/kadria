@@ -38,10 +38,28 @@ import { DashboardPreview } from './DashboardPreview';
 import { FloatingCards } from './FloatingCards';
 
 /* ─────────────────────────────────────────────
+   Stable reduced-motion preference.
+   `useReducedMotion()` reads `window.matchMedia` synchronously on the
+   client's first render (not gated by `useEffect`), while it always
+   returns `null` on the server. For visitors/browsers with
+   `prefers-reduced-motion` set (common in headless/CI browsers), this
+   makes the client's hydration-matching render diverge from the SSR
+   output ("Hydration failed"). Gate the real value behind a mounted
+   flag so both the server render and the client's pre-hydration render
+   agree (false), then pick up the real preference right after mount.
+   ───────────────────────────────────────────── */
+function useStableReducedMotion() {
+  const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? prefersReduced : false;
+}
+
+/* ─────────────────────────────────────────────
    Glowing cursor follower
    ───────────────────────────────────────────── */
 function GlowCursor() {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   const mx = useMotionValue(-200);
   const my = useMotionValue(-200);
   const sx = useSpring(mx, { stiffness: 80, damping: 20 });
@@ -79,7 +97,7 @@ function GlowCursor() {
    Mouse parallax for right column
    ───────────────────────────────────────────── */
 function useMouseParallax(strength = 0.012) {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   const rx = useMotionValue(0);
   const ry = useMotionValue(0);
   const springX = useSpring(rx, { stiffness: 60, damping: 18 });
@@ -105,7 +123,7 @@ function useMouseParallax(strength = 0.012) {
    ───────────────────────────────────────────── */
 function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
   const [val, setVal] = useState(0);
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   useEffect(() => {
     if (shouldReduce) {
       setVal(to);
@@ -144,7 +162,7 @@ type PremiumLandingHeroProps = {
    Main hero
    ───────────────────────────────────────────── */
 export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   const parallax = useMouseParallax(0.008);
 
   const fadeUp = (delay: number, extra?: object) => ({

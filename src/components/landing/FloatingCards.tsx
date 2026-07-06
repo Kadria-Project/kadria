@@ -9,11 +9,26 @@
  */
 
 import { motion, useReducedMotion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { MessageCircle, Phone, FileText, Camera, Bell, Sparkles } from 'lucide-react';
 
-/* ── Live badge ── */
+/* ── Live badge ──
+   `useReducedMotion()` reads `window.matchMedia` synchronously on the
+   client's first render (not gated by `useEffect`), while it always
+   returns `null` on the server. This can make the client's
+   hydration-matching render diverge from the SSR output for visitors
+   with `prefers-reduced-motion` set. Gate the real value behind a
+   mounted flag so SSR and the client's pre-hydration render agree
+   (false), then pick up the real preference right after mount. */
+function useStableReducedMotion() {
+  const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? prefersReduced : false;
+}
+
 function LiveBadge() {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   return (
     <div
       className="flex items-center gap-1 flex-shrink-0 ml-auto"
@@ -49,7 +64,7 @@ interface CardData {
 }
 
 function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 4, floatDuration = 3.8, accent }: CardData) {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
 
   return (
     <motion.div
@@ -95,7 +110,7 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
 
 /* ── Connector between cards ── */
 function FlowConnector({ delay }: { delay: number }) {
-  const shouldReduce = useReducedMotion();
+  const shouldReduce = useStableReducedMotion();
   return (
     <div className="flex justify-center" style={{ padding: '1px 0' }}>
       <div className="relative" style={{ width: 1, height: 7 }}>
