@@ -237,8 +237,8 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
         </div>
 
         {/* ── Hero content ── */}
-        <div className="relative z-10 flex-1 flex items-center px-6 lg:px-10 max-w-[1600px] mx-auto w-full py-8 md:py-0">
-          <div className="w-full grid grid-cols-1 lg:grid-cols-[0.75fr_1.8fr] gap-6 lg:gap-8 xl:gap-10 items-center">
+        <div className="relative z-10 flex-1 flex items-center px-6 lg:px-8 max-w-[1800px] mx-auto w-full py-8 md:py-0">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-[0.72fr_1.85fr] gap-6 lg:gap-8 xl:gap-10 items-center">
             {/* ════════════════════════════
                 LEFT COLUMN
             ════════════════════════════ */}
@@ -246,19 +246,19 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
               {/* Badge */}
               <motion.div {...fadeUp(0.1)}>
                 <div
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full"
+                  className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full"
                   style={{
-                    background: 'var(--accent-dim)',
-                    border: '1px solid var(--accent-border)',
+                    background: 'rgba(34,197,94,0.08)',
+                    border: '1px solid rgba(34,197,94,0.3)',
                   }}
                 >
                   <motion.span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'var(--accent)' }}
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: '#22c55e' }}
                     animate={shouldReduce ? {} : { opacity: [1, 0.35, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
-                  <span className="text-[11.5px] font-semibold tracking-wide" style={{ color: 'var(--accent)' }}>
+                  <span className="text-[11.5px] font-semibold tracking-wide" style={{ color: '#4ade80' }}>
                     Assistant commercial 24/7
                   </span>
                 </div>
@@ -274,7 +274,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
                   <motion.h1
                     key={text}
                     {...fadeUp(delay)}
-                    className="text-[26px] lg:text-[33px] xl:text-[38px] font-bold leading-[1.08] tracking-[-0.03em] text-balance"
+                    className="text-[29px] lg:text-[36px] xl:text-[42px] font-bold leading-[1.08] tracking-[-0.03em] text-balance"
                     style={{
                       color: green ? 'var(--accent)' : 'white',
                       ...(green && {
@@ -435,7 +435,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
               <div className="flex items-stretch gap-3 xl:gap-4">
                 {/* Floating cards — flow narrative */}
                 <motion.div
-                  className="flex-shrink-0 w-[200px] xl:w-[214px] flex flex-col justify-center"
+                  className="flex-shrink-0 w-[224px] xl:w-[240px] flex flex-col justify-center"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.6, delay: 0.75, ease: [0.16, 1, 0.3, 1] }}

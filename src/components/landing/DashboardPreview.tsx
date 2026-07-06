@@ -363,7 +363,7 @@ export function DashboardPreview() {
       </div>
 
       {/* ── App shell ── */}
-      <div className="flex" style={{ height: 540, overflow: 'hidden' }}>
+      <div className="flex" style={{ height: 620, overflow: 'hidden' }}>
         {/* ── Sidebar ── */}
         <div
           className="flex flex-col flex-shrink-0 py-2"

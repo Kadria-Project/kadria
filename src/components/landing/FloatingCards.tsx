@@ -75,7 +75,7 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
       <motion.div
         animate={shouldReduce ? {} : { y: [0, -floatY, 0] }}
         transition={{ duration: floatDuration, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.6 }}
-        className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-xl"
+        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl"
         style={{
           background: accent ? 'rgba(34,197,94,0.08)' : 'rgba(16,20,26,0.97)',
           border: `1px solid ${accent ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
@@ -86,7 +86,7 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
       >
         {/* Icon */}
         <div
-          className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+          className="w-[22px] h-[22px] rounded-md flex items-center justify-center flex-shrink-0"
           style={{ background: iconBg, color: iconColor }}
         >
           {icon}
@@ -94,10 +94,10 @@ function FloatingCard({ label, detail, icon, iconColor, iconBg, delay, floatY = 
 
         {/* Text */}
         <div className="flex flex-col min-w-0 flex-1 gap-0">
-          <span className="text-[9.5px] font-semibold leading-tight truncate text-white">
+          <span className="text-[10.5px] font-semibold leading-tight truncate text-white">
             {label}
           </span>
-          <span className="text-[8px] truncate leading-tight text-zinc-500">
+          <span className="text-[9px] truncate leading-tight text-zinc-500">
             {detail}
           </span>
         </div>
@@ -133,7 +133,7 @@ const CARDS: CardData[] = [
   {
     label: 'Nouvelle demande',
     detail: 'Carrelage salle de bain · Rouen',
-    icon: <MessageCircle className="h-3 w-3" />,
+    icon: <MessageCircle className="h-3.5 w-3.5" />,
     iconColor: 'var(--accent)',
     iconBg: 'var(--accent-dim)',
     delay: 0.9,
@@ -143,7 +143,7 @@ const CARDS: CardData[] = [
   {
     label: 'Budget détecté',
     detail: '8 000 – 12 000€ · Live',
-    icon: <Phone className="h-3 w-3" />,
+    icon: <Phone className="h-3.5 w-3.5" />,
     iconColor: '#f59e0b',
     iconBg: 'rgba(245,158,11,0.12)',
     delay: 1.05,
@@ -153,7 +153,7 @@ const CARDS: CardData[] = [
   {
     label: 'Photos reçues',
     detail: '4 photos attachées · Live',
-    icon: <Camera className="h-3 w-3" />,
+    icon: <Camera className="h-3.5 w-3.5" />,
     iconColor: '#60a5fa',
     iconBg: 'rgba(96,165,250,0.12)',
     delay: 1.2,
@@ -163,7 +163,7 @@ const CARDS: CardData[] = [
   {
     label: 'Relance conseillée',
     detail: 'Dans 2 jours · Live',
-    icon: <Bell className="h-3 w-3" />,
+    icon: <Bell className="h-3.5 w-3.5" />,
     iconColor: '#22c55e',
     iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.35,
@@ -174,7 +174,7 @@ const CARDS: CardData[] = [
   {
     label: 'Score IA : 88/100',
     detail: 'Priorité haute · Live',
-    icon: <Sparkles className="h-3 w-3" />,
+    icon: <Sparkles className="h-3.5 w-3.5" />,
     iconColor: '#22c55e',
     iconBg: 'rgba(34,197,94,0.08)',
     delay: 1.5,
@@ -185,7 +185,7 @@ const CARDS: CardData[] = [
   {
     label: 'Devis à préparer',
     detail: 'Prochaine étape · Live',
-    icon: <FileText className="h-3 w-3" />,
+    icon: <FileText className="h-3.5 w-3.5" />,
     iconColor: '#a78bfa',
     iconBg: 'rgba(167,139,250,0.12)',
     delay: 1.65,
