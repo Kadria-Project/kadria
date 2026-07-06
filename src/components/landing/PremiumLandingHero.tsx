@@ -7,7 +7,6 @@ import {
   MessageCircle,
   FileText,
   Camera,
-  StickyNote,
   Receipt,
   LayoutDashboard,
   Folder,
@@ -19,13 +18,13 @@ import {
   BarChart3,
   Flame,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Check,
   Star,
   Home,
   Building2,
   Zap,
+  Search,
+  Sparkles,
 } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 
@@ -36,9 +35,13 @@ import { motion, useReducedMotion, type Variants } from 'motion/react';
  * CTA behaviour is passed in via props so the parent (KadriaPages.tsx)
  * keeps full control of trial-modal / navigation logic.
  *
- * Structure: left marketing copy + CTAs, center incoming commercial chaos
- * (floating signal cards converging toward Kadria), right a partially
- * cropped dashboard preview that bleeds off the right edge of the viewport.
+ * Structure (v0-inspired composition):
+ * - left column: marketing copy, CTAs, reassurance, social proof, metrics
+ * - middle column: vertical stream of floating signal cards (chaos entrant)
+ *   connected by flow lines converging into the dashboard
+ * - right column: a wide, horizontal "real desktop app" dashboard preview
+ *   (sidebar + topbar + KPI strip + 3-column widget grid), not a tall
+ *   vertical block.
  */
 
 type PremiumLandingHeroProps = {
@@ -54,6 +57,12 @@ const SOCIAL_PROOF = {
   avatars: 3,
 };
 
+const METRICS = [
+  { value: '120+', label: 'artisans actifs' },
+  { value: '29 min', label: 'économisées / jour' },
+  { value: '4,9/5', label: 'satisfaction moyenne' },
+];
+
 const TRUST_LOGOS = [
   { name: 'Artisan du Bâtiment', icon: Home },
   { name: 'Bâtir Expert', icon: Building2 },
@@ -62,101 +71,68 @@ const TRUST_LOGOS = [
   { name: 'Presto Rénovation', icon: Zap },
 ];
 
-type SignalCard = {
+type FlowCard = {
   key: string;
   icon: typeof Phone;
   title: string;
-  body: string;
-  meta?: string;
-  badge?: string;
-  className: string;
+  detail: string;
+  accent?: boolean;
   delay: number;
-  float: { y: number[] };
+  floatY: number;
   duration: number;
-  variant?: 'note';
 };
 
-const SIGNAL_CARDS: SignalCard[] = [
+// Vertical stream of cards — the "commercial chaos" narrative from the v0
+// prototype's floating-cards.tsx, adapted to Kadria's real inbound signals.
+const FLOW_CARDS: FlowCard[] = [
   {
     key: 'whatsapp',
     icon: MessageCircle,
-    title: 'WhatsApp',
-    body: 'Bonjour, j’aurais besoin d’un devis pour refaire ma salle de bain.',
-    meta: '09:41',
-    className: 'right-[2%] top-[0%] w-[210px] rotate-[4deg]',
+    title: 'Nouveau message',
+    detail: 'WhatsApp · Devis salle de bain',
     delay: 0.9,
-    float: { y: [0, 9, 0] },
-    duration: 7,
+    floatY: 3,
+    duration: 4.2,
   },
   {
     key: 'appel',
     icon: Phone,
     title: 'Appel manqué',
-    body: '06 72 11 47 09',
-    meta: 'Hier, 18:42',
-    className: 'left-[0%] top-[6%] w-[180px] rotate-[-6deg]',
-    delay: 1.0,
-    float: { y: [0, -8, 0] },
-    duration: 6,
+    detail: '06 72 11 47 09 · Hier 18:42',
+    delay: 1.05,
+    floatY: 5,
+    duration: 3.6,
   },
   {
     key: 'formulaire',
     icon: FileText,
-    title: 'Nouveau formulaire',
-    body: 'Rénovation complète',
-    badge: 'Incomplet',
-    className: 'left-[8%] top-[32%] w-[188px] rotate-[3deg]',
-    delay: 1.1,
-    float: { y: [0, -7, 0] },
-    duration: 6.5,
+    title: 'Formulaire reçu',
+    detail: 'Rénovation complète · Incomplet',
+    delay: 1.2,
+    floatY: 4,
+    duration: 4.0,
   },
   {
     key: 'photo',
     icon: Camera,
-    title: 'Photo chantier',
-    body: 'IMG_20240517.jpg',
-    meta: '3 photos · 12:14',
-    className: 'right-[8%] top-[34%] w-[196px] rotate-[-5deg]',
-    delay: 1.2,
-    float: { y: [0, 8, 0] },
-    duration: 7.5,
+    title: 'Photos chantier',
+    detail: '3 photos jointes · Live',
+    delay: 1.35,
+    floatY: 5,
+    duration: 3.7,
+    accent: true,
   },
   {
-    key: 'note',
-    icon: StickyNote,
-    title: 'Note manuscrite',
-    body: 'M. Laurent / Rappeler demain / + voir pour devis / - urgent',
-    className: 'left-[2%] bottom-[10%] w-[176px] rotate-[5deg]',
-    delay: 1.3,
-    float: { y: [0, -9, 0] },
-    duration: 6.8,
-    variant: 'note',
-  },
-  {
-    key: 'message',
-    icon: MessageCircle,
-    title: 'Message client',
-    body: 'Pouvez-vous intervenir la semaine prochaine ?',
-    meta: '09:11',
-    className: 'left-[20%] bottom-[0%] w-[200px] rotate-[-3deg]',
-    delay: 1.4,
-    float: { y: [0, 8, 0] },
-    duration: 7.2,
-  },
-  {
-    key: 'devis',
-    icon: Receipt,
-    title: 'Devis à relancer',
-    body: 'Devis n°2024-0478',
-    badge: 'En retard',
-    className: 'right-[4%] bottom-[2%] w-[188px] rotate-[-2deg]',
+    key: 'relance',
+    icon: Bell,
+    title: 'Relance conseillée',
+    detail: 'Devis n°2024-0478 · En retard',
     delay: 1.5,
-    float: { y: [0, -8, 0] },
-    duration: 6.4,
+    floatY: 4,
+    duration: 4.4,
+    accent: true,
   },
 ];
-
-const SIGNAL_CARDS_MOBILE = ['whatsapp', 'appel', 'formulaire', 'devis'];
 
 const SIDEBAR_ITEMS = [
   { label: 'Cockpit', icon: LayoutDashboard, active: true },
@@ -170,61 +146,26 @@ const SIDEBAR_ITEMS = [
   { label: 'Paramètres', icon: Settings, active: false },
 ];
 
-const KPI_ROW_1 = [
-  {
-    key: 'complete',
-    label: 'Dossier complet',
-    value: '86%',
-    sub: 'Moyenne globale',
-    delta: '+12 pts vs semaine dernière',
-    variant: 'ring' as const,
-  },
-  {
-    key: 'hot',
-    label: 'Prospect chaud',
-    icon: Flame,
-    value: '12',
-    sub: 'À contacter en priorité',
-    variant: 'icon' as const,
-  },
-  {
-    key: 'action',
-    label: 'Action recommandée',
-    icon: CheckCircle2,
-    value: 'Relancer 5 devis',
-    sub: '3 aujourd’hui · 2 cette semaine',
-    variant: 'icon' as const,
-  },
+const KPI_STRIP = [
+  { key: 'complete', label: 'Dossiers qualifiés', value: '34', delta: '+9 ce mois' },
+  { key: 'hot', label: 'Opportunités chaudes', value: '11', delta: '+3 cette semaine', deltaClass: 'text-orange-400' },
+  { key: 'devis', label: 'Devis en attente', value: '6', delta: '2 urgents', deltaClass: 'text-amber-400' },
+  { key: 'ca', label: 'CA potentiel', value: '5,8k€', delta: '+1,9k€ ce mois', accent: true },
+  { key: 'conv', label: 'Taux de conversion', value: '33 %', delta: '+6,5 pts vs préc.' },
 ] as const;
 
-const KPI_ROW_2 = [
-  {
-    key: 'accepted',
-    label: 'Devis accepté',
-    value: '7',
-    amount: '120 450 € HT',
-    sub: 'Montant total',
-    variant: 'sparkline' as const,
-  },
-  {
-    key: 'reminder',
-    label: 'Relance aujourd’hui',
-    icon: Bell,
-    value: '3',
-    sub: 'À effectuer',
-    cta: 'Voir la liste',
-    variant: 'cta' as const,
-  },
-  {
-    key: 'upcoming',
-    label: 'Chantiers à venir',
-    icon: Calendar,
-    value: '4',
-    sub: 'Dans les 30 prochains jours',
-    cta: 'Voir le planning',
-    variant: 'cta' as const,
-  },
-] as const;
+const PIPELINE = [
+  { label: 'Nouveaux', count: 12, value: '16,2k€', color: '#3b82f6', pct: 100 },
+  { label: 'Qualifiés', count: 7, value: '14,6k€', color: 'var(--accent)', pct: 58 },
+  { label: 'Devis envoyés', count: 4, value: '7,6k€', color: '#f59e0b', pct: 33 },
+  { label: 'Gagnés', count: 2, value: '5,8k€', color: '#a78bfa', pct: 16 },
+];
+
+const AGENDA = [
+  { time: '09:00', label: 'Appel de qualification', name: 'M. Durand', color: '#3b82f6' },
+  { time: '11:30', label: 'Visite chantier', name: 'Mme Martin', color: 'var(--accent)' },
+  { time: '14:00', label: 'Relance devis carrelage', name: 'M. Bernard', color: '#f59e0b' },
+];
 
 const OPPORTUNITIES = [
   {
@@ -233,7 +174,6 @@ const OPPORTUNITIES = [
     status: 'Prospect chaud',
     statusStyle: 'hot',
     score: '92%',
-    action: 'Appeler aujourd’hui',
   },
   {
     prospect: 'Mme Martin',
@@ -241,17 +181,25 @@ const OPPORTUNITIES = [
     status: 'Dossier complet',
     statusStyle: 'complete',
     score: '88%',
-    action: 'Envoyer devis',
   },
   {
     prospect: 'M. Bernard',
-    project: 'Rénovation salle de bain',
+    project: 'Salle de bain',
     status: 'À relancer',
     statusStyle: 'warm',
     score: '65%',
-    action: 'Relancer aujourd’hui',
   },
 ] as const;
+
+const AI_RECOS = [
+  { label: 'Relancer M. Bernard', sub: 'Devis envoyé il y a 3 jours', urgency: 'high' as const },
+  { label: 'Compléter le dossier Martin', sub: 'Photos manquantes · score 81/100', urgency: 'med' as const },
+];
+
+const OBJECTIVES = [
+  { label: 'Devis à envoyer', done: 1, total: 3 },
+  { label: 'Appels de qualification', done: 2, total: 4 },
+];
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 16 },
@@ -262,207 +210,123 @@ const fadeUp: Variants = {
   }),
 };
 
-function HeroSignalCard({ card, reduceMotion }: { card: SignalCard; reduceMotion: boolean }) {
-  const Icon = card.icon;
-  const isNote = card.variant === 'note';
+/* ─────────────────────────────────────────────
+   Floating cards stream (middle column)
+   ───────────────────────────────────────────── */
 
+function FlowConnector() {
+  return (
+    <div className="flex justify-center py-[3px]">
+      <div className="h-2 w-px bg-[rgba(74,222,128,0.2)]" />
+    </div>
+  );
+}
+
+function FlowCardItem({ card, reduceMotion }: { card: FlowCard; reduceMotion: boolean }) {
+  const Icon = card.icon;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 26, scale: 0.92 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 110, damping: 15, delay: card.delay }}
-      whileHover={reduceMotion ? undefined : { scale: 1.04, boxShadow: '0 0 44px rgba(34,197,94,0.35)' }}
-      className={`absolute z-20 rounded-xl p-3.5 backdrop-blur-md ${
-        isNote
-          ? 'border border-amber-300/30 bg-[rgba(250,204,21,0.1)] shadow-[0_14px_36px_rgba(0,0,0,0.5)]'
-          : 'border border-[rgba(74,222,128,0.22)] bg-[rgba(24,24,27,0.78)] shadow-[0_14px_44px_rgba(0,0,0,0.55),0_0_24px_rgba(34,197,94,0.12)]'
-      } ${card.className}`}
+      initial={{ opacity: 0, x: -24, scale: 0.97 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ duration: 0.55, delay: card.delay, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div
-        animate={reduceMotion ? {} : card.float}
-        transition={{ duration: card.duration, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}
+        animate={reduceMotion ? {} : { y: [0, -card.floatY, 0] }}
+        transition={{ duration: card.duration, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut', delay: card.delay + 0.6 }}
+        className={`flex items-center gap-2 rounded-xl px-2.5 py-2 backdrop-blur-md ${
+          card.accent
+            ? 'border border-[rgba(74,222,128,0.28)] bg-[var(--accent-dim)]'
+            : 'border border-zinc-800 bg-[rgba(16,20,26,0.9)]'
+        }`}
       >
-        <div className="flex items-center gap-2">
-          <span
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
-              isNote ? 'bg-amber-400/20' : 'bg-[var(--accent-dim)]'
-            }`}
-          >
-            <Icon className={`h-3.5 w-3.5 ${isNote ? 'text-amber-300' : 'text-[var(--accent)]'}`} />
-          </span>
-          <p className={`text-[11px] font-semibold ${isNote ? 'text-amber-100' : 'text-white'}`}>{card.title}</p>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)]">
+          <Icon className="h-3 w-3 text-[var(--accent)]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[10px] font-semibold text-white">{card.title}</p>
+          <p className="truncate text-[9px] text-zinc-500">{card.detail}</p>
         </div>
-        <p className={`mt-2 line-clamp-2 text-xs leading-snug ${isNote ? 'text-amber-100/80' : 'text-zinc-300'}`}>
-          {card.body}
-        </p>
-        {(card.meta || card.badge) && (
-          <div className="mt-1.5 flex items-center gap-2">
-            {card.meta && <p className="text-[10px] text-zinc-500">{card.meta}</p>}
-            {card.badge && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${
-                  card.badge === 'En retard'
-                    ? 'bg-red-500/15 text-red-400'
-                    : 'bg-amber-500/15 text-amber-400'
-                }`}
-              >
-                {card.badge}
-              </span>
-            )}
-          </div>
-        )}
+        <span className="hidden shrink-0 items-center gap-1 rounded-md border border-[rgba(74,222,128,0.2)] bg-[var(--accent-dim)] px-1.5 py-0.5 sm:flex">
+          <motion.span
+            className="h-1 w-1 rounded-full bg-[var(--accent)]"
+            animate={reduceMotion ? {} : { opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1.8, repeat: reduceMotion ? 0 : Infinity }}
+          />
+          <span className="text-[8px] font-bold text-[var(--accent)]">Live</span>
+        </span>
       </motion.div>
     </motion.div>
   );
 }
 
-function SignalCardsMobile() {
-  const cards = SIGNAL_CARDS.filter((c) => SIGNAL_CARDS_MOBILE.includes(c.key));
+function HeroFlowStream({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        const isNote = card.variant === 'note';
-        return (
-          <div
-            key={card.key}
-            className={`w-[168px] shrink-0 rounded-xl p-3 backdrop-blur-md ${
-              isNote
-                ? 'border border-amber-300/30 bg-[rgba(250,204,21,0.1)] shadow-[0_10px_28px_rgba(0,0,0,0.45)]'
-                : 'border border-[rgba(74,222,128,0.22)] bg-[rgba(24,24,27,0.78)] shadow-[0_10px_28px_rgba(0,0,0,0.5)]'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-                  isNote ? 'bg-amber-400/20' : 'bg-[var(--accent-dim)]'
-                }`}
-              >
-                <Icon className={`h-3.5 w-3.5 ${isNote ? 'text-amber-300' : 'text-[var(--accent)]'}`} />
-              </span>
-              <p className={`text-[11px] font-semibold ${isNote ? 'text-amber-100' : 'text-white'}`}>{card.title}</p>
-            </div>
-            <p className={`mt-2 line-clamp-2 text-[11px] leading-snug ${isNote ? 'text-amber-100/80' : 'text-zinc-300'}`}>
-              {card.body}
-            </p>
-            {(card.meta || card.badge) && (
-              <p className="mt-1 text-[10px] text-zinc-500">{card.meta ?? card.badge}</p>
-            )}
-          </div>
-        );
-      })}
+    <div className="flex w-full flex-col justify-center">
+      {FLOW_CARDS.map((card, i) => (
+        <div key={card.key}>
+          <FlowCardItem card={card} reduceMotion={reduceMotion} />
+          {i < FLOW_CARDS.length - 1 && <FlowConnector />}
+        </div>
+      ))}
     </div>
   );
 }
 
-function HeroFlowLines({ reduceMotion }: { reduceMotion: boolean }) {
-  const paths = [
-    { d: 'M 0,70 C 220,30 420,150 720,260', delay: 0, duration: 3.2 },
-    { d: 'M 0,180 C 240,220 460,180 720,260', delay: 0.5, duration: 3.6 },
-    { d: 'M 0,300 C 230,300 470,320 720,260', delay: 1.0, duration: 3.9 },
-    { d: 'M 0,400 C 230,360 470,300 720,260', delay: 1.4, duration: 4.1 },
-  ];
-
+function HeroFlowConnectorSvg({ reduceMotion }: { reduceMotion: boolean }) {
+  const ys = [40, 108, 176, 244, 312];
   return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-10 hidden h-full w-full lg:block"
-      viewBox="0 0 720 460"
-      preserveAspectRatio="none"
-      fill="none"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="flow-gradient" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(34,197,94,0.05)" />
-          <stop offset="100%" stopColor="rgba(74,222,128,0.75)" />
-        </linearGradient>
-        <filter id="flow-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="1.4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      {paths.map((p, i) => (
-        <g key={i} filter="url(#flow-glow)">
-          <motion.path
-            d={p.d}
-            stroke="url(#flow-gradient)"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={
-              reduceMotion
-                ? { pathLength: 1, opacity: 0.45 }
-                : { pathLength: 1, opacity: [0, 0.65, 0.65, 0] }
-            }
-            transition={
-              reduceMotion
-                ? { duration: 0.8, delay: p.delay }
-                : { duration: p.duration, repeat: Infinity, ease: 'easeInOut', delay: p.delay }
-            }
-          />
-        </g>
+    <svg viewBox="0 0 24 360" fill="none" className="h-full w-6" preserveAspectRatio="none" aria-hidden="true">
+      {ys.map((y, i) => (
+        <motion.path
+          key={i}
+          d={`M 0 ${y} C 12 ${y}, 12 176, 24 176`}
+          stroke="rgba(74,222,128,0.25)"
+          strokeWidth="1.2"
+          strokeDasharray="2.5 3.5"
+          fill="none"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.7, delay: reduceMotion ? 0 : 1.1 + i * 0.1, ease: 'easeOut' }}
+        />
       ))}
+      <motion.circle
+        cx="24"
+        cy="176"
+        r="3"
+        fill="rgba(74,222,128,0.7)"
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: reduceMotion ? 0 : 1.7, duration: 0.3 }}
+      />
     </svg>
   );
 }
 
-function HeroAttractionPoint({ reduceMotion }: { reduceMotion: boolean }) {
-  return (
-    <>
-      {/* Convergence point sits at the right edge of the chaos zone, i.e. the
-          left edge of the dashboard panel — the beam narrows horizontally
-          toward it rather than floating in the middle of the section. */}
-      <div className="pointer-events-none absolute right-0 top-[56%] z-10 hidden translate-x-1/2 -translate-y-1/2 lg:block">
-        <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(34,197,94,0.4)_0%,transparent_70%)] blur-xl" />
-        <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_18px_rgba(74,222,128,0.9)]" />
-        <div
-          className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle, rgba(74,222,128,0.6) 0.6px, transparent 0.6px)',
-            backgroundSize: '8px 8px',
-          }}
-        />
-      </div>
-      <motion.div
-        className="pointer-events-none absolute right-[16%] top-[56%] z-10 hidden -translate-y-1/2 lg:block"
-        animate={reduceMotion ? {} : { x: [0, 6, 0], opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 1.8, repeat: reduceMotion ? 0 : Infinity, ease: 'easeInOut' }}
-      >
-        <ChevronRight className="h-6 w-6 text-white/80" />
-      </motion.div>
-    </>
-  );
-}
+/* ─────────────────────────────────────────────
+   Horizontal desktop dashboard (right column)
+   ───────────────────────────────────────────── */
 
 function DashboardSidebar() {
   return (
-    <div className="hidden w-[168px] shrink-0 flex-col border-r border-zinc-800 py-6 pl-6 pr-4 md:flex">
-      <p className="mb-3 px-2 text-xs font-bold uppercase tracking-wide text-[var(--accent)]">K · Kadria</p>
-      <div className="flex flex-1 flex-col gap-1">
-        {SIDEBAR_ITEMS.map((item) => (
+    <div className="hidden w-[92px] shrink-0 flex-col border-r border-zinc-800 bg-black/30 py-3 md:flex">
+      <div className="mb-2 flex items-center gap-1 px-2.5 pb-2 border-b border-zinc-800">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[var(--accent)] text-[9px] font-black text-zinc-950">
+          K
+        </span>
+        <span className="text-[10px] font-bold text-white">Kadria</span>
+      </div>
+      <div className="flex flex-1 flex-col gap-0.5 px-1.5">
+        {SIDEBAR_ITEMS.slice(0, 6).map((item) => (
           <div
             key={item.label}
-            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] ${
+            className={`flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[8.5px] leading-tight ${
               item.active ? 'bg-[var(--accent-dim)] font-semibold text-[var(--accent)]' : 'text-zinc-500'
             }`}
           >
-            <item.icon className="h-3.5 w-3.5 shrink-0" />
-            {item.label}
+            <item.icon className="h-3 w-3 shrink-0" />
+            <span className="truncate">{item.label}</span>
           </div>
         ))}
-      </div>
-      <div className="mt-3 flex items-center gap-2 rounded-md border border-[rgba(113,113,122,0.28)] bg-black/30 px-2 py-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)] text-[10px] font-bold text-[var(--accent)]">
-          B
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-semibold text-zinc-200">Entreprise</p>
-          <p className="truncate text-[10px] text-zinc-500">Bâtir Plus</p>
-        </div>
       </div>
     </div>
   );
@@ -470,13 +334,14 @@ function DashboardSidebar() {
 
 function DashboardWindowChrome({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <div className="flex items-center gap-3 border-b border-zinc-800 bg-black/40 px-4 py-2.5">
+    <div className="flex items-center gap-3 border-b border-zinc-800 bg-black/40 px-3 py-2">
       <div className="flex shrink-0 gap-1.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
       </div>
-      <div className="hidden max-w-[220px] flex-1 items-center rounded-md border border-[rgba(113,113,122,0.28)] bg-white/[0.04] px-2.5 py-1 text-[10px] text-zinc-500 sm:flex">
+      <div className="hidden max-w-[200px] flex-1 items-center gap-1.5 rounded-md border border-[rgba(113,113,122,0.28)] bg-white/[0.04] px-2 py-1 text-[9px] text-zinc-500 sm:flex">
+        <Search className="h-2.5 w-2.5 shrink-0" />
         Rechercher un dossier, un client…
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -488,135 +353,144 @@ function DashboardWindowChrome({ reduceMotion }: { reduceMotion: boolean }) {
           />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--accent)]" />
         </span>
-        <span className="text-[10px] font-semibold text-[var(--accent)]">Live</span>
+        <span className="text-[9px] font-semibold text-[var(--accent)]">Live</span>
       </div>
     </div>
   );
 }
 
-function DashboardHeader() {
+function DashboardTopBar() {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex items-center justify-between gap-3 border-b border-zinc-900 px-3.5 py-2">
       <div>
-        <p className="text-base font-bold text-white">Cockpit</p>
-        <p className="mt-1 text-[11px] text-zinc-500">Vue d’ensemble de votre activité commerciale</p>
+        <p className="text-[11px] font-bold text-white">Cockpit</p>
+        <p className="text-[9px] text-zinc-500">Vue d’ensemble de votre activité commerciale</p>
       </div>
-      <div className="flex shrink-0 items-center gap-1 rounded-md border border-[rgba(113,113,122,0.28)] bg-black/30 px-2.5 py-1.5 text-[11px] text-zinc-300">
-        Cette semaine <ChevronDown className="h-3 w-3 text-zinc-500" />
-      </div>
-    </div>
-  );
-}
-
-function DashboardKpiRow1() {
-  return (
-    <div className="mt-4 grid grid-cols-3 gap-2.5">
-      {KPI_ROW_1.map((kpi) => (
-        <div
-          key={kpi.key}
-          className="rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3"
-        >
-          <p className="text-[10px] font-semibold text-zinc-400">{kpi.label}</p>
-          {kpi.variant === 'ring' ? (
-            <div className="mt-1.5 flex items-center gap-2">
-              <div
-                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{
-                  background: `conic-gradient(var(--accent) ${86 * 3.6}deg, rgba(113,113,122,0.25) 0deg)`,
-                }}
-              >
-                <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-zinc-900 text-[8px] font-bold text-white">
-                  {kpi.value}
-                </div>
-              </div>
-              <p className="text-[9px] leading-tight text-zinc-500">{kpi.sub}</p>
-            </div>
-          ) : (
-            <div className="mt-1.5 flex items-center gap-2">
-              {'icon' in kpi && kpi.icon && (
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)]">
-                  <kpi.icon className="h-3.5 w-3.5 text-[var(--accent)]" />
-                </span>
-              )}
-              <p className="truncate text-sm font-bold text-white">{kpi.value}</p>
-            </div>
-          )}
-          {'delta' in kpi && kpi.delta ? (
-            <p className="mt-1.5 text-[9px] font-medium text-[var(--accent)]">{kpi.delta}</p>
-          ) : (
-            <p className="mt-1.5 truncate text-[9px] text-zinc-500">{kpi.sub}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DashboardKpiRow2() {
-  return (
-    <div className="mt-2.5 grid grid-cols-3 gap-2.5">
-      {KPI_ROW_2.map((kpi) => (
-        <div
-          key={kpi.key}
-          className="rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold text-zinc-400">{kpi.label}</p>
-            {'icon' in kpi && kpi.icon && <kpi.icon className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />}
-          </div>
-          <p className="mt-1.5 text-sm font-bold text-white">{kpi.value}</p>
-          {'amount' in kpi && kpi.amount && (
-            <p className="text-[10px] font-semibold text-[var(--accent)]">{kpi.amount}</p>
-          )}
-          {kpi.variant === 'sparkline' ? (
-            <svg viewBox="0 0 100 24" className="mt-1.5 h-5 w-full" preserveAspectRatio="none">
-              <polyline
-                points="0,20 15,18 30,14 45,15 60,9 75,10 100,3"
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          ) : (
-            <p className="mt-1 text-[9px] text-zinc-500">{kpi.sub}</p>
-          )}
-          {'cta' in kpi && kpi.cta && (
-            <button
-              type="button"
-              className="mt-2 w-full rounded-md border border-[rgba(74,222,128,0.28)] bg-[var(--accent-dim)] px-2 py-1 text-[9px] font-semibold text-[var(--accent)]"
-            >
-              {kpi.cta}
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DashboardOpportunitiesTable() {
-  return (
-    <div className="mt-3 rounded-lg border border-[rgba(113,113,122,0.28)] bg-[rgba(39,39,42,0.55)] p-3.5">
-      <p className="text-xs font-semibold text-white">Opportunités prioritaires</p>
-      <div className="mt-2.5 grid grid-cols-[1.1fr_1.4fr_1fr_0.6fr_1.1fr] gap-2 px-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
-        <span>Prospect</span>
-        <span>Projet</span>
-        <span>Statut</span>
-        <span>Score</span>
-        <span>Prochaine action</span>
-      </div>
-      <div className="mt-1.5 space-y-1.5">
-        {OPPORTUNITIES.map((opp) => (
-          <div
-            key={opp.prospect}
-            className="grid grid-cols-[1.1fr_1.4fr_1fr_0.6fr_1.1fr] items-center gap-2 rounded-md bg-black/30 px-1.5 py-1.5"
+      <div className="hidden shrink-0 gap-1 sm:flex">
+        {['7 jours', 'Ce mois', '3 mois'].map((t, i) => (
+          <span
+            key={t}
+            className={`rounded-md px-1.5 py-0.5 text-[9px] font-medium ${
+              i === 1 ? 'border border-[rgba(74,222,128,0.28)] bg-[var(--accent-dim)] text-[var(--accent)]' : 'text-zinc-500'
+            }`}
           >
-            <span className="truncate text-[10px] font-semibold text-zinc-200">{opp.prospect}</span>
-            <span className="truncate text-[10px] text-zinc-400">{opp.project}</span>
+            {t}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardKpiStrip() {
+  return (
+    <div className="flex gap-2 px-3.5 pt-2.5">
+      {KPI_STRIP.map((kpi) => (
+        <div
+          key={kpi.key}
+          className={`flex-1 rounded-lg p-2 ${
+            'accent' in kpi && kpi.accent
+              ? 'border border-[rgba(74,222,128,0.22)] bg-[var(--accent-dim)]'
+              : 'border border-[rgba(113,113,122,0.22)] bg-[rgba(39,39,42,0.5)]'
+          }`}
+        >
+          <p className="truncate text-[8px] font-medium uppercase tracking-wide text-zinc-500">{kpi.label}</p>
+          <p className="mt-0.5 text-[13px] font-bold leading-none text-white">{kpi.value}</p>
+          <p className={`mt-1 truncate text-[8.5px] font-medium ${('deltaClass' in kpi && kpi.deltaClass) || 'text-[var(--accent)]'}`}>
+            {kpi.delta}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DCard({ children, accent, className = '' }: { children: React.ReactNode; accent?: boolean; className?: string }) {
+  return (
+    <div
+      className={`rounded-lg p-2.5 ${
+        accent ? 'border border-[rgba(74,222,128,0.2)] bg-[var(--accent-dim)]' : 'border border-[rgba(113,113,122,0.22)] bg-[rgba(39,39,42,0.5)]'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionLabel({ children, right }: { children: React.ReactNode; right?: string }) {
+  return (
+    <div className="mb-1.5 flex items-center justify-between">
+      <span className="text-[9.5px] font-semibold text-white">{children}</span>
+      {right && <span className="text-[8px] text-[var(--accent)]">{right}</span>}
+    </div>
+  );
+}
+
+function DashboardPipelineCard() {
+  return (
+    <DCard>
+      <SectionLabel right="Vue pipeline">Pipeline commercial</SectionLabel>
+      <div className="space-y-1.5">
+        {PIPELINE.map((p, i) => (
+          <div key={p.label}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-bold leading-none" style={{ color: p.color }}>
+                  {p.count}
+                </span>
+                <span className="text-[8.5px] font-semibold text-zinc-300">{p.value}</span>
+              </div>
+              <span className="text-[8px] text-zinc-500">{p.label}</span>
+            </div>
+            <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: p.color }}
+                initial={{ width: 0 }}
+                animate={{ width: `${p.pct}%` }}
+                transition={{ duration: 0.6, delay: 1.1 + i * 0.07, ease: 'easeOut' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </DCard>
+  );
+}
+
+function DashboardAgendaCard() {
+  return (
+    <DCard>
+      <SectionLabel right="Voir calendrier">Agenda du jour</SectionLabel>
+      <div className="space-y-1.5">
+        {AGENDA.map((item) => (
+          <div key={item.time} className="flex items-center gap-2">
+            <span className="w-7 shrink-0 font-mono text-[8px] text-zinc-500">{item.time}</span>
+            <div className="h-5 w-0.5 shrink-0 rounded-full" style={{ background: item.color }} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[9px] font-medium leading-tight text-zinc-200">{item.label}</p>
+              <p className="truncate text-[8px] text-zinc-500">{item.name}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </DCard>
+  );
+}
+
+function DashboardOpportunitiesCard() {
+  return (
+    <DCard className="flex-1">
+      <SectionLabel right="Voir tout">Opportunités prioritaires</SectionLabel>
+      <div className="space-y-1.5">
+        {OPPORTUNITIES.map((opp) => (
+          <div key={opp.prospect} className="flex items-center gap-2 rounded-md bg-black/30 px-2 py-1.5">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[9px] font-semibold text-zinc-200">{opp.prospect}</p>
+              <p className="truncate text-[8px] text-zinc-500">{opp.project}</p>
+            </div>
             <span
-              className={`w-fit rounded-full px-1.5 py-0.5 text-[8px] font-semibold ${
+              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7.5px] font-semibold ${
                 opp.statusStyle === 'hot'
                   ? 'bg-orange-500/15 text-orange-400'
                   : opp.statusStyle === 'complete'
@@ -626,39 +500,148 @@ function DashboardOpportunitiesTable() {
             >
               {opp.status}
             </span>
-            <span className="text-[10px] font-semibold text-white">{opp.score}</span>
-            <button
-              type="button"
-              className="truncate rounded-md border border-[rgba(74,222,128,0.28)] px-1.5 py-1 text-left text-[9px] font-medium text-[var(--accent)]"
-            >
-              {opp.action}
-            </button>
+            <span className="shrink-0 text-[9px] font-semibold text-white">{opp.score}</span>
           </div>
         ))}
       </div>
-      <Link
-        href="/demo-request"
-        className="mt-2.5 inline-flex text-[10px] font-medium text-[var(--accent)] hover:underline"
-      >
+      <Link href="/demo-request" className="mt-2 inline-flex text-[8.5px] font-medium text-[var(--accent)] hover:underline">
         Voir toutes les opportunités →
       </Link>
-    </div>
+    </DCard>
+  );
+}
+
+function DashboardAiRecosCard() {
+  return (
+    <DCard accent>
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[var(--accent-dim)]">
+          <Sparkles className="h-2.5 w-2.5 text-[var(--accent)]" />
+        </span>
+        <span className="text-[9.5px] font-semibold text-white">Recommandations IA</span>
+      </div>
+      <div className="space-y-1.5">
+        {AI_RECOS.map((r) => (
+          <div
+            key={r.label}
+            className={`rounded-md p-1.5 ${r.urgency === 'high' ? 'border border-[rgba(74,222,128,0.22)] bg-black/20' : 'border border-white/[0.06] bg-black/20'}`}
+          >
+            <p className="text-[8.5px] font-medium leading-tight text-zinc-200">{r.label}</p>
+            <p className="mt-0.5 text-[8px] leading-tight text-zinc-500">{r.sub}</p>
+          </div>
+        ))}
+      </div>
+    </DCard>
+  );
+}
+
+function DashboardScoreCard() {
+  return (
+    <DCard>
+      <SectionLabel>Score commercial</SectionLabel>
+      <div className="flex items-center gap-3">
+        <div
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+          style={{ background: `conic-gradient(var(--accent) ${84 * 3.6}deg, rgba(113,113,122,0.25) 0deg)` }}
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-[9px] font-black text-white">
+            84
+          </div>
+        </div>
+        <div>
+          <p className="text-[9.5px] font-semibold text-[var(--accent)]">Excellent</p>
+          <p className="text-[8px] leading-snug text-zinc-500">Top 15% des artisans</p>
+        </div>
+      </div>
+    </DCard>
+  );
+}
+
+function DashboardObjectivesCard() {
+  return (
+    <DCard>
+      <SectionLabel>Objectifs de la semaine</SectionLabel>
+      <div className="space-y-1.5">
+        {OBJECTIVES.map((obj, i) => (
+          <div key={obj.label}>
+            <div className="flex items-center justify-between">
+              <span className="text-[8px] text-zinc-500">{obj.label}</span>
+              <span className="text-[8px] font-semibold text-zinc-300">
+                {obj.done}/{obj.total}
+              </span>
+            </div>
+            <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+              <motion.div
+                className="h-full rounded-full bg-[var(--accent)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${(obj.done / obj.total) * 100}%` }}
+                transition={{ duration: 0.6, delay: 1.3 + i * 0.07, ease: 'easeOut' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </DCard>
   );
 }
 
 function HeroDashboardPreview({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <div className="relative w-full overflow-hidden rounded-[28px] border border-[rgba(74,222,128,0.28)] bg-[rgba(11,15,13,0.96)] shadow-[0_40px_120px_rgba(0,0,0,0.65),0_0_70px_rgba(34,197,94,0.16),inset_1px_0_0_rgba(74,222,128,0.25)]">
+    <div className="relative w-full overflow-hidden rounded-[24px] border border-[rgba(74,222,128,0.28)] bg-[rgba(11,15,13,0.96)] shadow-[0_40px_120px_rgba(0,0,0,0.65),0_0_70px_rgba(34,197,94,0.16),inset_1px_0_0_rgba(74,222,128,0.25)]">
       <DashboardWindowChrome reduceMotion={reduceMotion} />
-      <div className="flex">
+      <div className="flex h-[440px]">
         <DashboardSidebar />
-        <div className="min-w-0 flex-1 px-6 py-6">
-          <DashboardHeader />
-          <DashboardKpiRow1 />
-          <DashboardKpiRow2 />
-          <DashboardOpportunitiesTable />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <DashboardTopBar />
+          <DashboardKpiStrip />
+          <div className="grid flex-1 grid-cols-3 gap-2.5 overflow-hidden px-3.5 py-2.5">
+            <div className="flex flex-col gap-2.5">
+              <DashboardPipelineCard />
+              <DashboardAgendaCard />
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <DashboardOpportunitiesCard />
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <DashboardAiRecosCard />
+              <DashboardScoreCard />
+              <DashboardObjectivesCard />
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Mobile fallback
+   ───────────────────────────────────────────── */
+
+function SignalCardsMobile() {
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-1">
+      {FLOW_CARDS.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.key}
+            className={`w-[176px] shrink-0 rounded-xl p-3 backdrop-blur-md ${
+              card.accent
+                ? 'border border-[rgba(74,222,128,0.28)] bg-[var(--accent-dim)]'
+                : 'border border-zinc-800 bg-[rgba(24,24,27,0.78)]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--accent-dim)]">
+                <Icon className="h-3.5 w-3.5 text-[var(--accent)]" />
+              </span>
+              <p className="truncate text-[11px] font-semibold text-white">{card.title}</p>
+            </div>
+            <p className="mt-2 truncate text-[10px] text-zinc-400">{card.detail}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -677,7 +660,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_84%_50%,rgba(34,197,94,0.2)_0%,transparent_65%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_48%_45%,rgba(34,197,94,0.14)_0%,transparent_62%)]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1800px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[34%_28%_38%] lg:items-center lg:gap-4 lg:px-10 lg:py-10 xl:px-16">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1900px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[0.72fr_1.85fr] lg:items-center lg:gap-6 lg:px-10 lg:py-8 xl:px-14">
         {/* Zone gauche — texte / conversion */}
         <div className="max-w-2xl lg:max-w-none">
           <motion.div
@@ -696,7 +679,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.1}
-            className="mt-5 text-4xl font-bold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[3.4rem] xl:text-[3.8rem]"
+            className="mt-5 text-4xl font-bold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[2.6rem] xl:text-[2.9rem]"
           >
             <span className="block">Passez du chaos commercial</span>
             <span className="block">à des dossiers</span>
@@ -711,7 +694,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.2}
-            className="mt-5 text-base leading-relaxed text-zinc-400 sm:text-lg"
+            className="mt-5 text-base leading-relaxed text-zinc-400 sm:text-lg lg:text-sm xl:text-base"
           >
             Appels, messages, formulaires, photos et devis à relancer&nbsp;: Kadria remet de
             l&rsquo;ordre dans votre activité commerciale et vous aide à prioriser les bonnes
@@ -723,7 +706,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.3}
-            className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+            className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-stretch xl:flex-row xl:items-center"
           >
             <button
               type="button"
@@ -760,7 +743,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
             initial="hidden"
             animate="show"
             custom={0.5}
-            className="mt-6 flex flex-col gap-2"
+            className="mt-6 flex flex-col gap-2 border-t border-zinc-800/80 pt-4"
           >
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
@@ -784,26 +767,40 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
               &ldquo;{SOCIAL_PROOF.quote}&rdquo;
             </p>
           </motion.div>
+
+          {/* Métriques compactes façon v0 */}
+          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0.55} className="mt-5 flex flex-wrap items-center gap-5">
+            {METRICS.map((m) => (
+              <div key={m.label} className="flex flex-col gap-0">
+                <span className="text-sm font-black leading-none tracking-tight text-white">{m.value}</span>
+                <span className="mt-0.5 text-[10px] text-zinc-500">{m.label}</span>
+              </div>
+            ))}
+          </motion.div>
         </div>
 
-        {/* Zone centrale — chaos commercial entrant */}
-        <div className="relative hidden h-[520px] lg:block">
-          <HeroFlowLines reduceMotion={reduceMotion} />
-          <HeroAttractionPoint reduceMotion={reduceMotion} />
-          {SIGNAL_CARDS.map((card) => (
-            <HeroSignalCard key={card.key} card={card} reduceMotion={reduceMotion} />
-          ))}
-        </div>
-
-        {/* Zone droite — dashboard partiel, coupé par le bord de l'écran */}
-        <div className="relative hidden overflow-hidden lg:block">
+        {/* Zone droite — flux de cartes + dashboard applicatif horizontal */}
+        <div className="relative hidden lg:block">
           <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 28 }}
+            initial={{ opacity: 0, scale: 0.96, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.4, type: 'spring', stiffness: 85, damping: 18 }}
-            className="absolute right-[-160px] top-1/2 w-[760px] -translate-y-1/2 xl:right-[-220px] xl:w-[920px]"
+            transition={{ duration: 0.9, delay: 0.35, type: 'spring', stiffness: 90, damping: 18 }}
+            className="flex items-stretch gap-2 xl:gap-3"
           >
-            <HeroDashboardPreview reduceMotion={reduceMotion} />
+            {/* Flux de cartes flottantes */}
+            <div className="w-[176px] shrink-0 xl:w-[196px]">
+              <HeroFlowStream reduceMotion={reduceMotion} />
+            </div>
+
+            {/* Connecteur animé */}
+            <div className="flex shrink-0 items-center" style={{ width: 20 }}>
+              <HeroFlowConnectorSvg reduceMotion={reduceMotion} />
+            </div>
+
+            {/* Dashboard applicatif */}
+            <div className="min-w-0 flex-1">
+              <HeroDashboardPreview reduceMotion={reduceMotion} />
+            </div>
           </motion.div>
         </div>
 
@@ -835,7 +832,7 @@ export function PremiumLandingHero({ onOpenTrial }: PremiumLandingHeroProps) {
       </div>
 
       {/* Bande de confiance — bas de section */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 hidden flex-col items-center gap-3 px-10 lg:flex">
+      <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 hidden flex-col items-center gap-2.5 px-10 lg:flex">
         <p className="text-xs text-zinc-500">Ils nous font confiance</p>
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-2 opacity-60 grayscale">
           {TRUST_LOGOS.map((logo) => (
