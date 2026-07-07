@@ -306,6 +306,7 @@ function parseOptionalNumber(...values: unknown[]) {
 
 export async function POST(request: NextRequest) {
   let parsed: ReturnType<typeof parseIncomingPayload> | undefined
+  const processingStartTime = Date.now()
 
   try {
     const secret = request.headers.get('x-vapi-secret')
@@ -318,6 +319,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log(`[VAPI_TIMING] payload_parsed in ${Date.now() - processingStartTime}ms`)
 
     // Garde-fou : un event serveur Vapi qui n'est pas un vrai appel d'outil
     // (ex: conversation-update) ne doit jamais créer de dossier projet. On
@@ -404,6 +406,7 @@ export async function POST(request: NextRequest) {
       '- source:', phoneExtraction.phone ? phoneExtraction.source : 'none',
       '- phoneLast4:', clientPhone ? clientPhone.slice(-4) : '-',
     )
+    console.log(`[VAPI_TIMING] phone_extracted in ${Date.now() - processingStartTime}ms`)
 
     let completenessScore = Number(params.completenessScore)
     if (Number.isNaN(completenessScore)) completenessScore = 60
@@ -434,8 +437,6 @@ export async function POST(request: NextRequest) {
       callId: callId || '',
     })
 
-    const processingStartTime = Date.now()
-
     const { data: result, error } = await supabaseAdmin
       .from(TABLES.projects)
       .insert(payload)
@@ -443,133 +444,160 @@ export async function POST(request: NextRequest) {
       .single()
 
     const creationOk = !error
-    let usageWarning: string | undefined
 
     if (error) {
       console.error('[VAPI] Supabase error:', error.message)
     } else {
       console.log('[VAPI] Project created - recordId:', result.id)
+      console.log(`[VAPI_TIMING] project_created in ${Date.now() - processingStartTime}ms`)
 
-      // Notification artisan (centre de notifications, best-effort).
-      await createProjectNotification(
-        { id: result.id, artisanId },
-        'new_project',
-        {
-          title: 'Nouveau dossier',
-          message: `${clientName || 'Un prospect'} vient d'être créé.`,
-          priority: 'high',
-        },
-      )
+      // TODO: sur un runtime serverless strict (Vercel), le process peut être
+      // gelé/tué dès que la réponse HTTP est envoyée, ce qui peut interrompre
+      // ces traitements en arrière-plan avant qu'ils ne se terminent. Il
+      // faudrait idéalement utiliser waitUntil() de `@vercel/functions` pour
+      // garantir leur exécution complète après la réponse. Ce package n'est
+      // pas installé actuellement (validation explicite requise avant
+      // installation) - ceci est un risque connu, documenté ici en attendant.
+      void Promise.allSettled([
+        // Notification artisan (centre de notifications, best-effort).
+        createProjectNotification(
+          { id: result.id, artisanId },
+          'new_project',
+          {
+            title: 'Nouveau dossier',
+            message: `${clientName || 'Un prospect'} vient d'être créé.`,
+            priority: 'high',
+          },
+        ).catch((err) => {
+          console.error('[VAPI] Artisan notification fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
+        }),
 
-      // SMS de complément (best-effort, n'affecte jamais la création du projet).
-      // Fire-and-forget : ne bloque plus la réponse au tool call Vapi. Les
-      // erreurs sont déjà loggées/tracées en base à l'intérieur de la
-      // fonction ; le .catch() ici n'est qu'un filet de sécurité pour toute
-      // rejection non attrapée.
-      void sendCompletionSmsBestEffort({ projectId: result.id, clientPhone }).catch((err) => {
-        console.error('[VAPI] SMS fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
-      })
+        // SMS de complément (best-effort, n'affecte jamais la création du projet).
+        // Fire-and-forget : ne bloque plus la réponse au tool call Vapi. Les
+        // erreurs sont déjà loggées/tracées en base à l'intérieur de la
+        // fonction ; le .catch() ici n'est qu'un filet de sécurité pour toute
+        // rejection non attrapée.
+        sendCompletionSmsBestEffort({ projectId: result.id, clientPhone }).catch((err) => {
+          console.error('[VAPI] SMS fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
+        }),
 
-      // Email de confirmation client (best-effort, n'affecte jamais la
-      // création du projet). N'envoie rien si aucun email client valide
-      // n'est disponible (cas actuel le plus fréquent côté Vapi).
-      // Fire-and-forget : ne bloque plus la réponse au tool call Vapi.
-      void sendClientProjectConfirmationEmailBestEffort({
-        projectId: result.id,
-        artisanId,
-        clientEmail,
-        clientFirstName: clientFirstName || undefined,
-        projectType,
-        aiSummary,
-        city,
-        budget,
-        desiredTimeline,
-        clientPhone,
-      }).catch((err) => {
-        console.error('[VAPI] Client confirmation email fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
-      })
+        // Email de confirmation client (best-effort, n'affecte jamais la
+        // création du projet). N'envoie rien si aucun email client valide
+        // n'est disponible (cas actuel le plus fréquent côté Vapi).
+        // Fire-and-forget : ne bloque plus la réponse au tool call Vapi.
+        sendClientProjectConfirmationEmailBestEffort({
+          projectId: result.id,
+          artisanId,
+          clientEmail,
+          clientFirstName: clientFirstName || undefined,
+          projectType,
+          aiSummary,
+          city,
+          budget,
+          desiredTimeline,
+          clientPhone,
+        }).catch((err) => {
+          console.error('[VAPI] Client confirmation email fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
+        }),
 
-      const usageResult = await recordProjectCreatedUsage({
-        artisanId,
-        projectId: result.id,
-        source: 'vapi',
-      })
+        // Tracking usage "projet créé" (best-effort, non-bloquant).
+        recordProjectCreatedUsage({
+          artisanId,
+          projectId: result.id,
+          source: 'vapi',
+        }).then((usageResult) => {
+          if (!usageResult.success) {
+            console.error('[VAPI] Project created but usage tracking failed:', usageResult.error || 'unknown error')
+          }
+        }).catch((err) => {
+          console.error('[VAPI] Usage tracking fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
+        }),
 
-      if (!usageResult.success) {
-        console.error('[VAPI] Project created but usage tracking failed:', usageResult.error || 'unknown error')
-      }
+        // Tracking usage appel Vapi + vérification de quota post-appel
+        // (best-effort, non-bloquant). Le résultat n'est plus utilisé pour
+        // construire la réponse HTTP (usageWarning n'est plus calculé de
+        // façon synchrone) : il n'affecte que le logging et la notification
+        // de dépassement de quota.
+        (async () => {
+          const durationSeconds = parseOptionalNumber(
+            params.durationSeconds,
+            params.duration_seconds,
+            body?.durationSeconds,
+            body?.duration_seconds,
+            body?.call?.durationSeconds,
+            body?.call?.duration_seconds,
+          )
+          const durationMinutes = parseOptionalNumber(
+            params.durationMinutes,
+            params.duration_minutes,
+            body?.durationMinutes,
+            body?.duration_minutes,
+            body?.call?.durationMinutes,
+            body?.call?.duration_minutes,
+          )
+          const estimatedCost = parseOptionalNumber(
+            params.estimatedCost,
+            params.estimated_cost,
+            body?.estimatedCost,
+            body?.estimated_cost,
+            body?.call?.estimatedCost,
+            body?.call?.estimated_cost,
+          )
+          const status =
+            typeof params.status === 'string' ? params.status
+              : typeof body?.status === 'string' ? body.status
+              : typeof body?.call?.status === 'string' ? body.call.status
+              : 'completed'
 
-      const durationSeconds = parseOptionalNumber(
-        params.durationSeconds,
-        params.duration_seconds,
-        body?.durationSeconds,
-        body?.duration_seconds,
-        body?.call?.durationSeconds,
-        body?.call?.duration_seconds,
-      )
-      const durationMinutes = parseOptionalNumber(
-        params.durationMinutes,
-        params.duration_minutes,
-        body?.durationMinutes,
-        body?.duration_minutes,
-        body?.call?.durationMinutes,
-        body?.call?.duration_minutes,
-      )
-      const estimatedCost = parseOptionalNumber(
-        params.estimatedCost,
-        params.estimated_cost,
-        body?.estimatedCost,
-        body?.estimated_cost,
-        body?.call?.estimatedCost,
-        body?.call?.estimated_cost,
-      )
-      const status =
-        typeof params.status === 'string' ? params.status
-          : typeof body?.status === 'string' ? body.status
-          : typeof body?.call?.status === 'string' ? body.call.status
-          : 'completed'
-
-      const vapiUsageResult = await recordVapiCallUsage({
-        artisanId,
-        callId: callId || undefined,
-        projectId: result.id,
-        durationSeconds,
-        durationMinutes,
-        estimatedCost,
-        status,
-        rawPayload: body,
-      })
-
-      if (!vapiUsageResult.success) {
-        console.error('[VAPI] Vapi call usage tracking failed:', vapiUsageResult.error || 'unknown error')
-      }
-
-      const quotaAfter = await canUseVapi(artisanId)
-      if (quotaAfter.success && !quotaAfter.allowed) {
-        console.warn('[VAPI] Vapi quota exceeded after call tracking', {
-          artisan_id: artisanId,
-          plan: quotaAfter.plan,
-          used: quotaAfter.callsUsed,
-          limit: quotaAfter.callsLimit,
-          minutesUsed: quotaAfter.minutesUsed,
-          minutesLimit: quotaAfter.minutesLimit,
-          exceededReason: quotaAfter.exceededReason,
-        })
-        usageWarning = 'Quota Vapi dépassé'
-        if (quotaBefore.success && quotaBefore.allowed) {
-          await notifyArtisanQuotaReached({
+          const vapiUsageResult = await recordVapiCallUsage({
             artisanId,
-            quotaType: 'appels vocaux',
-            used: quotaAfter.callsUsed,
-            limit: quotaAfter.callsLimit ?? 0,
+            callId: callId || undefined,
+            projectId: result.id,
+            durationSeconds,
+            durationMinutes,
+            estimatedCost,
+            status,
+            rawPayload: body,
           })
+
+          if (!vapiUsageResult.success) {
+            console.error('[VAPI] Vapi call usage tracking failed:', vapiUsageResult.error || 'unknown error')
+          }
+
+          const quotaAfter = await canUseVapi(artisanId)
+          if (quotaAfter.success && !quotaAfter.allowed) {
+            console.warn('[VAPI] Vapi quota exceeded after call tracking', {
+              artisan_id: artisanId,
+              plan: quotaAfter.plan,
+              used: quotaAfter.callsUsed,
+              limit: quotaAfter.callsLimit,
+              minutesUsed: quotaAfter.minutesUsed,
+              minutesLimit: quotaAfter.minutesLimit,
+              exceededReason: quotaAfter.exceededReason,
+            })
+            if (quotaBefore.success && quotaBefore.allowed) {
+              await notifyArtisanQuotaReached({
+                artisanId,
+                quotaType: 'appels vocaux',
+                used: quotaAfter.callsUsed,
+                limit: quotaAfter.callsLimit ?? 0,
+              })
+            }
+          }
+        })().catch((err) => {
+          console.error('[VAPI] Vapi usage/quota fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
+        }),
+      ]).then((results) => {
+        const failed = results.filter((r) => r.status === 'rejected')
+        if (failed.length > 0) {
+          console.error('[VAPI] Async follow-ups completed with failures - projectId:', result.id, '- failedCount:', failed.length)
         }
-      } else if (quotaBefore.success && !quotaBefore.allowed) {
-        usageWarning = 'Quota Vapi déjà dépassé'
-      }
+        console.log(`[VAPI_TIMING] async_followups_completed in ${Date.now() - processingStartTime}ms`)
+      })
     }
 
     console.log(`[VAPI] create_project completed in ${Date.now() - processingStartTime}ms before async follow-ups`)
+    console.log(`[VAPI_TIMING] response_returned in ${Date.now() - processingStartTime}ms`)
 
     if (isToolCallFormat && toolCallId) {
       return NextResponse.json({
@@ -596,7 +624,6 @@ export async function POST(request: NextRequest) {
       projectId: result.id,
       message: 'Dossier projet créé',
       callId,
-      ...(usageWarning ? { usageWarning } : {}),
     })
   } catch (error) {
     console.error('[VAPI] Unexpected error:', error)
