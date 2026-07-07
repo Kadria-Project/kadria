@@ -2,7 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRight, Bell, ClipboardCheck, ListChecks, UserCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  Bell,
+  Check,
+  CheckCircle2,
+  ClipboardCheck,
+  ListChecks,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  UserCheck,
+} from 'lucide-react';
 import { AssistantWebChatCard, type ChatMsg } from '@/src/components/landing/AssistantWebDemo';
 import { VoiceAssistantCard } from '@/src/components/landing/AssistantVocalDemo';
 
@@ -71,51 +83,83 @@ const BENEFITS = [
   {
     icon: ListChecks,
     title: 'Informations essentielles collectées',
-    body: 'Projet, localisation, budget, délai, photos et contact sont récupérés automatiquement.',
+    body: 'Budget, urgence, localisation, contact et besoin sont structurés avant votre premier rappel.',
   },
   {
     icon: ClipboardCheck,
     title: 'Dossier exploitable immédiatement',
-    body: "L'artisan sait quoi faire sans ressaisie ni allers-retours inutiles.",
+    body: 'Vous voyez le contexte, la priorité, le score et l\'action à mener sans ressaisie.',
   },
   {
     icon: Bell,
     title: 'Artisan notifié instantanément',
-    body: "Une nouvelle opportunité qualifiée est signalée dès que le dossier est prêt.",
+    body: 'Une nouvelle opportunité qualifiée est signalée dès que le dossier est prêt.',
   },
   {
     icon: UserCheck,
     title: 'Portail client activé',
-    body: 'Le client peut suivre l\'avancement de sa demande depuis un espace projet dédié.',
+    body: 'Le client peut compléter ou suivre sa demande depuis son espace projet.',
   },
 ];
 
-const DOSSIER_COLUMNS: { heading: string; rows: { label: string; value: string }[] }[] = [
+const PIPELINE_STEPS = [
+  { label: 'Reçu', done: true },
+  { label: 'Qualifié', done: true },
+  { label: 'Préparé', done: false },
+  { label: 'Envoyé', done: false },
+  { label: 'Ouvert / relance', done: false },
+  { label: 'Décision', done: false },
+  { label: 'Gagné / perdu', done: false },
+];
+
+const ANALYSIS_COLUMNS: { heading: string; tone: 'good' | 'warn' | 'neutral'; items: string[] }[] = [
   {
-    heading: 'Besoin',
-    rows: [
-      { label: 'Type de projet', value: 'Borne de recharge' },
-      { label: 'Délai souhaité', value: 'Sous 2 semaines' },
-      { label: 'Urgence', value: 'Moyenne' },
-    ],
+    heading: 'Forces',
+    tone: 'good',
+    items: ['Téléphone renseigné', 'Type de projet clair', 'Budget renseigné'],
   },
   {
-    heading: 'Client & lieu',
-    rows: [
-      { label: 'Localisation', value: 'Lyon (69003)' },
-      { label: 'Contact', value: 'Collecté' },
-      { label: 'Portail client', value: 'Activé' },
-    ],
+    heading: 'Infos manquantes',
+    tone: 'warn',
+    items: ['Dossier complet'],
   },
   {
-    heading: 'Commercial',
-    rows: [
-      { label: 'Budget estimé', value: '4 500 €' },
-      { label: 'Complétude', value: '86 %' },
-      { label: 'Action recommandée', value: 'Rappeler aujourd’hui' },
-    ],
+    heading: 'Risques',
+    tone: 'neutral',
+    items: ['Aucun risque identifié'],
   },
 ];
+
+function DossierBadge({
+  children,
+  tone,
+  reduce,
+  delay,
+}: {
+  children: React.ReactNode;
+  tone: 'orange' | 'green' | 'muted';
+  reduce: boolean;
+  delay: number;
+}) {
+  const colors =
+    tone === 'orange'
+      ? { bg: `color-mix(in oklab, ${ORANGE} 18%, transparent)`, fg: ORANGE }
+      : tone === 'green'
+        ? { bg: `color-mix(in oklab, ${GREEN} 16%, transparent)`, fg: GREEN }
+        : { bg: 'oklch(1 0 0 / 0.06)', fg: TEXT_MUTED };
+  return (
+    <motion.span
+      className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
+      style={{ backgroundColor: colors.bg, color: colors.fg }}
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.4, ease: 'easeOut', delay: reduce ? 0 : delay }}
+    >
+      {children}
+    </motion.span>
+  );
+}
 
 function DossierCard({ reduce }: { reduce: boolean }) {
   return (
@@ -124,7 +168,7 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55, ease: 'easeOut', delay: reduce ? 0 : 0.3 }}
-      className="relative mx-auto w-full overflow-hidden rounded-2xl p-6 backdrop-blur-md sm:p-7 lg:w-[68%] lg:p-8"
+      className="relative mx-auto w-full overflow-hidden rounded-2xl p-6 backdrop-blur-md sm:p-7 lg:w-[86%] lg:p-9"
       style={{
         backgroundColor: `color-mix(in oklab, ${CARD_BG} 88%, transparent)`,
         border: `1px solid color-mix(in oklab, ${GREEN} 32%, transparent)`,
@@ -137,109 +181,183 @@ function DossierCard({ reduce }: { reduce: boolean }) {
         style={{ background: `radial-gradient(closest-side, color-mix(in oklab, ${GREEN} 20%, transparent), transparent 70%)` }}
       />
 
-      {/* Header */}
+      {/* A. Header dossier */}
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-base font-semibold sm:text-lg" style={{ color: TEXT }}>
-            Dossier prêt à traiter
+            Panne chaudière avec eau tiède
           </p>
           <p className="mt-0.5 text-[12px]" style={{ color: TEXT_DIM }}>
-            #LM-2481 · Borne de recharge
+            Antoine Rousseau · chauffagiste · Maromme · Assistant vocal
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <motion.span
-            className="rounded-full px-3 py-1 text-[11px] font-semibold"
-            style={{ backgroundColor: `color-mix(in oklab, ${ORANGE} 18%, transparent)`, color: ORANGE }}
-            initial={reduce ? false : { opacity: 0 }}
-            whileInView={
-              reduce
-                ? { opacity: 1 }
-                : {
-                    opacity: 1,
-                    boxShadow: [
-                      '0 0 0 0 transparent',
-                      `0 0 16px 3px color-mix(in oklab, ${ORANGE} 55%, transparent)`,
-                      '0 0 0 0 transparent',
-                    ],
-                  }
-            }
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 1.6, ease: 'easeOut', delay: reduce ? 0 : 0.6 }}
-          >
-            Prospect chaud
-          </motion.span>
-          <motion.div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-            style={{
-              border: `2px solid ${GREEN}`,
-              color: GREEN,
-              backgroundColor: `color-mix(in oklab, ${GREEN} 12%, transparent)`,
-            }}
-            initial={reduce ? false : { opacity: 0, scale: 0.85 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.5, ease: 'easeOut', delay: reduce ? 0 : 0.5 }}
-          >
-            88
-          </motion.div>
+        <div className="flex flex-wrap items-center gap-2">
+          <DossierBadge tone="orange" reduce={reduce} delay={0.4}>
+            À rappeler
+          </DossierBadge>
+          <DossierBadge tone="green" reduce={reduce} delay={0.48}>
+            Score 91/100
+          </DossierBadge>
+          <DossierBadge tone="orange" reduce={reduce} delay={0.56}>
+            Chaud
+          </DossierBadge>
         </div>
       </div>
 
-      {/* 3 columns */}
-      <div className="relative mt-6 grid gap-5 sm:grid-cols-3">
-        {DOSSIER_COLUMNS.map((col) => (
-          <div
-            key={col.heading}
-            className="rounded-xl p-4"
-            style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: GREEN }}>
-              {col.heading}
-            </p>
-            <dl className="mt-2.5 space-y-2">
-              {col.rows.map((row) => (
-                <div key={row.label} className="flex items-baseline justify-between gap-2 text-[12px]">
-                  <dt style={{ color: TEXT_DIM }}>{row.label}</dt>
-                  <dd className="text-right font-medium" style={{ color: TEXT }}>
-                    {row.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        ))}
+      {/* 3 chips */}
+      <div className="relative mt-4 flex flex-wrap gap-2">
+        <DossierBadge tone="muted" reduce={reduce} delay={0.62}>
+          Budget 400 €
+        </DossierBadge>
+        <DossierBadge tone="muted" reduce={reduce} delay={0.68}>
+          Délai urgent
+        </DossierBadge>
+        <DossierBadge tone="muted" reduce={reduce} delay={0.74}>
+          Source vocal
+        </DossierBadge>
       </div>
 
-      {/* Completion bar */}
+      {/* B. Contact / localisation */}
+      <div
+        className="relative mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-4 py-3 text-[12px]"
+        style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Phone size={12} style={{ color: GREEN }} /> 06 72 38 65 11
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Mail size={12} style={{ color: GREEN }} /> antoine.rousseau.demo@kadria.fr
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <MapPin size={12} style={{ color: GREEN }} /> 14 rue des Martyrs, 76150 Maromme
+        </span>
+      </div>
+
+      {/* C. Pilotage commercial */}
       <div className="relative mt-6">
-        <div className="flex items-center justify-between text-[11px]" style={{ color: TEXT_DIM }}>
-          <span>Complétude du dossier</span>
-          <span style={{ color: TEXT }}>86 %</span>
-        </div>
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'oklch(1 0 0 / 0.08)' }}>
-          <motion.div
-            className="h-full rounded-full"
-            style={{ backgroundColor: GREEN, boxShadow: `0 0 10px color-mix(in oklab, ${GREEN} 60%, transparent)` }}
-            initial={reduce ? false : { width: '0%' }}
-            whileInView={{ width: '86%' }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.9, ease: 'easeOut', delay: reduce ? 0 : 0.55 }}
-          />
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: GREEN }}>
+          Pilotage commercial
+        </p>
+        <div className="mt-3 grid gap-5 lg:grid-cols-2">
+          {/* Action recommandée */}
+          <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+              Action recommandée
+            </p>
+            <p className="mt-2 text-sm font-semibold" style={{ color: TEXT }}>
+              Rappeler le client
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+              Le dossier attend un retour commercial avant de poursuivre.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <DossierBadge tone="muted" reduce={reduce} delay={0.8}>
+                Priorité moyenne
+              </DossierBadge>
+              <DossierBadge tone="muted" reduce={reduce} delay={0.85}>
+                Impact moyen
+              </DossierBadge>
+              <DossierBadge tone="muted" reduce={reduce} delay={0.9}>
+                ~5 min
+              </DossierBadge>
+            </div>
+            <button
+              type="button"
+              className="mt-4 rounded-md px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors"
+              style={{
+                backgroundColor: `color-mix(in oklab, ${GREEN} 14%, transparent)`,
+                color: GREEN,
+                border: `1px solid color-mix(in oklab, ${GREEN} 40%, transparent)`,
+              }}
+            >
+              Rappeler
+            </button>
+          </div>
+
+          {/* Avancement commercial */}
+          <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+              Avancement commercial
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {PIPELINE_STEPS.map((step, i) => (
+                <motion.div
+                  key={step.label}
+                  className="flex items-center gap-2 text-[12px]"
+                  initial={reduce ? false : { opacity: 0, x: -6 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.35, ease: 'easeOut', delay: reduce ? 0 : 0.5 + i * 0.09 }}
+                >
+                  <span
+                    className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      backgroundColor: step.done
+                        ? `color-mix(in oklab, ${GREEN} 22%, transparent)`
+                        : 'oklch(1 0 0 / 0.06)',
+                      border: step.done ? `1px solid ${GREEN}` : `1px solid ${BORDER}`,
+                    }}
+                  >
+                    {step.done && <Check size={10} style={{ color: GREEN }} />}
+                  </span>
+                  <span style={{ color: step.done ? TEXT : TEXT_DIM, fontWeight: step.done ? 600 : 400 }}>
+                    {step.label}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="relative mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div
-          className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2.5"
-          style={{ backgroundColor: `color-mix(in oklab, ${GREEN} 10%, transparent)` }}
-        >
-          <ArrowRight size={13} style={{ color: GREEN, flexShrink: 0 }} />
-          <p className="text-[11.5px] leading-snug" style={{ color: TEXT }}>
-            Toutes les informations utiles sont prêtes pour rappeler, chiffrer ou planifier.
-          </p>
+      {/* D. Analyse Kadria */}
+      <motion.div
+        className="relative mt-6"
+        initial={reduce ? false : { opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true, margin: '-60px' }}
+        transition={{ duration: 0.5, ease: 'easeOut', delay: reduce ? 0 : 0.65 }}
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: GREEN }}>
+          Analyse Kadria
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {ANALYSIS_COLUMNS.map((col) => (
+            <div
+              key={col.heading}
+              className="rounded-xl p-3.5"
+              style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}
+            >
+              <p className="text-[11px] font-semibold" style={{ color: TEXT_DIM }}>
+                {col.heading}
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {col.items.map((item) => (
+                  <li key={item} className="flex items-start gap-1.5 text-[11.5px]" style={{ color: TEXT_MUTED }}>
+                    {col.tone === 'good' ? (
+                      <CheckCircle2 size={12} style={{ color: GREEN, flexShrink: 0, marginTop: 1 }} />
+                    ) : (
+                      <ShieldCheck size={12} style={{ color: col.tone === 'warn' ? ORANGE : TEXT_DIM, flexShrink: 0, marginTop: 1 }} />
+                    )}
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
+      </motion.div>
+
+      {/* E. Synthèse finale */}
+      <div
+        className="relative mt-5 rounded-xl px-4 py-3 text-[12px] leading-relaxed"
+        style={{ backgroundColor: `color-mix(in oklab, ${GREEN} 8%, transparent)`, border: `1px solid color-mix(in oklab, ${GREEN} 22%, transparent)`, color: TEXT }}
+      >
+        Urgence chauffage : eau chaude sanitaire tiède, diagnostic prioritaire. Relance aujourd&apos;hui.
+      </div>
+
+      {/* F. CTA final */}
+      <div className="relative mt-6 flex justify-end">
         <button
           type="button"
           className="shrink-0 rounded-md px-4 py-2 text-[12px] font-semibold transition-colors"
