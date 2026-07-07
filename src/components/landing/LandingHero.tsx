@@ -67,7 +67,7 @@ export default function LandingHero({
         }}
       />
 
-      <div className="relative z-10 mx-auto flex min-h-[640px] max-w-[1440px] flex-col items-center justify-center px-6 pt-10 pb-12 text-center md:min-h-[680px] md:pt-14 md:pb-16 lg:min-h-[720px]">
+      <div className="relative z-10 mx-auto flex min-h-fit max-w-[1440px] flex-col items-center justify-center px-6 pt-16 pb-12 text-center md:pt-[68px] md:pb-16 lg:min-h-screen">
         {/* Halo vert */}
         <div
           aria-hidden
