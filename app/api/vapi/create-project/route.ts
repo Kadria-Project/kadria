@@ -434,6 +434,8 @@ export async function POST(request: NextRequest) {
       callId: callId || '',
     })
 
+    const processingStartTime = Date.now()
+
     const { data: result, error } = await supabaseAdmin
       .from(TABLES.projects)
       .insert(payload)
@@ -460,12 +462,19 @@ export async function POST(request: NextRequest) {
       )
 
       // SMS de complément (best-effort, n'affecte jamais la création du projet).
-      await sendCompletionSmsBestEffort({ projectId: result.id, clientPhone })
+      // Fire-and-forget : ne bloque plus la réponse au tool call Vapi. Les
+      // erreurs sont déjà loggées/tracées en base à l'intérieur de la
+      // fonction ; le .catch() ici n'est qu'un filet de sécurité pour toute
+      // rejection non attrapée.
+      void sendCompletionSmsBestEffort({ projectId: result.id, clientPhone }).catch((err) => {
+        console.error('[VAPI] SMS fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
+      })
 
       // Email de confirmation client (best-effort, n'affecte jamais la
       // création du projet). N'envoie rien si aucun email client valide
       // n'est disponible (cas actuel le plus fréquent côté Vapi).
-      await sendClientProjectConfirmationEmailBestEffort({
+      // Fire-and-forget : ne bloque plus la réponse au tool call Vapi.
+      void sendClientProjectConfirmationEmailBestEffort({
         projectId: result.id,
         artisanId,
         clientEmail,
@@ -476,6 +485,8 @@ export async function POST(request: NextRequest) {
         budget,
         desiredTimeline,
         clientPhone,
+      }).catch((err) => {
+        console.error('[VAPI] Client confirmation email fire-and-forget failed - projectId:', result.id, '-', err instanceof Error ? err.message : String(err))
       })
 
       const usageResult = await recordProjectCreatedUsage({
@@ -557,6 +568,8 @@ export async function POST(request: NextRequest) {
         usageWarning = 'Quota Vapi déjà dépassé'
       }
     }
+
+    console.log(`[VAPI] create_project completed in ${Date.now() - processingStartTime}ms before async follow-ups`)
 
     if (isToolCallFormat && toolCallId) {
       return NextResponse.json({
