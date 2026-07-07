@@ -78,7 +78,7 @@ export default function LandingChaosSection() {
   return (
     <section
       style={{ backgroundColor: DARK_BG, color: "oklch(0.97 0.005 90)" }}
-      className="relative overflow-hidden py-24 sm:py-32"
+      className="relative overflow-hidden py-16 sm:py-24"
     >
       <div
         aria-hidden
@@ -115,10 +115,7 @@ export default function LandingChaosSection() {
           >
             Trop de demandes partout
           </span>
-          <h2
-            className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
-            style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', letterSpacing: "-0.02em", fontWeight: 400 }}
-          >
+          <h2 className="mt-5 text-3xl font-bold tracking-[-0.02em] sm:text-4xl md:text-5xl">
             Le quotidien des artisans.
           </h2>
           <p className="mt-4 text-base sm:text-lg" style={{ color: TEXT_MUTED }}>
@@ -127,7 +124,7 @@ export default function LandingChaosSection() {
           </p>
         </motion.div>
 
-        <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="relative mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CARDS.map((c, i) => (
             <motion.div
               key={c.title}
@@ -178,15 +175,31 @@ export default function LandingChaosSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
-          className="mt-16 flex flex-col items-center text-center"
+          className="relative mt-12 flex flex-col items-center text-center"
         >
+          {/* Traits verts subtils reliant la grille de cartes au badge K.
+              Positionnés en absolute au-dessus du badge, dans l'espace déjà
+              existant (mt-12) : pas de hauteur additionnelle. Masqués sur
+              mobile (hidden md:block) car peu lisibles / fragiles en petit écran. */}
+          <svg
+            aria-hidden
+            className="pointer-events-none absolute -top-12 left-1/2 hidden h-12 w-[560px] -translate-x-1/2 md:block"
+            viewBox="0 0 560 48"
+            fill="none"
+          >
+            <path d="M40 0 C 120 20, 220 34, 280 44" stroke={KADRIA_GREEN} strokeWidth="1" opacity="0.22" />
+            <path d="M180 0 C 220 16, 250 30, 280 44" stroke={KADRIA_GREEN} strokeWidth="1" opacity="0.3" />
+            <path d="M280 0 L 280 44" stroke={KADRIA_GREEN} strokeWidth="1" opacity="0.35" />
+            <path d="M380 0 C 340 16, 310 30, 280 44" stroke={KADRIA_GREEN} strokeWidth="1" opacity="0.3" />
+            <path d="M520 0 C 440 20, 340 34, 280 44" stroke={KADRIA_GREEN} strokeWidth="1" opacity="0.22" />
+          </svg>
+
           <div
-            className="flex h-20 w-20 items-center justify-center rounded-2xl text-3xl font-semibold"
+            className="flex h-20 w-20 items-center justify-center rounded-2xl text-3xl font-bold"
             style={{
               backgroundColor: KADRIA_GREEN,
               color: "oklch(0.2 0.02 150)",
               boxShadow: `0 0 0 1px color-mix(in oklab, ${KADRIA_GREEN} 30%, transparent), 0 20px 60px -20px color-mix(in oklab, ${KADRIA_GREEN} 50%, transparent)`,
-              fontFamily: '"Instrument Serif", "Times New Roman", serif',
             }}
           >
             K
@@ -198,6 +211,17 @@ export default function LandingChaosSection() {
             <span style={{ color: KADRIA_GREEN, fontWeight: 500 }}>Kadria</span>{" "}
             centralise, qualifie et priorise vos demandes.
           </p>
+
+          {/* Lien visuel vers la section dashboard suivante : faisceau vert
+              dégradé vers transparent, discret, sans ajouter d'espace vertical
+              significatif (h-10 seulement). */}
+          <div
+            aria-hidden
+            className="mt-4 h-10 w-px"
+            style={{
+              background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 55%, transparent), transparent)`,
+            }}
+          />
         </motion.div>
       </div>
     </section>

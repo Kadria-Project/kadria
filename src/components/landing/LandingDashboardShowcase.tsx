@@ -128,7 +128,7 @@ export default function LandingDashboardShowcase() {
   return (
     <section
       style={{ backgroundColor: DARK_BG, color: TEXT }}
-      className="relative overflow-hidden py-20 sm:py-24"
+      className="relative overflow-hidden py-14 sm:py-20"
     >
       <div
         aria-hidden
@@ -148,6 +148,16 @@ export default function LandingDashboardShowcase() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
+        {/* Lien visuel avec la section précédente : faisceau vert dégradé
+            au-dessus du badge, discret, n'ajoute pas d'espace vertical
+            (positionné en absolute, hauteur du conteneur inchangée). */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-0 hidden h-8 w-px -translate-x-1/2 -translate-y-full md:block"
+          style={{
+            background: `linear-gradient(to bottom, transparent, color-mix(in oklab, ${GREEN} 55%, transparent))`,
+          }}
+        />
         <motion.div {...fadeUp}>
           <span
             className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em]"
@@ -159,14 +169,7 @@ export default function LandingDashboardShowcase() {
           >
             Kadria prend le relais
           </span>
-          <h2
-            className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl"
-            style={{
-              fontFamily: '"Instrument Serif", "Times New Roman", serif',
-              letterSpacing: "-0.02em",
-              fontWeight: 400,
-            }}
-          >
+          <h2 className="mt-5 text-3xl font-bold tracking-[-0.02em] sm:text-4xl md:text-5xl">
             Tout est structuré. Vous passez à l'action.
           </h2>
         </motion.div>
@@ -174,8 +177,8 @@ export default function LandingDashboardShowcase() {
 
       <motion.div
         {...dashReveal}
-        className="relative mx-auto mt-12"
-        style={{ maxWidth: "1560px", width: "94vw" }}
+        className="relative mx-auto mt-8"
+        style={{ maxWidth: "1720px", width: "98vw" }}
       >
         <div className="overflow-x-auto rounded-2xl">
           <div
@@ -276,7 +279,7 @@ export default function LandingDashboardShowcase() {
                 </nav>
               </aside>
 
-              <div className="p-5">
+              <div className="p-4">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold">Suivi commercial</h3>
@@ -301,18 +304,18 @@ export default function LandingDashboardShowcase() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-4 gap-3">
+                <div className="mt-3 grid grid-cols-4 gap-2">
                   {KPIS.map((k) => (
                     <div
                       key={k.label}
-                      className="rounded-xl p-4"
+                      className="rounded-xl p-3"
                       style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}
                     >
                       <div className="flex items-center justify-between text-[11px]" style={{ color: TEXT_MUTED }}>
                         <span>{k.label}</span>
                         <span style={{ color: k.tone }}>{k.icon}</span>
                       </div>
-                      <div className="mt-2 text-xl font-semibold">{k.value}</div>
+                      <div className="mt-1.5 text-xl font-semibold">{k.value}</div>
                       <div className="mt-0.5 text-[11px]" style={{ color: k.tone }}>
                         {k.delta}
                       </div>
@@ -320,9 +323,9 @@ export default function LandingDashboardShowcase() {
                   ))}
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="mt-3 grid grid-cols-3 gap-2">
                   <div
-                    className="col-span-1 rounded-xl p-4"
+                    className="col-span-1 rounded-xl p-3"
                     style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}
                   >
                     <div className="flex items-center justify-between">
@@ -375,7 +378,7 @@ export default function LandingDashboardShowcase() {
                   </div>
 
                   <div
-                    className="col-span-1 rounded-xl p-4"
+                    className="col-span-1 rounded-xl p-3"
                     style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}
                   >
                     <div className="text-sm font-semibold">Santé commerciale</div>
@@ -416,7 +419,7 @@ export default function LandingDashboardShowcase() {
                   </div>
 
                   <div
-                    className="col-span-1 rounded-xl p-4"
+                    className="col-span-1 rounded-xl p-3"
                     style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}
                   >
                     <div className="flex items-center justify-between">
@@ -450,7 +453,7 @@ export default function LandingDashboardShowcase() {
                 </div>
 
                 <div
-                  className="mt-4 rounded-xl p-4"
+                  className="mt-3 rounded-xl p-3"
                   style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}
                 >
                   <div className="flex items-center justify-between">
@@ -459,11 +462,11 @@ export default function LandingDashboardShowcase() {
                       Pipeline structuré
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-4 gap-3">
+                  <div className="mt-2 grid grid-cols-4 gap-2">
                     {GUIDELINE.map((col) => (
                       <div
                         key={col.title}
-                        className="rounded-lg p-3"
+                        className="rounded-lg p-2.5"
                         style={{ backgroundColor: ROW, border: `1px solid ${BORDER}` }}
                       >
                         <div
@@ -494,7 +497,7 @@ export default function LandingDashboardShowcase() {
                 </div>
 
                 <div
-                  className="mt-4 rounded-xl p-4"
+                  className="mt-3 rounded-xl p-3"
                   style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -519,40 +522,45 @@ export default function LandingDashboardShowcase() {
                     </div>
                   </div>
 
-                  <div className="mt-3 flex flex-col gap-1.5">
+                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:overflow-visible">
                     {LEADS.map((l) => {
                       const isTop = l.rank === 1;
                       return (
                         <div
                           key={l.rank}
-                          className="grid grid-cols-12 items-center gap-3 rounded-lg px-3 py-2.5"
-                          style={{ backgroundColor: ROW, border: `1px solid ${BORDER}` }}
+                          className="flex min-w-[150px] flex-1 flex-col justify-between gap-1.5 rounded-lg p-2.5"
+                          style={{
+                            backgroundColor: isTop ? GREEN_SOFT : ROW,
+                            border: `1px solid ${isTop ? GREEN_BORDER : BORDER}`,
+                          }}
                         >
-                          <div className="col-span-1">
+                          <div className="flex items-center justify-between">
                             <span
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[12px] font-semibold"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-semibold"
                               style={{
-                                backgroundColor: isTop ? GREEN_SOFT : "oklch(1 0 0 / 0.06)",
-                                color: isTop ? GREEN : TEXT,
-                                border: `1px solid ${isTop ? GREEN_BORDER : BORDER}`,
+                                backgroundColor: isTop ? GREEN : "oklch(1 0 0 / 0.06)",
+                                color: isTop ? "oklch(0.2 0.02 150)" : TEXT,
+                                border: `1px solid ${isTop ? GREEN : BORDER}`,
                               }}
                             >
                               #{l.rank}
                             </span>
-                          </div>
-                          <div className="col-span-4 text-[13px] font-medium">{l.name}</div>
-                          <div className="col-span-3 text-[12px]" style={{ color: TEXT_MUTED }}>
-                            {l.trade}
-                          </div>
-                          <div className="col-span-1 text-[12px] font-semibold" style={{ color: GREEN }}>
-                            {l.score}
-                            <span className="text-[10px]" style={{ color: TEXT_MUTED }}>
-                              /100
+                            <span className="text-[12px] font-semibold" style={{ color: GREEN }}>
+                              {l.score}
+                              <span className="text-[9px]" style={{ color: TEXT_MUTED }}>
+                                /100
+                              </span>
                             </span>
                           </div>
-                          <div className="col-span-1">
+                          <div>
+                            <div className="truncate text-[12px] font-medium">{l.name}</div>
+                            <div className="truncate text-[10px]" style={{ color: TEXT_MUTED }}>
+                              {l.trade}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-1">
                             <span
-                              className="whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              className="whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-medium"
                               style={
                                 isTop
                                   ? { color: "oklch(0.2 0.02 150)", backgroundColor: GREEN, border: `1px solid ${GREEN}` }
@@ -561,17 +569,15 @@ export default function LandingDashboardShowcase() {
                             >
                               {l.badge}
                             </span>
+                            <span className="whitespace-nowrap text-[11px] font-semibold">{l.amount}</span>
                           </div>
-                          <div className="col-span-1 text-right text-[12px] font-semibold">{l.amount}</div>
-                          <div className="col-span-1 text-right">
-                            <a
-                              href="#"
-                              className="inline-flex items-center gap-0.5 text-[11px]"
-                              style={{ color: GREEN }}
-                            >
-                              Voir <ArrowRight size={10} />
-                            </a>
-                          </div>
+                          <a
+                            href="#"
+                            className="inline-flex items-center gap-0.5 text-[10px]"
+                            style={{ color: GREEN }}
+                          >
+                            Voir <ArrowRight size={9} />
+                          </a>
                         </div>
                       );
                     })}
