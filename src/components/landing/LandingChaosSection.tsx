@@ -470,21 +470,21 @@ export default function LandingChaosSection() {
             {reduce ? (
               <div
                 aria-hidden
-                className="relative z-0 mt-4 h-10 w-px"
+                className="relative z-0 mt-4 h-16 w-px sm:h-24"
                 style={{
-                  background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 55%, transparent), transparent)`,
+                  background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 60%, transparent), transparent)`,
                 }}
               />
             ) : (
               <motion.div
                 aria-hidden
-                className="relative z-0 mt-4 h-10 w-px origin-top"
+                className="relative z-0 mt-4 h-16 w-px origin-top sm:h-24"
                 style={{
                   background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 65%, transparent), transparent)`,
-                  boxShadow: `0 0 8px 1px ${LINE_GLOW}`,
+                  boxShadow: `0 0 10px 1px ${LINE_GLOW}`,
                 }}
                 initial={{ opacity: 0, scaleY: 0 }}
-                whileInView={{ opacity: 0.5, scaleY: 1 }}
+                whileInView={{ opacity: 0.6, scaleY: 1 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: EXIT_DURATION, ease: "easeOut", delay: EXIT_DELAY }}
               />

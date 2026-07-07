@@ -104,6 +104,175 @@ const LEADS = [
   { rank: 5, name: "Claire Martin", trade: "plombier chauffagiste — Mont-Saint-Aignan", score: 74, badge: "À suivre", amount: "1 200 €" },
 ];
 
+function MobileDashboardPreview() {
+  const mobileLeads = LEADS.slice(0, 3);
+
+  return (
+    <div
+      className="rounded-2xl p-3"
+      style={{
+        backgroundColor: APP_BG,
+        border: `1px solid ${BORDER_STRONG}`,
+        boxShadow: "0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 30px 70px -30px oklch(0 0 0 / 0.7)",
+      }}
+    >
+      {/* Mini-header */}
+      <div className="flex items-center gap-2">
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-base font-semibold"
+          style={{ backgroundColor: GREEN, color: "oklch(0.2 0.02 150)", fontFamily: '"Instrument Serif", serif' }}
+        >
+          K
+        </div>
+        <div className="text-sm font-semibold tracking-wide">KADRIA</div>
+        <span
+          className="rounded px-1.5 py-0.5 text-[9px] font-bold tracking-widest"
+          style={{ backgroundColor: GREEN_SOFT, color: GREEN, border: `1px solid ${GREEN_BORDER}` }}
+        >
+          PRO
+        </span>
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">Suivi commercial</div>
+          <div className="text-[11px]" style={{ color: TEXT_MUTED }}>
+            Ce mois
+          </div>
+        </div>
+      </div>
+
+      {/* KPI cards, 2 colonnes */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {KPIS.map((k) => (
+          <div key={k.label} className="rounded-xl p-2.5" style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}>
+            <div className="flex items-center justify-between text-[10px]" style={{ color: TEXT_MUTED }}>
+              <span>{k.label}</span>
+              <span style={{ color: k.tone }}>{k.icon}</span>
+            </div>
+            <div className="mt-1 text-lg font-semibold">{k.value}</div>
+            <div className="mt-0.5 text-[10px]" style={{ color: k.tone }}>
+              {k.delta}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Opportunités à sécuriser */}
+      <div className="mt-3 rounded-xl p-2.5" style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center justify-between">
+          <div className="text-[13px] font-semibold">Opportunités à sécuriser</div>
+          <AlertTriangle size={13} style={{ color: ORANGE }} />
+        </div>
+        <div className="mt-2 flex flex-col gap-2">
+          {OPP_RISK.map((o) => (
+            <div key={o.name} className="rounded-lg p-2" style={{ backgroundColor: ROW, border: `1px solid ${BORDER}` }}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[12px] font-medium">{o.name}</div>
+                <span
+                  className="whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wider"
+                  style={{
+                    color: o.tone,
+                    backgroundColor: `color-mix(in oklab, ${o.tone} 14%, transparent)`,
+                    border: `1px solid color-mix(in oklab, ${o.tone} 35%, transparent)`,
+                  }}
+                >
+                  {o.tag}
+                </span>
+              </div>
+              <div className="mt-0.5 text-[10px]" style={{ color: TEXT_MUTED }}>
+                {o.meta}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button className="mt-2.5 inline-flex items-center gap-1 text-[11px]" style={{ color: GREEN }}>
+          Voir les dossiers en risque <ArrowRight size={11} />
+        </button>
+      </div>
+
+      {/* Actions à traiter */}
+      <div className="mt-3 rounded-xl p-2.5" style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center justify-between">
+          <div className="text-[13px] font-semibold">Actions à traiter</div>
+          <span className="text-[11px]" style={{ color: TEXT_MUTED }}>
+            16 en attente
+          </span>
+        </div>
+        <div className="mt-2 flex flex-col gap-1.5">
+          {ACTIONS.map((a) => (
+            <div
+              key={a.label}
+              className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-[12px]"
+              style={{ backgroundColor: ROW, border: `1px solid ${BORDER}` }}
+            >
+              <div className="flex items-center gap-2">
+                <span style={{ color: a.tone }}>{a.icon}</span>
+                {a.label}
+              </div>
+              <ArrowUpRight size={12} style={{ color: TEXT_DIM }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Opportunités prioritaires (3 seulement) */}
+      <div className="mt-3 rounded-xl p-2.5" style={{ backgroundColor: PANEL, border: `1px solid ${BORDER}` }}>
+        <div className="flex items-center gap-2">
+          <div className="text-[13px] font-semibold">Opportunités prioritaires</div>
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ color: GREEN, backgroundColor: GREEN_SOFT, border: `1px solid ${GREEN_BORDER}` }}
+          >
+            <Sparkles size={10} /> Score IA
+          </span>
+        </div>
+        <div className="mt-2.5 flex flex-col gap-2">
+          {mobileLeads.map((l) => {
+            const isTop = l.rank === 1;
+            return (
+              <div
+                key={l.rank}
+                className="flex items-center justify-between gap-2 rounded-lg p-2.5"
+                style={{
+                  backgroundColor: isTop ? GREEN_SOFT : ROW,
+                  border: `1px solid ${isTop ? GREEN_BORDER : BORDER}`,
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold"
+                    style={{
+                      backgroundColor: isTop ? GREEN : "oklch(1 0 0 / 0.06)",
+                      color: isTop ? "oklch(0.2 0.02 150)" : TEXT,
+                      border: `1px solid ${isTop ? GREEN : BORDER}`,
+                    }}
+                  >
+                    #{l.rank}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[12px] font-medium">{l.name}</div>
+                    <div className="text-[10px]" style={{ color: TEXT_MUTED }}>
+                      {l.score}
+                      <span style={{ color: TEXT_MUTED }}>/100</span> · {l.amount}
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="#"
+                  className="inline-flex shrink-0 items-center gap-0.5 text-[10px]"
+                  style={{ color: GREEN }}
+                >
+                  Voir le dossier <ArrowRight size={9} />
+                </a>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingDashboardShowcase() {
   const reduce = useReducedMotion();
 
@@ -151,13 +320,29 @@ export default function LandingDashboardShowcase() {
         {/* Lien visuel avec la section précédente : faisceau vert dégradé
             au-dessus du badge, discret, n'ajoute pas d'espace vertical
             (positionné en absolute, hauteur du conteneur inchangée). */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 hidden h-8 w-px -translate-x-1/2 -translate-y-full md:block"
-          style={{
-            background: `linear-gradient(to bottom, transparent, color-mix(in oklab, ${GREEN} 55%, transparent))`,
-          }}
-        />
+        {reduce ? (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-0 h-14 w-px -translate-x-1/2 -translate-y-full sm:h-20"
+            style={{
+              background: `linear-gradient(to bottom, transparent, color-mix(in oklab, ${GREEN} 60%, transparent))`,
+              boxShadow: `0 0 10px 1px color-mix(in oklab, ${GREEN} 45%, transparent)`,
+            }}
+          />
+        ) : (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-0 h-14 w-px origin-bottom -translate-x-1/2 -translate-y-full sm:h-20"
+            style={{
+              background: `linear-gradient(to bottom, transparent, color-mix(in oklab, ${GREEN} 60%, transparent))`,
+              boxShadow: `0 0 10px 1px color-mix(in oklab, ${GREEN} 45%, transparent)`,
+            }}
+            initial={{ opacity: 0, scaleY: 0 }}
+            whileInView={{ opacity: 0.55, scaleY: 1 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
+          />
+        )}
         <motion.div {...fadeUp}>
           <span
             className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em]"
@@ -175,14 +360,20 @@ export default function LandingDashboardShowcase() {
         </motion.div>
       </div>
 
+      {/* Mobile : preview simplifiée, sans mockup horizontal ni scroll. */}
+      <div className="relative mx-auto mt-8 block max-w-[calc(100vw-32px)] px-4 md:hidden">
+        <MobileDashboardPreview />
+      </div>
+
+      {/* Desktop/tablette : mockup complet, largeur contrainte au viewport. */}
       <motion.div
         {...dashReveal}
-        className="relative mx-auto mt-8"
-        style={{ maxWidth: "1720px", width: "98vw" }}
+        className="relative mx-auto mt-8 hidden md:block"
+        style={{ width: "min(94vw, 1500px)", maxWidth: "calc(100vw - 48px)" }}
       >
-        <div className="overflow-x-auto rounded-2xl">
+        <div className="rounded-2xl">
           <div
-            className="min-w-[1180px] rounded-2xl"
+            className="rounded-2xl"
             style={{
               backgroundColor: APP_BG,
               border: `1px solid ${BORDER_STRONG}`,
@@ -209,7 +400,7 @@ export default function LandingDashboardShowcase() {
 
             <div className="grid grid-cols-[220px_1fr]">
               <aside
-                className="flex flex-col border-r p-4"
+                className="flex flex-col border-r p-3"
                 style={{ borderColor: BORDER, backgroundColor: "oklch(0.2 0.008 260)" }}
               >
                 <div className="flex items-center gap-2">
@@ -232,14 +423,14 @@ export default function LandingDashboardShowcase() {
                   </span>
                 </div>
 
-                <div className="mt-5">
+                <div className="mt-4">
                   <div className="text-sm font-medium">Bonjour Laurent</div>
                   <div className="text-[11px]" style={{ color: TEXT_DIM }}>
                     Mardi 7 juillet 2026
                   </div>
                 </div>
 
-                <nav className="mt-5 flex flex-col gap-1 text-[13px]">
+                <nav className="mt-4 flex flex-col gap-1 text-[13px]">
                   {[
                     { icon: <TrendingUp size={14} />, label: "Valeur générée" },
                     { icon: <BarChart3 size={14} />, label: "Suivi commercial", active: true },
@@ -262,7 +453,7 @@ export default function LandingDashboardShowcase() {
                   ))}
                 </nav>
 
-                <div className="my-4 h-px" style={{ backgroundColor: BORDER }} />
+                <div className="my-3 h-px" style={{ backgroundColor: BORDER }} />
 
                 <nav className="flex flex-col gap-1 text-[12px]" style={{ color: TEXT_DIM }}>
                   {[
@@ -279,7 +470,7 @@ export default function LandingDashboardShowcase() {
                 </nav>
               </aside>
 
-              <div className="p-4">
+              <div className="p-3">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold">Suivi commercial</h3>
