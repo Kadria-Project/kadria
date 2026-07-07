@@ -148,16 +148,6 @@ export default function LandingDashboardShowcase() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        {/* Lien visuel avec la section précédente : faisceau vert dégradé
-            au-dessus du badge, discret, n'ajoute pas d'espace vertical
-            (positionné en absolute, hauteur du conteneur inchangée). */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 hidden h-8 w-px -translate-x-1/2 -translate-y-full md:block"
-          style={{
-            background: `linear-gradient(to bottom, transparent, color-mix(in oklab, ${GREEN} 55%, transparent))`,
-          }}
-        />
         <motion.div {...fadeUp}>
           <span
             className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em]"
