@@ -106,17 +106,22 @@ const PIPELINE_STEPS = [
   { label: 'Reçu', done: true },
   { label: 'Qualifié', done: true },
   { label: 'Préparé', done: false },
-  { label: 'Envoyé', done: false },
-  { label: 'Ouvert / relance', done: false },
+  { label: 'À rappeler', done: false },
   { label: 'Décision', done: false },
-  { label: 'Gagné / perdu', done: false },
+];
+
+const PROJECT_FIELDS = [
+  { label: 'Type', value: 'Borne de recharge' },
+  { label: 'Lieu', value: 'Lyon 3e' },
+  { label: 'Délai', value: 'Sous 2 semaines' },
+  { label: 'Photos', value: '3 ajoutées' },
 ];
 
 const ANALYSIS_COLUMNS: { heading: string; tone: 'good' | 'warn' | 'neutral'; items: string[] }[] = [
   {
     heading: 'Forces',
     tone: 'good',
-    items: ['Téléphone renseigné', 'Type de projet clair', 'Budget renseigné'],
+    items: ['Besoin clair', 'Budget renseigné', 'Délai renseigné'],
   },
   {
     heading: 'Infos manquantes',
@@ -168,7 +173,7 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55, ease: 'easeOut', delay: reduce ? 0 : 0.3 }}
-      className="relative mx-auto w-full overflow-hidden rounded-2xl p-6 backdrop-blur-md sm:p-7 lg:w-[86%] lg:p-9"
+      className="relative mx-auto w-full overflow-hidden rounded-2xl p-6 backdrop-blur-md sm:p-7 lg:w-[84%] lg:p-8"
       style={{
         backgroundColor: `color-mix(in oklab, ${CARD_BG} 88%, transparent)`,
         border: `1px solid color-mix(in oklab, ${GREEN} 32%, transparent)`,
@@ -185,10 +190,10 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-base font-semibold sm:text-lg" style={{ color: TEXT }}>
-            Panne chaudière avec eau tiède
+            Installation borne de recharge
           </p>
           <p className="mt-0.5 text-[12px]" style={{ color: TEXT_DIM }}>
-            Antoine Rousseau · chauffagiste · Maromme · Assistant vocal
+            Client particulier · électricien · Lyon 3e · Assistant web &amp; vocal
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -196,7 +201,7 @@ function DossierCard({ reduce }: { reduce: boolean }) {
             À rappeler
           </DossierBadge>
           <DossierBadge tone="green" reduce={reduce} delay={0.48}>
-            Score 91/100
+            Score 88/100
           </DossierBadge>
           <DossierBadge tone="orange" reduce={reduce} delay={0.56}>
             Chaud
@@ -207,13 +212,13 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       {/* 3 chips */}
       <div className="relative mt-4 flex flex-wrap gap-2">
         <DossierBadge tone="muted" reduce={reduce} delay={0.62}>
-          Budget 400 €
+          Budget 4 500 €
         </DossierBadge>
         <DossierBadge tone="muted" reduce={reduce} delay={0.68}>
-          Délai urgent
+          Délai sous 2 semaines
         </DossierBadge>
         <DossierBadge tone="muted" reduce={reduce} delay={0.74}>
-          Source vocal
+          Source chat + vocal
         </DossierBadge>
       </div>
 
@@ -223,22 +228,41 @@ function DossierCard({ reduce }: { reduce: boolean }) {
         style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
       >
         <span className="inline-flex items-center gap-1.5">
-          <Phone size={12} style={{ color: GREEN }} /> 06 72 38 65 11
+          <Phone size={12} style={{ color: GREEN }} /> 06 12 34 XX XX
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Mail size={12} style={{ color: GREEN }} /> antoine.rousseau.demo@kadria.fr
+          <Mail size={12} style={{ color: GREEN }} /> client.demo@kadria.fr
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <MapPin size={12} style={{ color: GREEN }} /> 14 rue des Martyrs, 76150 Maromme
+          <MapPin size={12} style={{ color: GREEN }} /> Lyon 3e, 69003
         </span>
       </div>
 
-      {/* C. Pilotage commercial */}
+      {/* C. Pilotage commercial — 3 colonnes horizontales */}
       <div className="relative mt-6">
         <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: GREEN }}>
           Pilotage commercial
         </p>
-        <div className="mt-3 grid gap-5 lg:grid-cols-2">
+        <div className="mt-3 grid gap-4 lg:grid-cols-3">
+          {/* Projet */}
+          <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+              Projet
+            </p>
+            <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2">
+              {PROJECT_FIELDS.map((f) => (
+                <div key={f.label}>
+                  <dt className="text-[10px] uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+                    {f.label}
+                  </dt>
+                  <dd className="text-[12px] font-medium" style={{ color: TEXT }}>
+                    {f.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
           {/* Action recommandée */}
           <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
@@ -248,14 +272,14 @@ function DossierCard({ reduce }: { reduce: boolean }) {
               Rappeler le client
             </p>
             <p className="mt-1 text-[12px] leading-relaxed" style={{ color: TEXT_MUTED }}>
-              Le dossier attend un retour commercial avant de poursuivre.
+              Le dossier est qualifié et prêt à être traité.
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               <DossierBadge tone="muted" reduce={reduce} delay={0.8}>
-                Priorité moyenne
+                Priorité élevée
               </DossierBadge>
               <DossierBadge tone="muted" reduce={reduce} delay={0.85}>
-                Impact moyen
+                Impact commercial
               </DossierBadge>
               <DossierBadge tone="muted" reduce={reduce} delay={0.9}>
                 ~5 min
@@ -274,18 +298,18 @@ function DossierCard({ reduce }: { reduce: boolean }) {
             </button>
           </div>
 
-          {/* Avancement commercial */}
+          {/* Avancement commercial — timeline compacte 5 étapes */}
           <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
               Avancement commercial
             </p>
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-3 flex items-start justify-between gap-1">
               {PIPELINE_STEPS.map((step, i) => (
                 <motion.div
                   key={step.label}
-                  className="flex items-center gap-2 text-[12px]"
-                  initial={reduce ? false : { opacity: 0, x: -6 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  className="flex flex-1 flex-col items-center gap-1 text-center"
+                  initial={reduce ? false : { opacity: 0, y: 6 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-60px' }}
                   transition={{ duration: 0.35, ease: 'easeOut', delay: reduce ? 0 : 0.5 + i * 0.09 }}
                 >
@@ -300,7 +324,10 @@ function DossierCard({ reduce }: { reduce: boolean }) {
                   >
                     {step.done && <Check size={10} style={{ color: GREEN }} />}
                   </span>
-                  <span style={{ color: step.done ? TEXT : TEXT_DIM, fontWeight: step.done ? 600 : 400 }}>
+                  <span
+                    className="text-[10px] leading-tight"
+                    style={{ color: step.done ? TEXT : TEXT_DIM, fontWeight: step.done ? 600 : 400 }}
+                  >
                     {step.label}
                   </span>
                 </motion.div>
@@ -353,7 +380,7 @@ function DossierCard({ reduce }: { reduce: boolean }) {
         className="relative mt-5 rounded-xl px-4 py-3 text-[12px] leading-relaxed"
         style={{ backgroundColor: `color-mix(in oklab, ${GREEN} 8%, transparent)`, border: `1px solid color-mix(in oklab, ${GREEN} 22%, transparent)`, color: TEXT }}
       >
-        Urgence chauffage : eau chaude sanitaire tiède, diagnostic prioritaire. Relance aujourd&apos;hui.
+        Projet de borne de recharge qualifié : budget estimé, localisation et délai déjà collectés. Rappel recommandé aujourd&apos;hui.
       </div>
 
       {/* F. CTA final */}
