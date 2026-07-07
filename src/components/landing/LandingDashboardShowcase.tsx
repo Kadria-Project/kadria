@@ -317,43 +317,12 @@ export default function LandingDashboardShowcase() {
       />
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">
-        {/* Lien visuel avec la section précédente : faisceau vert dégradé du
-            point de jonction (fin de LandingChaosSection) jusqu'au badge.
-            Positionné à top-0 SANS translation négative : la section a
-            "overflow-hidden", donc un élément décalé au-dessus de top-0 via
-            -translate-y-full était clippé et invisible — c'était la cause de
-            la rupture visuelle perçue entre les deux sections.
-            Hauteur mesurée précisément via getBoundingClientRect() sur le
-            rendu réel (badge.top - section.top) : 101px en desktop/tablette
-            (>= sm) et 77px en mobile — l'ancien h-14/h-20 (56px/80px, calé
-            uniquement sur le padding-top de la section) s'arrêtait ~21px
-            avant le badge, laissant le trait visuellement coupé avant
-            d'atteindre "Kadria prend le relais". Les valeurs exactes ci-
-            dessous font que le trait rejoint réellement le bord haut du
-            badge, sans espace ajouté. */}
-        {reduce ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-[77px] w-px -translate-x-1/2 sm:h-[101px]"
-            style={{
-              background: `linear-gradient(to bottom, color-mix(in oklab, ${GREEN} 60%, transparent), transparent)`,
-              boxShadow: `0 0 10px 1px color-mix(in oklab, ${GREEN} 45%, transparent)`,
-            }}
-          />
-        ) : (
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-[77px] w-px origin-top -translate-x-1/2 sm:h-[101px]"
-            style={{
-              background: `linear-gradient(to bottom, color-mix(in oklab, ${GREEN} 60%, transparent), transparent)`,
-              boxShadow: `0 0 10px 1px color-mix(in oklab, ${GREEN} 45%, transparent)`,
-            }}
-            initial={{ opacity: 0, scaleY: 0 }}
-            whileInView={{ opacity: 0.55, scaleY: 1 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
-          />
-        )}
+        {/* Le connecteur vertical vert reliant le point de jonction (fin de
+            LandingChaosSection) jusqu'au badge a été retiré : il passait
+            visuellement derrière le badge "Kadria prend le relais" et le
+            titre, gênant leur lecture. Le point vert de fin de
+            LandingChaosSection reste le point d'arrivée visuel final de la
+            narration cartes→K→point vert. */}
         <motion.div {...fadeUp}>
           <span
             className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em]"
