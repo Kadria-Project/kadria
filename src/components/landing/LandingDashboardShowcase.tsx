@@ -322,13 +322,19 @@ export default function LandingDashboardShowcase() {
             Positionné à top-0 SANS translation négative : la section a
             "overflow-hidden", donc un élément décalé au-dessus de top-0 via
             -translate-y-full était clippé et invisible — c'était la cause de
-            la rupture visuelle perçue entre les deux sections. Ici la ligne
-            reste dans le padding-top de la section (py-14/py-20, soit
-            exactement h-14/h-20) et rejoint le badge sans espace ajouté. */}
+            la rupture visuelle perçue entre les deux sections.
+            Hauteur mesurée précisément via getBoundingClientRect() sur le
+            rendu réel (badge.top - section.top) : 101px en desktop/tablette
+            (>= sm) et 77px en mobile — l'ancien h-14/h-20 (56px/80px, calé
+            uniquement sur le padding-top de la section) s'arrêtait ~21px
+            avant le badge, laissant le trait visuellement coupé avant
+            d'atteindre "Kadria prend le relais". Les valeurs exactes ci-
+            dessous font que le trait rejoint réellement le bord haut du
+            badge, sans espace ajouté. */}
         {reduce ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-14 w-px -translate-x-1/2 sm:h-20"
+            className="pointer-events-none absolute left-1/2 top-0 h-[77px] w-px -translate-x-1/2 sm:h-[101px]"
             style={{
               background: `linear-gradient(to bottom, color-mix(in oklab, ${GREEN} 60%, transparent), transparent)`,
               boxShadow: `0 0 10px 1px color-mix(in oklab, ${GREEN} 45%, transparent)`,
@@ -337,7 +343,7 @@ export default function LandingDashboardShowcase() {
         ) : (
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-14 w-px origin-top -translate-x-1/2 sm:h-20"
+            className="pointer-events-none absolute left-1/2 top-0 h-[77px] w-px origin-top -translate-x-1/2 sm:h-[101px]"
             style={{
               background: `linear-gradient(to bottom, color-mix(in oklab, ${GREEN} 60%, transparent), transparent)`,
               boxShadow: `0 0 10px 1px color-mix(in oklab, ${GREEN} 45%, transparent)`,

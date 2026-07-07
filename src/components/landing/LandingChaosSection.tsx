@@ -77,16 +77,23 @@ function toneColor(tone?: ChaosCard["tone"]) {
 
 // Courbes décoratives cartes -> K, en coordonnées relatives (viewBox 0-100).
 // 3 colonnes desktop (lg:grid-cols-3, 2 lignes) : centres approx. x = 17 / 50 / 83,
-// bas de ligne 1 ~ y18, bas de ligne 2 ~ y38. Le K se trouve en bas, ~ (50, 92).
+// bas de ligne 1 ~ y18, bas de ligne 2 ~ y38. Le K (h-20 w-20, ~80px) occupe
+// environ y74 à y93 dans ce viewBox (mesuré via getBoundingClientRect sur le
+// rendu réel). Les endpoints convergent à y82, bien À L'INTÉRIEUR du cadre du
+// K (pas juste sous son bord bas) : avec le glow drop-shadow (~8px de flou,
+// ~1.9 unité de viewBox), un endpoint trop proche du bord bas (l'ancien y92,
+// à 1.3 unité seulement du bord) laissait le halo déborder visuellement
+// sous le K. À y82 (~11 unités du bord), le trait ET son glow restent
+// couverts par le K (z-30, opaque) qui les recouvre proprement.
 // Les traits partent des interstices sous chaque carte pour rester visibles
 // dans les zones libres de la grille (pas depuis une zone cachée).
 const CHAOS_LINES = [
-  "M17,18 C25,52 38,80 50,92",
-  "M50,18 C50,48 50,76 50,92",
-  "M83,18 C75,52 62,80 50,92",
-  "M17,38 C25,58 38,80 50,92",
-  "M50,38 C50,58 50,78 50,92",
-  "M83,38 C75,58 62,80 50,92",
+  "M17,18 C25,48 38,70 50,82",
+  "M50,18 C50,44 50,66 50,82",
+  "M83,18 C75,48 62,70 50,82",
+  "M17,38 C25,54 38,70 50,82",
+  "M50,38 C50,54 50,68 50,82",
+  "M83,38 C75,54 62,70 50,82",
 ];
 
 // Points lumineux simulant un flux d'énergie le long de chaque courbe.
@@ -94,17 +101,17 @@ const CHAOS_LINES = [
 // plutôt qu'un suivi exact du path, pour rester simple et fiable.
 const CHAOS_POINTS: { cx: number; cy: number; lineIndex: number; t: number }[] = [
   { cx: 22, cy: 40, lineIndex: 0, t: 0 },
-  { cx: 42, cy: 85, lineIndex: 0, t: 1 },
+  { cx: 42, cy: 76, lineIndex: 0, t: 1 },
   { cx: 50, cy: 45, lineIndex: 1, t: 0 },
-  { cx: 50, cy: 80, lineIndex: 1, t: 1 },
+  { cx: 50, cy: 74, lineIndex: 1, t: 1 },
   { cx: 78, cy: 40, lineIndex: 2, t: 0 },
-  { cx: 58, cy: 85, lineIndex: 2, t: 1 },
+  { cx: 58, cy: 76, lineIndex: 2, t: 1 },
   { cx: 22, cy: 50, lineIndex: 3, t: 0 },
-  { cx: 42, cy: 85, lineIndex: 3, t: 1 },
+  { cx: 42, cy: 76, lineIndex: 3, t: 1 },
   { cx: 50, cy: 55, lineIndex: 4, t: 0 },
-  { cx: 50, cy: 82, lineIndex: 4, t: 1 },
+  { cx: 50, cy: 74, lineIndex: 4, t: 1 },
   { cx: 78, cy: 50, lineIndex: 5, t: 0 },
-  { cx: 58, cy: 85, lineIndex: 5, t: 1 },
+  { cx: 58, cy: 76, lineIndex: 5, t: 1 },
 ];
 
 // Timing global de la séquence (cf. commentaires par étape) :
