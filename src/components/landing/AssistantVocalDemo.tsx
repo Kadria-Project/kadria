@@ -48,6 +48,14 @@ export interface VoiceAssistantCardProps {
   scoreLabel?: string;
   /** Optional "collected fields" summary shown once the call transcript has finished. Absent by default. */
   collectedSummary?: string;
+  /**
+   * 'auto' (default) preserves the original behavior: native vertical
+   * scrolling (`overflow-y-auto`) — used as-is by the "Deux assistants. Une
+   * seule plateforme." section.
+   * 'translate' is opt-in: `overflow-hidden` + translateY animation so no
+   * native scrollbar is rendered. Used by `RequestTransformationSection.tsx`.
+   */
+  scrollMode?: 'auto' | 'translate';
 }
 
 export function VoiceAssistantCard({
@@ -57,10 +65,13 @@ export function VoiceAssistantCard({
   headerSubtitle = 'Appel en cours...',
   scoreLabel = 'Score: 91%',
   collectedSummary,
+  scrollMode = 'auto',
 }: VoiceAssistantCardProps) {
   const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? messages.length : 0);
   const [elapsed, setElapsed] = useState(0);
+  const [translateY, setTranslateY] = useState(0);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -94,12 +105,22 @@ export function VoiceAssistantCard({
   }, [reduceMotion]);
 
   useEffect(() => {
+    if (scrollMode !== 'auto') return;
     if (!transcriptRef.current) return;
     transcriptRef.current.scrollTo({
       top: transcriptRef.current.scrollHeight,
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
-  }, [visibleMessages, reduceMotion]);
+  }, [visibleMessages, reduceMotion, scrollMode]);
+
+  useEffect(() => {
+    if (scrollMode !== 'translate') return;
+    if (!transcriptRef.current || !innerRef.current) return;
+    const outer = transcriptRef.current;
+    const inner = innerRef.current;
+    const maxOffset = Math.max(0, inner.scrollHeight - outer.clientHeight);
+    setTranslateY(maxOffset);
+  }, [visibleMessages, scrollMode]);
 
   const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
   const seconds = (elapsed % 60).toString().padStart(2, '0');
@@ -137,7 +158,35 @@ export function VoiceAssistantCard({
         ))}
       </div>
 
-      <div ref={transcriptRef} className="kr-assistant-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3.5">
+      <div
+        ref={transcriptRef}
+        className={`kr-assistant-scroll relative min-h-0 flex-1 px-4 py-3.5 ${
+          scrollMode === 'translate' ? 'overflow-hidden' : 'overflow-y-auto flex flex-col gap-3'
+        }`}
+      >
+        {scrollMode === 'translate' && (
+          <>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6"
+              style={{ background: 'linear-gradient(to bottom, var(--bg-elevated, #12161c), transparent)' }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6"
+              style={{ background: 'linear-gradient(to top, var(--bg-elevated, #12161c), transparent)' }}
+            />
+          </>
+        )}
+        <div
+          ref={innerRef}
+          className="flex flex-col gap-3"
+          style={
+            scrollMode === 'translate'
+              ? { transform: `translateY(-${translateY}px)`, transition: reduceMotion ? 'none' : 'transform 450ms ease' }
+              : undefined
+          }
+        >
         {messages.slice(0, visibleMessages).map((msg, i) =>
           msg.role === 'client' ? (
             <div
@@ -161,6 +210,7 @@ export function VoiceAssistantCard({
             </div>
           )
         )}
+        </div>
       </div>
 
       {collectedSummary && (

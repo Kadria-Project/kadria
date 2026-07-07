@@ -46,36 +46,77 @@ const ORANGE = 'oklch(0.82 0.16 65)';
 
 /* Dedicated, short conversation for this section — reuses the exact same
    AssistantWebChatCard component/animation/style as the "Deux assistants.
-   Une seule plateforme." section, only the message content differs. */
+   Une seule plateforme." section, only the message content differs.
+   Scenario: "AD Elec ⚡" — installation d'une borne de recharge 7 kW. */
 const WEB_DEMO_MESSAGES: ChatMsg[] = [
-  { role: 'user', text: 'Bonjour, je souhaite installer une borne de recharge à domicile.', delay: 0 },
+  { role: 'user', text: 'Bonjour, je souhaite installer une borne de recharge pour ma voiture électrique.', delay: 0 },
   {
     role: 'assistant',
-    text: 'Parfait ! Pour bien préparer votre projet, pouvez-vous me préciser où se situe le chantier ?',
+    text: 'Parfait ! Pour bien préparer votre projet, quelle puissance de borne envisagez-vous ?',
     delay: 2200,
   },
-  { role: 'user', text: 'À Lyon 3e.', delay: 4600 },
+  { role: 'user', text: '7 kW.', delay: 4600 },
   {
     role: 'assistant',
-    text: 'Merci ! Quel est votre délai idéal pour les travaux ?',
+    text: 'Merci ! Quel budget avez-vous prévu pour cette installation ?',
     delay: 6800,
+  },
+  { role: 'user', text: 'Entre 1 000 et 1 500 €.', delay: 9200 },
+  {
+    role: 'assistant',
+    text: 'Très bien. Quel est votre délai souhaité pour les travaux ?',
+    delay: 11400,
+  },
+  { role: 'user', text: 'Dès que possible.', delay: 13800 },
+  {
+    role: 'assistant',
+    text: "Parfait, votre projet semble prêt à démarrer. Quelle est l'adresse du chantier ?",
+    delay: 16000,
+  },
+  { role: 'user', text: '24 Rue de la Mairie, 76520 Saint-Aubin-Celloville', delay: 18600 },
+  {
+    role: 'assistant',
+    text: 'Pour finaliser votre dossier, renseignez vos coordonnées ci-dessous.',
+    delay: 20800,
+  },
+  {
+    role: 'user',
+    text: 'Jean Dupont, 06 21 45 77 XX, jean@emailkadria.fr',
+    delay: 23400,
+    isContactCard: true,
+    contactName: 'Jean Dupont',
+    contactPhone: '06 21 45 77 XX',
+    contactEmail: 'jean@emailkadria.fr',
   },
 ];
 
 const WEB_COLLECTED_FIELDS = [
-  { label: 'Projet', value: 'Borne de recharge' },
-  { label: 'Localisation', value: 'Lyon (69003)' },
-  { label: 'Photos', value: '3 ajoutées' },
-  { label: 'Délai', value: 'Sous 2 semaines' },
+  { label: 'Projet', value: 'Borne de recharge 7 kW' },
+  { label: 'Budget', value: '1 000 à 1 500 €' },
+  { label: 'Délai', value: 'Dès que possible' },
+  { label: 'Maturité', value: 'Prêt à démarrer' },
+  { label: 'Contact', value: 'Collecté' },
 ];
 
 const VOICE_DEMO_MESSAGES: { role: 'client' | 'kadria'; text: string; delay: number }[] = [
-  { role: 'kadria', text: 'Bonjour, pour quel type de projet puis-je vous aider ?', delay: 0 },
-  { role: 'client', text: 'Je souhaite installer une borne de recharge à la maison.', delay: 2400 },
+  { role: 'kadria', text: "Bonjour, je suis l'assistant de Kadria. Pour quel type de projet puis-je vous aider ?", delay: 0 },
+  { role: 'client', text: 'Bonjour, je souhaite faire installer une borne de recharge 7 kW dans ma maison individuelle.', delay: 2600 },
   {
     role: 'kadria',
-    text: 'Parfait. Où se situe le chantier et quand souhaitez-vous réaliser les travaux ?',
-    delay: 4800,
+    text: 'Très bien. Sous quel délai souhaitez-vous réaliser les travaux ?',
+    delay: 5200,
+  },
+  { role: 'client', text: "D'ici trois semaines si possible.", delay: 7800 },
+  {
+    role: 'kadria',
+    text: 'Parfait. Avez-vous une idée de votre budget pour cette installation ?',
+    delay: 10200,
+  },
+  { role: 'client', text: 'Entre 1 500 et 2 000 euros.', delay: 12800 },
+  {
+    role: 'kadria',
+    text: 'Merci, votre dossier est créé automatiquement et transmis à un artisan qualifié.',
+    delay: 15200,
   },
 ];
 
@@ -106,27 +147,27 @@ const PIPELINE_STEPS = [
   { label: 'Reçu', done: true },
   { label: 'Qualifié', done: true },
   { label: 'Préparé', done: false },
-  { label: 'À rappeler', done: false },
+  { label: 'Rendez-vous', done: false },
   { label: 'Décision', done: false },
 ];
 
 const PROJECT_FIELDS = [
-  { label: 'Type', value: 'Borne de recharge' },
-  { label: 'Lieu', value: 'Lyon 3e' },
-  { label: 'Délai', value: 'Sous 2 semaines' },
-  { label: 'Photos', value: '3 ajoutées' },
+  { label: 'Type', value: 'Borne de recharge 7 kW' },
+  { label: 'Adresse', value: '24 Rue de la Mairie, 76520' },
+  { label: 'Budget', value: '1 000 à 1 500 €' },
+  { label: 'Délai', value: 'Dès que possible' },
 ];
 
 const ANALYSIS_COLUMNS: { heading: string; tone: 'good' | 'warn' | 'neutral'; items: string[] }[] = [
   {
     heading: 'Forces',
     tone: 'good',
-    items: ['Besoin clair', 'Budget renseigné', 'Délai renseigné'],
+    items: ['Besoin clair', 'Budget renseigné', 'Prêt à démarrer'],
   },
   {
     heading: 'Infos manquantes',
     tone: 'warn',
-    items: ['Dossier complet'],
+    items: ['Photos du tableau électrique'],
   },
   {
     heading: 'Risques',
@@ -173,7 +214,7 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55, ease: 'easeOut', delay: reduce ? 0 : 0.3 }}
-      className="relative mx-auto w-full overflow-hidden rounded-2xl p-6 backdrop-blur-md sm:p-7 lg:w-[84%] lg:p-8"
+      className="relative mx-auto w-full overflow-hidden rounded-2xl p-5 backdrop-blur-md sm:p-6 lg:w-[75%] lg:p-6"
       style={{
         backgroundColor: `color-mix(in oklab, ${CARD_BG} 88%, transparent)`,
         border: `1px solid color-mix(in oklab, ${GREEN} 32%, transparent)`,
@@ -187,18 +228,18 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       />
 
       {/* A. Header dossier */}
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
+      <div className="relative flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-base font-semibold sm:text-lg" style={{ color: TEXT }}>
-            Installation borne de recharge
+          <p className="text-sm font-semibold sm:text-base" style={{ color: TEXT }}>
+            Installation d&apos;une borne de recharge 7 kW
           </p>
-          <p className="mt-0.5 text-[12px]" style={{ color: TEXT_DIM }}>
-            Client particulier · électricien · Lyon 3e · Assistant web &amp; vocal
+          <p className="mt-0.5 text-[11.5px]" style={{ color: TEXT_DIM }}>
+            Jean Dupont · électricité · Saint-Aubin-Celloville · Widget Kadria
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DossierBadge tone="orange" reduce={reduce} delay={0.4}>
-            À rappeler
+            À traiter
           </DossierBadge>
           <DossierBadge tone="green" reduce={reduce} delay={0.48}>
             Score 88/100
@@ -210,52 +251,52 @@ function DossierCard({ reduce }: { reduce: boolean }) {
       </div>
 
       {/* 3 chips */}
-      <div className="relative mt-4 flex flex-wrap gap-2">
+      <div className="relative mt-3 flex flex-wrap gap-2">
         <DossierBadge tone="muted" reduce={reduce} delay={0.62}>
-          Budget 4 500 €
+          Budget 1 000 à 1 500 €
         </DossierBadge>
         <DossierBadge tone="muted" reduce={reduce} delay={0.68}>
-          Délai sous 2 semaines
+          Délai dès que possible
         </DossierBadge>
         <DossierBadge tone="muted" reduce={reduce} delay={0.74}>
-          Source chat + vocal
+          Source Widget Kadria
         </DossierBadge>
       </div>
 
       {/* B. Contact / localisation */}
       <div
-        className="relative mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-4 py-3 text-[12px]"
+        className="relative mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-xl px-3.5 py-2.5 text-[11.5px]"
         style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
       >
         <span className="inline-flex items-center gap-1.5">
-          <Phone size={12} style={{ color: GREEN }} /> 06 12 34 XX XX
+          <Phone size={12} style={{ color: GREEN }} /> 06 21 45 77 XX
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Mail size={12} style={{ color: GREEN }} /> client.demo@kadria.fr
+          <Mail size={12} style={{ color: GREEN }} /> jean@emailkadria.fr
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <MapPin size={12} style={{ color: GREEN }} /> Lyon 3e, 69003
+          <MapPin size={12} style={{ color: GREEN }} /> 24 Rue de la Mairie, 76520
         </span>
       </div>
 
       {/* C. Pilotage commercial — 3 colonnes horizontales */}
-      <div className="relative mt-6">
+      <div className="relative mt-4">
         <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: GREEN }}>
           Pilotage commercial
         </p>
-        <div className="mt-3 grid gap-4 lg:grid-cols-3">
+        <div className="mt-2.5 grid gap-3 lg:grid-cols-3">
           {/* Projet */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+          <div className="rounded-xl p-3.5" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
               Projet
             </p>
-            <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2">
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
               {PROJECT_FIELDS.map((f) => (
                 <div key={f.label}>
                   <dt className="text-[10px] uppercase tracking-wide" style={{ color: TEXT_DIM }}>
                     {f.label}
                   </dt>
-                  <dd className="text-[12px] font-medium" style={{ color: TEXT }}>
+                  <dd className="text-[11.5px] font-medium" style={{ color: TEXT }}>
                     {f.value}
                   </dd>
                 </div>
@@ -264,17 +305,17 @@ function DossierCard({ reduce }: { reduce: boolean }) {
           </div>
 
           {/* Action recommandée */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+          <div className="rounded-xl p-3.5" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
               Action recommandée
             </p>
-            <p className="mt-2 text-sm font-semibold" style={{ color: TEXT }}>
-              Rappeler le client
+            <p className="mt-1.5 text-[13px] font-semibold" style={{ color: TEXT }}>
+              Planifier un rendez-vous
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+            <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: TEXT_MUTED }}>
               Le dossier est qualifié et prêt à être traité.
             </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
               <DossierBadge tone="muted" reduce={reduce} delay={0.8}>
                 Priorité élevée
               </DossierBadge>
@@ -287,23 +328,23 @@ function DossierCard({ reduce }: { reduce: boolean }) {
             </div>
             <button
               type="button"
-              className="mt-4 rounded-md px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors"
+              className="mt-3 rounded-md px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors"
               style={{
                 backgroundColor: `color-mix(in oklab, ${GREEN} 14%, transparent)`,
                 color: GREEN,
                 border: `1px solid color-mix(in oklab, ${GREEN} 40%, transparent)`,
               }}
             >
-              Rappeler
+              Planifier
             </button>
           </div>
 
           {/* Avancement commercial — timeline compacte 5 étapes */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
-              Avancement commercial
+          <div className="rounded-xl p-3.5" style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}>
+            <p className="text-[10.5px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+              Avancement
             </p>
-            <div className="mt-3 flex items-start justify-between gap-1">
+            <div className="mt-2.5 flex items-start justify-between gap-1">
               {PIPELINE_STEPS.map((step, i) => (
                 <motion.div
                   key={step.label}
@@ -339,7 +380,7 @@ function DossierCard({ reduce }: { reduce: boolean }) {
 
       {/* D. Analyse Kadria */}
       <motion.div
-        className="relative mt-6"
+        className="relative mt-4"
         initial={reduce ? false : { opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, margin: '-60px' }}
@@ -348,19 +389,19 @@ function DossierCard({ reduce }: { reduce: boolean }) {
         <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: GREEN }}>
           Analyse Kadria
         </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
           {ANALYSIS_COLUMNS.map((col) => (
             <div
               key={col.heading}
-              className="rounded-xl p-3.5"
+              className="rounded-xl p-3"
               style={{ backgroundColor: 'oklch(1 0 0 / 0.03)', border: `1px solid ${BORDER}` }}
             >
               <p className="text-[11px] font-semibold" style={{ color: TEXT_DIM }}>
                 {col.heading}
               </p>
-              <ul className="mt-2 space-y-1.5">
+              <ul className="mt-1.5 space-y-1">
                 {col.items.map((item) => (
-                  <li key={item} className="flex items-start gap-1.5 text-[11.5px]" style={{ color: TEXT_MUTED }}>
+                  <li key={item} className="flex items-start gap-1.5 text-[11px]" style={{ color: TEXT_MUTED }}>
                     {col.tone === 'good' ? (
                       <CheckCircle2 size={12} style={{ color: GREEN, flexShrink: 0, marginTop: 1 }} />
                     ) : (
@@ -377,14 +418,14 @@ function DossierCard({ reduce }: { reduce: boolean }) {
 
       {/* E. Synthèse finale */}
       <div
-        className="relative mt-5 rounded-xl px-4 py-3 text-[12px] leading-relaxed"
+        className="relative mt-4 rounded-xl px-3.5 py-2.5 text-[11.5px] leading-relaxed"
         style={{ backgroundColor: `color-mix(in oklab, ${GREEN} 8%, transparent)`, border: `1px solid color-mix(in oklab, ${GREEN} 22%, transparent)`, color: TEXT }}
       >
-        Projet de borne de recharge qualifié : budget estimé, localisation et délai déjà collectés. Rappel recommandé aujourd&apos;hui.
+        Projet de borne de recharge 7 kW qualifié : budget, adresse et délai déjà collectés. Rendez-vous à planifier rapidement.
       </div>
 
       {/* F. CTA final */}
-      <div className="relative mt-6 flex justify-end">
+      <div className="relative mt-4 flex justify-end">
         <button
           type="button"
           className="shrink-0 rounded-md px-4 py-2 text-[12px] font-semibold transition-colors"
@@ -479,10 +520,16 @@ function MobileAssistantCarousel({ reduce }: { reduce: boolean }) {
   );
 }
 
+/* Fixed height shared by both assistant cards — must stay strictly
+   identical between web and voice, and must never change while the
+   message animation plays (the translateY scroll mechanism keeps this
+   container's height constant). */
+const ASSISTANT_CARD_HEIGHT = 400;
+
 function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice' }) {
-  const label = kind === 'web' ? 'Assistant web' : 'Assistant vocal';
+  const label = kind === 'web' ? 'ASSISTANT WEB' : 'ASSISTANT VOCAL';
   const subtitle = kind === 'web' ? 'Qualification 24h/24 via chat' : 'Qualification par téléphone';
-  const channel = kind === 'web' ? 'Visiteur sur votre site' : 'Appel entrant';
+  const channel = kind === 'web' ? 'Widget Kadria' : 'Appel entrant';
 
   return (
     <div className="flex h-full flex-col">
@@ -498,8 +545,10 @@ function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice
         {subtitle}
       </p>
       <div
-        className="h-[360px] max-h-[360px] min-h-0 flex-shrink-0 overflow-hidden rounded-[18px]"
+        className="max-h-[400px] min-h-0 flex-shrink-0 overflow-hidden rounded-[18px]"
         style={{
+          height: ASSISTANT_CARD_HEIGHT,
+          maxHeight: ASSISTANT_CARD_HEIGHT,
           border: `1px solid ${BORDER}`,
           background: 'oklch(0.12 0.006 260)',
           boxShadow:
@@ -512,18 +561,20 @@ function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice
           <AssistantWebChatCard
             reduceMotion={reduce}
             messages={WEB_DEMO_MESSAGES}
-            headerTitle="LM Elec ⚡"
-            headerSubtitle="Visiteur sur votre site"
+            headerTitle="AD Elec ⚡"
+            headerSubtitle="Réponse en 3 min"
             collectedFields={WEB_COLLECTED_FIELDS}
+            scrollMode="translate"
           />
         ) : (
           <VoiceAssistantCard
             reduceMotion={reduce}
             messages={VOICE_DEMO_MESSAGES}
-            headerTitle="LM Elec ⚡"
+            headerTitle="AD Elec ⚡"
             headerSubtitle="Appel entrant"
             scoreLabel="Score: 88/100"
-            collectedSummary="Projet, localisation, délai, photos"
+            collectedSummary="Projet: Borne de recharge 7 kW · Lieu: Maison individuelle · Délai: D'ici 3 semaines · Budget: 1 500 à 2 000 €"
+            scrollMode="translate"
           />
         )}
       </div>

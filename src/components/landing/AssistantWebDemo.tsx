@@ -23,6 +23,12 @@ export interface ChatMsg {
   isPhotoConfirmation?: boolean;
   isContactCard?: boolean;
   isSuccess?: boolean;
+  /** Optional explicit contact-card fields. When absent, the card falls
+   * back to the original hardcoded demo contact ("Jean Dupont" / original
+   * section), preserving that section's exact behavior. */
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 export const CHAT_MESSAGES: ChatMsg[] = [
@@ -135,6 +141,17 @@ export interface AssistantWebChatCardProps {
   headerSubtitle?: string;
   /** Optional "collected fields" summary shown under the conversation once it has run. Absent by default (original section doesn't show it). */
   collectedFields?: { label: string; value: string }[];
+  /**
+   * 'auto' (default) preserves the original behavior: native vertical
+   * scrolling (`overflow-y-auto`) that auto-scrolls to the newest message —
+   * this is what the "Deux assistants. Une seule plateforme." section uses
+   * and must keep using.
+   * 'translate' is opt-in: the container becomes `overflow-hidden` and the
+   * message stack is translated upward (translateY) as new messages arrive,
+   * so no native scrollbar is ever rendered and the container height never
+   * changes. Used by `RequestTransformationSection.tsx`.
+   */
+  scrollMode?: 'auto' | 'translate';
 }
 
 export function AssistantWebChatCard({
@@ -143,10 +160,13 @@ export function AssistantWebChatCard({
   headerTitle = 'Kadria',
   headerSubtitle = 'Assistant en ligne',
   collectedFields,
+  scrollMode = 'auto',
 }: AssistantWebChatCardProps) {
   const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? messages.length : 0);
   const [typingBeforeIndex, setTypingBeforeIndex] = useState<number | null>(null);
+  const [translateY, setTranslateY] = useState(0);
   const chatRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -177,12 +197,22 @@ export function AssistantWebChatCard({
   }, [reduceMotion, messages]);
 
   useEffect(() => {
+    if (scrollMode !== 'auto') return;
     if (!chatRef.current) return;
     chatRef.current.scrollTo({
       top: chatRef.current.scrollHeight,
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
-  }, [visibleMessages, typingBeforeIndex, reduceMotion]);
+  }, [visibleMessages, typingBeforeIndex, reduceMotion, scrollMode]);
+
+  useEffect(() => {
+    if (scrollMode !== 'translate') return;
+    if (!chatRef.current || !innerRef.current) return;
+    const outer = chatRef.current;
+    const inner = innerRef.current;
+    const maxOffset = Math.max(0, inner.scrollHeight - outer.clientHeight);
+    setTranslateY(maxOffset);
+  }, [visibleMessages, typingBeforeIndex, scrollMode]);
 
   // Dynamic progress bar
   const lastIdx = visibleMessages > 0 ? visibleMessages - 1 : 0;
@@ -218,7 +248,35 @@ export function AssistantWebChatCard({
         </div>
       </div>
 
-      <div ref={chatRef} className="kr-assistant-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+      <div
+        ref={chatRef}
+        className={`kr-assistant-scroll relative min-h-0 flex-1 px-3.5 py-3 ${
+          scrollMode === 'translate' ? 'overflow-hidden' : 'overflow-y-auto flex flex-col gap-3'
+        }`}
+      >
+        {scrollMode === 'translate' && (
+          <>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6"
+              style={{ background: 'linear-gradient(to bottom, var(--bg-elevated, #12161c), transparent)' }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6"
+              style={{ background: 'linear-gradient(to top, var(--bg-elevated, #12161c), transparent)' }}
+            />
+          </>
+        )}
+        <div
+          ref={innerRef}
+          className="flex flex-col gap-3"
+          style={
+            scrollMode === 'translate'
+              ? { transform: `translateY(-${translateY}px)`, transition: reduceMotion ? 'none' : 'transform 450ms ease' }
+              : undefined
+          }
+        >
         {messages.slice(0, visibleMessages).map((msg, i) => {
           const animClass = reduceMotion ? '' : msg.role === 'assistant' ? 'kr-assistant-msg-in' : 'kr-assistant-user-in';
 
@@ -247,6 +305,9 @@ export function AssistantWebChatCard({
           }
 
           if (msg.isContactCard) {
+            const contactName = msg.contactName ?? 'Jean Dupont';
+            const contactPhone = msg.contactPhone ?? '06 06 77 88 99';
+            const contactEmail = msg.contactEmail ?? 'jean@jean.com';
             return (
               <div
                 key={i}
@@ -262,9 +323,9 @@ export function AssistantWebChatCard({
                   maxWidth: '80%',
                 }}
               >
-                <span className="text-[11px] font-bold">Jean Dupont</span>
-                <span className="text-[11px]">Tél : 06 06 77 88 99</span>
-                <span className="text-[11px]">jean@jean.com</span>
+                <span className="text-[11px] font-bold">{contactName}</span>
+                <span className="text-[11px]">Tél : {contactPhone}</span>
+                <span className="text-[11px]">{contactEmail}</span>
               </div>
             );
           }
@@ -315,6 +376,7 @@ export function AssistantWebChatCard({
             <span className="kr-typing-dot h-2 w-2 rounded-full bg-[var(--text-3)] [animation-delay:300ms]" />
           </div>
         )}
+        </div>
       </div>
 
       {collectedFields && (
