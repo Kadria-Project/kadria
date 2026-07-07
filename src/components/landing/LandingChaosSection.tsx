@@ -120,7 +120,9 @@ const K_PULSE_DURATION = 0.7;
 const RING_DELAY = 1.65;
 const RING_DURATION = 0.9;
 const EXIT_DELAY = 2.1;
-const EXIT_DURATION = 0.7;
+const EXIT_DURATION = 0.6;
+const JUNCTION_POINT_DELAY = EXIT_DELAY + EXIT_DURATION;
+const JUNCTION_POINT_DURATION = 0.3;
 
 function ChaosCardItem({ card, index }: { card: ChaosCard; index: number }) {
   return (
@@ -463,35 +465,90 @@ export default function LandingChaosSection() {
               <span style={{ color: KADRIA_GREEN, fontWeight: 500 }}>Kadria</span>{" "}
               centralise, qualifie et priorise vos demandes.
             </p>
-
-            {/* Sortie visuelle vers le dashboard : faisceau vert dégradé qui
-                se déploie vers le bas après le pulse du K, sans ajouter
-                d'espace vertical (h-10 déjà en place). */}
-            {reduce ? (
-              <div
-                aria-hidden
-                className="relative z-0 mt-4 h-16 w-px sm:h-24"
-                style={{
-                  background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 60%, transparent), transparent)`,
-                }}
-              />
-            ) : (
-              <motion.div
-                aria-hidden
-                className="relative z-0 mt-4 h-16 w-px origin-top sm:h-24"
-                style={{
-                  background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 65%, transparent), transparent)`,
-                  boxShadow: `0 0 10px 1px ${LINE_GLOW}`,
-                }}
-                initial={{ opacity: 0, scaleY: 0 }}
-                whileInView={{ opacity: 0.6, scaleY: 1 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: EXIT_DURATION, ease: "easeOut", delay: EXIT_DELAY }}
-              />
-            )}
           </motion.div>
         </div>
       </div>
+
+      {/* Sortie visuelle vers le dashboard : faisceau vert dégradé qui se
+          déploie vers le bas après le pulse du K, jusqu'au point de jonction
+          qui fait le relais avec LandingDashboardShowcase. Ancré en absolute
+          sur le bas de la SECTION (pas en flux normal dans le flex du K) :
+          le padding-bottom de la section (py-16/py-24) est ajouté APRÈS le
+          contenu en flux, donc un trait "en flux" laissait un grand vide
+          vide avant le bord de section. En absolute + bottom-0, le trait et
+          le point de jonction occupent exactement ce padding et touchent le
+          bord bas de la section, jointif avec le haut de
+          LandingDashboardShowcase (aucun gap DOM entre les deux sections). */}
+      {reduce ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-1/2 z-0 flex h-16 -translate-x-1/2 flex-col items-center justify-end sm:h-24"
+        >
+          <div
+            className="h-14 w-px sm:h-20"
+            style={{
+              background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 60%, transparent), transparent)`,
+            }}
+          />
+          <div
+            className="mb-1.5 h-2 w-2 rounded-full"
+            style={{
+              backgroundColor: KADRIA_GREEN,
+              boxShadow: `0 0 10px 3px ${LINE_GLOW}`,
+            }}
+          />
+        </div>
+      ) : (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-1/2 z-0 flex h-16 -translate-x-1/2 flex-col items-center justify-end sm:h-24"
+        >
+          <motion.div
+            className="h-14 w-px origin-top sm:h-20"
+            style={{
+              background: `linear-gradient(to bottom, color-mix(in oklab, ${KADRIA_GREEN} 65%, transparent), transparent)`,
+              boxShadow: `0 0 10px 1px ${LINE_GLOW}`,
+            }}
+            initial={{ opacity: 0, scaleY: 0 }}
+            whileInView={{ opacity: 0.6, scaleY: 1 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: EXIT_DURATION, ease: "easeOut", delay: EXIT_DELAY }}
+          />
+          {/* Point de jonction : relais visuel vers le badge
+              "Kadria prend le relais" de la section suivante. */}
+          <motion.div
+            className="relative z-10 mb-1.5 h-2 w-2 rounded-full"
+            style={{
+              backgroundColor: KADRIA_GREEN,
+              boxShadow: `0 0 12px 3px ${LINE_GLOW}`,
+            }}
+            initial={{ opacity: 0, scale: 0.7 }}
+            whileInView={{ opacity: 1, scale: [0.7, 1.15, 1] }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{
+              duration: JUNCTION_POINT_DURATION,
+              ease: "easeOut",
+              delay: JUNCTION_POINT_DELAY,
+              times: [0, 0.7, 1],
+            }}
+          />
+          {/* Pulse doux et continu du point pour signaler le relais actif. */}
+          <motion.div
+            className="pointer-events-none absolute bottom-1.5 h-2 w-2 rounded-full"
+            style={{ backgroundColor: KADRIA_GREEN }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: [0, 0.5, 0] }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{
+              duration: 1.6,
+              ease: "easeInOut",
+              delay: JUNCTION_POINT_DELAY + JUNCTION_POINT_DURATION,
+              repeat: Infinity,
+              repeatDelay: 0.4,
+            }}
+          />
+        </div>
+      )}
     </section>
   );
 }
