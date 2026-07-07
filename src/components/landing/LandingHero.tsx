@@ -21,10 +21,39 @@
  *  4. Adapte les `href="#cta"` vers tes vraies routes/ancres si besoin.
  */
 
-import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 // Si ton projet utilise framer-motion à la place :
 // import { motion } from "framer-motion";
 import { ArrowRight, Check, ChevronDown } from "lucide-react";
+
+/* ─────────────────────────────────────────────
+   Stable reduced-motion preference.
+   `useReducedMotion()` reads `window.matchMedia` synchronously on the
+   client's first render (not gated by `useEffect`), while it always
+   returns `null` on the server. For visitors/browsers with
+   `prefers-reduced-motion` set (common in headless/CI browsers), this
+   makes the client's hydration-matching render diverge from the SSR
+   output ("Hydration failed"). Gate the real value behind a mounted
+   flag so both the server render and the client's pre-hydration render
+   agree (false), then pick up the real preference right after mount.
+   ───────────────────────────────────────────── */
+function useStableReducedMotion() {
+  const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? prefersReduced : false;
+}
+
+const highlightedText = "à des dossiers prêts à vendre.";
+const HIGHLIGHT_CHAR_COUNT = highlightedText.length; // 31
+const HIGHLIGHT_START_DELAY = 0.25; // s, après l'apparition de la 1re ligne
+const HIGHLIGHT_STAGGER = 0.042; // s par caractère -> ~1.3s pour 31 caractères
+const HIGHLIGHT_CHAR_DURATION = 0.32; // s, durée d'apparition de chaque caractère
+const HIGHLIGHT_TOTAL_DURATION =
+  HIGHLIGHT_STAGGER * (HIGHLIGHT_CHAR_COUNT - 1) + HIGHLIGHT_CHAR_DURATION; // ≈ 1.58s
+const UNDERLINE_DELAY = HIGHLIGHT_START_DELAY + HIGHLIGHT_TOTAL_DURATION;
+const UNDERLINE_DURATION = 0.5; // s
 
 const KADRIA_GREEN = "oklch(0.86 0.19 145)";
 const KADRIA_GREEN_SOFT = "color-mix(in oklab, oklch(0.86 0.19 145) 16%, transparent)";
@@ -45,6 +74,8 @@ export default function LandingHero({
   primaryHref = "#cta",
   secondaryHref = "#cta",
 }: Props) {
+  const shouldReduce = useStableReducedMotion();
+
   return (
     <section
       className="relative isolate overflow-hidden text-white"
@@ -114,19 +145,66 @@ export default function LandingHero({
           Passez du chaos commercial
           <br />
           <span className="relative inline-block" style={{ color: KADRIA_GREEN }}>
-            à des dossiers prêts à vendre.
+            {shouldReduce ? (
+              <span aria-label={highlightedText}>{highlightedText}</span>
+            ) : (
+              <motion.span
+                aria-label={highlightedText}
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: {},
+                  visible: {
+                    transition: {
+                      delayChildren: HIGHLIGHT_START_DELAY,
+                      staggerChildren: HIGHLIGHT_STAGGER,
+                    },
+                  },
+                }}
+              >
+                {highlightedText.split("").map((char, i) => (
+                  <motion.span
+                    key={i}
+                    aria-hidden="true"
+                    style={{ display: "inline-block" }}
+                    variants={{
+                      hidden: { opacity: 0, y: 8, filter: "blur(4px)" },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        filter: "blur(0px)",
+                        transition: { duration: HIGHLIGHT_CHAR_DURATION },
+                      },
+                    }}
+                  >
+                    {char === " " ? " " : char}
+                  </motion.span>
+                ))}
+              </motion.span>
+            )}
             <svg
               viewBox="0 0 500 14"
               className="absolute -bottom-2.5 left-0 h-2.5 w-full md:-bottom-3 md:h-3"
               preserveAspectRatio="none"
               aria-hidden
             >
-              <path
+              <motion.path
                 d="M4 10 Q 125 2, 250 7 T 496 6"
                 stroke={KADRIA_GREEN}
                 strokeWidth="3"
                 strokeLinecap="round"
                 fill="none"
+                initial={shouldReduce ? false : { pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={
+                  shouldReduce
+                    ? { duration: 0 }
+                    : {
+                        delay: UNDERLINE_DELAY,
+                        duration: UNDERLINE_DURATION,
+                        ease: "easeInOut",
+                      }
+                }
               />
             </svg>
           </span>
