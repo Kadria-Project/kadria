@@ -471,7 +471,7 @@ function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice
         {subtitle}
       </p>
       <div
-        className="h-[360px] flex-1 overflow-hidden rounded-[18px]"
+        className="h-[360px] max-h-[360px] min-h-0 flex-shrink-0 overflow-hidden rounded-[18px]"
         style={{
           border: `1px solid ${BORDER}`,
           background: 'oklch(0.12 0.006 260)',
