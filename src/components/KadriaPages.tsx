@@ -66,6 +66,7 @@ import { PremiumLandingHero } from '@/src/components/landing/PremiumLandingHero'
 import LandingHero from '@/src/components/landing/LandingHero';
 import LandingChaosSection from '@/src/components/landing/LandingChaosSection';
 import LandingDashboardShowcase from '@/src/components/landing/LandingDashboardShowcase';
+import RequestTransformationSection from '@/src/components/landing/RequestTransformationSection';
 import ChatWidget from '@/src/components/ChatWidget';
 import {
   BILLING_MODES,
@@ -3184,20 +3185,8 @@ export function LandingRoutePage() {
         {/* 2c. DASHBOARD SHOWCASE */}
         <LandingDashboardShowcase />
 
-        {/* 3. SOCIAL PROOF */}
-        <section className={`${LANDING_SECTION_CLASS} border-y border-zinc-800 bg-zinc-900`}>
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <SectionTitle className="kr-reveal kr-reveal-delay-1">
-                Ce que Kadria change concr&egrave;tement
-              </SectionTitle>
-              <SectionDescription className="kr-reveal kr-reveal-delay-2 mt-5">
-                Moins de temps perdu, plus de demandes qualifi&eacute;es et un suivi commercial enfin centralis&eacute;.
-              </SectionDescription>
-            </div>
-            <BenefitsGrid />
-          </div>
-        </section>
+        {/* 3. DEMANDE TRANSFORMÉE */}
+        <RequestTransformationSection />
 
         {/* 4. PROBLEME -> SOLUTION */}
         <section className={`${LANDING_SECTION_CLASS} bg-zinc-950`}>
