@@ -64,6 +64,8 @@ import { KadriaLogo } from '@/src/components/KadriaLogo';
 import { DarkNav } from '@/src/components/DarkNav';
 import { PremiumLandingHero } from '@/src/components/landing/PremiumLandingHero';
 import LandingHero from '@/src/components/landing/LandingHero';
+import LandingChaosSection from '@/src/components/landing/LandingChaosSection';
+import LandingDashboardShowcase from '@/src/components/landing/LandingDashboardShowcase';
 import ChatWidget from '@/src/components/ChatWidget';
 import {
   BILLING_MODES,
@@ -3175,6 +3177,12 @@ export function LandingRoutePage() {
       <main>
         {/* 2. HERO */}
         <LandingHero primaryHref="/register" secondaryHref="/demo-request" />
+
+        {/* 2b. CHAOS */}
+        <LandingChaosSection />
+
+        {/* 2c. DASHBOARD SHOWCASE */}
+        <LandingDashboardShowcase />
 
         {/* 3. SOCIAL PROOF */}
         <section className={`${LANDING_SECTION_CLASS} border-y border-zinc-800 bg-zinc-900`}>
