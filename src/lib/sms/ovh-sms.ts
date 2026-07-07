@@ -141,10 +141,20 @@ export async function sendOvhSms({ to, message }: SendOvhSmsParams): Promise<Sen
 
     if (sender) {
       payload.sender = sender
-      payload.senderForResponse = parseBooleanEnv(senderForResponseEnv, false)
-    } else {
-      payload.senderForResponse = true
     }
+    // Toujours false : on ne veut jamais que le sender soit renvoyé dans la
+    // réponse du client (pas de conversation SMS entrante attendue).
+    payload.senderForResponse = parseBooleanEnv(senderForResponseEnv, false)
+    // Toujours true : les SMS transactionnels Kadria ne doivent jamais
+    // inclure la clause STOP légale (réservée aux SMS marketing).
+    payload.noStopClause = true
+
+    const receiverLast4 = receiver.slice(-4)
+    console.log(
+      '[OVH SMS] Sending with serviceName=', serviceName,
+      ', sender=', sender || '-',
+      ', receiverLast4=', receiverLast4,
+    )
 
     const body = JSON.stringify(payload)
     const timestamp = await getOvhServerTimestamp(baseUrl)
@@ -192,6 +202,7 @@ export async function sendOvhSms({ to, message }: SendOvhSmsParams): Promise<Sen
         : undefined
 
     console.log('[OVH SMS] Envoi réussi - ids:', ids || '-')
+    console.log('[OVH SMS] Envoi réussi - jobId:', ids && ids.length > 0 ? ids[0] : '-')
     return { success: true, ids }
   } catch (error) {
     console.error('[OVH SMS] Erreur inattendue -', serializeErrorForLog(error))

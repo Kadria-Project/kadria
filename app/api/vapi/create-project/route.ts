@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { randomBytes } from 'crypto'
 import { TABLES } from '@/src/lib/airtable'
 import { notifyArtisanQuotaReached } from '@/src/lib/artisan-notifications'
@@ -451,14 +452,13 @@ export async function POST(request: NextRequest) {
       console.log('[VAPI] Project created - recordId:', result.id)
       console.log(`[VAPI_TIMING] project_created in ${Date.now() - processingStartTime}ms`)
 
-      // TODO: sur un runtime serverless strict (Vercel), le process peut être
-      // gelé/tué dès que la réponse HTTP est envoyée, ce qui peut interrompre
-      // ces traitements en arrière-plan avant qu'ils ne se terminent. Il
-      // faudrait idéalement utiliser waitUntil() de `@vercel/functions` pour
-      // garantir leur exécution complète après la réponse. Ce package n'est
-      // pas installé actuellement (validation explicite requise avant
-      // installation) - ceci est un risque connu, documenté ici en attendant.
-      void Promise.allSettled([
+      // Sur un runtime serverless strict (Vercel), le process peut être
+      // gelé/tué dès que la réponse HTTP est envoyée, ce qui interromprait
+      // ces traitements en arrière-plan avant qu'ils ne se terminent. On
+      // utilise donc waitUntil() de `@vercel/functions` pour garantir leur
+      // exécution complète après la réponse, sans jamais bloquer (await) la
+      // réponse HTTP elle-même.
+      waitUntil(Promise.allSettled([
         // Notification artisan (centre de notifications, best-effort).
         createProjectNotification(
           { id: result.id, artisanId },
@@ -592,8 +592,12 @@ export async function POST(request: NextRequest) {
         if (failed.length > 0) {
           console.error('[VAPI] Async follow-ups completed with failures - projectId:', result.id, '- failedCount:', failed.length)
         }
+        console.log('[VAPI] async follow-ups completed', results.map((r) => r.status))
         console.log(`[VAPI_TIMING] async_followups_completed in ${Date.now() - processingStartTime}ms`)
-      })
+      }).catch((error) => {
+        console.error('[VAPI] async follow-ups failed', error)
+      }))
+      console.log(`[VAPI_TIMING] async_followups_scheduled in ${Date.now() - processingStartTime}ms`)
     }
 
     console.log(`[VAPI] create_project completed in ${Date.now() - processingStartTime}ms before async follow-ups`)
