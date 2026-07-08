@@ -366,7 +366,7 @@ function PriorityCard({ reduce }: { reduce: boolean }) {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.6, ease: 'easeOut', delay: reduce ? 0 : 0.15 }}
-      className="relative flex h-full flex-col overflow-hidden rounded-2xl p-4 backdrop-blur-md sm:p-5 lg:justify-center"
+      className="relative flex w-full flex-col overflow-hidden rounded-2xl p-4 backdrop-blur-md sm:p-5 lg:p-4"
       style={{
         backgroundColor: `color-mix(in oklab, ${CARD_BG} 90%, transparent)`,
         border: `1px solid color-mix(in oklab, ${GREEN} 42%, transparent)`,
@@ -672,7 +672,7 @@ export default function PriorityProspectsSection() {
             <QualifiedListCard reduce={reduce} dossiers={DOSSIERS} />
           </div>
           <FlowConnector reduce={reduce} delay={0.35} />
-          <div className="lg:h-full">
+          <div className="lg:flex lg:h-full lg:items-center">
             <PriorityCard reduce={reduce} />
           </div>
           <FlowConnector reduce={reduce} delay={0.55} />
