@@ -589,8 +589,11 @@ function MobileAssistantCarousel({ reduce }: { reduce: boolean }) {
    identical between web and voice, and must never change while the
    message animation plays. The conversation area scrolls internally
    (native vertical scroll, hidden scrollbar) so this outer container's
-   height stays constant. */
-const ASSISTANT_CARD_HEIGHT = 400;
+   height stays constant. Mobile and desktop use distinct heights (set via
+   Tailwind responsive classes below): mobile is a moderate bump over the
+   original 400px, desktop is bumped by ~100px for a more credible demo
+   with several messages visible at once. */
+const ASSISTANT_CARD_HEIGHT_CLASSES = 'h-[440px] max-h-[440px] lg:h-[500px] lg:max-h-[500px]';
 
 function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice' }) {
   const label = kind === 'web' ? 'ASSISTANT WEB' : 'ASSISTANT VOCAL';
@@ -611,10 +614,8 @@ function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice
         {subtitle}
       </p>
       <div
-        className="max-h-[400px] min-h-0 flex-shrink-0 overflow-hidden rounded-[18px]"
+        className={`min-h-0 flex-shrink-0 overflow-hidden rounded-[18px] ${ASSISTANT_CARD_HEIGHT_CLASSES}`}
         style={{
-          height: ASSISTANT_CARD_HEIGHT,
-          maxHeight: ASSISTANT_CARD_HEIGHT,
           border: `1px solid ${BORDER}`,
           background: 'oklch(0.12 0.006 260)',
           boxShadow:
