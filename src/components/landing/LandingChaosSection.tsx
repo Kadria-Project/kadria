@@ -153,16 +153,24 @@ function MobileConnector({ reduce, delay }: { reduce: boolean | null; delay: num
   );
 }
 
-// Courbes décoratives cartes -> K, en coordonnées relatives (viewBox 0-100).
-// 3 colonnes desktop (lg:grid-cols-3, 2 lignes) : centres approx. x = 17 / 50 / 83,
-// bas de ligne 1 ~ y18, bas de ligne 2 ~ y38. Le K se trouve en bas, ~ (50, 92).
+// Courbes décoratives cartes -> K, en coordonnées relatives (viewBox 0-100),
+// mesurées via Playwright (getBoundingClientRect) sur le rendu desktop réel à
+// 1440px : conteneur "relative mt-10" = {x:168, y:719.5, w:1104, h:472.25},
+// cartes lg:grid-cols-3 (2 lignes), bord bas-centre de chaque carte, K
+// {x:680, y:1007.75, w:80, h:80} -> bord haut-centre à (50, 61.04). Les
+// anciennes coordonnées (K supposé à y92) étaient devinées et désalignées :
+// le K réel se trouve bien plus haut dans le conteneur (y~61), ce qui
+// faisait dépasser les traits sous le K.
+// Ligne 1 (bas ~y26.15) : gauche x16.18, milieu x50, droite x83.82
+// Ligne 2 (bas ~y50.87) : gauche x16.18, milieu x50, droite x83.82
+// Point d'arrivée commun : bord haut du K, (50, 61.04)
 const CHAOS_LINES = [
-  "M17,18 C25,52 38,80 50,92",
-  "M50,18 C50,48 50,76 50,92",
-  "M83,18 C75,52 62,80 50,92",
-  "M17,38 C25,58 38,80 50,92",
-  "M50,38 C50,58 50,78 50,92",
-  "M83,38 C75,58 62,80 50,92",
+  "M16.18,26.15 C24,38 38,52 50,61.04",
+  "M50,26.15 C50,38 50,50 50,61.04",
+  "M83.82,26.15 C76,38 62,52 50,61.04",
+  "M16.18,50.87 C26,55 40,59 50,61.04",
+  "M50,50.87 C50,55 50,58 50,61.04",
+  "M83.82,50.87 C74,55 60,59 50,61.04",
 ];
 
 const LINE_DURATION = 0.9;
