@@ -1,8 +1,16 @@
 import type { MetadataRoute } from 'next';
+import { getAllResources } from '@/src/data/resources';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://kadria.fr';
   const now = new Date();
+
+  const resourceEntries: MetadataRoute.Sitemap = getAllResources().map((resource) => ({
+    url: `${baseUrl}/ressources/${resource.slug}`,
+    lastModified: new Date(resource.publishedAt),
+    changeFrequency: 'monthly',
+    priority: 0.5,
+  }));
 
   return [
     {
@@ -23,6 +31,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/ressources`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    ...resourceEntries,
     {
       url: `${baseUrl}/legal`,
       lastModified: now,

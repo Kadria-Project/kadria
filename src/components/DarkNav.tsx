@@ -39,6 +39,7 @@ export function DarkNav() {
   const navLinks = [
     { href: '/demo', label: 'Mode démo' },
     { href: '/tarifs', label: 'Tarifs' },
+    { href: '/ressources', label: 'Ressources' },
   ];
 
   return (
