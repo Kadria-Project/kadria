@@ -617,7 +617,7 @@ function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice
         className={`min-h-0 flex-shrink-0 overflow-hidden rounded-[18px] ${ASSISTANT_CARD_HEIGHT_CLASSES}`}
         style={{
           border: `1px solid ${BORDER}`,
-          background: 'oklch(0.12 0.006 260)',
+          background: 'oklch(1 0 0 / 0.03)',
           boxShadow:
             kind === 'web'
               ? '0 0 40px rgba(34,197,94,0.08)'

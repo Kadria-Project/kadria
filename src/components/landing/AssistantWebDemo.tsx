@@ -131,6 +131,12 @@ export const CHAT_MESSAGES: ChatMsg[] = [
   },
 ];
 
+/** Once the full cycle finishes, keep the final state (last message +
+ * collected chips) on screen for this long before resetting and replaying
+ * the animation from the start — gives visitors time to actually read the
+ * completed dossier instead of watching it reset immediately. */
+const FINAL_PAUSE_MS = 10000;
+
 export interface AssistantWebChatCardProps {
   reduceMotion: boolean;
   /** Defaults to the original massif floral demo used in the "Deux assistants" section. */
@@ -178,6 +184,8 @@ export function AssistantWebChatCard({
     const run = () => {
       setVisibleMessages(0);
       setTypingBeforeIndex(null);
+      setIsUserNearBottom(true);
+      if (chatRef.current) chatRef.current.scrollTo({ top: 0, behavior: 'auto' });
 
       messages.forEach((msg, i) => {
         if (msg.role === 'assistant' && !msg.isSuccess) {
@@ -189,8 +197,9 @@ export function AssistantWebChatCard({
         }, msg.delay));
       });
 
+      // Hold the completed state on screen for FINAL_PAUSE_MS before looping.
       const lastDelay = messages[messages.length - 1].delay;
-      timeouts.push(setTimeout(run, lastDelay + 4000));
+      timeouts.push(setTimeout(run, lastDelay + FINAL_PAUSE_MS));
     };
 
     run();
@@ -269,8 +278,8 @@ export function AssistantWebChatCard({
 
       <div
         ref={chatRef}
-        className={`kr-assistant-scroll relative min-h-0 flex-1 overflow-y-auto px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-          scrollMode === 'translate' ? 'flex flex-col' : 'flex flex-col gap-3'
+        className={`kr-assistant-scroll relative min-h-0 flex-1 overflow-y-auto bg-[var(--bg-elevated)]/40 px-3.5 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          scrollMode === 'translate' ? 'flex flex-col justify-end' : 'flex flex-col gap-3'
         }`}
         style={scrollMode === 'translate' ? { overscrollBehavior: 'contain', touchAction: 'pan-y' } : undefined}
       >
@@ -391,25 +400,21 @@ export function AssistantWebChatCard({
         </div>
       </div>
 
-      {collectedFields && (
+      {collectedFields && isComplete && (
         <div
-          className="flex flex-shrink-0 flex-wrap gap-1.5 border-t border-[var(--border)] px-3.5 py-2.5"
+          className={`flex flex-shrink-0 flex-wrap gap-1.5 border-t border-[var(--border)] px-3.5 py-2.5 ${
+            reduceMotion ? '' : 'kr-assistant-msg-in'
+          }`}
           style={{ background: 'rgba(34,197,94,0.06)' }}
         >
-          <div
-            className={`flex flex-wrap gap-1.5 transition-opacity duration-500 ${
-              isComplete ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {collectedFields.map((f) => (
-              <span
-                key={f.label}
-                className="rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-2 py-1 text-[10px] font-medium text-[var(--accent)]"
-              >
-                {f.label}: <span className="font-semibold">{f.value}</span>
-              </span>
-            ))}
-          </div>
+          {collectedFields.map((f) => (
+            <span
+              key={f.label}
+              className="rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-2 py-1 text-[10px] font-medium text-[var(--accent)]"
+            >
+              {f.label}: <span className="font-semibold">{f.value}</span>
+            </span>
+          ))}
         </div>
       )}
 

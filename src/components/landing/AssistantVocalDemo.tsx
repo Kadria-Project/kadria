@@ -38,6 +38,11 @@ export const VOICE_WAVE_BARS: { duration: number; delay: number; accent: boolean
   { duration: 575, delay: 175, accent: false },
 ];
 
+/** Once the full transcript finishes, keep the final state (last reply +
+ * collected summary) on screen for this long before resetting and replaying
+ * the animation from the start. Mirrors `FINAL_PAUSE_MS` in AssistantWebDemo. */
+const FINAL_PAUSE_MS = 10000;
+
 export interface VoiceAssistantCardProps {
   reduceMotion: boolean;
   /** Defaults to the original AD Elec demo used in the "Deux assistants" section. */
@@ -82,13 +87,16 @@ export function VoiceAssistantCard({
 
     const run = () => {
       setVisibleMessages(0);
+      setIsUserNearBottom(true);
+      if (transcriptRef.current) transcriptRef.current.scrollTo({ top: 0, behavior: 'auto' });
 
       messages.forEach((msg, i) => {
         timeouts.push(setTimeout(() => setVisibleMessages(i + 1), msg.delay));
       });
 
+      // Hold the completed transcript on screen for FINAL_PAUSE_MS before looping.
       const lastDelay = messages[messages.length - 1].delay;
-      timeouts.push(setTimeout(run, lastDelay + 3000));
+      timeouts.push(setTimeout(run, lastDelay + FINAL_PAUSE_MS));
     };
 
     run();
@@ -179,8 +187,8 @@ export function VoiceAssistantCard({
 
       <div
         ref={transcriptRef}
-        className={`kr-assistant-scroll relative min-h-0 flex-1 overflow-y-auto px-4 py-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-          scrollMode === 'translate' ? 'flex flex-col' : 'flex flex-col gap-3'
+        className={`kr-assistant-scroll relative min-h-0 flex-1 overflow-y-auto bg-[var(--bg-elevated)]/40 px-4 py-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          scrollMode === 'translate' ? 'flex flex-col justify-end' : 'flex flex-col gap-3'
         }`}
         style={scrollMode === 'translate' ? { overscrollBehavior: 'contain', touchAction: 'pan-y' } : undefined}
       >
@@ -225,19 +233,15 @@ export function VoiceAssistantCard({
         </div>
       </div>
 
-      {collectedSummary && (
+      {collectedSummary && isComplete && (
         <div
-          className="flex flex-shrink-0 items-center gap-2 border-t border-[var(--border)] px-3.5 py-2 text-[11px] text-[var(--text-2)]"
+          className={`flex flex-shrink-0 items-center gap-2 border-t border-[var(--border)] px-3.5 py-2 text-[11px] text-[var(--text-2)] ${
+            reduceMotion ? '' : 'kr-assistant-msg-in'
+          }`}
           style={{ background: 'rgba(96,165,250,0.05)' }}
         >
-          <div
-            className={`flex items-center gap-2 transition-opacity duration-500 ${
-              isComplete ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            <CheckCircle size={12} color="var(--accent)" style={{ flexShrink: 0 }} />
-            <span>{collectedSummary}</span>
-          </div>
+          <CheckCircle size={12} color="var(--accent)" style={{ flexShrink: 0 }} />
+          <span>{collectedSummary}</span>
         </div>
       )}
 
