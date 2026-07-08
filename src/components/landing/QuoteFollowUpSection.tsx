@@ -258,9 +258,9 @@ const KPIS = [
 /* ---------------------------------------------------------------------- */
 
 const MODES = [
-  { label: 'Manuelle', sub: 'Vous gardez la main', icon: Phone, selected: false },
-  { label: 'Assistée', sub: 'Kadria prépare le message', icon: MessageSquare, selected: true },
-  { label: 'Automatisée', sub: 'Selon vos règles et votre ton', icon: Settings2, selected: false },
+  { label: 'Manuelle', sub: 'Vous gardez la main', subMobile: 'Vous gardez la main', icon: Phone, selected: false },
+  { label: 'Assistée', sub: 'Kadria prépare le message', subMobile: 'Message préparé', icon: MessageSquare, selected: true },
+  { label: 'Automatisée', sub: 'Selon vos règles et votre ton', subMobile: 'Selon vos règles', icon: Settings2, selected: false },
 ];
 
 /* ---------------------------------------------------------------------- */
@@ -285,7 +285,7 @@ function CenterCard({ reduce }: { reduce: boolean }) {
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="relative overflow-hidden rounded-2xl p-6"
+      className="relative overflow-hidden rounded-2xl p-4 lg:p-6"
       style={{
         backgroundColor: CARD_BG,
         border: `1px solid color-mix(in oklab, ${ORANGE} 35%, ${BORDER})`,
@@ -311,21 +311,48 @@ function CenterCard({ reduce }: { reduce: boolean }) {
           À RELANCER AUJOURD&apos;HUI
         </span>
 
-        <div className="mt-4 flex items-start justify-between gap-4">
+        <div className="mt-3 flex items-start justify-between gap-3 lg:mt-4 lg:gap-4">
           <div>
-            <h3 className="text-lg font-bold" style={{ color: TEXT }}>
+            <h3 className="text-base font-bold lg:text-lg" style={{ color: TEXT }}>
               1 devis prioritaire à relancer
             </h3>
-            <p className="mt-1.5 text-[13px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+            <p className="mt-1 text-[12.5px] leading-snug lg:mt-1.5 lg:text-[13px] lg:leading-relaxed" style={{ color: TEXT_MUTED }}>
               Ce prospect ne vous a pas répondu depuis 6 jours. Une relance augmente fortement vos chances de réponse.
             </p>
           </div>
-          <ScoreCircle value={88} reduce={reduce} delay={0.15} />
+          {/* desktop: full score circle */}
+          <span className="hidden lg:flex">
+            <ScoreCircle value={88} reduce={reduce} delay={0.15} />
+          </span>
+          {/* mobile: compact score badge */}
+          <span
+            className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold lg:hidden"
+            style={{
+              backgroundColor: 'color-mix(in oklab, ' + ORANGE + ' 16%, transparent)',
+              color: ORANGE,
+              border: `1px solid color-mix(in oklab, ${ORANGE} 40%, transparent)`,
+            }}
+          >
+            Score 88
+          </span>
         </div>
 
         {/* record card */}
-        <div className="mt-4 rounded-xl p-4" style={{ backgroundColor: CARD_BG_2, border: `1px solid ${BORDER}` }}>
-          <div className="grid grid-cols-2 gap-y-2 text-[12.5px]">
+        <div className="mt-3 rounded-xl p-3 lg:mt-4 lg:p-4" style={{ backgroundColor: CARD_BG_2, border: `1px solid ${BORDER}` }}>
+          {/* mobile: narrative presentation */}
+          <div className="lg:hidden">
+            <p className="text-[13px] font-semibold" style={{ color: TEXT }}>
+              Jean Dupont
+            </p>
+            <p className="mt-0.5 text-[12px]" style={{ color: TEXT_MUTED }}>
+              Installation borne de recharge
+            </p>
+            <p className="mt-1.5 text-[12px] font-medium" style={{ color: TEXT }}>
+              1 500 € <span style={{ color: TEXT_DIM }}>&middot;</span> Devis #DEV-2024-0412
+            </p>
+          </div>
+          {/* desktop: labels/values grid */}
+          <div className="hidden grid-cols-2 gap-y-2 text-[12.5px] lg:grid">
             <span style={{ color: TEXT_DIM }}>Client</span>
             <span className="text-right font-medium" style={{ color: TEXT }}>
               Jean Dupont
@@ -343,7 +370,7 @@ function CenterCard({ reduce }: { reduce: boolean }) {
               Devis #DEV-2024-0412
             </span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          <div className="mt-2.5 flex flex-wrap gap-1.5 lg:mt-3">
             {['Inactif depuis 6 jours', 'Envoyé le 12 juin', 'Aucune réponse'].map((t) => (
               <span
                 key={t}
@@ -358,7 +385,7 @@ function CenterCard({ reduce }: { reduce: boolean }) {
 
         {/* recommendation */}
         <div
-          className="mt-4 rounded-xl p-3.5"
+          className="mt-3 rounded-xl p-2.5 lg:mt-4 lg:p-3.5"
           style={{ backgroundColor: 'color-mix(in oklab, ' + GREEN + ' 8%, transparent)', border: `1px solid color-mix(in oklab, ${GREEN} 28%, transparent)` }}
         >
           <div className="flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: GREEN }}>
@@ -373,7 +400,7 @@ function CenterCard({ reduce }: { reduce: boolean }) {
         {/* CTA */}
         <button
           type="button"
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13.5px] font-semibold transition-transform hover:scale-[1.01]"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13.5px] font-semibold transition-transform hover:scale-[1.01] lg:mt-4 lg:py-3"
           style={{
             backgroundColor: GREEN,
             color: 'oklch(0.16 0.008 260)',
@@ -385,11 +412,11 @@ function CenterCard({ reduce }: { reduce: boolean }) {
         </button>
 
         {/* mode de relance */}
-        <div className="mt-4">
+        <div className="mt-3 lg:mt-4">
           <p className="text-[11.5px] font-semibold" style={{ color: TEXT_DIM }}>
             Mode de relance
           </p>
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-1.5 grid grid-cols-3 gap-1.5 lg:mt-2 lg:gap-2">
             {MODES.map((mode, i) => (
               <motion.div
                 key={mode.label}
@@ -397,7 +424,7 @@ function CenterCard({ reduce }: { reduce: boolean }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.35, ease: 'easeOut', delay: reduce ? 0 : 0.1 * i }}
-                className="rounded-lg px-2 py-2.5 text-center"
+                className="rounded-lg px-1.5 py-1.5 text-center lg:px-2 lg:py-2.5"
                 style={{
                   backgroundColor: mode.selected ? 'color-mix(in oklab, ' + GREEN + ' 14%, transparent)' : CARD_BG_2,
                   border: mode.selected ? `1px solid color-mix(in oklab, ${GREEN} 45%, transparent)` : `1px solid ${BORDER}`,
@@ -407,7 +434,10 @@ function CenterCard({ reduce }: { reduce: boolean }) {
                 <p className="mt-1 text-[11px] font-semibold" style={{ color: mode.selected ? GREEN : TEXT }}>
                   {mode.label}
                 </p>
-                <p className="mt-0.5 text-[9.5px] leading-tight" style={{ color: TEXT_DIM }}>
+                <p className="mt-0.5 text-[9.5px] leading-tight lg:hidden" style={{ color: TEXT_DIM }}>
+                  {mode.subMobile}
+                </p>
+                <p className="mt-0.5 hidden text-[9.5px] leading-tight lg:block" style={{ color: TEXT_DIM }}>
                   {mode.sub}
                 </p>
               </motion.div>
@@ -750,7 +780,7 @@ export default function QuoteFollowUpSection() {
         </div>
 
         {/* benefits */}
-        <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-14 lg:grid-cols-4 lg:gap-4">
+        <div className="mt-8 grid grid-cols-2 gap-2.5 sm:mt-10 sm:gap-3 lg:mt-14 lg:grid-cols-4 lg:gap-4">
           {BENEFITS.map((b, i) => (
             <motion.div
               key={b.title}
@@ -758,14 +788,14 @@ export default function QuoteFollowUpSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.4, ease: 'easeOut', delay: reduce ? 0 : 0.08 * i }}
-              className="rounded-xl p-4"
+              className="rounded-xl p-2.5 sm:p-4"
               style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}` }}
             >
               <CheckCircle2 size={16} style={{ color: GREEN }} />
-              <p className="mt-2 text-[13px] font-semibold" style={{ color: TEXT }}>
+              <p className="mt-1.5 text-[12.5px] font-semibold sm:mt-2 sm:text-[13px]" style={{ color: TEXT }}>
                 {b.title}
               </p>
-              <p className="mt-1 text-[12px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+              <p className="mt-1 text-[11.5px] leading-snug sm:text-[12px] sm:leading-relaxed" style={{ color: TEXT_MUTED }}>
                 {b.desc}
               </p>
             </motion.div>
