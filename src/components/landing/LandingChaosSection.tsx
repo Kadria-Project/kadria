@@ -153,28 +153,25 @@ function MobileConnector({ reduce, delay }: { reduce: boolean | null; delay: num
   );
 }
 
-// Courbes décoratives cartes -> K, en coordonnées relatives (viewBox 0-100),
-// mesurées via Playwright (getBoundingClientRect) sur le rendu desktop réel à
-// 1440px : conteneur "relative mt-10" = {x:168, y:719.5, w:1104, h:472.25},
-// cartes lg:grid-cols-3 (2 lignes), bord bas-centre de chaque carte, K
-// {x:680, y:1007.75, w:80, h:80} -> bord haut-centre à (50, 61.04). Les
-// anciennes coordonnées (K supposé à y92) étaient devinées et désalignées :
-// le K réel se trouve bien plus haut dans le conteneur (y~61), ce qui
-// faisait dépasser les traits sous le K.
-// Ligne 1 (bas ~y26.15) : gauche x16.18, milieu x50, droite x83.82
-// Ligne 2 (bas ~y50.87) : gauche x16.18, milieu x50, droite x83.82
-// Point d'arrivée commun : bord haut du K, (50, 61.04)
+// Flux décoratifs cartes -> K, en coordonnées relatives (viewBox 0-100),
+// re-mesurées via Playwright (getBoundingClientRect) sur le rendu desktop
+// réel à 1440px avec le contenu actuel des cartes : conteneur "relative
+// mt-10" = {x:168, y:619.5, w:1104, h:472.25}, colonnes centrées à
+// x16.18 / x50 / x83.82, bord bas de la carte du bas (rangée 2) à y~56.2,
+// K {x:680, y:927.75, w:80, h:80} -> bord haut-centre à (50, 65.27).
+// Simplification (lot 3) : au lieu de 6 petits traits individuels (un par
+// carte, effet "laser" fragmenté), on regroupe en 3 flux uniques, un par
+// colonne (gauche / centre / droite), chacun partant d'un point médian sous
+// la colonne (hauteur du bas de la carte du bas) et convergeant en une seule
+// courbe de Bézier douce et continue vers le bord haut du K.
 const CHAOS_LINES = [
-  "M16.18,26.15 C24,38 38,52 50,61.04",
-  "M50,26.15 C50,38 50,50 50,61.04",
-  "M83.82,26.15 C76,38 62,52 50,61.04",
-  "M16.18,50.87 C26,55 40,59 50,61.04",
-  "M50,50.87 C50,55 50,58 50,61.04",
-  "M83.82,50.87 C74,55 60,59 50,61.04",
+  "M16.18,56.2 C30,60 42,64 50,65.27",
+  "M50,56.2 C50,59 50,62 50,65.27",
+  "M83.82,56.2 C70,60 58,64 50,65.27",
 ];
 
 const LINE_DURATION = 0.9;
-const LINE_STAGGER = 0.09;
+const LINE_STAGGER = 0.14;
 const LINES_END = LINE_DURATION + LINE_STAGGER * (CHAOS_LINES.length - 1);
 const K_PULSE_DELAY = LINES_END + 0.18;
 const K_PULSE_DURATION = 1.1;
