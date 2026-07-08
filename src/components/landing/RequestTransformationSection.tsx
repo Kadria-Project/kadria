@@ -45,49 +45,80 @@ const TEXT_MUTED = 'oklch(0.7 0.01 260)';
 const TEXT_DIM = 'oklch(0.55 0.01 260)';
 const ORANGE = 'oklch(0.82 0.16 65)';
 
-/* Dedicated, short conversation for this section — reuses the exact same
+/* Dedicated, long conversation for this section — reuses the exact same
    AssistantWebChatCard component/animation/style as the "Deux assistants.
    Une seule plateforme." section, only the message content differs.
    Scenario: "AD Elec ⚡" — installation d'une borne de recharge 7 kW. */
 const WEB_DEMO_MESSAGES: ChatMsg[] = [
-  { role: 'user', text: 'Bonjour, je souhaite installer une borne de recharge pour ma voiture électrique.', delay: 0 },
+  { role: 'user', text: "Travaux d'amélioration", delay: 0 },
+  { role: 'user', text: 'Installation borne recharge voiture électrique', delay: 1800 },
   {
     role: 'assistant',
-    text: 'Parfait ! Pour bien préparer votre projet, quelle puissance de borne envisagez-vous ?',
-    delay: 2200,
+    text: 'Vous souhaitez donc installer une borne de recharge pour voiture électrique. Pouvez-vous me dire si vous avez déjà un modèle en tête ou si vous avez besoin de conseils sur le choix de la borne ?',
+    delay: 3600,
   },
-  { role: 'user', text: '7 kW.', delay: 4600 },
+  { role: 'user', text: 'Je ne sais pas, mais je veux recharger à 7 kW.', delay: 7000 },
   {
     role: 'assistant',
-    text: 'Merci ! Quel budget avez-vous prévu pour cette installation ?',
-    delay: 6800,
+    text: 'Vous souhaitez une borne de recharge de 7 kW. Avez-vous accès à votre tableau électrique pour vérifier la compatibilité ?',
+    delay: 8800,
   },
-  { role: 'user', text: 'Entre 1 000 et 1 500 €.', delay: 9200 },
+  { role: 'user', text: 'Oui', delay: 11800 },
   {
     role: 'assistant',
-    text: 'Très bien. Quel est votre délai souhaité pour les travaux ?',
-    delay: 11400,
+    text: 'Parfait. Pour continuer, quel est votre budget estimatif pour cette installation ? Vous imaginez plutôt un budget inférieur à 2 000 €, entre 2 000 € et 5 000 €, ou supérieur ?',
+    delay: 13400,
   },
-  { role: 'user', text: 'Dès que possible.', delay: 13800 },
+  { role: 'user', text: 'Moins de 2 000 €', delay: 17200 },
   {
     role: 'assistant',
-    text: "Parfait, votre projet semble prêt à démarrer. Quelle est l'adresse du chantier ?",
-    delay: 16000,
+    text: 'Pour affiner votre budget, pouvez-vous me dire si vous envisagez un budget plutôt autour de 1 000 €, entre 1 000 € et 1 500 €, ou entre 1 500 € et 2 000 € ?',
+    delay: 19000,
   },
-  { role: 'user', text: '24 Rue de la Mairie, 76520 Saint-Aubin-Celloville', delay: 18600 },
+  { role: 'user', text: '1 000 à 1 500 €', delay: 22800 },
   {
     role: 'assistant',
-    text: 'Pour finaliser votre dossier, renseignez vos coordonnées ci-dessous.',
-    delay: 20800,
+    text: 'Merci pour cette précision. Quel délai souhaitez-vous pour ce projet ?',
+    delay: 24600,
+  },
+  { role: 'user', text: 'Dès que possible', delay: 27200 },
+  {
+    role: 'assistant',
+    text: 'Où en êtes-vous dans votre réflexion ?',
+    delay: 29000,
+  },
+  { role: 'user', text: 'Prêt à démarrer', delay: 31400 },
+  {
+    role: 'assistant',
+    text: "Avez-vous des photos, plans ou documents à joindre pour aider l'artisan à préparer son devis ?",
+    delay: 33200,
+  },
+  { role: 'user', text: "Je n'ai pas de photos pour le moment", delay: 36000 },
+  {
+    role: 'assistant',
+    text: "Quelle est l'adresse du chantier concerné ?",
+    delay: 37800,
+  },
+  { role: 'user', text: '24 Rue de la Mairie, 76520 Saint-Aubin-Celloville', delay: 40400 },
+  {
+    role: 'assistant',
+    text: 'Pour finaliser votre dossier, renseignez vos coordonnées.',
+    delay: 42600,
   },
   {
     role: 'user',
     text: 'Jean Dupont, 06 21 45 77 XX, jean@emailkadria.fr',
-    delay: 23400,
+    delay: 45400,
     isContactCard: true,
     contactName: 'Jean Dupont',
     contactPhone: '06 21 45 77 XX',
     contactEmail: 'jean@emailkadria.fr',
+  },
+  {
+    role: 'assistant',
+    text: 'Votre dossier est complet. AD Elec peut maintenant étudier votre demande et vous recontacter rapidement.',
+    delay: 47600,
+    isSuccess: true,
   },
 ];
 
@@ -100,24 +131,46 @@ const WEB_COLLECTED_FIELDS = [
 ];
 
 const VOICE_DEMO_MESSAGES: { role: 'client' | 'kadria'; text: string; delay: number }[] = [
-  { role: 'kadria', text: "Bonjour, je suis l'assistant de Kadria. Pour quel type de projet puis-je vous aider ?", delay: 0 },
-  { role: 'client', text: 'Bonjour, je souhaite faire installer une borne de recharge 7 kW dans ma maison individuelle.', delay: 2600 },
   {
     role: 'kadria',
-    text: 'Très bien. Sous quel délai souhaitez-vous réaliser les travaux ?',
-    delay: 5200,
+    text: "Bonjour, vous êtes bien en ligne avec Kadria, l'assistante de votre artisan. Pouvez-vous m'expliquer votre projet en quelques mots ?",
+    delay: 0,
   },
-  { role: 'client', text: "D'ici trois semaines si possible.", delay: 7800 },
+  { role: 'client', text: "Bonjour, j'aimerais installer une borne de recharge pour voiture électrique.", delay: 3400 },
   {
     role: 'kadria',
-    text: 'Parfait. Avez-vous une idée de votre budget pour cette installation ?',
-    delay: 10200,
+    text: 'Très bien. Pour quel type de lieu est prévue l\'installation ? Par exemple : une maison individuelle, un immeuble, un local professionnel ou un autre type de bâtiment.',
+    delay: 6200,
   },
-  { role: 'client', text: 'Entre 1 500 et 2 000 euros.', delay: 12800 },
+  { role: 'client', text: 'Une maison individuelle.', delay: 10400 },
   {
     role: 'kadria',
-    text: 'Merci, votre dossier est créé automatiquement et transmis à un artisan qualifié.',
-    delay: 15200,
+    text: 'Parfait. Avez-vous déjà une idée du modèle ou de la puissance souhaitée pour la borne de recharge ?',
+    delay: 12800,
+  },
+  { role: 'client', text: 'Oui, une borne de 7 kW.', delay: 16400 },
+  {
+    role: 'kadria',
+    text: 'Merci pour cette précision. Dans quel délai souhaitez-vous réaliser les travaux ?',
+    delay: 18800,
+  },
+  { role: 'client', text: "D'ici trois semaines.", delay: 21800 },
+  {
+    role: 'kadria',
+    text: 'C\'est noté. Avez-vous prévu un budget approximatif pour cette installation ?',
+    delay: 24200,
+  },
+  { role: 'client', text: 'Entre 1 500 et 2 000 euros.', delay: 27400 },
+  {
+    role: 'kadria',
+    text: 'Très bien. Je récapitule : vous souhaitez installer une borne de recharge de 7 kW dans une maison individuelle, avec un délai souhaité d\'environ trois semaines et un budget estimé entre 1 500 et 2 000 euros. Est-ce exact ?',
+    delay: 30000,
+  },
+  { role: 'client', text: 'Oui, exactement.', delay: 35400 },
+  {
+    role: 'kadria',
+    text: "Parfait, merci pour votre confirmation. Votre demande est bien enregistrée. Vous allez recevoir un SMS pour compléter les dernières informations utiles, comme vos coordonnées, l'adresse exacte du chantier ou des photos si nécessaire. L'entreprise va maintenant étudier votre projet et vous recontactera très prochainement.",
+    delay: 37800,
   },
 ];
 
@@ -534,8 +587,9 @@ function MobileAssistantCarousel({ reduce }: { reduce: boolean }) {
 
 /* Fixed height shared by both assistant cards — must stay strictly
    identical between web and voice, and must never change while the
-   message animation plays (the translateY scroll mechanism keeps this
-   container's height constant). */
+   message animation plays. The conversation area scrolls internally
+   (native vertical scroll, hidden scrollbar) so this outer container's
+   height stays constant. */
 const ASSISTANT_CARD_HEIGHT = 400;
 
 function AssistantCard({ reduce, kind }: { reduce: boolean; kind: 'web' | 'voice' }) {

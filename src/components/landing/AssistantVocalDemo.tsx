@@ -52,8 +52,10 @@ export interface VoiceAssistantCardProps {
    * 'auto' (default) preserves the original behavior: native vertical
    * scrolling (`overflow-y-auto`) — used as-is by the "Deux assistants. Une
    * seule plateforme." section.
-   * 'translate' is opt-in: `overflow-hidden` + translateY animation so no
-   * native scrollbar is rendered. Used by `RequestTransformationSection.tsx`.
+   * 'translate' is opt-in: native vertical scroll (`overflow-y-auto`) with
+   * the scrollbar hidden via CSS, auto-scrolling to the newest message only
+   * while the user is near the bottom (`isUserNearBottom`). Used by
+   * `RequestTransformationSection.tsx`.
    */
   scrollMode?: 'auto' | 'translate';
 }
@@ -69,8 +71,7 @@ export function VoiceAssistantCard({
 }: VoiceAssistantCardProps) {
   const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? messages.length : 0);
   const [elapsed, setElapsed] = useState(0);
-  const [translateY, setTranslateY] = useState(0);
-  const [contentFits, setContentFits] = useState(true);
+  const [isUserNearBottom, setIsUserNearBottom] = useState(true);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
 
@@ -114,15 +115,31 @@ export function VoiceAssistantCard({
     });
   }, [visibleMessages, reduceMotion, scrollMode]);
 
+  // Native scroll mode: track whether the user is near the bottom so we
+  // only auto-scroll to the newest message when they haven't scrolled up
+  // to read the transcript history.
+  const NEAR_BOTTOM_THRESHOLD = 48;
   useEffect(() => {
     if (scrollMode !== 'translate') return;
-    if (!transcriptRef.current || !innerRef.current) return;
-    const outer = transcriptRef.current;
-    const inner = innerRef.current;
-    const maxOffset = Math.max(0, inner.scrollHeight - outer.clientHeight);
-    setTranslateY(maxOffset);
-    setContentFits(maxOffset === 0);
-  }, [visibleMessages, scrollMode]);
+    const el = transcriptRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - NEAR_BOTTOM_THRESHOLD;
+      setIsUserNearBottom(nearBottom);
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [scrollMode]);
+
+  useEffect(() => {
+    if (scrollMode !== 'translate') return;
+    if (!transcriptRef.current) return;
+    if (!isUserNearBottom) return;
+    transcriptRef.current.scrollTo({
+      top: transcriptRef.current.scrollHeight,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  }, [visibleMessages, scrollMode, reduceMotion, isUserNearBottom]);
 
   const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
   const seconds = (elapsed % 60).toString().padStart(2, '0');
@@ -162,11 +179,10 @@ export function VoiceAssistantCard({
 
       <div
         ref={transcriptRef}
-        className={`kr-assistant-scroll relative min-h-0 flex-1 px-4 py-3.5 ${
-          scrollMode === 'translate'
-            ? `overflow-hidden flex flex-col ${contentFits ? 'justify-end' : 'justify-start'}`
-            : 'overflow-y-auto flex flex-col gap-3'
+        className={`kr-assistant-scroll relative min-h-0 flex-1 overflow-y-auto px-4 py-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          scrollMode === 'translate' ? 'flex flex-col' : 'flex flex-col gap-3'
         }`}
+        style={scrollMode === 'translate' ? { overscrollBehavior: 'contain', touchAction: 'pan-y' } : undefined}
       >
         {scrollMode === 'translate' && (
           <>
@@ -182,15 +198,7 @@ export function VoiceAssistantCard({
             />
           </>
         )}
-        <div
-          ref={innerRef}
-          className="flex flex-col gap-3"
-          style={
-            scrollMode === 'translate'
-              ? { transform: `translateY(-${translateY}px)`, transition: reduceMotion ? 'none' : 'transform 450ms ease' }
-              : undefined
-          }
-        >
+        <div ref={innerRef} className="flex flex-col gap-3">
         {messages.slice(0, visibleMessages).map((msg, i) =>
           msg.role === 'client' ? (
             <div
