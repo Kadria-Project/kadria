@@ -165,6 +165,7 @@ export function AssistantWebChatCard({
   const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? messages.length : 0);
   const [typingBeforeIndex, setTypingBeforeIndex] = useState<number | null>(null);
   const [translateY, setTranslateY] = useState(0);
+  const [contentFits, setContentFits] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
 
@@ -212,6 +213,7 @@ export function AssistantWebChatCard({
     const inner = innerRef.current;
     const maxOffset = Math.max(0, inner.scrollHeight - outer.clientHeight);
     setTranslateY(maxOffset);
+    setContentFits(maxOffset === 0);
   }, [visibleMessages, typingBeforeIndex, scrollMode]);
 
   // Dynamic progress bar
@@ -251,7 +253,9 @@ export function AssistantWebChatCard({
       <div
         ref={chatRef}
         className={`kr-assistant-scroll relative min-h-0 flex-1 px-3.5 py-3 ${
-          scrollMode === 'translate' ? 'overflow-hidden' : 'overflow-y-auto flex flex-col gap-3'
+          scrollMode === 'translate'
+            ? `overflow-hidden flex flex-col ${contentFits ? 'justify-end' : 'justify-start'}`
+            : 'overflow-y-auto flex flex-col gap-3'
         }`}
       >
         {scrollMode === 'translate' && (
@@ -381,19 +385,23 @@ export function AssistantWebChatCard({
 
       {collectedFields && (
         <div
-          className={`flex flex-shrink-0 flex-wrap gap-1.5 border-t border-[var(--border)] px-3.5 py-2.5 transition-opacity duration-500 ${
-            isComplete ? 'opacity-100' : 'opacity-0'
-          }`}
+          className="flex flex-shrink-0 flex-wrap gap-1.5 border-t border-[var(--border)] px-3.5 py-2.5"
           style={{ background: 'rgba(34,197,94,0.06)' }}
         >
-          {collectedFields.map((f) => (
-            <span
-              key={f.label}
-              className="rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-2 py-1 text-[10px] font-medium text-[var(--accent)]"
-            >
-              {f.label}: <span className="font-semibold">{f.value}</span>
-            </span>
-          ))}
+          <div
+            className={`flex flex-wrap gap-1.5 transition-opacity duration-500 ${
+              isComplete ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            {collectedFields.map((f) => (
+              <span
+                key={f.label}
+                className="rounded-full border border-[var(--accent-border)] bg-[rgba(34,197,94,0.1)] px-2 py-1 text-[10px] font-medium text-[var(--accent)]"
+              >
+                {f.label}: <span className="font-semibold">{f.value}</span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

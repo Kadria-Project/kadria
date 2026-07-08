@@ -70,6 +70,7 @@ export function VoiceAssistantCard({
   const [visibleMessages, setVisibleMessages] = useState(reduceMotion ? messages.length : 0);
   const [elapsed, setElapsed] = useState(0);
   const [translateY, setTranslateY] = useState(0);
+  const [contentFits, setContentFits] = useState(true);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +121,7 @@ export function VoiceAssistantCard({
     const inner = innerRef.current;
     const maxOffset = Math.max(0, inner.scrollHeight - outer.clientHeight);
     setTranslateY(maxOffset);
+    setContentFits(maxOffset === 0);
   }, [visibleMessages, scrollMode]);
 
   const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
@@ -161,7 +163,9 @@ export function VoiceAssistantCard({
       <div
         ref={transcriptRef}
         className={`kr-assistant-scroll relative min-h-0 flex-1 px-4 py-3.5 ${
-          scrollMode === 'translate' ? 'overflow-hidden' : 'overflow-y-auto flex flex-col gap-3'
+          scrollMode === 'translate'
+            ? `overflow-hidden flex flex-col ${contentFits ? 'justify-end' : 'justify-start'}`
+            : 'overflow-y-auto flex flex-col gap-3'
         }`}
       >
         {scrollMode === 'translate' && (
@@ -215,12 +219,17 @@ export function VoiceAssistantCard({
 
       {collectedSummary && (
         <div
-          className={`flex flex-shrink-0 items-center gap-2 border-t border-[var(--border)] px-3.5 py-2 text-[11px] text-[var(--text-2)] transition-opacity duration-500 ${
-            isComplete ? 'opacity-100' : 'opacity-0'
-          }`}
+          className="flex flex-shrink-0 items-center gap-2 border-t border-[var(--border)] px-3.5 py-2 text-[11px] text-[var(--text-2)]"
+          style={{ background: 'rgba(96,165,250,0.05)' }}
         >
-          <CheckCircle size={12} color="var(--accent)" style={{ flexShrink: 0 }} />
-          <span>{collectedSummary}</span>
+          <div
+            className={`flex items-center gap-2 transition-opacity duration-500 ${
+              isComplete ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <CheckCircle size={12} color="var(--accent)" style={{ flexShrink: 0 }} />
+            <span>{collectedSummary}</span>
+          </div>
         </div>
       )}
 

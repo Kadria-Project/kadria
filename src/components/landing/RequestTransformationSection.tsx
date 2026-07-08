@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
+  ArrowLeftRight,
   ArrowRight,
   Bell,
   Check,
@@ -489,9 +490,20 @@ function MobileAssistantCarousel({ reduce }: { reduce: boolean }) {
 
   return (
     <div className="lg:hidden">
-      <p className="mb-2 text-center text-[11px]" style={{ color: TEXT_DIM }}>
-        Glissez pour voir les assistants →
-      </p>
+      <div className="mb-3 flex justify-center">
+        <span
+          className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-semibold backdrop-blur-md"
+          style={{
+            color: TEXT,
+            backgroundColor: `color-mix(in oklab, ${DARK_BG} 78%, transparent)`,
+            border: `1px solid color-mix(in oklab, ${GREEN} 45%, transparent)`,
+            boxShadow: `0 0 0 1px color-mix(in oklab, ${GREEN} 12%, transparent), 0 4px 16px -6px color-mix(in oklab, ${GREEN} 45%, transparent)`,
+          }}
+        >
+          <ArrowLeftRight size={13} style={{ color: GREEN, flexShrink: 0 }} />
+          Glissez pour comparer les deux assistants
+        </span>
+      </div>
       <div
         ref={scrollerRef}
         onScroll={handleScroll}
@@ -661,22 +673,30 @@ export default function RequestTransformationSection() {
 
         <Connectors reduce={reduce} />
 
-        <div className="mt-6 lg:mt-2">
+        {/* Desktop-only dossier placement, directly under the two side-by-side
+           assistant cards + connector lines above. Mobile has its own dossier
+           instance below the carousel (see order-preserving mobile block
+           further down) so it never renders above the assistants on mobile. */}
+        <div className="hidden lg:mt-2 lg:block">
           <DossierCard reduce={reduce} />
         </div>
 
-        {/* Mobile: swipeable carousel */}
+        {/* Mobile: swipeable carousel, then connector, then dossier — in that
+           exact DOM order, so the project sheet always appears below the
+           assistants on mobile (never above). */}
         <div className="mt-8 lg:hidden">
           <MobileAssistantCarousel reduce={reduce} />
+          <div
+            aria-hidden
+            className="mx-auto mt-6 h-6 w-px"
+            style={{
+              background: `linear-gradient(to bottom, color-mix(in oklab, ${GREEN} 55%, transparent), color-mix(in oklab, ${GREEN} 20%, transparent))`,
+            }}
+          />
+          <div className="mt-6">
+            <DossierCard reduce={reduce} />
+          </div>
         </div>
-
-        <div
-          aria-hidden
-          className="mx-auto mt-6 h-6 w-px lg:hidden"
-          style={{
-            background: `linear-gradient(to bottom, color-mix(in oklab, ${GREEN} 55%, transparent), color-mix(in oklab, ${GREEN} 20%, transparent))`,
-          }}
-        />
 
         {/* Benefits */}
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
