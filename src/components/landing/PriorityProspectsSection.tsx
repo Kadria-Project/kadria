@@ -137,8 +137,6 @@ const ANALYSIS_CRITERIA = [
   { label: 'Proximité', score: 65, desc: "Zone d'intervention" },
 ];
 
-const MOBILE_CRITERIA_LABELS = ['Complétude du dossier', 'Budget déclaré', 'Urgence / Délai', 'Maturité du client', 'Relance à effectuer'];
-
 /* Subtle per-avatar gradient rotation so the 5 client rows read as
    distinct people at a glance without pulling in external images. */
 const AVATAR_GRADIENTS = [
@@ -413,7 +411,7 @@ function PriorityCard({ reduce }: { reduce: boolean }) {
           <ScoreCircle value={top.score} size={64} strokeWidth={6} reduce={reduce} delay={0.25} />
         </div>
       </div>
-      <p className="relative -mt-1 text-right text-[11px]" style={{ color: TEXT_DIM }}>
+      <p className="relative -mt-1 hidden text-right text-[11px] lg:block" style={{ color: TEXT_DIM }}>
         88/100
       </p>
 
@@ -587,6 +585,35 @@ function FlowConnector({ reduce, delay }: { reduce: boolean; delay: number }) {
   );
 }
 
+/* Discrete vertical connector shown only on mobile/tablet between the
+   stacked cards, to narrate the flow the way `FlowConnector` does
+   horizontally on desktop. Small trait + glowing dot + chevron, no SVG
+   path-drawing — a simple fade/scale is enough and respects reduced
+   motion. */
+function VerticalFlowConnector({ reduce }: { reduce: boolean }) {
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none flex items-center justify-center py-1 lg:hidden"
+      initial={reduce ? false : { opacity: 0, scale: 0.85 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
+      <div className="flex flex-col items-center gap-0.5">
+        <span
+          className="h-6 w-[2px] rounded-full"
+          style={{
+            background: `linear-gradient(to bottom, transparent, ${GREEN})`,
+            boxShadow: `0 0 8px color-mix(in oklab, ${GREEN} 70%, transparent)`,
+          }}
+        />
+        <ChevronDown size={13} style={{ color: GREEN, filter: `drop-shadow(0 0 4px color-mix(in oklab, ${GREEN} 70%, transparent))` }} />
+      </div>
+    </motion.div>
+  );
+}
+
 export default function PriorityProspectsSection() {
   const reduce = useStableReducedMotion();
 
@@ -600,7 +627,7 @@ export default function PriorityProspectsSection() {
       };
 
   return (
-    <section style={{ backgroundColor: DARK_BG, color: TEXT }} className="relative overflow-hidden py-14 sm:py-20">
+    <section style={{ backgroundColor: DARK_BG, color: TEXT }} className="relative overflow-hidden pb-14 pt-20 sm:py-20">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.28]"
@@ -657,15 +684,20 @@ export default function PriorityProspectsSection() {
           </div>
         </div>
 
-        {/* Mobile: priority card first, then compact list, then analysis */}
-        <div className="mt-10 flex flex-col gap-6 lg:hidden">
+        {/* Mobile: priority card first, then compact list, then analysis,
+            each separated by a short vertical connector that narrates the
+            flow (mirrors the desktop FlowConnector, but vertical). */}
+        <div className="mt-10 flex flex-col gap-8 lg:hidden">
           <PriorityCard reduce={reduce} />
+          <VerticalFlowConnector reduce={reduce} />
           <QualifiedListCard reduce={reduce} dossiers={DOSSIERS.slice(0, 3)} />
+          <VerticalFlowConnector reduce={reduce} />
           <AnalysisCard reduce={reduce} criteria={ANALYSIS_CRITERIA.slice(0, 5)} />
         </div>
 
         {/* Benefits */}
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <VerticalFlowConnector reduce={reduce} />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:mt-12 lg:gap-4 lg:grid-cols-4">
           {BENEFITS.map((b, i) => {
             const Icon = b.icon;
             return (
@@ -675,19 +707,20 @@ export default function PriorityProspectsSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ duration: 0.5, ease: 'easeOut', delay: reduce ? 0 : 0.1 * i }}
-                className="rounded-xl p-5"
+                className="rounded-xl p-3.5 sm:p-4 lg:p-5"
                 style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}` }}
               >
                 <span
-                  className="flex h-8 w-8 items-center justify-center rounded-lg"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg lg:h-8 lg:w-8"
                   style={{ backgroundColor: `color-mix(in oklab, ${GREEN} 15%, transparent)`, color: GREEN }}
                 >
-                  <Icon size={15} />
+                  <Icon size={14} className="lg:hidden" />
+                  <Icon size={15} className="hidden lg:block" />
                 </span>
-                <p className="mt-3 text-sm font-semibold" style={{ color: TEXT }}>
+                <p className="mt-2 text-sm font-semibold lg:mt-3" style={{ color: TEXT }}>
                   {b.title}
                 </p>
-                <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+                <p className="mt-1 text-[12.5px] leading-relaxed lg:mt-1.5" style={{ color: TEXT_MUTED }}>
                   {b.body}
                 </p>
               </motion.div>
