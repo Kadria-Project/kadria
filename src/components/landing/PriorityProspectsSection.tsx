@@ -285,10 +285,10 @@ function AnalysisBar({ label, desc, score, reduce, delay }: { label: string; des
       <p className="mt-0.5 text-[10.5px]" style={{ color: TEXT_DIM }}>
         {desc}
       </p>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'oklch(1 0 0 / 0.07)' }}>
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'oklch(1 0 0 / 0.12)' }}>
         <motion.div
           className="h-full rounded-full"
-          style={{ backgroundColor: color }}
+          style={{ backgroundColor: color, boxShadow: `0 0 6px -1px color-mix(in oklab, ${color} 70%, transparent)` }}
           initial={reduce ? false : { width: 0 }}
           whileInView={{ width: `${score}%` }}
           viewport={{ once: true, margin: '-60px' }}
@@ -734,7 +734,7 @@ export default function PriorityProspectsSection() {
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.5, ease: 'easeOut', delay: reduce ? 0 : 0.3 }}
           className="mx-auto mt-8 max-w-2xl text-center text-sm"
-          style={{ color: TEXT_DIM }}
+          style={{ color: 'oklch(1 0 0 / 0.58)' }}
         >
           Kadria analyse, score et priorise pour que vous puissiez agir là où ça compte vraiment.
         </motion.p>
