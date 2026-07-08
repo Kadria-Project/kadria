@@ -19,22 +19,22 @@ export async function generateMetadata({
     return { title: 'Ressource introuvable | Kadria' };
   }
 
-  const title = `${resource.title} | Kadria`;
+  const title = resource.seoTitle || `${resource.title} | Kadria`;
 
   return {
     title,
-    description: resource.excerpt,
+    description: resource.seoDescription || resource.excerpt,
     alternates: {
       canonical: `/ressources/${resource.slug}`,
     },
     openGraph: {
       title,
-      description: resource.excerpt,
+      description: resource.seoDescription || resource.excerpt,
       url: `https://kadria.fr/ressources/${resource.slug}`,
     },
     twitter: {
       title,
-      description: resource.excerpt,
+      description: resource.seoDescription || resource.excerpt,
     },
   };
 }
