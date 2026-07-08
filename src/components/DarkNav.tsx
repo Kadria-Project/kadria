@@ -53,8 +53,8 @@ export function DarkNav() {
         />
       )}
       <header
-      className={`fixed inset-x-0 top-0 z-50 border-b border-white/10 px-4 transition-colors duration-200 sm:px-6 md:px-8 ${
-        scrolled ? 'bg-black/70 backdrop-blur-[14px]' : 'bg-black/60 backdrop-blur-[14px]'
+      className={`fixed inset-x-0 top-0 z-50 border-b border-white/10 px-4 transition-colors duration-200 sm:px-6 md:px-8 bg-black/55 backdrop-blur-xl ${
+        scrolled ? 'md:bg-black/70 md:backdrop-blur-[14px]' : 'md:bg-black/60 md:backdrop-blur-[14px]'
       }`}
     >
       <div className="mx-auto flex h-16 max-w-[1800px] items-center gap-3 md:h-[68px]">
