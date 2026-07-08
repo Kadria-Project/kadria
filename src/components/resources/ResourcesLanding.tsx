@@ -10,6 +10,13 @@ import {
   type ResourceCategory,
 } from '@/src/data/resources';
 
+type LandingResourceCategory =
+  | ResourceCategory
+  | 'Cas d’utilisation'
+  | 'Fonctionnalité'
+  | 'Nouveautés'
+  | 'Métier';
+
 function ResourceCard({ resource }: { resource: Resource }) {
   return (
     <Link
@@ -62,7 +69,7 @@ function ResourceSection({
   );
 }
 
-const CATEGORY_SECTIONS: { id: string; title: string; description?: string; category: ResourceCategory }[] = [
+const CATEGORY_SECTIONS: { id: string; title: string; description?: string; category: LandingResourceCategory }[] = [
   {
     id: 'metier',
     title: 'Ressources métier',
@@ -145,7 +152,7 @@ export function ResourcesLanding() {
             id={section.id}
             title={section.title}
             description={section.description}
-            resources={getResourcesByCategory(section.category)}
+            resources={getResourcesByCategory(section.category as ResourceCategory)}
           />
         ))}
 
