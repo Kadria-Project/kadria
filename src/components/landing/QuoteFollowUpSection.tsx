@@ -495,15 +495,22 @@ function TimelineCard({ reduce }: { reduce: boolean }) {
                   }}
                 />
               )}
-              <span
-                className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: 'color-mix(in oklab, ' + color + ' 18%, transparent)',
-                  border: `1.5px solid ${color}`,
-                  boxShadow: isFollowUp ? `0 0 14px 2px color-mix(in oklab, ${ORANGE} 55%, transparent)` : undefined,
-                }}
-              >
-                <step.icon size={13} style={{ color }} />
+              <span className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center">
+                <span
+                  aria-hidden
+                  className="absolute inset-[-2px] rounded-full"
+                  style={{ backgroundColor: CARD_BG }}
+                />
+                <span
+                  className="relative flex h-7 w-7 items-center justify-center rounded-full"
+                  style={{
+                    backgroundColor: 'color-mix(in oklab, ' + color + ' 18%, ' + CARD_BG + ')',
+                    border: `1.5px solid ${color}`,
+                    boxShadow: isFollowUp ? `0 0 14px 2px color-mix(in oklab, ${ORANGE} 55%, transparent)` : undefined,
+                  }}
+                >
+                  <step.icon size={13} style={{ color }} />
+                </span>
               </span>
               <div className="min-w-0 flex-1 pt-0.5">
                 <div className="flex items-center justify-between gap-2">
