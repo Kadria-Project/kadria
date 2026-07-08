@@ -129,6 +129,38 @@ const ANALYSIS_CRITERIA = [
 
 const MOBILE_CRITERIA_LABELS = ['Complétude du dossier', 'Budget déclaré', 'Urgence / Délai', 'Maturité du client', 'Relance à effectuer'];
 
+/* Subtle per-avatar gradient rotation so the 5 client rows read as
+   distinct people at a glance without pulling in external images. */
+const AVATAR_GRADIENTS = [
+  'linear-gradient(135deg, oklch(0.72 0.17 145), oklch(0.5 0.14 165))',
+  'linear-gradient(135deg, oklch(0.72 0.14 235), oklch(0.5 0.13 255))',
+  'linear-gradient(135deg, oklch(0.8 0.15 65), oklch(0.58 0.15 45))',
+  'linear-gradient(135deg, oklch(0.75 0.12 300), oklch(0.5 0.13 280))',
+  'linear-gradient(135deg, oklch(0.72 0.17 25), oklch(0.5 0.15 10))',
+];
+
+function getInitials(contact: string) {
+  const name = contact.split('·')[0].trim();
+  const parts = name.split(' ').filter(Boolean);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+}
+
+function Avatar({ contact, index }: { contact: string; index: number }) {
+  return (
+    <span
+      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+      style={{
+        background: AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length],
+        color: 'oklch(0.16 0.008 260)',
+        boxShadow: '0 0 0 1px oklch(1 0 0 / 0.12)',
+      }}
+      aria-hidden
+    >
+      {getInitials(contact)}
+    </span>
+  );
+}
+
 const BENEFITS = [
   { icon: Clock, title: 'Gagnez du temps', body: 'Concentrez-vous sur les dossiers qui ont le plus de chances d’aboutir.' },
   { icon: TrendingUp, title: 'Augmentez votre taux de transformation', body: 'Traitez les bons projets au bon moment.' },
@@ -250,13 +282,16 @@ function DossierRow({ dossier, index, selected, reduce }: { dossier: Dossier; in
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[12.5px] font-semibold" style={{ color: TEXT }}>
-            {dossier.title}
-          </p>
-          <p className="truncate text-[11px]" style={{ color: TEXT_MUTED }}>
-            {dossier.contact}
-          </p>
+        <div className="flex min-w-0 items-start gap-2.5">
+          <Avatar contact={dossier.contact} index={index} />
+          <div className="min-w-0">
+            <p className="truncate text-[12.5px] font-semibold" style={{ color: TEXT }}>
+              {dossier.title}
+            </p>
+            <p className="truncate text-[11px]" style={{ color: TEXT_MUTED }}>
+              {dossier.contact}
+            </p>
+          </div>
         </div>
         <ScoreCircle value={dossier.score} size={34} strokeWidth={3.5} reduce={reduce} delay={0.1 * index} />
       </div>
@@ -290,7 +325,7 @@ function PriorityCard({ reduce }: { reduce: boolean }) {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.6, ease: 'easeOut', delay: reduce ? 0 : 0.15 }}
-      className="relative overflow-hidden rounded-2xl p-5 backdrop-blur-md sm:p-6"
+      className="relative flex h-full flex-col overflow-hidden rounded-2xl p-4 backdrop-blur-md sm:p-5 lg:justify-center"
       style={{
         backgroundColor: `color-mix(in oklab, ${CARD_BG} 90%, transparent)`,
         border: `1px solid color-mix(in oklab, ${GREEN} 42%, transparent)`,
@@ -401,7 +436,7 @@ function QualifiedListCard({ reduce, dossiers }: { reduce: boolean; dossiers: Do
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55, ease: 'easeOut' }}
-      className="rounded-2xl p-4 sm:p-5"
+      className="flex flex-col rounded-2xl p-4 sm:p-5 lg:h-full"
       style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -424,7 +459,7 @@ function QualifiedListCard({ reduce, dossiers }: { reduce: boolean; dossiers: Do
         </span>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="relative mt-3 flex flex-1 flex-col justify-between gap-2">
         {dossiers.map((d, i) => (
           <DossierRow key={d.title} dossier={d} index={i} selected={i === 0} reduce={reduce} />
         ))}
@@ -444,13 +479,13 @@ function AnalysisCard({ reduce, criteria }: { reduce: boolean; criteria: typeof 
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.55, ease: 'easeOut', delay: reduce ? 0 : 0.15 }}
-      className="rounded-2xl p-4 sm:p-5"
+      className="flex flex-col rounded-2xl p-4 sm:p-5 lg:h-full"
       style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}` }}
     >
       <p className="text-sm font-semibold" style={{ color: TEXT }}>
         Ce que Kadria analyse
       </p>
-      <div className="mt-3 flex flex-col gap-3.5">
+      <div className="mt-3 flex flex-1 flex-col justify-between gap-3.5">
         {criteria.map((c, i) => (
           <AnalysisBar key={c.label} label={c.label} desc={c.desc} score={c.score} reduce={reduce} delay={0.06 * i} />
         ))}
@@ -467,25 +502,30 @@ function AnalysisCard({ reduce, criteria }: { reduce: boolean; criteria: typeof 
   );
 }
 
-/* Subtle connector from the selected row in the left column to the
-   dominant central card — same visual language (thin green path with
-   glow) as `Connectors` in RequestTransformationSection.tsx / the hub
-   pattern in LandingChaosSection.tsx, adapted to a horizontal layout. */
-function ConnectorLine({ reduce }: { reduce: boolean }) {
+/* Two connectors that narrate the flow "liste qualifiée → priorité du
+   jour → critères analysés". They live in the grid *gutters* (never
+   inside a card) and are aligned with the vertical centre of the row
+   grid, so they never cross into the central card's own content. */
+function FlowConnector({ reduce, side, delay }: { reduce: boolean; side: 'left' | 'right'; delay: number }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute left-0 top-[86px] z-10 hidden h-px w-full lg:block" style={{ maxWidth: '1180px' }}>
-      <svg className="h-6 w-full overflow-visible" viewBox="0 0 100 10" preserveAspectRatio="none">
+    <div
+      aria-hidden
+      className="pointer-events-none absolute top-[96px] z-10 hidden h-10 w-full -translate-y-1/2 lg:block"
+      style={side === 'left' ? { left: 'calc(34% - 0.75rem)', width: 'calc(1.5rem + 4px)' } : { left: 'calc(64% - 0.75rem)', width: 'calc(1.5rem + 4px)' }}
+    >
+      <svg className="h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
         <motion.path
-          d="M 30 5 L 36.5 5"
+          d={side === 'left' ? 'M 0 50 C 40 50, 60 50, 100 50' : 'M 0 50 C 40 50, 60 50, 100 50'}
           stroke={GREEN}
-          strokeWidth="0.5"
+          strokeWidth="3"
           fill="none"
           strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 3px color-mix(in oklab, ${GREEN} 60%, transparent))` }}
+          vectorEffect="non-scaling-stroke"
+          style={{ filter: `drop-shadow(0 0 4px color-mix(in oklab, ${GREEN} 70%, transparent))` }}
           initial={reduce ? false : { pathLength: 0, opacity: 0 }}
-          whileInView={{ pathLength: 1, opacity: 0.75 }}
+          whileInView={{ pathLength: 1, opacity: 0.85 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: 'easeOut', delay: reduce ? 0 : 0.3 }}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: reduce ? 0 : delay }}
         />
       </svg>
     </div>
@@ -525,7 +565,7 @@ export default function PriorityProspectsSection() {
         style={{ background: `radial-gradient(closest-side, color-mix(in oklab, ${GREEN} 12%, transparent), transparent 70%)` }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
+      <div className="relative mx-auto max-w-[1700px] px-6 lg:px-10">
         {/* Header */}
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <span
@@ -545,9 +585,10 @@ export default function PriorityProspectsSection() {
           </p>
         </motion.div>
 
-        {/* Desktop: 3 columns */}
-        <div className="relative mt-12 hidden lg:grid lg:grid-cols-[320px_1fr_320px] lg:items-start lg:gap-6">
-          <ConnectorLine reduce={reduce} />
+        {/* Desktop: 3 columns — 34% / 30% / 34%, stretched to equal height */}
+        <div className="relative mt-10 hidden lg:grid lg:grid-cols-[34fr_30fr_34fr] lg:items-stretch lg:gap-6">
+          <FlowConnector reduce={reduce} side="left" delay={0.35} />
+          <FlowConnector reduce={reduce} side="right" delay={0.55} />
           <QualifiedListCard reduce={reduce} dossiers={DOSSIERS} />
           <PriorityCard reduce={reduce} />
           <AnalysisCard reduce={reduce} criteria={ANALYSIS_CRITERIA} />
