@@ -68,6 +68,7 @@ import LandingChaosSection from '@/src/components/landing/LandingChaosSection';
 import LandingDashboardShowcase from '@/src/components/landing/LandingDashboardShowcase';
 import RequestTransformationSection from '@/src/components/landing/RequestTransformationSection';
 import PriorityProspectsSection from '@/src/components/landing/PriorityProspectsSection';
+import QuoteFollowUpSection from '@/src/components/landing/QuoteFollowUpSection';
 import { AssistantWebChatCard } from '@/src/components/landing/AssistantWebDemo';
 import { VoiceAssistantCard } from '@/src/components/landing/AssistantVocalDemo';
 import ChatWidget from '@/src/components/ChatWidget';
@@ -2760,6 +2761,9 @@ export function LandingRoutePage() {
 
         {/* 3b. PRIORISATION DES PROSPECTS */}
         <PriorityProspectsSection />
+
+        {/* 3c. SUIVI DES DEVIS / RELANCES */}
+        <QuoteFollowUpSection />
 
         {/* 4. PROBLEME -> SOLUTION */}
         <section className={`${LANDING_SECTION_CLASS} bg-zinc-950`}>
