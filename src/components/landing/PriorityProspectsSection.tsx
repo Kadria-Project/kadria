@@ -45,6 +45,16 @@ const TEXT_DIM = 'oklch(0.55 0.01 260)';
 const ORANGE = 'oklch(0.82 0.16 65)';
 const RED = 'oklch(0.72 0.19 25)';
 const BLUE = 'oklch(0.78 0.14 235)';
+const LIME = 'oklch(0.84 0.18 125)';
+
+/* Score → color mapping used across the section (circles, bar values,
+   progress bars): >=80 green, 71–79 lime, 56–70 orange, <=55 orange/red. */
+function getScoreColor(score: number): string {
+  if (score >= 80) return GREEN;
+  if (score >= 71) return LIME;
+  if (score > 55) return ORANGE;
+  return RED;
+}
 
 type Tone = 'hot' | 'blue' | 'warn' | 'muted' | 'red';
 
@@ -139,24 +149,47 @@ const AVATAR_GRADIENTS = [
   'linear-gradient(135deg, oklch(0.72 0.17 25), oklch(0.5 0.15 10))',
 ];
 
-function getInitials(contact: string) {
-  const name = contact.split('·')[0].trim();
-  const parts = name.split(' ').filter(Boolean);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
-}
-
-function Avatar({ contact, index }: { contact: string; index: number }) {
+/* Simple geometric "persona" avatar: colored circle + inline SVG
+   silhouette (head/shoulders + a hair variant). No external images,
+   no photos — just enough shape variation to read as distinct people. */
+function PersonaAvatar({ contact, index, size = 32 }: { contact: string; index: number; size?: number }) {
+  const hairVariant = index % 3;
   return (
     <span
-      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+      className="relative inline-flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full"
       style={{
+        width: size,
+        height: size,
         background: AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length],
-        color: 'oklch(0.16 0.008 260)',
-        boxShadow: '0 0 0 1px oklch(1 0 0 / 0.12)',
+        boxShadow: '0 0 0 1px oklch(1 0 0 / 0.14)',
       }}
       aria-hidden
     >
-      {getInitials(contact)}
+      <svg viewBox="0 0 24 24" width="88%" height="88%">
+        <path
+          d="M4.5 22 C4.5 16 7.8 13 12 13 C16.2 13 19.5 16 19.5 22 Z"
+          fill="oklch(1 0 0 / 0.9)"
+        />
+        <circle cx="12" cy="9.2" r="4.3" fill="oklch(1 0 0 / 0.9)" />
+        {hairVariant === 0 && (
+          <path
+            d="M7.7 8.4 C7.7 4.6 9.9 3 12 3 C14.1 3 16.3 4.6 16.3 8.4 C16.3 6.4 14.4 5.3 12 5.3 C9.6 5.3 7.7 6.4 7.7 8.4 Z"
+            fill="oklch(0.22 0.01 260 / 0.55)"
+          />
+        )}
+        {hairVariant === 1 && (
+          <path
+            d="M7.6 8.8 C7.2 4.9 9.6 2.8 12 2.8 C14.6 2.8 16.9 5 16.4 9 C15.7 6.8 14 6.2 12 6.6 C10.2 7 8.3 7.2 7.6 8.8 Z"
+            fill="oklch(0.22 0.01 260 / 0.55)"
+          />
+        )}
+        {hairVariant === 2 && (
+          <path
+            d="M7.7 7.8 C8 4.4 10 3 12 3 C14.3 3 16.4 4.9 16.2 8.6 C15.5 7.3 13.8 6.5 12 6.5 C10.4 6.5 8.6 6.9 7.7 7.8 Z"
+            fill="oklch(0.22 0.01 260 / 0.55)"
+          />
+        )}
+      </svg>
     </span>
   );
 }
@@ -206,6 +239,7 @@ function ScoreCircle({
   }, [inView, reduce, value]);
 
   const progress = reduce ? value : display;
+  const color = getScoreColor(value);
 
   return (
     <span className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
@@ -216,7 +250,7 @@ function ScoreCircle({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={GREEN}
+          stroke={color}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -225,7 +259,7 @@ function ScoreCircle({
           transition={{ duration: reduce ? 0 : 0.9, ease: 'easeOut', delay: reduce ? 0 : delay }}
         />
       </svg>
-      <span className="absolute text-[11px] font-bold" style={{ color: TEXT }}>
+      <span className="absolute text-[11px] font-bold" style={{ color }}>
         {display}
       </span>
     </span>
@@ -233,6 +267,7 @@ function ScoreCircle({
 }
 
 function AnalysisBar({ label, desc, score, reduce, delay }: { label: string; desc: string; score: number; reduce: boolean; delay: number }) {
+  const color = getScoreColor(score);
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, x: 12 }}
@@ -244,7 +279,7 @@ function AnalysisBar({ label, desc, score, reduce, delay }: { label: string; des
         <span className="font-medium" style={{ color: TEXT }}>
           {label}
         </span>
-        <span className="font-semibold" style={{ color: GREEN }}>
+        <span className="font-semibold" style={{ color }}>
           {score}
           <span style={{ color: TEXT_DIM }}>/100</span>
         </span>
@@ -255,7 +290,7 @@ function AnalysisBar({ label, desc, score, reduce, delay }: { label: string; des
       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'oklch(1 0 0 / 0.07)' }}>
         <motion.div
           className="h-full rounded-full"
-          style={{ backgroundColor: GREEN }}
+          style={{ backgroundColor: color }}
           initial={reduce ? false : { width: 0 }}
           whileInView={{ width: `${score}%` }}
           viewport={{ once: true, margin: '-60px' }}
@@ -278,12 +313,20 @@ function DossierRow({ dossier, index, selected, reduce }: { dossier: Dossier; in
       style={{
         backgroundColor: selected ? `color-mix(in oklab, ${GREEN} 9%, transparent)` : ROW,
         border: selected ? `1px solid color-mix(in oklab, ${GREEN} 45%, transparent)` : `1px solid ${BORDER}`,
-        boxShadow: selected ? `0 0 0 1px color-mix(in oklab, ${GREEN} 12%, transparent)` : undefined,
+        boxShadow: selected ? `0 0 0 1px color-mix(in oklab, ${GREEN} 12%, transparent), 0 0 24px -6px color-mix(in oklab, ${GREEN} 55%, transparent)` : undefined,
       }}
     >
+      {selected && (
+        <span
+          className="absolute -top-2 left-3 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+          style={{ color: DARK_BG, backgroundColor: GREEN }}
+        >
+          Priorité détectée
+        </span>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2.5">
-          <Avatar contact={dossier.contact} index={index} />
+          <PersonaAvatar contact={dossier.contact} index={index} />
           <div className="min-w-0">
             <p className="truncate text-[12.5px] font-semibold" style={{ color: TEXT }}>
               {dossier.title}
@@ -421,7 +464,7 @@ function PriorityCard({ reduce }: { reduce: boolean }) {
       <button
         type="button"
         className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 sm:w-auto"
-        style={{ backgroundColor: GREEN, color: DARK_BG, boxShadow: `0 8px 30px -8px color-mix(in oklab, ${GREEN} 60%, transparent)` }}
+        style={{ backgroundColor: GREEN, color: DARK_BG, boxShadow: `0 6px 22px -8px color-mix(in oklab, ${GREEN} 45%, transparent)` }}
       >
         Planifier un rendez-vous <ArrowRight size={15} />
       </button>
@@ -503,29 +546,41 @@ function AnalysisCard({ reduce, criteria }: { reduce: boolean; criteria: typeof 
 }
 
 /* Two connectors that narrate the flow "liste qualifiée → priorité du
-   jour → critères analysés". They live in the grid *gutters* (never
-   inside a card) and are aligned with the vertical centre of the row
-   grid, so they never cross into the central card's own content. */
-function FlowConnector({ reduce, side, delay }: { reduce: boolean; side: 'left' | 'right'; delay: number }) {
+   jour → critères analysés". Each connector occupies its own dedicated
+   grid-column gutter track (never overlaps a card, never crosses into
+   the central card's content) and is vertically centered on the row via
+   `items-stretch` + flex centering, so its position is robust to layout
+   changes rather than relying on percentage-based absolute offsets. */
+function FlowConnector({ reduce, delay }: { reduce: boolean; delay: number }) {
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute top-[96px] z-10 hidden h-10 w-full -translate-y-1/2 lg:block"
-      style={side === 'left' ? { left: 'calc(34% - 0.75rem)', width: 'calc(1.5rem + 4px)' } : { left: 'calc(64% - 0.75rem)', width: 'calc(1.5rem + 4px)' }}
-    >
-      <svg className="h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <div aria-hidden className="pointer-events-none relative hidden h-full lg:flex lg:items-center lg:justify-center">
+      <svg width="100%" height="28" viewBox="0 0 100 28" preserveAspectRatio="none" className="overflow-visible">
         <motion.path
-          d={side === 'left' ? 'M 0 50 C 40 50, 60 50, 100 50' : 'M 0 50 C 40 50, 60 50, 100 50'}
+          d="M 2 14 L 84 14"
           stroke={GREEN}
           strokeWidth="3"
           fill="none"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
-          style={{ filter: `drop-shadow(0 0 4px color-mix(in oklab, ${GREEN} 70%, transparent))` }}
+          style={{ filter: `drop-shadow(0 0 6px color-mix(in oklab, ${GREEN} 85%, transparent)) drop-shadow(0 0 2px ${GREEN})` }}
           initial={reduce ? false : { pathLength: 0, opacity: 0 }}
-          whileInView={{ pathLength: 1, opacity: 0.85 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.6, ease: 'easeOut', delay: reduce ? 0 : delay }}
+        />
+        <motion.path
+          d="M 76 6 L 92 14 L 76 22"
+          stroke={GREEN}
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          style={{ filter: `drop-shadow(0 0 4px color-mix(in oklab, ${GREEN} 80%, transparent))` }}
+          initial={reduce ? false : { pathLength: 0, opacity: 0 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.4, ease: 'easeOut', delay: reduce ? 0 : delay + 0.5 }}
         />
       </svg>
     </div>
@@ -565,7 +620,7 @@ export default function PriorityProspectsSection() {
         style={{ background: `radial-gradient(closest-side, color-mix(in oklab, ${GREEN} 12%, transparent), transparent 70%)` }}
       />
 
-      <div className="relative mx-auto max-w-[1700px] px-6 lg:px-10">
+      <div className="relative mx-auto max-w-[1760px] px-6 lg:px-10">
         {/* Header */}
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <span
@@ -585,13 +640,21 @@ export default function PriorityProspectsSection() {
           </p>
         </motion.div>
 
-        {/* Desktop: 3 columns — 34% / 30% / 34%, stretched to equal height */}
-        <div className="relative mt-10 hidden lg:grid lg:grid-cols-[34fr_30fr_34fr] lg:items-stretch lg:gap-6">
-          <FlowConnector reduce={reduce} side="left" delay={0.35} />
-          <FlowConnector reduce={reduce} side="right" delay={0.55} />
-          <QualifiedListCard reduce={reduce} dossiers={DOSSIERS} />
-          <PriorityCard reduce={reduce} />
-          <AnalysisCard reduce={reduce} criteria={ANALYSIS_CRITERIA} />
+        {/* Desktop: 3 card columns separated by two dedicated connector-gutter
+            columns, stretched to equal height. The gutter tracks give the
+            flow arrows a clear lane that never overlaps a card. */}
+        <div className="relative mt-10 hidden lg:grid lg:grid-cols-[34fr_72px_30fr_72px_34fr] lg:items-stretch lg:gap-0">
+          <div className="lg:h-full">
+            <QualifiedListCard reduce={reduce} dossiers={DOSSIERS} />
+          </div>
+          <FlowConnector reduce={reduce} delay={0.35} />
+          <div className="lg:h-full">
+            <PriorityCard reduce={reduce} />
+          </div>
+          <FlowConnector reduce={reduce} delay={0.55} />
+          <div className="lg:h-full">
+            <AnalysisCard reduce={reduce} criteria={ANALYSIS_CRITERIA} />
+          </div>
         </div>
 
         {/* Mobile: priority card first, then compact list, then analysis */}
