@@ -3457,10 +3457,10 @@ function DarkFooter() {
           <div>
             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Ressources</p>
             <div className="flex flex-col gap-3">
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Comment ça marche</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Par métier</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Blog</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Support</Link>
+              <Link href="/ressources" className="text-sm text-zinc-400 transition-colors hover:text-white">Comment ça marche</Link>
+              <Link href="/ressources/nouveautes-kadria-juillet-2026" className="text-sm text-zinc-400 transition-colors hover:text-white">Par métier</Link>
+              <Link href="/ressources/relancer-un-devis-sans-etre-insistant" className="text-sm text-zinc-400 transition-colors hover:text-white">Blog</Link>
+              <Link href="/ressources/demande-client-en-dossier-pret-a-chiffrer" className="text-sm text-zinc-400 transition-colors hover:text-white">Support</Link>
             </div>
           </div>
 

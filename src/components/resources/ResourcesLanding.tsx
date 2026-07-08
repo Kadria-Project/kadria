@@ -64,10 +64,22 @@ function ResourceSection({
 
 const CATEGORY_SECTIONS: { id: string; title: string; description?: string; category: ResourceCategory }[] = [
   {
+    id: 'metier',
+    title: 'Ressources métier',
+    description: 'Kadria adapté à votre corps de métier : paysagiste, plombier, électricien, couvreur...',
+    category: 'Métier',
+  },
+  {
     id: 'cas-utilisation',
     title: 'Cas d’utilisation',
     description: 'Comment Kadria transforme concrètement vos demandes en dossiers exploitables.',
     category: 'Cas d’utilisation',
+  },
+  {
+    id: 'fonctionnalites',
+    title: 'Fonctionnalités expliquées',
+    description: 'Le fonctionnement des outils Kadria, expliqué simplement.',
+    category: 'Fonctionnalité',
   },
   {
     id: 'guides',
@@ -77,15 +89,9 @@ const CATEGORY_SECTIONS: { id: string; title: string; description?: string; cate
   },
   {
     id: 'nouveautes',
-    title: 'Nouveautés Kadria',
+    title: 'Nouveautés produit',
     description: 'Les dernières évolutions du produit, mois après mois.',
     category: 'Nouveautés',
-  },
-  {
-    id: 'fonctionnalites',
-    title: 'Fonctionnalités expliquées',
-    description: 'Le fonctionnement des outils Kadria, expliqué simplement.',
-    category: 'Fonctionnalité',
   },
 ];
 
