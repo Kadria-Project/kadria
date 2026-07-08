@@ -74,6 +74,85 @@ function toneColor(tone?: ChaosCard["tone"]) {
   return TEXT_MUTED;
 }
 
+function ChaosCardEl({ card: c, index: i }: { card: ChaosCard; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24, rotate: -1 + (i % 3) }}
+      whileInView={{ opacity: 1, y: 0, rotate: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{
+        duration: 0.55,
+        ease: "easeOut",
+        delay: 0.08 * i,
+      }}
+      className="group relative z-20 rounded-xl p-5 backdrop-blur-sm"
+      style={{
+        backgroundColor: CARD_BG,
+        border: `1px solid ${BORDER}`,
+        boxShadow:
+          "0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 20px 40px -25px oklch(0 0 0 / 0.6)",
+      }}
+    >
+      <div className="relative z-30 flex items-center justify-between">
+        <div
+          className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
+          style={{ color: toneColor(c.tone) }}
+        >
+          <span
+            className="flex h-6 w-6 items-center justify-center rounded-md"
+            style={{
+              backgroundColor: `color-mix(in oklab, ${toneColor(c.tone)} 15%, transparent)`,
+            }}
+          >
+            {c.icon}
+          </span>
+          {c.title}
+        </div>
+        <span className="text-[11px]" style={{ color: TEXT_MUTED }}>
+          {c.meta}
+        </span>
+      </div>
+      <p
+        className="relative z-30 mt-3 text-sm leading-relaxed"
+        style={{ color: "oklch(0.92 0.005 90)" }}
+      >
+        {c.body}
+      </p>
+    </motion.div>
+  );
+}
+
+// Petit segment de connecteur mobile, placé dans le flux normal (donc
+// toujours exactement dans l'espace entre deux cartes, jamais superposé).
+// Une hauteur fixe centre le trait avec une marge de sécurité de chaque
+// côté pour ne jamais toucher les bordures des cartes adjacentes.
+function MobileConnector({ reduce, delay }: { reduce: boolean | null; delay: number }) {
+  const lineStyle = {
+    background: `linear-gradient(to bottom, transparent, ${KADRIA_GREEN}, transparent)`,
+    filter: `drop-shadow(0 0 3px color-mix(in oklab, ${KADRIA_GREEN} 55%, transparent))`,
+  };
+
+  return (
+    <div
+      aria-hidden
+      className="relative z-0 flex h-9 items-center justify-center"
+    >
+      {reduce ? (
+        <div className="h-5 w-px opacity-40" style={lineStyle} />
+      ) : (
+        <motion.div
+          className="h-5 w-px origin-center opacity-40"
+          style={lineStyle}
+          initial={{ scaleY: 0, opacity: 0 }}
+          whileInView={{ scaleY: 1, opacity: 0.4 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.45, ease: "easeOut", delay }}
+        />
+      )}
+    </div>
+  );
+}
+
 // Courbes décoratives cartes -> K, en coordonnées relatives (viewBox 0-100).
 // 3 colonnes desktop (lg:grid-cols-3, 2 lignes) : centres approx. x = 17 / 50 / 83,
 // bas de ligne 1 ~ y18, bas de ligne 2 ~ y38. Le K se trouve en bas, ~ (50, 92).
@@ -193,62 +272,25 @@ export default function LandingChaosSection() {
             )}
           </svg>
 
-          {/* Mobile : simple trait vertical discret vers le K, plus lisible
-              qu'un faisceau de courbes complexes sur petit écran. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 z-0 h-full w-px -translate-x-1/2 md:hidden"
-            style={{
-              background: `linear-gradient(to bottom, transparent, color-mix(in oklab, ${KADRIA_GREEN} 30%, transparent) 60%, color-mix(in oklab, ${KADRIA_GREEN} 45%, transparent))`,
-            }}
-          />
-
-          <div className="relative z-20 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Mobile (< sm) : pile de cartes en une colonne, avec un petit
+              segment de connecteur inséré entre chaque paire de cartes (et un
+              dernier segment vers le K), plutôt qu'un grand trait unique qui
+              traversait toute la stack. Chaque segment vit dans l'espace
+              normal du flex (z-0), les cartes gardent leur fond opaque et un
+              z-index supérieur (z-20/30), donc aucun trait ne peut passer
+              par-dessus le texte. */}
+          <div className="relative z-20 flex flex-col sm:hidden">
             {CARDS.map((c, i) => (
-              <motion.div
-                key={c.title}
-                initial={{ opacity: 0, y: 24, rotate: -1 + (i % 3) }}
-                whileInView={{ opacity: 1, y: 0, rotate: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{
-                  duration: 0.55,
-                  ease: "easeOut",
-                  delay: 0.08 * i,
-                }}
-                className="group relative z-20 rounded-xl p-5 backdrop-blur-sm"
-                style={{
-                  backgroundColor: CARD_BG,
-                  border: `1px solid ${BORDER}`,
-                  boxShadow:
-                    "0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 20px 40px -25px oklch(0 0 0 / 0.6)",
-                }}
-              >
-                <div className="relative z-30 flex items-center justify-between">
-                  <div
-                    className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
-                    style={{ color: toneColor(c.tone) }}
-                  >
-                    <span
-                      className="flex h-6 w-6 items-center justify-center rounded-md"
-                      style={{
-                        backgroundColor: `color-mix(in oklab, ${toneColor(c.tone)} 15%, transparent)`,
-                      }}
-                    >
-                      {c.icon}
-                    </span>
-                    {c.title}
-                  </div>
-                  <span className="text-[11px]" style={{ color: TEXT_MUTED }}>
-                    {c.meta}
-                  </span>
-                </div>
-                <p
-                  className="relative z-30 mt-3 text-sm leading-relaxed"
-                  style={{ color: "oklch(0.92 0.005 90)" }}
-                >
-                  {c.body}
-                </p>
-              </motion.div>
+              <div key={c.title} className="contents">
+                <ChaosCardEl card={c} index={i} />
+                <MobileConnector reduce={reduce} delay={0.08 * i + 0.04} />
+              </div>
+            ))}
+          </div>
+
+          <div className="relative z-20 hidden gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+            {CARDS.map((c, i) => (
+              <ChaosCardEl key={c.title} card={c} index={i} />
             ))}
           </div>
 
@@ -257,7 +299,7 @@ export default function LandingChaosSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
-            className="relative z-20 mt-12 flex flex-col items-center text-center"
+            className="relative z-20 mt-4 flex flex-col items-center text-center sm:mt-12"
           >
             {/* Halo/glow derrière le K, toujours sous le badge (z-0). */}
             <div
