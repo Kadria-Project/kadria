@@ -1,19 +1,19 @@
 import { ARTISAN_TRADES } from '@/src/config/trades';
 
 /**
- * Kadria Academy Ã¢â‚¬â€ donnÃƒÂ©es statiques des ressources (V1, sans CMS).
+ * Kadria Academy - donnees statiques des ressources (V1, sans CMS).
  *
- * Ce fichier est la source unique de vÃƒÂ©ritÃƒÂ© pour /ressources et
+ * Ce fichier est la source unique de verite pour /ressources et
  * /ressources/[slug]. Pour ajouter une ressource, il suffit d'ajouter une
- * entrÃƒÂ©e au tableau RESOURCES ci-dessous.
+ * entree au tableau RESOURCES ci-dessous.
  */
 
 export type ResourceCategory =
-  | 'Cas dÃ¢â‚¬â„¢utilisation'
+  | 'Cas d\u2019utilisation'
   | 'Guide'
-  | 'NouveautÃƒÂ©s'
-  | 'FonctionnalitÃƒÂ©'
-  | 'MÃƒÂ©tier';
+  | 'Nouveaut\u00e9s'
+  | 'Fonctionnalit\u00e9'
+  | 'M\u00e9tier';
 
 export type ResourceType = 'article' | 'guide' | 'patch-note';
 
@@ -80,7 +80,7 @@ export const RESOURCES: Resource[] = [
     seoTitle: 'Le Profil M\u00e9tier Kadria | 86 m\u00e9tiers d\u00e9j\u00e0 compatibles',
     seoDescription:
       'D\u00e9couvrez comment le Profil M\u00e9tier Kadria adapte automatiquement les \u00e9changes, les dossiers et les informations collect\u00e9es selon votre activit\u00e9. Plus de 86 m\u00e9tiers sont d\u00e9j\u00e0 compatibles.',
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'guide',
     excerpt:
       "D\u00e9couvrez comment le Profil M\u00e9tier Kadria adapte les questions, les dossiers et le suivi commercial \u00e0 chaque artisan, avec 86 m\u00e9tiers d\u00e9j\u00e0 compatibles.",
@@ -180,7 +180,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'demande-client-en-dossier-pret-a-chiffrer',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'DÃƒÂ©couvrez comment Kadria transforme un appel, un message ou une demande incomplÃƒÂ¨te en dossier clair, exploitable et prÃƒÂªt pour le devis.',
@@ -223,7 +223,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'relancer-un-devis-sans-etre-insistant',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'guide',
     excerpt:
       'Une mÃƒÂ©thode simple pour relancer les bons prospects au bon moment, sans passer pour un commercial agressif.',
@@ -275,7 +275,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'kadria-pour-paysagistes',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Entretien, taille, terrasse, clÃƒÂ´ture, amÃƒÂ©nagement extÃƒÂ©rieur : comment centraliser des demandes trÃƒÂ¨s saisonniÃƒÂ¨res et prioriser celles qui comptent vraiment.',
@@ -318,7 +318,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'kadria-pour-plombiers',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Fuite ÃƒÂ  traiter dans lÃ¢â‚¬â„¢heure, demande de salle de bain ÃƒÂ  chiffrer plus tard : comment trier sans laisser filer les projets les plus intÃƒÂ©ressants.',
@@ -360,7 +360,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'kadria-pour-electriciens',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'DÃƒÂ©pannage, mise aux normes, rÃƒÂ©novation, installation complÃƒÂ¨te : comment obtenir les bonnes informations avant mÃƒÂªme le premier rendez-vous.',
@@ -403,7 +403,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'kadria-pour-couvreurs',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Fuite aprÃƒÂ¨s un orage, projet de rÃƒÂ©novation complÃƒÂ¨te, zinguerie, isolation : comment qualifier chaque demande de toiture avant de se dÃƒÂ©placer.',
@@ -446,7 +446,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'demande-whatsapp-dossier-complet',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Trois lignes de message et deux photos : voici comment cette demande, autrefois perdue dans une conversation, devient un dossier structurÃƒÂ© avec Kadria.',
@@ -478,7 +478,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'appel-manque-chantier-perdu',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Sur un chantier, impossible de rÃƒÂ©pondre ÃƒÂ  chaque appel. Voici comment Kadria rÃƒÂ©cupÃƒÂ¨re lÃ¢â‚¬â„¢intention du client et prÃƒÂ©pare un rappel utile.',
@@ -510,7 +510,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'nouveautes-kadria-mai-2026',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'patch-note',
     excerpt:
       'Premiers parcours de devis, suivi dÃ¢â‚¬â„¢acceptation et de refus, fiches projet plus complÃƒÂ¨tes : le point sur les ÃƒÂ©volutions du mois de mai.',
@@ -561,7 +561,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'preparer-devis-apres-journee-chantier',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Le soir, aprÃƒÂ¨s une journÃƒÂ©e de chantier, retrouver rapidement les informations, photos et budgets nÃƒÂ©cessaires pour avancer sur ses devis.',
@@ -598,7 +598,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'assistant-vocal-artisans',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Comment lÃ¢â‚¬â„¢assistant vocal Kadria pose les bonnes questions ÃƒÂ  vos appelants et prÃƒÂ©pare une fiche exploitable, mÃƒÂªme quand vous ne pouvez pas rÃƒÂ©pondre.',
@@ -635,7 +635,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'fiche-projet-kadria',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Client, besoin, photos, budget, dÃƒÂ©lai, statut, relance : la fiche projet centralise tout ce qui compte pour avancer sur un dossier.',
@@ -675,7 +675,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'relances-commerciales-artisans',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'article',
     excerpt:
       'Relancer les devis au bon moment, suivre les prospects les plus chauds et ÃƒÂ©viter les oublis, sans que cela devienne une tÃƒÂ¢che ÃƒÂ  part entiÃƒÂ¨re.',
@@ -712,7 +712,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'nouveautes-kadria-juin-2026',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'patch-note',
     excerpt:
       'Quotas mieux visibles dans le tableau de bord, filtres commerciaux plus utiles et amÃƒÂ©lioration de la lisibilitÃƒÂ© des fiches clients.',
@@ -763,7 +763,7 @@ export const RESOURCES: Resource[] = [
   {
     slug: 'nouveautes-kadria-juillet-2026',
     title: "Le Profil M\u00e9tier Kadria : pourquoi chaque artisan b\u00e9n\u00e9ficie d'une exp\u00e9rience adapt\u00e9e \u00e0 son m\u00e9tier",
-    category: 'FonctionnalitÃ©',
+    category: 'Fonctionnalit\u00e9',
     type: 'patch-note',
     excerpt:
       'Un point sur les derniÃƒÂ¨res amÃƒÂ©liorations apportÃƒÂ©es au cockpit commercial, ÃƒÂ  lÃ¢â‚¬â„¢assistant vocal et aux fiches projet.',
