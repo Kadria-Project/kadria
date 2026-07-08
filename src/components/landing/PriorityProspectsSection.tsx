@@ -285,14 +285,14 @@ function AnalysisBar({ label, desc, score, reduce, delay }: { label: string; des
       <p className="mt-0.5 text-[10.5px]" style={{ color: TEXT_DIM }}>
         {desc}
       </p>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'oklch(1 0 0 / 0.12)' }}>
-        <motion.div
-          className="h-full rounded-full"
-          style={{ backgroundColor: color, boxShadow: `0 0 6px -1px color-mix(in oklab, ${color} 70%, transparent)` }}
-          initial={reduce ? false : { width: 0 }}
-          whileInView={{ width: `${score}%` }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: reduce ? 0 : delay + 0.1 }}
+      <div className="relative mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'oklch(1 0 0 / 0.12)' }}>
+        <div
+          className="absolute left-0 top-0 h-full rounded-full"
+          style={{
+            width: `${score}%`,
+            backgroundColor: color,
+            boxShadow: `0 0 6px -1px color-mix(in oklab, ${color} 70%, transparent)`,
+          }}
         />
       </div>
     </motion.div>
@@ -411,9 +411,6 @@ function PriorityCard({ reduce }: { reduce: boolean }) {
           <ScoreCircle value={top.score} size={64} strokeWidth={6} reduce={reduce} delay={0.25} />
         </div>
       </div>
-      <p className="relative -mt-1 hidden text-right text-[11px] lg:block" style={{ color: TEXT_DIM }}>
-        88/100
-      </p>
 
       <div className="relative mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {[
