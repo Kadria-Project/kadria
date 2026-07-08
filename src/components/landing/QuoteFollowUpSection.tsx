@@ -788,7 +788,7 @@ export default function QuoteFollowUpSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.4, ease: 'easeOut', delay: reduce ? 0 : 0.08 * i }}
-              className="rounded-xl p-2.5 sm:p-4"
+              className="h-full rounded-xl p-2.5 sm:p-4"
               style={{ backgroundColor: CARD_BG, border: `1px solid ${BORDER}` }}
             >
               <CheckCircle2 size={16} style={{ color: GREEN }} />
