@@ -12,6 +12,8 @@ function formatDate(iso: string) {
   });
 }
 
+const MAX_RELATED_RESOURCES = 4;
+
 function getRelatedResources(current: Resource, allResources: Resource[]): Resource[] {
   const sameCategory = allResources.filter(
     (item) => item.slug !== current.slug && item.category === current.category,
@@ -19,7 +21,7 @@ function getRelatedResources(current: Resource, allResources: Resource[]): Resou
 
   const related = [...sameCategory];
 
-  if (related.length < 3) {
+  if (related.length < MAX_RELATED_RESOURCES) {
     const featured = allResources.filter(
       (item) =>
         item.slug !== current.slug &&
@@ -29,8 +31,47 @@ function getRelatedResources(current: Resource, allResources: Resource[]): Resou
     related.push(...featured);
   }
 
-  return related.slice(0, 3);
+  return related.slice(0, MAX_RELATED_RESOURCES);
 }
+
+interface ExploreCard {
+  title: string;
+  description: string;
+  href: string;
+}
+
+const EXPLORE_KADRIA_CARDS: ExploreCard[] = [
+  {
+    title: 'Assistant vocal',
+    description: 'Qualifiez vos appels entrants automatiquement, sans rien changer à votre façon de répondre.',
+    href: '/ressources/assistant-vocal-artisans',
+  },
+  {
+    title: 'Profil Métier',
+    description: 'Une expérience adaptée à votre activité, dès l’inscription.',
+    href: '/ressources/profil-metier-kadria',
+  },
+  {
+    title: 'Relances',
+    description: 'Relancez vos devis au bon moment, sans y penser tous les jours.',
+    href: '/ressources/relances-commerciales-artisans',
+  },
+  {
+    title: 'Fiche projet',
+    description: 'Un dossier clair par chantier, du premier contact à la signature.',
+    href: '/ressources/fiche-projet-kadria',
+  },
+  {
+    title: 'Démo',
+    description: 'Voyez Kadria fonctionner avec vos propres cas d’usage.',
+    href: '/demo',
+  },
+  {
+    title: 'Tarifs',
+    description: 'Des offres pensées pour la réalité d’un artisan indépendant ou en équipe.',
+    href: '/tarifs',
+  },
+];
 
 function RelatedResourceCard({ resource }: { resource: Resource }) {
   return (
@@ -204,14 +245,36 @@ export function ResourceDetail({
 
           {relatedResources.length > 0 ? (
             <div className="mt-16">
-              <h2 className="text-xl font-bold tracking-tight text-white md:text-2xl">Voir aussi</h2>
-              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <h2 className="text-xl font-bold tracking-tight text-white md:text-2xl">
+                Vous pourriez également aimer
+              </h2>
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {relatedResources.map((related) => (
                   <RelatedResourceCard key={related.slug} resource={related} />
                 ))}
               </div>
             </div>
           ) : null}
+
+          <div className="mt-16">
+            <h2 className="text-xl font-bold tracking-tight text-white md:text-2xl">Explorer Kadria</h2>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {EXPLORE_KADRIA_CARDS.map((card) => (
+                <Link
+                  key={card.title}
+                  href={card.href}
+                  className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors duration-150 hover:border-green-500/30 hover:bg-zinc-900"
+                >
+                  <h3 className="text-base font-semibold leading-snug text-white">{card.title}</h3>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{card.description}</p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-green-400 transition-transform duration-150 group-hover:translate-x-0.5">
+                    Découvrir
+                    <ArrowRight size={13} />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
 
           <div className="mt-10">
             <Link

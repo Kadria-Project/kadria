@@ -29,19 +29,39 @@ function ResourceCard({ resource }: { resource: Resource }) {
   );
 }
 
+const PAGE_SIZE = 12;
+
+function parsePageParam(page?: string): number {
+  const parsed = Number.parseInt(page ?? '1', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export function ResourceCollectionPage({
   title,
   description,
+  intro,
   resources,
   backHref = '/ressources',
   backLabel = 'Retour aux ressources',
+  page,
+  basePath,
 }: {
   title: string;
   description: string;
+  intro?: string;
   resources: Resource[];
   backHref?: string;
   backLabel?: string;
+  /** Current page number, from `?page=N`. Only relevant once a category exceeds PAGE_SIZE resources. */
+  page?: string;
+  /** Base path used to build pagination links, e.g. `/ressources/categories/guides`. */
+  basePath?: string;
 }) {
+  const totalPages = Math.max(1, Math.ceil(resources.length / PAGE_SIZE));
+  const currentPage = Math.min(parsePageParam(page), totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const pageResources = resources.slice(startIndex, startIndex + PAGE_SIZE);
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-white">
       <DarkNav />
@@ -59,13 +79,34 @@ export function ResourceCollectionPage({
           <div className="mt-8 max-w-3xl">
             <h1 className="text-3xl font-bold leading-[1.08] tracking-tight md:text-4xl">{title}</h1>
             <p className="mt-4 text-base leading-relaxed text-zinc-400 md:text-lg">{description}</p>
+            {intro ? (
+              <p className="mt-4 text-sm leading-relaxed text-zinc-400 md:text-base">{intro}</p>
+            ) : null}
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {resources.map((resource) => (
+            {pageResources.map((resource) => (
               <ResourceCard key={resource.slug} resource={resource} />
             ))}
           </div>
+
+          {totalPages > 1 && basePath ? (
+            <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-2">
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                <Link
+                  key={pageNumber}
+                  href={pageNumber === 1 ? basePath : `${basePath}?page=${pageNumber}`}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors duration-150 ${
+                    pageNumber === currentPage
+                      ? 'border-green-500/40 bg-green-500/10 text-green-400'
+                      : 'border-zinc-800 text-zinc-400 hover:border-green-500/30 hover:text-white'
+                  }`}
+                >
+                  {pageNumber}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
         </div>
       </main>
 

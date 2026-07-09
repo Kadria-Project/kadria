@@ -610,3 +610,7 @@ export function getCategoryUrl(category: ResourceCategory): string {
   const slug = getCategorySlug(category);
   return category === 'Métier' ? '/ressources/metiers' : `/ressources/categories/${slug}`;
 }
+
+export function getCompatibleTradesCount(): number {
+  return COMPATIBLE_TRADES.length;
+}
