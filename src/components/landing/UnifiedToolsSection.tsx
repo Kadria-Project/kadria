@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import {
+  ArrowRight,
   Bell,
   CalendarDays,
   CheckCircle2,
@@ -62,6 +63,8 @@ const desktopActionItems = [
   { title: '1 nouveau dossier', sub: 'Qualifié ce matin' },
 ];
 
+const mobileActionItems = ['Relancer 2 devis', 'Rendez-vous à 14h30', '1 nouveau dossier'];
+
 const pipelineItems = [
   { label: 'Nouveaux', value: '12' },
   { label: 'En cours', value: '8' },
@@ -69,11 +72,16 @@ const pipelineItems = [
   { label: 'Gagnés', value: '3' },
 ];
 
-const miniKpis = [
+const desktopKpis = [
   { label: 'CA potentiel', value: '28 450 €' },
   { label: 'Devis en attente', value: '7 450 €' },
   { label: 'Relances aujourd’hui', value: '4' },
   { label: 'Taux de conversion', value: '23 %' },
+];
+
+const mobileKpis = [
+  { label: 'CA potentiel', value: '28 450 €' },
+  { label: 'Devis en attente', value: '7 450 €' },
 ];
 
 const benefits = [
@@ -128,7 +136,7 @@ function ToolTile({
   return (
     <motion.div
       {...appear(index, reduced)}
-      className={`rounded-[18px] border p-4 text-center ${compact ? 'min-h-[104px]' : 'min-h-[124px]'}`}
+      className={`rounded-[18px] border p-4 text-center ${compact ? 'min-h-[100px]' : 'min-h-[124px]'}`}
       style={{
         background: 'linear-gradient(180deg, oklch(0.18 0.01 260 / 0.96), oklch(0.145 0.008 260 / 0.98))',
         borderColor: BORDER,
@@ -136,17 +144,17 @@ function ToolTile({
       }}
     >
       <div
-        className="mx-auto flex h-11 w-11 items-center justify-center rounded-[14px]"
+        className="mx-auto flex h-10 w-10 items-center justify-center rounded-[14px]"
         style={{
           background: `color-mix(in oklab, ${color} 16%, transparent)`,
           border: `1px solid color-mix(in oklab, ${color} 28%, transparent)`,
           color,
         }}
       >
-        <Icon size={20} />
+        <Icon size={18} />
       </div>
       <div
-        className={`mt-3 whitespace-pre-line font-medium ${compact ? 'text-[13px] leading-[1.3]' : 'text-[14px] leading-[1.35]'}`}
+        className={`mt-3 whitespace-pre-line font-medium ${compact ? 'text-[12.5px] leading-[1.28]' : 'text-[14px] leading-[1.35]'}`}
         style={{ color: TEXT }}
       >
         {label}
@@ -155,74 +163,78 @@ function ToolTile({
   );
 }
 
-function Connectors({ reduced }: { reduced: boolean }) {
-  const leftCurves = [
-    { y1: 168, c1x: 282, c1y: 168, c2x: 326, c2y: 198, x2: 396, y2: 212 },
-    { y1: 246, c1x: 286, c1y: 246, c2x: 334, c2y: 248, x2: 396, y2: 248 },
-    { y1: 324, c1x: 282, c1y: 324, c2x: 326, c2y: 300, x2: 396, y2: 286 },
-  ];
-  const rightCurves = [
-    { x1: 604, y1: 212, c1x: 676, c1y: 198, c2x: 724, c2y: 176, x2: 804, y2: 176 },
-    { x1: 604, y1: 248, c1x: 676, c1y: 248, c2x: 726, c2y: 248, x2: 804, y2: 248 },
-    { x1: 604, y1: 286, c1x: 676, c1y: 300, c2x: 724, c2y: 320, x2: 804, y2: 320 },
-  ];
-
+function DesktopConnector({ reduced, index = 0 }: { reduced: boolean; index?: number }) {
   return (
-    <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 560" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="left-flow" x1="0%" x2="100%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
-            <stop offset="40%" stopColor="rgba(84,255,159,0.16)" />
-            <stop offset="100%" stopColor="rgba(34,197,94,0.42)" />
-          </linearGradient>
-          <linearGradient id="right-flow" x1="0%" x2="100%">
-            <stop offset="0%" stopColor="rgba(34,197,94,0.42)" />
-            <stop offset="60%" stopColor="rgba(84,255,159,0.16)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
-          </linearGradient>
-          <filter id="green-glow">
-            <feGaussianBlur stdDeviation="3.2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
+    <motion.div
+      {...appear(index, reduced)}
+      className="hidden h-full items-center justify-center lg:flex"
+      aria-hidden
+    >
+      <div className="flex w-full items-center justify-center gap-2 px-1">
+        <div
+          className="h-px flex-1"
+          style={{
+            background:
+              'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(34,197,94,0.22) 30%, rgba(34,197,94,0.62) 100%)',
+            boxShadow: '0 0 18px rgba(34,197,94,0.18)',
+          }}
+        />
+        <span
+          className="flex h-8 w-8 items-center justify-center rounded-full border"
+          style={{
+            borderColor: 'rgba(34,197,94,0.22)',
+            background: 'rgba(10,18,14,0.72)',
+            color: GREEN,
+            boxShadow: '0 0 18px rgba(34,197,94,0.12)',
+          }}
+        >
+          <ArrowRight size={14} />
+        </span>
+      </div>
+    </motion.div>
+  );
+}
 
-        {leftCurves.map((curve, index) => (
-          <motion.path
-            key={`left-${index}`}
-            d={`M 202 ${curve.y1} C ${curve.c1x} ${curve.c1y}, ${curve.c2x} ${curve.c2y}, ${curve.x2} ${curve.y2}`}
-            stroke="url(#left-flow)"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            fill="none"
-            filter="url(#green-glow)"
-            initial={reduced ? false : { pathLength: 0, opacity: 0 }}
-            whileInView={{ pathLength: 1, opacity: 1 }}
-            viewport={{ once: true, margin: '-120px' }}
-            transition={{ duration: reduced ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: reduced ? 0 : 0.1 * index }}
-          />
-        ))}
-
-        {rightCurves.map((curve, index) => (
-          <motion.path
-            key={`right-${index}`}
-            d={`M ${curve.x1} ${curve.y1} C ${curve.c1x} ${curve.c1y}, ${curve.c2x} ${curve.c2y}, ${curve.x2} ${curve.y2}`}
-            stroke="url(#right-flow)"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            fill="none"
-            filter="url(#green-glow)"
-            initial={reduced ? false : { pathLength: 0, opacity: 0 }}
-            whileInView={{ pathLength: 1, opacity: 1 }}
-            viewport={{ once: true, margin: '-120px' }}
-            transition={{ duration: reduced ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: reduced ? 0 : 0.12 * index + 0.18 }}
-          />
-        ))}
-      </svg>
-    </div>
+function BenefitCard({
+  title,
+  text,
+  icon: Icon,
+  index,
+  reduced,
+}: {
+  title: string;
+  text: string;
+  icon: typeof WalletCards;
+  index: number;
+  reduced: boolean;
+}) {
+  return (
+    <motion.div
+      {...appear(index, reduced)}
+      className="rounded-[20px] border px-4 py-4 sm:px-5 sm:py-5"
+      style={{
+        background: 'linear-gradient(180deg, rgba(13,17,24,0.92), rgba(9,12,18,0.98))',
+        borderColor: 'rgba(255,255,255,0.07)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+      }}
+    >
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+        style={{
+          background: 'rgba(34,197,94,0.12)',
+          border: '1px solid rgba(34,197,94,0.2)',
+          color: GREEN,
+        }}
+      >
+        <Icon size={18} />
+      </div>
+      <p className="mt-3 text-[15px] font-semibold leading-[1.25] sm:text-[16px]" style={{ color: TEXT }}>
+        {title}
+      </p>
+      <p className="mt-2 text-[13px] leading-5 sm:text-[13.5px]" style={{ color: MUTED }}>
+        {text}
+      </p>
+    </motion.div>
   );
 }
 
@@ -231,7 +243,7 @@ export default function UnifiedToolsSection() {
 
   return (
     <section
-      className="relative overflow-hidden px-4 py-24 sm:px-6 lg:px-8"
+      className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-8"
       style={{
         background:
           'radial-gradient(circle at 50% 18%, rgba(34,197,94,0.12), transparent 28%), radial-gradient(circle at 50% 50%, rgba(34,197,94,0.06), transparent 48%), linear-gradient(180deg, #07090d 0%, #05070b 100%)',
@@ -239,7 +251,7 @@ export default function UnifiedToolsSection() {
     >
       <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden>
         <div
-          className="absolute left-1/2 top-28 h-[340px] w-[340px] -translate-x-1/2 rounded-full blur-3xl"
+          className="absolute left-1/2 top-24 h-[320px] w-[320px] -translate-x-1/2 rounded-full blur-3xl"
           style={{ background: 'rgba(34,197,94,0.12)' }}
         />
       </div>
@@ -258,79 +270,188 @@ export default function UnifiedToolsSection() {
             UNE PLATEFORME, MOINS DE DISPERSION
           </span>
           <h2
-            className="mt-6 text-balance text-[clamp(2.35rem,4.6vw,4.4rem)] font-black leading-[0.98] sm:text-[clamp(2.45rem,4.2vw,4.4rem)]"
+            className="mt-5 text-balance text-[clamp(2rem,3.9vw,3.7rem)] font-black leading-[1] sm:text-[clamp(2.1rem,3.6vw,3.7rem)]"
             style={{ color: TEXT }}
           >
             Moins d’outils dispersés.
             <br />
             <span style={{ color: GREEN }}>Plus de demandes traitées.</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-3xl text-balance text-[16px] leading-8 sm:text-[18px]" style={{ color: MUTED }}>
+          <p className="mx-auto mt-4 max-w-3xl text-balance text-[15px] leading-7 sm:text-[17px]" style={{ color: MUTED }}>
             Kadria centralise les appels, demandes web, notes, photos, devis, relances et actions commerciales dans une
             seule logique de travail.
           </p>
         </motion.div>
 
+        <div className="relative mt-10 lg:hidden">
+          <motion.div
+            {...appear(1, reduced)}
+            className="rounded-[24px] border p-4"
+            style={{
+              background: 'linear-gradient(180deg, rgba(8,14,12,0.95), rgba(7,10,14,0.98))',
+              borderColor: 'rgba(34,197,94,0.42)',
+              boxShadow: '0 20px 70px rgba(34,197,94,0.12)',
+            }}
+          >
+            <div className="flex items-center justify-center">
+              <KadriaLogo noLink size="sm" theme="dark" />
+            </div>
+            <p className="mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: GREEN }}>
+              Kadria centralise
+            </p>
+
+            <div className="mt-4 rounded-[18px] border p-3.5" style={{ borderColor: BORDER, background: 'rgba(9,12,18,0.88)' }}>
+              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: TEXT }}>
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-full"
+                  style={{ background: 'rgba(34,197,94,0.14)', color: GREEN }}
+                >
+                  <CheckCircle2 size={14} />
+                </span>
+                Bonjour. 👋
+              </div>
+              <p className="mt-2 text-[12.5px]" style={{ color: MUTED }}>
+                Voici ce qui se passe aujourd’hui.
+              </p>
+
+              <div className="mt-4 space-y-2">
+                {mobileActionItems.map((item, index) => (
+                  <div
+                    key={item}
+                    className="flex items-center justify-between rounded-[14px] border px-3 py-2.5"
+                    style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}
+                  >
+                    <span className="text-[12px] font-medium" style={{ color: TEXT }}>
+                      {item}
+                    </span>
+                    {index === 0 ? (
+                      <span className="rounded-full px-2 py-1 text-[9px] font-semibold" style={{ background: 'rgba(34,197,94,0.1)', color: GREEN }}>
+                        Priorité haute
+                      </span>
+                    ) : (
+                      <span className="h-2 w-2 rounded-full" style={{ background: GREEN }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {mobileKpis.map((item, index) => (
+                  <div
+                    key={item.label}
+                    className="rounded-[14px] border px-3 py-3"
+                    style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: DIM }}>
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-[14px] font-bold" style={{ color: index === 0 ? GREEN : TEXT }}>
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            {...appear(2, reduced)}
+            className="mt-4 rounded-[24px] border p-4"
+            style={{ background: CARD, borderColor: BORDER }}
+          >
+            <h3 className="text-center text-[22px] font-extrabold leading-[1.08]" style={{ color: TEXT }}>
+              Aujourd’hui : tout est éparpillé
+            </h3>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {mobileScatteredTools.map((tool, index) => (
+                <ToolTile key={tool.label} {...tool} compact index={index} reduced={reduced} />
+              ))}
+            </div>
+            <div
+              className="mt-4 rounded-2xl border px-4 py-3 text-center text-sm font-medium"
+              style={{ borderColor: BORDER, background: CARD_SOFT, color: MUTED }}
+            >
+              +6 autres usages dispersés
+            </div>
+          </motion.div>
+
+          <motion.div
+            {...appear(3, reduced)}
+            className="mt-4 rounded-[24px] border p-4"
+            style={{ background: CARD, borderColor: BORDER }}
+          >
+            <h3 className="text-center text-[22px] font-extrabold leading-[1.08]" style={{ color: TEXT }}>
+              Tout est structuré
+            </h3>
+            <div className="mt-4 space-y-2.5">
+              {structuredOutcomes.map((item, index) => (
+                <motion.div
+                  key={item.text}
+                  {...appear(index + 3, reduced)}
+                  className="flex items-center gap-3 rounded-[16px] border px-3.5 py-3"
+                  style={{ borderColor: BORDER, background: CARD_SOFT }}
+                >
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
+                    style={{
+                      background: 'rgba(34,197,94,0.12)',
+                      border: '1px solid rgba(34,197,94,0.22)',
+                      color: GREEN,
+                    }}
+                  >
+                    <item.icon size={16} />
+                  </span>
+                  <p className="text-[13px] font-medium leading-[1.35]" style={{ color: TEXT }}>
+                    {item.text}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
         <div
-          className="relative mt-12 rounded-[32px] border px-4 py-5 sm:px-6 sm:py-7 lg:px-7 lg:py-8"
+          className="relative mt-12 hidden rounded-[32px] border px-6 py-8 lg:block"
           style={{
             background: 'linear-gradient(180deg, rgba(9,13,18,0.88), rgba(5,8,12,0.98))',
             borderColor: 'rgba(255,255,255,0.06)',
             boxShadow: '0 30px 120px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.03)',
           }}
         >
-          <Connectors reduced={reduced} />
-
-          <div className="grid items-start gap-6 lg:grid-cols-[1.05fr_1.28fr_1.02fr] xl:gap-8">
+          <div className="grid items-center gap-6 lg:grid-cols-[1fr_72px_1.2fr_72px_1fr]">
             <motion.div
               {...appear(1, reduced)}
-              className="order-2 rounded-[24px] border p-5 lg:order-1"
+              className="rounded-[24px] border p-5"
               style={{ background: CARD, borderColor: BORDER }}
             >
-              <h3 className="text-center text-[24px] font-extrabold leading-[1.06] lg:hidden" style={{ color: TEXT }}>
-                Aujourd’hui : tout est éparpillé
-              </h3>
-              <p className="mb-5 hidden text-center text-[24px] font-extrabold leading-none lg:block" style={{ color: TEXT }}>
+              <p className="mb-5 text-center text-[24px] font-extrabold leading-none" style={{ color: TEXT }}>
                 Aujourd’hui : tout est éparpillé
               </p>
-
-              <div className="hidden grid-cols-3 gap-4 lg:grid">
+              <div className="grid grid-cols-3 gap-4">
                 {desktopScatteredTools.map((tool, index) => (
                   <ToolTile key={tool.label} {...tool} index={index} reduced={reduced} />
                 ))}
               </div>
-
-              <div className="lg:hidden">
-                <div className="grid grid-cols-3 gap-3">
-                  {mobileScatteredTools.map((tool, index) => (
-                    <ToolTile key={tool.label} {...tool} compact index={index} reduced={reduced} />
-                  ))}
-                </div>
-                <div
-                  className="mt-4 rounded-2xl border px-4 py-3 text-center text-sm font-medium"
-                  style={{ borderColor: BORDER, background: CARD_SOFT, color: MUTED }}
-                >
-                  +6 autres usages dispersés
-                </div>
-              </div>
             </motion.div>
 
-            <motion.div {...appear(2, reduced)} className="order-1 lg:order-2">
+            <DesktopConnector reduced={reduced} index={2} />
+
+            <motion.div {...appear(3, reduced)}>
               <div
-                className="rounded-[26px] border p-4 shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_20px_70px_rgba(34,197,94,0.12)] sm:p-5 lg:p-6"
+                className="rounded-[26px] border p-5 shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_20px_70px_rgba(34,197,94,0.12)]"
                 style={{
                   background: 'linear-gradient(180deg, rgba(8,14,12,0.95), rgba(7,10,14,0.98))',
                   borderColor: 'rgba(34,197,94,0.42)',
                 }}
               >
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center justify-center">
                   <KadriaLogo noLink size="sm" theme="dark" />
                 </div>
                 <p className="mt-4 text-center text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: GREEN }}>
                   Une seule plateforme commerciale
                 </p>
 
-                <div className="mt-5 rounded-[22px] border p-4 sm:p-5" style={{ background: 'rgba(9,12,18,0.88)', borderColor: BORDER }}>
+                <div className="mt-5 rounded-[22px] border p-4" style={{ background: 'rgba(9,12,18,0.88)', borderColor: BORDER }}>
                   <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: TEXT }}>
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded-full"
@@ -344,7 +465,7 @@ export default function UnifiedToolsSection() {
                     Voici ce qui se passe aujourd’hui.
                   </p>
 
-                  <div className="mt-5 grid gap-4 lg:grid-cols-[1.08fr_0.8fr]">
+                  <div className="mt-5 grid gap-4 xl:grid-cols-[1.08fr_0.8fr]">
                     <div>
                       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: DIM }}>
                         Actions du jour
@@ -353,7 +474,7 @@ export default function UnifiedToolsSection() {
                         {desktopActionItems.map((item, index) => (
                           <motion.div
                             key={item.title}
-                            {...appear(index + 2, reduced)}
+                            {...appear(index + 4, reduced)}
                             className="flex items-center justify-between gap-3 rounded-[16px] border px-3 py-3"
                             style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}
                           >
@@ -376,7 +497,7 @@ export default function UnifiedToolsSection() {
                       </div>
                     </div>
 
-                    <div className="hidden lg:block">
+                    <div>
                       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: DIM }}>
                         Pipeline
                       </p>
@@ -384,7 +505,7 @@ export default function UnifiedToolsSection() {
                         {pipelineItems.map((item, index) => (
                           <motion.div
                             key={item.label}
-                            {...appear(index + 4, reduced)}
+                            {...appear(index + 7, reduced)}
                             className="flex items-center justify-between rounded-[16px] border px-3 py-3"
                             style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}
                           >
@@ -400,11 +521,11 @@ export default function UnifiedToolsSection() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-                    {miniKpis.map((item, index) => (
+                  <div className="mt-5 grid grid-cols-4 gap-2.5">
+                    {desktopKpis.map((item, index) => (
                       <motion.div
                         key={item.label}
-                        {...appear(index + 6, reduced)}
+                        {...appear(index + 10, reduced)}
                         className="rounded-[16px] border px-3 py-3"
                         style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}
                       >
@@ -421,7 +542,7 @@ export default function UnifiedToolsSection() {
               </div>
 
               <motion.div
-                {...appear(8, reduced)}
+                {...appear(14, reduced)}
                 className="mt-4 rounded-full border px-4 py-3 text-center text-[12px] font-semibold tracking-[0.08em]"
                 style={{
                   color: GREEN,
@@ -433,23 +554,21 @@ export default function UnifiedToolsSection() {
               </motion.div>
             </motion.div>
 
+            <DesktopConnector reduced={reduced} index={4} />
+
             <motion.div
-              {...appear(3, reduced)}
-              className="order-3 rounded-[24px] border p-5"
+              {...appear(5, reduced)}
+              className="rounded-[24px] border p-5"
               style={{ background: CARD, borderColor: BORDER }}
             >
-              <h3 className="text-center text-[24px] font-extrabold leading-[1.06] lg:hidden" style={{ color: TEXT }}>
-                Tout est structuré dans Kadria
-              </h3>
-              <p className="mb-5 hidden text-center text-[24px] font-extrabold leading-none lg:block" style={{ color: TEXT }}>
+              <p className="mb-5 text-center text-[24px] font-extrabold leading-none" style={{ color: TEXT }}>
                 Demain : tout est structuré
               </p>
-
               <div className="space-y-3">
                 {structuredOutcomes.map((item, index) => (
                   <motion.div
                     key={item.text}
-                    {...appear(index + 1, reduced)}
+                    {...appear(index + 6, reduced)}
                     className="flex items-center gap-4 rounded-[18px] border px-4 py-4"
                     style={{ borderColor: BORDER, background: CARD_SOFT }}
                   >
@@ -471,51 +590,25 @@ export default function UnifiedToolsSection() {
               </div>
             </motion.div>
           </div>
-
-          <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-            {benefits.map((benefit, index) => (
-              <motion.div
-                key={benefit.title}
-                {...appear(index + 2, reduced)}
-                className="rounded-[22px] border px-4 py-4 sm:px-5 sm:py-5"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(13,17,24,0.92), rgba(9,12,18,0.98))',
-                  borderColor: 'rgba(255,255,255,0.07)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
-                }}
-              >
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-[12px]"
-                  style={{
-                    background: 'rgba(34,197,94,0.12)',
-                    border: '1px solid rgba(34,197,94,0.2)',
-                    color: GREEN,
-                  }}
-                >
-                  <benefit.icon size={18} />
-                </div>
-                <p className="mt-3 text-[15px] font-semibold leading-[1.25] sm:text-[16px]" style={{ color: TEXT }}>
-                  {benefit.title}
-                </p>
-                <p className="mt-2 text-[13px] leading-5 sm:text-[13.5px]" style={{ color: MUTED }}>
-                  {benefit.text}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            {...appear(9, reduced)}
-            className="mt-8 flex items-start justify-center gap-3 px-2 text-center"
-            style={{ color: DIM }}
-          >
-            <ShieldCheck size={18} className="mt-0.5 shrink-0" style={{ color: 'oklch(0.72 0.05 165)' }} />
-            <p className="max-w-4xl text-[14px] leading-7 sm:text-[15px]">
-              Selon votre organisation actuelle, Kadria peut remplacer ou réduire l’usage de plusieurs outils dispersés
-              autour du suivi commercial.
-            </p>
-          </motion.div>
         </div>
+
+        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          {benefits.map((benefit, index) => (
+            <BenefitCard key={benefit.title} {...benefit} index={index + 15} reduced={reduced} />
+          ))}
+        </div>
+
+        <motion.div
+          {...appear(19, reduced)}
+          className="mt-8 flex items-start justify-center gap-3 px-2 text-center"
+          style={{ color: DIM }}
+        >
+          <ShieldCheck size={18} className="mt-0.5 shrink-0" style={{ color: 'oklch(0.72 0.05 165)' }} />
+          <p className="max-w-4xl text-[14px] leading-7 sm:text-[15px]">
+            Selon votre organisation actuelle, Kadria peut remplacer ou réduire l’usage de plusieurs outils dispersés
+            autour du suivi commercial.
+          </p>
+        </motion.div>
       </div>
     </section>
   );
