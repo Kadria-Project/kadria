@@ -55,20 +55,6 @@ const structuredOutcomes = [
   { text: 'Pilotage de votre activité en temps réel', icon: LineChart },
 ];
 
-const benefits = [
-  { title: 'Une seule facturation', text: 'Fini les abonnements qui s’accumulent.', icon: WalletCards },
-  { title: 'Moins de ressaisie, plus de temps', text: 'L’information saisie une fois reste disponible partout.', icon: RefreshCw },
-  { title: 'Moins d’oublis, plus de suivis', text: 'Chaque demande est tracée, rien ne passe à la trappe.', icon: Bell },
-  { title: 'Mises à jour groupées', text: 'Une seule plateforme, toujours à jour.', icon: RefreshCw },
-];
-
-const mobileActionItems = [
-  'Relancer 2 devis',
-  'Rendez-vous à 14h30',
-  'Préparer un devis',
-  '1 nouveau dossier',
-];
-
 const desktopActionItems = [
   { title: 'Relancer 2 devis', sub: 'Priorité haute' },
   { title: 'Rendez-vous à 14h30', sub: 'Client : M. Durand' },
@@ -88,6 +74,29 @@ const miniKpis = [
   { label: 'Devis en attente', value: '7 450 €' },
   { label: 'Relances aujourd’hui', value: '4' },
   { label: 'Taux de conversion', value: '23 %' },
+];
+
+const benefits = [
+  {
+    title: 'Une seule facturation',
+    text: 'Fini les abonnements qui s’accumulent.',
+    icon: WalletCards,
+  },
+  {
+    title: 'Moins de ressaisie, plus de temps',
+    text: 'L’information saisie une fois reste disponible partout.',
+    icon: RefreshCw,
+  },
+  {
+    title: 'Moins d’oublis, plus de suivis',
+    text: 'Chaque demande est tracée, rien ne passe à la trappe.',
+    icon: Bell,
+  },
+  {
+    title: 'Mises à jour groupées',
+    text: 'Une seule plateforme, toujours à jour.',
+    icon: CheckCircle2,
+  },
 ];
 
 function appear(index = 0, reduced = false) {
@@ -147,25 +156,33 @@ function ToolTile({
 }
 
 function Connectors({ reduced }: { reduced: boolean }) {
-  const leftCurves = [18, 32, 46, 60];
-  const rightCurves = [18, 32, 46, 60];
+  const leftCurves = [
+    { y1: 168, c1x: 282, c1y: 168, c2x: 326, c2y: 198, x2: 396, y2: 212 },
+    { y1: 246, c1x: 286, c1y: 246, c2x: 334, c2y: 248, x2: 396, y2: 248 },
+    { y1: 324, c1x: 282, c1y: 324, c2x: 326, c2y: 300, x2: 396, y2: 286 },
+  ];
+  const rightCurves = [
+    { x1: 604, y1: 212, c1x: 676, c1y: 198, c2x: 724, c2y: 176, x2: 804, y2: 176 },
+    { x1: 604, y1: 248, c1x: 676, c1y: 248, c2x: 726, c2y: 248, x2: 804, y2: 248 },
+    { x1: 604, y1: 286, c1x: 676, c1y: 300, c2x: 724, c2y: 320, x2: 804, y2: 320 },
+  ];
 
   return (
     <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 560" preserveAspectRatio="none">
         <defs>
           <linearGradient id="left-flow" x1="0%" x2="100%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
-            <stop offset="52%" stopColor="rgba(34,197,94,0.18)" />
-            <stop offset="100%" stopColor="rgba(34,197,94,0.62)" />
+            <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+            <stop offset="40%" stopColor="rgba(84,255,159,0.16)" />
+            <stop offset="100%" stopColor="rgba(34,197,94,0.42)" />
           </linearGradient>
           <linearGradient id="right-flow" x1="0%" x2="100%">
-            <stop offset="0%" stopColor="rgba(34,197,94,0.62)" />
-            <stop offset="48%" stopColor="rgba(34,197,94,0.18)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+            <stop offset="0%" stopColor="rgba(34,197,94,0.42)" />
+            <stop offset="60%" stopColor="rgba(84,255,159,0.16)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
           </linearGradient>
           <filter id="green-glow">
-            <feGaussianBlur stdDeviation="4.5" result="blur" />
+            <feGaussianBlur stdDeviation="3.2" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -173,35 +190,35 @@ function Connectors({ reduced }: { reduced: boolean }) {
           </filter>
         </defs>
 
-        {leftCurves.map((y, index) => (
+        {leftCurves.map((curve, index) => (
           <motion.path
-            key={`left-${y}`}
-            d={`M 190 ${y * 5.4} C 260 ${y * 5.4}, 290 ${y * 5.4 + 28}, 360 ${y * 5.4 + 44}`}
+            key={`left-${index}`}
+            d={`M 202 ${curve.y1} C ${curve.c1x} ${curve.c1y}, ${curve.c2x} ${curve.c2y}, ${curve.x2} ${curve.y2}`}
             stroke="url(#left-flow)"
-            strokeWidth="2"
+            strokeWidth="1.8"
             strokeLinecap="round"
             fill="none"
             filter="url(#green-glow)"
             initial={reduced ? false : { pathLength: 0, opacity: 0 }}
             whileInView={{ pathLength: 1, opacity: 1 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: reduced ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: reduced ? 0 : 0.12 * index }}
+            viewport={{ once: true, margin: '-120px' }}
+            transition={{ duration: reduced ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: reduced ? 0 : 0.1 * index }}
           />
         ))}
 
-        {rightCurves.map((y, index) => (
+        {rightCurves.map((curve, index) => (
           <motion.path
-            key={`right-${y}`}
-            d={`M 642 ${y * 5.4 + 44} C 708 ${y * 5.4 + 28}, 740 ${y * 5.4}, 808 ${y * 5.4}`}
+            key={`right-${index}`}
+            d={`M ${curve.x1} ${curve.y1} C ${curve.c1x} ${curve.c1y}, ${curve.c2x} ${curve.c2y}, ${curve.x2} ${curve.y2}`}
             stroke="url(#right-flow)"
-            strokeWidth="2"
+            strokeWidth="1.8"
             strokeLinecap="round"
             fill="none"
             filter="url(#green-glow)"
             initial={reduced ? false : { pathLength: 0, opacity: 0 }}
             whileInView={{ pathLength: 1, opacity: 1 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: reduced ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: reduced ? 0 : 0.12 * index + 0.2 }}
+            viewport={{ once: true, margin: '-120px' }}
+            transition={{ duration: reduced ? 0 : 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: reduced ? 0 : 0.12 * index + 0.18 }}
           />
         ))}
       </svg>
@@ -240,19 +257,22 @@ export default function UnifiedToolsSection() {
           >
             UNE PLATEFORME, MOINS DE DISPERSION
           </span>
-          <h2 className="mt-6 text-balance text-[clamp(2.65rem,5.4vw,5.25rem)] font-black leading-[0.95]" style={{ color: TEXT }}>
+          <h2
+            className="mt-6 text-balance text-[clamp(2.35rem,4.6vw,4.4rem)] font-black leading-[0.98] sm:text-[clamp(2.45rem,4.2vw,4.4rem)]"
+            style={{ color: TEXT }}
+          >
             Moins d’outils dispersés.
             <br />
             <span style={{ color: GREEN }}>Plus de demandes traitées.</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-3xl text-balance text-[17px] leading-8 sm:text-[19px]" style={{ color: MUTED }}>
+          <p className="mx-auto mt-5 max-w-3xl text-balance text-[16px] leading-8 sm:text-[18px]" style={{ color: MUTED }}>
             Kadria centralise les appels, demandes web, notes, photos, devis, relances et actions commerciales dans une
             seule logique de travail.
           </p>
         </motion.div>
 
         <div
-          className="relative mt-14 rounded-[32px] border px-4 py-5 sm:px-6 sm:py-7 lg:px-7 lg:py-8"
+          className="relative mt-12 rounded-[32px] border px-4 py-5 sm:px-6 sm:py-7 lg:px-7 lg:py-8"
           style={{
             background: 'linear-gradient(180deg, rgba(9,13,18,0.88), rgba(5,8,12,0.98))',
             borderColor: 'rgba(255,255,255,0.06)',
@@ -261,16 +281,16 @@ export default function UnifiedToolsSection() {
         >
           <Connectors reduced={reduced} />
 
-          <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_1.3fr_1.05fr] xl:gap-8">
+          <div className="grid items-start gap-6 lg:grid-cols-[1.05fr_1.28fr_1.02fr] xl:gap-8">
             <motion.div
               {...appear(1, reduced)}
               className="order-2 rounded-[24px] border p-5 lg:order-1"
               style={{ background: CARD, borderColor: BORDER }}
             >
-              <h3 className="text-center text-[28px] font-extrabold leading-[1.05] lg:hidden" style={{ color: TEXT }}>
+              <h3 className="text-center text-[24px] font-extrabold leading-[1.06] lg:hidden" style={{ color: TEXT }}>
                 Aujourd’hui : tout est éparpillé
               </h3>
-              <p className="mb-5 hidden text-center text-[26px] font-extrabold leading-none lg:block" style={{ color: TEXT }}>
+              <p className="mb-5 hidden text-center text-[24px] font-extrabold leading-none lg:block" style={{ color: TEXT }}>
                 Aujourd’hui : tout est éparpillé
               </p>
 
@@ -306,7 +326,7 @@ export default function UnifiedToolsSection() {
                 <div className="flex items-center justify-center gap-3">
                   <KadriaLogo noLink size="sm" theme="dark" />
                 </div>
-                <p className="mt-4 text-center text-[13px] font-semibold uppercase tracking-[0.12em]" style={{ color: GREEN }}>
+                <p className="mt-4 text-center text-[12px] font-semibold uppercase tracking-[0.14em]" style={{ color: GREEN }}>
                   Une seule plateforme commerciale
                 </p>
 
@@ -324,7 +344,7 @@ export default function UnifiedToolsSection() {
                     Voici ce qui se passe aujourd’hui.
                   </p>
 
-                  <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.78fr]">
+                  <div className="mt-5 grid gap-4 lg:grid-cols-[1.08fr_0.8fr]">
                     <div>
                       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: DIM }}>
                         Actions du jour
@@ -345,7 +365,10 @@ export default function UnifiedToolsSection() {
                                 {item.sub}
                               </p>
                             </div>
-                            <span className="rounded-full px-2 py-1 text-[10px] font-semibold" style={{ background: 'rgba(34,197,94,0.1)', color: GREEN }}>
+                            <span
+                              className="rounded-full px-2 py-1 text-[10px] font-semibold"
+                              style={{ background: 'rgba(34,197,94,0.1)', color: GREEN }}
+                            >
                               {index === 0 ? 'Priorité haute' : 'OK'}
                             </span>
                           </motion.div>
@@ -415,10 +438,10 @@ export default function UnifiedToolsSection() {
               className="order-3 rounded-[24px] border p-5"
               style={{ background: CARD, borderColor: BORDER }}
             >
-              <h3 className="text-center text-[28px] font-extrabold leading-[1.05] lg:hidden" style={{ color: TEXT }}>
+              <h3 className="text-center text-[24px] font-extrabold leading-[1.06] lg:hidden" style={{ color: TEXT }}>
                 Tout est structuré dans Kadria
               </h3>
-              <p className="mb-5 hidden text-center text-[26px] font-extrabold leading-none lg:block" style={{ color: TEXT }}>
+              <p className="mb-5 hidden text-center text-[24px] font-extrabold leading-none lg:block" style={{ color: TEXT }}>
                 Demain : tout est structuré
               </p>
 
@@ -446,75 +469,35 @@ export default function UnifiedToolsSection() {
                   </motion.div>
                 ))}
               </div>
-
-              <div className="mt-6 lg:hidden">
-                <div className="rounded-[20px] border p-4" style={{ borderColor: BORDER, background: 'rgba(9,12,18,0.65)' }}>
-                  <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: GREEN }}>
-                    <CheckCircle2 size={16} />
-                    Kadria centralise
-                  </div>
-                  <div className="mt-4 space-y-2.5">
-                    {mobileActionItems.map((item) => (
-                      <div
-                        key={item}
-                        className="flex items-center justify-between rounded-[14px] border px-3 py-2.5"
-                        style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}
-                      >
-                        <span className="text-[12.5px] font-medium" style={{ color: TEXT }}>
-                          {item}
-                        </span>
-                        <span className="h-2 w-2 rounded-full" style={{ background: GREEN }} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-[14px] border px-3 py-3" style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}>
-                      <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: DIM }}>
-                        CA potentiel
-                      </p>
-                      <p className="mt-1 text-[15px] font-bold" style={{ color: GREEN }}>
-                        28 450 €
-                      </p>
-                    </div>
-                    <div className="rounded-[14px] border px-3 py-3" style={{ borderColor: BORDER, background: 'rgba(255,255,255,0.02)' }}>
-                      <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: DIM }}>
-                        Devis en attente
-                      </p>
-                      <p className="mt-1 text-[15px] font-bold" style={{ color: TEXT }}>
-                        7 450 €
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           </div>
 
-          <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-0">
+          <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
             {benefits.map((benefit, index) => (
               <motion.div
                 key={benefit.title}
                 {...appear(index + 2, reduced)}
-                className="rounded-[22px] border p-4 lg:rounded-none lg:border-r lg:px-8 lg:py-7 first:lg:rounded-l-[22px] last:lg:rounded-r-[22px] last:lg:border-r-0"
+                className="rounded-[22px] border px-4 py-4 sm:px-5 sm:py-5"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(11,15,20,0.94), rgba(8,11,16,0.98))',
-                  borderColor: BORDER,
+                  background: 'linear-gradient(180deg, rgba(13,17,24,0.92), rgba(9,12,18,0.98))',
+                  borderColor: 'rgba(255,255,255,0.07)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
                 }}
               >
                 <div
-                  className="flex h-14 w-14 items-center justify-center rounded-full"
+                  className="flex h-10 w-10 items-center justify-center rounded-[12px]"
                   style={{
-                    background: 'radial-gradient(circle, rgba(34,197,94,0.18), rgba(34,197,94,0.06) 60%, transparent 100%)',
-                    border: '1px solid rgba(34,197,94,0.18)',
+                    background: 'rgba(34,197,94,0.12)',
+                    border: '1px solid rgba(34,197,94,0.2)',
                     color: GREEN,
                   }}
                 >
-                  <benefit.icon size={24} />
+                  <benefit.icon size={18} />
                 </div>
-                <p className="mt-4 text-[20px] font-bold leading-[1.05] lg:text-[22px]" style={{ color: TEXT }}>
+                <p className="mt-3 text-[15px] font-semibold leading-[1.25] sm:text-[16px]" style={{ color: TEXT }}>
                   {benefit.title}
                 </p>
-                <p className="mt-3 text-[14px] leading-6" style={{ color: MUTED }}>
+                <p className="mt-2 text-[13px] leading-5 sm:text-[13.5px]" style={{ color: MUTED }}>
                   {benefit.text}
                 </p>
               </motion.div>
