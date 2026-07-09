@@ -170,7 +170,7 @@ function BenefitCard({
   return (
     <motion.div
       {...appear(index, reduced)}
-      className="rounded-[18px] border px-3.5 py-3.5 sm:rounded-[20px] sm:px-4 sm:py-4 lg:px-5 lg:py-4"
+      className="rounded-[16px] border px-3 py-3 sm:rounded-[18px] sm:px-3.5 sm:py-3.5 lg:px-4 lg:py-3.5"
       style={{
         background: 'linear-gradient(180deg, rgba(13,17,24,0.92), rgba(9,12,18,0.98))',
         borderColor: 'rgba(255,255,255,0.07)',
@@ -178,19 +178,19 @@ function BenefitCard({
       }}
     >
       <div
-        className="flex h-8 w-8 items-center justify-center rounded-[10px] sm:h-9 sm:w-9"
+        className="flex h-7 w-7 items-center justify-center rounded-[9px] sm:h-8 sm:w-8"
         style={{
           background: 'rgba(34,197,94,0.1)',
           border: '1px solid rgba(34,197,94,0.18)',
           color: GREEN,
         }}
       >
-        <Icon size={15} />
+        <Icon size={14} />
       </div>
-      <p className="mt-2.5 text-[14px] font-semibold leading-[1.22] sm:mt-3 sm:text-[15px]" style={{ color: TEXT }}>
+      <p className="mt-2 text-[13px] font-semibold leading-[1.2] sm:mt-2.5 sm:text-[14px]" style={{ color: TEXT }}>
         {title}
       </p>
-      <p className="mt-1.5 text-[12px] leading-[1.45] sm:mt-2 sm:text-[12.5px] sm:leading-[1.5]" style={{ color: MUTED }}>
+      <p className="mt-1 text-[11.5px] leading-[1.4] sm:mt-1.5 sm:text-[12px] sm:leading-[1.45]" style={{ color: MUTED }}>
         {text}
       </p>
     </motion.div>
@@ -222,7 +222,7 @@ export default function RoiSimulatorSection() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-[#070b11] px-4 py-20 sm:px-6 sm:py-24 lg:px-10 lg:py-28">
+    <section className="relative overflow-hidden bg-[#070b11] px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-18">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -233,7 +233,7 @@ export default function RoiSimulatorSection() {
       />
 
       <div
-        className="relative mx-auto max-w-[1760px] overflow-hidden rounded-[32px] border px-4 py-8 shadow-[0_35px_120px_rgba(0,0,0,0.38)] sm:px-6 sm:py-10 lg:px-9 lg:py-12"
+        className="relative mx-auto max-w-[1660px] overflow-hidden rounded-[28px] border px-4 py-6 shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-5 sm:py-7 lg:px-7 lg:py-8"
         style={{
           background: 'linear-gradient(180deg, rgba(8,12,18,0.94), rgba(7,10,16,0.98))',
           borderColor: BORDER,
@@ -241,15 +241,15 @@ export default function RoiSimulatorSection() {
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-[16%] top-0 h-64 blur-3xl"
+          className="pointer-events-none absolute inset-x-[18%] top-0 h-48 blur-3xl"
           style={{
             background: 'radial-gradient(circle, rgba(34,197,94,0.14) 0%, rgba(34,197,94,0.03) 45%, transparent 72%)',
           }}
         />
 
-        <motion.div {...appear(0, reduced)} className="relative mx-auto max-w-4xl text-center">
+        <motion.div {...appear(0, reduced)} className="relative mx-auto max-w-3xl text-center">
           <div
-            className="inline-flex rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] sm:text-[12px]"
+            className="inline-flex rounded-full border px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] sm:px-4 sm:py-1.5 sm:text-[11px]"
             style={{
               color: GREEN,
               borderColor: 'rgba(34,197,94,0.24)',
@@ -258,31 +258,31 @@ export default function RoiSimulatorSection() {
           >
             Calculez votre impact
           </div>
-          <h2 className="mt-6 text-balance text-[2rem] font-semibold leading-[0.98] text-white sm:text-[3rem] lg:text-[4.7rem]">
+          <h2 className="mt-4 text-balance text-[1.7rem] font-semibold leading-[1.02] text-white sm:text-[2.35rem] lg:text-[3.3rem]">
             Combien de chantiers <span style={{ color: GREEN }}>perdez-vous</span> chaque mois ?
           </h2>
-          <p className="mx-auto mt-5 max-w-3xl text-pretty text-[15px] leading-7 sm:text-[18px] sm:leading-8" style={{ color: MUTED }}>
+          <p className="mx-auto mt-3.5 max-w-2xl text-pretty text-[14px] leading-6 sm:text-[15px] sm:leading-7" style={{ color: MUTED }}>
             Estimez l&apos;impact financier des demandes non traitées, devis oubliés et relances trop tardives sur votre chiffre d&apos;affaires.
           </p>
         </motion.div>
 
-        <div className="relative mt-10 grid gap-5 lg:mt-12 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] lg:gap-6">
+        <div className="relative mt-7 grid gap-4 lg:mt-8 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-4">
           <motion.div
             {...appear(1, reduced)}
-            className="min-w-0 rounded-[26px] border p-4 sm:p-5 lg:p-6"
+            className="min-w-0 rounded-[22px] border p-3.5 sm:p-4 lg:p-4.5"
             style={{
               background: `linear-gradient(180deg, ${CARD_SOFT}, ${CARD})`,
               borderColor: BORDER,
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
             }}
           >
-            <div className="mb-4 sm:mb-5">
-              <p className="text-[24px] font-semibold sm:text-[28px]" style={{ color: GREEN }}>
+            <div className="mb-3 sm:mb-4">
+              <p className="text-[20px] font-semibold sm:text-[22px]" style={{ color: GREEN }}>
                 Ajustez vos chiffres
               </p>
             </div>
 
-            <div className="space-y-3.5 sm:space-y-4">
+            <div className="space-y-2.5 sm:space-y-3">
               {sliderConfigs.map((config) => {
                 const current = values[config.key];
                 const displayValue =
@@ -293,36 +293,36 @@ export default function RoiSimulatorSection() {
                 return (
                   <div
                     key={config.key}
-                    className="rounded-[20px] border px-3.5 py-3.5 sm:px-4 sm:py-4"
+                    className="rounded-[18px] border px-3 py-3 sm:px-3.5 sm:py-3.5"
                     style={{
                       background: 'linear-gradient(180deg, rgba(14,18,27,0.88), rgba(10,14,22,0.96))',
                       borderColor: 'rgba(255,255,255,0.06)',
                     }}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-2.5">
                       <div
-                        className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]"
+                        className="mt-0.5 flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-[12px] sm:h-9 sm:w-9"
                         style={{
                           background: `color-mix(in oklab, ${config.color} 14%, transparent)`,
                           border: `1px solid color-mix(in oklab, ${config.color} 26%, transparent)`,
                           color: config.color,
                         }}
                       >
-                        <config.icon size={18} />
+                        <config.icon size={16} />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-[14px] font-semibold leading-5 sm:text-[15px]" style={{ color: TEXT }}>
+                            <p className="text-[13px] font-semibold leading-[1.35] sm:text-[14px]" style={{ color: TEXT }}>
                               {config.label}
                             </p>
-                            <p className="mt-1 text-[12px] leading-[1.45] sm:text-[12.5px]" style={{ color: MUTED }}>
+                            <p className="mt-0.5 text-[11.5px] leading-[1.35] sm:text-[12px]" style={{ color: MUTED }}>
                               {config.hint}
                             </p>
                           </div>
                           <div
-                            className="shrink-0 rounded-[12px] border px-2.5 py-2 text-[12px] font-semibold sm:text-[13px]"
+                            className="shrink-0 rounded-[11px] border px-2.5 py-1.5 text-[11.5px] font-semibold sm:text-[12px]"
                             style={{
                               color: TEXT,
                               borderColor: 'rgba(255,255,255,0.08)',
@@ -333,7 +333,7 @@ export default function RoiSimulatorSection() {
                           </div>
                         </div>
 
-                        <div className="mt-3">
+                        <div className="mt-2.5">
                           <input
                             aria-label={config.label}
                             type="range"
@@ -341,13 +341,13 @@ export default function RoiSimulatorSection() {
                             max={config.max}
                             value={current}
                             onChange={(event) => setValue(config.key, Number(event.target.value))}
-                            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-transparent"
+                            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-transparent"
                             style={{
                               accentColor: GREEN,
                               background: buildSliderBackground(current, config.min, config.max),
                             }}
                           />
-                          <div className="mt-2 flex items-center justify-between text-[11px] sm:text-[12px]" style={{ color: DIM }}>
+                          <div className="mt-1.5 flex items-center justify-between text-[10.5px] sm:text-[11px]" style={{ color: DIM }}>
                             <span>{config.suffix === 'EUR' ? formatEuro(config.min) : `${config.min}${config.suffix === '%' ? '%' : ''}`}</span>
                             <span>{config.suffix === 'EUR' ? formatEuro(config.max) : `${config.max}${config.suffix === '%' ? '%' : '+'}`}</span>
                           </div>
@@ -360,33 +360,33 @@ export default function RoiSimulatorSection() {
             </div>
           </motion.div>
 
-          <div className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-3">
             <motion.div
               {...appear(2, reduced)}
-              className="rounded-[26px] border p-5 sm:p-6 lg:p-7"
+              className="rounded-[22px] border p-4 sm:p-4.5 lg:p-5"
               style={{
                 background: `linear-gradient(180deg, ${CARD_SOFT}, ${CARD})`,
                 borderColor: BORDER,
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
               }}
             >
-              <p className="text-[24px] font-semibold sm:text-[28px]" style={{ color: GREEN }}>
+              <p className="text-[20px] font-semibold sm:text-[22px]" style={{ color: GREEN }}>
                 Votre manque à gagner estimé
               </p>
-              <p className="mt-3 text-[14px] leading-6 sm:text-[16px]" style={{ color: MUTED }}>
+              <p className="mt-2 text-[13px] leading-5.5 sm:text-[14px] sm:leading-6" style={{ color: MUTED }}>
                 Chaque mois, vous laissez peut-être passer :
               </p>
 
-              <motion.div {...appear(3, reduced)} className="mt-5 sm:mt-6">
-                <div className="text-[2.8rem] font-semibold leading-[0.95] text-white sm:text-[4.25rem] lg:text-[5.2rem]" style={{ color: GREEN }}>
+              <motion.div {...appear(3, reduced)} className="mt-4 sm:mt-4.5">
+                <div className="text-[2.35rem] font-semibold leading-[0.96] text-white sm:text-[3.25rem] lg:text-[4rem]" style={{ color: GREEN }}>
                   {formatEuro(caPerduMois)}
                 </div>
-                <p className="mt-2 text-[15px] font-medium leading-7 sm:text-[18px]" style={{ color: TEXT }}>
+                <p className="mt-1.5 text-[14px] font-medium leading-6 sm:text-[15px] sm:leading-6.5" style={{ color: TEXT }}>
                   de chiffre d&apos;affaires potentiel
                 </p>
               </motion.div>
 
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                 {[
                   {
                     icon: Gauge,
@@ -410,26 +410,26 @@ export default function RoiSimulatorSection() {
                   <motion.div
                     key={stat.label}
                     {...appear(index + 4, reduced)}
-                    className="rounded-[20px] border px-4 py-4"
+                    className="rounded-[18px] border px-3.5 py-3.5"
                     style={{
                       background: 'linear-gradient(180deg, rgba(14,18,27,0.88), rgba(10,14,22,0.96))',
                       borderColor: 'rgba(255,255,255,0.06)',
                     }}
                   >
                     <div
-                      className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+                      className="flex h-8 w-8 items-center justify-center rounded-[10px]"
                       style={{
                         background: `color-mix(in oklab, ${stat.accent} 15%, transparent)`,
                         border: `1px solid color-mix(in oklab, ${stat.accent} 24%, transparent)`,
                         color: stat.accent,
                       }}
                     >
-                      <stat.icon size={18} />
+                      <stat.icon size={15} />
                     </div>
-                    <p className="mt-4 text-[1.8rem] font-semibold leading-none sm:text-[2rem]" style={{ color: TEXT }}>
+                    <p className="mt-3 text-[1.45rem] font-semibold leading-none sm:text-[1.6rem]" style={{ color: TEXT }}>
                       {stat.value}
                     </p>
-                    <p className="mt-2 max-w-[18ch] text-[12px] leading-[1.45] sm:text-[12.5px]" style={{ color: MUTED }}>
+                    <p className="mt-1.5 max-w-[18ch] text-[11.5px] leading-[1.35] sm:text-[12px] sm:leading-[1.4]" style={{ color: MUTED }}>
                       {stat.label}
                     </p>
                   </motion.div>
@@ -439,29 +439,29 @@ export default function RoiSimulatorSection() {
 
             <motion.div
               {...appear(6, reduced)}
-              className="rounded-[24px] border px-4 py-4 sm:px-5 sm:py-5"
+              className="rounded-[20px] border px-3.5 py-3.5 sm:px-4 sm:py-4"
               style={{
                 background: 'linear-gradient(180deg, rgba(9,35,18,0.94), rgba(7,23,13,0.98))',
                 borderColor: 'rgba(34,197,94,0.28)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), 0 20px 60px rgba(12,38,18,0.28)',
               }}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2.5">
                 <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
                   style={{
                     background: 'rgba(34,197,94,0.14)',
                     border: '1px solid rgba(34,197,94,0.22)',
                     color: GREEN,
                   }}
                 >
-                  <Trophy size={20} />
+                  <Trophy size={17} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[16px] font-medium leading-6 sm:text-[18px]" style={{ color: TEXT }}>
+                  <p className="text-[14px] font-medium leading-5.5 sm:text-[15px] sm:leading-6" style={{ color: TEXT }}>
                     Avec seulement 1 chantier récupéré sur 2, <span style={{ color: GREEN }}>Kadria s&apos;autofinance.</span>
                   </p>
-                  <p className="mt-2 text-[13px] leading-6 sm:text-[14px]" style={{ color: 'rgba(230,255,238,0.8)' }}>
+                  <p className="mt-1.5 text-[12px] leading-5 sm:text-[13px]" style={{ color: 'rgba(230,255,238,0.8)' }}>
                     Et votre temps retrouve sa vraie valeur.
                   </p>
                 </div>
@@ -470,7 +470,7 @@ export default function RoiSimulatorSection() {
           </div>
         </div>
 
-        <div className="relative mt-5 grid grid-cols-2 gap-3 lg:mt-6 lg:grid-cols-4 lg:gap-4">
+        <div className="relative mt-4 grid grid-cols-2 gap-2.5 lg:mt-4.5 lg:grid-cols-4 lg:gap-3">
           {benefitCards.map((benefit, index) => (
             <BenefitCard key={benefit.title} {...benefit} index={index + 7} reduced={reduced} />
           ))}
@@ -478,10 +478,10 @@ export default function RoiSimulatorSection() {
 
         <motion.div
           {...appear(11, reduced)}
-          className="relative mx-auto mt-7 flex max-w-3xl items-start justify-center gap-2.5 text-center sm:mt-8"
+          className="relative mx-auto mt-5 flex max-w-2xl items-start justify-center gap-2 text-center sm:mt-6"
         >
           <ShieldCheck className="mt-0.5 shrink-0" size={16} style={{ color: DIM }} />
-          <p className="text-[12px] leading-6 sm:text-[13px]" style={{ color: DIM }}>
+          <p className="text-[11px] leading-5 sm:text-[12px] sm:leading-5.5" style={{ color: DIM }}>
             Simulation basée sur vos données. Résultats indicatifs. Kadria ne garantit pas un niveau de revenu ou de conversion.
           </p>
         </motion.div>
