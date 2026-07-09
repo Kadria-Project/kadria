@@ -70,6 +70,7 @@ import RequestTransformationSection from '@/src/components/landing/RequestTransf
 import PriorityProspectsSection from '@/src/components/landing/PriorityProspectsSection';
 import QuoteFollowUpSection from '@/src/components/landing/QuoteFollowUpSection';
 import BusinessCockpitSection from '@/src/components/landing/BusinessCockpitSection';
+import UnifiedToolsSection from '@/src/components/landing/UnifiedToolsSection';
 import { AssistantWebChatCard } from '@/src/components/landing/AssistantWebDemo';
 import { VoiceAssistantCard } from '@/src/components/landing/AssistantVocalDemo';
 import ChatWidget from '@/src/components/ChatWidget';
@@ -2768,6 +2769,9 @@ export function LandingRoutePage() {
 
         {/* 3d. COCKPIT COMMERCIAL */}
         <BusinessCockpitSection />
+
+        {/* 3e. OUTILS CENTRALISÉS */}
+        <UnifiedToolsSection />
 
         {/* 4. PROBLEME -> SOLUTION */}
         <section className={`${LANDING_SECTION_CLASS} bg-zinc-950`}>
