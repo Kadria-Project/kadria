@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
+  ArrowLeftRight,
   ArrowRight,
   Bell,
   CalendarDays,
@@ -45,7 +47,7 @@ const desktopScatteredTools = [
   { label: 'Reporting\nartisanal', icon: LineChart, color: 'oklch(0.72 0.09 150)' },
 ];
 
-const mobileScatteredTools = desktopScatteredTools.slice(0, 6);
+const mobileToolSlides = [desktopScatteredTools.slice(0, 6), desktopScatteredTools.slice(6, 12)];
 
 const structuredOutcomes = [
   { text: 'Dossiers qualifiés et prêts à chiffrer', icon: FileText },
@@ -240,6 +242,41 @@ function BenefitCard({
 
 export default function UnifiedToolsSection() {
   const reduced = Boolean(useReducedMotion());
+  const [activeMobileToolsSlide, setActiveMobileToolsSlide] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (reduced) return;
+
+    const interval = window.setInterval(() => {
+      setActiveMobileToolsSlide((current) => (current + 1) % mobileToolSlides.length);
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [reduced]);
+
+  function showMobileToolsSlide(index: number) {
+    const nextIndex = (index + mobileToolSlides.length) % mobileToolSlides.length;
+    setActiveMobileToolsSlide(nextIndex);
+  }
+
+  function handleToolsTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  }
+
+  function handleToolsTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (touchStartXRef.current == null) return;
+    const endX = event.changedTouches[0]?.clientX ?? touchStartXRef.current;
+    const deltaX = endX - touchStartXRef.current;
+    touchStartXRef.current = null;
+
+    if (Math.abs(deltaX) < 36) return;
+    if (deltaX < 0) {
+      showMobileToolsSlide(activeMobileToolsSlide + 1);
+      return;
+    }
+    showMobileToolsSlide(activeMobileToolsSlide - 1);
+  }
 
   return (
     <section
@@ -362,16 +399,60 @@ export default function UnifiedToolsSection() {
             <h3 className="text-center text-[22px] font-extrabold leading-[1.08]" style={{ color: TEXT }}>
               Aujourd’hui : tout est éparpillé
             </h3>
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {mobileScatteredTools.map((tool, index) => (
-                <ToolTile key={tool.label} {...tool} compact index={index} reduced={reduced} />
-              ))}
-            </div>
             <div
-              className="mt-4 rounded-2xl border px-4 py-3 text-center text-sm font-medium"
-              style={{ borderColor: BORDER, background: CARD_SOFT, color: MUTED }}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-semibold"
+              style={{
+                borderColor: 'rgba(34,197,94,0.2)',
+                background: 'rgba(10,18,14,0.72)',
+                color: 'color-mix(in oklab, white 84%, oklch(0.84 0.19 147) 16%)',
+              }}
             >
-              +6 autres usages dispersés
+              <ArrowLeftRight size={14} style={{ color: GREEN }} />
+              Glissez pour voir les 12 usages
+            </div>
+
+            <div
+              className="mt-4 overflow-hidden"
+              onTouchStart={handleToolsTouchStart}
+              onTouchEnd={handleToolsTouchEnd}
+            >
+              <motion.div
+                className="flex"
+                animate={{ x: `${activeMobileToolsSlide * -100}%` }}
+                transition={reduced ? { duration: 0 } : { duration: 0.35, ease: 'easeOut' }}
+              >
+                {mobileToolSlides.map((slide, slideIndex) => (
+                  <div key={`tools-slide-${slideIndex}`} className="min-w-full">
+                    <div className="grid grid-cols-3 gap-3">
+                      {slide.map((tool, index) => (
+                        <ToolTile
+                          key={`${tool.label}-${slideIndex}`}
+                          {...tool}
+                          compact
+                          index={slideIndex * 6 + index}
+                          reduced={reduced}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              {mobileToolSlides.map((_, index) => (
+                <button
+                  key={`tools-pagination-${index}`}
+                  type="button"
+                  aria-label={`Afficher les usages ${index + 1}`}
+                  onClick={() => showMobileToolsSlide(index)}
+                  className="h-2.5 rounded-full transition-all"
+                  style={{
+                    width: activeMobileToolsSlide === index ? '20px' : '8px',
+                    background: activeMobileToolsSlide === index ? GREEN : 'rgba(148,163,184,0.45)',
+                  }}
+                />
+              ))}
             </div>
           </motion.div>
 
