@@ -211,7 +211,7 @@ function BenefitCard({
   return (
     <motion.div
       {...appear(index, reduced)}
-      className="rounded-[20px] border px-4 py-4 sm:px-5 sm:py-5"
+      className="rounded-[18px] border px-3.5 py-3.5 sm:rounded-[20px] sm:px-4 sm:py-4 lg:px-4.5 lg:py-4.5"
       style={{
         background: 'linear-gradient(180deg, rgba(13,17,24,0.92), rgba(9,12,18,0.98))',
         borderColor: 'rgba(255,255,255,0.07)',
@@ -219,19 +219,19 @@ function BenefitCard({
       }}
     >
       <div
-        className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+        className="flex h-8 w-8 items-center justify-center rounded-[10px] sm:h-9 sm:w-9 sm:rounded-[11px]"
         style={{
-          background: 'rgba(34,197,94,0.12)',
-          border: '1px solid rgba(34,197,94,0.2)',
+          background: 'rgba(34,197,94,0.1)',
+          border: '1px solid rgba(34,197,94,0.18)',
           color: GREEN,
         }}
       >
-        <Icon size={18} />
+        <Icon size={15} />
       </div>
-      <p className="mt-3 text-[15px] font-semibold leading-[1.25] sm:text-[16px]" style={{ color: TEXT }}>
+      <p className="mt-2.5 text-[14px] font-semibold leading-[1.22] sm:mt-3 sm:text-[15px]" style={{ color: TEXT }}>
         {title}
       </p>
-      <p className="mt-2 text-[13px] leading-5 sm:text-[13.5px]" style={{ color: MUTED }}>
+      <p className="mt-1.5 text-[12px] leading-[1.45] sm:mt-2 sm:text-[12.5px] sm:leading-[1.5]" style={{ color: MUTED }}>
         {text}
       </p>
     </motion.div>
@@ -592,7 +592,7 @@ export default function UnifiedToolsSection() {
           </div>
         </div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <div className="mt-7 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {benefits.map((benefit, index) => (
             <BenefitCard key={benefit.title} {...benefit} index={index + 15} reduced={reduced} />
           ))}
