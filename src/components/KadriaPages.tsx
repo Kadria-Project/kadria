@@ -71,6 +71,7 @@ import PriorityProspectsSection from '@/src/components/landing/PriorityProspects
 import QuoteFollowUpSection from '@/src/components/landing/QuoteFollowUpSection';
 import BusinessCockpitSection from '@/src/components/landing/BusinessCockpitSection';
 import UnifiedToolsSection from '@/src/components/landing/UnifiedToolsSection';
+import RoiSimulatorSection from '@/src/components/landing/RoiSimulatorSection';
 import { AssistantWebChatCard } from '@/src/components/landing/AssistantWebDemo';
 import { VoiceAssistantCard } from '@/src/components/landing/AssistantVocalDemo';
 import ChatWidget from '@/src/components/ChatWidget';
@@ -2772,6 +2773,9 @@ export function LandingRoutePage() {
 
         {/* 3e. OUTILS CENTRALISÉS */}
         <UnifiedToolsSection />
+
+        {/* 3f. SIMULATEUR ROI */}
+        <RoiSimulatorSection />
 
         {/* 4. PROBLEME -> SOLUTION */}
         <section className={`${LANDING_SECTION_CLASS} bg-zinc-950`}>
