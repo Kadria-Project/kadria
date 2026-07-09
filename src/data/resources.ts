@@ -207,6 +207,9 @@ export const RESOURCES: Resource[] = [
     readingTime: '4 min',
     publishedAt: '2026-06-21',
     featured: false,
+    seoTitle: 'Kadria pour paysagistes | Gestion des demandes, devis et relances',
+    seoDescription:
+      'Entretien, taille, terrasse, clôture, aménagement extérieur : comment centraliser des demandes saisonnières et prioriser celles qui comptent vraiment.',
     content: [
       { type: 'paragraph', text: "Chez un paysagiste, les demandes arrivent par vagues : entretien régulier, création de terrasse, plantation, clôture ou aménagement complet de jardin." },
       { type: 'heading', text: 'Ce que Kadria aide à qualifier' },
@@ -235,6 +238,9 @@ export const RESOURCES: Resource[] = [
     readingTime: '4 min',
     publishedAt: '2026-06-22',
     featured: false,
+    seoTitle: 'Kadria pour plombiers | Gestion des demandes, devis et relances',
+    seoDescription:
+      'Urgence, fuite, rénovation, chauffe-eau, salle de bain : Kadria aide à distinguer ce qui doit partir tout de suite de ce qui mérite un vrai devis.',
     content: [
       { type: 'paragraph', text: "Un plombier ne traite pas une fuite urgente comme une rénovation de salle de bain. Pourtant, ces demandes arrivent souvent dans le même flux." },
       { type: 'heading', text: 'Avant le déplacement' },
@@ -263,6 +269,9 @@ export const RESOURCES: Resource[] = [
     readingTime: '4 min',
     publishedAt: '2026-06-23',
     featured: false,
+    seoTitle: 'Kadria pour électriciens | Gestion des demandes, devis et relances',
+    seoDescription:
+      'Panne, mise aux normes, tableau, éclairage, rénovation : comment obtenir les bonnes informations avant de bloquer un créneau.',
     content: [
       { type: 'paragraph', text: "Pour un électricien, comprendre le contexte avant le déplacement change tout : panne isolée, rénovation large, tableau vétuste ou mise aux normes." },
       { type: 'heading', text: 'Informations utiles à capter' },
@@ -291,6 +300,9 @@ export const RESOURCES: Resource[] = [
     readingTime: '4 min',
     publishedAt: '2026-06-24',
     featured: false,
+    seoTitle: 'Kadria pour couvreurs | Gestion des demandes, devis et relances',
+    seoDescription:
+      'Après un épisode météo, Kadria aide à trier les vraies urgences et à préparer plus sereinement les rénovations plus lourdes.',
     content: [
       { type: 'paragraph', text: "Les couvreurs reçoivent souvent un mélange d’urgences météo et de projets de rénovation plus conséquents. Sans méthode, tout semble prioritaire." },
       { type: 'heading', text: 'Ce que Kadria fait remonter' },

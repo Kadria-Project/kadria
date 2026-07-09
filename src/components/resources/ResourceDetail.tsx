@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock } from 'lucide-react';
 import { DarkNav } from '@/src/components/DarkNav';
 import { Footer } from '@/src/components/KadriaPages';
-import type { Resource } from '@/src/data/resources';
+import { getCategoryUrl, type Resource } from '@/src/data/resources';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', {
@@ -12,7 +12,53 @@ function formatDate(iso: string) {
   });
 }
 
-export function ResourceDetail({ resource }: { resource: Resource }) {
+function getRelatedResources(current: Resource, allResources: Resource[]): Resource[] {
+  const sameCategory = allResources.filter(
+    (item) => item.slug !== current.slug && item.category === current.category,
+  );
+
+  const related = [...sameCategory];
+
+  if (related.length < 3) {
+    const featured = allResources.filter(
+      (item) =>
+        item.slug !== current.slug &&
+        item.featured &&
+        !related.some((existing) => existing.slug === item.slug),
+    );
+    related.push(...featured);
+  }
+
+  return related.slice(0, 3);
+}
+
+function RelatedResourceCard({ resource }: { resource: Resource }) {
+  return (
+    <Link
+      href={`/ressources/${resource.slug}`}
+      className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors duration-150 hover:border-green-500/30 hover:bg-zinc-900"
+    >
+      <span className="inline-flex w-fit items-center rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-green-400">
+        {resource.category}
+      </span>
+      <h3 className="mt-3 text-base font-semibold leading-snug text-white">{resource.title}</h3>
+      <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{resource.excerpt}</p>
+      <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-green-400 transition-transform duration-150 group-hover:translate-x-0.5">
+        Lire
+        <ArrowRight size={13} />
+      </span>
+    </Link>
+  );
+}
+
+export function ResourceDetail({
+  resource,
+  allResources = [],
+}: {
+  resource: Resource;
+  allResources?: Resource[];
+}) {
+  const relatedResources = getRelatedResources(resource, allResources);
   const cta = resource.cta ?? {
     title: 'Prêt à mieux transformer vos demandes en chantiers ?',
     text: 'Essayez Kadria gratuitement ou demandez une démo pour découvrir comment centraliser vos prospects, vos devis et vos relances.',
@@ -28,9 +74,25 @@ export function ResourceDetail({ resource }: { resource: Resource }) {
 
       <main className="px-4 pb-24 pt-28 sm:px-6 sm:pt-36">
         <div className="mx-auto max-w-3xl">
+          <nav aria-label="Fil d’Ariane" className="flex flex-wrap items-center gap-1.5 text-sm text-zinc-500">
+            <Link href="/" className="transition-colors hover:text-white">
+              Accueil
+            </Link>
+            <span>/</span>
+            <Link href="/ressources" className="transition-colors hover:text-white">
+              Ressources
+            </Link>
+            <span>/</span>
+            <Link href={getCategoryUrl(resource.category)} className="transition-colors hover:text-white">
+              {resource.category}
+            </Link>
+            <span>/</span>
+            <span className="text-zinc-400">{resource.title}</span>
+          </nav>
+
           <Link
             href="/ressources"
-            className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-white"
+            className="mt-4 inline-flex items-center gap-1.5 text-sm text-zinc-400 transition-colors hover:text-white"
           >
             <ArrowLeft size={15} />
             Retour aux ressources
@@ -139,6 +201,17 @@ export function ResourceDetail({ resource }: { resource: Resource }) {
               </Link>
             </div>
           </div>
+
+          {relatedResources.length > 0 ? (
+            <div className="mt-16">
+              <h2 className="text-xl font-bold tracking-tight text-white md:text-2xl">Voir aussi</h2>
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {relatedResources.map((related) => (
+                  <RelatedResourceCard key={related.slug} resource={related} />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-10">
             <Link
