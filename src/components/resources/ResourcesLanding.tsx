@@ -4,6 +4,7 @@ import { DarkNav } from '@/src/components/DarkNav';
 import { Footer } from '@/src/components/KadriaPages';
 import {
   getAllResources,
+  getCategoryUrl,
   getFeaturedResources,
   getResourcesByCategory,
   type Resource,
@@ -40,21 +41,36 @@ function ResourceSection({
   title,
   description,
   resources,
+  ctaHref,
+  ctaLabel,
+  columns = 'lg:grid-cols-3',
 }: {
   id: string;
   title: string;
-  description?: string;
+  description: string;
   resources: Resource[];
+  ctaHref: string;
+  ctaLabel: string;
+  columns?: string;
 }) {
   if (resources.length === 0) return null;
 
   return (
     <section id={id} className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
-      <div className="max-w-2xl">
-        <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{title}</h2>
-        {description ? <p className="mt-3 text-base leading-relaxed text-zinc-400">{description}</p> : null}
+      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{title}</h2>
+          <p className="mt-3 text-base leading-relaxed text-zinc-400">{description}</p>
+        </div>
+        <Link
+          href={ctaHref}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-green-400 transition-colors hover:text-green-300"
+        >
+          {ctaLabel}
+          <ArrowRight size={15} />
+        </Link>
       </div>
-      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 ${columns}`}>
         {resources.map((resource) => (
           <ResourceCard key={resource.slug} resource={resource} />
         ))}
@@ -63,41 +79,60 @@ function ResourceSection({
   );
 }
 
-const CATEGORY_SECTIONS: { id: string; title: string; description?: string; category: ResourceCategory }[] = [
+const CATEGORY_SECTIONS: Array<{
+  id: string;
+  title: string;
+  description: string;
+  category: ResourceCategory;
+  limit: number;
+  ctaLabel: string;
+  columns?: string;
+}> = [
   {
-    id: 'metier',
-    title: 'Ressources m\u00e9tier',
-    description: 'Kadria adapt\u00e9 \u00e0 votre corps de m\u00e9tier : paysagiste, plombier, \u00e9lectricien, couvreur...',
-    category: 'M\u00e9tier',
+    id: 'metiers',
+    title: 'Ressources métier',
+    description: 'Des contenus pensés pour les réalités terrain de chaque artisan, avec des exemples concrets par activité.',
+    category: 'Métier',
+    limit: 4,
+    ctaLabel: 'Voir tous les métiers',
+    columns: 'xl:grid-cols-4',
   },
   {
     id: 'cas-utilisation',
-    title: 'Cas d\u2019utilisation',
-    description: 'Comment Kadria transforme concr\u00e8tement vos demandes en dossiers exploitables.',
-    category: 'Cas d\u2019utilisation',
-  },
-  {
-    id: 'fonctionnalites',
-    title: 'Fonctionnalit\u00e9s expliqu\u00e9es',
-    description: 'Le fonctionnement des outils Kadria, expliqu\u00e9 simplement.',
-    category: 'Fonctionnalit\u00e9',
+    title: 'Cas d’utilisation',
+    description: 'Comment Kadria transforme concrètement des situations réelles en dossiers plus clairs et plus actionnables.',
+    category: 'Cas d’utilisation',
+    limit: 3,
+    ctaLabel: 'Voir tous les cas d’utilisation',
   },
   {
     id: 'guides',
     title: 'Guides & conseils',
-    description: 'Des m\u00e9thodes concr\u00e8tes pour mieux g\u00e9rer vos prospects, vos devis et vos relances.',
+    description: 'Des méthodes simples pour mieux gérer vos devis, vos relances et vos priorités commerciales.',
     category: 'Guide',
+    limit: 3,
+    ctaLabel: 'Voir tous les guides',
+  },
+  {
+    id: 'fonctionnalites',
+    title: 'Fonctionnalités expliquées',
+    description: 'Les briques du produit Kadria expliquées sans jargon, avec leur impact concret sur le quotidien artisan.',
+    category: 'Fonctionnalité',
+    limit: 3,
+    ctaLabel: 'Voir toutes les fonctionnalités',
   },
   {
     id: 'nouveautes',
-    title: 'Nouveaut\u00e9s produit',
-    description: 'Les derni\u00e8res \u00e9volutions du produit, mois apr\u00e8s mois.',
-    category: 'Nouveaut\u00e9s',
+    title: 'Nouveautés Kadria',
+    description: 'Les dernières évolutions produit, sélectionnées pour vous aider à suivre ce qui change vraiment.',
+    category: 'Nouveautés',
+    limit: 3,
+    ctaLabel: 'Voir toutes les nouveautés',
   },
 ];
 
 export function ResourcesLanding() {
-  const featured = getFeaturedResources();
+  const featured = getFeaturedResources(3);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-zinc-950 text-white">
@@ -113,8 +148,8 @@ export function ResourcesLanding() {
               Ressources pour mieux transformer vos demandes en chantiers
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-zinc-400">
-              Cas d\u2019usage, conseils terrain, nouveaut\u00e9s produit et m\u00e9thodes concr\u00e8tes pour mieux
-              g\u00e9rer vos prospects, vos devis et vos relances avec Kadria.
+              Cas d’utilisation, conseils terrain, nouveautés produit et méthodes concrètes pour mieux gérer vos
+              prospects, vos devis et vos relances avec Kadria.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a
@@ -124,10 +159,10 @@ export function ResourcesLanding() {
                 Explorer les ressources
               </a>
               <a
-                href="#nouveautes"
+                href="#metiers"
                 className="inline-flex min-h-11 w-full items-center justify-center rounded-[10px] border border-zinc-800 px-6 py-3 text-sm font-semibold text-white transition-colors duration-150 hover:bg-zinc-900 sm:w-auto"
               >
-                Voir les nouveaut\u00e9s
+                Voir les métiers
               </a>
             </div>
           </div>
@@ -135,9 +170,11 @@ export function ResourcesLanding() {
 
         <ResourceSection
           id="a-la-une"
-          title="\u00c0 la une"
-          description="Les ressources \u00e0 ne pas manquer ce mois-ci."
+          title="À la une"
+          description="Les trois ressources à ne pas manquer en ce moment."
           resources={featured}
+          ctaHref="/ressources"
+          ctaLabel="Voir toute la sélection"
         />
 
         {CATEGORY_SECTIONS.map((section) => (
@@ -146,13 +183,16 @@ export function ResourcesLanding() {
             id={section.id}
             title={section.title}
             description={section.description}
-            resources={getResourcesByCategory(section.category)}
+            resources={getResourcesByCategory(section.category, section.limit)}
+            ctaHref={getCategoryUrl(section.category)}
+            ctaLabel={section.ctaLabel}
+            columns={section.columns}
           />
         ))}
 
         {getAllResources().length === 0 ? (
           <div className="mx-auto max-w-[1200px] px-4 py-24 text-center text-zinc-500 sm:px-6">
-            De nouvelles ressources arrivent bient\u00f4t.
+            De nouvelles ressources arrivent bientôt.
           </div>
         ) : null}
       </main>

@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { ARTISAN_TRADES } from '@/src/config/trades';
-import { getAllResources, getResourceBySlug } from '@/src/data/resources';
+import { getAllResources, getResourceBySlug, RESOURCE_CATEGORY_SLUGS } from '@/src/data/resources';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://kadria.fr';
@@ -14,9 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     new Date(0),
   );
-  const tradeResourcesLastModified = academyResource
-    ? new Date(academyResource.publishedAt)
-    : resourcesLastModified;
+  const tradeResourcesLastModified = academyResource ? new Date(academyResource.publishedAt) : resourcesLastModified;
 
   const resourceEntries: MetadataRoute.Sitemap = resources.map((resource) => ({
     url: `${baseUrl}/ressources/${resource.slug}`,
@@ -25,11 +22,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: resource.slug === 'profil-metier-kadria' ? 0.8 : 0.5,
   }));
 
-  const tradeEntries: MetadataRoute.Sitemap = ARTISAN_TRADES
-    .filter((trade) => trade.value !== 'autre')
-    .map((trade) => ({
-      url: `${baseUrl}/ressources/metiers/${trade.value}`,
-      lastModified: tradeResourcesLastModified,
+  const categoryEntries: MetadataRoute.Sitemap = Object.entries(RESOURCE_CATEGORY_SLUGS)
+    .filter(([category]) => category !== 'Métier')
+    .map(([, slug]) => ({
+      url: `${baseUrl}/ressources/categories/${slug}`,
+      lastModified: resourcesLastModified,
       changeFrequency: 'monthly',
       priority: 0.5,
     }));
@@ -66,7 +63,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     ...resourceEntries,
-    ...tradeEntries,
+    ...categoryEntries,
     {
       url: `${baseUrl}/legal`,
       lastModified: now,

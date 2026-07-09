@@ -14,11 +14,11 @@ function formatDate(iso: string) {
 
 export function ResourceDetail({ resource }: { resource: Resource }) {
   const cta = resource.cta ?? {
-    title: 'Pret a mieux transformer vos demandes en chantiers ?',
-    text: 'Essayez Kadria gratuitement ou demandez une demo pour decouvrir comment centraliser vos prospects, vos devis et vos relances.',
+    title: 'Prêt à mieux transformer vos demandes en chantiers ?',
+    text: 'Essayez Kadria gratuitement ou demandez une démo pour découvrir comment centraliser vos prospects, vos devis et vos relances.',
     primaryLabel: 'Essai gratuit',
     primaryHref: '/register',
-    secondaryLabel: 'Demander une demo',
+    secondaryLabel: 'Demander une démo',
     secondaryHref: '/demo-request',
   };
 
