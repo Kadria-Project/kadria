@@ -37,6 +37,7 @@ export function DarkNav() {
   }, [mobileOpen]);
 
   const navLinks = [
+    { href: '/fonctionnalites', label: 'Fonctionnalités' },
     { href: '/demo', label: 'Mode démo' },
     { href: '/tarifs', label: 'Tarifs' },
     { href: '/ressources', label: 'Ressources' },

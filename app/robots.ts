@@ -5,7 +5,25 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/tarifs', '/demo', '/legal', '/privacy', '/terms'],
+        allow: [
+          '/',
+          '/tarifs',
+          '/demo',
+          '/legal',
+          '/privacy',
+          '/terms',
+          '/fonctionnalites',
+          '/comment-ca-marche',
+          '/metiers',
+          '/comparatif',
+          '/securite',
+          '/demander-une-demo',
+          '/assistant-vocal-artisan',
+          '/site-vitrine-artisan',
+          '/roadmap',
+          '/partenaires',
+          '/early-access',
+        ],
         disallow: [
           '/dashboard-v2',
           '/admin',

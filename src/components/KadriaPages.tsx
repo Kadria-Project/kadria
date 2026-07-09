@@ -3457,11 +3457,11 @@ function DarkFooter() {
           <div>
             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Produit</p>
             <div className="flex flex-col gap-3">
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Fonctionnalités</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Tarifs</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Démo</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Assistant vocal</Link>
-              <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">CRM</Link>
+              <Link href="/fonctionnalites" className="text-sm text-zinc-400 transition-colors hover:text-white">Fonctionnalités</Link>
+              <Link href="/comment-ca-marche" className="text-sm text-zinc-400 transition-colors hover:text-white">Comment ça marche</Link>
+              <Link href="/assistant-vocal-artisan" className="text-sm text-zinc-400 transition-colors hover:text-white">Assistant vocal</Link>
+              <Link href="/site-vitrine-artisan" className="text-sm text-zinc-400 transition-colors hover:text-white">Site vitrine connecté</Link>
+              <Link href="/tarifs" className="text-sm text-zinc-400 transition-colors hover:text-white">Tarifs</Link>
             </div>
           </div>
 
@@ -3469,17 +3469,23 @@ function DarkFooter() {
           <div>
             <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Ressources</p>
             <div className="flex flex-col gap-3">
-              <Link href="/ressources" className="text-sm text-zinc-400 transition-colors hover:text-white">Comment ça marche</Link>
-              <Link href="/ressources/nouveautes-kadria-juillet-2026" className="text-sm text-zinc-400 transition-colors hover:text-white">Par métier</Link>
-              <Link href="/ressources/relancer-un-devis-sans-etre-insistant" className="text-sm text-zinc-400 transition-colors hover:text-white">Blog</Link>
-              <Link href="/ressources/demande-client-en-dossier-pret-a-chiffrer" className="text-sm text-zinc-400 transition-colors hover:text-white">Support</Link>
+              <Link href="/ressources" className="text-sm text-zinc-400 transition-colors hover:text-white">Academy</Link>
+              <Link href="/metiers" className="text-sm text-zinc-400 transition-colors hover:text-white">Métiers</Link>
+              <Link href="/comparatif" className="text-sm text-zinc-400 transition-colors hover:text-white">Comparatif</Link>
+              <Link href="/roadmap" className="text-sm text-zinc-400 transition-colors hover:text-white">Roadmap</Link>
             </div>
           </div>
 
-          {/* Colonne 4 — Contact */}
+          {/* Colonne 4 — Entreprise */}
           <div>
-            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Contact</p>
-            <Link href="#" className="flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">Entreprise</p>
+            <div className="flex flex-col gap-3">
+              <Link href="/demander-une-demo" className="text-sm text-zinc-400 transition-colors hover:text-white">Demander une démo</Link>
+              <Link href="/partenaires" className="text-sm text-zinc-400 transition-colors hover:text-white">Partenaires</Link>
+              <Link href="/early-access" className="text-sm text-zinc-400 transition-colors hover:text-white">Early access</Link>
+              <Link href="/securite" className="text-sm text-zinc-400 transition-colors hover:text-white">Sécurité</Link>
+            </div>
+            <Link href="mailto:contact@kadria.fr" className="mt-4 flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-white">
               <Mail size={14} />
               contact@kadria.fr
             </Link>
@@ -3499,9 +3505,9 @@ function DarkFooter() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 lg:px-12">
           <p className="text-sm text-zinc-400">© 2025 Kadria. Tous droits réservés.</p>
           <div className="flex items-center gap-6">
-            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Mentions légales</Link>
-            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">Politique de confidentialité</Link>
-            <Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-white">CGU</Link>
+            <Link href="/legal" className="text-sm text-zinc-400 transition-colors hover:text-white">Mentions légales</Link>
+            <Link href="/privacy" className="text-sm text-zinc-400 transition-colors hover:text-white">Politique de confidentialité</Link>
+            <Link href="/terms" className="text-sm text-zinc-400 transition-colors hover:text-white">CGU</Link>
           </div>
         </div>
       </div>
