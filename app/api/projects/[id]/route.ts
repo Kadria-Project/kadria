@@ -3,6 +3,7 @@ import { TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils';
 import { mapSupabaseProject, toSupabaseProjectUpdate } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
+import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context';
 
 async function createActivityLog(
   projectId: string,
@@ -21,7 +22,8 @@ async function createActivityLog(
   }
 }
 
-async function getAuthorizedProject(id: string, artisanId: string) {
+async function getAuthorizedProject(id: string, artisanId: string, tenantId?: string | null) {
+  const supportsTenantId = tenantId ? await tableHasColumn(TABLES.projects, 'tenant_id') : false;
   const direct = await supabaseAdmin
     .from(TABLES.projects)
     .select('*')
@@ -54,7 +56,11 @@ async function getAuthorizedProject(id: string, artisanId: string) {
     return { status: 404 as const };
   }
 
-  if (record.artisan_id !== artisanId) {
+  if (supportsTenantId && record.tenant_id) {
+    if (String(record.tenant_id) !== tenantId) {
+      return { status: 403 as const };
+    }
+  } else if (record.artisan_id !== artisanId) {
     return { status: 403 as const };
   }
 
@@ -72,7 +78,8 @@ export async function GET(
     }
 
     const { id } = await params;
-    const result = await getAuthorizedProject(id, session.artisanId);
+    const tenantContext = await getCurrentTenantContext();
+    const result = await getAuthorizedProject(id, session.artisanId, tenantContext?.tenantId);
 
     if (result.status === 404) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
@@ -107,7 +114,8 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const authResult = await getAuthorizedProject(id, session.artisanId);
+    const tenantContext = await getCurrentTenantContext();
+    const authResult = await getAuthorizedProject(id, session.artisanId, tenantContext?.tenantId);
 
     if (authResult.status === 404) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });

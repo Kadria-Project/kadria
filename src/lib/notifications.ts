@@ -8,6 +8,7 @@
 // route pour un incident de notification).
 
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { attachTenantIdToPayload } from '@/src/lib/tenant-context'
 
 export const ARTISAN_NOTIFICATIONS_TABLE = 'ArtisanNotifications'
 
@@ -53,6 +54,7 @@ export interface ArtisanNotification {
 export interface CreateArtisanNotificationInput {
   artisanId: string
   projectId?: string | null
+  tenantId?: string | null
   type: ArtisanNotificationType
   title: string
   message: string
@@ -160,9 +162,9 @@ export async function createArtisanNotification(
       }
     }
 
-    const { data, error } = await supabaseAdmin
-      .from(ARTISAN_NOTIFICATIONS_TABLE)
-      .insert({
+    const insertPayload = await attachTenantIdToPayload(
+      ARTISAN_NOTIFICATIONS_TABLE,
+      {
         artisan_id: input.artisanId,
         project_id: input.projectId || null,
         type: input.type,
@@ -171,7 +173,17 @@ export async function createArtisanNotification(
         priority: input.priority || 'medium',
         action_url: input.actionUrl || null,
         metadata: input.metadata || null,
-      })
+      },
+      {
+        tenantId: input.tenantId ?? null,
+        artisanId: input.artisanId,
+        projectId: input.projectId || null,
+      },
+    )
+
+    const { data, error } = await supabaseAdmin
+      .from(ARTISAN_NOTIFICATIONS_TABLE)
+      .insert(insertPayload)
       .select(SELECT_COLUMNS)
       .maybeSingle()
 

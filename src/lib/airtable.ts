@@ -8,6 +8,7 @@ import {
   type SupabaseDevis,
 } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { attachTenantIdToPayload } from '@/src/lib/tenant-context'
 
 export const TABLES = {
   projects: 'Projects',
@@ -326,8 +327,18 @@ export async function resolveProjectId(projectIdOrRecordId: string): Promise<{ i
   return { id: legacy.data.id as string, artisanId: legacy.data.artisan_id as string }
 }
 
-export async function createDevis(input: Record<string, unknown> & { artisanId: string }): Promise<DevisRecord> {
-  const row = toSupabaseDevisInsert(input)
+export async function createDevis(
+  input: Record<string, unknown> & { artisanId: string; tenantId?: string | null }
+): Promise<DevisRecord> {
+  const row = await attachTenantIdToPayload(
+    TABLES.devis,
+    toSupabaseDevisInsert(input),
+    {
+      tenantId: input.tenantId ?? null,
+      artisanId: input.artisanId,
+      projectId: typeof input.projectId === 'string' ? input.projectId : null,
+    },
+  )
   row.artisan_id = input.artisanId
 
   const { data, error } = await supabaseAdmin

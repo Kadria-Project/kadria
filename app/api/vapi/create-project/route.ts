@@ -6,6 +6,7 @@ import { notifyArtisanQuotaReached } from '@/src/lib/artisan-notifications'
 import { createProjectNotification } from '@/src/lib/notifications'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { attachTenantIdToPayload, resolveTenantIdentity } from '@/src/lib/tenant-context'
 import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/src/lib/usage/quotas'
 import { sendOvhSms } from '@/src/lib/sms/ovh-sms'
 import { getBaseUrl } from '@/src/lib/base-url'
@@ -421,8 +422,10 @@ export async function POST(request: NextRequest) {
       urgency ? `urgence: ${urgency}` : '',
     ].filter(Boolean).join(', ')
 
-    const payload = toSupabaseProjectInsert({
+    const tenantIdentity = await resolveTenantIdentity({ artisanId })
+    const payload = await attachTenantIdToPayload(TABLES.projects, toSupabaseProjectInsert({
       artisanId,
+      tenantId: tenantIdentity?.tenantId || null,
       clientName,
       clientFirstName,
       clientPhone,
@@ -436,6 +439,9 @@ export async function POST(request: NextRequest) {
       completenessScore,
       source: 'vapi',
       callId: callId || '',
+    }), {
+      tenantId: tenantIdentity?.tenantId || null,
+      artisanId,
     })
 
     const { data: result, error } = await supabaseAdmin

@@ -6,6 +6,7 @@
 // n'existe pas encore (fallback silencieux, jamais de crash de route).
 
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { attachTenantIdToPayload } from '@/src/lib/tenant-context'
 
 export const CLIENT_EVENTS_TABLE = 'ProjectClientEvents'
 
@@ -131,6 +132,7 @@ export type ClientEventSource = (typeof SOURCES)[number]
 export interface ClientEventInput {
   projectId: string
   artisanId: string
+  tenantId?: string | null
   eventType: ClientEventType
   visibility: ClientEventVisibility
   source: ClientEventSource
@@ -178,9 +180,9 @@ export async function createClientEvent(input: ClientEventInput): Promise<{ ok: 
       return { ok: false, event: null }
     }
 
-    const { data, error } = await supabaseAdmin
-      .from(CLIENT_EVENTS_TABLE)
-      .insert({
+    const insertPayload = await attachTenantIdToPayload(
+      CLIENT_EVENTS_TABLE,
+      {
         project_id: input.projectId,
         artisan_id: input.artisanId,
         event_type: input.eventType,
@@ -190,7 +192,17 @@ export async function createClientEvent(input: ClientEventInput): Promise<{ ok: 
         message: input.message || null,
         metadata: input.metadata || null,
         created_by: input.createdBy || null,
-      })
+      },
+      {
+        tenantId: input.tenantId ?? null,
+        artisanId: input.artisanId,
+        projectId: input.projectId,
+      },
+    )
+
+    const { data, error } = await supabaseAdmin
+      .from(CLIENT_EVENTS_TABLE)
+      .insert(insertPayload)
       .select('id, event_type, title, message, source, created_at, metadata')
       .maybeSingle()
 

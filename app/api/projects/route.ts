@@ -4,6 +4,7 @@ import { getSession } from '@/src/lib/auth-utils';
 import { sendClientProjectConfirmationEmailBestEffort } from '@/src/lib/email/client-project-confirmation';
 import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
+import { attachTenantIdToPayload, getCurrentTenantContext, resolveTenantIdentity, tableHasColumn } from '@/src/lib/tenant-context';
 import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
 import { getClientActivitySummaries } from '@/src/lib/client-events';
 import { createProjectNotification } from '@/src/lib/notifications';
@@ -21,6 +22,8 @@ export async function GET(request: Request) {
     }
 
     const artisanId = session.artisanId;
+    const tenantContext = await getCurrentTenantContext();
+    const supportsTenantId = await tableHasColumn(TABLES.projects, 'tenant_id');
 
     const { searchParams } = new URL(request.url);
 
@@ -28,12 +31,19 @@ export async function GET(request: Request) {
     const trade = searchParams.get('trade');
     const search = searchParams.get('search')?.toLowerCase();
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from(TABLES.projects)
       .select('*')
-      .eq('artisan_id', artisanId)
       .order('created_at', { ascending: false })
       .limit(100);
+
+    if (supportsTenantId && tenantContext?.tenantId) {
+      query = query.eq('tenant_id', tenantContext.tenantId);
+    } else {
+      query = query.eq('artisan_id', artisanId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;
@@ -236,11 +246,30 @@ export async function POST(request: Request) {
     const payload = toSupabaseProjectInsert({
       ...input,
       artisanId,
+      tenantId: null,
     });
+    const tenantContext = session ? await getCurrentTenantContext() : null;
+    const tenantIdentity = session
+      ? tenantContext && tenantContext.legacyArtisanId === artisanId
+        ? { tenantId: tenantContext.tenantId, legacyArtisanId: tenantContext.legacyArtisanId }
+        : await resolveTenantIdentity({ artisanId })
+      : await resolveTenantIdentity({ artisanId })
+
+    const safePayload = await attachTenantIdToPayload(
+      TABLES.projects,
+      {
+        ...payload,
+        ...(tenantIdentity?.tenantId ? { tenant_id: tenantIdentity.tenantId } : {}),
+      },
+      {
+        tenantId: tenantIdentity?.tenantId || null,
+        artisanId,
+      },
+    )
 
     const { data: record, error } = await supabaseAdmin
       .from(TABLES.projects)
-      .insert(payload)
+      .insert(safePayload)
       .select('id')
       .single();
 

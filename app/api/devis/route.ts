@@ -10,6 +10,7 @@ import {
 } from '@/src/lib/airtable'
 import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { getCurrentTenantContext, resolveTenantIdentity } from '@/src/lib/tenant-context'
 import { canCreateDevis } from '@/src/lib/usage/quotas'
 import { getPlanLabel } from '@/src/lib/plans'
 
@@ -174,11 +175,18 @@ export async function POST(request: NextRequest) {
 
     let devis
     try {
+      const tenantContext = await getCurrentTenantContext()
+      const tenantIdentity =
+        tenantContext && tenantContext.legacyArtisanId === session.artisanId
+          ? { tenantId: tenantContext.tenantId, legacyArtisanId: tenantContext.legacyArtisanId }
+          : await resolveTenantIdentity({ artisanId: session.artisanId, projectId: project.id })
+
       devis = await createDevis({
         devisNumber,
         token,
         projectId: project.id,
         artisanId: session.artisanId,
+        tenantId: tenantIdentity?.tenantId || null,
         dateEmission: body.dateEmission || '',
         dateValidite: body.dateValidite || '',
         objet: body.objet,

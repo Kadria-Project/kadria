@@ -1,6 +1,7 @@
 import 'server-only'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 import { normalizePlan as normalizePlanCanonical } from '@/src/lib/plans'
+import { getTenantByLegacyArtisanId } from '@/src/lib/tenant-context'
 
 const TABLE_CANDIDATES = {
   users: ['Users'],
@@ -174,6 +175,7 @@ export const QUOTA_SCHEMA_SUPPORT = {
     projectCountColumns: ['projects_created', 'projects_count'],
     vapiCallColumns: ['vapi_calls', 'vapi_calls_count'],
     baseColumns: [
+      'tenant_id',
       'artisan_id',
       'period_month',
       'plan',
@@ -192,7 +194,7 @@ export const QUOTA_SCHEMA_SUPPORT = {
   },
   usageEvents: {
     payloadColumns: ['raw_payload', 'metadata'],
-    optionalColumns: ['plan', 'created_at', 'status'],
+    optionalColumns: ['tenant_id', 'plan', 'created_at', 'status'],
   },
   vapiCalls: {
     statusColumns: ['call_status', 'status'],
@@ -343,6 +345,7 @@ function pickAvailableColumn(availableColumns: string[], candidates: readonly st
 function buildMonthlyUsagePayload(params: {
   availableColumns: string[]
   artisanId: string
+  tenantId?: string | null
   plan: PlanKey
   periodMonth: string
   projectsCount: number
@@ -352,6 +355,10 @@ function buildMonthlyUsagePayload(params: {
   const payload: Record<string, unknown> = {
     artisan_id: params.artisanId,
     period_month: params.periodMonth,
+  }
+
+  if (params.availableColumns.includes('tenant_id') && params.tenantId) {
+    payload.tenant_id = params.tenantId
   }
 
   const projectCountColumn = pickAvailableColumn(
@@ -562,6 +569,7 @@ async function upsertMonthlyUsageRow(
   )
   const limit = options?.limit ?? getDefaultProjectLimit(plan)
   const unlimited = options?.unlimited ?? (plan === 'agence' || plan === 'performance')
+  const tenant = await getTenantByLegacyArtisanId(artisanId)
 
   if (!projectCountColumn) {
     return { success: false as const, error: 'Aucune colonne compteur projet compatible dans UsageMonthly' }
@@ -570,6 +578,7 @@ async function upsertMonthlyUsageRow(
   const payload = buildMonthlyUsagePayload({
     availableColumns: usageMonthlyColumns,
     artisanId,
+    tenantId: tenant?.id || null,
     plan,
     periodMonth,
     projectsCount,
@@ -1390,6 +1399,7 @@ export async function recordUsageEvent(params: UsageEventRow): Promise<QuotaResu
     }
 
     const usageEventsColumns = await resolveTableColumns('usageEvents', [
+      'tenant_id',
       'artisan_id',
       'plan',
       'period_month',
@@ -1405,12 +1415,17 @@ export async function recordUsageEvent(params: UsageEventRow): Promise<QuotaResu
       usageEventsColumns,
       QUOTA_SCHEMA_SUPPORT.usageEvents.payloadColumns,
     )
+    const tenant = await getTenantByLegacyArtisanId(params.artisan_id)
     const insertPayload: Record<string, unknown> = {
       artisan_id: params.artisan_id,
       period_month: params.period_month,
       event_type: params.event_type,
       quantity: params.quantity,
       dedup_key: params.dedup_key,
+    }
+
+    if (usageEventsColumns.includes('tenant_id') && tenant?.id) {
+      insertPayload.tenant_id = tenant.id
     }
 
     if (usageEventsColumns.includes('plan') && params.plan) {
@@ -1563,6 +1578,7 @@ export async function recordVapiCallUsage(
       const vapiCallsColumns = await resolveTableColumns('vapiCalls', [
         'call_id',
         'artisan_id',
+        'tenant_id',
         'project_id',
         'duration_seconds',
         'duration_minutes',
@@ -1584,6 +1600,11 @@ export async function recordVapiCallUsage(
       )
       const insertPayload: Record<string, unknown> = {
         artisan_id: params.artisanId,
+      }
+      const tenant = await getTenantByLegacyArtisanId(params.artisanId)
+
+      if (vapiCallsColumns.includes('tenant_id') && tenant?.id) {
+        insertPayload.tenant_id = tenant.id
       }
 
       if (vapiCallsColumns.includes('call_id') && params.callId) {
@@ -1739,6 +1760,7 @@ export async function recordVapiCallUsage(
     const monthlyPayload = buildMonthlyUsagePayload({
       availableColumns: usageMonthlyColumns,
       artisanId: params.artisanId,
+      tenantId: (await getTenantByLegacyArtisanId(params.artisanId))?.id || null,
       plan: quotaResult.data.plan,
       periodMonth,
       projectsCount: projectCount,
