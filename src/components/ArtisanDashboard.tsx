@@ -3414,6 +3414,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           settingsHref="/parametres"
           onSubscriptionClick={() => router.push('/abonnement')}
           onSupportClick={() => { window.location.href = 'mailto:contact@kadria.fr'; }}
+          onLogoutClick={logout}
           createProject={(form) =>
             fetch('/api/projects', {
               method: 'POST',

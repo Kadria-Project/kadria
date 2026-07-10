@@ -23,6 +23,7 @@ import {
   CreditCard,
   Settings,
   LifeBuoy,
+  LogOut,
 } from 'lucide-react';
 import {
   getProjectRiskStatus,
@@ -85,6 +86,7 @@ export interface MobileDashboardViewProps {
   settingsHref: string;
   onSubscriptionClick: () => void;
   onSupportClick: () => void;
+  onLogoutClick?: () => Promise<void> | void;
   createProject: (project: {
     clientName: string;
     clientPhone: string;
@@ -305,11 +307,13 @@ export default function MobileDashboardView({
   settingsHref,
   onSubscriptionClick,
   onSupportClick,
+  onLogoutClick,
   createProject,
   notificationBellSlot,
 }: MobileDashboardViewProps) {
   const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(emptyCreateForm);
@@ -1123,6 +1127,25 @@ export default function MobileDashboardView({
                 description="contact@kadria.fr"
                 onClick={() => { setMoreOpen(false); onSupportClick(); }}
               />
+              {onLogoutClick && (
+                <MenuRow
+                  icon={LogOut}
+                  title="Se déconnecter"
+                  description={logoutPending ? 'Déconnexion...' : 'Fermer votre session en toute sécurité'}
+                  danger
+                  disabled={logoutPending}
+                  onClick={async () => {
+                    if (logoutPending) return;
+                    setLogoutPending(true);
+                    setMoreOpen(false);
+                    try {
+                      await onLogoutClick();
+                    } finally {
+                      setLogoutPending(false);
+                    }
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1251,12 +1274,14 @@ function MenuRow({
   description,
   onClick,
   disabled,
+  danger,
 }: {
   icon: any;
   title: string;
   description: string;
   onClick?: () => void;
   disabled?: boolean;
+  danger?: boolean;
 }) {
   return (
     <button
@@ -1269,7 +1294,7 @@ function MenuRow({
         alignItems: 'center',
         gap: '12px',
         background: 'var(--bg-hover)',
-        border: '1px solid var(--border)',
+        border: danger ? '1px solid rgba(248,113,113,0.22)' : '1px solid var(--border)',
         borderRadius: '12px',
         padding: '12px',
         textAlign: 'left',
@@ -1277,9 +1302,16 @@ function MenuRow({
         opacity: disabled ? 0.45 : 1,
       }}
     >
-      <Icon style={{ width: 20, height: 20, color: disabled ? 'var(--text-3)' : 'var(--accent)', flexShrink: 0 }} />
+      <Icon
+        style={{
+          width: 20,
+          height: 20,
+          color: disabled ? 'var(--text-3)' : danger ? 'rgba(248,113,113,0.92)' : 'var(--accent)',
+          flexShrink: 0,
+        }}
+      />
       <span style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>{title}</span>
+        <span style={{ fontSize: '14px', fontWeight: 700, color: danger ? 'rgba(254,226,226,0.96)' : 'var(--text-1)' }}>{title}</span>
         <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>{description}</span>
       </span>
       {disabled && (
