@@ -44,6 +44,12 @@ interface CheckoutIntentPayload {
   type: 'pending-checkout'
 }
 
+interface MagicTokenPayload {
+  email: string
+  type: 'magic'
+  redirectTo?: string
+}
+
 interface PlatformAccessInput {
   role?: string | null
   statut?: string | null
@@ -204,6 +210,22 @@ export async function createMagicToken(email: string): Promise<string> {
     .sign(getAuthSecret())
 }
 
+export async function createMagicTokenWithRedirect(input: {
+  email: string
+  redirectTo?: string | null
+}): Promise<string> {
+  const payload: MagicTokenPayload = {
+    email: input.email,
+    type: 'magic',
+    ...(input.redirectTo ? { redirectTo: input.redirectTo } : {}),
+  }
+
+  return new SignJWT(payload as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('10m')
+    .sign(getAuthSecret())
+}
+
 export async function createCheckoutIntentToken(
   payload: Omit<CheckoutIntentPayload, 'type'>
 ): Promise<string> {
@@ -232,9 +254,13 @@ export async function sendPlatformMagicLinkEmail(input: {
   email: string
   companyName?: string | null
   firstName?: string | null
+  redirectTo?: string | null
 }) {
   const resend = getResendClient()
-  const magicToken = await createMagicToken(input.email)
+  const magicToken = await createMagicTokenWithRedirect({
+    email: input.email,
+    redirectTo: input.redirectTo || null,
+  })
   const magicUrl = `${getAuthBaseUrl()}/api/auth/verify?token=${magicToken}`
   const greeting = input.firstName ? `Bonjour ${input.firstName},` : 'Bonjour,'
 
@@ -273,11 +299,14 @@ export async function sendPlatformMagicLinkEmail(input: {
 
 export async function verifyMagicToken(
   token: string
-): Promise<{ email: string } | null> {
+): Promise<{ email: string; redirectTo?: string } | null> {
   try {
     const { payload } = await jwtVerify(token, getAuthSecret())
     if (payload.type !== 'magic') return null
-    return { email: payload.email as string }
+    return {
+      email: payload.email as string,
+      ...(typeof payload.redirectTo === 'string' && payload.redirectTo ? { redirectTo: payload.redirectTo } : {}),
+    }
   } catch {
     return null
   }

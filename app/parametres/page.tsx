@@ -30,6 +30,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }
   { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
+  { id: 'equipe', label: 'Equipe', icon: '👥', href: '/parametres/equipe' },
 ]
 
 const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: string }> = [
@@ -465,6 +466,17 @@ function ParametresPageContent() {
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null)
   const [calendarEvaluable, setCalendarEvaluable] = useState(false)
   const [configurationCardExpanded, setConfigurationCardExpanded] = useState(false)
+  const [teamTabVisible, setTeamTabVisible] = useState(false)
+  useEffect(() => {
+    fetch('/api/team', { cache: 'no-store' })
+      .then((response) => response.json().then((payload) => ({ ok: response.ok, payload })))
+      .then(({ ok, payload }) => {
+        if (ok && payload?.success && payload?.permissions?.canManageMembers) {
+          setTeamTabVisible(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
   useEffect(() => {
     fetch('/api/artisan/business-profile')
       .then((r) => r.json())
@@ -1328,7 +1340,7 @@ function ParametresPageContent() {
           WebkitOverflowScrolling: 'touch',
         }}>
           <div style={{ display: 'flex', gap: '10px', minWidth: 'max-content' }}>
-            {SETTINGS_TABS.map((section) => {
+            {SETTINGS_TABS.filter((section) => section.id !== 'equipe' || teamTabVisible).map((section) => {
               const isActive = activeSection === section.id
               return (
                 <button

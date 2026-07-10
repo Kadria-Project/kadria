@@ -53,8 +53,15 @@ export async function GET(request: NextRequest) {
     const config = await getArtisanConfig(artisan.artisanId)
     const onboardingDone = !!config?.onboardingCompleted
 
+    const redirectPath =
+      typeof magic.redirectTo === 'string' && magic.redirectTo.startsWith('/')
+        ? magic.redirectTo
+        : onboardingDone
+          ? '/dashboard-v2'
+          : '/onboarding'
+
     const response = NextResponse.redirect(
-      new URL(onboardingDone ? '/dashboard-v2' : '/onboarding', request.url)
+      new URL(redirectPath, request.url)
     )
     response.cookies.set('kadria-auth', sessionToken, {
       httpOnly: true,
