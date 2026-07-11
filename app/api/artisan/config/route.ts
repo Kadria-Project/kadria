@@ -4,6 +4,35 @@ import { getSession } from '@/src/lib/auth-utils'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
+const SELF_PROFILE_FIELDS = [
+  'firstName', 'lastName', 'email',
+] as const
+
+const COMPANY_OWNER_FIELDS = [
+  'companyName', 'websiteUrl', 'googleReviewUrl', 'welcomeName', 'logoUrl',
+  'phone', 'address', 'notificationEmail',
+  'raisonSociale', 'formeJuridique', 'siret', 'tvaNumber', 'tvaAssujetti',
+  'adressePro', 'cpPro', 'villePro', 'assureur', 'numAssurance', 'assuranceNonRequise',
+] as const
+
+const BUSINESS_SETTINGS_FIELDS = [
+  'primaryTrade', 'hours', 'welcomeMessage', 'primaryColor', 'secondaryColor',
+  'widgetColorMode', 'assistantAvatarType', 'assistantAvatarUrl',
+  'whiteLabelEnabled', 'widgetBrandName', 'widgetBrandLogoUrl',
+  'trades', 'devisPrefixe', 'devisValidite', 'devisTvaDefaut',
+  'devisConditionsPaiement', 'devisMentionLegale', 'devisCompteur',
+  'prestationsJson', 'serviceArea', 'interventionRadius', 'travelConfig',
+  'businessConfig',
+] as const
+
+const BILLING_FIELDS = [
+  'depositEnabled', 'depositType', 'depositValue',
+] as const
+
+const INTEGRATION_FIELDS = [
+  'vapiEnabled', 'vapiGreeting',
+] as const
+
 // Champs relevant de l'identite legale/financiere de l'entreprise :
 // reserves au proprietaire (permission `company.update`), conformement a la
 // regle produit "seul le owner modifie les infos structurelles, legales et
@@ -31,6 +60,10 @@ function isValidDepositType(value: unknown): boolean {
 
 function isValidWidgetColorMode(value: unknown): boolean {
   return value === undefined || value === null || value === 'sobriety' || value === 'immersive' || value === 'premium_dark'
+}
+
+function touchesAnyField(body: Record<string, unknown>, fields: readonly string[]): boolean {
+  return fields.some((field) => body[field] !== undefined)
 }
 
 export async function GET() {
@@ -75,32 +108,55 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Resolution du role tenant cote serveur (jamais un role/tenant_id
-    // envoye par le client) afin de restreindre les champs sensibles selon
-    // la permission requise. Les autres champs (widget, catalogue, devis...)
-    // relevent de `business_settings.update` (owner + admin).
-    const tenantContext = await getCurrentTenantContext()
-    try {
-      requirePermission(tenantContext, 'business_settings.update')
-    } catch (permissionError) {
-      if (permissionError instanceof PermissionError) {
-        return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
-      }
-      throw permissionError
-    }
-
     const body = await request.json()
+    const touchesCompanyField = touchesAnyField(body, COMPANY_OWNER_FIELDS)
+    const touchesBusinessField = touchesAnyField(body, BUSINESS_SETTINGS_FIELDS)
+    const touchesBillingField = touchesAnyField(body, BILLING_FIELDS)
+    const touchesIntegrationField = touchesAnyField(body, INTEGRATION_FIELDS)
+    const touchesProtectedField =
+      touchesCompanyField || touchesBusinessField || touchesBillingField || touchesIntegrationField
 
-    const touchesCompanyLegalField = COMPANY_LEGAL_FIELDS.some((field) => body[field] !== undefined)
-    if (touchesCompanyLegalField) {
+    // Le profil personnel (prenom/nom/email) reste modifiable par tout membre
+    // authentifie. En revanche, tout reglage tenant/global doit passer par la
+    // matrice de permissions resolue depuis `tenant_members.role/status`.
+    const tenantContext = touchesProtectedField ? await getCurrentTenantContext() : null
+
+    const requireProtectedPermission = (permission: 'company.update' | 'business_settings.update' | 'billing.manage' | 'integrations.manage') => {
       try {
-        requirePermission(tenantContext, 'company.update')
+        requirePermission(tenantContext, permission)
       } catch (permissionError) {
         if (permissionError instanceof PermissionError) {
           return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
         }
         throw permissionError
       }
+      return null
+    }
+
+    if (touchesCompanyField) {
+      const denied = requireProtectedPermission('company.update')
+      if (denied) return denied
+    }
+
+    if (touchesBusinessField) {
+      const denied = requireProtectedPermission('business_settings.update')
+      if (denied) return denied
+    }
+
+    if (touchesBillingField) {
+      const denied = requireProtectedPermission('billing.manage')
+      if (denied) return denied
+    }
+
+    if (touchesIntegrationField) {
+      const denied = requireProtectedPermission('integrations.manage')
+      if (denied) return denied
+    }
+
+    const touchesCompanyLegalField = COMPANY_LEGAL_FIELDS.some((field) => body[field] !== undefined)
+    if (touchesCompanyLegalField && !touchesCompanyField) {
+      const denied = requireProtectedPermission('company.update')
+      if (denied) return denied
     }
 
     if (body.siret !== undefined && body.siret !== '' && !/^\d{14}$/.test(String(body.siret))) {

@@ -199,20 +199,6 @@ function toReadonlyList(value: string | string[] | null | undefined): string[] {
   return []
 }
 
-// Construit une copie d'un objet sans les cles listees, sans laisser de
-// bindings inutilises (contrairement a un destructuring `{ a, ...rest }` qui
-// declare des variables non utilisees pour chaque cle exclue). Utilise par
-// `save()` pour retirer du payload global les champs desormais geres par les
-// sections extraites (ex. `CompanySettingsSection`), afin d'eviter toute
-// double-ecriture entre le bouton global et les boutons de section.
-function omitFields<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Omit<T, K> {
-  const excluded = new Set<keyof T>(keys)
-  const entries = (Object.entries(source) as Array<[keyof T, T[keyof T]]>).filter(
-    ([key]) => !excluded.has(key)
-  )
-  return Object.fromEntries(entries) as Omit<T, K>
-}
-
 function WorkTypeReadOnlyChips({ values, accent }: { values: string[]; accent: 'green' | 'red' }) {
   const accentColor = accent === 'green' ? '#4ade80' : '#f87171'
   const accentBg = accent === 'green' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
@@ -477,6 +463,20 @@ function ParametresPageContent() {
   // (`PermissionGate`) restent masquees par defaut plutot que d'afficher un
   // etat non autorise en flash.
   const [currentRole, setCurrentRole] = useState<TenantRole | null>(null)
+  const canUpdateOwnAccount = hasPermission(currentRole ?? 'viewer', 'account.update_self')
+  const canManageCompanySettings = hasPermission(currentRole ?? 'viewer', 'company.update')
+  const canManageBusinessSettings = hasPermission(currentRole ?? 'viewer', 'business_settings.update')
+  const canManageBillingSettings = hasPermission(currentRole ?? 'viewer', 'billing.manage')
+  const canSaveActiveSection =
+    activeSection === 'entreprise'
+      ? canUpdateOwnAccount || canManageCompanySettings
+      : activeSection === 'contact' || activeSection === 'legal'
+        ? canManageCompanySettings
+        : activeSection === 'vehicule' || activeSection === 'widget'
+          ? canManageBusinessSettings
+          : activeSection === 'catalogue'
+            ? canManageBusinessSettings || canManageBillingSettings
+            : false
   useEffect(() => {
     fetch('/api/team', { cache: 'no-store' })
       .then(async (response) => {
@@ -880,19 +880,28 @@ function ParametresPageContent() {
   }, [])
 
   const save = async () => {
-    const errors = validateLegalConfig(config)
-    setLegalErrors(errors)
-
-    if (Object.keys(errors).length > 0) {
-      setActiveSection('legal')
+    if (!canSaveActiveSection) {
+      setSaveError("Cette section est en lecture seule pour votre rôle.")
       return
+    }
+
+    if (canManageCompanySettings) {
+      const errors = validateLegalConfig(config)
+      setLegalErrors(errors)
+
+      if (Object.keys(errors).length > 0) {
+        setActiveSection('legal')
+        return
+      }
+    } else if (Object.keys(legalErrors).length > 0) {
+      setLegalErrors({})
     }
 
     // La validation de googleReviewUrl a ete deplacee dans
     // `CompanySettingsSection` (proprietaire exclusif de ce champ depuis ce
     // lot) : le bouton global ne l'envoie plus, donc ne la valide plus ici.
 
-    if (config.depositEnabled) {
+    if (canManageBillingSettings && config.depositEnabled) {
       if (config.depositValue !== null && config.depositValue !== undefined) {
         if (config.depositType === 'percentage' && (config.depositValue < 1 || config.depositValue > 100)) {
           setActiveSection('catalogue')
@@ -924,23 +933,69 @@ function ParametresPageContent() {
       // global ne doit plus les reenvoyer, sous peine d'ecraser une
       // sauvegarde de section avec une valeur perimee du state global (risque
       // de double-ecriture identifie a l'audit de ce lot).
-      const configPayload = omitFields(config, [
-        'stripeConnectStatus',
-        'stripeAccountId',
-        'companyName',
-        'websiteUrl',
-        'googleReviewUrl',
-        'welcomeName',
-        'logoUrl',
-      ])
+      const payload: Record<string, unknown> = {
+        firstName: config.firstName,
+        lastName: config.lastName,
+        email: config.email,
+      }
+
+      if (canManageCompanySettings) {
+        Object.assign(payload, {
+          phone: config.phone,
+          address: config.address,
+          notificationEmail: config.notificationEmail,
+          raisonSociale: config.raisonSociale,
+          formeJuridique: config.formeJuridique,
+          siret: config.siret,
+          tvaNumber: config.tvaNumber,
+          tvaAssujetti: config.tvaAssujetti,
+          adressePro: config.adressePro,
+          cpPro: config.cpPro,
+          villePro: config.villePro,
+          assureur: config.assureur,
+          numAssurance: config.numAssurance,
+          assuranceNonRequise: config.assuranceNonRequise,
+        })
+      }
+
+      if (canManageBusinessSettings) {
+        Object.assign(payload, {
+          trades: effectiveTrades,
+          hours: config.hours,
+          devisPrefixe: config.devisPrefixe,
+          devisValidite: config.devisValidite,
+          devisTvaDefaut: config.devisTvaDefaut,
+          devisConditionsPaiement: config.devisConditionsPaiement,
+          devisMentionLegale: config.devisMentionLegale,
+          travelConfig: config.travelConfig,
+          widgetColorMode: config.widgetColorMode,
+          assistantAvatarType: config.assistantAvatarType,
+          assistantAvatarUrl: config.assistantAvatarUrl,
+          primaryColor: config.primaryColor,
+          secondaryColor: config.secondaryColor,
+          whiteLabelEnabled: config.whiteLabelEnabled,
+          widgetBrandName: config.widgetBrandName,
+          widgetBrandLogoUrl: config.widgetBrandLogoUrl,
+          businessConfig: {
+            ...config.businessConfig,
+            serviceCatalog: cleanedServiceCatalog,
+            quoteTemplates: cleanedQuoteTemplates,
+          },
+        })
+      }
+
+      if (canManageBillingSettings) {
+        Object.assign(payload, {
+          depositEnabled: config.depositEnabled,
+          depositType: config.depositType,
+          depositValue: config.depositValue,
+        })
+      }
+
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...configPayload,
-          trades: effectiveTrades,
-          businessConfig: { ...configPayload.businessConfig, serviceCatalog: cleanedServiceCatalog, quoteTemplates: cleanedQuoteTemplates },
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!data.success) {
@@ -1317,26 +1372,27 @@ function ParametresPageContent() {
         <div className="flex shrink-0 items-center gap-3">
           {!isMobile && (
             <span style={{ color: saved ? '#4ade80' : 'var(--text-3)', fontSize: '12px', whiteSpace: 'nowrap' }}>
-              {saved ? 'Dernière sauvegarde · à l’instant' : saving ? 'Sauvegarde en cours…' : 'Configuration en cours'}
+              {saved ? 'Dernière sauvegarde · à l’instant' : saving ? 'Sauvegarde en cours…' : canSaveActiveSection ? 'Configuration en cours' : 'Section en lecture seule'}
             </span>
           )}
           <button
             onClick={save}
-            disabled={saving}
+            disabled={saving || !canSaveActiveSection}
             className="shrink-0"
             style={{
-              background: saved ? 'rgba(34,197,94,0.2)' : saving ? 'var(--bg-hover)' : 'var(--accent)',
+              background: !canSaveActiveSection ? 'var(--bg-hover)' : saved ? 'rgba(34,197,94,0.2)' : saving ? 'var(--bg-hover)' : 'var(--accent)',
               border: saved ? '1px solid var(--accent)' : 'none',
-              color: saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
+              color: !canSaveActiveSection ? 'var(--text-3)' : saved ? '#4ade80' : saving ? 'var(--text-3)' : 'black',
               fontWeight: 700, borderRadius: '12px',
               padding: isMobile ? '9px 12px' : '10px 20px', fontSize: '14px',
-              cursor: saving ? 'default' : 'pointer',
+              cursor: saving || !canSaveActiveSection ? 'default' : 'pointer',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap',
-              boxShadow: saving ? 'none' : '0 10px 24px rgba(34,197,94,0.18)',
+              boxShadow: saving || !canSaveActiveSection ? 'none' : '0 10px 24px rgba(34,197,94,0.18)',
+              opacity: !canSaveActiveSection ? 0.7 : 1,
             }}
           >
-            {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
+            {!canSaveActiveSection ? 'Lecture seule' : saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
           </button>
         </div>
       </div>
@@ -1833,6 +1889,10 @@ function ParametresPageContent() {
               <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
                 🎨 Mon widget
               </h2>
+              {!canManageBusinessSettings && (
+                <ReadOnlyNotice message="Les réglages du widget sont réservés au propriétaire et aux administrateurs." />
+              )}
+              <fieldset disabled={!canManageBusinessSettings} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
@@ -2447,6 +2507,7 @@ function ParametresPageContent() {
                   Le widget apparaît automatiquement aux couleurs de votre entreprise.
                 </p>
               </div>
+              </fieldset>
             </div>
           )}
 
@@ -2456,6 +2517,10 @@ function ParametresPageContent() {
               <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
                 📍 Coordonnées
               </h2>
+              {!canManageCompanySettings && (
+                <ReadOnlyNotice reason="owner_only" message="Les coordonnées de l'entreprise sont réservées au propriétaire." />
+              )}
+              <fieldset disabled={!canManageCompanySettings} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Informations de contact
@@ -2514,6 +2579,7 @@ function ParametresPageContent() {
                   </p>
                 </div>
               </div>
+              </fieldset>
 
             </div>
           )}
@@ -2527,6 +2593,10 @@ function ParametresPageContent() {
               <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '-12px 0 16px' }}>
                 Ces informations apparaissent sur vos devis et documents officiels.
               </p>
+              {!canManageCompanySettings && (
+                <ReadOnlyNotice reason="owner_only" message="Les informations légales de l'entreprise sont réservées au propriétaire." />
+              )}
+              <fieldset disabled={!canManageCompanySettings} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
 
               {/* Groupe 1 — Identité professionnelle */}
               <div style={sectionCard}>
@@ -2831,6 +2901,7 @@ function ParametresPageContent() {
                   </div>
                 </div>
               </div>
+              </fieldset>
             </div>
           )}
 
@@ -2843,6 +2914,10 @@ function ParametresPageContent() {
                 Ces informations permettent d&apos;estimer le coût d&apos;un déplacement entre votre
                 adresse professionnelle et un chantier (fonctionnalité disponible avec le plan Performance).
               </p>
+              {!canManageBusinessSettings && (
+                <ReadOnlyNotice message="Les réglages de déplacements sont réservés au propriétaire et aux administrateurs." />
+              )}
+              <fieldset disabled={!canManageBusinessSettings} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Motorisation
@@ -2972,6 +3047,7 @@ function ParametresPageContent() {
                   </div>
                 </div>
               </div>
+              </fieldset>
             </div>
           )}
 
@@ -2985,6 +3061,10 @@ function ParametresPageContent() {
                   Votre catalogue de prestations, vos modèles de devis et vos paramètres par défaut, répartis dans un workspace plus dense et plus lisible.
                 </p>
               </div>
+              {!canManageBusinessSettings && (
+                <ReadOnlyNotice message="Le catalogue, les modèles et les paramètres de devis sont réservés au propriétaire et aux administrateurs." />
+              )}
+              <fieldset disabled={!canManageBusinessSettings} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, minmax(0, 1fr))', gap: '18px', width: '100%', minWidth: 0 }}>
                 <div style={{ ...workspaceCard, gridColumn: isMobile ? 'auto' : 'span 4', width: '100%', minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
@@ -3370,6 +3450,10 @@ function ParametresPageContent() {
                 <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.6 }}>
                   Preparez une demande d&apos;acompte par defaut pour vos devis. Les paiements d&apos;acompte seront actives dans une prochaine etape.
                 </p>
+                {!canManageBillingSettings && (
+                  <ReadOnlyNotice reason="owner_only" message="Les réglages d'acompte et de paiement sont réservés au propriétaire." />
+                )}
+                <fieldset disabled={!canManageBillingSettings} style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <label style={{ ...checkboxRowStyle, alignItems: 'flex-start' }}>
                     <input
@@ -3500,6 +3584,7 @@ function ParametresPageContent() {
                     </div>
                   </div>
                 </div>
+                </fieldset>
 
               </div>
 
@@ -3692,7 +3777,8 @@ function ParametresPageContent() {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+              </fieldset>
           </div>
           )}
 
