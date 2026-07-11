@@ -14,6 +14,8 @@ import {
   ExternalLink,
   Plus,
   Users,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import LoadingSkeleton, { LoadingStyles } from '@/src/components/ui/loading/LoadingSkeleton';
 import {
@@ -368,6 +370,18 @@ export default function DesktopAgendaView() {
   const [reassigning, setReassigning] = useState(false);
   const [reassignError, setReassignError] = useState<string | null>(null);
 
+  // Toast succès/erreur pour la création rapide et la réaffectation — même
+  // pattern que le toast existant dans ArtisanDashboard.tsx (état local
+  // { visible, message, error } + auto-hide), pas de nouveau système.
+  const [toast, setToast] = useState<{ visible: boolean; message: string; error?: boolean }>({
+    visible: false,
+    message: '',
+  });
+  const showToast = useCallback((message: string, error = false) => {
+    setToast({ visible: true, message, error });
+    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
+  }, []);
+
   const planningItems = useMemo(() => buildKadriaPlanningItems(projects), [projects]);
 
   const fetchAgendaConfig = useCallback(async () => {
@@ -692,21 +706,29 @@ export default function DesktopAgendaView() {
       const json = await response.json();
       if (!json.success) {
         setQuickCreateError(json.error || 'Création impossible');
+        showToast(json.error || 'Création du rendez-vous impossible', true);
         return;
       }
 
       setShowQuickCreate(false);
       setQuickCreateForm(EMPTY_QUICK_CREATE_FORM);
+      showToast('Rendez-vous créé');
       await fetchAppointments(weekStart);
     } catch {
       setQuickCreateError('Création impossible');
+      showToast('Création du rendez-vous impossible', true);
     } finally {
       setQuickCreating(false);
     }
-  }, [quickCreateForm, fetchAppointments, weekStart]);
+  }, [quickCreateForm, fetchAppointments, weekStart, showToast]);
 
   const handleReassign = useCallback(async (event: NormalizedCalendarEvent, nextAssignedUserId: string | null) => {
     if (!event.rawAppointmentId) return;
+    // Pas de mise à jour optimiste de `selectedEvent`/`appointments` avant la
+    // réponse serveur : l'UI reste sur l'état précédent tant que l'appel est
+    // en cours, donc aucun rollback visuel n'est nécessaire en cas d'échec
+    // (rien n'a été modifié optimistiquement) — on affiche simplement
+    // l'erreur et l'état affiché reste celui d'avant la tentative.
     setReassigning(true);
     setReassignError(null);
     try {
@@ -718,16 +740,19 @@ export default function DesktopAgendaView() {
       const json = await response.json();
       if (!json.success) {
         setReassignError(json.error || 'Réaffectation impossible');
+        showToast(json.error || 'Réaffectation impossible', true);
         return;
       }
       setSelectedEvent(null);
+      showToast('Collaborateur réaffecté');
       await fetchAppointments(weekStart);
     } catch {
       setReassignError('Réaffectation impossible');
+      showToast('Réaffectation impossible', true);
     } finally {
       setReassigning(false);
     }
-  }, [fetchAppointments, weekStart]);
+  }, [fetchAppointments, weekStart, showToast]);
 
   // Fusion des sources en évènements normalisés pour la semaine affichée.
   // - Mode Google : évènements Google, enrichis du lien dossier quand un
@@ -1388,6 +1413,15 @@ export default function DesktopAgendaView() {
           </div>
         </div>
       )}
+
+      <div
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
+          toast.visible ? 'opacity-100' : 'pointer-events-none opacity-0'
+        } ${toast.error ? 'border-red-600 bg-[var(--bg-elevated)] text-red-400' : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'}`}
+      >
+        {toast.error ? <XCircle className="h-4 w-4 text-red-500" /> : <CheckCircle className="h-4 w-4 text-green-500" />}
+        {toast.message}
+      </div>
     </div>
   );
 }
