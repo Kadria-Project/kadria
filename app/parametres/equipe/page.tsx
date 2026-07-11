@@ -78,6 +78,17 @@ export default function TeamSettingsPage() {
     void loadTeam()
   }, [])
 
+  // Bloque le scroll de la page derriere la modale pendant qu'elle est
+  // ouverte, et restaure la valeur precedente a la fermeture/demontage.
+  useEffect(() => {
+    if (!inviteOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [inviteOpen])
+
   const seatLabel = useMemo(() => {
     const seats = data?.seats
     if (!seats) return ''
@@ -176,29 +187,17 @@ export default function TeamSettingsPage() {
 
   return (
     <main className="min-h-screen bg-[var(--bg)] text-[var(--text-1)]">
-      <div className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 sm:px-6 xl:px-10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <button
-              onClick={() => router.push('/parametres')}
-              className="shrink-0 text-sm text-[var(--text-2)]"
-            >
-              Retour
-            </button>
-            <div className="min-w-0 flex-1 sm:flex-none">
-              <KadriaLogo size="sm" theme="dark" noLink />
-            </div>
+      <div className="border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 sm:px-6 xl:px-10">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+          <button
+            onClick={() => router.push('/parametres')}
+            className="shrink-0 text-sm text-[var(--text-2)]"
+          >
+            ← Retour
+          </button>
+          <div className="min-w-0 flex-1 sm:flex-none">
+            <KadriaLogo size="sm" theme="dark" noLink />
           </div>
-
-          {data?.permissions?.canInviteMembers && (
-            <button
-              type="button"
-              onClick={() => setInviteOpen(true)}
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#22c55e] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 sm:w-auto"
-            >
-              Inviter un collaborateur
-            </button>
-          )}
         </div>
       </div>
 
@@ -210,11 +209,24 @@ export default function TeamSettingsPage() {
               Invitez vos collaborateurs et gerez leurs acces a Kadria.
             </h1>
 
+            {teamData && (
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+                {teamData.tenant?.name} · role connecte : {TEAM_ROLE_LABELS[teamData.membership!.role]}
+              </p>
+            )}
+
+            {data?.permissions?.canInviteMembers && (
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#22c55e] px-5 py-3 text-sm font-semibold text-black transition hover:opacity-90 sm:w-auto"
+              >
+                Inviter un collaborateur
+              </button>
+            )}
+
             {teamData ? (
               <>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                  {teamData.tenant?.name} · role connecte : {TEAM_ROLE_LABELS[teamData.membership!.role]}
-                </p>
                 <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <Metric label="Membres actifs" value={String(teamData.seats!.activeMembers)} />
                   <Metric label="Invitations en attente" value={String(teamData.seats!.pendingInvitations)} />
@@ -371,72 +383,81 @@ export default function TeamSettingsPage() {
       </div>
 
       {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-[620px] rounded-[24px] border border-white/10 bg-[#0f1113] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-            <div className="flex items-start justify-between gap-4">
+        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 sm:items-center sm:p-4">
+          <div
+            className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-[#0f1113] shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-[620px] sm:rounded-[24px] sm:border sm:border-white/10"
+            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
               <div>
                 <h2 className="text-xl font-semibold text-white">Inviter un collaborateur</h2>
                 <p className="mt-1 text-sm text-zinc-400">
                   Choisissez son role et sa fonction avant d&apos;envoyer l&apos;invitation.
                 </p>
               </div>
-              <button type="button" onClick={() => setInviteOpen(false)} className="text-sm text-zinc-400">
+              <button type="button" onClick={() => setInviteOpen(false)} className="shrink-0 text-sm text-zinc-400">
                 Fermer
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Field label="Prenom" value={inviteForm.firstName} onChange={(value) => setInviteForm((current) => ({ ...current, firstName: value }))} />
-              <Field label="Nom" value={inviteForm.lastName} onChange={(value) => setInviteForm((current) => ({ ...current, lastName: value }))} />
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Prenom" value={inviteForm.firstName} onChange={(value) => setInviteForm((current) => ({ ...current, firstName: value }))} />
+                <Field label="Nom" value={inviteForm.lastName} onChange={(value) => setInviteForm((current) => ({ ...current, lastName: value }))} />
+              </div>
+              <div className="mt-4">
+                <Field label="Email" value={inviteForm.email} onChange={(value) => setInviteForm((current) => ({ ...current, email: value }))} />
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Fonction</span>
+                  <input
+                    list="team-job-titles"
+                    value={inviteForm.jobTitle}
+                    onChange={(event) => setInviteForm((current) => ({ ...current, jobTitle: event.target.value }))}
+                    className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
+                  />
+                  <datalist id="team-job-titles">
+                    {TEAM_JOB_TITLE_SUGGESTIONS.map((jobTitle) => (
+                      <option key={jobTitle} value={jobTitle} />
+                    ))}
+                  </datalist>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Role</span>
+                  <select
+                    value={inviteForm.role}
+                    onChange={(event) => setInviteForm((current) => ({ ...current, role: event.target.value as TenantRole }))}
+                    className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role} value={role}>
+                        {TEAM_ROLE_LABELS[role]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-4 rounded-[16px] border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
+                <p className="font-semibold text-white">{TEAM_ROLE_LABELS[inviteForm.role]}</p>
+                <p className="mt-2">{TEAM_ROLE_DESCRIPTIONS[inviteForm.role as Exclude<TenantRole, 'owner'>]}</p>
+              </div>
+              <div className="mt-4">
+                <label className="block">
+                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Message facultatif</span>
+                  <textarea
+                    value={inviteForm.message}
+                    onChange={(event) => setInviteForm((current) => ({ ...current, message: event.target.value }))}
+                    className="min-h-[110px] w-full rounded-xl border border-white/10 bg-[#101214] px-4 py-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
             </div>
-            <div className="mt-4">
-              <Field label="Email" value={inviteForm.email} onChange={(value) => setInviteForm((current) => ({ ...current, email: value }))} />
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Fonction</span>
-                <input
-                  list="team-job-titles"
-                  value={inviteForm.jobTitle}
-                  onChange={(event) => setInviteForm((current) => ({ ...current, jobTitle: event.target.value }))}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
-                />
-                <datalist id="team-job-titles">
-                  {TEAM_JOB_TITLE_SUGGESTIONS.map((jobTitle) => (
-                    <option key={jobTitle} value={jobTitle} />
-                  ))}
-                </datalist>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Role</span>
-                <select
-                  value={inviteForm.role}
-                  onChange={(event) => setInviteForm((current) => ({ ...current, role: event.target.value as TenantRole }))}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
-                >
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>
-                      {TEAM_ROLE_LABELS[role]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="mt-4 rounded-[16px] border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-              <p className="font-semibold text-white">{TEAM_ROLE_LABELS[inviteForm.role]}</p>
-              <p className="mt-2">{TEAM_ROLE_DESCRIPTIONS[inviteForm.role as Exclude<TenantRole, 'owner'>]}</p>
-            </div>
-            <div className="mt-4">
-              <label className="block">
-                <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Message facultatif</span>
-                <textarea
-                  value={inviteForm.message}
-                  onChange={(event) => setInviteForm((current) => ({ ...current, message: event.target.value }))}
-                  className="min-h-[110px] w-full rounded-xl border border-white/10 bg-[#101214] px-4 py-3 text-sm text-white outline-none"
-                />
-              </label>
-            </div>
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+            <div
+              className="sticky bottom-0 flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 bg-[#0f1113] px-6 py-4 sm:flex-row sm:justify-end"
+              style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+            >
               <button type="button" onClick={() => setInviteOpen(false)} className="h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-white">
                 Annuler
               </button>
