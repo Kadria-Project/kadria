@@ -12,6 +12,8 @@ import {
   ChevronRight,
   X,
   ExternalLink,
+  Plus,
+  Users,
 } from 'lucide-react';
 import LoadingSkeleton, { LoadingStyles } from '@/src/components/ui/loading/LoadingSkeleton';
 import {
@@ -29,6 +31,7 @@ import {
   type RawGoogleEvent,
   type RawKadriaAppointment,
 } from '@/src/lib/calendar/normalized-event';
+import { EVENT_TYPES_UI, EVENT_TYPE_LABELS, type EventType } from '@/src/lib/calendar/event-types';
 
 type CalendarStatus = {
   connected: boolean;
@@ -51,6 +54,34 @@ const EMPTY_NEW_EVENT_FORM: NewEventForm = {
   heureFin: '',
   lieu: '',
   note: '',
+};
+
+type TeamMemberLite = { userId: string; name: string; role: string; isMe: boolean };
+
+type CollaboratorFilter = 'all' | 'me' | 'unassigned' | string;
+
+type QuickCreateForm = {
+  titre: string;
+  eventType: EventType;
+  projectId: string;
+  assignedUserId: string;
+  date: string;
+  heureDebut: string;
+  heureFin: string;
+  lieu: string;
+  description: string;
+};
+
+const EMPTY_QUICK_CREATE_FORM: QuickCreateForm = {
+  titre: '',
+  eventType: 'appointment',
+  projectId: '',
+  assignedUserId: '',
+  date: '',
+  heureDebut: '',
+  heureFin: '',
+  lieu: '',
+  description: '',
 };
 
 // Grille horaire desktop : 07:00 -> 20:00, comme une semaine Google Calendar
@@ -160,12 +191,23 @@ function EventPopover({
   event,
   onClose,
   router,
+  teamMembers,
+  singleUserWorkspace,
+  onReassign,
+  reassigning,
+  reassignError,
 }: {
   event: NormalizedCalendarEvent;
   onClose: () => void;
   router: ReturnType<typeof useRouter>;
+  teamMembers: TeamMemberLite[];
+  singleUserWorkspace: boolean;
+  onReassign: (event: NormalizedCalendarEvent, nextAssignedUserId: string | null) => void;
+  reassigning: boolean;
+  reassignError: string | null;
 }) {
   const style = EVENT_TYPE_STYLES[event.type];
+  const canReassign = event.source === 'kadria-appointment' && Boolean(event.rawAppointmentId) && !singleUserWorkspace;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -213,6 +255,29 @@ function EventPopover({
         {!event.projectReference && event.type !== 'google-event' && event.projectId && (
           <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
             <p className="text-sm text-[var(--text-2)]">Dossier lié</p>
+          </div>
+        )}
+
+        {canReassign && (
+          <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <p className="text-xs font-semibold text-[var(--text-2)]">Collaborateur affecté</p>
+            <p className="mt-1 text-sm text-[var(--text-1)]">
+              {event.isUnassigned ? 'Non affecté' : event.assignedUserName || 'Collaborateur'}
+            </p>
+            <select
+              className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-xs text-[var(--text-1)]"
+              value={event.assignedUserId || ''}
+              disabled={reassigning}
+              onChange={(e) => onReassign(event, e.target.value || null)}
+            >
+              <option value="">Non affecté</option>
+              {teamMembers.map((member) => (
+                <option key={member.userId} value={member.userId}>
+                  {member.isMe ? `${member.name} (moi)` : member.name}
+                </option>
+              ))}
+            </select>
+            {reassignError && <p className="mt-1 text-xs text-red-400">{reassignError}</p>}
           </div>
         )}
 
@@ -288,6 +353,20 @@ export default function DesktopAgendaView() {
   const [view, setView] = useState<'jour' | 'semaine' | 'mois'>('semaine');
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeekMonday(new Date()));
   const [selectedEvent, setSelectedEvent] = useState<NormalizedCalendarEvent | null>(null);
+
+  // --- Planning d'équipe : sélecteur de collaborateurs + affectation ---
+  const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
+  const [singleUserWorkspace, setSingleUserWorkspace] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [collaboratorFilter, setCollaboratorFilter] = useState<CollaboratorFilter>('all');
+
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickCreating, setQuickCreating] = useState(false);
+  const [quickCreateError, setQuickCreateError] = useState<string | null>(null);
+  const [quickCreateForm, setQuickCreateForm] = useState<QuickCreateForm>(EMPTY_QUICK_CREATE_FORM);
+
+  const [reassigning, setReassigning] = useState(false);
+  const [reassignError, setReassignError] = useState<string | null>(null);
 
   const planningItems = useMemo(() => buildKadriaPlanningItems(projects), [projects]);
 
@@ -395,10 +474,32 @@ export default function DesktopAgendaView() {
     }
   }, []);
 
+  const fetchTeamMembers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/team/members-lite');
+      if (response.status === 401) return;
+      const json = await response.json();
+      if (!json?.success) return;
+      const members = Array.isArray(json.members) ? (json.members as TeamMemberLite[]) : [];
+      setTeamMembers(members);
+      setSingleUserWorkspace(Boolean(json.singleUser));
+      setCurrentUserId(json.currentUserId || null);
+    } catch {
+      // Compatibilité mono-utilisateur / démo stricte : en cas d'échec, on
+      // reste en mode mono-utilisateur (sélecteur masqué), sans bloquer
+      // l'agenda existant.
+      setSingleUserWorkspace(true);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchAgendaConfig();
-  }, [fetchAgendaConfig, fetchStatus]);
+    fetchTeamMembers();
+    // Toujours chargé (indépendamment du mode Google/Kadria) pour alimenter
+    // le sélecteur de projet de la création rapide depuis le planning.
+    fetchProjects();
+  }, [fetchAgendaConfig, fetchProjects, fetchStatus, fetchTeamMembers]);
 
   useEffect(() => {
     if (calendarMode === 'google' && calendarStatus.connected) {
@@ -530,6 +631,104 @@ export default function DesktopAgendaView() {
     }
   }, [fetchEvents, newEvent]);
 
+  const openQuickCreate = useCallback((day?: Date, hour?: number) => {
+    setQuickCreateError(null);
+    setQuickCreateForm({
+      ...EMPTY_QUICK_CREATE_FORM,
+      date: day ? isoDateOnly(day) : isoDateOnly(new Date()),
+      heureDebut: typeof hour === 'number' ? `${String(hour).padStart(2, '0')}:00` : '',
+      heureFin: typeof hour === 'number' ? `${String(Math.min(hour + 1, 23)).padStart(2, '0')}:00` : '',
+      assignedUserId: singleUserWorkspace && currentUserId ? currentUserId : '',
+    });
+    setShowQuickCreate(true);
+  }, [singleUserWorkspace, currentUserId]);
+
+  const handleQuickCreateProjectChange = useCallback((projectId: string) => {
+    setQuickCreateForm((form) => {
+      const project = projects.find((p) => p.id === projectId);
+      const clientLabel = project ? [project.clientFirstName, project.clientName].filter(Boolean).join(' ').trim() : '';
+      return {
+        ...form,
+        projectId,
+        titre: form.titre || (clientLabel ? `RDV - ${clientLabel}` : form.titre),
+        lieu: form.lieu || (project?.city ? project.city : form.lieu),
+      };
+    });
+  }, [projects]);
+
+  const handleQuickCreate = useCallback(async () => {
+    setQuickCreateError(null);
+
+    if (!quickCreateForm.titre || !quickCreateForm.date || !quickCreateForm.heureDebut) {
+      setQuickCreateError('Titre, date et heure de début requis');
+      return;
+    }
+
+    const start = `${quickCreateForm.date}T${quickCreateForm.heureDebut}:00`;
+    const end = quickCreateForm.heureFin ? `${quickCreateForm.date}T${quickCreateForm.heureFin}:00` : start;
+
+    setQuickCreating(true);
+    try {
+      const response = await fetch('/api/appointments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: quickCreateForm.titre,
+          eventType: quickCreateForm.eventType,
+          start,
+          end,
+          location: quickCreateForm.lieu || undefined,
+          description: quickCreateForm.description || undefined,
+          projectId: quickCreateForm.projectId || undefined,
+          assignedUserId: quickCreateForm.assignedUserId || undefined,
+        }),
+      });
+
+      if (response.status === 401) {
+        setQuickCreateError('Session expirée');
+        return;
+      }
+
+      const json = await response.json();
+      if (!json.success) {
+        setQuickCreateError(json.error || 'Création impossible');
+        return;
+      }
+
+      setShowQuickCreate(false);
+      setQuickCreateForm(EMPTY_QUICK_CREATE_FORM);
+      await fetchAppointments(weekStart);
+    } catch {
+      setQuickCreateError('Création impossible');
+    } finally {
+      setQuickCreating(false);
+    }
+  }, [quickCreateForm, fetchAppointments, weekStart]);
+
+  const handleReassign = useCallback(async (event: NormalizedCalendarEvent, nextAssignedUserId: string | null) => {
+    if (!event.rawAppointmentId) return;
+    setReassigning(true);
+    setReassignError(null);
+    try {
+      const response = await fetch(`/api/appointments/${event.rawAppointmentId}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedUserId: nextAssignedUserId }),
+      });
+      const json = await response.json();
+      if (!json.success) {
+        setReassignError(json.error || 'Réaffectation impossible');
+        return;
+      }
+      setSelectedEvent(null);
+      await fetchAppointments(weekStart);
+    } catch {
+      setReassignError('Réaffectation impossible');
+    } finally {
+      setReassigning(false);
+    }
+  }, [fetchAppointments, weekStart]);
+
   // Fusion des sources en évènements normalisés pour la semaine affichée.
   // - Mode Google : évènements Google, enrichis du lien dossier quand un
   //   rendez-vous Kadria correspondant existe (même google_event_id).
@@ -556,6 +755,25 @@ export default function DesktopAgendaView() {
     return [...appointmentEvents, ...planningEvents];
   }, [appointments, calendarMode, googleEvents, planningItems]);
 
+  // Filtrage collaborateur (Tous / Moi / <collaborateur> / Non affectés) —
+  // appliqué uniquement aux rendez-vous Kadria (les évènements Google et les
+  // actions du planning commercial n'ont pas de notion d'affectation dans
+  // cette phase, ils restent toujours visibles).
+  const collaboratorFilteredEvents = useMemo(() => {
+    if (collaboratorFilter === 'all' || singleUserWorkspace) return normalizedEvents;
+    return normalizedEvents.filter((event) => {
+      if (event.source !== 'kadria-appointment') return true;
+      if (collaboratorFilter === 'unassigned') return event.isUnassigned;
+      if (collaboratorFilter === 'me') return event.assignedUserId === currentUserId;
+      return event.assignedUserId === collaboratorFilter;
+    });
+  }, [normalizedEvents, collaboratorFilter, singleUserWorkspace, currentUserId]);
+
+  const unassignedCount = useMemo(
+    () => normalizedEvents.filter((event) => event.source === 'kadria-appointment' && event.isUnassigned).length,
+    [normalizedEvents],
+  );
+
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   // En vue Jour, on affiche le jour "courant" de la semaine sélectionnée
   // (aujourd'hui s'il est dans la semaine affichée, sinon le premier jour de
@@ -572,7 +790,7 @@ export default function DesktopAgendaView() {
     for (const day of visibleDays) map.set(isoDateOnly(day), []);
     const unplaced: NormalizedCalendarEvent[] = [];
 
-    for (const event of normalizedEvents) {
+    for (const event of collaboratorFilteredEvents) {
       if (!event.start) {
         unplaced.push(event);
         continue;
@@ -591,11 +809,11 @@ export default function DesktopAgendaView() {
     }
 
     return { map, unplaced };
-  }, [normalizedEvents, visibleDays]);
+  }, [collaboratorFilteredEvents, visibleDays]);
 
   const allDayEvents = useMemo(
-    () => normalizedEvents.filter((e) => e.allDay || (!e.start && e.source !== 'kadria-planning')),
-    [normalizedEvents],
+    () => collaboratorFilteredEvents.filter((e) => e.allDay || (!e.start && e.source !== 'kadria-planning')),
+    [collaboratorFilteredEvents],
   );
 
   const isLoading =
@@ -685,6 +903,45 @@ export default function DesktopAgendaView() {
         {modeError && <p className="w-full text-xs text-red-300">{modeError}</p>}
       </div>
 
+      {/* Sélecteur de collaborateurs — masqué en tenant mono-utilisateur pour
+          garder l'agenda strictement identique à l'existant. */}
+      {!singleUserWorkspace && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5">
+          <Users className="ml-1 h-3.5 w-3.5 text-[var(--text-3)]" />
+          {([
+            { key: 'all', label: 'Tous' },
+            { key: 'me', label: 'Moi' },
+            ...teamMembers.filter((m) => !m.isMe).map((m) => ({ key: m.userId, label: m.name })),
+            { key: 'unassigned', label: 'Non affectés' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setCollaboratorFilter(opt.key)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                collaboratorFilter === opt.key ? 'bg-green-500/15 text-green-400' : 'text-[var(--text-2)] hover:bg-[var(--bg-hover)]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {unassignedCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setCollaboratorFilter('unassigned')}
+          className="flex items-center justify-between gap-3 rounded-2xl border p-3 text-left transition hover:brightness-105"
+          style={{ borderColor: 'rgba(234,179,8,0.35)', background: 'rgba(234,179,8,0.08)' }}
+        >
+          <span className="text-sm font-semibold text-[var(--text-1)]">
+            {unassignedCount} intervention{unassignedCount > 1 ? 's' : ''} à affecter
+          </span>
+          <span className="text-xs font-semibold text-yellow-500">Filtrer →</span>
+        </button>
+      )}
+
       {/* En-tête calendrier */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
         <div className="flex items-center gap-2">
@@ -755,6 +1012,15 @@ export default function DesktopAgendaView() {
             <FileText className="h-4 w-4" />
             Nouveau rendez-vous
           </button>
+          <button
+            type="button"
+            onClick={() => openQuickCreate()}
+            title="Création rapide (planning d'équipe)"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+          >
+            <Plus className="h-4 w-4" />
+            Créer
+          </button>
         </div>
       </div>
 
@@ -815,6 +1081,114 @@ export default function DesktopAgendaView() {
           >
             {creating ? 'Creation...' : 'Valider'}
           </button>
+        </div>
+      )}
+
+      {showQuickCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowQuickCreate(false)}>
+          <div
+            className="w-full max-w-md space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-[var(--text-1)]">Création rapide</h3>
+              <button type="button" onClick={() => setShowQuickCreate(false)} className="text-[var(--text-3)] hover:text-[var(--text-1)]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <input
+              placeholder="Titre"
+              value={quickCreateForm.titre}
+              onChange={(e) => setQuickCreateForm((f) => ({ ...f, titre: e.target.value }))}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+            />
+
+            <select
+              value={quickCreateForm.eventType}
+              onChange={(e) => setQuickCreateForm((f) => ({ ...f, eventType: e.target.value as EventType }))}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+            >
+              {EVENT_TYPES_UI.map((t) => (
+                <option key={t} value={t}>
+                  {EVENT_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={quickCreateForm.projectId}
+              onChange={(e) => handleQuickCreateProjectChange(e.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+            >
+              <option value="">Aucun dossier lié (optionnel)</option>
+              {projects.filter((p) => p.id).map((p) => (
+                <option key={p.id} value={p.id as string}>
+                  {[p.clientFirstName, p.clientName].filter(Boolean).join(' ').trim() || p.id} {p.city ? `— ${p.city}` : ''}
+                </option>
+              ))}
+            </select>
+
+            {!singleUserWorkspace && (
+              <select
+                value={quickCreateForm.assignedUserId}
+                onChange={(e) => setQuickCreateForm((f) => ({ ...f, assignedUserId: e.target.value }))}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+              >
+                <option value="">Non affecté</option>
+                {teamMembers.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.isMe ? `${m.name} (moi)` : m.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={quickCreateForm.date}
+                onChange={(e) => setQuickCreateForm((f) => ({ ...f, date: e.target.value }))}
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+              />
+              <input
+                type="time"
+                value={quickCreateForm.heureDebut}
+                onChange={(e) => setQuickCreateForm((f) => ({ ...f, heureDebut: e.target.value }))}
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+              />
+              <input
+                type="time"
+                value={quickCreateForm.heureFin}
+                onChange={(e) => setQuickCreateForm((f) => ({ ...f, heureFin: e.target.value }))}
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+              />
+            </div>
+
+            <input
+              placeholder="Lieu (optionnel)"
+              value={quickCreateForm.lieu}
+              onChange={(e) => setQuickCreateForm((f) => ({ ...f, lieu: e.target.value }))}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+            />
+            <textarea
+              placeholder="Description (optionnel)"
+              value={quickCreateForm.description}
+              onChange={(e) => setQuickCreateForm((f) => ({ ...f, description: e.target.value }))}
+              className="min-h-[50px] w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
+            />
+
+            {quickCreateError && <p className="text-xs text-red-400">{quickCreateError}</p>}
+
+            <button
+              type="button"
+              onClick={handleQuickCreate}
+              disabled={quickCreating}
+              className="w-full rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400 disabled:opacity-60"
+            >
+              {quickCreating ? 'Création...' : 'Créer le rendez-vous'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -916,7 +1290,14 @@ export default function DesktopAgendaView() {
                       style={{ borderColor: 'var(--border)', background: isToday ? 'rgba(52,211,153,0.04)' : 'transparent' }}
                     >
                       {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => (
-                        <div key={i} className="border-t" style={{ height: HOUR_HEIGHT, borderColor: 'var(--border-soft)' }} />
+                        <div
+                          key={i}
+                          role="button"
+                          tabIndex={-1}
+                          onClick={() => openQuickCreate(day, GRID_START_HOUR + i)}
+                          className="cursor-pointer border-t hover:bg-[var(--bg-hover)]"
+                          style={{ height: HOUR_HEIGHT, borderColor: 'var(--border-soft)' }}
+                        />
                       ))}
 
                       {positioned.map(({ event, top, height, column, columns }) => {
@@ -959,7 +1340,7 @@ export default function DesktopAgendaView() {
         </div>
       )}
 
-      {!isLoading && normalizedEvents.length === 0 && allDayEvents.length === 0 && (
+      {!isLoading && collaboratorFilteredEvents.length === 0 && allDayEvents.length === 0 && (
         <p className="text-sm text-[var(--text-2)]">
           {calendarMode === 'google' && !calendarStatus.connected
             ? 'Connectez votre agenda Google pour afficher vos rendez-vous synchronisés.'
@@ -967,7 +1348,18 @@ export default function DesktopAgendaView() {
         </p>
       )}
 
-      {selectedEvent && <EventPopover event={selectedEvent} onClose={() => setSelectedEvent(null)} router={router} />}
+      {selectedEvent && (
+        <EventPopover
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          router={router}
+          teamMembers={teamMembers}
+          singleUserWorkspace={singleUserWorkspace}
+          onReassign={handleReassign}
+          reassigning={reassigning}
+          reassignError={reassignError}
+        />
+      )}
 
       {showDisconnectConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">

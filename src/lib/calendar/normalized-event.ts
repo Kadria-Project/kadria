@@ -35,6 +35,15 @@ export interface NormalizedCalendarEvent {
   description: string | null
   color: string
   status: string | null
+  // Lot planning d'équipe : affectation collaborateur (uniquement renseignée
+  // pour les rendez-vous Kadria — null pour Google/actions de planning).
+  assignedUserId: string | null
+  assignedUserName: string | null
+  isUnassigned: boolean
+  // Identifiant brut en base (project_appointments.id), uniquement présent
+  // pour les rendez-vous Kadria — nécessaire pour la réaffectation rapide
+  // (PATCH /api/appointments/[id]/assign) sans dépendre du préfixe `id`.
+  rawAppointmentId: string | null
 }
 
 function isAllDayValue(value: string | null): boolean {
@@ -74,6 +83,10 @@ export function normalizeGoogleEvent(event: RawGoogleEvent): NormalizedCalendarE
     description: null,
     color: 'google',
     status: null,
+    assignedUserId: null,
+    assignedUserName: null,
+    isUnassigned: false,
+    rawAppointmentId: null,
   }
 }
 
@@ -90,9 +103,20 @@ export interface RawKadriaAppointment {
   location: string | null
   status: string | null
   googleEventId: string | null
+  eventType?: string | null
+  assignedUserId?: string | null
+  assignedUserName?: string | null
+  isUnassigned?: boolean
+  description?: string | null
+  allDay?: boolean
 }
 
 function guessAppointmentType(a: RawKadriaAppointment): NormalizedEventType {
+  // Le type d'événement explicite (event_type, colonne posée par la
+  // migration 20260717) prime quand il est disponible.
+  if (a.eventType === 'intervention' || a.eventType === 'site_visit') return 'chantier'
+  if (a.eventType && a.eventType !== 'appointment') return 'rendez-vous'
+
   const text = `${a.title || ''} ${a.status || ''} ${a.projectType || ''}`.toLowerCase()
   if (text.includes('chantier') || text.includes('intervention')) return 'chantier'
   if (text.includes('relance')) return 'relance'
@@ -115,7 +139,7 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     title: a.title || `${defaultTitle}${a.clientName ? ` avec ${a.clientName}` : ''}`,
     start: a.start,
     end: a.end,
-    allDay: isAllDayValue(a.start),
+    allDay: Boolean(a.allDay) || isAllDayValue(a.start),
     source: 'kadria-appointment',
     type,
     location: a.location,
@@ -128,9 +152,13 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     actionUrl: hasProject ? `/dashboard-v2/projet/${a.projectId}` : null,
     googleEventId: a.googleEventId,
     googleEventUrl: null,
-    description: null,
+    description: a.description || null,
     color: type,
     status: a.status,
+    assignedUserId: a.assignedUserId || null,
+    assignedUserName: a.assignedUserName || null,
+    isUnassigned: Boolean(a.isUnassigned),
+    rawAppointmentId: a.id,
   }
 }
 
@@ -172,6 +200,10 @@ export function normalizeKadriaPlanningItem(item: RawKadriaPlanningItemLike): No
     description: item.subtitle,
     color: type,
     status: null,
+    assignedUserId: null,
+    assignedUserName: null,
+    isUnassigned: false,
+    rawAppointmentId: null,
   }
 }
 
