@@ -67,6 +67,7 @@ import { computeNextAction as computeActionEngineNextAction, computeProjectHealt
 import { normalizeDepositStatus } from '@/src/lib/deposit';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
 import { computeKadriaCoach, type KadriaCoachProjectEntry, type KadriaCoachResult, type CoachActionType, type CoachPriorityLevel } from '@/src/lib/kadria-coach';
+import { ProjectResponsibleInline } from '@/src/components/projects/ProjectResponsibleCard';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -163,12 +164,44 @@ function normalizeDemoStatus(status?: string) {
   return DEMO_STATUS_NORMALIZATION[status || ''] || status || '';
 }
 
+function getDefaultDemoResponsible(project: Project) {
+  const city = (project.city || '').toLowerCase();
+  if (project.responsibleUser) {
+    return project.responsibleUser;
+  }
+
+  if (city.includes('rouen') || (project.trade || '').toLowerCase().includes('elect')) {
+    return {
+      userId: 'demo_owner',
+      firstName: 'Alexandre',
+      lastName: 'Bernard',
+      email: 'contact@ab-elec-demo.fr',
+      role: 'owner',
+      jobTitle: 'Dirigeant',
+      status: 'active',
+      displayName: 'Alexandre Bernard',
+    };
+  }
+
+  return {
+    userId: 'demo_manager',
+    firstName: 'Lucie',
+    lastName: 'Martin',
+    email: 'lucie@ab-elec-demo.fr',
+    role: 'manager',
+    jobTitle: 'Responsable travaux',
+    status: 'active',
+    displayName: 'Lucie Martin',
+  };
+}
+
 // Adapte un DemoProject (src/lib/demo-data.ts) vers la forme attendue par ce
 // composant (memes champs que le Project de production), sans appel reseau :
 // normalise le statut et derive quelques champs optionnels (quoteSentAt,
 // opensCount) a partir des donnees demo deja presentes.
 function normalizeDemoProject(project: Project): Project {
   const normalizedStatus = normalizeDemoStatus(project.status);
+  const responsibleUser = getDefaultDemoResponsible(project);
   return {
     ...project,
     artisanId: project.artisanId || DEMO_ARTISAN_ID,
@@ -183,6 +216,8 @@ function normalizeDemoProject(project: Project): Project {
         : normalizedStatus.startsWith('Devis')
           ? 2
           : 0,
+    responsibleUserId: project.responsibleUserId || responsibleUser.userId,
+    responsibleUser,
   };
 }
 
@@ -843,6 +878,7 @@ export type FilterState = {
   score: string;
   periode: string;
   source: string;
+  responsible: string;
 };
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -853,6 +889,7 @@ export const DEFAULT_FILTERS: FilterState = {
   score: '',
   periode: '',
   source: '',
+  responsible: '',
 };
 
 export function filterProjects(
@@ -4943,8 +4980,8 @@ export function ProjectList({
         <span className="col-span-1">Reçu</span>
         <span className="col-span-2">Client</span>
         <span className="col-span-2">Projet</span>
-        <span className="col-span-2">Ville</span>
-        <span className="col-span-1">Budget</span>
+        <span className="col-span-2">Responsable</span>
+        <span className="col-span-1">Ville</span>
         <span className="col-span-1">Score</span>
         <span className="col-span-1">Statut</span>
         <span className="col-span-1"></span>
@@ -4977,12 +5014,12 @@ export function ProjectList({
               {p.trade || '—'}
             </span>
 
-            <span className="col-span-2 text-[var(--text-2)] truncate">
-              {p.city || '—'}
-            </span>
+            <div className="col-span-2 min-w-0">
+              <ProjectResponsibleInline responsibleUser={p.responsibleUser || null} responsibleUserId={p.responsibleUserId || null} />
+            </div>
 
-            <span className="col-span-1 text-[var(--text-2)]">
-              {p.budget || '—'}
+            <span className="col-span-1 text-[var(--text-2)] truncate">
+              {p.city || '—'}
             </span>
 
             <span className="col-span-1">
@@ -5023,7 +5060,7 @@ export function ProjectList({
             </p>
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-2)]">
-              <span>{p.budget || 'Budget non renseigne'}</span>
+              <ProjectResponsibleInline responsibleUser={p.responsibleUser || null} responsibleUserId={p.responsibleUserId || null} />
               <span className="text-[var(--text-3)]">•</span>
               <ScorePill score={p.completenessScore || 0} />
             </div>
@@ -5187,6 +5224,10 @@ function KanbanCard({
       <p className="truncate text-xs text-[var(--text-2)]">
         {project.city || '—'} · {project.budget || '—'}
       </p>
+
+      <div className="mt-2">
+        <ProjectResponsibleInline responsibleUser={project.responsibleUser || null} responsibleUserId={project.responsibleUserId || null} />
+      </div>
 
       <div className="mt-2 flex items-center justify-between">
         <span className="text-xs font-bold" style={{ color: scoreColor }}>

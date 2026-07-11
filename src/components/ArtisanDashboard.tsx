@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 import { useTheme } from '@/src/hooks/useTheme';
+import { ProjectResponsibleInline, type ProjectResponsibleOption } from '@/src/components/projects/ProjectResponsibleCard';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FeatureGate, PlanProvider, UpgradeModal } from '@/src/components/FeatureGate';
@@ -768,6 +769,7 @@ export type FilterState = {
   score: string;
   periode: string;
   source: string;
+  responsible: string;
 };
 
 export const DEFAULT_FILTERS: FilterState = {
@@ -778,6 +780,7 @@ export const DEFAULT_FILTERS: FilterState = {
   score: '',
   periode: '',
   source: '',
+  responsible: '',
 };
 
 export function filterProjects(
@@ -849,6 +852,11 @@ export function filterProjects(
       if (filters.source === 'chat' && !src.includes('chat')) return false;
       if (filters.source === 'voice' && !(src.includes('voice') || src.includes('vocal') || src.includes('call'))) return false;
       if (filters.source === 'manual' && !(src.includes('manual') || src.includes('manuel'))) return false;
+    }
+
+    if (filters.responsible) {
+      if (filters.responsible === 'unassigned' && p.responsibleUserId) return false;
+      if (filters.responsible !== 'unassigned' && p.responsibleUserId !== filters.responsible) return false;
     }
 
     return true;
@@ -1551,6 +1559,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   };
 
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [responsibleOptions, setResponsibleOptions] = useState<ProjectResponsibleOption[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -1725,6 +1735,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       const projRes = await getProjects({});
 
       setAllProjects(projRes.projects || []);
+      setResponsibleOptions(Array.isArray(projRes.availableResponsibles) ? projRes.availableResponsibles : []);
+      setCurrentUserId(projRes.viewerContext?.currentUserId || null);
 
       const eventsRes = await fetch('/api/events');
       const eventsData = await eventsRes.json();
@@ -2214,6 +2226,15 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       ? followupsProjects
                       : sortedProjects;
 
+  const unassignedProjectsCount = useMemo(
+    () => allProjects.filter((project) => !project.responsibleUserId).length,
+    [allProjects],
+  );
+  const myProjectsCount = useMemo(
+    () => (currentUserId ? allProjects.filter((project) => project.responsibleUserId === currentUserId).length : 0),
+    [allProjects, currentUserId],
+  );
+
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setSearchInput('');
@@ -2290,6 +2311,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     filters.score && `Score: ${SCORE_OPTIONS.find((s) => s.value === filters.score)?.label ?? filters.score}`,
     filters.periode && `Période: ${PERIODE_OPTIONS.find((p) => p.value === filters.periode)?.label ?? filters.periode}`,
     filters.source && `Source: ${SOURCE_OPTIONS.find((s) => s.value === filters.source)?.label ?? filters.source}`,
+    filters.responsible && `Responsable: ${
+      filters.responsible === 'unassigned'
+        ? 'Non affectés'
+        : filters.responsible === currentUserId
+          ? 'Mes dossiers'
+          : responsibleOptions.find((option) => option.userId === filters.responsible)?.displayName ?? filters.responsible
+    }`,
   ].filter(Boolean) as string[];
 
   const handleExportCSV = () => {
@@ -4732,6 +4760,25 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </Select>
               </FeatureGate>
 
+              {!showClientsWorkspace && responsibleOptions.length > 0 && (
+                <Select value={filters.responsible || 'all'} onValueChange={(v) => updateFilter('responsible', v === 'all' ? '' : v)}>
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue placeholder="Tous les responsables" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="all">Tous les responsables</SelectItem>
+                    {currentUserId && <SelectItem value={currentUserId}>Mes dossiers</SelectItem>}
+                    <SelectItem value="unassigned">Non affectés</SelectItem>
+                    {responsibleOptions.map((option) => (
+                      <SelectItem key={option.userId} value={option.userId}>
+                        {option.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               {hasActiveFilters && (
                 <button
                   type="button"
@@ -4781,6 +4828,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     onRemove={() => updateFilter('source', '')}
                   />
                 )}
+                {filters.responsible && (
+                  <FilterPill
+                    label={`Responsable: ${
+                      filters.responsible === 'unassigned'
+                        ? 'Non affectés'
+                        : filters.responsible === currentUserId
+                          ? 'Mes dossiers'
+                          : responsibleOptions.find((option) => option.userId === filters.responsible)?.displayName ?? filters.responsible
+                    }`}
+                    onRemove={() => updateFilter('responsible', '')}
+                  />
+                )}
               </div>
             )}
 
@@ -4795,6 +4854,34 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               {showCommercialWorkspace && (
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                {!showClientsWorkspace && (
+                  <>
+                    {currentUserId && (
+                      <button
+                        type="button"
+                        onClick={() => updateFilter('responsible', filters.responsible === currentUserId ? '' : currentUserId)}
+                        className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                          filters.responsible === currentUserId
+                            ? 'border-green-500/40 bg-green-500/[0.08] text-green-300'
+                            : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
+                        }`}
+                      >
+                        Mes dossiers · {myProjectsCount}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => updateFilter('responsible', filters.responsible === 'unassigned' ? '' : 'unassigned')}
+                      className={`min-h-11 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        filters.responsible === 'unassigned'
+                          ? 'border-amber-500/40 bg-amber-500/[0.08] text-amber-200'
+                          : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
+                      }`}
+                    >
+                      Non affectés · {unassignedProjectsCount}
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => setView('list')}
@@ -5116,10 +5203,10 @@ export function ProjectList({
         <span className="col-span-1">Reçu</span>
         <span className="col-span-2">Client</span>
         <span className="col-span-1">Projet</span>
+        <span className="col-span-2">Responsable</span>
         <span className="col-span-1">Ville</span>
-        <span className="col-span-1">Budget</span>
         <span className="col-span-1">Score</span>
-        <span className="col-span-2">Activité</span>
+        <span className="col-span-1">Activité</span>
         <span className="col-span-1">Statut</span>
         <span className="col-span-1"></span>
       </div>
@@ -5156,14 +5243,14 @@ export function ProjectList({
             </span>
 
             <span className="col-span-1 text-[var(--text-2)]">
-              {p.budget || '—'}
+              <ProjectResponsibleInline responsibleUser={p.responsibleUser || null} responsibleUserId={p.responsibleUserId || null} />
             </span>
 
             <span className="col-span-1">
               <ScorePill score={p.completenessScore || 0} />
             </span>
 
-            <span className="col-span-2">
+            <span className="col-span-1">
               <ActivityCell activity={p.clientActivity} />
             </span>
 
@@ -5201,7 +5288,7 @@ export function ProjectList({
             </p>
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-2)]">
-              <span>{p.budget || 'Budget non renseigne'}</span>
+              <ProjectResponsibleInline responsibleUser={p.responsibleUser || null} responsibleUserId={p.responsibleUserId || null} />
               <span className="text-[var(--text-3)]">•</span>
               <ScorePill score={p.completenessScore || 0} />
             </div>
@@ -5367,6 +5454,10 @@ function KanbanCard({
       <p className="truncate text-xs text-[var(--text-2)]">
         {project.city || '—'} · {project.budget || '—'}
       </p>
+
+      <div className="mt-2">
+        <ProjectResponsibleInline responsibleUser={project.responsibleUser || null} responsibleUserId={project.responsibleUserId || null} />
+      </div>
 
       <div className="mt-2 flex items-center justify-between">
         <span className="text-xs font-bold" style={{ color: scoreColor }}>

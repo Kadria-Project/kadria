@@ -130,6 +130,18 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
       lastInteractionAt: now,
       callbackDate: null,
       notes: '',
+      responsibleUserId: 'demo_owner',
+      responsibleAssignedAt: now,
+      responsibleUser: {
+        userId: 'demo_owner',
+        firstName: 'Alexandre',
+        lastName: 'Bernard',
+        email: 'contact@ab-elec-demo.fr',
+        role: 'owner',
+        jobTitle: 'Dirigeant',
+        status: 'active',
+        displayName: 'Alexandre Bernard',
+      },
     };
 
     setProjects((current) => [createdProject, ...current]);

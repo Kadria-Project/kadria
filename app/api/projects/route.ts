@@ -2,8 +2,15 @@ import { NextResponse } from 'next/server';
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
 import { sendClientProjectConfirmationEmailBestEffort } from '@/src/lib/email/client-project-confirmation';
+import {
+  getAssignedAppointmentProjectIds,
+  listAssignableProjectResponsibles,
+  listProjectResponsiblesByTenant,
+  projectResponsibilityColumnExists,
+} from '@/src/lib/project-responsibility';
 import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
+import { checkPermission } from '@/src/lib/team/access';
 import { attachTenantIdToPayload, getCurrentTenantContext, resolveTenantIdentity, tableHasColumn } from '@/src/lib/tenant-context';
 import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
 import { getClientActivitySummaries } from '@/src/lib/client-events';
@@ -24,12 +31,18 @@ export async function GET(request: Request) {
     const artisanId = session.artisanId;
     const tenantContext = await getCurrentTenantContext();
     const supportsTenantId = await tableHasColumn(TABLES.projects, 'tenant_id');
+    const supportsResponsibleUser = await projectResponsibilityColumnExists();
+    const canReadAllProjects = checkPermission(tenantContext, 'projects.read_all');
+    const canReadAssignedProjects = checkPermission(tenantContext, 'projects.read_assigned');
+    const canAssignProjects = checkPermission(tenantContext, 'projects.assign');
+    const canReassignProjects = checkPermission(tenantContext, 'projects.reassign');
 
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get('status');
     const trade = searchParams.get('trade');
     const search = searchParams.get('search')?.toLowerCase();
+    const responsible = searchParams.get('responsible');
 
     let query = supabaseAdmin
       .from(TABLES.projects)
@@ -50,6 +63,23 @@ export async function GET(request: Request) {
     }
 
     let projects = (data || []).map(mapSupabaseProject);
+
+    if (supportsResponsibleUser && tenantContext?.tenantId) {
+      const responsibilityMap = await listProjectResponsiblesByTenant(tenantContext.tenantId);
+      projects = projects.map((project) => ({
+        ...project,
+        responsibleUser: project.responsibleUserId ? responsibilityMap.get(project.responsibleUserId) || null : null,
+      }));
+    }
+
+    if (tenantContext?.tenantId && !canReadAllProjects && !canReadAssignedProjects) {
+      projects = [];
+    } else if (tenantContext?.tenantId && !canReadAllProjects && canReadAssignedProjects) {
+      const appointmentProjectIds = await getAssignedAppointmentProjectIds(tenantContext.tenantId, tenantContext.userId);
+      projects = projects.filter((project) =>
+        project.responsibleUserId === tenantContext.userId || appointmentProjectIds.has(project.id),
+      );
+    }
 
     // Colonne "Activité" du suivi commercial (nouveautés client) : une seule
     // requête groupée sur ProjectClientEvents pour tous les projets affichés
@@ -97,6 +127,8 @@ export async function GET(request: Request) {
           project.projectType,
           project.budget,
           project.aiSummary,
+          [project.responsibleUser?.firstName, project.responsibleUser?.lastName].filter(Boolean).join(' '),
+          project.responsibleUser?.jobTitle,
         ]
           .join(' ')
           .toLowerCase();
@@ -105,10 +137,32 @@ export async function GET(request: Request) {
       });
     }
 
+    if (responsible && tenantContext?.tenantId && supportsResponsibleUser) {
+      if (responsible === 'me') {
+        projects = projects.filter((project) => project.responsibleUserId === tenantContext.userId);
+      } else if (responsible === 'unassigned') {
+        projects = projects.filter((project) => !project.responsibleUserId);
+      } else {
+        projects = projects.filter((project) => project.responsibleUserId === responsible);
+      }
+    }
+
+    const availableResponsibles = tenantContext?.tenantId
+      ? await listAssignableProjectResponsibles(tenantContext.tenantId)
+      : [];
+
     return NextResponse.json({
       success: true,
       count: projects.length,
       projects,
+      viewerContext: {
+        currentUserId: tenantContext?.userId || null,
+        canReadAllProjects,
+        canReadAssignedProjects,
+        canAssignProjects,
+        canReassignProjects,
+      },
+      availableResponsibles,
     });
   } catch (error) {
     console.error('GET_PROJECTS_ERROR', error instanceof Error ? error.message : String(error));
@@ -249,6 +303,7 @@ export async function POST(request: Request) {
       tenantId: null,
     });
     const tenantContext = session ? await getCurrentTenantContext() : null;
+    const supportsResponsibleUser = await projectResponsibilityColumnExists();
     const tenantIdentity = session
       ? tenantContext && tenantContext.legacyArtisanId === artisanId
         ? { tenantId: tenantContext.tenantId, legacyArtisanId: tenantContext.legacyArtisanId }
@@ -260,6 +315,9 @@ export async function POST(request: Request) {
       {
         ...payload,
         ...(tenantIdentity?.tenantId ? { tenant_id: tenantIdentity.tenantId } : {}),
+        ...(supportsResponsibleUser && session && tenantContext?.membership.status === 'active'
+          ? { responsible_user_id: tenantContext.userId }
+          : {}),
       },
       {
         tenantId: tenantIdentity?.tenantId || null,

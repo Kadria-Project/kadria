@@ -49,6 +49,22 @@ export async function updateProject(id: string, data: Record<string, unknown>) {
   return res.json();
 }
 
+export async function updateProjectResponsible(id: string, responsibleUserId: string | null) {
+  const res = await fetch(`/api/projects/${id}/responsible`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ responsibleUserId }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Erreur mise a jour responsable dossier');
+  }
+
+  return data;
+}
+
 export async function getProjectActivity(id: string) {
   const res = await fetch(`/api/projects/${id}/activity`);
 

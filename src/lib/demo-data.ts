@@ -106,6 +106,18 @@ export interface DemoProject {
   depositPaymentUrl?: string | null;
   depositRequestedAt?: string | null;
   depositPaidAt?: string | null;
+  responsibleUserId?: string | null;
+  responsibleAssignedAt?: string | null;
+  responsibleUser?: {
+    userId: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    role: string;
+    jobTitle: string | null;
+    status: string;
+    displayName: string;
+  } | null;
 }
 
 export interface DemoClientEvent {

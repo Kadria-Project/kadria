@@ -233,6 +233,18 @@ export interface SupabaseProject {
   callId: string
   latitude: number | null
   longitude: number | null
+  responsibleUserId: string | null
+  responsibleAssignedAt: string | null
+  responsibleAssignedBy: string | null
+  responsibleUser: {
+    userId: string
+    firstName: string
+    lastName: string
+    email: string
+    role: string
+    jobTitle: string | null
+    status: string
+  } | null
   callbackDate: string
   devisAmount: number
   depositStatus: string
@@ -394,6 +406,10 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     callId: getString(row, 'call_id', 'Call ID', 'callId', 'vapi_call_id', 'Vapi Call Id'),
     latitude: getNullableNumber(row, 'latitude', 'Latitude'),
     longitude: getNullableNumber(row, 'longitude', 'Longitude'),
+    responsibleUserId: getValue<string | null>(row, ['responsible_user_id', 'Responsible User ID'], null),
+    responsibleAssignedAt: getValue<string | null>(row, ['responsible_assigned_at', 'Responsible Assigned At'], null),
+    responsibleAssignedBy: getValue<string | null>(row, ['responsible_assigned_by', 'Responsible Assigned By'], null),
+    responsibleUser: getValue<SupabaseProject['responsibleUser']>(row, ['responsible_user'], null),
     callbackDate: getString(row, 'callback_date', 'Callback Date'),
     devisAmount: getNumber(row, 'devis_amount', 'Devis_amount'),
     depositStatus: getString(row, 'deposit_status', 'Deposit Status') || 'not_requested',
@@ -523,6 +539,9 @@ export function toSupabaseProjectInsert(input: Record<string, unknown>) {
     source: String(input.source || 'web'),
     call_id: String(input.callId || ''),
     assigned_to: String(input.assignedTo || ''),
+    responsible_user_id: typeof input.responsibleUserId === 'string' && input.responsibleUserId.trim()
+      ? input.responsibleUserId.trim()
+      : null,
     photos: Array.isArray(input.photos)
       ? input.photos.map((photo) => {
           if (typeof photo === 'string') {
@@ -580,6 +599,9 @@ export function toSupabaseProjectUpdate(input: Record<string, unknown>) {
     'SMS Status': 'sms_status',
     'SMS Last Error': 'sms_last_error',
     'Call ID': 'call_id',
+    responsibleUserId: 'responsible_user_id',
+    responsibleAssignedAt: 'responsible_assigned_at',
+    responsibleAssignedBy: 'responsible_assigned_by',
     Latitude: 'latitude',
     Longitude: 'longitude',
     'Callback Date': 'callback_date',

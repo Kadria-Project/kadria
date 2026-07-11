@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable';
 import { getSession } from '@/src/lib/auth-utils';
+import {
+  getAssignedAppointmentProjectIds,
+  listAssignableProjectResponsibles,
+  listProjectResponsiblesByTenant,
+  projectResponsibilityColumnExists,
+} from '@/src/lib/project-responsibility';
 import { mapSupabaseProject, toSupabaseProjectUpdate } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
-import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context';
+import { checkPermission, requirePermission } from '@/src/lib/team/access';
+import { type TenantContext, getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context';
 
 async function createActivityLog(
   projectId: string,
@@ -22,7 +29,12 @@ async function createActivityLog(
   }
 }
 
-async function getAuthorizedProject(id: string, artisanId: string, tenantId?: string | null) {
+async function getAuthorizedProject(
+  id: string,
+  artisanId: string,
+  tenantContext: TenantContext | null,
+) {
+  const tenantId = tenantContext?.tenantId;
   const supportsTenantId = tenantId ? await tableHasColumn(TABLES.projects, 'tenant_id') : false;
   const direct = await supabaseAdmin
     .from(TABLES.projects)
@@ -58,10 +70,29 @@ async function getAuthorizedProject(id: string, artisanId: string, tenantId?: st
 
   if (supportsTenantId && record.tenant_id) {
     if (String(record.tenant_id) !== tenantId) {
-      return { status: 403 as const };
+      return { status: 404 as const };
     }
   } else if (record.artisan_id !== artisanId) {
-    return { status: 403 as const };
+    return { status: 404 as const };
+  }
+
+  if (tenantContext?.tenantId) {
+    const canReadAll = checkPermission(tenantContext, 'projects.read_all');
+    const canReadAssigned = checkPermission(tenantContext, 'projects.read_assigned');
+
+    if (!canReadAll) {
+      if (!canReadAssigned) {
+        return { status: 403 as const };
+      }
+
+      const responsibleUserId = typeof record.responsible_user_id === 'string' ? record.responsible_user_id : null;
+      if (responsibleUserId !== tenantContext.userId) {
+        const appointmentProjectIds = await getAssignedAppointmentProjectIds(tenantContext.tenantId, tenantContext.userId);
+        if (!appointmentProjectIds.has(String(record.id))) {
+          return { status: 404 as const };
+        }
+      }
+    }
   }
 
   return { status: 200 as const, record };
@@ -79,7 +110,7 @@ export async function GET(
 
     const { id } = await params;
     const tenantContext = await getCurrentTenantContext();
-    const result = await getAuthorizedProject(id, session.artisanId, tenantContext?.tenantId);
+    const result = await getAuthorizedProject(id, session.artisanId, tenantContext);
 
     if (result.status === 404) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
@@ -89,9 +120,33 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
     }
 
+    let project = mapSupabaseProject(result.record);
+    const supportsResponsibleUser = await projectResponsibilityColumnExists();
+    const canAssignProjects = checkPermission(tenantContext, 'projects.assign');
+    const canReassignProjects = checkPermission(tenantContext, 'projects.reassign');
+    const canUpdateProject = checkPermission(tenantContext, 'projects.update');
+    const availableResponsibles = tenantContext?.tenantId
+      ? await listAssignableProjectResponsibles(tenantContext.tenantId)
+      : [];
+
+    if (supportsResponsibleUser && tenantContext?.tenantId) {
+      const responsibilityMap = await listProjectResponsiblesByTenant(tenantContext.tenantId);
+      project = {
+        ...project,
+        responsibleUser: project.responsibleUserId ? responsibilityMap.get(project.responsibleUserId) || null : null,
+      };
+    }
+
     return NextResponse.json({
       success: true,
-      project: mapSupabaseProject(result.record),
+      project,
+      viewerContext: {
+        currentUserId: tenantContext?.userId || null,
+        canAssignProjects,
+        canReassignProjects,
+        canUpdateProject,
+      },
+      availableResponsibles,
     });
   } catch (error) {
     console.error('GET_PROJECT_DETAIL_ERROR', error instanceof Error ? error.message : String(error));
@@ -115,7 +170,10 @@ export async function PATCH(
 
     const { id } = await params;
     const tenantContext = await getCurrentTenantContext();
-    const authResult = await getAuthorizedProject(id, session.artisanId, tenantContext?.tenantId);
+    if (tenantContext) {
+      requirePermission(tenantContext, 'projects.update');
+    }
+    const authResult = await getAuthorizedProject(id, session.artisanId, tenantContext);
 
     if (authResult.status === 404) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
@@ -159,7 +217,6 @@ export async function PATCH(
       .from(TABLES.projects)
       .update(fieldsToUpdate)
       .eq('id', targetId)
-      .eq('artisan_id', session.artisanId)
       .select('*')
       .single();
 

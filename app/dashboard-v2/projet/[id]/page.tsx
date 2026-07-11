@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { createProjectDepositCheckout, getProject, updateProject, getProjectActivity, sendProjectCompletionSms } from '@/src/lib/api';
+import { createProjectDepositCheckout, getProject, updateProject, updateProjectResponsible, getProjectActivity, sendProjectCompletionSms } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
+import ProjectResponsibleCard, { type ProjectResponsibleOption } from '@/src/components/projects/ProjectResponsibleCard';
 import { Button } from '@/src/components/ui/button';
 import {
   AlertTriangle,
@@ -811,6 +812,14 @@ function ProjectDetail() {
   const id = params.id as string;
 
   const [project, setProject] = useState<any>(null);
+  const [responsibleOptions, setResponsibleOptions] = useState<ProjectResponsibleOption[]>([]);
+  const [projectViewerContext, setProjectViewerContext] = useState<{
+    currentUserId: string | null;
+    canAssignProjects: boolean;
+    canReassignProjects: boolean;
+    canUpdateProject: boolean;
+  } | null>(null);
+  const [responsibleSaving, setResponsibleSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [activities, setActivities] = useState<any[]>([]);
@@ -1189,6 +1198,8 @@ function ProjectDetail() {
         const data = await getProject(id);
 
         setProject(data.project);
+        setResponsibleOptions(Array.isArray(data.availableResponsibles) ? data.availableResponsibles : []);
+        setProjectViewerContext(data.viewerContext || null);
         setNote(data.project?.internalNotes || '');
         setCallbackDate(data.project?.callbackDate || '');
         setShowCallback(!!data.project?.callbackDate);
@@ -1249,6 +1260,23 @@ function ProjectDetail() {
     loadClientTimeline();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const canEditResponsible = Boolean(projectViewerContext?.canAssignProjects || projectViewerContext?.canReassignProjects);
+
+  async function handleResponsibleChange(nextResponsibleUserId: string | null) {
+    if (!project?.id) return;
+    setResponsibleSaving(true);
+    try {
+      const data = await updateProjectResponsible(project.id, nextResponsibleUserId);
+      setProject((current: any) => current ? {
+        ...current,
+        responsibleUserId: data.responsibleUserId ?? null,
+        responsibleUser: data.responsibleUser ?? null,
+      } : current);
+    } finally {
+      setResponsibleSaving(false);
+    }
+  }
 
   // Marque les nouveautés client comme lues à l'ouverture de la fiche projet
   // (colonne Activité du suivi commercial). Appel unique, best-effort : ne
@@ -2984,6 +3012,16 @@ function ProjectDetail() {
             <p style={{ margin: 0 }}>Devis : {devisStatusLabel}{latestDevis?.amount ? ` (${formatMoney(latestDevis.amount)} €)` : ''}</p>
             <p style={{ margin: 0 }}>RDV : {appointment ? formatDateTime(appointment.start) : 'Non planifié'}</p>
           </div>
+
+          <ProjectResponsibleCard
+            responsibleUser={project.responsibleUser || null}
+            responsibleUserId={project.responsibleUserId || null}
+            options={responsibleOptions}
+            canEdit={canEditResponsible}
+            loading={responsibleSaving}
+            onChange={handleResponsibleChange}
+            compact
+          />
 
           {/* Complément client (SMS) — uniquement pour les dossiers
               sourcés Vapi/appel vocal, cf. shouldShowSmsCompletionCard.
