@@ -1,17 +1,12 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
-import {
-  TEAM_JOB_TITLE_SUGGESTIONS,
-  TEAM_ROLE_DESCRIPTIONS,
-  TEAM_ROLE_LABELS,
-  type TeamMember,
-  type TenantInvitation,
-  type TenantRole,
-} from '@/src/lib/team/types'
+import { InviteDrawer, type InviteFormState } from '@/src/components/team/InviteDrawer'
+import { MemberCard } from '@/src/components/team/MemberCard'
+import { InvitationCard } from '@/src/components/team/InvitationCard'
+import { TEAM_ROLE_LABELS, type TeamMember, type TenantInvitation, type TenantRole } from '@/src/lib/team/types'
 
 type TeamResponse = {
   success: boolean
@@ -31,8 +26,6 @@ type TeamResponse = {
   error?: string
 }
 
-const ROLE_OPTIONS: TenantRole[] = ['admin', 'manager', 'member', 'viewer']
-
 export default function TeamSettingsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -47,7 +40,7 @@ export default function TeamSettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteForm, setInviteForm] = useState({
+  const [inviteForm, setInviteForm] = useState<InviteFormState>({
     firstName: '',
     lastName: '',
     email: '',
@@ -77,17 +70,6 @@ export default function TeamSettingsPage() {
   useEffect(() => {
     void loadTeam()
   }, [])
-
-  // Bloque le scroll de la page derriere la modale pendant qu'elle est
-  // ouverte, et restaure la valeur precedente a la fermeture/demontage.
-  useEffect(() => {
-    if (!inviteOpen) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [inviteOpen])
 
   const seatLabel = useMemo(() => {
     const seats = data?.seats
@@ -278,53 +260,14 @@ export default function TeamSettingsPage() {
 
               <div className="mt-5 grid gap-4">
                 {(teamData.members || []).map((member) => (
-                  <div key={member.membershipId} className="rounded-[18px] border border-white/10 bg-black/20 p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold text-white">
-                          {[member.firstName, member.lastName].filter(Boolean).join(' ') || member.email}
-                        </p>
-                        <p className="mt-1 text-sm text-zinc-400">{member.email}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Chip>{TEAM_ROLE_LABELS[member.role]}</Chip>
-                          <Chip>{member.jobTitle || 'Fonction non renseignee'}</Chip>
-                          <Chip tone={member.status === 'active' ? 'green' : member.status === 'suspended' ? 'amber' : 'red'}>
-                            {member.status === 'active' ? 'Actif' : member.status === 'suspended' ? 'Suspendu' : 'Revoque'}
-                          </Chip>
-                        </div>
-                      </div>
-
-                      {teamData.permissions?.canManageMembers && (
-                        <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[320px]">
-                          <select
-                            value={member.role}
-                            onChange={(event) => handleRoleChange(member.membershipId, event.target.value, member.jobTitle)}
-                            className="h-11 rounded-xl border border-white/10 bg-[#101214] px-3 text-sm text-white outline-none"
-                          >
-                            {(['owner', 'admin', 'manager', 'member', 'viewer'] as TenantRole[]).map((role) => (
-                              <option key={role} value={role}>
-                                {TEAM_ROLE_LABELS[role]}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => handleMemberAction(member.membershipId, member.status === 'suspended' ? 'reactivate' : 'suspend')}
-                            className="h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
-                          >
-                            {member.status === 'suspended' ? 'Reactiver' : 'Suspendre'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleMemberAction(member.membershipId, 'remove')}
-                            className="h-11 rounded-xl border border-rose-500/20 px-3 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/10"
-                          >
-                            Retirer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <MemberCard
+                    key={member.membershipId}
+                    member={member}
+                    canManage={Boolean(teamData.permissions?.canManageMembers)}
+                    onRoleChange={(role) => handleRoleChange(member.membershipId, role, member.jobTitle)}
+                    onToggleSuspend={() => handleMemberAction(member.membershipId, member.status === 'suspended' ? 'reactivate' : 'suspend')}
+                    onRemove={() => handleMemberAction(member.membershipId, 'remove')}
+                  />
                 ))}
               </div>
             </section>
@@ -337,38 +280,13 @@ export default function TeamSettingsPage() {
 
               <div className="mt-5 grid gap-4">
                 {pendingInvitations.map((invitation) => (
-                  <div key={invitation.id} className="rounded-[18px] border border-white/10 bg-black/20 p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <p className="text-base font-semibold text-white">{invitation.email}</p>
-                        <p className="mt-1 text-sm text-zinc-400">
-                          {[invitation.firstName, invitation.lastName].filter(Boolean).join(' ') || 'Collaborateur'} · {TEAM_ROLE_LABELS[invitation.role]} · {invitation.jobTitle || 'Fonction non renseignee'}
-                        </p>
-                        <p className="mt-2 text-xs text-zinc-500">
-                          Envoyee par {invitation.invitedByName || 'Kadria'} · expire le {invitation.expiresAt ? new Date(invitation.expiresAt).toLocaleString('fr-FR') : '—'} · relances {invitation.sendCount - 1}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleResend(invitation.id)}
-                          disabled={submitting}
-                          className="h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/[0.04] disabled:opacity-60"
-                        >
-                          Relancer
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRevoke(invitation.id)}
-                          disabled={submitting}
-                          className="h-11 rounded-xl border border-rose-500/20 px-4 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/10 disabled:opacity-60"
-                        >
-                          Revoquer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <InvitationCard
+                    key={invitation.id}
+                    invitation={invitation}
+                    submitting={submitting}
+                    onResend={() => handleResend(invitation.id)}
+                    onRevoke={() => handleRevoke(invitation.id)}
+                  />
                 ))}
 
                 {pendingInvitations.length === 0 && (
@@ -382,97 +300,14 @@ export default function TeamSettingsPage() {
         </div>
       </div>
 
-      {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 sm:items-center sm:p-4">
-          <div
-            className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-[#0f1113] shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-[620px] sm:rounded-[24px] sm:border sm:border-white/10"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-          >
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
-              <div>
-                <h2 className="text-xl font-semibold text-white">Inviter un collaborateur</h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Choisissez son role et sa fonction avant d&apos;envoyer l&apos;invitation.
-                </p>
-              </div>
-              <button type="button" onClick={() => setInviteOpen(false)} className="shrink-0 text-sm text-zinc-400">
-                Fermer
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Prenom" value={inviteForm.firstName} onChange={(value) => setInviteForm((current) => ({ ...current, firstName: value }))} />
-                <Field label="Nom" value={inviteForm.lastName} onChange={(value) => setInviteForm((current) => ({ ...current, lastName: value }))} />
-              </div>
-              <div className="mt-4">
-                <Field label="Email" value={inviteForm.email} onChange={(value) => setInviteForm((current) => ({ ...current, email: value }))} />
-              </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Fonction</span>
-                  <input
-                    list="team-job-titles"
-                    value={inviteForm.jobTitle}
-                    onChange={(event) => setInviteForm((current) => ({ ...current, jobTitle: event.target.value }))}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
-                  />
-                  <datalist id="team-job-titles">
-                    {TEAM_JOB_TITLE_SUGGESTIONS.map((jobTitle) => (
-                      <option key={jobTitle} value={jobTitle} />
-                    ))}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Role</span>
-                  <select
-                    value={inviteForm.role}
-                    onChange={(event) => setInviteForm((current) => ({ ...current, role: event.target.value as TenantRole }))}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
-                  >
-                    {ROLE_OPTIONS.map((role) => (
-                      <option key={role} value={role}>
-                        {TEAM_ROLE_LABELS[role]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="mt-4 rounded-[16px] border border-white/10 bg-black/20 p-4 text-sm text-zinc-400">
-                <p className="font-semibold text-white">{TEAM_ROLE_LABELS[inviteForm.role]}</p>
-                <p className="mt-2">{TEAM_ROLE_DESCRIPTIONS[inviteForm.role as Exclude<TenantRole, 'owner'>]}</p>
-              </div>
-              <div className="mt-4">
-                <label className="block">
-                  <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">Message facultatif</span>
-                  <textarea
-                    value={inviteForm.message}
-                    onChange={(event) => setInviteForm((current) => ({ ...current, message: event.target.value }))}
-                    className="min-h-[110px] w-full rounded-xl border border-white/10 bg-[#101214] px-4 py-3 text-sm text-white outline-none"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div
-              className="sticky bottom-0 flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 bg-[#0f1113] px-6 py-4 sm:flex-row sm:justify-end"
-              style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
-            >
-              <button type="button" onClick={() => setInviteOpen(false)} className="h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-white">
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleInvite}
-                disabled={submitting}
-                className="h-11 rounded-xl bg-[#22c55e] px-4 text-sm font-semibold text-black disabled:opacity-60"
-              >
-                {submitting ? 'Envoi...' : "Envoyer l'invitation"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <InviteDrawer
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        form={inviteForm}
+        onFormChange={setInviteForm}
+        onSubmit={handleInvite}
+        submitting={submitting}
+      />
     </main>
   )
 }
@@ -483,44 +318,5 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">{label}</p>
       <p className="mt-3 text-lg font-semibold text-white sm:text-xl">{value}</p>
     </div>
-  )
-}
-
-function Chip({
-  children,
-  tone = 'default',
-}: {
-  children: ReactNode
-  tone?: 'default' | 'green' | 'amber' | 'red'
-}) {
-  const toneClass =
-    tone === 'green'
-      ? 'border-[#22c55e]/20 bg-[#22c55e]/10 text-[#4ade80]'
-      : tone === 'amber'
-        ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
-        : tone === 'red'
-          ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
-          : 'border-white/10 bg-white/[0.04] text-zinc-200'
-  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClass}`}>{children}</span>
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[11px] uppercase tracking-[0.16em] text-zinc-500">{label}</span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none"
-      />
-    </label>
   )
 }
