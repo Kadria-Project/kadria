@@ -8,6 +8,38 @@ import { listTeamMembers } from '@/src/lib/team/service'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext, tableExists, tableHasColumn, type TenantContext } from '@/src/lib/tenant-context'
 
+interface StructuredSupabaseErrorLike {
+  code?: unknown
+  message?: unknown
+  details?: unknown
+  hint?: unknown
+}
+
+export class ProjectAccessError extends Error {
+  code: string | null
+  details: string | null
+  hint: string | null
+  projectId: string | null
+  context: string
+
+  constructor(params: {
+    message: string
+    code?: string | null
+    details?: string | null
+    hint?: string | null
+    projectId?: string | null
+    context: string
+  }) {
+    super(params.message)
+    this.name = 'ProjectAccessError'
+    this.code = params.code || null
+    this.details = params.details || null
+    this.hint = params.hint || null
+    this.projectId = params.projectId || null
+    this.context = params.context
+  }
+}
+
 export interface ProjectResponsibleSummary {
   userId: string
   firstName: string
@@ -37,6 +69,23 @@ const PROJECT_ACCESS_BASE_COLUMNS = [
   'artisan_id',
   'responsible_user_id',
 ] as const
+
+function toProjectAccessError(error: unknown, context: string, projectId?: string) {
+  const supabaseError = error as StructuredSupabaseErrorLike
+  const message =
+    typeof supabaseError?.message === 'string' && supabaseError.message.trim()
+      ? supabaseError.message
+      : 'Project access query failed'
+
+  return new ProjectAccessError({
+    message,
+    code: typeof supabaseError?.code === 'string' ? supabaseError.code : null,
+    details: typeof supabaseError?.details === 'string' ? supabaseError.details : null,
+    hint: typeof supabaseError?.hint === 'string' ? supabaseError.hint : null,
+    projectId: projectId || null,
+    context,
+  })
+}
 
 function getDisplayName(member: Pick<TeamMember, 'firstName' | 'lastName' | 'email'>) {
   return [member.firstName, member.lastName].filter(Boolean).join(' ').trim() || member.email || 'Collaborateur'
@@ -98,7 +147,7 @@ async function loadProjectRecord(select: string, projectId: string) {
     .limit(1)
     .maybeSingle()
 
-  if (direct.error) throw direct.error
+  if (direct.error) throw toProjectAccessError(direct.error, 'projects.select.direct', projectId)
   if (direct.data) return direct.data as unknown as Record<string, unknown>
 
   const legacy = await supabaseAdmin
@@ -108,7 +157,7 @@ async function loadProjectRecord(select: string, projectId: string) {
     .limit(1)
     .maybeSingle()
 
-  if (legacy.error) throw legacy.error
+  if (legacy.error) throw toProjectAccessError(legacy.error, 'projects.select.record_id', projectId)
   return (legacy.data as unknown as Record<string, unknown> | null) || null
 }
 
@@ -222,7 +271,7 @@ export async function getAssignedAppointmentProjectIds(tenantId: string, userId:
     .eq('assigned_user_id', userId)
 
   if (error) {
-    throw error
+    throw toProjectAccessError(error, 'project_appointments.select.assigned_project_ids')
   }
 
   return new Set(

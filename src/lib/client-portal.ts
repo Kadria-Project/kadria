@@ -10,6 +10,30 @@ import { TABLES } from '@/src/lib/airtable'
 import { getBaseUrl } from '@/src/lib/base-url'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
+interface StructuredSupabaseErrorLike {
+  code?: unknown
+  message?: unknown
+  details?: unknown
+  hint?: unknown
+}
+
+function logClientPortalError(context: string, projectId: string, error: unknown) {
+  const supabaseError = error as StructuredSupabaseErrorLike
+  console.error('[CLIENT-PORTAL]', {
+    context,
+    projectId,
+    code: typeof supabaseError?.code === 'string' ? supabaseError.code : null,
+    message:
+      typeof supabaseError?.message === 'string' && supabaseError.message.trim()
+        ? supabaseError.message
+        : error instanceof Error
+          ? error.message
+          : 'Unknown client portal error',
+    details: typeof supabaseError?.details === 'string' ? supabaseError.details : null,
+    hint: typeof supabaseError?.hint === 'string' ? supabaseError.hint : null,
+  })
+}
+
 export function buildClientPortalUrl(token: string): string {
   return `${getBaseUrl()}/client/projet/${token}`
 }
@@ -50,7 +74,7 @@ export async function ensureClientPortalToken(
 
     return token
   } catch (e) {
-    console.error('[CLIENT-PORTAL] ensureClientPortalToken failed:', e instanceof Error ? e.message : String(e))
+    logClientPortalError('ensureClientPortalToken', projectId, e)
     return null
   }
 }
