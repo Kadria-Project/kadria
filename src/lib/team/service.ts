@@ -324,6 +324,11 @@ export async function getTeamOverview() {
     throw new Error('TENANT_CONTEXT_REQUIRED')
   }
   if (!['owner', 'admin', 'manager'].includes(tenantContext.role)) {
+    console.warn('[TEAM][ROLE_FORBIDDEN] Session role cannot access team overview', {
+      userId: tenantContext.userId,
+      tenantId: tenantContext.tenantId,
+      role: tenantContext.role,
+    })
     throw new Error('FORBIDDEN')
   }
 

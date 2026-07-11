@@ -7,6 +7,7 @@ export async function GET() {
     return NextResponse.json({ success: true, ...team })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'TEAM_ERROR'
+    console.warn('[TEAM][API] /api/team failed', { code: message })
     if (message === 'TENANT_CONTEXT_REQUIRED' || message === 'FORBIDDEN') {
       return NextResponse.json({ success: false, error: 'Acces non autorise.' }, { status: 403 })
     }

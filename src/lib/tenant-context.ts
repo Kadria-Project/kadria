@@ -398,13 +398,22 @@ export async function getCurrentTenantContext(options?: {
 }): Promise<TenantContext | null> {
   const session = await getSession()
   if (!session) {
-    console.warn('[TENANT] Missing authenticated session')
+    console.warn('[TENANT][SESSION_MISSING] Missing authenticated session')
     return null
   }
 
-  if (!session.id) {
-    console.warn('[TENANT] Session has no id', {
-      email: session.email || null,
+  // Ne jamais bloquer ici sur l'absence de session.id : les anciens cookies
+  // `kadria-auth` peuvent ne pas contenir de champ `id`. resolveSessionUser()
+  // sait retomber sur l'email de session (puis sur record_id si session.id
+  // existe). On ne refuse la session que si elle n'a NI id NI email
+  // exploitable, ce qui est vérifié juste après par resolveSessionUser.
+  if (!session.id && session.email) {
+    console.warn('[TENANT][SESSION_ID_MISSING_EMAIL_FALLBACK] Session has no id, falling back to email resolution', {
+      email: session.email,
+      artisanId: session.artisanId || null,
+    })
+  } else if (!session.id && !session.email) {
+    console.warn('[TENANT][SESSION_MISSING] Session has neither id nor email', {
       artisanId: session.artisanId || null,
     })
     return null
@@ -412,8 +421,8 @@ export async function getCurrentTenantContext(options?: {
 
   const resolvedUser = await resolveSessionUser(session)
   if (!resolvedUser) {
-    console.warn('[TENANT] Unable to resolve application user for session', {
-      sessionId: session.id,
+    console.warn('[TENANT][USER_RESOLUTION_FAILED] Unable to resolve application user for session', {
+      sessionId: session.id || null,
       email: session.email || null,
       artisanId: session.artisanId || null,
     })
@@ -422,8 +431,8 @@ export async function getCurrentTenantContext(options?: {
 
   const memberships = await listActiveMembershipsForUser(resolvedUser.id)
   if (!memberships.length) {
-    console.warn('[TENANT] No active membership found for current session user', {
-      sessionId: session.id,
+    console.warn('[TENANT][MEMBERSHIP_NOT_FOUND] No active membership found for current session user', {
+      sessionId: session.id || null,
       resolvedUserId: resolvedUser.id,
       source: resolvedUser.source,
       artisanId: resolvedUser.artisanId || session.artisanId || null,
@@ -440,7 +449,7 @@ export async function getCurrentTenantContext(options?: {
   })
 
   if (!membership) {
-    console.warn('[TENANT] Unable to select an active tenant membership', {
+    console.warn('[TENANT][MEMBERSHIP_INACTIVE] Unable to select an active tenant membership', {
       userId: resolvedUser.id,
       artisanId: resolvedUser.artisanId || session.artisanId || null,
       memberships: memberships.length,
@@ -450,7 +459,7 @@ export async function getCurrentTenantContext(options?: {
 
   const tenant = tenantById.get(membership.tenantId)
   if (!tenant) {
-    console.warn('[TENANT] Active membership points to a missing tenant', {
+    console.warn('[TENANT][TENANT_NOT_FOUND] Active membership points to a missing tenant', {
       userId: resolvedUser.id,
       tenantId: membership.tenantId,
     })

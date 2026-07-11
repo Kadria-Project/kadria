@@ -18,6 +18,7 @@ import {
   DEFAULT_CONSUMPTION_PER_100KM,
 } from '@/src/config/travel'
 import { normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit'
+import { Users } from 'lucide-react'
 
 type WidgetColorMode = 'sobriety' | 'immersive' | 'premium_dark'
 
@@ -468,13 +469,17 @@ function ParametresPageContent() {
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null)
   const [calendarEvaluable, setCalendarEvaluable] = useState(false)
   const [configurationCardExpanded, setConfigurationCardExpanded] = useState(false)
-  const [teamTabVisible, setTeamTabVisible] = useState(false)
+  // La brique "Equipe" doit rester visible pour tout utilisateur authentifié
+  // du dashboard, meme si la resolution du role tenant echoue ou est encore
+  // en cours : /api/team et /parametres/equipe appliquent ensuite les vraies
+  // permissions. On ne masque donc plus cette entree sur un echec de fetch —
+  // seul un 401 explicite (session non authentifiee) la cache.
+  const [teamTabVisible, setTeamTabVisible] = useState(true)
   useEffect(() => {
     fetch('/api/team', { cache: 'no-store' })
-      .then((response) => response.json().then((payload) => ({ ok: response.ok, payload })))
-      .then(({ ok, payload }) => {
-        if (ok && payload?.success && payload?.permissions?.canManageMembers) {
-          setTeamTabVisible(true)
+      .then((response) => {
+        if (response.status === 401) {
+          setTeamTabVisible(false)
         }
       })
       .catch(() => {})
@@ -3853,6 +3858,38 @@ function ParametresPageContent() {
               <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
                 💳 Offre & quotas
               </h2>
+
+              {teamTabVisible && (
+                <button
+                  type="button"
+                  onClick={() => router.push('/parametres/equipe')}
+                  style={{
+                    ...sectionCard,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    width: '100%',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-elevated)',
+                  }}
+                >
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'rgba(34,197,94,0.12)', color: 'var(--accent)', flexShrink: 0,
+                  }}>
+                    <Users size={20} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Équipe</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-3)' }}>
+                      Invitez vos collaborateurs et gérez leurs accès à Kadria.
+                    </p>
+                  </div>
+                </button>
+              )}
 
               {usageLoading ? (
                 <div style={sectionCard}>

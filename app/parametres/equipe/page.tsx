@@ -39,6 +39,12 @@ export default function TeamSettingsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [data, setData] = useState<TeamResponse | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  // `loadError` couvre uniquement l'echec du chargement initial de l'equipe
+  // (affiche un unique bloc d'erreur avec Reessayer / Retour). `error`
+  // couvre les actions ponctuelles (invite, revoke, etc.) une fois les
+  // donnees deja chargees. Garder ces deux etats separes evite d'afficher
+  // deux messages rouges simultanes au chargement.
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteForm, setInviteForm] = useState({
@@ -52,7 +58,7 @@ export default function TeamSettingsPage() {
 
   async function loadTeam() {
     setLoading(true)
-    setError(null)
+    setLoadError(null)
     try {
       const response = await fetch('/api/team', { cache: 'no-store' })
       const payload = (await response.json()) as TeamResponse
@@ -62,7 +68,7 @@ export default function TeamSettingsPage() {
       setData(payload)
     } catch (err) {
       setData(null)
-      setError(err instanceof Error ? err.message : "Impossible de charger l'equipe.")
+      setLoadError(err instanceof Error ? err.message : "Impossible de charger l'equipe.")
     } finally {
       setLoading(false)
     }
@@ -219,9 +225,27 @@ export default function TeamSettingsPage() {
                   />
                 </div>
               </>
-            ) : !loading && error ? (
+            ) : !loading && loadError ? (
               <div className="mt-5 rounded-[18px] border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">
-                Impossible de charger les informations equipe pour le moment. Rechargez la page ou reconnectez-vous si le probleme persiste.
+                <p className="m-0">
+                  Impossible de charger les informations equipe pour le moment. Rechargez la page ou reconnectez-vous si le probleme persiste.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void loadTeam()}
+                    className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+                  >
+                    Reessayer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/parametres')}
+                    className="h-10 rounded-xl border border-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
+                  >
+                    Retour aux parametres
+                  </button>
+                </div>
               </div>
             ) : null}
 
@@ -232,7 +256,7 @@ export default function TeamSettingsPage() {
             )}
 
             {feedback && <p className="mt-4 text-sm font-medium text-[#4ade80]">{feedback}</p>}
-            {error && <p className="mt-4 text-sm font-medium text-rose-300">{error}</p>}
+            {teamData && error && <p className="mt-4 text-sm font-medium text-rose-300">{error}</p>}
           </section>
 
           {teamData && (
