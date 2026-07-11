@@ -59,6 +59,11 @@ const EMPTY_NEW_EVENT_FORM: NewEventForm = {
 };
 
 type TeamMemberLite = { userId: string; name: string; role: string; isMe: boolean };
+type TeamPlanningPermissions = {
+  canManageTeamPlanning: boolean;
+  canAssignAppointments: boolean;
+  canCreatePersonalAppointments: boolean;
+};
 
 type CollaboratorFilter = 'all' | 'me' | 'unassigned' | string;
 
@@ -195,6 +200,7 @@ function EventPopover({
   router,
   teamMembers,
   singleUserWorkspace,
+  canReassign,
   onReassign,
   reassigning,
   reassignError,
@@ -204,12 +210,13 @@ function EventPopover({
   router: ReturnType<typeof useRouter>;
   teamMembers: TeamMemberLite[];
   singleUserWorkspace: boolean;
+  canReassign: boolean;
   onReassign: (event: NormalizedCalendarEvent, nextAssignedUserId: string | null) => void;
   reassigning: boolean;
   reassignError: string | null;
 }) {
   const style = EVENT_TYPE_STYLES[event.type];
-  const canReassign = event.source === 'kadria-appointment' && Boolean(event.rawAppointmentId) && !singleUserWorkspace;
+  const canReassignThisEvent = canReassign && event.source === 'kadria-appointment' && Boolean(event.rawAppointmentId) && !singleUserWorkspace;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -260,7 +267,7 @@ function EventPopover({
           </div>
         )}
 
-        {canReassign && (
+        {canReassignThisEvent && (
           <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
             <p className="text-xs font-semibold text-[var(--text-2)]">Collaborateur affecté</p>
             <p className="mt-1 text-sm text-[var(--text-1)]">
@@ -360,6 +367,11 @@ export default function DesktopAgendaView() {
   const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
   const [singleUserWorkspace, setSingleUserWorkspace] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [teamPermissions, setTeamPermissions] = useState<TeamPlanningPermissions>({
+    canManageTeamPlanning: false,
+    canAssignAppointments: false,
+    canCreatePersonalAppointments: false,
+  });
   const [collaboratorFilter, setCollaboratorFilter] = useState<CollaboratorFilter>('all');
 
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -464,13 +476,21 @@ export default function DesktopAgendaView() {
     }
   }, []);
 
-  const fetchAppointments = useCallback(async (rangeStart: Date) => {
+  const fetchAppointments = useCallback(async (rangeStart: Date, filterOverride?: CollaboratorFilter) => {
     setAppointmentsLoading(true);
     setAppointmentsError(null);
     try {
       const from = addDays(rangeStart, -1).toISOString();
       const to = addDays(rangeStart, 8).toISOString();
-      const response = await fetch(`/api/appointments/list?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      const activeFilter = filterOverride ?? collaboratorFilter;
+      const params = new URLSearchParams({
+        from,
+        to,
+      });
+      if (teamPermissions.canManageTeamPlanning && activeFilter && activeFilter !== 'all') {
+        params.set('collaborator', activeFilter);
+      }
+      const response = await fetch(`/api/appointments/list?${params.toString()}`);
       if (response.status === 401) {
         setAppointmentsError('Session expiree');
         return;
@@ -486,7 +506,7 @@ export default function DesktopAgendaView() {
     } finally {
       setAppointmentsLoading(false);
     }
-  }, []);
+  }, [collaboratorFilter, teamPermissions.canManageTeamPlanning]);
 
   const fetchTeamMembers = useCallback(async () => {
     try {
@@ -498,11 +518,21 @@ export default function DesktopAgendaView() {
       setTeamMembers(members);
       setSingleUserWorkspace(Boolean(json.singleUser));
       setCurrentUserId(json.currentUserId || null);
+      setTeamPermissions({
+        canManageTeamPlanning: Boolean(json.permissions?.canManageTeamPlanning),
+        canAssignAppointments: Boolean(json.permissions?.canAssignAppointments),
+        canCreatePersonalAppointments: Boolean(json.permissions?.canCreatePersonalAppointments),
+      });
     } catch {
       // Compatibilité mono-utilisateur / démo stricte : en cas d'échec, on
       // reste en mode mono-utilisateur (sélecteur masqué), sans bloquer
       // l'agenda existant.
       setSingleUserWorkspace(true);
+      setTeamPermissions({
+        canManageTeamPlanning: false,
+        canAssignAppointments: false,
+        canCreatePersonalAppointments: false,
+      });
     }
   }, []);
 
@@ -529,7 +559,7 @@ export default function DesktopAgendaView() {
 
   useEffect(() => {
     fetchAppointments(weekStart);
-  }, [fetchAppointments, weekStart]);
+  }, [fetchAppointments, weekStart, collaboratorFilter]);
 
   useEffect(() => {
     const agendaParam = searchParams?.get('agenda');
@@ -712,7 +742,7 @@ export default function DesktopAgendaView() {
 
       setShowQuickCreate(false);
       setQuickCreateForm(EMPTY_QUICK_CREATE_FORM);
-      showToast('Rendez-vous créé');
+      showToast(json.conflictWarning?.message || 'Rendez-vous créé', Boolean(json.conflictWarning));
       await fetchAppointments(weekStart);
     } catch {
       setQuickCreateError('Création impossible');
@@ -930,7 +960,7 @@ export default function DesktopAgendaView() {
 
       {/* Sélecteur de collaborateurs — masqué en tenant mono-utilisateur pour
           garder l'agenda strictement identique à l'existant. */}
-      {!singleUserWorkspace && (
+      {!singleUserWorkspace && teamPermissions.canManageTeamPlanning && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5">
           <Users className="ml-1 h-3.5 w-3.5 text-[var(--text-3)]" />
           {([
@@ -953,7 +983,7 @@ export default function DesktopAgendaView() {
         </div>
       )}
 
-      {unassignedCount > 0 && (
+      {teamPermissions.canManageTeamPlanning && unassignedCount > 0 && (
         <button
           type="button"
           onClick={() => setCollaboratorFilter('unassigned')}
@@ -1028,10 +1058,12 @@ export default function DesktopAgendaView() {
           <button
             type="button"
             onClick={() => {
+              if (!teamPermissions.canCreatePersonalAppointments) return;
               setShowCreateForm((value) => !value);
               setCreateError(null);
               setCreateSuccess(null);
             }}
+            disabled={!teamPermissions.canCreatePersonalAppointments}
             className="inline-flex items-center gap-2 rounded-lg bg-green-500 px-3 py-1.5 text-sm font-semibold text-black hover:bg-green-400"
           >
             <FileText className="h-4 w-4" />
@@ -1040,6 +1072,7 @@ export default function DesktopAgendaView() {
           <button
             type="button"
             onClick={() => openQuickCreate()}
+            disabled={!teamPermissions.canCreatePersonalAppointments}
             title="Création rapide (planning d'équipe)"
             className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
           >
@@ -1154,7 +1187,7 @@ export default function DesktopAgendaView() {
               ))}
             </select>
 
-            {!singleUserWorkspace && (
+            {!singleUserWorkspace && teamPermissions.canManageTeamPlanning && (
               <select
                 value={quickCreateForm.assignedUserId}
                 onChange={(e) => setQuickCreateForm((f) => ({ ...f, assignedUserId: e.target.value }))}
@@ -1380,6 +1413,7 @@ export default function DesktopAgendaView() {
           router={router}
           teamMembers={teamMembers}
           singleUserWorkspace={singleUserWorkspace}
+          canReassign={teamPermissions.canAssignAppointments}
           onReassign={handleReassign}
           reassigning={reassigning}
           reassignError={reassignError}

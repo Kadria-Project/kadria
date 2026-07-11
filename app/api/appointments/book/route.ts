@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
-import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
-import { fetchBusyIntervals } from '@/src/lib/google-calendar-busy'
+import {
+  canCreatePersonalAppointments,
+  canManageTeamPlanning,
+  findAppointmentConflict,
+  listAssignableAppointmentMembers,
+  logAppointmentActivity,
+} from '@/src/lib/appointments/access'
 import { isSlotStillFree } from '@/src/lib/appointment-slots'
+import { fetchBusyIntervals } from '@/src/lib/google-calendar-busy'
+import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { TABLES } from '@/src/lib/airtable'
 
 interface GoogleEvent {
   id: string
@@ -27,37 +34,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Corps de requête invalide' }, { status: 400 })
     }
 
-    const { projectId, start, end, location, note } = body as {
+    const { projectId, start, end, location, note, assignedUserId: requestedAssignedUserId } = body as {
       projectId?: string
       start?: string
       end?: string
       location?: string
       note?: string
+      assignedUserId?: string | null
     }
 
     if (!projectId || !start || !end) {
       return NextResponse.json({ success: false, error: 'projectId, start et end requis' }, { status: 400 })
     }
 
-    const { data: project, error: projectError } = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('id, artisan_id, client_name, client_first_name, client_email, client_phone, site_address, city, project_type, budget, desired_timeline')
-      .eq('id', projectId)
-      .maybeSingle()
+    const access = await authorizeProjectAccess({
+      projectId,
+      select: 'id, tenant_id, artisan_id, client_name, client_first_name, client_email, client_phone, site_address, city, project_type, budget, desired_timeline',
+      allowAppointmentAccess: true,
+    })
 
-    if (projectError) {
-      console.error('[APPOINTMENTS BOOK] Erreur lecture projet:', projectError.message)
-      return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
-    }
-
-    if (!project) {
+    if (!access) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
-    if (project.artisan_id !== session.artisanId) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
+    const tenantContext = access.tenantContext
+    if (tenantContext && !canCreatePersonalAppointments(tenantContext)) {
+      return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
 
+    const project = access.project as Record<string, unknown>
     const { row, tableMissing } = await getCalendarIntegration(session.artisanId)
     if (tableMissing || !row || !row.is_connected) {
       return NextResponse.json({ success: false, error: 'not_connected' }, { status: 409 })
@@ -68,9 +73,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'not_connected' }, { status: 409 })
     }
 
-    // Re-vérification anti-course : on recharge les événements à l'instant T
-    // et on s'assure que le créneau demandé est toujours libre avant de
-    // créer l'événement Google Calendar.
     const now = new Date()
     let busyIntervals
     try {
@@ -82,6 +84,36 @@ export async function POST(request: NextRequest) {
     if (!isSlotStillFree(start, end, busyIntervals, now)) {
       return NextResponse.json({ success: false, error: 'slot_unavailable' }, { status: 409 })
     }
+
+    let assignedUserId: string | null = tenantContext?.userId || null
+    let assignedUserName: string | null = null
+
+    if (tenantContext) {
+      const canManageTeam = canManageTeamPlanning(tenantContext)
+      if (canManageTeam && requestedAssignedUserId) {
+        const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
+        const member = assignableMembers.find((item) => item.userId === requestedAssignedUserId)
+        if (!member) {
+          return NextResponse.json(
+            { success: false, error: "Le collaborateur sélectionné n'appartient pas à votre équipe." },
+            { status: 403 },
+          )
+        }
+        assignedUserId = requestedAssignedUserId
+        assignedUserName = [member.firstName, member.lastName].filter(Boolean).join(' ').trim() || member.email
+      } else if (tenantContext.userId) {
+        assignedUserName = [tenantContext.user.firstName, tenantContext.user.lastName].filter(Boolean).join(' ').trim() || tenantContext.user.email
+      }
+    }
+
+    const conflict = tenantContext
+      ? await findAppointmentConflict({
+          tenantId: tenantContext.tenantId,
+          assignedUserId,
+          start,
+          end,
+        })
+      : null
 
     const clientFullName = [project.client_first_name, project.client_name].filter(Boolean).join(' ').trim()
     const title = `RDV - ${clientFullName || 'Client'}`
@@ -97,7 +129,6 @@ export async function POST(request: NextRequest) {
       [project.site_address, project.city].filter(Boolean).join(', ') || location || undefined
 
     const timeZone = 'Europe/Paris'
-
     const googleEventBody: Record<string, unknown> = {
       summary: title,
       description,
@@ -121,10 +152,9 @@ export async function POST(request: NextRequest) {
     }
 
     const created = (await createResponse.json()) as GoogleEvent
-
     const insertRow = {
       artisan_id: session.artisanId,
-      project_id: projectId,
+      project_id: access.projectId,
       provider: 'google',
       google_event_id: created.id || null,
       title,
@@ -135,18 +165,35 @@ export async function POST(request: NextRequest) {
       client_email: project.client_email || null,
       client_phone: project.client_phone || null,
       status: 'confirmed',
+      tenant_id: tenantContext?.tenantId || null,
+      assigned_user_id: assignedUserId,
+      created_by_user_id: tenantContext?.userId || null,
+      event_type: 'appointment',
+      all_day: false,
+      description: description || null,
+      source: 'google-project-booking',
+      is_unassigned: !assignedUserId,
+      updated_at: new Date().toISOString(),
     }
 
     const { data: appointment, error: insertError } = await supabaseAdmin
       .from('project_appointments')
       .insert(insertRow)
-      .select('id, start_time, end_time, location, status')
+      .select('id, start_time, end_time, location, status, assigned_user_id, event_type, is_unassigned')
       .single()
 
     if (insertError) {
       console.error('[APPOINTMENTS BOOK] Erreur insertion project_appointments:', insertError.message)
       return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
     }
+
+    await logAppointmentActivity({
+      projectId: access.projectId,
+      action: 'APPOINTMENT_BOOKED',
+      description: assignedUserId
+        ? `Rendez-vous planifié pour ${assignedUserName || 'un collaborateur'}`
+        : 'Rendez-vous planifié sans collaborateur affecté',
+    })
 
     return NextResponse.json({
       success: true,
@@ -156,7 +203,16 @@ export async function POST(request: NextRequest) {
         end: appointment.end_time,
         location: appointment.location,
         status: appointment.status,
+        assignedUserId: appointment.assigned_user_id,
+        eventType: appointment.event_type,
+        isUnassigned: appointment.is_unassigned,
       },
+      conflictWarning: conflict
+        ? {
+            message: 'Ce collaborateur a déjà un rendez-vous sur ce créneau.',
+            appointmentId: conflict.id,
+          }
+        : null,
     })
   } catch (error) {
     console.error('[APPOINTMENTS BOOK]', error instanceof Error ? error.message : String(error))

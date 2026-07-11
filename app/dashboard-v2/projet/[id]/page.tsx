@@ -837,6 +837,10 @@ function ProjectDetail() {
     end: string;
     location: string | null;
     status: string;
+    eventType?: string | null;
+    assignedUserId?: string | null;
+    assignedUserName?: string | null;
+    isUnassigned?: boolean;
   } | null>(null);
   const [loadingAppointment, setLoadingAppointment] = useState(false);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
@@ -855,6 +859,9 @@ function ProjectDetail() {
   const [appointmentStartTime, setAppointmentStartTime] = useState<string>('09:00');
   const [halfDayPeriod, setHalfDayPeriod] = useState<'morning' | 'afternoon'>('morning');
   const [multiDayEndDate, setMultiDayEndDate] = useState<string>('');
+  const [appointmentAssignedUserId, setAppointmentAssignedUserId] = useState<string>('');
+  const [appointmentTeamMembers, setAppointmentTeamMembers] = useState<Array<{ userId: string; name: string; role: string; isMe: boolean }>>([]);
+  const [appointmentCanAssign, setAppointmentCanAssign] = useState(false);
 
   const [editingContact, setEditingContact] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -1245,6 +1252,17 @@ function ProjectDetail() {
       .then((r) => r.json())
       .then((data) => {
         if (data.success) setArtisanConfig(data.config);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/team/members-lite', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data?.success) return;
+        setAppointmentTeamMembers(Array.isArray(data.members) ? data.members : []);
+        setAppointmentCanAssign(Boolean(data.permissions?.canAssignAppointments));
       })
       .catch(() => {});
   }, []);
@@ -1807,6 +1825,7 @@ function ProjectDetail() {
     setAppointmentStartTime('09:00');
     setHalfDayPeriod('morning');
     setMultiDayEndDate('');
+    setAppointmentAssignedUserId('');
     setShowAppointmentModal(true);
     fetchAppointmentSlots();
   }
@@ -1868,6 +1887,7 @@ function ProjectDetail() {
           projectId: project.id,
           start: range.start,
           end: range.end,
+          assignedUserId: appointmentCanAssign ? (appointmentAssignedUserId || undefined) : undefined,
         }),
       });
       const data = await res.json();
@@ -3235,6 +3255,12 @@ function ProjectDetail() {
               <div>
                 <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{formatDateTime(appointment.start)}</p>
                 {appointment.location && <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>📍 {appointment.location}</p>}
+                <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>
+                  👤 {appointment.isUnassigned ? 'Non affecté' : appointment.assignedUserName || 'Collaborateur à confirmer'}
+                </p>
+                <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>
+                  {appointment.eventType === 'intervention' ? 'Intervention' : appointment.eventType === 'site_visit' ? 'Visite technique' : 'Rendez-vous client'}
+                </p>
                 <p style={{ margin: 0, fontSize: '11px', color: 'var(--accent)' }}>✓ Synchronisé Google Calendar</p>
               </div>
             ) : (
@@ -3355,6 +3381,30 @@ function ProjectDetail() {
                   onChange={(e) => handleAppointmentDateChange(e.target.value)}
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">
+                  Collaborateur affecté
+                </label>
+                {appointmentCanAssign ? (
+                  <select
+                    value={appointmentAssignedUserId}
+                    onChange={(e) => setAppointmentAssignedUserId(e.target.value)}
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                  >
+                    <option value="">Non affecté</option>
+                    {appointmentTeamMembers.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.isMe ? `${member.name} (moi)` : member.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-2)]">
+                    Affecté à vous à la confirmation.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -6541,6 +6591,30 @@ function ProjectDetail() {
                 onChange={(e) => handleAppointmentDateChange(e.target.value)}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">
+                Collaborateur affecté
+              </label>
+              {appointmentCanAssign ? (
+                <select
+                  value={appointmentAssignedUserId}
+                  onChange={(e) => setAppointmentAssignedUserId(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
+                >
+                  <option value="">Non affecté</option>
+                  {appointmentTeamMembers.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.isMe ? `${member.name} (moi)` : member.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-2)]">
+                  Affecté à vous à la confirmation.
+                </p>
+              )}
             </div>
 
             <div>

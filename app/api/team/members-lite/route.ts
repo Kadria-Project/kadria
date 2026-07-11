@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { canAssignAppointments, canCreatePersonalAppointments, canManageTeamPlanning } from '@/src/lib/appointments/access'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { listTeamMembers } from '@/src/lib/team/service'
 
@@ -18,7 +19,7 @@ export async function GET() {
     }
 
     const members = await listTeamMembers(tenantContext.tenantId)
-    const activeMembers = members.filter((member) => member.status === 'active')
+    const activeMembers = members.filter((member) => member.status === 'active' && member.role !== 'viewer')
 
     return NextResponse.json({
       success: true,
@@ -30,6 +31,11 @@ export async function GET() {
       })),
       singleUser: activeMembers.length <= 1,
       currentUserId: tenantContext.userId,
+      permissions: {
+        canManageTeamPlanning: canManageTeamPlanning(tenantContext),
+        canAssignAppointments: canAssignAppointments(tenantContext),
+        canCreatePersonalAppointments: canCreatePersonalAppointments(tenantContext),
+      },
     })
   } catch (error) {
     console.error('[TEAM MEMBERS LITE]', error instanceof Error ? error.message : String(error))

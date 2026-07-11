@@ -1,27 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
-import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { TABLES } from '@/src/lib/airtable'
-import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import {
+  canCreatePersonalAppointments,
+  canManageTeamPlanning,
+  canReadPlanning,
+  findAppointmentConflict,
+  listAssignableAppointmentMembers,
+  logAppointmentActivity,
+  resolveProjectForAppointment,
+} from '@/src/lib/appointments/access'
 import { isEventType } from '@/src/lib/calendar/event-types'
-import { listTeamMembers } from '@/src/lib/team/service'
+import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 
-// Création rapide d'un rendez-vous depuis le planning d'équipe desktop
-// (bouton "+" / clic sur un créneau vide). Distincte de
-// /api/appointments/book (qui crée un événement Google Calendar synchronisé
-// pour un projet donné) : cette route crée directement une ligne
-// `project_appointments` "Kadria" (source = 'team-planning'), avec ou sans
-// projet lié, avec un type d'événement et une affectation collaborateur.
-//
-// SÉCURITÉ MULTI-TENANT (critique) :
-// - Le tenant est TOUJOURS résolu côté serveur via getCurrentTenantContext()
-//   — jamais un tenant_id envoyé par le client.
-// - Si un projectId est fourni, on vérifie qu'il appartient bien au tenant
-//   courant avant de l'utiliser (sinon rejet 403).
-// - Si un assignedUserId est fourni par le client, on vérifie qu'il
-//   correspond bien à un membre ACTIF du tenant courant avant de l'accepter
-//   (sinon rejet explicite 400/403). En tenant mono-utilisateur, l'affectation
-//   est automatique au seul membre actif sans consulter le client.
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
@@ -30,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const tenantContext = await getCurrentTenantContext()
-    if (!tenantContext) {
+    if (!tenantContext || !canReadPlanning(tenantContext) || !canCreatePersonalAppointments(tenantContext)) {
       return NextResponse.json(
         { success: false, error: 'Contexte workspace introuvable pour ce compte.' },
         { status: 403 },
@@ -68,68 +59,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Titre et date de début requis' }, { status: 400 })
     }
 
+    const endValue = end || start
     if (!isEventType(eventType)) {
-      return NextResponse.json({ success: false, error: 'Type d’événement invalide' }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
     }
 
-    // Projet optionnel : s'il est fourni, il DOIT appartenir au tenant
-    // courant. On ne fait jamais confiance à des champs client/adresse
-    // envoyés directement — on relit toujours depuis le projet en base.
     let clientName: string | null = null
     let clientPhone: string | null = null
     let resolvedLocation: string | null = location || null
 
     if (projectId) {
-      const { data: project, error: projectError } = await supabaseAdmin
-        .from(TABLES.projects)
-        .select('id, tenant_id, artisan_id, client_name, client_first_name, client_phone, site_address, city')
-        .eq('id', projectId)
-        .maybeSingle()
-
-      if (projectError) {
-        console.error('[APPOINTMENTS CREATE] Erreur lecture projet:', projectError.message)
-        return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
-      }
+      const project = await resolveProjectForAppointment({ projectId, tenantContext })
       if (!project) {
         return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
       }
-      const projectTenantId = (project as Record<string, unknown>).tenant_id
-        ? String((project as Record<string, unknown>).tenant_id)
-        : null
-      const projectBelongsToTenant = projectTenantId
-        ? projectTenantId === tenantContext.tenantId
-        : project.artisan_id === tenantContext.legacyArtisanId
-      if (!projectBelongsToTenant) {
-        return NextResponse.json({ success: false, error: 'Accès non autorisé à ce projet' }, { status: 403 })
-      }
 
-      clientName = [project.client_first_name, project.client_name].filter(Boolean).join(' ').trim() || null
-      clientPhone = project.client_phone || null
-      resolvedLocation = resolvedLocation || [project.site_address, project.city].filter(Boolean).join(', ') || null
+      const projectRecord = project as Record<string, unknown>
+      clientName = [projectRecord.client_first_name, projectRecord.client_name].filter(Boolean).join(' ').trim() || null
+      clientPhone = projectRecord.client_phone ? String(projectRecord.client_phone) : null
+      resolvedLocation = resolvedLocation || [projectRecord.site_address, projectRecord.city].filter(Boolean).join(', ') || null
     }
 
-    // Affectation collaborateur : on ne fait JAMAIS confiance à un
-    // assignedUserId client sans vérifier qu'il appartient au tenant en
-    // cours, en tant que membre actif.
-    const activeMembers = await listTeamMembers(tenantContext.tenantId)
-    const activeMemberIds = new Set(activeMembers.filter((m) => m.status === 'active').map((m) => m.userId))
+    const canManageTeam = canManageTeamPlanning(tenantContext)
+    const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
+    const assignableMemberIds = new Set(assignableMembers.map((member) => member.userId))
 
     let assignedUserId: string | null = null
-    if (activeMemberIds.size <= 1) {
-      // Tenant mono-utilisateur : affectation automatique, aucune valeur
-      // cliente prise en compte.
+    if (!canManageTeam) {
       assignedUserId = tenantContext.userId
     } else if (requestedAssignedUserId) {
-      if (!activeMemberIds.has(requestedAssignedUserId)) {
+      if (!assignableMemberIds.has(requestedAssignedUserId)) {
         return NextResponse.json(
-          { success: false, error: 'Le collaborateur sélectionné n’appartient pas à votre équipe.' },
+          { success: false, error: "Le collaborateur sélectionné n'appartient pas à votre équipe." },
           { status: 403 },
         )
       }
       assignedUserId = requestedAssignedUserId
     }
-    // Si aucun assignedUserId n'est fourni et que le tenant a plusieurs
-    // membres, l'événement reste volontairement non affecté (is_unassigned).
+
+    const conflict = await findAppointmentConflict({
+      tenantId: tenantContext.tenantId,
+      assignedUserId,
+      start,
+      end: endValue,
+    })
 
     const insertRow = {
       artisan_id: tenantContext.legacyArtisanId,
@@ -137,7 +110,7 @@ export async function POST(request: NextRequest) {
       provider: 'kadria',
       title,
       start_time: start,
-      end_time: end || start,
+      end_time: endValue,
       location: resolvedLocation,
       client_name: clientName,
       client_phone: clientPhone,
@@ -150,6 +123,7 @@ export async function POST(request: NextRequest) {
       description: description || null,
       source: 'team-planning',
       is_unassigned: !assignedUserId,
+      updated_at: new Date().toISOString(),
     }
 
     const { data: appointment, error: insertError } = await supabaseAdmin
@@ -163,6 +137,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
     }
 
+    await logAppointmentActivity({
+      projectId: projectId || null,
+      action: 'APPOINTMENT_CREATED',
+      description: assignedUserId
+        ? `Rendez-vous créé et affecté à ${assignableMembers.find((member) => member.userId === assignedUserId)?.firstName || 'un collaborateur'}`
+        : 'Rendez-vous créé sans collaborateur affecté',
+    })
+
     return NextResponse.json({
       success: true,
       appointment: {
@@ -175,6 +157,12 @@ export async function POST(request: NextRequest) {
         isUnassigned: appointment.is_unassigned,
         eventType: appointment.event_type,
       },
+      conflictWarning: conflict
+        ? {
+            message: 'Ce collaborateur a déjà un rendez-vous sur ce créneau.',
+            appointmentId: conflict.id,
+          }
+        : null,
     })
   } catch (error) {
     console.error('[APPOINTMENTS CREATE]', error instanceof Error ? error.message : String(error))

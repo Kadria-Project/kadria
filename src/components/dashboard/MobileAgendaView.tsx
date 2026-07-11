@@ -1,19 +1,26 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import type { useRouter } from 'next/navigation';
-import { CalendarDays, Link2, MapPin, RefreshCw, Unplug, FileText, Clock3, Briefcase, CheckCircle2 } from 'lucide-react';
-import LoadingSkeleton, { LoadingStyles } from '@/src/components/ui/loading/LoadingSkeleton';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  buildKadriaPlanningItems,
-  normalizeCalendarMode,
-  type CalendarMode,
-  type KadriaPlanningItem,
-  type KadriaPlanningProject,
-} from '@/src/lib/kadria-planning';
-
-type Router = ReturnType<typeof useRouter>;
+  CalendarDays,
+  FileText,
+  Link2,
+  MapPin,
+  RefreshCw,
+  Unplug,
+  User,
+  CheckCircle2,
+} from 'lucide-react';
+import LoadingSkeleton, { LoadingStyles } from '@/src/components/ui/loading/LoadingSkeleton';
+import { normalizeCalendarMode, type CalendarMode, type KadriaPlanningProject } from '@/src/lib/kadria-planning';
+import {
+  EVENT_TYPE_STYLES,
+  normalizeKadriaAppointment,
+  type NormalizedCalendarEvent,
+  type RawKadriaAppointment,
+} from '@/src/lib/calendar/normalized-event';
+import { EVENT_TYPES_UI, EVENT_TYPE_LABELS, type EventType } from '@/src/lib/calendar/event-types';
 
 const COLORS = {
   bg: 'var(--bg)',
@@ -34,12 +41,14 @@ const card: React.CSSProperties = {
   padding: '18px',
 };
 
+type Router = ReturnType<typeof useRouter>;
+
 type CalendarStatus = {
   connected: boolean;
   email: string | null;
 };
 
-type CalendarEvent = {
+type GoogleCalendarEvent = {
   id: string;
   title: string;
   start: string | null;
@@ -47,7 +56,22 @@ type CalendarEvent = {
   location: string | null;
 };
 
-type NewEventForm = {
+type TeamMemberLite = {
+  userId: string;
+  name: string;
+  role: string;
+  isMe: boolean;
+};
+
+type TeamPlanningPermissions = {
+  canManageTeamPlanning: boolean;
+  canAssignAppointments: boolean;
+  canCreatePersonalAppointments: boolean;
+};
+
+type CollaboratorFilter = 'all' | 'me' | 'unassigned' | string;
+
+type NewGoogleEventForm = {
   titre: string;
   date: string;
   heureDebut: string;
@@ -56,8 +80,32 @@ type NewEventForm = {
   note: string;
 };
 
-const EMPTY_NEW_EVENT_FORM: NewEventForm = {
+type NewAppointmentForm = {
+  titre: string;
+  eventType: EventType;
+  projectId: string;
+  assignedUserId: string;
+  date: string;
+  heureDebut: string;
+  heureFin: string;
+  lieu: string;
+  note: string;
+};
+
+const EMPTY_NEW_GOOGLE_EVENT_FORM: NewGoogleEventForm = {
   titre: '',
+  date: '',
+  heureDebut: '',
+  heureFin: '',
+  lieu: '',
+  note: '',
+};
+
+const EMPTY_NEW_APPOINTMENT_FORM: NewAppointmentForm = {
+  titre: '',
+  eventType: 'appointment',
+  projectId: '',
+  assignedUserId: '',
   date: '',
   heureDebut: '',
   heureFin: '',
@@ -83,37 +131,40 @@ function formatEventRange(start: string | null, end: string | null): string {
   }
 }
 
-function formatPlanningDate(value: string | null): string {
-  if (!value) return 'Date a confirmer';
-  try {
-    return new Date(value).toLocaleString('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return 'Date a confirmer';
-  }
+function buildIsoDateTime(date: string, time: string) {
+  return `${date}T${time}:00`;
 }
 
-function getDueStateCopy(item: KadriaPlanningItem): { label: string; style: React.CSSProperties } {
-  if (item.dueState === 'overdue') {
-    return { label: 'En retard', style: { background: 'rgba(239,68,68,0.12)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.25)' } };
-  }
-  if (item.dueState === 'today') {
-    return { label: "Aujourd'hui", style: { background: 'rgba(245,158,11,0.12)', color: '#fde68a', border: '1px solid rgba(245,158,11,0.25)' } };
-  }
-  if (item.dueState === 'upcoming') {
-    return { label: 'A venir', style: { background: COLORS.accentDim, color: COLORS.accent, border: `1px solid ${COLORS.accentBorder}` } };
-  }
-  return { label: 'A planifier', style: { background: COLORS.bg, color: COLORS.text3, border: `1px solid ${COLORS.border}` } };
-}
-
-function getItemIcon(kind: KadriaPlanningItem['kind']) {
-  if (kind === 'callback') return Clock3;
-  if (kind === 'quote') return FileText;
-  return Briefcase;
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '8px 12px',
+        borderRadius: '999px',
+        border: active ? `1px solid ${COLORS.accentBorder}` : `1px solid ${COLORS.border}`,
+        background: active ? COLORS.accentDim : COLORS.bg,
+        color: active ? COLORS.accent : COLORS.text2,
+        fontSize: '12px',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </button>
+  );
 }
 
 function ModeCard({
@@ -155,6 +206,109 @@ function ModeCard({
   );
 }
 
+function AppointmentCard({
+  appointment,
+  onOpenProject,
+}: {
+  appointment: NormalizedCalendarEvent;
+  onOpenProject: (projectId: string) => void;
+}) {
+  const style = EVENT_TYPE_STYLES[appointment.type];
+
+  return (
+    <div
+      style={{
+        padding: '12px',
+        borderRadius: '14px',
+        background: COLORS.bg,
+        border: `1px solid ${COLORS.border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                padding: '4px 8px',
+                borderRadius: '999px',
+                background: style.bg,
+                border: `1px solid ${style.border}`,
+                color: style.text,
+                fontSize: '11px',
+                fontWeight: 700,
+              }}
+            >
+              {style.label}
+            </span>
+            {appointment.status && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  padding: '4px 8px',
+                  borderRadius: '999px',
+                  border: `1px solid ${COLORS.border}`,
+                  color: COLORS.text3,
+                  fontSize: '11px',
+                  fontWeight: 600,
+                }}
+              >
+                {appointment.status}
+              </span>
+            )}
+          </div>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: COLORS.text1 }}>{appointment.title}</p>
+          <p style={{ margin: '4px 0 0', fontSize: '12px', color: COLORS.text2 }}>{formatEventRange(appointment.start, appointment.end)}</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
+          <User style={{ width: 12, height: 12, marginRight: '6px', verticalAlign: 'middle' }} />
+          {appointment.isUnassigned ? 'Non affecte' : appointment.assignedUserName || 'Collaborateur a confirmer'}
+        </p>
+        {appointment.clientName && (
+          <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
+            Client : {appointment.clientName}
+          </p>
+        )}
+        {appointment.location && (
+          <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
+            <MapPin style={{ width: 12, height: 12, marginRight: '6px', verticalAlign: 'middle' }} />
+            {appointment.location}
+          </p>
+        )}
+      </div>
+
+      {appointment.projectId && (
+        <button
+          type="button"
+          onClick={() => onOpenProject(appointment.projectId as string)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            border: `1px solid ${COLORS.border}`,
+            background: COLORS.bgElevated,
+            color: COLORS.text1,
+            fontSize: '12px',
+            fontWeight: 700,
+          }}
+        >
+          <FileText style={{ width: 14, height: 14 }} />
+          Ouvrir le dossier
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   const searchParams = useSearchParams();
 
@@ -166,7 +320,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   const [calendarStatus, setCalendarStatus] = useState<CalendarStatus>({ connected: false, email: null });
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
 
@@ -174,19 +328,43 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
+  const [appointments, setAppointments] = useState<RawKadriaAppointment[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+
+  const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
+  const [teamPermissions, setTeamPermissions] = useState<TeamPlanningPermissions>({
+    canManageTeamPlanning: false,
+    canAssignAppointments: false,
+    canCreatePersonalAppointments: false,
+  });
+  const [collaboratorFilter, setCollaboratorFilter] = useState<CollaboratorFilter>('me');
+
   const [disconnecting, setDisconnecting] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [returnMessage, setReturnMessage] = useState<string | null>(null);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
-  const [newEvent, setNewEvent] = useState<NewEventForm>(EMPTY_NEW_EVENT_FORM);
+  const [showCreateGoogleForm, setShowCreateGoogleForm] = useState(false);
+  const [creatingGoogleEvent, setCreatingGoogleEvent] = useState(false);
+  const [googleCreateError, setGoogleCreateError] = useState<string | null>(null);
+  const [googleCreateSuccess, setGoogleCreateSuccess] = useState<string | null>(null);
+  const [newGoogleEvent, setNewGoogleEvent] = useState<NewGoogleEventForm>(EMPTY_NEW_GOOGLE_EVENT_FORM);
 
-  const planningItems = useMemo(() => buildKadriaPlanningItems(projects), [projects]);
-  const overdueCount = planningItems.filter((item) => item.dueState === 'overdue').length;
-  const todayCount = planningItems.filter((item) => item.dueState === 'today').length;
+  const [showCreateAppointmentForm, setShowCreateAppointmentForm] = useState(false);
+  const [creatingAppointment, setCreatingAppointment] = useState(false);
+  const [appointmentCreateError, setAppointmentCreateError] = useState<string | null>(null);
+  const [appointmentCreateSuccess, setAppointmentCreateSuccess] = useState<string | null>(null);
+  const [newAppointment, setNewAppointment] = useState<NewAppointmentForm>(EMPTY_NEW_APPOINTMENT_FORM);
+
+  const normalizedAppointments = useMemo(
+    () => appointments.map(normalizeKadriaAppointment).sort((a, b) => new Date(a.start || '').getTime() - new Date(b.start || '').getTime()),
+    [appointments],
+  );
+
+  const unassignedCount = useMemo(
+    () => normalizedAppointments.filter((appointment) => appointment.isUnassigned).length,
+    [normalizedAppointments],
+  );
 
   const fetchAgendaConfig = useCallback(async () => {
     try {
@@ -257,16 +435,71 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
       }
       const json = await response.json();
       if (!json.success) {
-        setProjectsError('Chargement du planning impossible');
+        setProjectsError('Chargement des dossiers impossible');
         return;
       }
       setProjects(Array.isArray(json.projects) ? json.projects : []);
     } catch {
-      setProjectsError('Chargement du planning impossible');
+      setProjectsError('Chargement des dossiers impossible');
     } finally {
       setProjectsLoading(false);
     }
   }, []);
+
+  const fetchTeamMembers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/team/members-lite', { cache: 'no-store' });
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        return;
+      }
+      const members = Array.isArray(json.members) ? json.members : [];
+      setTeamMembers(members);
+      setTeamPermissions({
+        canManageTeamPlanning: Boolean(json.permissions?.canManageTeamPlanning),
+        canAssignAppointments: Boolean(json.permissions?.canAssignAppointments),
+        canCreatePersonalAppointments: Boolean(json.permissions?.canCreatePersonalAppointments),
+      });
+      const meMember = members.find((member: TeamMemberLite) => member.isMe);
+      setCollaboratorFilter((current) => {
+        if (current === 'all' && !json.permissions?.canManageTeamPlanning) return 'me';
+        if (current && current !== 'all') return current;
+        return json.permissions?.canManageTeamPlanning ? 'all' : meMember?.userId || 'me';
+      });
+    } catch {
+      setTeamMembers([]);
+    }
+  }, []);
+
+  const fetchAppointments = useCallback(async (filterOverride?: CollaboratorFilter) => {
+    setAppointmentsLoading(true);
+    setAppointmentsError(null);
+    try {
+      const params = new URLSearchParams();
+      const activeFilter = filterOverride ?? collaboratorFilter;
+      if (teamPermissions.canManageTeamPlanning && activeFilter && activeFilter !== 'all') {
+        params.set('collaborator', activeFilter);
+      }
+      if (!teamPermissions.canManageTeamPlanning) {
+        params.set('collaborator', 'me');
+      }
+      const response = await fetch(`/api/appointments/list?${params.toString()}`, { cache: 'no-store' });
+      if (response.status === 401) {
+        setAppointmentsError('Session expiree');
+        return;
+      }
+      const json = await response.json();
+      if (!response.ok || !json.success) {
+        setAppointmentsError(json.error || 'Chargement du planning impossible');
+        return;
+      }
+      setAppointments(Array.isArray(json.appointments) ? json.appointments : []);
+    } catch {
+      setAppointmentsError('Chargement du planning impossible');
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  }, [collaboratorFilter, teamPermissions.canManageTeamPlanning]);
 
   useEffect(() => {
     fetchStatus();
@@ -274,16 +507,21 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   }, [fetchAgendaConfig, fetchStatus]);
 
   useEffect(() => {
+    void fetchTeamMembers();
+    void fetchProjects();
+  }, [fetchProjects, fetchTeamMembers]);
+
+  useEffect(() => {
     if (calendarMode === 'google' && calendarStatus.connected) {
-      fetchEvents();
+      void fetchEvents();
       return;
     }
     if (calendarMode === 'kadria') {
-      fetchProjects();
+      void fetchAppointments();
       return;
     }
     setEvents([]);
-  }, [calendarMode, calendarStatus.connected, fetchEvents, fetchProjects]);
+  }, [calendarMode, calendarStatus.connected, fetchAppointments, fetchEvents]);
 
   useEffect(() => {
     const agendaParam = searchParams?.get('agenda');
@@ -291,7 +529,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
 
     if (agendaParam === 'connected') {
       setReturnMessage('Google Calendar connecte');
-      fetchStatus();
+      void fetchStatus();
     } else if (agendaParam === 'error') {
       setReturnMessage('Connexion Google impossible');
     }
@@ -351,53 +589,107 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     }
   }, [fetchStatus]);
 
-  const handleCreateEvent = useCallback(async () => {
-    setCreateError(null);
-    setCreateSuccess(null);
+  const handleCreateGoogleEvent = useCallback(async () => {
+    setGoogleCreateError(null);
+    setGoogleCreateSuccess(null);
 
-    if (!newEvent.titre || !newEvent.date || !newEvent.heureDebut || !newEvent.heureFin) {
-      setCreateError('Titre, date, heure de debut et heure de fin requis');
+    if (!newGoogleEvent.titre || !newGoogleEvent.date || !newGoogleEvent.heureDebut || !newGoogleEvent.heureFin) {
+      setGoogleCreateError('Titre, date, heure de debut et heure de fin requis');
       return;
     }
 
-    const start = `${newEvent.date}T${newEvent.heureDebut}:00`;
-    const end = `${newEvent.date}T${newEvent.heureFin}:00`;
+    const start = buildIsoDateTime(newGoogleEvent.date, newGoogleEvent.heureDebut);
+    const end = buildIsoDateTime(newGoogleEvent.date, newGoogleEvent.heureFin);
 
-    setCreating(true);
+    setCreatingGoogleEvent(true);
     try {
       const response = await fetch('/api/integrations/google-calendar/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: newEvent.titre,
-          description: newEvent.note || undefined,
+          title: newGoogleEvent.titre,
+          description: newGoogleEvent.note || undefined,
           start,
           end,
-          location: newEvent.lieu || undefined,
+          location: newGoogleEvent.lieu || undefined,
         }),
       });
 
       if (response.status === 401) {
-        setCreateError('Session expiree');
+        setGoogleCreateError('Session expiree');
         return;
       }
 
       const json = await response.json();
       if (!json.success) {
-        setCreateError(json.error || 'Connexion Google impossible');
+        setGoogleCreateError(json.error || 'Connexion Google impossible');
         return;
       }
 
-      setCreateSuccess("Rendez-vous planifie. L'evenement a ete ajoute a Google Calendar.");
-      setNewEvent(EMPTY_NEW_EVENT_FORM);
-      setShowCreateForm(false);
+      setGoogleCreateSuccess("Rendez-vous planifie. L'evenement a ete ajoute a Google Calendar.");
+      setNewGoogleEvent(EMPTY_NEW_GOOGLE_EVENT_FORM);
+      setShowCreateGoogleForm(false);
       await fetchEvents();
     } catch {
-      setCreateError('Connexion Google impossible');
+      setGoogleCreateError('Connexion Google impossible');
     } finally {
-      setCreating(false);
+      setCreatingGoogleEvent(false);
     }
-  }, [fetchEvents, newEvent]);
+  }, [fetchEvents, newGoogleEvent]);
+
+  const handleCreateAppointment = useCallback(async () => {
+    setAppointmentCreateError(null);
+    setAppointmentCreateSuccess(null);
+
+    if (!newAppointment.titre || !newAppointment.date || !newAppointment.heureDebut || !newAppointment.heureFin) {
+      setAppointmentCreateError('Titre, date, heure de debut et heure de fin requis');
+      return;
+    }
+
+    setCreatingAppointment(true);
+    try {
+      const response = await fetch('/api/appointments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newAppointment.titre,
+          eventType: newAppointment.eventType,
+          projectId: newAppointment.projectId || undefined,
+          assignedUserId:
+            teamPermissions.canManageTeamPlanning && newAppointment.assignedUserId
+              ? newAppointment.assignedUserId
+              : undefined,
+          start: buildIsoDateTime(newAppointment.date, newAppointment.heureDebut),
+          end: buildIsoDateTime(newAppointment.date, newAppointment.heureFin),
+          location: newAppointment.lieu || undefined,
+          description: newAppointment.note || undefined,
+        }),
+      });
+
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.success) {
+        setAppointmentCreateError(json?.error || 'Creation du rendez-vous impossible');
+        return;
+      }
+
+      setAppointmentCreateSuccess(json.conflictWarning?.message || 'Rendez-vous cree');
+      setNewAppointment(EMPTY_NEW_APPOINTMENT_FORM);
+      setShowCreateAppointmentForm(false);
+      await fetchAppointments();
+    } finally {
+      setCreatingAppointment(false);
+    }
+  }, [fetchAppointments, newAppointment, teamPermissions.canManageTeamPlanning]);
+
+  const projectOptions = useMemo(
+    () =>
+      projects.map((project) => ({
+        id: project.id || '',
+        label: [project.clientFirstName, project.clientName].filter(Boolean).join(' ').trim() || project.projectType || 'Dossier',
+        meta: [project.projectType, project.city].filter(Boolean).join(' · '),
+      })),
+    [projects],
+  );
 
   return (
     <div
@@ -431,9 +723,9 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
           <CalendarDays style={{ width: 14, height: 14 }} />
           Agenda Kadria
         </div>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: COLORS.text1, margin: '10px 0 0' }}>Agenda intelligent</h1>
+        <h1 style={{ fontSize: '20px', fontWeight: 800, color: COLORS.text1, margin: '10px 0 0' }}>Planning d'equipe</h1>
         <p style={{ fontSize: '13px', color: COLORS.text2, margin: '4px 0 0' }}>
-          Activez soit le Planning Kadria, soit Google Calendar selon votre facon de travailler.
+          Retrouvez vos rendez-vous Kadria ou votre agenda Google selon votre facon de travailler.
         </p>
       </div>
 
@@ -472,7 +764,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <ModeCard
             title="Planning Kadria"
-            description="Relances, callbacks et actions commerciales issus de vos dossiers existants."
+            description="Rendez-vous, interventions et suivi d'equipe securises par tenant."
             active={calendarMode === 'kadria'}
             disabled={modeSaving !== null}
             onClick={() => void saveMode('kadria')}
@@ -490,108 +782,263 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
       </div>
 
       {calendarMode === 'kadria' ? (
-        <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
-            <div>
-              <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Planning Kadria</h2>
-              <p style={{ fontSize: '12px', color: COLORS.text2, margin: '4px 0 0' }}>
-                {overdueCount > 0
-                  ? `${overdueCount} action${overdueCount > 1 ? 's' : ''} en retard, ${todayCount} pour aujourd'hui.`
-                  : `${todayCount} action${todayCount > 1 ? 's' : ''} a traiter aujourd'hui.`}
-              </p>
+        <>
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
+              <div>
+                <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Planning Kadria</h2>
+                <p style={{ fontSize: '12px', color: COLORS.text2, margin: '4px 0 0' }}>
+                  {teamPermissions.canManageTeamPlanning
+                    ? `${normalizedAppointments.length} rendez-vous visibles${unassignedCount > 0 ? ` · ${unassignedCount} non affecte(s)` : ''}`
+                    : `${normalizedAppointments.length} rendez-vous sur votre planning`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void fetchAppointments()}
+                disabled={appointmentsLoading}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  color: COLORS.text1,
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  opacity: appointmentsLoading ? 0.7 : 1,
+                }}
+              >
+                <RefreshCw style={{ width: 14, height: 14 }} />
+                Actualiser
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={fetchProjects}
-              disabled={projectsLoading}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '10px 12px',
-                borderRadius: '12px',
-                background: COLORS.bg,
-                border: `1px solid ${COLORS.border}`,
-                color: COLORS.text1,
-                fontSize: '12px',
-                fontWeight: 700,
-                opacity: projectsLoading ? 0.7 : 1,
-              }}
-            >
-              <RefreshCw style={{ width: 14, height: 14 }} />
-              Actualiser
-            </button>
-          </div>
 
-          {projectsError ? (
-            <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>{projectsError}</p>
-          ) : projectsLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <LoadingStyles />
-              {[0, 1, 2].map((i) => (
-                <div key={i} style={{ padding: '10px 12px', borderRadius: '12px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
-                  <LoadingSkeleton width="55%" height="13px" style={{ marginBottom: '6px' }} />
-                  <LoadingSkeleton width="35%" height="12px" />
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '12px' }}>
+              <FilterChip
+                label="Mon planning"
+                active={collaboratorFilter === 'me'}
+                onClick={() => {
+                  setCollaboratorFilter('me');
+                  void fetchAppointments('me');
+                }}
+              />
+              {teamPermissions.canManageTeamPlanning && (
+                <>
+                  <FilterChip
+                    label="Toute l'equipe"
+                    active={collaboratorFilter === 'all'}
+                    onClick={() => {
+                      setCollaboratorFilter('all');
+                      void fetchAppointments('all');
+                    }}
+                  />
+                  <FilterChip
+                    label="Non affectes"
+                    active={collaboratorFilter === 'unassigned'}
+                    onClick={() => {
+                      setCollaboratorFilter('unassigned');
+                      void fetchAppointments('unassigned');
+                    }}
+                  />
+                </>
+              )}
+            </div>
+
+            {teamPermissions.canManageTeamPlanning && teamMembers.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: COLORS.text2 }}>
+                  Collaborateur
+                </label>
+                <select
+                  value={collaboratorFilter === 'all' || collaboratorFilter === 'unassigned' || collaboratorFilter === 'me' ? '' : collaboratorFilter}
+                  onChange={(e) => {
+                    const next = e.target.value || 'all';
+                    setCollaboratorFilter(next);
+                    void fetchAppointments(next);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    border: `1px solid ${COLORS.border}`,
+                    background: COLORS.bg,
+                    color: COLORS.text1,
+                    fontSize: '13px',
+                  }}
+                >
+                  <option value="">Selectionner un collaborateur</option>
+                  {teamMembers.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.isMe ? `${member.name} (moi)` : member.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {teamPermissions.canCreatePersonalAppointments && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateAppointmentForm((value) => !value);
+                  setAppointmentCreateError(null);
+                  setAppointmentCreateSuccess(null);
+                }}
+                style={{
+                  width: '100%',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '11px 0',
+                  borderRadius: '12px',
+                  background: COLORS.accent,
+                  border: 'none',
+                  color: '#052e16',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  marginBottom: showCreateAppointmentForm ? '12px' : 0,
+                }}
+              >
+                <CalendarDays style={{ width: 16, height: 16 }} />
+                Nouveau rendez-vous
+              </button>
+            )}
+
+            {showCreateAppointmentForm && teamPermissions.canCreatePersonalAppointments && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                <input
+                  placeholder="Titre"
+                  value={newAppointment.titre}
+                  onChange={(e) => setNewAppointment((form) => ({ ...form, titre: e.target.value }))}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                />
+                <select
+                  value={newAppointment.eventType}
+                  onChange={(e) => setNewAppointment((form) => ({ ...form, eventType: e.target.value as EventType }))}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                >
+                  {EVENT_TYPES_UI.map((eventType) => (
+                    <option key={eventType} value={eventType}>
+                      {EVENT_TYPE_LABELS[eventType]}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={newAppointment.projectId}
+                  onChange={(e) => setNewAppointment((form) => ({ ...form, projectId: e.target.value }))}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                >
+                  <option value="">Aucun dossier lie</option>
+                  {projectOptions.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.meta ? `${project.label} · ${project.meta}` : project.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={newAppointment.date}
+                  onChange={(e) => setNewAppointment((form) => ({ ...form, date: e.target.value }))}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="time"
+                    value={newAppointment.heureDebut}
+                    onChange={(e) => setNewAppointment((form) => ({ ...form, heureDebut: e.target.value }))}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                  />
+                  <input
+                    type="time"
+                    value={newAppointment.heureFin}
+                    onChange={(e) => setNewAppointment((form) => ({ ...form, heureFin: e.target.value }))}
+                    style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                  />
                 </div>
-              ))}
-            </div>
-          ) : planningItems.length === 0 ? (
-            <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucune action datee a afficher pour le moment.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {planningItems.map((item) => {
-                const Icon = getItemIcon(item.kind);
-                const dueCopy = getDueStateCopy(item);
+                <input
+                  placeholder="Lieu"
+                  value={newAppointment.lieu}
+                  onChange={(e) => setNewAppointment((form) => ({ ...form, lieu: e.target.value }))}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                />
+                {teamPermissions.canManageTeamPlanning && (
+                  <select
+                    value={newAppointment.assignedUserId}
+                    onChange={(e) => setNewAppointment((form) => ({ ...form, assignedUserId: e.target.value }))}
+                    style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
+                  >
+                    <option value="">Non affecte</option>
+                    {teamMembers.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.isMe ? `${member.name} (moi)` : member.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <textarea
+                  placeholder="Notes (optionnel)"
+                  value={newAppointment.note}
+                  onChange={(e) => setNewAppointment((form) => ({ ...form, note: e.target.value }))}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', resize: 'vertical', minHeight: '60px', background: COLORS.bg, color: COLORS.text1 }}
+                />
 
-                return (
-                  <div key={item.id} style={{ padding: '12px', borderRadius: '14px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '34px',
-                            height: '34px',
-                            borderRadius: '10px',
-                            background: COLORS.accentDim,
-                            border: `1px solid ${COLORS.accentBorder}`,
-                          }}
-                        >
-                          <Icon style={{ width: 16, height: 16, color: COLORS.accent }} />
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>{item.title}</p>
-                          <p style={{ margin: '4px 0 0', fontSize: '12px', lineHeight: 1.5, color: COLORS.text2 }}>{item.subtitle}</p>
-                        </div>
-                      </div>
-                      <span style={{ ...dueCopy.style, display: 'inline-flex', padding: '4px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        {dueCopy.label}
-                      </span>
-                    </div>
+                {appointmentCreateError && <p style={{ fontSize: '12px', color: '#fca5a5', margin: 0 }}>{appointmentCreateError}</p>}
+                {appointmentCreateSuccess && <p style={{ fontSize: '12px', color: COLORS.accent, margin: 0 }}>{appointmentCreateSuccess}</p>}
+                {projectsError && <p style={{ fontSize: '12px', color: COLORS.text3, margin: 0 }}>{projectsError}</p>}
+                {projectsLoading && <p style={{ fontSize: '12px', color: COLORS.text3, margin: 0 }}>Chargement des dossiers...</p>}
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
-                      <span style={{ display: 'inline-flex', padding: '4px 8px', borderRadius: '999px', border: `1px solid ${COLORS.border}`, color: COLORS.text3, fontSize: '11px' }}>
-                        {item.statusLabel}
-                      </span>
-                      <span style={{ display: 'inline-flex', padding: '4px 8px', borderRadius: '999px', border: `1px solid ${COLORS.border}`, color: COLORS.text3, fontSize: '11px' }}>
-                        {formatPlanningDate(item.dueDate)}
-                      </span>
-                      {item.cityLabel && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '999px', border: `1px solid ${COLORS.border}`, color: COLORS.text3, fontSize: '11px' }}>
-                          <MapPin style={{ width: 11, height: 11 }} />
-                          {item.cityLabel}
-                        </span>
-                      )}
-                    </div>
+                <button
+                  type="button"
+                  onClick={() => void handleCreateAppointment()}
+                  disabled={creatingAppointment}
+                  style={{
+                    padding: '11px 0',
+                    borderRadius: '12px',
+                    background: COLORS.accent,
+                    border: 'none',
+                    color: '#052e16',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    opacity: creatingAppointment ? 0.7 : 1,
+                  }}
+                >
+                  {creatingAppointment ? 'Creation...' : 'Valider'}
+                </button>
+              </div>
+            )}
+
+            {appointmentsError ? (
+              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>{appointmentsError}</p>
+            ) : appointmentsLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <LoadingStyles />
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ padding: '10px 12px', borderRadius: '12px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
+                    <LoadingSkeleton width="55%" height="13px" style={{ marginBottom: '6px' }} />
+                    <LoadingSkeleton width="35%" height="12px" />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : normalizedAppointments.length === 0 ? (
+              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous a afficher pour ce filtre.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {normalizedAppointments.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    appointment={appointment}
+                    onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         <>
           <div style={card}>
@@ -610,7 +1057,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
-                    onClick={fetchEvents}
+                    onClick={() => void fetchEvents()}
                     disabled={eventsLoading}
                     style={{
                       flex: 1,
@@ -708,9 +1155,9 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowCreateForm((value) => !value);
-                    setCreateError(null);
-                    setCreateSuccess(null);
+                    setShowCreateGoogleForm((value) => !value);
+                    setGoogleCreateError(null);
+                    setGoogleCreateSuccess(null);
                   }}
                   style={{
                     display: 'inline-flex',
@@ -732,54 +1179,54 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
               )}
             </div>
 
-            {showCreateForm && calendarStatus.connected && (
+            {showCreateGoogleForm && calendarStatus.connected && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                 <input
                   placeholder="Titre"
-                  value={newEvent.titre}
-                  onChange={(e) => setNewEvent((form) => ({ ...form, titre: e.target.value }))}
+                  value={newGoogleEvent.titre}
+                  onChange={(e) => setNewGoogleEvent((form) => ({ ...form, titre: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
                 />
                 <input
                   type="date"
-                  value={newEvent.date}
-                  onChange={(e) => setNewEvent((form) => ({ ...form, date: e.target.value }))}
+                  value={newGoogleEvent.date}
+                  onChange={(e) => setNewGoogleEvent((form) => ({ ...form, date: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type="time"
-                    value={newEvent.heureDebut}
-                    onChange={(e) => setNewEvent((form) => ({ ...form, heureDebut: e.target.value }))}
+                    value={newGoogleEvent.heureDebut}
+                    onChange={(e) => setNewGoogleEvent((form) => ({ ...form, heureDebut: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
                   />
                   <input
                     type="time"
-                    value={newEvent.heureFin}
-                    onChange={(e) => setNewEvent((form) => ({ ...form, heureFin: e.target.value }))}
+                    value={newGoogleEvent.heureFin}
+                    onChange={(e) => setNewGoogleEvent((form) => ({ ...form, heureFin: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
                   />
                 </div>
                 <input
                   placeholder="Lieu (optionnel)"
-                  value={newEvent.lieu}
-                  onChange={(e) => setNewEvent((form) => ({ ...form, lieu: e.target.value }))}
+                  value={newGoogleEvent.lieu}
+                  onChange={(e) => setNewGoogleEvent((form) => ({ ...form, lieu: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
                 />
                 <textarea
                   placeholder="Description (optionnel)"
-                  value={newEvent.note}
-                  onChange={(e) => setNewEvent((form) => ({ ...form, note: e.target.value }))}
+                  value={newGoogleEvent.note}
+                  onChange={(e) => setNewGoogleEvent((form) => ({ ...form, note: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', resize: 'vertical', minHeight: '60px', background: COLORS.bgElevated, color: COLORS.text1 }}
                 />
 
-                {createError && <p style={{ fontSize: '12px', color: '#fca5a5', margin: 0 }}>{createError}</p>}
-                {createSuccess && <p style={{ fontSize: '12px', color: COLORS.accent, margin: 0 }}>{createSuccess}</p>}
+                {googleCreateError && <p style={{ fontSize: '12px', color: '#fca5a5', margin: 0 }}>{googleCreateError}</p>}
+                {googleCreateSuccess && <p style={{ fontSize: '12px', color: COLORS.accent, margin: 0 }}>{googleCreateSuccess}</p>}
 
                 <button
                   type="button"
-                  onClick={handleCreateEvent}
-                  disabled={creating}
+                  onClick={() => void handleCreateGoogleEvent()}
+                  disabled={creatingGoogleEvent}
                   style={{
                     padding: '11px 0',
                     borderRadius: '12px',
@@ -788,10 +1235,10 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     color: '#052e16',
                     fontSize: '14px',
                     fontWeight: 700,
-                    opacity: creating ? 0.7 : 1,
+                    opacity: creatingGoogleEvent ? 0.7 : 1,
                   }}
                 >
-                  {creating ? 'Creation...' : 'Valider'}
+                  {creatingGoogleEvent ? 'Creation...' : 'Valider'}
                 </button>
               </div>
             )}
@@ -869,7 +1316,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
               </button>
               <button
                 type="button"
-                onClick={handleDisconnect}
+                onClick={() => void handleDisconnect()}
                 disabled={disconnecting}
                 style={{
                   flex: 1,
