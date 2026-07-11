@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { getBaseUrl } from '@/src/lib/base-url'
 import { computeRecommendedDeposit, normalizeStripeConnectStatus } from '@/src/lib/deposit'
 import { normalizeProjectStatus } from '@/src/lib/project-status'
 import { StripeNotConfiguredError, getStripeClient } from '@/src/lib/stripe'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { PermissionError } from '@/src/lib/team/access'
 
 async function createActivityLog(projectId: string, action: string, description: string) {
   const { error } = await supabaseAdmin.from(TABLES.activity).insert({
@@ -18,46 +19,6 @@ async function createActivityLog(projectId: string, action: string, description:
   if (error) {
     console.error('[PROJECT DEPOSIT ACTIVITY]', JSON.stringify(error, null, 2))
   }
-}
-
-async function getAuthorizedProject(id: string, artisanId: string) {
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('*')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle()
-
-  if (direct.error) {
-    throw direct.error
-  }
-
-  let record = direct.data
-
-  if (!record) {
-    const legacy = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('*')
-      .eq('record_id', id)
-      .limit(1)
-      .maybeSingle()
-
-    if (legacy.error) {
-      throw legacy.error
-    }
-
-    record = legacy.data
-  }
-
-  if (!record) {
-    return { status: 404 as const }
-  }
-
-  if (record.artisan_id !== artisanId) {
-    return { status: 403 as const }
-  }
-
-  return { status: 200 as const, record }
 }
 
 function buildProjectLabel(project: Record<string, unknown>) {
@@ -73,40 +34,36 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
-    }
-
     const { id } = await params
-    const authResult = await getAuthorizedProject(id, session.artisanId)
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      requiredPermission: 'projects.update',
+      allowAppointmentAccess: true,
+      select: '*',
+    })
 
-    if (authResult.status === 404) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
-    if (authResult.status === 403) {
-      return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
-    }
-
-    const project = authResult.record
-    const artisanConfig = await getArtisanConfig(session.artisanId)
+    const project = authResult.project
+    const artisanConfig = await getArtisanConfig(authResult.session.artisanId)
 
     if (!artisanConfig?.depositEnabled) {
-      return NextResponse.json({ success: false, error: 'Activez les acomptes dans vos parametres.' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Activez les acomptes dans vos paramètres.' }, { status: 400 })
     }
 
     const stripeStatus = normalizeStripeConnectStatus(artisanConfig.stripeConnectStatus)
     if (!artisanConfig.stripeAccountId) {
-      return NextResponse.json({ success: false, error: "Connectez Stripe avant de generer un lien d'acompte." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Connectez Stripe avant de générer un lien d'acompte." }, { status: 400 })
     }
 
     if (stripeStatus === 'pending' || stripeStatus === 'restricted') {
-      return NextResponse.json({ success: false, error: "Terminez la configuration Stripe avant de generer un lien d'acompte." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Terminez la configuration Stripe avant de générer un lien d'acompte." }, { status: 400 })
     }
 
     if (stripeStatus !== 'active') {
-      return NextResponse.json({ success: false, error: "Connectez Stripe avant de generer un lien d'acompte." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Connectez Stripe avant de générer un lien d'acompte." }, { status: 400 })
     }
 
     const devisAmountRaw = typeof project.devis_amount === 'number' ? project.devis_amount : Number(project.devis_amount)
@@ -123,12 +80,12 @@ export async function POST(
     }, devisAmount)
 
     if (!computedDeposit || !Number.isFinite(computedDeposit.amount) || computedDeposit.amount <= 0) {
-      return NextResponse.json({ success: false, error: "Impossible de generer le lien d'acompte pour le moment." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Impossible de générer le lien d'acompte pour le moment." }, { status: 400 })
     }
 
     const amountInCents = Math.round(computedDeposit.amount * 100)
     if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
-      return NextResponse.json({ success: false, error: "Impossible de generer le lien d'acompte pour le moment." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Impossible de générer le lien d'acompte pour le moment." }, { status: 400 })
     }
 
     const stripe = getStripeClient()
@@ -154,8 +111,8 @@ export async function POST(
         metadata: {
           type: 'deposit',
           environment: 'kadria',
-          artisan_id: session.artisanId,
-          project_id: String(project.id || ''),
+          artisan_id: authResult.session.artisanId,
+          project_id: authResult.projectId,
           deposit_amount: computedDeposit.amount.toFixed(2),
           deposit_provider: 'stripe_connect',
         },
@@ -166,7 +123,7 @@ export async function POST(
     )
 
     if (!checkoutSession.url) {
-      return NextResponse.json({ success: false, error: "Impossible de generer le lien d'acompte pour le moment." }, { status: 500 })
+      return NextResponse.json({ success: false, error: "Impossible de générer le lien d'acompte pour le moment." }, { status: 500 })
     }
 
     const now = new Date().toISOString()
@@ -182,8 +139,7 @@ export async function POST(
         deposit_payment_url: checkoutSession.url,
         deposit_provider: 'stripe_connect',
       })
-      .eq('id', String(project.id))
-      .eq('artisan_id', session.artisanId)
+      .eq('id', authResult.projectId)
       .select('id, deposit_status, deposit_amount, deposit_requested_at, deposit_payment_url, deposit_provider')
       .single()
 
@@ -192,9 +148,9 @@ export async function POST(
     }
 
     await createActivityLog(
-      String(project.id),
+      authResult.projectId,
       'ACOMPTE_PAYMENT_LINK_CREATED',
-      `Lien d'acompte cree pour ${computedDeposit.amount.toFixed(2)} EUR`,
+      `Lien d'acompte créé pour ${computedDeposit.amount.toFixed(2)} EUR`,
     )
 
     return NextResponse.json({
@@ -208,12 +164,17 @@ export async function POST(
     })
   } catch (error) {
     if (error instanceof StripeNotConfiguredError) {
-      return NextResponse.json({ success: false, error: 'Stripe non configure cote serveur.' }, { status: 503 })
+      return NextResponse.json({ success: false, error: 'Stripe non configuré côté serveur.' }, { status: 503 })
+    }
+
+    const permissionError = error as PermissionError
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
     }
 
     console.error('[PROJECT DEPOSIT CHECKOUT]', error)
     return NextResponse.json(
-      { success: false, error: "Impossible de generer le lien d'acompte pour le moment." },
+      { success: false, error: "Impossible de générer le lien d'acompte pour le moment." },
       { status: 500 },
     )
   }

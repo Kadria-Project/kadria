@@ -1,68 +1,24 @@
 import { NextResponse } from 'next/server';
 import { TABLES } from '@/src/lib/airtable';
-import { getSession } from '@/src/lib/auth-utils';
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility';
 import { mapSupabaseActivity } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
-
-async function getAuthorizedProjectId(id: string, artisanId: string) {
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, artisan_id')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle();
-
-  if (direct.error) {
-    throw direct.error;
-  }
-
-  let record = direct.data;
-
-  if (!record) {
-    const legacy = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('id, artisan_id')
-      .eq('record_id', id)
-      .limit(1)
-      .maybeSingle();
-
-    if (legacy.error) {
-      throw legacy.error;
-    }
-
-    record = legacy.data;
-  }
-
-  if (!record) {
-    return { status: 404 as const };
-  }
-
-  if (record.artisan_id !== artisanId) {
-    return { status: 403 as const };
-  }
-
-  return { status: 200 as const, projectId: record.id as string };
-}
+import { PermissionError } from '@/src/lib/team/access';
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const authResult = await getAuthorizedProjectId(id, session.artisanId);
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      allowAppointmentAccess: true,
+      select: 'id',
+    });
 
-    if (authResult.status === 404) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
-    }
-
-    if (authResult.status === 403) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
     }
 
     const { data, error } = await supabaseAdmin
@@ -83,6 +39,11 @@ export async function GET(
       activities,
     });
   } catch (error) {
+    const permissionError = error as PermissionError;
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status });
+    }
+
     console.error('GET_PROJECT_ACTIVITY_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(
@@ -97,20 +58,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const authResult = await getAuthorizedProjectId(id, session.artisanId);
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      requiredPermission: 'projects.update',
+      allowAppointmentAccess: true,
+      select: 'id',
+    });
 
-    if (authResult.status === 404) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
-    }
-
-    if (authResult.status === 403) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -137,6 +94,11 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const permissionError = error as PermissionError;
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status });
+    }
+
     console.error('CREATE_PROJECT_ACTIVITY_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(

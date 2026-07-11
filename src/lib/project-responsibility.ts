@@ -1,10 +1,12 @@
 import 'server-only'
 
 import { TABLES } from '@/src/lib/airtable'
+import { getSession } from '@/src/lib/auth-utils'
 import { type TeamMember, TEAM_ROLE_LABELS } from '@/src/lib/team/types'
+import { checkPermission, PermissionError, requirePermission, type Permission } from '@/src/lib/team/access'
 import { listTeamMembers } from '@/src/lib/team/service'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { tableExists, tableHasColumn } from '@/src/lib/tenant-context'
+import { getCurrentTenantContext, tableExists, tableHasColumn, type TenantContext } from '@/src/lib/tenant-context'
 
 export interface ProjectResponsibleSummary {
   userId: string
@@ -18,6 +20,23 @@ export interface ProjectResponsibleSummary {
   displayName: string
   initials: string
 }
+
+export interface AuthorizedProjectAccessResult<TRecord extends Record<string, unknown> = Record<string, unknown>> {
+  session: NonNullable<Awaited<ReturnType<typeof getSession>>>
+  tenantContext: TenantContext | null
+  project: TRecord
+  projectId: string
+  canReadAllProjects: boolean
+  canReadAssignedProjects: boolean
+}
+
+const PROJECT_ACCESS_BASE_COLUMNS = [
+  'id',
+  'record_id',
+  'tenant_id',
+  'artisan_id',
+  'responsible_user_id',
+] as const
 
 function getDisplayName(member: Pick<TeamMember, 'firstName' | 'lastName' | 'email'>) {
   return [member.firstName, member.lastName].filter(Boolean).join(' ').trim() || member.email || 'Collaborateur'
@@ -51,11 +70,133 @@ export function canReceiveProjectResponsibility(member: Pick<TeamMember, 'status
   return member.role !== 'viewer'
 }
 
+function ensureProjectSelect(select: string) {
+  const trimmed = select.trim()
+  if (trimmed === '*') return trimmed
+
+  const columns = new Set(
+    trimmed
+      .split(',')
+      .map((column) => column.trim())
+      .filter(Boolean),
+  )
+
+  for (const column of PROJECT_ACCESS_BASE_COLUMNS) {
+    columns.add(column)
+  }
+
+  return Array.from(columns).join(', ')
+}
+
+async function loadProjectRecord(select: string, projectId: string) {
+  const normalizedSelect = ensureProjectSelect(select)
+
+  const direct = await supabaseAdmin
+    .from(TABLES.projects)
+    .select(normalizedSelect)
+    .eq('id', projectId)
+    .limit(1)
+    .maybeSingle()
+
+  if (direct.error) throw direct.error
+  if (direct.data) return direct.data as unknown as Record<string, unknown>
+
+  const legacy = await supabaseAdmin
+    .from(TABLES.projects)
+    .select(normalizedSelect)
+    .eq('record_id', projectId)
+    .limit(1)
+    .maybeSingle()
+
+  if (legacy.error) throw legacy.error
+  return (legacy.data as unknown as Record<string, unknown> | null) || null
+}
+
+function projectBelongsToTenant(record: Record<string, unknown>, tenantContext: TenantContext | null, artisanId: string) {
+  if (tenantContext?.tenantId) {
+    const recordTenantId = typeof record.tenant_id === 'string' ? record.tenant_id : null
+    if (recordTenantId) {
+      return recordTenantId === tenantContext.tenantId
+    }
+  }
+
+  return String(record.artisan_id || '') === artisanId
+}
+
+export async function authorizeProjectAccess<TRecord extends Record<string, unknown> = Record<string, unknown>>(params: {
+  projectId: string
+  select?: string
+  requiredPermission?: Permission
+  allowAppointmentAccess?: boolean
+}): Promise<AuthorizedProjectAccessResult<TRecord> | null> {
+  const session = await getSession()
+  if (!session) {
+    throw new PermissionError('UNAUTHENTICATED')
+  }
+
+  const tenantContext = await getCurrentTenantContext()
+  if (tenantContext && params.requiredPermission) {
+    requirePermission(tenantContext, params.requiredPermission)
+  }
+
+  const project = await loadProjectRecord(params.select || '*', params.projectId)
+  if (!project) return null
+
+  if (!projectBelongsToTenant(project, tenantContext, session.artisanId)) {
+    return null
+  }
+
+  const canReadAllProjects = checkPermission(tenantContext, 'projects.read_all')
+  const canReadAssignedProjects = checkPermission(tenantContext, 'projects.read_assigned')
+
+  if (tenantContext?.tenantId && !canReadAllProjects) {
+    if (!canReadAssignedProjects) {
+      return null
+    }
+
+    const responsibleUserId = typeof project.responsible_user_id === 'string' ? project.responsible_user_id : null
+    if (responsibleUserId !== tenantContext.userId) {
+      if (!params.allowAppointmentAccess) {
+        return null
+      }
+
+      const appointmentProjectIds = await getAssignedAppointmentProjectIds(tenantContext.tenantId, tenantContext.userId)
+      if (!appointmentProjectIds.has(String(project.id))) {
+        return null
+      }
+    }
+  }
+
+  return {
+    session,
+    tenantContext,
+    project: project as TRecord,
+    projectId: String(project.id || ''),
+    canReadAllProjects,
+    canReadAssignedProjects,
+  }
+}
+
 export async function listAssignableProjectResponsibles(tenantId: string): Promise<ProjectResponsibleSummary[]> {
   const members = await listTeamMembers(tenantId)
   return members
     .filter(canReceiveProjectResponsibility)
     .map(mapTeamMemberToProjectResponsible)
+}
+
+export async function resolveDefaultProjectResponsible(tenantId: string, creatorUserId?: string | null) {
+  const assignables = await listAssignableProjectResponsibles(tenantId)
+  if (creatorUserId) {
+    const creator = assignables.find((member) => member.userId === creatorUserId)
+    if (creator) return creator
+  }
+
+  return (
+    assignables.find((member) => member.role === 'owner')
+    || assignables.find((member) => member.role === 'admin')
+    || assignables[0]
+    || null
+  )
 }
 
 export async function listProjectResponsiblesByTenant(tenantId: string): Promise<Map<string, ProjectResponsibleSummary>> {

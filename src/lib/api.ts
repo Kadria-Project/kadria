@@ -59,7 +59,7 @@ export async function updateProjectResponsible(id: string, responsibleUserId: st
   const data = await res.json();
 
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Erreur mise a jour responsable dossier');
+    throw new Error(data.error || 'Erreur mise à jour responsable dossier');
   }
 
   return data;

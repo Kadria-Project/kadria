@@ -1,58 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TABLES } from '@/src/lib/airtable'
-import { getSession, requireFeatureAccess } from '@/src/lib/auth-utils'
+import { requireFeatureAccess } from '@/src/lib/auth-utils'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
-import { supabaseAdmin } from '@/src/lib/supabase/server'
-
-async function getAuthorizedProject(id: string, artisanId: string) {
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('*')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle()
-
-  if (direct.error) {
-    throw direct.error
-  }
-
-  let record = direct.data
-
-  if (!record) {
-    const legacy = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('*')
-      .eq('record_id', id)
-      .limit(1)
-      .maybeSingle()
-
-    if (legacy.error) {
-      throw legacy.error
-    }
-
-    record = legacy.data
-  }
-
-  if (!record) {
-    return { status: 404 as const }
-  }
-
-  if (record.artisan_id !== artisanId) {
-    return { status: 403 as const }
-  }
-
-  return { status: 200 as const, record }
-}
+import { PermissionError } from '@/src/lib/team/access'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
-  }
-
   const featureAccess = await requireFeatureAccess('pdfExports')
   if (!featureAccess.ok) {
     return NextResponse.json(featureAccess.body, { status: featureAccess.status })
@@ -62,21 +17,26 @@ export async function GET(
 
   let result
   try {
-    result = await getAuthorizedProject(id, session.artisanId)
+    result = await authorizeProjectAccess({
+      projectId: id,
+      allowAppointmentAccess: true,
+      select: '*',
+    })
   } catch (error) {
+    const permissionError = error as PermissionError
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+    }
+
     console.error('[PROJECT PDF] Supabase lookup error:', error instanceof Error ? error.message : String(error))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 
-  if (result.status === 404) {
+  if (!result) {
     return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
   }
 
-  if (result.status === 403) {
-    return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
-  }
-
-  const project = mapSupabaseProject(result.record)
+  const project = mapSupabaseProject(result.project)
 
   const score = project.completenessScore || 0
   let verdictLabel = 'À qualifier'

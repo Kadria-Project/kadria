@@ -1,62 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TABLES } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { createClientEvent, getArtisanTimelineEvents } from '@/src/lib/client-events'
-import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { PermissionError } from '@/src/lib/team/access'
 
-// Réponse artisan visible dans le portail client (lot messagerie V1). Route
-// authentifiée uniquement — jamais de token public ici. artisan_id vient
-// toujours de la session serveur, jamais du corps de la requête.
-
-async function getAuthorizedProject(id: string, artisanId: string) {
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, artisan_id')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle()
-
-  if (direct.error) throw direct.error
-  if (direct.data) {
-    return direct.data.artisan_id === artisanId ? direct.data : 'forbidden'
-  }
-
-  const legacy = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, artisan_id')
-    .eq('record_id', id)
-    .limit(1)
-    .maybeSingle()
-
-  if (legacy.error) throw legacy.error
-  if (!legacy.data) return null
-  return legacy.data.artisan_id === artisanId ? legacy.data : 'forbidden'
-}
+// Réponse artisan visible dans le portail client. Route authentifiée uniquement.
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
-    }
-
     const { id } = await params
-    const project = await getAuthorizedProject(id, session.artisanId)
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      allowAppointmentAccess: true,
+      select: 'id',
+    })
 
-    if (project === 'forbidden') {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
-    }
-    if (!project) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
-    const events = await getArtisanTimelineEvents(String(project.id))
+    const events = await getArtisanTimelineEvents(authResult.projectId)
 
     return NextResponse.json({ success: true, events })
   } catch (e) {
+    const permissionError = e as PermissionError
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+    }
+
     console.error('[CLIENT-REPLIES GET] Unexpected error:', e instanceof Error ? e.message : String(e))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
@@ -67,18 +40,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
-    }
-
     const { id } = await params
-    const project = await getAuthorizedProject(id, session.artisanId)
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      requiredPermission: 'projects.update',
+      allowAppointmentAccess: true,
+      select: 'id',
+    })
 
-    if (project === 'forbidden') {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 })
-    }
-    if (!project) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
@@ -97,14 +67,14 @@ export async function POST(
     }
 
     const { ok, event } = await createClientEvent({
-      projectId: String(project.id),
-      artisanId: session.artisanId,
+      projectId: authResult.projectId,
+      artisanId: authResult.session.artisanId,
       eventType: 'artisan_reply',
       visibility: 'client',
       source: 'artisan',
       title: "Réponse de l'artisan",
       message,
-      createdBy: session.artisanId,
+      createdBy: authResult.session.artisanId,
     })
 
     if (!ok || !event) {
@@ -116,6 +86,11 @@ export async function POST(
 
     return NextResponse.json({ success: true, event })
   } catch (e) {
+    const permissionError = e as PermissionError
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+    }
+
     console.error('[CLIENT-REPLIES POST] Unexpected error:', e instanceof Error ? e.message : String(e))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }

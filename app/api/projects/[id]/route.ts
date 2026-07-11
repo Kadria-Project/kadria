@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { TABLES, createEvent, getEvents, updateEvent } from '@/src/lib/airtable';
-import { getSession } from '@/src/lib/auth-utils';
 import {
-  getAssignedAppointmentProjectIds,
+  authorizeProjectAccess,
   listAssignableProjectResponsibles,
   listProjectResponsiblesByTenant,
   projectResponsibilityColumnExists,
 } from '@/src/lib/project-responsibility';
 import { mapSupabaseProject, toSupabaseProjectUpdate } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
-import { checkPermission, requirePermission } from '@/src/lib/team/access';
-import { type TenantContext, getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context';
+import { checkPermission, PermissionError } from '@/src/lib/team/access';
 
 async function createActivityLog(
   projectId: string,
@@ -29,108 +27,33 @@ async function createActivityLog(
   }
 }
 
-async function getAuthorizedProject(
-  id: string,
-  artisanId: string,
-  tenantContext: TenantContext | null,
-) {
-  const tenantId = tenantContext?.tenantId;
-  const supportsTenantId = tenantId ? await tableHasColumn(TABLES.projects, 'tenant_id') : false;
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('*')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle();
-
-  if (direct.error) {
-    throw direct.error;
-  }
-
-  let record = direct.data;
-
-  if (!record) {
-    const legacy = await supabaseAdmin
-      .from(TABLES.projects)
-      .select('*')
-      .eq('record_id', id)
-      .limit(1)
-      .maybeSingle();
-
-    if (legacy.error) {
-      throw legacy.error;
-    }
-
-    record = legacy.data;
-  }
-
-  if (!record) {
-    return { status: 404 as const };
-  }
-
-  if (supportsTenantId && record.tenant_id) {
-    if (String(record.tenant_id) !== tenantId) {
-      return { status: 404 as const };
-    }
-  } else if (record.artisan_id !== artisanId) {
-    return { status: 404 as const };
-  }
-
-  if (tenantContext?.tenantId) {
-    const canReadAll = checkPermission(tenantContext, 'projects.read_all');
-    const canReadAssigned = checkPermission(tenantContext, 'projects.read_assigned');
-
-    if (!canReadAll) {
-      if (!canReadAssigned) {
-        return { status: 403 as const };
-      }
-
-      const responsibleUserId = typeof record.responsible_user_id === 'string' ? record.responsible_user_id : null;
-      if (responsibleUserId !== tenantContext.userId) {
-        const appointmentProjectIds = await getAssignedAppointmentProjectIds(tenantContext.tenantId, tenantContext.userId);
-        if (!appointmentProjectIds.has(String(record.id))) {
-          return { status: 404 as const };
-        }
-      }
-    }
-  }
-
-  return { status: 200 as const, record };
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const tenantContext = await getCurrentTenantContext();
-    const result = await getAuthorizedProject(id, session.artisanId, tenantContext);
+    const result = await authorizeProjectAccess({
+      projectId: id,
+      select: '*',
+      allowAppointmentAccess: true,
+    });
 
-    if (result.status === 404) {
+    if (!result) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
     }
 
-    if (result.status === 403) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
-    }
-
-    let project = mapSupabaseProject(result.record);
+    let project = mapSupabaseProject(result.project);
     const supportsResponsibleUser = await projectResponsibilityColumnExists();
-    const canAssignProjects = checkPermission(tenantContext, 'projects.assign');
-    const canReassignProjects = checkPermission(tenantContext, 'projects.reassign');
-    const canUpdateProject = checkPermission(tenantContext, 'projects.update');
-    const availableResponsibles = tenantContext?.tenantId
-      ? await listAssignableProjectResponsibles(tenantContext.tenantId)
+    const canAssignProjects = checkPermission(result.tenantContext, 'projects.assign');
+    const canReassignProjects = checkPermission(result.tenantContext, 'projects.reassign');
+    const canUpdateProject = checkPermission(result.tenantContext, 'projects.update');
+    const availableResponsibles = result.tenantContext?.tenantId
+      ? await listAssignableProjectResponsibles(result.tenantContext.tenantId)
       : [];
 
-    if (supportsResponsibleUser && tenantContext?.tenantId) {
-      const responsibilityMap = await listProjectResponsiblesByTenant(tenantContext.tenantId);
+    if (supportsResponsibleUser && result.tenantContext?.tenantId) {
+      const responsibilityMap = await listProjectResponsiblesByTenant(result.tenantContext.tenantId);
       project = {
         ...project,
         responsibleUser: project.responsibleUserId ? responsibilityMap.get(project.responsibleUserId) || null : null,
@@ -141,7 +64,7 @@ export async function GET(
       success: true,
       project,
       viewerContext: {
-        currentUserId: tenantContext?.userId || null,
+        currentUserId: result.tenantContext?.userId || null,
         canAssignProjects,
         canReassignProjects,
         canUpdateProject,
@@ -149,6 +72,11 @@ export async function GET(
       availableResponsibles,
     });
   } catch (error) {
+    const permissionError = error as PermissionError;
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status });
+    }
+
     console.error('GET_PROJECT_DETAIL_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(
@@ -163,24 +91,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const tenantContext = await getCurrentTenantContext();
-    if (tenantContext) {
-      requirePermission(tenantContext, 'projects.update');
-    }
-    const authResult = await getAuthorizedProject(id, session.artisanId, tenantContext);
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      select: '*',
+      requiredPermission: 'projects.update',
+      allowAppointmentAccess: true,
+    });
 
-    if (authResult.status === 404) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 });
-    }
-
-    if (authResult.status === 403) {
-      return NextResponse.json({ success: false, error: 'Accès non autorisé' }, { status: 403 });
     }
 
     const input = await request.json();
@@ -212,7 +132,7 @@ export async function PATCH(
       Object.assign(fieldsToUpdate, toSupabaseProjectUpdate(safeFields));
     }
 
-    const targetId = authResult.record.id as string;
+    const targetId = authResult.projectId;
     const { data: record, error } = await supabaseAdmin
       .from(TABLES.projects)
       .update(fieldsToUpdate)
@@ -236,7 +156,7 @@ export async function PATCH(
 
     if (input.callbackDate) {
       try {
-        const existingEvents = await getEvents(session.artisanId);
+        const existingEvents = await getEvents(authResult.session.artisanId);
         const existingRelance = existingEvents.find(
           (e: { projectId: string; type: string }) => e.projectId === targetId && e.type === 'Relance',
         );
@@ -254,7 +174,7 @@ export async function PATCH(
             date: input.callbackDate,
             type: 'Relance',
             projectId: targetId,
-            artisanId: session.artisanId,
+            artisanId: authResult.session.artisanId,
             notes: 'Relance programmée depuis le dossier projet',
           });
         }
@@ -292,6 +212,11 @@ export async function PATCH(
       project: mapSupabaseProject(record),
     });
   } catch (error) {
+    const permissionError = error as PermissionError;
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status });
+    }
+
     console.error('UPDATE_PROJECT_ERROR', error instanceof Error ? error.message : String(error));
 
     return NextResponse.json(

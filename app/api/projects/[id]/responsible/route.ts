@@ -1,55 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TABLES } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
 import {
+  authorizeProjectAccess,
   listAssignableProjectResponsibles,
   listProjectResponsiblesByTenant,
   projectResponsibilityColumnExists,
 } from '@/src/lib/project-responsibility'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { requirePermission, type PermissionError } from '@/src/lib/team/access'
-import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
-async function loadProjectForTenant(projectId: string, tenantId: string, artisanId: string) {
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, tenant_id, artisan_id, responsible_user_id')
-    .eq('id', projectId)
-    .maybeSingle()
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-  if (direct.error) throw direct.error
-  if (direct.data) {
-    if (direct.data.tenant_id && String(direct.data.tenant_id) !== tenantId) return null
-    if (!direct.data.tenant_id && direct.data.artisan_id !== artisanId) return null
-    return direct.data
+async function createResponsibilityActivity(params: {
+  projectId: string
+  actorName: string
+  previousResponsibleName: string | null
+  nextResponsibleName: string | null
+}) {
+  const { projectId, actorName, previousResponsibleName, nextResponsibleName } = params
+
+  const action = !previousResponsibleName && nextResponsibleName
+    ? 'PROJECT_RESPONSIBLE_ASSIGNED'
+    : previousResponsibleName && nextResponsibleName
+      ? 'PROJECT_RESPONSIBLE_REASSIGNED'
+      : 'PROJECT_RESPONSIBLE_REMOVED'
+
+  const description = !previousResponsibleName && nextResponsibleName
+    ? `Responsable commercial affecté : ${nextResponsibleName} par ${actorName}`
+    : previousResponsibleName && nextResponsibleName
+      ? `Responsable commercial réaffecté : ${previousResponsibleName} → ${nextResponsibleName} par ${actorName}`
+      : `Responsable commercial retiré : ${previousResponsibleName || 'Non affecté'} par ${actorName}`
+
+  const { error } = await supabaseAdmin.from(TABLES.activity).insert({
+    project_id: projectId,
+    action,
+    description,
+    created_at: new Date().toISOString(),
+  })
+
+  if (error) {
+    console.error('[PROJECT RESPONSIBLE ACTIVITY]', error.message)
   }
+}
 
-  const legacy = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, tenant_id, artisan_id, responsible_user_id')
-    .eq('record_id', projectId)
-    .maybeSingle()
-
-  if (legacy.error) throw legacy.error
-  if (!legacy.data) return null
-  if (legacy.data.tenant_id && String(legacy.data.tenant_id) !== tenantId) return null
-  if (!legacy.data.tenant_id && legacy.data.artisan_id !== artisanId) return null
-  return legacy.data
+function getActorName(firstName?: string | null, lastName?: string | null, email?: string | null) {
+  return [firstName, lastName].filter(Boolean).join(' ').trim() || email || 'Utilisateur inconnu'
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
-    }
-
-    const tenantContext = await getCurrentTenantContext()
-    const securedTenantContext = requirePermission(tenantContext, 'projects.assign')
     const supportsResponsibleUser = await projectResponsibilityColumnExists()
     if (!supportsResponsibleUser) {
       return NextResponse.json(
-        { success: false, error: 'La colonne responsible_user_id n est pas encore disponible.' },
+        { success: false, error: 'La colonne responsible_user_id n’est pas encore disponible.' },
         { status: 503 },
       )
     }
@@ -60,54 +63,98 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: 'Payload invalide.' }, { status: 400 })
     }
 
+    const rawResponsibleUserId = body.responsibleUserId
     const responsibleUserId =
-      typeof body.responsibleUserId === 'string' && body.responsibleUserId.trim()
-        ? body.responsibleUserId.trim()
+      typeof rawResponsibleUserId === 'string' && rawResponsibleUserId.trim()
+        ? rawResponsibleUserId.trim()
         : null
 
-    const project = await loadProjectForTenant(id, securedTenantContext.tenantId, session.artisanId)
-    if (!project) {
+    if (responsibleUserId && !UUID_REGEX.test(responsibleUserId)) {
+      return NextResponse.json({ success: false, error: 'responsibleUserId invalide.' }, { status: 400 })
+    }
+
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      requiredPermission: 'projects.assign',
+      select: 'id, responsible_user_id, responsible_assigned_at, responsible_assigned_by',
+    })
+
+    if (!authResult || !authResult.tenantContext) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
-    const isReassignment = Boolean(project.responsible_user_id) && project.responsible_user_id !== responsibleUserId
-    if (isReassignment) {
-      requirePermission(tenantContext, 'projects.reassign')
+    const currentResponsibleUserId =
+      typeof authResult.project.responsible_user_id === 'string' ? authResult.project.responsible_user_id : null
+
+    if (currentResponsibleUserId && currentResponsibleUserId !== responsibleUserId) {
+      requirePermission(authResult.tenantContext, 'projects.reassign')
     }
+
+    const responsibilityMap = await listProjectResponsiblesByTenant(authResult.tenantContext.tenantId)
+    const currentResponsibleUser = currentResponsibleUserId
+      ? responsibilityMap.get(currentResponsibleUserId) || null
+      : null
 
     let responsibleUser = null
     if (responsibleUserId) {
-      const assignableResponsibles = await listAssignableProjectResponsibles(securedTenantContext.tenantId)
+      const assignableResponsibles = await listAssignableProjectResponsibles(authResult.tenantContext.tenantId)
       responsibleUser = assignableResponsibles.find((member) => member.userId === responsibleUserId) || null
       if (!responsibleUser) {
         return NextResponse.json(
-          { success: false, error: 'Le collaborateur selectionne n appartient pas a votre equipe active.' },
+          { success: false, error: 'Le collaborateur sélectionné n’appartient pas à votre équipe active.' },
           { status: 403 },
         )
       }
     }
 
-    const { error: updateError } = await supabaseAdmin
+    if (currentResponsibleUserId === responsibleUserId) {
+      return NextResponse.json({
+        success: true,
+        projectId: authResult.projectId,
+        responsibleUserId,
+        responsibleAssignedAt: authResult.project.responsible_assigned_at || null,
+        responsibleAssignedBy: authResult.project.responsible_assigned_by || null,
+        responsibleUser: responsibleUser || currentResponsibleUser,
+      })
+    }
+
+    const assignedAt = new Date().toISOString()
+    const { data: updatedProject, error: updateError } = await supabaseAdmin
       .from(TABLES.projects)
       .update({
         responsible_user_id: responsibleUserId,
-        responsible_assigned_at: new Date().toISOString(),
-        responsible_assigned_by: securedTenantContext.userId,
+        responsible_assigned_at: assignedAt,
+        responsible_assigned_by: authResult.tenantContext.userId,
       })
-      .eq('id', project.id)
+      .eq('id', authResult.projectId)
+      .select('id, responsible_user_id, responsible_assigned_at, responsible_assigned_by')
+      .single()
 
     if (updateError) {
       throw updateError
     }
 
-    if (!responsibleUser && responsibleUserId) {
-      const responsibilityMap = await listProjectResponsiblesByTenant(securedTenantContext.tenantId)
-      responsibleUser = responsibilityMap.get(responsibleUserId) || null
+    try {
+      await createResponsibilityActivity({
+        projectId: authResult.projectId,
+        actorName: getActorName(
+          authResult.session.firstName,
+          authResult.session.lastName,
+          authResult.session.email,
+        ),
+        previousResponsibleName: currentResponsibleUser?.displayName || null,
+        nextResponsibleName: responsibleUser?.displayName || null,
+      })
+    } catch (activityError) {
+      console.error('[PROJECT RESPONSIBLE PATCH][ACTIVITY]', activityError instanceof Error ? activityError.message : String(activityError))
     }
 
     return NextResponse.json({
       success: true,
-      responsibleUserId,
+      projectId: authResult.projectId,
+      responsibleUserId: updatedProject.responsible_user_id,
+      responsibleAssignedAt: updatedProject.responsible_assigned_at,
+      responsibleAssignedBy: updatedProject.responsible_assigned_by,
       responsibleUser,
     })
   } catch (error) {

@@ -918,6 +918,7 @@ function ProjectDetail() {
 
   const [devisList, setDevisList] = useState<DevisListItem[]>([]);
   const [followUpToast, setFollowUpToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [responsibleToast, setResponsibleToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [followingUpDevisId, setFollowingUpDevisId] = useState<string | null>(null);
   const [followUpConfirmDevis, setFollowUpConfirmDevis] = useState<DevisListItem | null>(null);
   const [followUpConfirmError, setFollowUpConfirmError] = useState('');
@@ -948,6 +949,12 @@ function ProjectDetail() {
     const timeout = window.setTimeout(() => setFollowUpToast(null), 4200);
     return () => window.clearTimeout(timeout);
   }, [followUpToast]);
+
+  useEffect(() => {
+    if (!responsibleToast) return;
+    const timeout = window.setTimeout(() => setResponsibleToast(null), 4200);
+    return () => window.clearTimeout(timeout);
+  }, [responsibleToast]);
 
   useEffect(() => {
     if (!reviewRequestToast) return;
@@ -1265,6 +1272,8 @@ function ProjectDetail() {
 
   async function handleResponsibleChange(nextResponsibleUserId: string | null) {
     if (!project?.id) return;
+    const previousResponsibleUserId = project.responsibleUserId || null;
+    const previousResponsibleUser = project.responsibleUser || null;
     setResponsibleSaving(true);
     try {
       const data = await updateProjectResponsible(project.id, nextResponsibleUserId);
@@ -1273,6 +1282,22 @@ function ProjectDetail() {
         responsibleUserId: data.responsibleUserId ?? null,
         responsibleUser: data.responsibleUser ?? null,
       } : current);
+      setResponsibleToast({
+        type: 'success',
+        message: data.responsibleUser
+          ? `Responsable mis à jour : ${data.responsibleUser.displayName}`
+          : 'Responsable retiré du dossier.',
+      });
+    } catch (error) {
+      setProject((current: any) => current ? {
+        ...current,
+        responsibleUserId: previousResponsibleUserId,
+        responsibleUser: previousResponsibleUser,
+      } : current);
+      setResponsibleToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Impossible de mettre à jour le responsable du dossier.',
+      });
     } finally {
       setResponsibleSaving(false);
     }
@@ -6829,6 +6854,18 @@ function ProjectDetail() {
           }`}
         >
           {followUpToast.message}
+        </div>
+      )}
+
+      {responsibleToast && (
+        <div
+          className={`fixed bottom-20 left-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-2xl sm:bottom-24 sm:left-auto sm:right-6 sm:max-w-sm ${
+            responsibleToast.type === 'error'
+              ? 'border-red-500/30 bg-[var(--bg-elevated)] text-red-200'
+              : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'
+          }`}
+        >
+          {responsibleToast.message}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import {
   listAssignableProjectResponsibles,
   listProjectResponsiblesByTenant,
   projectResponsibilityColumnExists,
+  resolveDefaultProjectResponsible,
 } from '@/src/lib/project-responsibility';
 import { mapSupabaseProject, toSupabaseProjectInsert } from '@/src/lib/supabase/mapping';
 import { supabaseAdmin } from '@/src/lib/supabase/server';
@@ -310,14 +311,31 @@ export async function POST(request: Request) {
         : await resolveTenantIdentity({ artisanId })
       : await resolveTenantIdentity({ artisanId })
 
+    const assignmentContext = supportsResponsibleUser && tenantIdentity?.tenantId
+      ? await resolveDefaultProjectResponsible(
+          tenantIdentity.tenantId,
+          session && tenantContext?.membership.status === 'active' ? tenantContext.userId : null,
+        )
+      : null;
+
+    const responsibleAssignment =
+      supportsResponsibleUser && tenantIdentity?.tenantId && assignmentContext
+        ? {
+            responsible_user_id: assignmentContext.userId,
+            responsible_assigned_at: new Date().toISOString(),
+            responsible_assigned_by:
+              session && tenantContext?.membership.status === 'active'
+                ? tenantContext.userId
+                : assignmentContext.userId,
+          }
+        : {};
+
     const safePayload = await attachTenantIdToPayload(
       TABLES.projects,
       {
         ...payload,
         ...(tenantIdentity?.tenantId ? { tenant_id: tenantIdentity.tenantId } : {}),
-        ...(supportsResponsibleUser && session && tenantContext?.membership.status === 'active'
-          ? { responsible_user_id: tenantContext.userId }
-          : {}),
+        ...responsibleAssignment,
       },
       {
         tenantId: tenantIdentity?.tenantId || null,

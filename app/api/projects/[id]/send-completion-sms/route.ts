@@ -1,24 +1,15 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { TABLES } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { sendOvhSms } from '@/src/lib/sms/ovh-sms'
 import { getBaseUrl } from '@/src/lib/base-url'
+import { PermissionError } from '@/src/lib/team/access'
 
 function isTruthyText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
-}
-
-function getProjectById(id: string, artisanId: string) {
-  return supabaseAdmin
-    .from(TABLES.projects)
-    .select('*')
-    .eq('id', id)
-    .eq('artisan_id', artisanId)
-    .limit(1)
-    .maybeSingle()
 }
 
 async function createActivityLog(projectId: string, action: string, description: string) {
@@ -39,22 +30,19 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
-    }
-
     const { id } = await params
-    const { data: project, error: projectError } = await getProjectById(id, session.artisanId)
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      requiredPermission: 'projects.update',
+      allowAppointmentAccess: true,
+      select: '*',
+    })
 
-    if (projectError) {
-      throw projectError
-    }
-
-    if (!project) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
+    const project = authResult.project
     const clientPhone = isTruthyText(project.client_phone) ? project.client_phone.trim() : ''
     if (!clientPhone) {
       return NextResponse.json({ success: false, error: 'Numéro client manquant' }, { status: 400 })
@@ -72,8 +60,7 @@ export async function POST(
         sms_last_error: null,
         completion_source: 'sms_after_vapi',
       })
-      .eq('id', project.id)
-      .eq('artisan_id', session.artisanId)
+      .eq('id', authResult.projectId)
 
     if (prepareError) {
       throw prepareError
@@ -102,8 +89,7 @@ export async function POST(
     const { data: updatedProject, error: updateError } = await supabaseAdmin
       .from(TABLES.projects)
       .update(updatePayload)
-      .eq('id', project.id)
-      .eq('artisan_id', session.artisanId)
+      .eq('id', authResult.projectId)
       .select('*')
       .single()
 
@@ -112,7 +98,7 @@ export async function POST(
     }
 
     await createActivityLog(
-      project.id,
+      authResult.projectId,
       smsResult.success ? 'SMS_COMPLETION_SENT' : 'SMS_COMPLETION_FAILED',
       smsResult.success
         ? 'Lien de complément SMS envoyé au client.'
@@ -126,6 +112,11 @@ export async function POST(
       project: mapSupabaseProject(updatedProject),
     }, { status: smsResult.success ? 200 : 502 })
   } catch (error) {
+    const permissionError = error as PermissionError
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+    }
+
     console.error('[PROJECT SMS COMPLETION] Unexpected error:', error instanceof Error ? error.message : String(error))
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }

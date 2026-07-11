@@ -8,10 +8,11 @@
 import type { TenantRole } from '@/src/lib/team/types'
 
 /**
- * Les permissions prefixees `projects.*` / `appointments.*` sont preparees
- * pour le Lot 4 (planning/projets par responsable) : elles sont definies ici
- * et attribuees par role, mais AUCUNE route, composant ou colonne de base ne
- * les consomme encore dans ce lot.
+ * Les permissions prefixees `projects.*` / `appointments.*` sont la source
+ * de verite du RBAC multi-user sur les dossiers et le planning.
+ * Les permissions `projects.*` sont desormais consommees par les routes API
+ * et l'UI dossier/liste ; les permissions `appointments.*` restent reservees
+ * au perimetre planning.
  */
 export const PERMISSIONS = [
   // Compte personnel
@@ -43,8 +44,7 @@ export const PERMISSIONS = [
   // Securite et donnees
   'tenant.transfer_ownership',
   'tenant.delete',
-  // --- Prepare pour le Lot 4 (planning/projets par responsable) ---
-  // Non consomme dans ce lot : aucune route/UI/colonne ne s'appuie dessus.
+  // --- RBAC projets / planning multi-user ---
   'projects.read_all',
   'projects.read_assigned',
   'projects.assign',
@@ -90,7 +90,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'billing.manage',
     'tenant.transfer_ownership',
     'tenant.delete',
-    // Lot 4 : owner recoit toutes les permissions projet/planning.
+    // Owner : acces complet projets/planning.
     'projects.read_all',
     'projects.read_assigned',
     'projects.assign',
@@ -117,7 +117,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'integrations.read',
     'integrations.manage',
     'billing.read',
-    // Lot 4 (prepare, non consomme) :
+    // Projets/planning : admin opere sur tout le tenant.
     ...LOT4_PROJECT_PLANNING_PERMISSIONS_FOR_ADMIN_MANAGER,
   ],
   manager: [
@@ -132,7 +132,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'planning.manage_team',
     'business_settings.read',
     'integrations.read',
-    // Lot 4 (prepare, non consomme) :
+    // Projets/planning : manager opere sur tout le tenant.
     ...LOT4_PROJECT_PLANNING_PERMISSIONS_FOR_ADMIN_MANAGER,
   ],
   member: [
@@ -146,7 +146,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'planning.read_team',
     'business_settings.read',
     'integrations.read',
-    // Lot 4 (prepare, non consomme) : lecture des dossiers affectes uniquement.
+    // Projets : lecture des dossiers affectes uniquement.
     'projects.read_assigned',
   ],
   viewer: [

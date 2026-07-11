@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { TABLES, getArtisanConfig } from '@/src/lib/airtable'
-import { getSession } from '@/src/lib/auth-utils'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { PermissionError } from '@/src/lib/team/access'
 
 function isValidHttpUrl(value: string): boolean {
   try {
@@ -28,31 +29,6 @@ async function createActivityLog(projectId: string, action: string, description:
   }
 }
 
-async function getAuthorizedProject(id: string, artisanId: string) {
-  const direct = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, artisan_id, client_name, client_first_name, client_email, project_type, trade')
-    .eq('id', id)
-    .limit(1)
-    .maybeSingle()
-
-  if (direct.error) throw direct.error
-  if (direct.data) {
-    return direct.data.artisan_id === artisanId ? direct.data : 'forbidden'
-  }
-
-  const legacy = await supabaseAdmin
-    .from(TABLES.projects)
-    .select('id, artisan_id, client_name, client_first_name, client_email, project_type, trade')
-    .eq('record_id', id)
-    .limit(1)
-    .maybeSingle()
-
-  if (legacy.error) throw legacy.error
-  if (!legacy.data) return null
-  return legacy.data.artisan_id === artisanId ? legacy.data : 'forbidden'
-}
-
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -61,23 +37,20 @@ export async function POST(
   let clientEmailForLog = ''
 
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
-    }
-
     const { id } = await params
-    const project = await getAuthorizedProject(id, session.artisanId)
+    const authResult = await authorizeProjectAccess({
+      projectId: id,
+      requiredPermission: 'projects.update',
+      allowAppointmentAccess: true,
+      select: 'id, client_name, client_first_name, client_email, project_type, trade',
+    })
 
-    if (project === 'forbidden') {
-      return NextResponse.json({ success: false, error: 'Acces non autorise' }, { status: 403 })
-    }
-
-    if (!project) {
+    if (!authResult) {
       return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
-    projectIdForLog = String(project.id)
+    const project = authResult.project
+    projectIdForLog = authResult.projectId
     const clientEmail = String(project.client_email || '').trim()
     clientEmailForLog = clientEmail
 
@@ -89,10 +62,10 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Configuration e-mail manquante' }, { status: 500 })
     }
 
-    const config = await getArtisanConfig(session.artisanId)
+    const config = await getArtisanConfig(authResult.session.artisanId)
     const googleReviewUrl = String(config?.googleReviewUrl || '').trim()
     if (!googleReviewUrl) {
-      return NextResponse.json({ success: false, error: "URL d'avis Google non configuree." }, { status: 400 })
+      return NextResponse.json({ success: false, error: "URL d'avis Google non configurée." }, { status: 400 })
     }
 
     if (!isValidHttpUrl(googleReviewUrl)) {
@@ -102,7 +75,7 @@ export async function POST(
     const businessName =
       config?.raisonSociale ||
       config?.companyName ||
-      session.companyName ||
+      authResult.session.companyName ||
       'Votre artisan'
     const clientFirstName = String(project.client_first_name || '').trim()
     const clientName = String(project.client_name || '').trim()
@@ -111,7 +84,7 @@ export async function POST(
     const projectLabel = String(project.project_type || project.trade || 'votre projet').trim()
 
     const emailBranding = resolveDevisEmailBranding({
-      plan: session.plan,
+      plan: authResult.session.plan,
       whiteLabelEnabled: config?.whiteLabelEnabled,
       widgetBrandName: config?.widgetBrandName,
       widgetBrandLogoUrl: config?.widgetBrandLogoUrl,
@@ -165,7 +138,7 @@ export async function POST(
         accentColor: emailBranding.ctaColor,
       }),
       headers: {
-        'X-Entity-Ref-ID': `google-review-request-${project.id}`,
+        'X-Entity-Ref-ID': `google-review-request-${authResult.projectId}`,
       },
     })
 
@@ -181,7 +154,7 @@ export async function POST(
         `Echec demande avis Google - ${clientEmail} - ${resendMessage}`,
       )
       return NextResponse.json(
-        { success: false, error: "Impossible d'envoyer la demande d'avis. Reessayez." },
+        { success: false, error: "Impossible d'envoyer la demande d'avis. Réessayez." },
         { status: 500 },
       )
     }
@@ -190,16 +163,21 @@ export async function POST(
     await createActivityLog(
       projectIdForLog,
       'GOOGLE_REVIEW_REQUEST_SENT',
-      `Demande avis Google envoyee - ${clientEmail}${result.data?.id ? ` - Resend ${result.data.id}` : ''}`,
+      `Demande avis Google envoyée - ${clientEmail}${result.data?.id ? ` - Resend ${result.data.id}` : ''}`,
     )
 
     return NextResponse.json({
       success: true,
-      message: "Demande d'avis envoyee au client.",
+      message: "Demande d'avis envoyée au client.",
       sent_at: sentAt,
       resend_id: result.data?.id || null,
     })
   } catch (error) {
+    const permissionError = error as PermissionError
+    if (permissionError?.status) {
+      return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+    }
+
     console.error('[GOOGLE REVIEW REQUEST]', error instanceof Error ? error.message : String(error))
     if (projectIdForLog) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur serveur'
@@ -210,7 +188,7 @@ export async function POST(
       )
     }
     return NextResponse.json(
-      { success: false, error: "Impossible d'envoyer la demande d'avis. Reessayez." },
+      { success: false, error: "Impossible d'envoyer la demande d'avis. Réessayez." },
       { status: 500 },
     )
   }

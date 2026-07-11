@@ -51,7 +51,7 @@ export function ProjectResponsibleInline({
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/15 text-[10px] font-bold text-amber-200">
           ?
         </span>
-        Non affecte
+        Non affecté
       </span>
     )
   }
@@ -86,7 +86,7 @@ export default function ProjectResponsibleCard({
     ? [responsibleUser.roleLabel, responsibleUser.jobTitle, responsibleUser.status !== 'active' ? 'Membre inactif' : null]
         .filter(Boolean)
         .join(' · ')
-    : 'Aucun responsable commercial defini'
+    : 'Aucun responsable commercial défini'
 
   const handleChange = async (value: string) => {
     if (!onChange) return
@@ -108,7 +108,7 @@ export default function ProjectResponsibleCard({
           </p>
         </div>
         <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${responsibleUser ? getStatusTone(responsibleUser.status) : 'border-amber-500/20 bg-amber-500/10 text-amber-200'}`}>
-          {responsibleUser ? getStatusLabel(responsibleUser.status) : 'Non affecte'}
+          {responsibleUser ? getStatusLabel(responsibleUser.status) : 'Non affecté'}
         </span>
       </div>
 
@@ -119,7 +119,7 @@ export default function ProjectResponsibleCard({
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-[var(--text-1)]">
-              {responsibleUser?.displayName || 'Non affecte'}
+              {responsibleUser?.displayName || 'Non affecté'}
             </p>
             <p className="truncate text-xs text-[var(--text-3)]">
               {responsibleUser?.email || 'Choisissez un responsable commercial pour ce dossier.'}
@@ -135,7 +135,7 @@ export default function ProjectResponsibleCard({
               disabled={saving || loading}
               className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2.5 pr-10 text-sm text-[var(--text-1)] outline-none transition focus:border-green-500/40"
             >
-              <option value="__unassigned__">Non affecte</option>
+              <option value="__unassigned__">Non affecté</option>
               {orderedOptions.map((option) => (
                 <option key={option.userId} value={option.userId}>
                   {option.displayName} · {option.roleLabel}

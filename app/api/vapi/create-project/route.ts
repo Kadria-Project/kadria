@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto'
 import { TABLES } from '@/src/lib/airtable'
 import { notifyArtisanQuotaReached } from '@/src/lib/artisan-notifications'
 import { createProjectNotification } from '@/src/lib/notifications'
+import { projectResponsibilityColumnExists, resolveDefaultProjectResponsible } from '@/src/lib/project-responsibility'
 import { toSupabaseProjectInsert } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { attachTenantIdToPayload, resolveTenantIdentity } from '@/src/lib/tenant-context'
@@ -423,7 +424,12 @@ export async function POST(request: NextRequest) {
     ].filter(Boolean).join(', ')
 
     const tenantIdentity = await resolveTenantIdentity({ artisanId })
-    const payload = await attachTenantIdToPayload(TABLES.projects, toSupabaseProjectInsert({
+    const supportsResponsibleUser = await projectResponsibilityColumnExists()
+    const defaultResponsible = supportsResponsibleUser && tenantIdentity?.tenantId
+      ? await resolveDefaultProjectResponsible(tenantIdentity.tenantId)
+      : null
+    const payload = await attachTenantIdToPayload(TABLES.projects, {
+      ...toSupabaseProjectInsert({
       artisanId,
       tenantId: tenantIdentity?.tenantId || null,
       clientName,
@@ -439,7 +445,15 @@ export async function POST(request: NextRequest) {
       completenessScore,
       source: 'vapi',
       callId: callId || '',
-    }), {
+    }),
+      ...(defaultResponsible
+        ? {
+            responsible_user_id: defaultResponsible.userId,
+            responsible_assigned_at: new Date().toISOString(),
+            responsible_assigned_by: defaultResponsible.userId,
+          }
+        : {}),
+    }, {
       tenantId: tenantIdentity?.tenantId || null,
       artisanId,
     })
