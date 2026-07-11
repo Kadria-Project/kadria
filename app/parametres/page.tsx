@@ -19,6 +19,21 @@ import {
 } from '@/src/config/travel'
 import { normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit'
 import { Users } from 'lucide-react'
+import type { TenantRole } from '@/src/lib/team/types'
+import { hasPermission } from '@/src/lib/team/permission-matrix'
+import { PermissionGate } from '@/src/components/settings/PermissionGate'
+import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
+
+// Distingue les erreurs HTTP pour affichage : 401 (session expiree), 403
+// (permission manquante — message explicite plutot qu'une erreur technique),
+// 404 (ressource introuvable), 500/autres (erreur serveur generique).
+function describeSettingsError(status: number, fallback: string): string {
+  if (status === 401) return 'Votre session a expire. Veuillez vous reconnecter.'
+  if (status === 403) return "Modification reservee au propriétaire de l'entreprise."
+  if (status === 404) return 'Ressource introuvable.'
+  if (status >= 500) return 'Une erreur est survenue, réessayez.'
+  return fallback
+}
 
 type WidgetColorMode = 'sobriety' | 'immersive' | 'premium_dark'
 
@@ -475,11 +490,23 @@ function ParametresPageContent() {
   // permissions. On ne masque donc plus cette entree sur un echec de fetch —
   // seul un 401 explicite (session non authentifiee) la cache.
   const [teamTabVisible, setTeamTabVisible] = useState(true)
+  // Role tenant de l'utilisateur courant, expose par `/api/team`
+  // (`membership.role`) — c'est le mecanisme deja utilise par
+  // `/parametres/equipe` pour connaitre le role courant cote client. Tant
+  // que `currentRole` est `null` (chargement), les sections sensibles
+  // (`PermissionGate`) restent masquees par defaut plutot que d'afficher un
+  // etat non autorise en flash.
+  const [currentRole, setCurrentRole] = useState<TenantRole | null>(null)
   useEffect(() => {
     fetch('/api/team', { cache: 'no-store' })
-      .then((response) => {
+      .then(async (response) => {
         if (response.status === 401) {
           setTeamTabVisible(false)
+          return
+        }
+        const data = await response.json().catch(() => null)
+        if (data?.membership?.role) {
+          setCurrentRole(data.membership.role as TenantRole)
         }
       })
       .catch(() => {})
@@ -929,7 +956,7 @@ function ParametresPageContent() {
       })
       const data = await res.json()
       if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de la sauvegarde')
+        throw new Error(!res.ok ? describeSettingsError(res.status, data.error || 'Erreur lors de la sauvegarde') : (data.error || 'Erreur lors de la sauvegarde'))
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -1659,6 +1686,13 @@ function ParametresPageContent() {
                 🏢 Mon entreprise
               </h2>
 
+              {!hasPermission(currentRole ?? 'viewer', 'company.update') && (
+                <ReadOnlyNotice reason="owner_only" />
+              )}
+              <fieldset
+                disabled={!hasPermission(currentRole ?? 'viewer', 'company.update')}
+                style={{ border: 'none', margin: 0, padding: 0 }}
+              >
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
                   Identité
@@ -1768,6 +1802,7 @@ function ParametresPageContent() {
                   </div>
                 </div>
               </div>
+              </fieldset>
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
@@ -3538,8 +3573,11 @@ function ParametresPageContent() {
                         {stripeConnectError}
                       </p>
                     )}
+                    {!hasPermission(currentRole ?? 'viewer', 'billing.manage') && (
+                      <ReadOnlyNotice reason="owner_only" message="Connexion Stripe réservée au propriétaire de l'entreprise." />
+                    )}
                     <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                      {config.stripeConnectStatus !== 'active' && (
+                      {config.stripeConnectStatus !== 'active' && hasPermission(currentRole ?? 'viewer', 'billing.manage') && (
                         <button
                           type="button"
                           onClick={startStripeConnectOnboarding}
@@ -3565,7 +3603,7 @@ function ParametresPageContent() {
                                 : 'Connecter Stripe'}
                         </button>
                       )}
-                      {(config.stripeConnectStatus === 'pending' || config.stripeConnectStatus === 'restricted' || config.stripeConnectStatus === 'active') && (
+                      {(config.stripeConnectStatus === 'pending' || config.stripeConnectStatus === 'restricted' || config.stripeConnectStatus === 'active') && hasPermission(currentRole ?? 'viewer', 'billing.manage') && (
                         <button
                           type="button"
                           onClick={() => syncStripeConnectStatus()}
@@ -3854,6 +3892,18 @@ function ParametresPageContent() {
 
           {/* Section Offre & quotas */}
           {activeSection === 'offre' && (
+            <PermissionGate
+              role={currentRole}
+              permission="billing.read"
+              fallback={
+                <div>
+                  <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
+                    💳 Offre & quotas
+                  </h2>
+                  <ReadOnlyNotice reason="owner_only" message="Section réservée au propriétaire et aux administrateurs de l'entreprise." />
+                </div>
+              }
+            >
             <div>
               <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
                 💳 Offre & quotas
@@ -3945,7 +3995,10 @@ function ParametresPageContent() {
                     </div>
 
                     <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                      {accountStatus?.hasStripeCustomer ? (
+                      {!hasPermission(currentRole ?? 'viewer', 'billing.manage') && (
+                        <ReadOnlyNotice reason="owner_only" message="Gestion de l'abonnement réservée au propriétaire de l'entreprise." />
+                      )}
+                      {accountStatus?.hasStripeCustomer && hasPermission(currentRole ?? 'viewer', 'billing.manage') ? (
                         <>
                           <button
                             onClick={openBillingPortal}
@@ -4039,6 +4092,7 @@ function ParametresPageContent() {
                 </>
               )}
             </div>
+            </PermissionGate>
           )}
         </div>
       </div>
