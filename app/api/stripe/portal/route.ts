@@ -2,12 +2,23 @@ import { NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getStripeClient, StripeNotConfiguredError } from '@/src/lib/stripe'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
 export async function POST() {
   try {
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+    }
+
+    try {
+      requirePermission(await getCurrentTenantContext(), 'billing.manage')
+    } catch (permissionError) {
+      if (permissionError instanceof PermissionError) {
+        return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+      }
+      throw permissionError
     }
 
     const { data: userRow } = await supabaseAdmin

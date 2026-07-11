@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtisanConfig, updateArtisanConfig, getUserByArtisanIdentifier, updateUser } from '@/src/lib/airtable'
 import { getSession } from '@/src/lib/auth-utils'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { PermissionError, requirePermission } from '@/src/lib/team/access'
+
+// Champs relevant de l'identite legale/financiere de l'entreprise :
+// reserves au proprietaire (permission `company.update`), conformement a la
+// regle produit "seul le owner modifie les infos structurelles, legales et
+// financieres de l'entreprise".
+const COMPANY_LEGAL_FIELDS = [
+  'raisonSociale', 'formeJuridique', 'siret', 'tvaNumber', 'tvaAssujetti',
+  'adressePro', 'cpPro', 'villePro', 'assureur', 'numAssurance', 'assuranceNonRequise',
+] as const
 
 function isValidOptionalUrl(value: unknown): boolean {
   if (value === undefined || value === null || value === '') return true
@@ -64,7 +75,33 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    // Resolution du role tenant cote serveur (jamais un role/tenant_id
+    // envoye par le client) afin de restreindre les champs sensibles selon
+    // la permission requise. Les autres champs (widget, catalogue, devis...)
+    // relevent de `business_settings.update` (owner + admin).
+    const tenantContext = await getCurrentTenantContext()
+    try {
+      requirePermission(tenantContext, 'business_settings.update')
+    } catch (permissionError) {
+      if (permissionError instanceof PermissionError) {
+        return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+      }
+      throw permissionError
+    }
+
     const body = await request.json()
+
+    const touchesCompanyLegalField = COMPANY_LEGAL_FIELDS.some((field) => body[field] !== undefined)
+    if (touchesCompanyLegalField) {
+      try {
+        requirePermission(tenantContext, 'company.update')
+      } catch (permissionError) {
+        if (permissionError instanceof PermissionError) {
+          return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+        }
+        throw permissionError
+      }
+    }
 
     if (body.siret !== undefined && body.siret !== '' && !/^\d{14}$/.test(String(body.siret))) {
       return NextResponse.json(

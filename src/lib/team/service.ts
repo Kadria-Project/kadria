@@ -7,6 +7,7 @@ import { getCurrentTenantContext, TENANT_MEMBERS_TABLE, TENANTS_TABLE, tableExis
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 import { getPlanForArtisan } from '@/src/lib/usage/quotas'
 import { canChangeMemberRole, canInviteMembers, canRemoveMember, canSuspendMember, getTeamPermissions } from '@/src/lib/team/permissions'
+import { hasPermission } from '@/src/lib/team/access'
 import { TEAM_ROLE_LABELS, TENANT_ROLES, type SeatUsage, type TeamMember, type TenantInvitation, type TenantInvitationStatus, type TenantRole } from '@/src/lib/team/types'
 
 const INVITATIONS_TABLE = 'tenant_invitations'
@@ -323,7 +324,13 @@ export async function getTeamOverview() {
   if (!tenantContext) {
     throw new Error('TENANT_CONTEXT_REQUIRED')
   }
-  if (!['owner', 'admin', 'manager'].includes(tenantContext.role)) {
+  // Lecture d'equipe : tous les roles actifs (member/viewer inclus) ont
+  // `team.read` dans la matrice centralisee (src/lib/team/access.ts) — seule
+  // la gestion (invitation/edition) reste restreinte a owner/admin via
+  // `getTeamPermissions()` ci-dessous. Les invitations en attente ne sont
+  // renvoyees que si `canInviteMembers` est vrai (cf. plus bas), ce qui les
+  // masque deja pour member/viewer.
+  if (!hasPermission(tenantContext.role, 'team.read')) {
     console.warn('[TEAM][ROLE_FORBIDDEN] Session role cannot access team overview', {
       userId: tenantContext.userId,
       tenantId: tenantContext.tenantId,

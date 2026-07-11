@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/src/lib/auth-utils'
 import { getBusinessProfile, upsertBusinessProfile } from '@/src/lib/business-profile'
+import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
 export async function GET() {
   try {
@@ -31,6 +33,15 @@ export async function PATCH(request: NextRequest) {
     const session = await getSession()
     if (!session) {
       return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+    }
+
+    try {
+      requirePermission(await getCurrentTenantContext(), 'business_settings.update')
+    } catch (permissionError) {
+      if (permissionError instanceof PermissionError) {
+        return NextResponse.json({ success: false, error: permissionError.message }, { status: permissionError.status })
+      }
+      throw permissionError
     }
 
     const body = await request.json()
