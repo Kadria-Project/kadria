@@ -18,11 +18,11 @@ import {
   DEFAULT_CONSUMPTION_PER_100KM,
 } from '@/src/config/travel'
 import { normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit'
-import { Users } from 'lucide-react'
 import type { TenantRole } from '@/src/lib/team/types'
 import { hasPermission } from '@/src/lib/team/permission-matrix'
-import { PermissionGate } from '@/src/components/settings/PermissionGate'
 import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
+import { CompanySettingsSection, type CompanySettingsValues } from '@/src/components/settings/sections/CompanySettingsSection'
+import { BillingSettingsSection } from '@/src/components/settings/sections/BillingSettingsSection'
 
 // Distingue les erreurs HTTP pour affichage : 401 (session expiree), 403
 // (permission manquante — message explicite plutot qu'une erreur technique),
@@ -131,28 +131,6 @@ interface AccountStatusSummary {
   hasStripeCustomer: boolean
 }
 
-const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
-  ok: 'OK',
-  warning: 'Proche limite',
-  limit_reached: 'Limite atteinte',
-  exceeded: 'Dépassé',
-}
-
-const ACCOUNT_STATUS_LABELS: Record<string, string> = {
-  essai: 'Essai',
-  trial: 'Essai',
-  trialing: 'Essai gratuit en cours',
-  actif: 'Actif',
-  active: 'Actif',
-  en_cours: 'Actif',
-  suspendu: 'Suspendu',
-  suspended: 'Suspendu',
-  annule: 'Annulé',
-  annulé: 'Annulé',
-  cancelled: 'Annulé',
-  canceled: 'Annulé',
-}
-
 const FORMES_JURIDIQUES = [
   'Auto-entrepreneur', 'EI', 'EURL', 'SARL', 'SAS', 'SASU', 'Autre',
 ]
@@ -207,18 +185,6 @@ function validateLegalConfig(config: LegalConfig): Record<string, string> {
   return errors
 }
 
-function isValidOptionalHttpUrl(value: string): boolean {
-  const trimmed = value.trim()
-  if (!trimmed) return true
-
-  try {
-    const url = new URL(trimmed)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
 // Normalise les champs spécialités/prestations exclues du Profil métier,
 // stockés en tableau côté Supabase mais parfois saisis/édités sous forme de
 // texte séparé par des virgules — accepte les deux formats sans dupliquer
@@ -231,6 +197,20 @@ function toReadonlyList(value: string | string[] | null | undefined): string[] {
     return value.split(',').map((v) => v.trim()).filter((v) => v.length > 0)
   }
   return []
+}
+
+// Construit une copie d'un objet sans les cles listees, sans laisser de
+// bindings inutilises (contrairement a un destructuring `{ a, ...rest }` qui
+// declare des variables non utilisees pour chaque cle exclue). Utilise par
+// `save()` pour retirer du payload global les champs desormais geres par les
+// sections extraites (ex. `CompanySettingsSection`), afin d'eviter toute
+// double-ecriture entre le bouton global et les boutons de section.
+function omitFields<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Omit<T, K> {
+  const excluded = new Set<keyof T>(keys)
+  const entries = (Object.entries(source) as Array<[keyof T, T[keyof T]]>).filter(
+    ([key]) => !excluded.has(key)
+  )
+  return Object.fromEntries(entries) as Omit<T, K>
 }
 
 function WorkTypeReadOnlyChips({ values, accent }: { values: string[]; accent: 'green' | 'red' }) {
@@ -908,11 +888,9 @@ function ParametresPageContent() {
       return
     }
 
-    if (!isValidOptionalHttpUrl(config.googleReviewUrl)) {
-      setActiveSection('entreprise')
-      setSaveError("Le lien de demande d'avis Google doit etre une URL valide")
-      return
-    }
+    // La validation de googleReviewUrl a ete deplacee dans
+    // `CompanySettingsSection` (proprietaire exclusif de ce champ depuis ce
+    // lot) : le bouton global ne l'envoie plus, donc ne la valide plus ici.
 
     if (config.depositEnabled) {
       if (config.depositValue !== null && config.depositValue !== undefined) {
@@ -940,11 +918,21 @@ function ParametresPageContent() {
       const cleanedQuoteTemplates = config.businessConfig.quoteTemplates
         .filter(t => t.name.trim())
         .map(t => ({ ...t, lines: t.lines.filter(l => l.label.trim()) }))
-      const {
-        stripeConnectStatus: _ignoredStripeConnectStatus,
-        stripeAccountId: _ignoredStripeAccountId,
-        ...configPayload
-      } = config
+      // companyName / websiteUrl / googleReviewUrl / welcomeName / logoUrl sont
+      // desormais geres exclusivement par le bouton local de
+      // `CompanySettingsSection` (son propre appel PATCH scope) : le bouton
+      // global ne doit plus les reenvoyer, sous peine d'ecraser une
+      // sauvegarde de section avec une valeur perimee du state global (risque
+      // de double-ecriture identifie a l'audit de ce lot).
+      const configPayload = omitFields(config, [
+        'stripeConnectStatus',
+        'stripeAccountId',
+        'companyName',
+        'websiteUrl',
+        'googleReviewUrl',
+        'welcomeName',
+        'logoUrl',
+      ])
       const res = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1682,127 +1670,23 @@ function ParametresPageContent() {
           {/* Section Entreprise */}
           {activeSection === 'entreprise' && (
             <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                🏢 Mon entreprise
-              </h2>
-
-              {!hasPermission(currentRole ?? 'viewer', 'company.update') && (
-                <ReadOnlyNotice reason="owner_only" />
-              )}
-              <fieldset
-                disabled={!hasPermission(currentRole ?? 'viewer', 'company.update')}
-                style={{ border: 'none', margin: 0, padding: 0 }}
-              >
-              <div style={sectionCard}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                  Identité
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>Nom de l&apos;entreprise</label>
-                    <input
-                      value={config.companyName}
-                      onChange={e => setConfig(c => ({ ...c, companyName: e.target.value }))}
-                      placeholder="Martin Rénovation"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>Site web</label>
-                    <input
-                      value={config.websiteUrl}
-                      onChange={e => setConfig(c => ({ ...c, websiteUrl: e.target.value }))}
-                      placeholder="https://monsite.fr"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>Lien de demande d&apos;avis Google</label>
-                    <input
-                      id="field-google-review-url"
-                      value={config.googleReviewUrl}
-                      onChange={e => setConfig(c => ({ ...c, googleReviewUrl: e.target.value }))}
-                      placeholder="https://g.page/r/..."
-                      style={inputStyle}
-                    />
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                      Ajoutez votre lien d&apos;avis Google pour activer les demandes d&apos;avis client.
-                      Vous pouvez le recuperer depuis votre fiche Google Business Profile.
-                    </p>
-                  </div>
-                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>Nom de l&apos;assistant dans le widget</label>
-                    <input
-                      value={config.welcomeName}
-                      onChange={e => setConfig(c => ({ ...c, welcomeName: e.target.value }))}
-                      placeholder="Assistant Martin Rénovation"
-                      style={inputStyle}
-                    />
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                      Affiché dans le header du widget à la place de &quot;Kadria&quot; (remplacé par la marque blanche si elle est activée).
-                    </p>
-                  </div>
-                  <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-                    <label style={labelStyle}>Logo de l&apos;entreprise</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                      {config.logoUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={config.logoUrl}
-                          alt="Logo entreprise"
-                          style={{
-                            height: '40px', maxWidth: '120px',
-                            objectFit: 'contain', borderRadius: '6px',
-                            border: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '4px',
-                          }}
-                          onError={e => (e.currentTarget.style.display = 'none')}
-                        />
-                      )}
-                      <label
-                        style={{
-                          padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                          border: '1px solid var(--border)', background: 'var(--bg-hover)',
-                          color: 'var(--text-2)', cursor: uploadingTarget === 'company_logo' ? 'default' : 'pointer',
-                          opacity: uploadingTarget === 'company_logo' ? 0.6 : 1,
-                        }}
-                      >
-                        {uploadingTarget === 'company_logo' ? 'Import en cours...' : config.logoUrl ? 'Remplacer' : 'Importer un logo'}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          disabled={uploadingTarget === 'company_logo'}
-                          onChange={e => {
-                            const file = e.target.files?.[0]
-                            if (file) handleCompanyLogoFile(file)
-                            e.target.value = ''
-                          }}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
-                      {config.logoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setConfig(c => ({ ...c, logoUrl: '' }))}
-                          style={{
-                            padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
-                            border: '1px solid var(--border)', background: 'transparent',
-                            color: 'var(--text-3)', cursor: 'pointer',
-                          }}
-                        >
-                          Supprimer
-                        </button>
-                      )}
-                    </div>
-                    <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '6px 0 0' }}>
-                      PNG, JPG ou WEBP, 4 Mo maximum.
-                    </p>
-                    {uploadError && uploadingTarget === null && (
-                      <p style={{ color: '#ef4444', fontSize: '12px', margin: '6px 0 0' }}>{uploadError}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              </fieldset>
+              <CompanySettingsSection
+                role={currentRole}
+                loading={loading}
+                isMobile={isMobile}
+                uploading={uploadingTarget === 'company_logo'}
+                uploadError={uploadingTarget === 'company_logo' ? uploadError : null}
+                values={{
+                  companyName: config.companyName,
+                  websiteUrl: config.websiteUrl,
+                  googleReviewUrl: config.googleReviewUrl,
+                  welcomeName: config.welcomeName,
+                  logoUrl: config.logoUrl,
+                }}
+                onUploadLogo={handleCompanyLogoFile}
+                onRemoveLogo={() => setConfig(c => ({ ...c, logoUrl: '' }))}
+                onSaved={(values: CompanySettingsValues) => setConfig(c => ({ ...c, ...values }))}
+              />
 
               <div style={sectionCard}>
                 <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
@@ -3892,207 +3776,19 @@ function ParametresPageContent() {
 
           {/* Section Offre & quotas */}
           {activeSection === 'offre' && (
-            <PermissionGate
+            <BillingSettingsSection
               role={currentRole}
-              permission="billing.read"
-              fallback={
-                <div>
-                  <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                    💳 Offre & quotas
-                  </h2>
-                  <ReadOnlyNotice reason="owner_only" message="Section réservée au propriétaire et aux administrateurs de l'entreprise." />
-                </div>
-              }
-            >
-            <div>
-              <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>
-                💳 Offre & quotas
-              </h2>
-
-              {teamTabVisible && (
-                <button
-                  type="button"
-                  onClick={() => router.push('/parametres/equipe')}
-                  style={{
-                    ...sectionCard,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '14px',
-                    width: '100%',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-elevated)',
-                  }}
-                >
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '40px', height: '40px', borderRadius: '10px',
-                    background: 'rgba(34,197,94,0.12)', color: 'var(--accent)', flexShrink: 0,
-                  }}>
-                    <Users size={20} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Équipe</p>
-                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-3)' }}>
-                      Invitez vos collaborateurs et gérez leurs accès à Kadria.
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {usageLoading ? (
-                <div style={sectionCard}>
-                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Chargement…</p>
-                </div>
-              ) : usageError || !monthlyUsage ? (
-                <div style={sectionCard}>
-                  <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-                    Informations d&apos;utilisation indisponibles pour le moment.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div style={sectionCard}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>
-                      Votre offre
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
-                      <div>
-                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Plan actuel</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700, textTransform: 'capitalize' }}>
-                          {accountStatus?.plan || monthlyUsage.plan}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Statut</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                          {accountStatus?.status
-                            ? (ACCOUNT_STATUS_LABELS[accountStatus.status.toLowerCase()] || accountStatus.status)
-                            : 'Statut non disponible'}
-                        </p>
-                      </div>
-                      {accountStatus?.trialEndDate && (
-                        <div>
-                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Fin d&apos;essai</p>
-                          <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.trialEndDate}</p>
-                        </div>
-                      )}
-                      {accountStatus?.billingStatus && (
-                        <div>
-                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Facturation</p>
-                          <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.billingStatus}</p>
-                        </div>
-                      )}
-                      {accountStatus?.nextBilling && (
-                        <div>
-                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>
-                            {accountStatus.cancelAtPeriodEnd ? 'Fin d’accès le' : 'Renouvellement le'}
-                          </p>
-                          <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.nextBilling}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                      {!hasPermission(currentRole ?? 'viewer', 'billing.manage') && (
-                        <ReadOnlyNotice reason="owner_only" message="Gestion de l'abonnement réservée au propriétaire de l'entreprise." />
-                      )}
-                      {accountStatus?.hasStripeCustomer && hasPermission(currentRole ?? 'viewer', 'billing.manage') ? (
-                        <>
-                          <button
-                            onClick={openBillingPortal}
-                            disabled={portalLoading}
-                            style={{
-                              background: 'var(--accent)',
-                              border: 'none',
-                              color: 'black',
-                              fontWeight: 700,
-                              borderRadius: '10px',
-                              padding: '10px 20px',
-                              fontSize: '14px',
-                              cursor: portalLoading ? 'default' : 'pointer',
-                              opacity: portalLoading ? 0.7 : 1,
-                            }}
-                          >
-                            {portalLoading ? 'Redirection...' : 'Gérer mon abonnement'}
-                          </button>
-                          {portalError && (
-                            <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#ef4444' }}>{portalError}</p>
-                          )}
-                        </>
-                      ) : (
-                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '13px' }}>
-                          Aucun abonnement Stripe actif
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={sectionCard}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--accent)' }}>
-                        Utilisation du mois
-                      </h3>
-                      <span style={{
-                        fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '2px 10px',
-                        background: 'rgba(34,197,94,0.1)', color: 'var(--accent)',
-                      }}>
-                        {USAGE_STATUS_LABELS[
-                          ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('exceeded') && 'exceeded')
-                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('limit_reached') && 'limit_reached')
-                          || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('warning') && 'warning')
-                          || 'ok'
-                        ]}
-                      </span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '14px' }}>
-                      <div>
-                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Dossiers</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                          {monthlyUsage.projects.unlimited
-                            ? `${monthlyUsage.projects.used} / Illimité`
-                            : `${monthlyUsage.projects.used} / ${monthlyUsage.projects.limit ?? 0}`}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Appels vocaux</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                          {monthlyUsage.vapi.callsUnlimited
-                            ? `${monthlyUsage.vapi.callsUsed} / Illimité`
-                            : monthlyUsage.vapi.callsLimit === 0
-                              ? 'Non inclus'
-                              : `${monthlyUsage.vapi.callsUsed} / ${monthlyUsage.vapi.callsLimit}`}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Minutes vocales</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                          {monthlyUsage.vapi.minutesLimit === null
-                            ? `${monthlyUsage.vapi.minutesUsed} min / Non limité`
-                            : `${monthlyUsage.vapi.minutesUsed} / ${monthlyUsage.vapi.minutesLimit} min`}
-                        </p>
-                      </div>
-                      {monthlyUsage.assistant && (
-                        <div>
-                          <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Assistant Kadria</p>
-                          <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                            {monthlyUsage.assistant.used} / {monthlyUsage.assistant.limit} questions utilisées ce mois-ci
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={sectionCard}>
-                    <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-                      Ces compteurs se réinitialisent automatiquement chaque mois. Aucune action n&apos;est requise de votre part.
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-            </PermissionGate>
+              isMobile={isMobile}
+              teamTabVisible={teamTabVisible}
+              onGoToTeam={() => router.push('/parametres/equipe')}
+              usageLoading={usageLoading}
+              usageError={usageError}
+              monthlyUsage={monthlyUsage}
+              accountStatus={accountStatus}
+              portalLoading={portalLoading}
+              portalError={portalError}
+              onOpenBillingPortal={openBillingPortal}
+            />
           )}
         </div>
       </div>
