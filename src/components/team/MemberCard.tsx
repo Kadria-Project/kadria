@@ -39,6 +39,9 @@ export function MemberCard({
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-white">{name}</p>
             <p className="mt-1 truncate text-sm text-zinc-400">{member.email}</p>
+            {member.professionalPhone && (
+              <p className="mt-1 truncate text-sm text-zinc-400">{member.professionalPhone}</p>
+            )}
             <div className="mt-3 flex flex-wrap gap-2">
               <Chip>{TEAM_ROLE_LABELS[member.role]}</Chip>
               <Chip>{member.jobTitle || 'Fonction non renseignée'}</Chip>

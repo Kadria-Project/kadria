@@ -43,6 +43,7 @@ export interface TeamMember {
   firstName: string
   lastName: string
   email: string
+  professionalPhone: string
   companyName: string
 }
 

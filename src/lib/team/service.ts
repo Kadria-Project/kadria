@@ -103,6 +103,7 @@ function mapTeamMember(row: Record<string, unknown>): TeamMember {
     firstName: toText(row.user_first_name),
     lastName: toText(row.user_last_name),
     email: toText(row.user_email),
+    professionalPhone: toText(row.user_professional_phone),
     companyName: toText(row.user_company_name),
   }
 }
@@ -112,7 +113,7 @@ async function loadUsersByIds(userIds: string[]) {
 
   const { data, error } = await getSupabaseAdmin()
     .from('Users')
-    .select('id,email,first_name,last_name,company_name')
+    .select('id,email,first_name,last_name,company_name,professional_phone')
     .in('id', userIds)
 
   if (error) {
@@ -215,6 +216,7 @@ export async function listTeamMembers(tenantId: string) {
       user_first_name: user.first_name,
       user_last_name: user.last_name,
       user_email: user.email,
+      user_professional_phone: user.professional_phone,
       user_company_name: user.company_name,
     })
   })

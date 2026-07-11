@@ -23,6 +23,13 @@ import { hasPermission } from '@/src/lib/team/permission-matrix'
 import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
 import { CompanySettingsSection, type CompanySettingsValues } from '@/src/components/settings/sections/CompanySettingsSection'
 import { BillingSettingsSection } from '@/src/components/settings/sections/BillingSettingsSection'
+import {
+  EMPTY_USER_VEHICLE_PROFILE,
+  PERSONAL_VEHICLE_TYPE_LABELS,
+  VEHICLE_OWNERSHIP_LABELS,
+  type PersonalVehicleType,
+  type VehicleOwnershipType,
+} from '@/src/lib/profile/types'
 
 // Distingue les erreurs HTTP pour affichage : 401 (session expiree), 403
 // (permission manquante — message explicite plutot qu'une erreur technique),
@@ -368,6 +375,8 @@ function ParametresPageContent() {
     firstName: '',
     lastName: '',
     email: '',
+    professionalPhone: '',
+    jobTitle: '',
     plan: 'essentiel' as string,
     primaryTrade: '',
     trades: [] as string[],
@@ -422,6 +431,9 @@ function ParametresPageContent() {
       minimumTravelFee: undefined as number | undefined,
       freeTravelRadiusKm: undefined as number | undefined,
     },
+    personalVehicle: {
+      ...EMPTY_USER_VEHICLE_PROFILE,
+    },
     businessConfig: {
       acceptedWorkTypes: [] as string[],
       refusedWorkTypes: [] as string[],
@@ -449,6 +461,7 @@ function ParametresPageContent() {
   const [serviceProfilesCount, setServiceProfilesCount] = useState<number | null>(null)
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null)
   const [calendarEvaluable, setCalendarEvaluable] = useState(false)
+  const [personalVehicleAvailable, setPersonalVehicleAvailable] = useState(true)
   const [configurationCardExpanded, setConfigurationCardExpanded] = useState(false)
   // La brique "Equipe" doit rester visible pour tout utilisateur authentifié
   // du dashboard, meme si la resolution du role tenant echoue ou est encore
@@ -464,16 +477,20 @@ function ParametresPageContent() {
   // etat non autorise en flash.
   const [currentRole, setCurrentRole] = useState<TenantRole | null>(null)
   const canUpdateOwnAccount = hasPermission(currentRole ?? 'viewer', 'account.update_self')
+  const canUpdateOwnProfile = hasPermission(currentRole ?? 'viewer', 'profile.update_self')
+  const canManageOwnVehicle = hasPermission(currentRole ?? 'viewer', 'vehicle.update_self')
   const canManageCompanySettings = hasPermission(currentRole ?? 'viewer', 'company.update')
   const canManageBusinessSettings = hasPermission(currentRole ?? 'viewer', 'business_settings.update')
   const canManageBillingSettings = hasPermission(currentRole ?? 'viewer', 'billing.manage')
   const canSaveActiveSection =
     activeSection === 'entreprise'
-      ? canUpdateOwnAccount || canManageCompanySettings
+      ? canUpdateOwnAccount || canUpdateOwnProfile
       : activeSection === 'contact' || activeSection === 'legal'
         ? canManageCompanySettings
         : activeSection === 'vehicule' || activeSection === 'widget'
-          ? canManageBusinessSettings
+          ? activeSection === 'vehicule'
+            ? canManageOwnVehicle || canManageBusinessSettings
+            : canManageBusinessSettings
           : activeSection === 'catalogue'
             ? canManageBusinessSettings || canManageBillingSettings
             : false
@@ -598,94 +615,111 @@ function ParametresPageContent() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/artisan/config')
-      .then(r => r.json())
-      .then(data => {
-        if (data.success && data.config) {
+    Promise.all([
+      fetch('/api/artisan/config').then(r => r.json()).catch(() => null),
+      fetch('/api/profile').then(r => r.json()).catch(() => null),
+      fetch('/api/profile/vehicle').then(r => r.json()).catch(() => null),
+    ])
+      .then(([configData, profileData, vehicleData]) => {
+        setPersonalVehicleAvailable(vehicleData?.success ? vehicleData.available !== false : true)
+        if (configData?.success && configData.config) {
           const knownValues = new Set(ARTISAN_TRADES.map(t => t.value))
-          const rawTrades: string[] = Array.isArray(data.config.trades) ? data.config.trades : []
+          const rawTrades: string[] = Array.isArray(configData.config.trades) ? configData.config.trades : []
           const customTrade = rawTrades.find((t: string) => !knownValues.has(t)) || ''
           setConfig({
-            companyName: data.config.companyName || '',
-            firstName: data.config.firstName || '',
-            lastName: data.config.lastName || '',
-            email: data.config.email || '',
-            plan: data.config.plan || 'essentiel',
-            primaryTrade: data.config.primaryTrade || '',
+            companyName: configData.config.companyName || '',
+            firstName: profileData?.success ? (profileData.profile?.firstName || '') : (configData.config.firstName || ''),
+            lastName: profileData?.success ? (profileData.profile?.lastName || '') : (configData.config.lastName || ''),
+            email: profileData?.success ? (profileData.profile?.email || '') : (configData.config.email || ''),
+            professionalPhone: profileData?.success ? (profileData.profile?.professionalPhone || '') : '',
+            jobTitle: profileData?.success ? (profileData.profile?.jobTitle || '') : '',
+            plan: configData.config.plan || 'essentiel',
+            primaryTrade: configData.config.primaryTrade || '',
             trades: rawTrades,
             otherTrade: customTrade,
-            serviceArea: data.config.serviceArea || '',
-            interventionRadius: data.config.interventionRadius || 0,
-            notificationEmail: data.config.notificationEmail || '',
-            phone: data.config.phone || '',
-            address: data.config.address || '',
-            hours: data.config.hours || '',
-            logoUrl: data.config.logoUrl || '',
-            assistantAvatarType: data.config.assistantAvatarType || 'kadria_default',
-            assistantAvatarUrl: data.config.assistantAvatarUrl || '',
-            welcomeName: data.config.welcomeName || '',
-            welcomeMessage: data.config.welcomeMessage || '',
-            primaryColor: data.config.primaryColor || '#22c55e',
-            secondaryColor: data.config.secondaryColor || '#18181b',
-            widgetColorMode: data.config.widgetColorMode === 'immersive' || data.config.widgetColorMode === 'premium_dark'
-              ? data.config.widgetColorMode
+            serviceArea: configData.config.serviceArea || '',
+            interventionRadius: configData.config.interventionRadius || 0,
+            notificationEmail: configData.config.notificationEmail || '',
+            phone: configData.config.phone || '',
+            address: configData.config.address || '',
+            hours: configData.config.hours || '',
+            logoUrl: configData.config.logoUrl || '',
+            assistantAvatarType: configData.config.assistantAvatarType || 'kadria_default',
+            assistantAvatarUrl: configData.config.assistantAvatarUrl || '',
+            welcomeName: configData.config.welcomeName || '',
+            welcomeMessage: configData.config.welcomeMessage || '',
+            primaryColor: configData.config.primaryColor || '#22c55e',
+            secondaryColor: configData.config.secondaryColor || '#18181b',
+            widgetColorMode: configData.config.widgetColorMode === 'immersive' || configData.config.widgetColorMode === 'premium_dark'
+              ? configData.config.widgetColorMode
               : 'sobriety',
-            websiteUrl: data.config.websiteUrl || '',
-            googleReviewUrl: data.config.googleReviewUrl || '',
-            depositEnabled: Boolean(data.config.depositEnabled),
-            depositType: data.config.depositType === 'fixed' ? 'fixed' : 'percentage',
-            depositValue: data.config.depositValue ?? null,
-            stripeConnectStatus: normalizeStripeConnectStatus(data.config.stripeConnectStatus),
-            stripeAccountId: data.config.stripeAccountId || '',
-            whiteLabelEnabled: Boolean(data.config.whiteLabelEnabled),
-            widgetBrandName: data.config.widgetBrandName || '',
-            widgetBrandLogoUrl: data.config.widgetBrandLogoUrl || '',
-            raisonSociale: data.config.raisonSociale || '',
-            formeJuridique: data.config.formeJuridique || '',
-            siret: data.config.siret || '',
-            tvaNumber: data.config.tvaNumber || '',
-            tvaAssujetti: data.config.tvaAssujetti !== false,
-            adressePro: data.config.adressePro || '',
-            cpPro: data.config.cpPro || '',
-            villePro: data.config.villePro || '',
-            assureur: data.config.assureur || '',
-            numAssurance: data.config.numAssurance || '',
-            assuranceNonRequise: data.config.assuranceNonRequise || false,
-            devisPrefixe: data.config.devisPrefixe || 'DEV',
-            devisValidite: data.config.devisValidite || 90,
-            devisTvaDefaut: data.config.devisTvaDefaut || 10,
-            devisConditionsPaiement: data.config.devisConditionsPaiement || '',
-            devisMentionLegale: data.config.devisMentionLegale || '',
+            websiteUrl: configData.config.websiteUrl || '',
+            googleReviewUrl: configData.config.googleReviewUrl || '',
+            depositEnabled: Boolean(configData.config.depositEnabled),
+            depositType: configData.config.depositType === 'fixed' ? 'fixed' : 'percentage',
+            depositValue: configData.config.depositValue ?? null,
+            stripeConnectStatus: normalizeStripeConnectStatus(configData.config.stripeConnectStatus),
+            stripeAccountId: configData.config.stripeAccountId || '',
+            whiteLabelEnabled: Boolean(configData.config.whiteLabelEnabled),
+            widgetBrandName: configData.config.widgetBrandName || '',
+            widgetBrandLogoUrl: configData.config.widgetBrandLogoUrl || '',
+            raisonSociale: configData.config.raisonSociale || '',
+            formeJuridique: configData.config.formeJuridique || '',
+            siret: configData.config.siret || '',
+            tvaNumber: configData.config.tvaNumber || '',
+            tvaAssujetti: configData.config.tvaAssujetti !== false,
+            adressePro: configData.config.adressePro || '',
+            cpPro: configData.config.cpPro || '',
+            villePro: configData.config.villePro || '',
+            assureur: configData.config.assureur || '',
+            numAssurance: configData.config.numAssurance || '',
+            assuranceNonRequise: configData.config.assuranceNonRequise || false,
+            devisPrefixe: configData.config.devisPrefixe || 'DEV',
+            devisValidite: configData.config.devisValidite || 90,
+            devisTvaDefaut: configData.config.devisTvaDefaut || 10,
+            devisConditionsPaiement: configData.config.devisConditionsPaiement || '',
+            devisMentionLegale: configData.config.devisMentionLegale || '',
             travelConfig: {
-              vehicleType: (data.config.travelConfig?.vehicleType || '') as VehicleType | '',
-              consumptionPer100Km: data.config.travelConfig?.consumptionPer100Km,
-              chargingType: (data.config.travelConfig?.chargingType || 'maison') as ChargingType,
-              originAddress: data.config.travelConfig?.originAddress || data.config.address || undefined,
-              originLat: data.config.travelConfig?.originLat,
-              originLng: data.config.travelConfig?.originLng,
-              minimumTravelFee: data.config.travelConfig?.minimumTravelFee,
-              freeTravelRadiusKm: data.config.travelConfig?.freeTravelRadiusKm,
+              vehicleType: (configData.config.travelConfig?.vehicleType || '') as VehicleType | '',
+              consumptionPer100Km: configData.config.travelConfig?.consumptionPer100Km,
+              chargingType: (configData.config.travelConfig?.chargingType || 'maison') as ChargingType,
+              originAddress: configData.config.travelConfig?.originAddress || configData.config.address || undefined,
+              originLat: configData.config.travelConfig?.originLat,
+              originLng: configData.config.travelConfig?.originLng,
+              minimumTravelFee: configData.config.travelConfig?.minimumTravelFee,
+              freeTravelRadiusKm: configData.config.travelConfig?.freeTravelRadiusKm,
             },
+            personalVehicle: vehicleData?.success
+              ? {
+                  id: vehicleData.profile?.id || null,
+                  vehicleType: (vehicleData.profile?.vehicleType || null) as PersonalVehicleType | null,
+                  motorization: vehicleData.profile?.motorization || '',
+                  fiscalPower: vehicleData.profile?.fiscalPower ?? null,
+                  licensePlate: vehicleData.profile?.licensePlate || '',
+                  ownershipType: (vehicleData.profile?.ownershipType || null) as VehicleOwnershipType | null,
+                  isDefault: vehicleData.profile?.isDefault !== false,
+                }
+              : { ...EMPTY_USER_VEHICLE_PROFILE },
             businessConfig: (() => {
-              const rawAccepted: string[] = Array.isArray(data.config.businessConfig?.acceptedWorkTypes) ? data.config.businessConfig.acceptedWorkTypes : []
-              const rawRefused: string[] = Array.isArray(data.config.businessConfig?.refusedWorkTypes) ? data.config.businessConfig.refusedWorkTypes : []
-              const legacyCustomAccepted = String(data.config.businessConfig?.customAcceptedWork || '').trim()
-              const legacyCustomRefused = String(data.config.businessConfig?.customRefusedWork || '').trim()
+              const rawAccepted: string[] = Array.isArray(configData.config.businessConfig?.acceptedWorkTypes) ? configData.config.businessConfig.acceptedWorkTypes : []
+              const rawRefused: string[] = Array.isArray(configData.config.businessConfig?.refusedWorkTypes) ? configData.config.businessConfig.refusedWorkTypes : []
+              const legacyCustomAccepted = String(configData.config.businessConfig?.customAcceptedWork || '').trim()
+              const legacyCustomRefused = String(configData.config.businessConfig?.customRefusedWork || '').trim()
               return {
                 acceptedWorkTypes: legacyCustomAccepted && !rawAccepted.includes(legacyCustomAccepted) ? [...rawAccepted, legacyCustomAccepted] : rawAccepted,
                 refusedWorkTypes: legacyCustomRefused && !rawRefused.includes(legacyCustomRefused) ? [...rawRefused, legacyCustomRefused] : rawRefused,
                 customAcceptedWork: '',
                 customRefusedWork: '',
-                serviceCatalog: Array.isArray(data.config.businessConfig?.serviceCatalog) ? data.config.businessConfig.serviceCatalog : [],
-                quoteTemplates: Array.isArray(data.config.businessConfig?.quoteTemplates) ? data.config.businessConfig.quoteTemplates : [],
-                quoteSettings: (data.config.businessConfig?.quoteSettings && typeof data.config.businessConfig.quoteSettings === 'object')
-                  ? data.config.businessConfig.quoteSettings
+                serviceCatalog: Array.isArray(configData.config.businessConfig?.serviceCatalog) ? configData.config.businessConfig.serviceCatalog : [],
+                quoteTemplates: Array.isArray(configData.config.businessConfig?.quoteTemplates) ? configData.config.businessConfig.quoteTemplates : [],
+                quoteSettings: (configData.config.businessConfig?.quoteSettings && typeof configData.config.businessConfig.quoteSettings === 'object')
+                  ? configData.config.businessConfig.quoteSettings
                   : {},
               }
             })(),
           })
-          if (data.config.artisanId) {
-            setArtisanIdDisplay(data.config.artisanId)
+          if (configData.config.artisanId) {
+            setArtisanIdDisplay(configData.config.artisanId)
           }
         }
       })
@@ -933,13 +967,12 @@ function ParametresPageContent() {
       // global ne doit plus les reenvoyer, sous peine d'ecraser une
       // sauvegarde de section avec une valeur perimee du state global (risque
       // de double-ecriture identifie a l'audit de ce lot).
-      const payload: Record<string, unknown> = {
-        firstName: config.firstName,
-        lastName: config.lastName,
-        email: config.email,
-      }
+      const payload: Record<string, unknown> = {}
+      const shouldSaveProfile = activeSection === 'entreprise' && (canUpdateOwnAccount || canUpdateOwnProfile)
+      const shouldSavePersonalVehicle = activeSection === 'vehicule' && canManageOwnVehicle && personalVehicleAvailable
+      const shouldSaveCompanyTravel = activeSection === 'vehicule' && canManageBusinessSettings
 
-      if (canManageCompanySettings) {
+      if ((activeSection === 'contact' || activeSection === 'legal' || activeSection === 'catalogue' || shouldSaveCompanyTravel) && canManageCompanySettings) {
         Object.assign(payload, {
           phone: config.phone,
           address: config.address,
@@ -958,7 +991,7 @@ function ParametresPageContent() {
         })
       }
 
-      if (canManageBusinessSettings) {
+      if ((activeSection === 'widget' || activeSection === 'catalogue' || shouldSaveCompanyTravel) && canManageBusinessSettings) {
         Object.assign(payload, {
           trades: effectiveTrades,
           hours: config.hours,
@@ -967,7 +1000,6 @@ function ParametresPageContent() {
           devisTvaDefaut: config.devisTvaDefaut,
           devisConditionsPaiement: config.devisConditionsPaiement,
           devisMentionLegale: config.devisMentionLegale,
-          travelConfig: config.travelConfig,
           widgetColorMode: config.widgetColorMode,
           assistantAvatarType: config.assistantAvatarType,
           assistantAvatarUrl: config.assistantAvatarUrl,
@@ -984,7 +1016,13 @@ function ParametresPageContent() {
         })
       }
 
-      if (canManageBillingSettings) {
+      if (shouldSaveCompanyTravel && canManageBusinessSettings) {
+        Object.assign(payload, {
+          travelConfig: config.travelConfig,
+        })
+      }
+
+      if (activeSection === 'catalogue' && canManageBillingSettings) {
         Object.assign(payload, {
           depositEnabled: config.depositEnabled,
           depositType: config.depositType,
@@ -992,14 +1030,46 @@ function ParametresPageContent() {
         })
       }
 
-      const res = await fetch('/api/artisan/config', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!data.success) {
-        throw new Error(!res.ok ? describeSettingsError(res.status, data.error || 'Erreur lors de la sauvegarde') : (data.error || 'Erreur lors de la sauvegarde'))
+      if (shouldSaveProfile) {
+        const profileRes = await fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: config.firstName,
+            lastName: config.lastName,
+            email: config.email,
+            professionalPhone: config.professionalPhone,
+            jobTitle: config.jobTitle,
+          }),
+        })
+        const profileData = await profileRes.json()
+        if (!profileData.success) {
+          throw new Error(!profileRes.ok ? describeSettingsError(profileRes.status, profileData.error || 'Erreur lors de la sauvegarde du profil') : (profileData.error || 'Erreur lors de la sauvegarde du profil'))
+        }
+      }
+
+      if (shouldSavePersonalVehicle) {
+        const vehicleRes = await fetch('/api/profile/vehicle', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config.personalVehicle),
+        })
+        const vehicleData = await vehicleRes.json()
+        if (!vehicleData.success) {
+          throw new Error(!vehicleRes.ok ? describeSettingsError(vehicleRes.status, vehicleData.error || 'Erreur lors de la sauvegarde du véhicule') : (vehicleData.error || 'Erreur lors de la sauvegarde du véhicule'))
+        }
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const res = await fetch('/api/artisan/config', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!data.success) {
+          throw new Error(!res.ok ? describeSettingsError(res.status, data.error || 'Erreur lors de la sauvegarde') : (data.error || 'Erreur lors de la sauvegarde'))
+        }
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -1776,6 +1846,25 @@ function ParametresPageContent() {
                       value={config.email}
                       onChange={e => setConfig(c => ({ ...c, email: e.target.value }))}
                       placeholder="jean@martin-renovation.fr"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Téléphone professionnel</label>
+                    <input
+                      type="tel"
+                      value={config.professionalPhone}
+                      onChange={e => setConfig(c => ({ ...c, professionalPhone: e.target.value }))}
+                      placeholder="06 12 34 56 78"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Fonction</label>
+                    <input
+                      value={config.jobTitle}
+                      onChange={e => setConfig(c => ({ ...c, jobTitle: e.target.value }))}
+                      placeholder="Chef d'équipe, technicien, secrétaire..."
                       style={inputStyle}
                     />
                   </div>
@@ -2914,6 +3003,103 @@ function ParametresPageContent() {
                 Ces informations permettent d&apos;estimer le coût d&apos;un déplacement entre votre
                 adresse professionnelle et un chantier (fonctionnalité disponible avec le plan Performance).
               </p>
+              <fieldset disabled={!canManageOwnVehicle} style={{ border: 'none', padding: 0, margin: '0 0 16px', minWidth: 0 }}>
+              <div style={sectionCard}>
+                <h3 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--accent)' }}>
+                  Mon véhicule professionnel
+                </h3>
+                <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: '0 0 16px' }}>
+                  Ces réglages sont personnels au collaborateur. Ils ne modifient pas les règles globales de l&apos;entreprise.
+                </p>
+                {!personalVehicleAvailable && (
+                  <p style={{ color: '#facc15', fontSize: '12px', margin: '0 0 14px' }}>
+                    Le stockage du véhicule personnel n&apos;est pas encore disponible sur cet environnement. Ajoutez la migration SQL avant utilisation.
+                  </p>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={labelStyle}>Type de véhicule</label>
+                    <select
+                      value={config.personalVehicle.vehicleType || ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        personalVehicle: {
+                          ...c.personalVehicle,
+                          vehicleType: (e.target.value || null) as PersonalVehicleType | null,
+                        },
+                      }))}
+                      style={inputStyle}
+                    >
+                      <option value="">Sélectionner...</option>
+                      {(Object.keys(PERSONAL_VEHICLE_TYPE_LABELS) as PersonalVehicleType[]).map(type => (
+                        <option key={type} value={type}>{PERSONAL_VEHICLE_TYPE_LABELS[type]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Motorisation</label>
+                    <input
+                      value={config.personalVehicle.motorization}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        personalVehicle: { ...c.personalVehicle, motorization: e.target.value },
+                      }))}
+                      placeholder="Diesel, essence, hybride, électrique..."
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Puissance fiscale</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={config.personalVehicle.fiscalPower ?? ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        personalVehicle: {
+                          ...c.personalVehicle,
+                          fiscalPower: e.target.value === '' ? null : Number(e.target.value),
+                        },
+                      }))}
+                      placeholder="7"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Immatriculation</label>
+                    <input
+                      value={config.personalVehicle.licensePlate}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        personalVehicle: { ...c.personalVehicle, licensePlate: e.target.value.toUpperCase() },
+                      }))}
+                      placeholder="AB-123-CD"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+                    <label style={labelStyle}>Propriété du véhicule</label>
+                    <select
+                      value={config.personalVehicle.ownershipType || ''}
+                      onChange={e => setConfig(c => ({
+                        ...c,
+                        personalVehicle: {
+                          ...c.personalVehicle,
+                          ownershipType: (e.target.value || null) as VehicleOwnershipType | null,
+                        },
+                      }))}
+                      style={inputStyle}
+                    >
+                      <option value="">Sélectionner...</option>
+                      {(Object.keys(VEHICLE_OWNERSHIP_LABELS) as VehicleOwnershipType[]).map(type => (
+                        <option key={type} value={type}>{VEHICLE_OWNERSHIP_LABELS[type]}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              </fieldset>
               {!canManageBusinessSettings && (
                 <ReadOnlyNotice message="Les réglages de déplacements sont réservés au propriétaire et aux administrateurs." />
               )}

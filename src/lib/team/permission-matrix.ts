@@ -16,6 +16,10 @@ import type { TenantRole } from '@/src/lib/team/types'
 export const PERMISSIONS = [
   // Compte personnel
   'account.update_self',
+  'profile.update_self',
+  'profile.read_team_contact',
+  'vehicle.read_self',
+  'vehicle.update_self',
   // Entreprise (identite legale, SIRET, TVA, adresse legale...)
   'company.read',
   'company.update',
@@ -66,6 +70,10 @@ const LOT4_PROJECT_PLANNING_PERMISSIONS_FOR_ADMIN_MANAGER: Permission[] = [
 export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   owner: [
     'account.update_self',
+    'profile.update_self',
+    'profile.read_team_contact',
+    'vehicle.read_self',
+    'vehicle.update_self',
     'company.read',
     'company.update',
     'team.read',
@@ -94,6 +102,10 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   ],
   admin: [
     'account.update_self',
+    'profile.update_self',
+    'profile.read_team_contact',
+    'vehicle.read_self',
+    'vehicle.update_self',
     'company.read',
     'team.read',
     'team.invite',
@@ -110,6 +122,10 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   ],
   manager: [
     'account.update_self',
+    'profile.update_self',
+    'profile.read_team_contact',
+    'vehicle.read_self',
+    'vehicle.update_self',
     'company.read',
     'team.read',
     'planning.read_team',
@@ -121,6 +137,10 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   ],
   member: [
     'account.update_self',
+    'profile.update_self',
+    'profile.read_team_contact',
+    'vehicle.read_self',
+    'vehicle.update_self',
     'company.read',
     'team.read',
     'planning.read_team',
@@ -131,6 +151,10 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
   ],
   viewer: [
     'account.update_self',
+    'profile.update_self',
+    'profile.read_team_contact',
+    'vehicle.read_self',
+    'vehicle.update_self',
     'company.read',
     'team.read',
     'planning.read_team',
