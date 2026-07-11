@@ -25,6 +25,16 @@ export async function GET(request: NextRequest) {
     }
 
     const billingStatus = (artisan as { billingStatus?: string }).billingStatus
+    const userId = artisan.id
+
+    if (!userId) {
+      console.error('[VERIFY] Erreur: Users.id introuvable pour la session', {
+        email: magic.email,
+        artisanId: artisan.artisanId,
+        recordId: 'recordId' in artisan ? (artisan as { recordId?: string }).recordId || null : null,
+      })
+      return NextResponse.redirect(new URL('/auth/error?error=Verification', request.url))
+    }
 
     if (!canAccessPlatformAccount({
       role: artisan.role,
@@ -36,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Crée le cookie de session
     const sessionToken = await createToken({
-      id: artisan.id,
+      id: userId,
       email: magic.email,
       artisanId: artisan.artisanId,
       companyName: artisan.companyName,

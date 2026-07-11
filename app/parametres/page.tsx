@@ -43,6 +43,7 @@ const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: str
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'apparence', label: 'Apparence', icon: '🌘' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
+  { id: 'equipe', label: 'Equipe', icon: '👥', href: '/parametres/equipe' },
 ]
 
 // Groupes visuels du menu latéral des paramètres
@@ -69,6 +70,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: 
     items: [
       SECTIONS[6]!,
       SECTIONS[7]!,
+      SECTIONS[8]!,
     ],
   },
 ]

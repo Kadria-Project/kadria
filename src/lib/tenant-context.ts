@@ -56,6 +56,14 @@ export interface TenantIdentity {
   legacyArtisanId: string | null
 }
 
+interface ResolvedSessionUser {
+  id: string
+  email: string
+  recordId: string | null
+  artisanId: string | null
+  source: 'session-id' | 'session-email' | 'session-record-id'
+}
+
 const tableExistsCache = new Map<string, boolean>()
 const columnExistsCache = new Map<string, boolean>()
 
@@ -270,6 +278,70 @@ async function listActiveMembershipsForUser(userId: string): Promise<TenantMembe
   return ((data || []) as RawRow[]).map(mapTenantMember)
 }
 
+async function resolveSessionUser(session: AuthPayload): Promise<ResolvedSessionUser | null> {
+  const supabase = getSupabaseAdmin()
+  const normalizedEmail = String(session.email || '').trim().toLowerCase()
+
+  if (session.id) {
+    const byId = await supabase
+      .from(TABLES.users)
+      .select('id, email, record_id, artisan_id')
+      .eq('id', session.id)
+      .limit(1)
+      .maybeSingle()
+
+    if (!byId.error && byId.data) {
+      return {
+        id: toText(byId.data.id),
+        email: toText(byId.data.email) || normalizedEmail,
+        recordId: byId.data.record_id ? toText(byId.data.record_id) : null,
+        artisanId: byId.data.artisan_id ? toText(byId.data.artisan_id) : null,
+        source: 'session-id',
+      }
+    }
+  }
+
+  if (normalizedEmail) {
+    const byEmail = await supabase
+      .from(TABLES.users)
+      .select('id, email, record_id, artisan_id')
+      .ilike('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle()
+
+    if (!byEmail.error && byEmail.data) {
+      return {
+        id: toText(byEmail.data.id),
+        email: toText(byEmail.data.email) || normalizedEmail,
+        recordId: byEmail.data.record_id ? toText(byEmail.data.record_id) : null,
+        artisanId: byEmail.data.artisan_id ? toText(byEmail.data.artisan_id) : null,
+        source: 'session-email',
+      }
+    }
+  }
+
+  if (session.id && (await tableHasColumn(TABLES.users, 'record_id'))) {
+    const byRecordId = await supabase
+      .from(TABLES.users)
+      .select('id, email, record_id, artisan_id')
+      .eq('record_id', session.id)
+      .limit(1)
+      .maybeSingle()
+
+    if (!byRecordId.error && byRecordId.data) {
+      return {
+        id: toText(byRecordId.data.id),
+        email: toText(byRecordId.data.email) || normalizedEmail,
+        recordId: byRecordId.data.record_id ? toText(byRecordId.data.record_id) : null,
+        artisanId: byRecordId.data.artisan_id ? toText(byRecordId.data.artisan_id) : null,
+        source: 'session-record-id',
+      }
+    }
+  }
+
+  return null
+}
+
 async function listTenantsByIds(tenantIds: string[]): Promise<Map<string, Tenant>> {
   const tenantMap = new Map<string, Tenant>()
   if (!tenantIds.length || !(await tableExists(TENANTS_TABLE))) {
@@ -325,15 +397,36 @@ export async function getCurrentTenantContext(options?: {
   preferredTenantId?: string | null
 }): Promise<TenantContext | null> {
   const session = await getSession()
-  if (!session?.id) {
+  if (!session) {
+    console.warn('[TENANT] Missing authenticated session')
     return null
   }
 
-  const memberships = await listActiveMembershipsForUser(session.id)
+  if (!session.id) {
+    console.warn('[TENANT] Session has no id', {
+      email: session.email || null,
+      artisanId: session.artisanId || null,
+    })
+    return null
+  }
+
+  const resolvedUser = await resolveSessionUser(session)
+  if (!resolvedUser) {
+    console.warn('[TENANT] Unable to resolve application user for session', {
+      sessionId: session.id,
+      email: session.email || null,
+      artisanId: session.artisanId || null,
+    })
+    return null
+  }
+
+  const memberships = await listActiveMembershipsForUser(resolvedUser.id)
   if (!memberships.length) {
     console.warn('[TENANT] No active membership found for current session user', {
-      userId: session.id,
-      artisanId: session.artisanId || null,
+      sessionId: session.id,
+      resolvedUserId: resolvedUser.id,
+      source: resolvedUser.source,
+      artisanId: resolvedUser.artisanId || session.artisanId || null,
     })
     return null
   }
@@ -348,8 +441,8 @@ export async function getCurrentTenantContext(options?: {
 
   if (!membership) {
     console.warn('[TENANT] Unable to select an active tenant membership', {
-      userId: session.id,
-      artisanId: session.artisanId || null,
+      userId: resolvedUser.id,
+      artisanId: resolvedUser.artisanId || session.artisanId || null,
       memberships: memberships.length,
     })
     return null
@@ -358,7 +451,7 @@ export async function getCurrentTenantContext(options?: {
   const tenant = tenantById.get(membership.tenantId)
   if (!tenant) {
     console.warn('[TENANT] Active membership points to a missing tenant', {
-      userId: session.id,
+      userId: resolvedUser.id,
       tenantId: membership.tenantId,
     })
     return null
@@ -370,7 +463,7 @@ export async function getCurrentTenantContext(options?: {
     tenant,
     membership,
     role: membership.role,
-    userId: session.id,
+    userId: resolvedUser.id,
     user: session,
   }
 }

@@ -119,6 +119,7 @@ function getPhotos(row: RawRow | null | undefined) {
 
 export interface SupabaseUserLookup {
   id: string
+  recordId: string
   artisanId: string
   companyName: string
   email: string
@@ -256,6 +257,7 @@ export interface SupabaseProject {
 export function mapSupabaseUserLookup(row: RawRow): SupabaseUserLookup {
   return {
     id: getString(row, 'id'),
+    recordId: getString(row, 'record_id', 'airtable_id'),
     artisanId: getString(row, 'artisan_id', 'Artisan ID'),
     companyName: getString(row, 'company_name', 'Company Name', 'companyName'),
     email: getString(row, 'email', 'Email', 'E-mail', 'Mail'),
