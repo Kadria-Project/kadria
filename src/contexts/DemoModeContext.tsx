@@ -1,7 +1,28 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { DEMO_ARTISAN, DEMO_CLIENT_EVENTS, DEMO_EVENTS, DEMO_NOTIFICATIONS, DEMO_PROJECTS, type DemoClientEvent, type DemoEvent, type DemoNotification, type DemoProject } from '@/src/lib/demo-data';
+import { useSearchParams } from 'next/navigation';
+import {
+  DEMO_ARTISAN,
+  DEMO_CLIENT_EVENTS,
+  DEMO_EVENTS,
+  DEMO_NOTIFICATIONS,
+  DEMO_PROJECTS,
+  getScenarioArtisan,
+  getScenarioEvents,
+  getScenarioNotifications,
+  getScenarioProjects,
+  type DemoClientEvent,
+  type DemoEvent,
+  type DemoNotification,
+  type DemoProject,
+  type DemoScenario,
+} from '@/src/lib/demo-data';
+
+function readScenario(value: string | null): DemoScenario {
+  const allowed: DemoScenario[] = ['normal', 'dense', 'empty', 'essential', 'performance'];
+  return allowed.includes(value as DemoScenario) ? (value as DemoScenario) : 'normal';
+}
 
 type DemoArtisan = typeof DEMO_ARTISAN;
 
@@ -50,12 +71,28 @@ interface DemoModeContextValue {
 const DemoModeContext = createContext<DemoModeContextValue | null>(null);
 
 export function DemoModeProvider({ children }: { children: React.ReactNode }) {
-  const [projects, setProjects] = useState<DemoProject[]>(DEMO_PROJECTS);
-  const [events, setEvents] = useState<DemoEvent[]>(DEMO_EVENTS);
-  const [artisan, setArtisan] = useState<DemoArtisan>(DEMO_ARTISAN);
+  // Scenario selection (LocalUxAuditToolbar -> ?scenario=normal|dense|empty|
+  // essential|performance). useSearchParams is safe here: this layout is
+  // rendered dynamically (auth/middleware-gated), never statically exported.
+  const searchParams = useSearchParams();
+  const scenario = readScenario(searchParams?.get('scenario') ?? null);
+
+  const [projects, setProjects] = useState<DemoProject[]>(() => getScenarioProjects(scenario));
+  const [events, setEvents] = useState<DemoEvent[]>(() => getScenarioEvents(scenario));
+  const [artisan, setArtisan] = useState<DemoArtisan>(() => getScenarioArtisan(scenario));
   const [theme, setThemeState] = useState<'dark' | 'light'>(DEMO_ARTISAN.theme);
   const [clientEvents, setClientEvents] = useState<Record<string, DemoClientEvent[]>>(DEMO_CLIENT_EVENTS);
-  const [notifications, setNotifications] = useState<DemoNotification[]>(DEMO_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<DemoNotification[]>(() => getScenarioNotifications(scenario));
+
+  // Re-derive fixtures whenever the scenario query param changes so the UI
+  // reflects the newly selected scenario without a full page reload.
+  useEffect(() => {
+    setProjects(getScenarioProjects(scenario));
+    setEvents(getScenarioEvents(scenario));
+    setArtisan(getScenarioArtisan(scenario));
+    setNotifications(getScenarioNotifications(scenario));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenario]);
 
   const addClientEvent = useCallback((projectId: string, event: Omit<DemoClientEvent, 'id' | 'createdAt'> & { createdAt?: string }) => {
     setClientEvents((current) => {

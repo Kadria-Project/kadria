@@ -108,6 +108,20 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith('/demo-dashboard') || pathname.startsWith('/demo-parametres')) {
+    // Local UX/UI audit escape hatch — fail-closed by construction.
+    // Requires ALL of: non-production runtime, and an explicit server-only
+    // env flag. This flag is never exposed to the browser (no NEXT_PUBLIC_
+    // prefix), so it cannot be set from client code, and it defaults to
+    // disabled, so a missing/misconfigured env keeps production protections
+    // exactly as they were before this change.
+    const isLocalUxAuditEnabled =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.KADRIA_LOCAL_UX_AUDIT === 'true'
+
+    if (isLocalUxAuditEnabled) {
+      return NextResponse.next()
+    }
+
     const token = request.cookies.get(DEMO_ACCESS_COOKIE)?.value
 
     if (!token) {

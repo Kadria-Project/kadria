@@ -318,6 +318,7 @@ function DemoNewDevis() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Lignes du devis</h2>
             <button
+              data-testid="devis-add-line"
               onClick={addLine}
               style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: 'var(--accent)', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
@@ -327,22 +328,23 @@ function DemoNewDevis() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {lines.map((line, index) => (
-              <div key={line.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div key={line.id} data-testid={`devis-line-${index}`} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                   <textarea
+                    data-testid={`devis-line-label-${index}`}
                     style={{ ...inputStyle, minHeight: '40px', resize: 'vertical', fontFamily: 'inherit', flex: 1 }}
                     value={line.label}
                     onChange={(e) => updateLine(line.id, 'label', e.target.value)}
                     placeholder="Description de la prestation"
                   />
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0, paddingTop: '2px' }}>
-                    <button onClick={() => moveLine(line.id, -1)} disabled={index === 0} style={iconBtnStyle(index === 0)}>
+                    <button data-testid={`devis-line-up-${index}`} onClick={() => moveLine(line.id, -1)} disabled={index === 0} style={iconBtnStyle(index === 0)}>
                       <ArrowUp className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => moveLine(line.id, 1)} disabled={index === lines.length - 1} style={iconBtnStyle(index === lines.length - 1)}>
+                    <button data-testid={`devis-line-down-${index}`} onClick={() => moveLine(line.id, 1)} disabled={index === lines.length - 1} style={iconBtnStyle(index === lines.length - 1)}>
                       <ArrowDown className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => removeLine(line.id)} style={iconBtnStyle(false, true)}>
+                    <button data-testid={`devis-line-remove-${index}`} onClick={() => removeLine(line.id)} style={iconBtnStyle(false, true)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -350,19 +352,19 @@ function DemoNewDevis() {
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px' }}>
                   <div>
                     <label style={labelStyle}>Qté</label>
-                    <input style={inputStyle} type="number" min={0} step="any" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', Number(e.target.value))} />
+                    <input data-testid={`devis-line-qty-${index}`} style={inputStyle} type="number" min={0} step="any" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', Number(e.target.value))} />
                   </div>
                   <div>
                     <label style={labelStyle}>Unité</label>
-                    <input style={inputStyle} value={line.unit} onChange={(e) => updateLine(line.id, 'unit', e.target.value)} placeholder="u, m², h..." />
+                    <input data-testid={`devis-line-unit-${index}`} style={inputStyle} value={line.unit} onChange={(e) => updateLine(line.id, 'unit', e.target.value)} placeholder="u, m², h..." />
                   </div>
                   <div>
                     <label style={labelStyle}>Prix HT</label>
-                    <input style={inputStyle} type="number" min={0} step="any" value={line.unitPriceHt} onChange={(e) => updateLine(line.id, 'unitPriceHt', Number(e.target.value))} />
+                    <input data-testid={`devis-line-price-${index}`} style={inputStyle} type="number" min={0} step="any" value={line.unitPriceHt} onChange={(e) => updateLine(line.id, 'unitPriceHt', Number(e.target.value))} />
                   </div>
                   <div>
                     <label style={labelStyle}>TVA %</label>
-                    <select style={inputStyle} value={line.vatRate} onChange={(e) => updateLine(line.id, 'vatRate', Number(e.target.value))}>
+                    <select data-testid={`devis-line-vat-${index}`} style={inputStyle} value={line.vatRate} onChange={(e) => updateLine(line.id, 'vatRate', Number(e.target.value))}>
                       {[0, 5.5, 10, 20].map((rate) => (
                         <option key={rate} value={rate}>{rate}%</option>
                       ))}
@@ -371,6 +373,7 @@ function DemoNewDevis() {
                   <div>
                     <label style={labelStyle}>Total HT</label>
                     <input
+                      data-testid={`devis-line-total-${index}`}
                       style={{ ...inputStyle, color: 'var(--accent)', fontWeight: 600 }}
                       value={`${(line.quantity * line.unitPriceHt).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
                       readOnly
@@ -455,6 +458,7 @@ function DemoNewDevis() {
               Total TTC : {summary.totalTtc.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </div>
             <button
+              data-testid="devis-submit"
               onClick={handleSubmit}
               disabled={submitting}
               style={{

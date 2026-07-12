@@ -1614,3 +1614,95 @@ export function computeDemoKPIs(projects: DemoProject[]) {
     dossiersEnRisque: risk.length,
   };
 }
+
+// ── Scenarios d'audit UX/UI local ──────────────────────────────────────────
+// Ces fonctions derivent des jeux de donnees distincts a partir des fixtures
+// de base ci-dessus, en fonction du scenario choisi dans la toolbar locale
+// (LocalUxAuditToolbar -> ?scenario=...). Elles ne modifient AUCUNE fixture
+// existante : elles clonent/filtrent/dupliquent les tableaux DEMO_* pour
+// produire des variantes "dense", "empty", "essential", "performance".
+// Utilise uniquement par DemoModeProvider (mode demo local, jamais en prod).
+export type DemoScenario = 'normal' | 'dense' | 'empty' | 'essential' | 'performance';
+
+export function getScenarioProjects(scenario: DemoScenario): DemoProject[] {
+  if (scenario === 'empty') {
+    return DEMO_PROJECTS.slice(0, 1);
+  }
+  if (scenario === 'dense') {
+    const copies = [0, 1, 2] as const;
+    const dense: DemoProject[] = [];
+    copies.forEach((copyIndex) => {
+      DEMO_PROJECTS.forEach((project, i) => {
+        if (copyIndex === 0) {
+          dense.push(project);
+          return;
+        }
+        dense.push({
+          ...project,
+          id: `${project.id}_dup${copyIndex}`,
+          projectNumber: `${project.projectNumber}-D${copyIndex}${i}`,
+        });
+      });
+    });
+    return dense;
+  }
+  // 'normal', 'essential', 'performance' reutilisent le meme volume de
+  // dossiers realiste ; seul le plan/artisan change (cf getScenarioArtisan).
+  return DEMO_PROJECTS;
+}
+
+export function getScenarioEvents(scenario: DemoScenario): DemoEvent[] {
+  if (scenario === 'empty') {
+    return DEMO_EVENTS.slice(0, 1);
+  }
+  if (scenario === 'dense') {
+    const copies = [0, 1, 2] as const;
+    const dense: DemoEvent[] = [];
+    copies.forEach((copyIndex) => {
+      DEMO_EVENTS.forEach((event) => {
+        if (copyIndex === 0) {
+          dense.push(event);
+          return;
+        }
+        dense.push({ ...event, id: `${event.id}_dup${copyIndex}` });
+      });
+    });
+    return dense;
+  }
+  return DEMO_EVENTS;
+}
+
+export function getScenarioNotifications(scenario: DemoScenario): DemoNotification[] {
+  if (scenario === 'empty') {
+    return [];
+  }
+  if (scenario === 'dense') {
+    const copies = [0, 1, 2, 3] as const;
+    const dense: DemoNotification[] = [];
+    copies.forEach((copyIndex) => {
+      DEMO_NOTIFICATIONS.forEach((notif) => {
+        if (copyIndex === 0) {
+          dense.push(notif);
+          return;
+        }
+        dense.push({
+          ...notif,
+          id: `${notif.id}_dup${copyIndex}`,
+          status: 'unread',
+        });
+      });
+    });
+    return dense;
+  }
+  return DEMO_NOTIFICATIONS;
+}
+
+export function getScenarioArtisan(scenario: DemoScenario): typeof DEMO_ARTISAN {
+  if (scenario === 'essential') {
+    return { ...DEMO_ARTISAN, plan: 'Essentiel', whiteLabelPlanId: 'essentiel', whiteLabelEnabled: false };
+  }
+  if (scenario === 'performance') {
+    return { ...DEMO_ARTISAN, plan: 'Performance', whiteLabelPlanId: 'performance', whiteLabelEnabled: true };
+  }
+  return DEMO_ARTISAN;
+}
