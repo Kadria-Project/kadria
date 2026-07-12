@@ -69,6 +69,48 @@ type TeamPlanningPermissions = {
   canCreatePersonalAppointments: boolean;
 };
 
+type PlanningInsights = {
+  generatedAt: string;
+  summary: {
+    today: number;
+    tomorrow: number;
+    thisWeek: number;
+    unassigned: number;
+    conflicts: number;
+  };
+  teamLoad: Array<{
+    userId: string;
+    name: string;
+    role: string;
+    todayCount: number;
+    loadPercent: number;
+    availability: 'available' | 'soon' | 'busy';
+    nextAppointmentAt: string | null;
+  }>;
+  conflicts: Array<{
+    appointmentId: string;
+    conflictingAppointmentId: string;
+    title: string;
+    conflictingTitle: string;
+    collaboratorName: string;
+    start: string | null;
+    conflictingStart: string | null;
+  }>;
+  travelWarnings: Array<{
+    collaboratorName: string;
+    fromAppointmentId: string;
+    toAppointmentId: string;
+    fromTitle: string;
+    toTitle: string;
+    gapMinutes: number;
+    distanceKm: number;
+  }>;
+  heatmap: {
+    busiest: { name: string; count: number } | null;
+    quietest: { name: string; count: number } | null;
+  };
+};
+
 type CollaboratorFilter = 'all' | 'me' | 'unassigned' | string;
 
 type NewGoogleEventForm = {
@@ -133,6 +175,28 @@ function formatEventRange(start: string | null, end: string | null): string {
 
 function buildIsoDateTime(date: string, time: string) {
   return `${date}T${time}:00`;
+}
+
+function formatDayLabel(value: string | null) {
+  if (!value) return 'A planifier';
+  try {
+    return new Date(value).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
+  } catch {
+    return 'A planifier';
+  }
+}
+
+function getAvailabilityMeta(availability: 'available' | 'soon' | 'busy') {
+  if (availability === 'busy') return { label: 'Occupe', color: '#fca5a5', background: 'rgba(239,68,68,0.14)' };
+  if (availability === 'soon') return { label: 'Bientot occupe', color: '#fcd34d', background: 'rgba(245,158,11,0.14)' };
+  return { label: 'Disponible', color: '#6ee7b7', background: 'rgba(16,185,129,0.14)' };
+}
+
+function getStableMemberColor(seed: string) {
+  const palette = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#0ea5e9', '#a855f7'];
+  let hash = 0;
+  for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) % palette.length;
+  return palette[Math.abs(hash) % palette.length];
 }
 
 function FilterChip({
@@ -275,36 +339,67 @@ function AppointmentCard({
             Client : {appointment.clientName}
           </p>
         )}
-        {appointment.location && (
+        {(appointment.address || appointment.location) && (
           <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
             <MapPin style={{ width: 12, height: 12, marginRight: '6px', verticalAlign: 'middle' }} />
-            {appointment.location}
+            {appointment.address || appointment.location}
+          </p>
+        )}
+        {appointment.projectTitle && (
+          <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
+            Projet : {appointment.projectTitle}
           </p>
         )}
       </div>
 
-      {appointment.projectId && (
-        <button
-          type="button"
-          onClick={() => onOpenProject(appointment.projectId as string)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '10px 12px',
-            borderRadius: '12px',
-            border: `1px solid ${COLORS.border}`,
-            background: COLORS.bgElevated,
-            color: COLORS.text1,
-            fontSize: '12px',
-            fontWeight: 700,
-          }}
-        >
-          <FileText style={{ width: 14, height: 14 }} />
-          Ouvrir le dossier
-        </button>
-      )}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {appointment.projectId && (
+          <button
+            type="button"
+            onClick={() => onOpenProject(appointment.projectId as string)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 12px',
+              borderRadius: '12px',
+              border: `1px solid ${COLORS.border}`,
+              background: COLORS.bgElevated,
+              color: COLORS.text1,
+              fontSize: '12px',
+              fontWeight: 700,
+            }}
+          >
+            <FileText style={{ width: 14, height: 14 }} />
+            Ouvrir le dossier
+          </button>
+        )}
+        {(appointment.address || appointment.location) && (
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.address || appointment.location || '')}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 12px',
+              borderRadius: '12px',
+              border: `1px solid ${COLORS.border}`,
+              background: COLORS.bgElevated,
+              color: COLORS.text1,
+              fontSize: '12px',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            <MapPin style={{ width: 14, height: 14 }} />
+            Itineraire
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -331,6 +426,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
   const [appointments, setAppointments] = useState<RawKadriaAppointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<PlanningInsights | null>(null);
 
   const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
   const [teamPermissions, setTeamPermissions] = useState<TeamPlanningPermissions>({
@@ -365,6 +461,16 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     () => normalizedAppointments.filter((appointment) => appointment.isUnassigned).length,
     [normalizedAppointments],
   );
+
+  const appointmentsByDay = useMemo(() => {
+    const map = new Map<string, NormalizedCalendarEvent[]>();
+    for (const appointment of normalizedAppointments) {
+      const key = appointment.start ? new Date(appointment.start).toISOString().slice(0, 10) : 'unplanned';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(appointment);
+    }
+    return Array.from(map.entries());
+  }, [normalizedAppointments]);
 
   const fetchAgendaConfig = useCallback(async () => {
     try {
@@ -494,6 +600,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
         return;
       }
       setAppointments(Array.isArray(json.appointments) ? json.appointments : []);
+      setInsights(json.insights || null);
     } catch {
       setAppointmentsError('Chargement du planning impossible');
     } finally {
@@ -880,6 +987,81 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
               </div>
             )}
 
+            {insights && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+                  {[
+                    { label: "Aujourd'hui", value: insights.summary.today },
+                    { label: 'Demain', value: insights.summary.tomorrow },
+                    { label: 'Semaine', value: insights.summary.thisWeek },
+                    { label: 'Non affectes', value: insights.summary.unassigned },
+                  ].map((item) => (
+                    <div key={item.label} style={{ padding: '12px', borderRadius: '14px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
+                      <p style={{ margin: 0, fontSize: '11px', color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.label}</p>
+                      <p style={{ margin: '6px 0 0', fontSize: '22px', fontWeight: 800, color: COLORS.text1 }}>{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {teamPermissions.canManageTeamPlanning && insights.teamLoad.length > 0 && (
+                  <div style={{ padding: '12px', borderRadius: '14px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>Charge equipe</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '11px', color: COLORS.text3 }}>Disponibilites et charge du jour.</p>
+                      </div>
+                      {insights.heatmap.busiest && (
+                        <span style={{ fontSize: '11px', color: COLORS.text3 }}>Pic: {insights.heatmap.busiest.name}</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {insights.teamLoad.map((member) => {
+                        const color = getStableMemberColor(member.userId);
+                        const availability = getAvailabilityMeta(member.availability);
+                        return (
+                          <div key={member.userId} style={{ display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: '10px', alignItems: 'center' }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '999px', background: `${color}22`, border: `1px solid ${color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: '12px', fontWeight: 800 }}>
+                              {member.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>{member.name}</p>
+                                <span style={{ fontSize: '11px', color: COLORS.text3 }}>{member.todayCount} RDV</span>
+                              </div>
+                              <div style={{ marginTop: '6px', height: 6, borderRadius: '999px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+                                <div style={{ width: `${member.loadPercent}%`, height: '100%', borderRadius: '999px', background: color }} />
+                              </div>
+                            </div>
+                            <span style={{ whiteSpace: 'nowrap', padding: '6px 8px', borderRadius: '999px', background: availability.background, color: availability.color, fontSize: '11px', fontWeight: 700 }}>
+                              {availability.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {(insights.conflicts.length > 0 || insights.travelWarnings.length > 0) && (
+                  <div style={{ padding: '12px', borderRadius: '14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.24)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>Alertes operationnelles</p>
+                    {insights.conflicts.slice(0, 2).map((conflict) => (
+                      <div key={conflict.appointmentId} style={{ padding: '10px', borderRadius: '12px', background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(245,158,11,0.18)' }}>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#fcd34d' }}>Chevauchement</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: COLORS.text2 }}>{conflict.collaboratorName} · {conflict.title}</p>
+                      </div>
+                    ))}
+                    {insights.travelWarnings.slice(0, 1).map((warning) => (
+                      <div key={warning.toAppointmentId} style={{ padding: '10px', borderRadius: '12px', background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(245,158,11,0.18)' }}>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#fcd34d' }}>Deplacement probablement trop court</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: COLORS.text2 }}>{warning.collaboratorName} · {warning.gapMinutes} min pour {warning.distanceKm} km</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {teamPermissions.canCreatePersonalAppointments && (
               <button
                 type="button"
@@ -1028,12 +1210,21 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
               <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous a afficher pour ce filtre.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {normalizedAppointments.map((appointment) => (
-                  <AppointmentCard
-                    key={appointment.id}
-                    appointment={appointment}
-                    onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
-                  />
+                {appointmentsByDay.map(([dayKey, dayAppointments]) => (
+                  <div key={dayKey} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: COLORS.text2, textTransform: 'capitalize' }}>
+                      {dayKey === 'unplanned' ? 'A planifier' : formatDayLabel(dayAppointments[0]?.start || null)}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {dayAppointments.map((appointment) => (
+                        <AppointmentCard
+                          key={appointment.id}
+                          appointment={appointment}
+                          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

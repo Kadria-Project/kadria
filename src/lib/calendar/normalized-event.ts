@@ -28,7 +28,13 @@ export interface NormalizedCalendarEvent {
   projectInternalNumber: string | null
   projectReference: string | null
   clientName: string | null
+  clientPhone: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
   projectTitle: string | null
+  responsibleUserId: string | null
+  responsibleUserName: string | null
   actionUrl: string | null
   googleEventId: string | null
   googleEventUrl: string | null
@@ -75,9 +81,15 @@ export function normalizeGoogleEvent(event: RawGoogleEvent): NormalizedCalendarE
     projectRecordId: null,
     projectInternalNumber: null,
     projectReference: null,
-    clientName: null,
-    projectTitle: null,
-    actionUrl: null,
+  clientName: null,
+  clientPhone: null,
+  address: event.location,
+  latitude: null,
+  longitude: null,
+  projectTitle: null,
+  responsibleUserId: null,
+  responsibleUserName: null,
+  actionUrl: null,
     googleEventId: event.id,
     googleEventUrl: null,
     description: null,
@@ -95,6 +107,10 @@ export interface RawKadriaAppointment {
   projectId: string | null
   projectNumber: string | null
   clientName: string | null
+  clientPhone?: string | null
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   projectType: string | null
   city: string | null
   title: string | null
@@ -109,6 +125,8 @@ export interface RawKadriaAppointment {
   isUnassigned?: boolean
   description?: string | null
   allDay?: boolean
+  responsibleUserId?: string | null
+  responsibleUserName?: string | null
 }
 
 function guessAppointmentType(a: RawKadriaAppointment): NormalizedEventType {
@@ -148,7 +166,13 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     projectInternalNumber: a.projectNumber,
     projectReference: reference ? `${reference}${clientLabel}` : null,
     clientName: a.clientName,
+    clientPhone: a.clientPhone || null,
+    address: a.address || a.location || null,
+    latitude: typeof a.latitude === 'number' ? a.latitude : null,
+    longitude: typeof a.longitude === 'number' ? a.longitude : null,
     projectTitle: a.projectType,
+    responsibleUserId: a.responsibleUserId || null,
+    responsibleUserName: a.responsibleUserName || null,
     actionUrl: hasProject ? `/dashboard-v2/projet/${a.projectId}` : null,
     googleEventId: a.googleEventId,
     googleEventUrl: null,
@@ -193,7 +217,13 @@ export function normalizeKadriaPlanningItem(item: RawKadriaPlanningItemLike): No
     projectInternalNumber: item.projectId ? item.projectId.slice(-6) : null,
     projectReference: reference,
     clientName: item.clientLabel,
+    clientPhone: null,
+    address: null,
+    latitude: null,
+    longitude: null,
     projectTitle: item.subtitle,
+    responsibleUserId: null,
+    responsibleUserName: null,
     actionUrl: hasProject ? `/dashboard-v2/projet/${item.projectId}` : null,
     googleEventId: null,
     googleEventUrl: null,

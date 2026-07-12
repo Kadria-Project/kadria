@@ -65,6 +65,48 @@ type TeamPlanningPermissions = {
   canCreatePersonalAppointments: boolean;
 };
 
+type PlanningInsights = {
+  generatedAt: string;
+  summary: {
+    today: number;
+    tomorrow: number;
+    thisWeek: number;
+    unassigned: number;
+    conflicts: number;
+  };
+  teamLoad: Array<{
+    userId: string;
+    name: string;
+    role: string;
+    todayCount: number;
+    loadPercent: number;
+    availability: 'available' | 'soon' | 'busy';
+    nextAppointmentAt: string | null;
+  }>;
+  conflicts: Array<{
+    appointmentId: string;
+    conflictingAppointmentId: string;
+    title: string;
+    conflictingTitle: string;
+    collaboratorName: string;
+    start: string | null;
+    conflictingStart: string | null;
+  }>;
+  travelWarnings: Array<{
+    collaboratorName: string;
+    fromAppointmentId: string;
+    toAppointmentId: string;
+    fromTitle: string;
+    toTitle: string;
+    gapMinutes: number;
+    distanceKm: number;
+  }>;
+  heatmap: {
+    busiest: { name: string; count: number } | null;
+    quietest: { name: string; count: number } | null;
+  };
+};
+
 type CollaboratorFilter = 'all' | 'me' | 'unassigned' | string;
 
 type QuickCreateForm = {
@@ -150,6 +192,47 @@ function eventTimeRangeLabel(event: NormalizedCalendarEvent): string {
   }
 }
 
+function formatShortDateTime(value: string | null) {
+  if (!value) return 'Non planifiÃ©'
+  try {
+    return new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return 'Non planifiÃ©'
+  }
+}
+
+function formatDuration(event: NormalizedCalendarEvent) {
+  if (!event.start || !event.end) return 'DurÃ©e non prÃ©cisÃ©e'
+  const start = new Date(event.start)
+  const end = new Date(event.end)
+  const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  return remaining ? `${hours} h ${remaining}` : `${hours} h`
+}
+
+function getAvailabilityCopy(availability: 'available' | 'soon' | 'busy') {
+  if (availability === 'busy') return { label: 'Occupe', dot: '#ef4444', bg: 'rgba(239,68,68,0.12)' }
+  if (availability === 'soon') return { label: 'Bientot occupe', dot: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }
+  return { label: 'Disponible', dot: '#34d399', bg: 'rgba(52,211,153,0.12)' }
+}
+
+function getStableMemberColor(seed: string) {
+  const palette = [
+    { bg: 'rgba(16,185,129,0.16)', border: 'rgba(16,185,129,0.35)', text: '#a7f3d0', solid: '#10b981' },
+    { bg: 'rgba(59,130,246,0.16)', border: 'rgba(59,130,246,0.35)', text: '#bfdbfe', solid: '#3b82f6' },
+    { bg: 'rgba(245,158,11,0.16)', border: 'rgba(245,158,11,0.35)', text: '#fde68a', solid: '#f59e0b' },
+    { bg: 'rgba(236,72,153,0.16)', border: 'rgba(236,72,153,0.35)', text: '#fbcfe8', solid: '#ec4899' },
+    { bg: 'rgba(14,165,233,0.16)', border: 'rgba(14,165,233,0.35)', text: '#bae6fd', solid: '#0ea5e9' },
+    { bg: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.35)', text: '#e9d5ff', solid: '#a855f7' },
+  ];
+
+  let hash = 0;
+  for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) % palette.length;
+  return palette[Math.abs(hash) % palette.length];
+}
+
 // Positionnement + gestion basique des chevauchements : les évènements d'un
 // même jour qui se recouvrent sont répartis côte à côte (jamais masqués).
 function layoutDayEvents(dayEvents: NormalizedCalendarEvent[]) {
@@ -218,11 +301,7 @@ function EventPopover({
   const style = EVENT_TYPE_STYLES[event.type];
   const canReassignThisEvent = canReassign && event.source === 'kadria-appointment' && Boolean(event.rawAppointmentId) && !singleUserWorkspace;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
-      role="presentation"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose} role="presentation">
       <div
         className="w-full max-w-sm rounded-2xl border p-5"
         style={{ borderColor: 'var(--border)', background: 'var(--bg-elevated)' }}
@@ -243,27 +322,22 @@ function EventPopover({
         <h3 className="mt-3 text-base font-bold text-[var(--text-1)]">{event.title}</h3>
         <p className="mt-1 text-sm text-[var(--text-2)]">{eventTimeRangeLabel(event)}</p>
 
-        {event.location && (
+        {event.clientName && <p className="mt-3 text-sm font-semibold text-[var(--text-1)]">{event.clientName}</p>}
+        {event.clientPhone && <p className="mt-1 text-sm text-[var(--text-3)]">Tél. : {event.clientPhone}</p>}
+        {(event.address || event.location) && (
           <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--text-3)]">
             <MapPin className="h-3.5 w-3.5" />
-            {event.location}
+            {event.address || event.location}
           </p>
-        )}
-
-        {event.clientName && !event.projectReference && (
-          <p className="mt-2 text-sm text-[var(--text-3)]">Client : {event.clientName}</p>
         )}
 
         {event.projectReference && (
           <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
             <p className="text-xs font-semibold text-[var(--text-2)]">Dossier lié</p>
             <p className="mt-1 text-sm font-semibold text-[var(--text-1)]">{event.projectReference}</p>
-          </div>
-        )}
-
-        {!event.projectReference && event.type !== 'google-event' && event.projectId && (
-          <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-            <p className="text-sm text-[var(--text-2)]">Dossier lié</p>
+            {event.responsibleUserName && (
+              <p className="mt-1 text-xs text-[var(--text-3)]">Responsable commercial : {event.responsibleUserName}</p>
+            )}
           </div>
         )}
 
@@ -290,6 +364,28 @@ function EventPopover({
           </div>
         )}
 
+        <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 text-xs text-[var(--text-2)]">
+          <div className="flex items-center justify-between gap-3">
+            <span>Date</span>
+            <span className="font-medium text-[var(--text-1)]">{formatShortDateTime(event.start)}</span>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span>Durée</span>
+            <span className="font-medium text-[var(--text-1)]">{formatDuration(event)}</span>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span>Collaborateur</span>
+            <span className="font-medium text-[var(--text-1)]">{event.isUnassigned ? 'Non affecté' : event.assignedUserName || '—'}</span>
+          </div>
+        </div>
+
+        {event.description && (
+          <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+            <p className="text-xs font-semibold text-[var(--text-2)]">Notes</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--text-1)]">{event.description}</p>
+          </div>
+        )}
+
         <div className="mt-4 flex flex-wrap gap-2">
           {event.actionUrl && (
             <button
@@ -300,6 +396,17 @@ function EventPopover({
               <FileText className="h-4 w-4" />
               Ouvrir le dossier
             </button>
+          )}
+          {(event.address || event.location) && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.location || '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
+            >
+              <MapPin className="h-4 w-4" />
+              Google Maps
+            </a>
           )}
           {event.googleEventUrl && (
             <a
@@ -348,6 +455,9 @@ export default function DesktopAgendaView() {
   const [appointments, setAppointments] = useState<RawKadriaAppointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [insights, setInsights] = useState<PlanningInsights | null>(null);
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
+  const [selectedTimelineDay, setSelectedTimelineDay] = useState<Date>(new Date());
 
   const [disconnecting, setDisconnecting] = useState(false);
   const [returnMessage, setReturnMessage] = useState<string | null>(null);
@@ -501,6 +611,7 @@ export default function DesktopAgendaView() {
         return;
       }
       setAppointments(Array.isArray(json.appointments) ? json.appointments : []);
+      setInsights(json.insights || null);
     } catch {
       setAppointmentsError('Chargement des rendez-vous impossible');
     } finally {
@@ -784,6 +895,45 @@ export default function DesktopAgendaView() {
     }
   }, [fetchAppointments, weekStart, showToast]);
 
+  async function handleTimelineDrop(params: {
+    eventId: string;
+    targetUserId: string | null;
+    day: Date;
+    hour: number;
+  }) {
+    const event = normalizedEvents.find((item) => item.rawAppointmentId === params.eventId);
+    if (!event?.rawAppointmentId || !event.start) return;
+
+    const start = new Date(event.start);
+    const end = event.end ? new Date(event.end) : new Date(start.getTime() + 60 * 60 * 1000);
+    const durationMs = Math.max(30 * 60 * 1000, end.getTime() - start.getTime());
+    const nextStart = new Date(params.day);
+    nextStart.setHours(params.hour, 0, 0, 0);
+    const nextEnd = new Date(nextStart.getTime() + durationMs);
+
+    setDraggingEventId(null);
+    try {
+      const response = await fetch(`/api/appointments/${event.rawAppointmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start: nextStart.toISOString(),
+          end: nextEnd.toISOString(),
+          assignedUserId: params.targetUserId,
+        }),
+      });
+      const json = await response.json();
+      if (!json.success) {
+        showToast(json.error || 'DÃ©placement impossible', true);
+        return;
+      }
+      showToast(json.conflictWarning?.message || 'Rendez-vous dÃ©placÃ©', Boolean(json.conflictWarning));
+      await fetchAppointments(weekStart);
+    } catch {
+      showToast('DÃ©placement impossible', true);
+    }
+  }
+
   // Fusion des sources en évènements normalisés pour la semaine affichée.
   // - Mode Google : évènements Google, enrichis du lien dossier quand un
   //   rendez-vous Kadria correspondant existe (même google_event_id).
@@ -830,6 +980,15 @@ export default function DesktopAgendaView() {
   );
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+
+  useEffect(() => {
+    const today = new Date();
+    const todayInWeek = weekDays.find((day) => isSameDay(day, today));
+    setSelectedTimelineDay((current) => {
+      if (weekDays.some((day) => isSameDay(day, current))) return current;
+      return todayInWeek || weekDays[0];
+    });
+  }, [weekDays]);
   // En vue Jour, on affiche le jour "courant" de la semaine sélectionnée
   // (aujourd'hui s'il est dans la semaine affichée, sinon le premier jour de
   // la semaine) — la navigation prev/next reste hebdomadaire pour rester
@@ -870,6 +1029,52 @@ export default function DesktopAgendaView() {
     () => collaboratorFilteredEvents.filter((e) => e.allDay || (!e.start && e.source !== 'kadria-planning')),
     [collaboratorFilteredEvents],
   );
+
+  const timelineMembers = useMemo(() => {
+    const base = insights?.teamLoad || [];
+    const rows = base.map((member) => ({
+      ...member,
+      color: getStableMemberColor(member.userId),
+    }));
+    if (insights?.summary.unassigned) {
+      rows.push({
+        userId: '__unassigned__',
+        name: 'Non affectÃ©s',
+        role: 'unassigned',
+        todayCount: insights.summary.unassigned,
+        loadPercent: 0,
+        availability: 'available' as const,
+        nextAppointmentAt: null,
+        color: { bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', text: '#cbd5e1', solid: '#94a3b8' },
+      });
+    }
+    return rows;
+  }, [insights]);
+
+  const selectedTimelineKey = useMemo(() => isoDateOnly(selectedTimelineDay), [selectedTimelineDay]);
+  const timelineEvents = useMemo(
+    () =>
+      normalizedEvents.filter((event) => {
+        if (event.source !== 'kadria-appointment' || event.allDay || !event.start) return false;
+        const start = new Date(event.start);
+        return !Number.isNaN(start.getTime()) && isSameDay(start, selectedTimelineDay);
+      }),
+    [normalizedEvents, selectedTimelineDay],
+  );
+
+  const timelineEventsByMember = useMemo(() => {
+    const map = new Map<string, NormalizedCalendarEvent[]>();
+    for (const member of timelineMembers) map.set(member.userId, []);
+    for (const event of timelineEvents) {
+      const key = event.assignedUserId || '__unassigned__';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(event);
+    }
+    for (const entry of map.values()) {
+      entry.sort((a, b) => new Date(a.start || '').getTime() - new Date(b.start || '').getTime());
+    }
+    return map;
+  }, [timelineEvents, timelineMembers]);
 
   const isLoading =
     (calendarMode === 'google' && eventsLoading) || (calendarMode === 'kadria' && projectsLoading) || appointmentsLoading;
@@ -1257,6 +1462,224 @@ export default function DesktopAgendaView() {
       )}
 
       {/* Zone évènements toute la journée */}
+      {calendarMode === 'kadria' && insights && (
+        <>
+          <div className="grid gap-3 md:grid-cols-5">
+            {[
+              { label: "Aujourd'hui", value: insights.summary.today },
+              { label: 'Demain', value: insights.summary.tomorrow },
+              { label: 'Cette semaine', value: insights.summary.thisWeek },
+              { label: 'Non affectés', value: insights.summary.unassigned },
+              { label: 'Conflits', value: insights.summary.conflicts },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-3)]">{item.label}</p>
+                <p className="mt-2 text-2xl font-bold text-[var(--text-1)]">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-[1.35fr_0.65fr]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Charge équipe</h2>
+                  <p className="mt-1 text-xs text-[var(--text-3)]">Disponibilités et charge du jour par collaborateur.</p>
+                </div>
+                <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-3)]">
+                  {selectedTimelineKey}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {timelineMembers.map((member) => {
+                  const availability = getAvailabilityCopy(member.availability);
+                  return (
+                    <div key={member.userId} className="rounded-xl border p-3" style={{ borderColor: member.color.border, background: member.color.bg }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: member.color.solid, color: '#04130c' }}>
+                            {member.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[var(--text-1)]">{member.name}</p>
+                            <p className="text-xs text-[var(--text-3)]">{member.todayCount} RDV</p>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium" style={{ background: availability.bg, color: availability.dot }}>
+                          <span className="h-2 w-2 rounded-full" style={{ background: availability.dot }} />
+                          {availability.label}
+                        </span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/20">
+                        <div className="h-full rounded-full" style={{ width: `${member.loadPercent}%`, background: member.color.solid }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+                <h2 className="text-sm font-semibold text-[var(--text-1)]">Heatmap</h2>
+                <div className="mt-3 space-y-2 text-sm text-[var(--text-2)]">
+                  <div className="flex items-center justify-between">
+                    <span>Le plus chargé</span>
+                    <span className="font-semibold text-[var(--text-1)]">{insights.heatmap.busiest ? `${insights.heatmap.busiest.name} · ${insights.heatmap.busiest.count}` : '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Le moins chargé</span>
+                    <span className="font-semibold text-[var(--text-1)]">{insights.heatmap.quietest ? `${insights.heatmap.quietest.name} · ${insights.heatmap.quietest.count}` : '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {(insights.conflicts.length > 0 || insights.travelWarnings.length > 0) && (
+                <div className="rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.08)] p-4">
+                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Alertes opérationnelles</h2>
+                  <div className="mt-3 space-y-3">
+                    {insights.conflicts.slice(0, 3).map((conflict) => (
+                      <div key={conflict.appointmentId} className="rounded-xl border border-[rgba(245,158,11,0.25)] bg-black/10 p-3 text-xs text-[var(--text-2)]">
+                        <p className="font-semibold text-yellow-300">⚠ Chevauchement</p>
+                        <p className="mt-1">{conflict.collaboratorName} · {conflict.title}</p>
+                        <p>{formatShortDateTime(conflict.start)} · conflit avec {conflict.conflictingTitle}</p>
+                      </div>
+                    ))}
+                    {insights.travelWarnings.slice(0, 2).map((warning) => (
+                      <div key={warning.toAppointmentId} className="rounded-xl border border-[rgba(245,158,11,0.25)] bg-black/10 p-3 text-xs text-[var(--text-2)]">
+                        <p className="font-semibold text-yellow-300">⚠ Déplacement probablement trop court</p>
+                        <p className="mt-1">{warning.collaboratorName} · {warning.gapMinutes} min pour {warning.distanceKm} km</p>
+                        <p>{warning.fromTitle} → {warning.toTitle}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {teamPermissions.canManageTeamPlanning && timelineMembers.length > 0 && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Timeline équipe</h2>
+                  <p className="mt-1 text-xs text-[var(--text-3)]">Glissez un rendez-vous pour changer l&apos;heure ou le collaborateur.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {weekDays.map((day) => (
+                    <button
+                      key={isoDateOnly(day)}
+                      type="button"
+                      onClick={() => setSelectedTimelineDay(day)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${isSameDay(day, selectedTimelineDay) ? 'bg-green-500/15 text-green-400' : 'bg-[var(--bg)] text-[var(--text-2)] hover:bg-[var(--bg-hover)]'}`}
+                    >
+                      {day.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit' })}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 overflow-x-auto">
+                <div className="min-w-[980px]">
+                  <div className="ml-[220px] grid grid-cols-13 gap-2 text-[11px] uppercase tracking-wide text-[var(--text-3)]">
+                    {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, index) => (
+                      <div key={index} className="rounded-lg bg-[var(--bg)] px-2 py-1 text-center">
+                        {String(GRID_START_HOUR + index).padStart(2, '0')}:00
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {timelineMembers.map((member) => {
+                      const memberEvents = timelineEventsByMember.get(member.userId) || [];
+                      const availability = getAvailabilityCopy(member.availability);
+                      return (
+                        <div key={member.userId} className="grid grid-cols-[220px_1fr] gap-3">
+                          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: member.color.solid, color: '#04130c' }}>
+                                {member.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-[var(--text-1)]">{member.name}</p>
+                                <p className="text-xs text-[var(--text-3)]">{member.todayCount} RDV</p>
+                              </div>
+                            </div>
+                            <span className="mt-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium" style={{ background: availability.bg, color: availability.dot }}>
+                              <span className="h-2 w-2 rounded-full" style={{ background: availability.dot }} />
+                              {availability.label}
+                            </span>
+                          </div>
+                          <div className="relative rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2" style={{ minHeight: 96 }}>
+                            <div className="grid grid-cols-13 gap-2">
+                              {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, index) => (
+                                <div
+                                  key={index}
+                                  onDragOver={(event) => event.preventDefault()}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    const appointmentId = event.dataTransfer.getData('text/appointment-id');
+                                    if (!appointmentId) return;
+                                    void handleTimelineDrop({
+                                      eventId: appointmentId,
+                                      targetUserId: member.userId === '__unassigned__' ? null : member.userId,
+                                      day: selectedTimelineDay,
+                                      hour: GRID_START_HOUR + index,
+                                    });
+                                  }}
+                                  className="h-20 rounded-lg border border-dashed border-[var(--border-soft)] bg-[var(--bg-elevated)]/40"
+                                />
+                              ))}
+                            </div>
+
+                            {memberEvents.map((event) => {
+                              if (!event.start) return null;
+                              const start = new Date(event.start);
+                              const end = event.end ? new Date(event.end) : new Date(start.getTime() + 60 * 60 * 1000);
+                              const startHours = start.getHours() + start.getMinutes() / 60;
+                              const endHours = end.getHours() + end.getMinutes() / 60;
+                              const left = ((startHours - GRID_START_HOUR) / (GRID_END_HOUR - GRID_START_HOUR)) * 100;
+                              const width = (Math.max(0.75, endHours - startHours) / (GRID_END_HOUR - GRID_START_HOUR)) * 100;
+                              const memberColor = getStableMemberColor(event.assignedUserId || event.id);
+                              return (
+                                <button
+                                  key={event.id}
+                                  type="button"
+                                  draggable
+                                  onDragStart={(dragEvent) => {
+                                    dragEvent.dataTransfer.setData('text/appointment-id', event.rawAppointmentId || '');
+                                    setDraggingEventId(event.rawAppointmentId || event.id);
+                                  }}
+                                  onDragEnd={() => setDraggingEventId(null)}
+                                  onClick={() => setSelectedEvent(event)}
+                                  className="absolute top-2 rounded-xl border px-3 py-2 text-left shadow-sm transition hover:-translate-y-[1px]"
+                                  style={{
+                                    left: `${Math.max(0, left)}%`,
+                                    width: `calc(${Math.min(width, 100)}% - 8px)`,
+                                    minWidth: 120,
+                                    background: memberColor.bg,
+                                    borderColor: memberColor.border,
+                                    color: memberColor.text,
+                                    opacity: draggingEventId && draggingEventId === event.rawAppointmentId ? 0.6 : 1,
+                                  }}
+                                >
+                                  <p className="truncate text-[11px] font-semibold">{eventTimeRangeLabel(event)}</p>
+                                  <p className="truncate text-sm font-semibold">{event.clientName || event.title}</p>
+                                  <p className="truncate text-[11px] opacity-80">{event.location || event.address || EVENT_TYPE_STYLES[event.type].label}</p>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {allDayEvents.length > 0 && (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-3)]">
