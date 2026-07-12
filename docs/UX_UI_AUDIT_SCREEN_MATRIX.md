@@ -19,8 +19,8 @@ sélecteur utilisé). **Non testé** = pas de tentative dans ce lot.
 | Paramètres — Catalogue & devis | `/demo-parametres` (onglet) | `desktop-parametres-catalogue-devis.png` | — | normal | Clic onglet | Vu |
 | Paramètres — Coordonnées | `/demo-parametres` (onglet) | `desktop-parametres-coordonn-es.png` | — | normal | Clic onglet | Vu |
 | Paramètres — Apparence | `/demo-parametres` (onglet) | `desktop-parametres-apparence.png` | — | normal | Clic onglet | Vu |
-| Onboarding | `/demo-dashboard/onboarding` | `desktop-onboarding.png`, `desktop-onboarding-toolbaroff.png` | — | normal | Chargement | Vu (surface seulement, pas de clic sur les étapes) |
-| Menu mobile (bottom-sheet) | dashboard mobile | — | `mobile-nav-open.png` | normal | Clic bouton menu | Vu |
+| Onboarding | `/demo-dashboard/onboarding` | — | — | — | Aucune | **Non testé** — `desktop-onboarding.png` et `desktop-onboarding-toolbaroff.png` mal nommées : ouverture visuelle réelle (lot qualification) montre un écran "Configuration" (widget, 5 onglets, artisan "Dupont Renovation") distinct de l'onboarding et distinct des Paramètres standard ; rejetées, non commitées |
+| Menu mobile (bottom-sheet) | dashboard mobile | — | `mobile-nav-open.png` | normal | Clic bouton menu | Vu — `mobile-menu-sheet.png` est un doublon strict (octet identique) de ce fichier, rejeté et non commité |
 | Dossiers (liste) | onglet "Suivi commercial", vue Liste | `dossiers-01-liste-normal-desktop.png`, `dossiers-03-liste-empty-desktop.png`, `dossiers-05-filtres-desktop.png` | `dossiers-04-liste-mobile.png` | normal / dense / empty | Clic onglet, clic "Liste", recherche "Martin" (1 résultat confirmé), scroll | Vu — `dossiers-02-liste-dense-desktop.png` (scénario dense) **manquante/invalide** : le fichier capturé montre le haut du dashboard, pas la liste de 30 dossiers ; non committée, à régénérer |
 | Dossiers — scénario essentiel | onglet "Suivi commercial", vue Liste | `dossiers-06-liste-essential-desktop.png` | — | essential | Comparaison pixel avec `dossiers-01` | Vu — capture strictement identique (md5 identique) à `dossiers-01`, confirme code : le plan reste figé sur "performance" en démo (`DemoArtisanDashboard.tsx` L152/596-597), aucun verrouillage visuel n'apparaît pour "essential" (voir P1 rapport dédié) |
 | Kanban (vue groupée par étape) | onglet "Suivi commercial", vue Kanban | `kanban-01-normal-desktop.png`, `kanban-02-dense-desktop.png`, `kanban-03-empty-desktop.png`, `kanban-06-export-menu-desktop.png` | `kanban-05-mobile.png` (vue liste filtrée, pas de colonnes) | normal / dense / empty | Clic "Kanban", clic "Exporter" (menu CSV/PDF/Rapport), clic carte → navigation fiche projet, scroll horizontal | Vu |
@@ -37,7 +37,7 @@ sélecteur utilisé). **Non testé** = pas de tentative dans ce lot.
 | Fiche projet avec devis généré | `/demo-dashboard/projet/demo_103` | `projet-03-devis-desktop.png` | — | normal | Navigation directe | Vu |
 | Fiche projet avec rendez-vous planifié | `/demo-dashboard/projet/demo_102` | `projet-04-rendez-vous-desktop.png` | `projet-07-mobile-rdv.png` | normal | Navigation directe | Vu |
 | Fiche projet — modale "Planifier un rendez-vous" | `/demo-dashboard/projet/demo_101` | `projet-06-modal-rdv-desktop.png` | — | normal | Clic "Planifier un rendez-vous" | Vu |
-| Menu mobile "Menu Kadria" (bottom-sheet secondaire) | dashboard mobile | — | `mobile-menu-sheet.png` | normal | Clic bouton "Menu" | Vu |
+| Menu mobile "Menu Kadria" (bottom-sheet secondaire) | dashboard mobile | — | ~~`mobile-menu-sheet.png`~~ | normal | Clic bouton "Menu" | **Doublon strict de `mobile-nav-open.png`** (ligne ci-dessus) — pas un second écran distinct, malgré la présentation initiale de ce tableau ; rejeté, non commité |
 | Planning d'équipe | inconnue | — | — | — | Aucune | Non testé |
 | Catalogue / prestations (écran dédié) | inconnue | — | — | — | Aucune | Non testé (seul l'onglet paramètres "Catalogue & devis" a été vu) |
 | Équipe et collaborateurs | inconnue | — | — | — | Aucune | Non testé |
@@ -48,14 +48,19 @@ sélecteur utilisé). **Non testé** = pas de tentative dans ce lot.
 | Scénario `empty` (zone Dossiers/Kanban) | `/demo-dashboard?scenario=empty` | `dossiers-03-liste-empty-desktop.png`, `kanban-03-empty-desktop.png` | — | empty | Navigation directe | Vu — 1 dossier (pas 0), voir note rapport dédié |
 | Scénario `performance` (zone Dossiers/Kanban) | `/demo-dashboard?scenario=normal` (plan figé "performance" par défaut dans toute la démo) | voir lignes Dossiers/Kanban ci-dessus | — | normal=performance | — | Vu implicitement — le plan démo est toujours "performance" (voir P1) |
 
-**Total captures committées (cumulé, tous lots)**: 39 fichiers PNG dans
-`docs/ux-audit-screenshots/` (19 déjà en arbre avant ce lot : zone Dossiers/Kanban/
-Fiche projet, cf. `UX_UI_AUDIT_DOSSIERS_KANBAN_PROJET.md` + 20 de ce lot : zone Devis
-— 19 captures validées + 1 conservée comme preuve de bug
-(`devis-11-apercu-source-desktop.png`), cf. `UX_UI_AUDIT_DEVIS.md`). Non committées de
-la zone Devis : `desktop-devis-list.png` (doublon obsolète),
-`devis-04-liste-mobile.png` (mauvais écran — menu mobile), et
-`devis-19-modal-confirmation-desktop.png` (jamais produite). D'autres captures
-génériques (`desktop-*.png`, `mobile-*.png` hors Devis, `dossiers-02-liste-dense-
-desktop.png`) restent non suivies dans le répertoire de travail, hors périmètre de ce
-lot.
+**Total captures committées (cumulé, tous lots)**: 55 fichiers PNG dans
+`docs/ux-audit-screenshots/` (19 zone Dossiers/Kanban/Fiche projet, cf.
+`UX_UI_AUDIT_DOSSIERS_KANBAN_PROJET.md` + 20 zone Devis — 19 captures
+validées + 1 conservée comme preuve de bug (`devis-11-apercu-source-
+desktop.png`), cf. `UX_UI_AUDIT_DEVIS.md` + 16 de ce lot : zone Dashboard /
+Navigation / Notifications / Paramètres historiques, cf. section "Lot de
+qualification visuelle" dans `UX_UI_AUDIT_V1.md`). Non committées de la zone
+Devis : `desktop-devis-list.png` (doublon obsolète), `devis-04-liste-
+mobile.png` (mauvais écran — menu mobile), et `devis-19-modal-confirmation-
+desktop.png` (jamais produite). Non committées de ce lot : `desktop-
+onboarding.png` et `desktop-onboarding-toolbaroff.png` (mauvais écran —
+montrent une page "Configuration" du widget, pas l'onboarding réel),
+`mobile-menu-sheet.png` (doublon strict de `mobile-nav-open.png`). Laissées
+intactes, hors périmètre de ce lot : `desktop-dossiers-pipeline.png` et
+`dossiers-02-liste-dense-desktop.png` (zone Dossiers, déjà traitée),
+`desktop-assistant-open.png` (zone Assistant, explicitement hors périmètre).

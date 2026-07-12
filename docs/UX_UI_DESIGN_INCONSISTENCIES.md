@@ -1,12 +1,16 @@
 # Incohérences UI transversales — constats visuels réels
 
 Basé sur les captures Playwright réelles produites dans les lots successifs
-(`docs/ux-audit-screenshots/`) : 21 captures du premier lot (Dashboard,
-Paramètres, Onboarding), complétées par 21 captures du lot Dossiers /
-Kanban / Fiche projet (voir `UX_UI_AUDIT_DOSSIERS_KANBAN_PROJET.md`), puis
-par le lot Devis (voir `UX_UI_AUDIT_DEVIS.md`). Ne couvre que les écrans
-listés comme "Vu" dans `UX_UI_AUDIT_SCREEN_MATRIX.md` — ne pas généraliser
-aux écrans non testés.
+(`docs/ux-audit-screenshots/`) : 16 captures qualifiées et commitées du
+premier lot (Dashboard, Navigation, Notifications, Paramètres — sur 19
+candidates, 2 rejetées mauvais écran + 1 doublon strict, voir la section
+"Lot de qualification visuelle" dans `UX_UI_AUDIT_V1.md`), complétées par 19
+captures du lot Dossiers / Kanban / Fiche projet (voir
+`UX_UI_AUDIT_DOSSIERS_KANBAN_PROJET.md`), puis par le lot Devis (voir
+`UX_UI_AUDIT_DEVIS.md`). Ne couvre que les écrans listés comme "Vu" dans
+`UX_UI_AUDIT_SCREEN_MATRIX.md` — ne pas généraliser aux écrans non testés.
+L'onboarding réel n'a jamais été capturé (faux positif corrigé — voir
+`UX_UI_AUDIT_V1.md`) et reste non testé.
 
 ## Navigation
 - La nav desktop (sidebar, 5 items : Valeur générée, Suivi commercial,

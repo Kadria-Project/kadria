@@ -111,9 +111,55 @@ pas adaptée à 390px — nécessite un scroll horizontal, sans indice visuel
 (flèche ou fondu) signalant qu'il y a plus de contenu à droite.
 
 ### 8. Onboarding — `/demo-dashboard/onboarding`
-**Captures**: `desktop-onboarding.png`, `desktop-onboarding-toolbaroff.png`
-Page atteinte et capturée. Non explorée en profondeur (pas de clic sur les
-étapes) faute de temps disponible dans ce lot.
+**FAUX POSITIF CORRIGÉ (lot de qualification visuelle) :** ce rapport
+affirmait précédemment que la page onboarding avait été "atteinte et
+capturée" sous les noms `desktop-onboarding.png` et
+`desktop-onboarding-toolbaroff.png`. Une ouverture visuelle réelle de ces
+deux fichiers montre en fait un écran de **configuration du widget**
+("Configuration" dans le header, 5 onglets : Mon entreprise, Mon widget,
+Coordonnées, Infos légales, Apparence, panneau "Aperçu widget"), avec un nom
+d'entreprise ("Dupont Renovation") différent du reste de la démo ("AB Elec"
+partout ailleurs) — ce n'est ni l'écran d'onboarding réel, ni l'écran
+Paramètres standard (`desktop-parametres.png`, 9 onglets, "AB Elec"). Les
+deux captures ont été **rejetées** (mauvais écran) et non commitées.
+**L'onboarding réel n'a donc PAS été capturé dans ce lot ni dans les
+précédents — zone à documenter comme non testée.**
+
+## Lot de qualification visuelle — Dashboard / Navigation / Notifications / Paramètres historiques
+
+Les 19 captures ci-dessus (hors zones Dossiers/Kanban/Fiche projet et Devis,
+déjà qualifiées et commitées dans deux lots précédents) sont restées non
+suivies (`git status`) depuis leur production initiale. Elles ont été
+ouvertes une à une (outil de lecture d'image) pour ce lot, en confrontant
+chaque image aux affirmations ci-dessus.
+
+**Résultat** : 16 captures validées, 2 rejetées (mauvais écran, voir section
+Onboarding ci-dessus), 1 rejetée comme doublon strict.
+
+- `desktop-suivi-commercial.png` (validée, montre bien l'onglet Suivi
+  commercial) est **strictement identique en octets** à
+  `kanban-04-essential-scenario-desktop.png`, déjà commitée dans le lot
+  Dossiers/Kanban/Fiche projet. Ceci confirme, sous un angle différent, la
+  remarque déjà consignée dans `UX_UI_AUDIT_SCREEN_MATRIX.md` (ligne
+  Kanban — scénario essentiel) : cette capture "Kanban essentiel" ne montre
+  en réalité pas de Kanban mais l'onglet Suivi commercial du dashboard (page
+  non re-scrollée / non re-cliquée avant capture). Aucune action sur le
+  fichier déjà commité (hors périmètre de ce lot), mais la confusion de
+  contenu est documentée ici pour éviter de la reproduire.
+- `mobile-menu-sheet.png` et `mobile-nav-open.png` sont des **doublons
+  stricts** (octet pour octet), alors que la matrice les présentait comme
+  deux bottom-sheets mobiles distincts ("Menu Kadria" liste courte vs liste
+  longue). Un seul et même contenu a en réalité été capturé deux fois sous
+  deux noms différents. `mobile-nav-open.png` est conservé (nom cohérent
+  avec le contenu affiché — accès au menu mobile) ; `mobile-menu-sheet.png`
+  est rejeté comme doublon et non commité.
+- `desktop-dossiers-pipeline.png` et `dossiers-02-liste-dense-desktop.png`
+  appartiennent à la zone Dossiers (hors périmètre de ce lot, déjà traitée
+  dans un lot précédent) et n'ont pas été touchées.
+- `desktop-assistant-open.png` appartient à la zone Assistant (explicitement
+  hors périmètre de ce lot) et n'a pas été touchée ; le rapport la
+  mentionnait déjà comme mal nommée (filtre "Assistant vocal" activé par
+  erreur, pas l'assistant réellement ouvert).
 
 ## Écrans NON confirmés visuellement (limitation assumée)
 
