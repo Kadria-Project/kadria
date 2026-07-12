@@ -830,6 +830,7 @@ function ProjectDetail() {
   const [showCallback, setShowCallback] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const actionsAndQuoteRef = useRef<HTMLDivElement>(null);
+  const responsibleCardRef = useRef<HTMLDivElement>(null);
   // --- Rendez-vous assisté (Google Calendar) ---
   const [appointment, setAppointment] = useState<{
     id: string;
@@ -995,6 +996,39 @@ function ProjectDetail() {
 
     router.replace(`/dashboard-v2/projet/${encodeURIComponent(String(id))}`, { scroll: false });
   }, [id, router, searchParams]);
+
+  useEffect(() => {
+    if (!project) return;
+
+    const openAppointment = searchParams?.get('openAppointment');
+    const openResponsible = searchParams?.get('openResponsible');
+    const focus = searchParams?.get('focus');
+    if (!openAppointment && !openResponsible && !focus) return;
+
+    const cleanUrl = `/dashboard-v2/projet/${encodeURIComponent(String(id))}`;
+    const run = window.setTimeout(() => {
+      if (openAppointment === '1' && !appointment) {
+        openAppointmentModal();
+      }
+
+      if (openResponsible === '1' || focus === 'responsible') {
+        responsibleCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (focus === 'quote_followup' || focus === 'actions' || focus === 'completion') {
+        actionsAndQuoteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (focus === 'callback') {
+        setShowCallback(true);
+        noteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (focus === 'review') {
+        requestGoogleReview();
+      } else if (focus === 'activity') {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
+
+      router.replace(cleanUrl, { scroll: false });
+    }, 120);
+
+    return () => window.clearTimeout(run);
+  }, [appointment, id, project, router, searchParams]);
 
   useEffect(() => {
     if (!followUpConfirmDevis) return;
@@ -3058,15 +3092,17 @@ function ProjectDetail() {
             <p style={{ margin: 0 }}>RDV : {appointment ? formatDateTime(appointment.start) : 'Non planifié'}</p>
           </div>
 
-          <ProjectResponsibleCard
-            responsibleUser={project.responsibleUser || null}
-            responsibleUserId={project.responsibleUserId || null}
-            options={responsibleOptions}
-            canEdit={canEditResponsible}
-            loading={responsibleSaving}
-            onChange={handleResponsibleChange}
-            compact
-          />
+          <div ref={responsibleCardRef}>
+            <ProjectResponsibleCard
+              responsibleUser={project.responsibleUser || null}
+              responsibleUserId={project.responsibleUserId || null}
+              options={responsibleOptions}
+              canEdit={canEditResponsible}
+              loading={responsibleSaving}
+              onChange={handleResponsibleChange}
+              compact
+            />
+          </div>
 
           {/* Complément client (SMS) — uniquement pour les dossiers
               sourcés Vapi/appel vocal, cf. shouldShowSmsCompletionCard.
