@@ -13,7 +13,7 @@ function isAuthorized(request: NextRequest) {
   return { ok: true, status: 200 }
 }
 
-export async function POST(request: NextRequest) {
+async function handleCron(request: NextRequest) {
   const auth = isAuthorized(request)
   if (!auth.ok) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status })
@@ -26,4 +26,12 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
+}
+
+export async function GET(request: NextRequest) {
+  return handleCron(request)
+}
+
+export async function POST(request: NextRequest) {
+  return handleCron(request)
 }

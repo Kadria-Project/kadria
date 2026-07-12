@@ -236,6 +236,34 @@ function buildDefaultAutomation(tenantId: string, type: BusinessAutomationType):
   }
 }
 
+async function ensureTenantAutomationRows(tenantId: string, createdBy: string | null) {
+  if (!(await tableExists(BUSINESS_AUTOMATIONS_TABLE))) return
+
+  const defaults = AUTOMATION_TYPES.map((type) => {
+    const definition = DEFINITIONS[type]
+    return {
+      tenant_id: tenantId,
+      type,
+      enabled: false,
+      mode: 'approval_required' satisfies BusinessAutomationMode,
+      delay_value: definition.recommendedDelayValue,
+      delay_unit: definition.recommendedDelayUnit,
+      channel: definition.defaultChannel,
+      requires_approval: true,
+      conditions: {},
+      config: {},
+      created_by: createdBy,
+      updated_at: nowIso(),
+    }
+  })
+
+  const { error } = await supabaseAdmin
+    .from(BUSINESS_AUTOMATIONS_TABLE)
+    .upsert(defaults, { onConflict: 'tenant_id,type', ignoreDuplicates: true })
+
+  if (error) throw new Error(error.message)
+}
+
 export async function listAutomationOverviewForCurrentTenant(): Promise<AutomationOverviewItem[]> {
   const tenantContext = await getCurrentTenantContext()
   if (!tenantContext) throw new Error('TENANT_CONTEXT_REQUIRED')
@@ -243,6 +271,8 @@ export async function listAutomationOverviewForCurrentTenant(): Promise<Automati
   if (!(await tableExists(BUSINESS_AUTOMATIONS_TABLE))) {
     return AUTOMATION_TYPES.map((type) => ({ definition: DEFINITIONS[type], automation: buildDefaultAutomation(tenantContext.tenantId, type) }))
   }
+
+  await ensureTenantAutomationRows(tenantContext.tenantId, tenantContext.userId)
 
   const { data, error } = await supabaseAdmin
     .from(BUSINESS_AUTOMATIONS_TABLE)
@@ -821,6 +851,9 @@ export async function ignoreAutomationRunForCurrentTenant(runId: string) {
 }
 
 export async function buildAutomationMetadataForTenant(tenantId: string) {
+  if (await tableExists(BUSINESS_AUTOMATIONS_TABLE)) {
+    await ensureTenantAutomationRows(tenantId, null)
+  }
   const overview = (await tableExists(BUSINESS_AUTOMATIONS_TABLE))
     ? ((await supabaseAdmin.from(BUSINESS_AUTOMATIONS_TABLE).select('*').eq('tenant_id', tenantId)).data || []).map((row) => mapAutomation(row as Record<string, unknown>))
     : []

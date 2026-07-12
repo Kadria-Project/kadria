@@ -54,6 +54,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
   { id: 'equipe', label: 'Equipe', icon: '👥', href: '/parametres/equipe' },
+  { id: 'automatisations', label: 'Automatisations', icon: '⚙️', href: '/parametres/automatisations' },
 ]
 
 const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: string }> = [
@@ -67,6 +68,7 @@ const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: str
   { id: 'apparence', label: 'Apparence', icon: '🌘' },
   { id: 'offre', label: 'Offre & quotas', icon: '💳' },
   { id: 'equipe', label: 'Equipe', icon: '👥', href: '/parametres/equipe' },
+  { id: 'automatisations', label: 'Automatisations', icon: '⚙️', href: '/parametres/automatisations' },
 ]
 
 // Groupes visuels du menu latéral des paramètres
@@ -94,6 +96,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: 
       SECTIONS[6]!,
       SECTIONS[7]!,
       SECTIONS[8]!,
+      SECTIONS[9]!,
     ],
   },
 ]
@@ -469,6 +472,7 @@ function ParametresPageContent() {
   // permissions. On ne masque donc plus cette entree sur un echec de fetch —
   // seul un 401 explicite (session non authentifiee) la cache.
   const [teamTabVisible, setTeamTabVisible] = useState(true)
+  const [automationsTabVisible, setAutomationsTabVisible] = useState(false)
   // Role tenant de l'utilisateur courant, expose par `/api/team`
   // (`membership.role`) — c'est le mecanisme deja utilise par
   // `/parametres/equipe` pour connaitre le role courant cote client. Tant
@@ -504,6 +508,7 @@ function ParametresPageContent() {
         const data = await response.json().catch(() => null)
         if (data?.membership?.role) {
           setCurrentRole(data.membership.role as TenantRole)
+          setAutomationsTabVisible(hasPermission(data.membership.role as TenantRole, 'automations.read'))
         }
       })
       .catch(() => {})
@@ -1488,7 +1493,11 @@ function ParametresPageContent() {
           WebkitOverflowScrolling: 'touch',
         }}>
           <div style={{ display: 'flex', gap: '10px', minWidth: 'max-content' }}>
-            {SETTINGS_TABS.filter((section) => section.id !== 'equipe' || teamTabVisible).map((section) => {
+            {SETTINGS_TABS.filter((section) => {
+              if (section.id === 'equipe') return teamTabVisible
+              if (section.id === 'automatisations') return automationsTabVisible
+              return true
+            }).map((section) => {
               const isActive = activeSection === section.id
               return (
                 <button

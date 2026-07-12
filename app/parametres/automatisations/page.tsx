@@ -107,6 +107,11 @@ export default function AutomationsSettingsPage() {
           <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
             Aucune automatisation n&apos;est activee par defaut. Le mode recommande est validation requise.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">6 regles initialisees</span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">Source de verite Supabase</span>
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">Cron horaire securise</span>
+          </div>
         </section>
 
         {error ? (
