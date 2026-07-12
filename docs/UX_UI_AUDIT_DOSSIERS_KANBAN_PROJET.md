@@ -95,7 +95,7 @@ lot et non retestées ici.
 
 **Dossiers**
 - `dossiers-01-liste-normal-desktop.png` — liste, 10 dossiers, tableau complet (REF/RECU/CLIENT/PROJET/RESPONSABLE/VILLE/SCORE/STATUT)
-- `dossiers-02-liste-dense-desktop.png` — liste, 30 dossiers
+- `dossiers-02-liste-dense-desktop.png` — **MANQUANTE / INVALIDE** : le fichier produit par le run Playwright montre en réalité le haut du dashboard "Suivi commercial" (widget "Coach Kadria", cartes CA potentiel / Devis envoyés / Chantiers gagnés) et non la liste des 30 dossiers attendue — probable défaut de scroll au moment de la capture. Non committée sur `main` (vérification visuelle lot de commit des captures) ; à régénérer lors d'un prochain lot d'audit local (`KADRIA_LOCAL_UX_AUDIT=true`)
 - `dossiers-03-liste-empty-desktop.png` — 1 dossier (scénario "empty" ≠ zéro dossier)
 - `dossiers-04-liste-mobile.png` — vue mobile avec cartes (Appeler/Ouvrir/Devis), chips de filtre
 - `dossiers-05-filtres-desktop.png` — recherche "Martin" appliquée (10 → 1 résultat)
