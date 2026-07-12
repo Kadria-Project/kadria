@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   CalendarDays,
@@ -435,6 +435,8 @@ function EventPopover({
 export default function DesktopAgendaView() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const modeSaveCallCountRef = useRef(0);
+  const modeSaveInFlightRef = useRef(false);
 
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('kadria');
   const [modeSaving, setModeSaving] = useState<CalendarMode | null>(null);
@@ -690,26 +692,69 @@ export default function DesktopAgendaView() {
   }, [fetchStatus, router, searchParams]);
 
   const saveMode = useCallback(async (nextMode: CalendarMode) => {
+    if (nextMode === calendarMode) {
+      console.info('[DESKTOP_AGENDA][MODE_SAVE_SKIPPED]', {
+        reason: 'already_active',
+        currentMode: calendarMode,
+        nextMode,
+      });
+      return;
+    }
+
+    if (modeSaveInFlightRef.current) {
+      console.info('[DESKTOP_AGENDA][MODE_SAVE_SKIPPED]', {
+        reason: 'request_in_flight',
+        currentMode: calendarMode,
+        nextMode,
+      });
+      return;
+    }
+
+    modeSaveInFlightRef.current = true;
+    modeSaveCallCountRef.current += 1;
     const previousMode = calendarMode;
     setCalendarMode(nextMode);
     setModeSaving(nextMode);
     setModeError(null);
 
+    const payload = { businessConfig: { calendarMode: nextMode } };
+    console.info('[DESKTOP_AGENDA][MODE_SAVE_REQUEST]', {
+      callCount: modeSaveCallCountRef.current,
+      currentMode: previousMode,
+      nextMode,
+      payload,
+    });
+
     try {
       const response = await fetch('/api/artisan/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessConfig: { calendarMode: nextMode } }),
+        body: JSON.stringify(payload),
       });
       const json = await response.json();
+      console.info('[DESKTOP_AGENDA][MODE_SAVE_RESPONSE]', {
+        callCount: modeSaveCallCountRef.current,
+        currentMode: previousMode,
+        nextMode,
+        status: response.status,
+        ok: response.ok,
+        error: response.ok && json?.success ? null : json?.error || null,
+      });
       if (!response.ok || !json.success) {
         throw new Error(json?.error || 'Sauvegarde impossible');
       }
       setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Calendar selectionne');
     } catch (error) {
+      console.info('[DESKTOP_AGENDA][MODE_SAVE_FAILED]', {
+        callCount: modeSaveCallCountRef.current,
+        currentMode: previousMode,
+        nextMode,
+        error: error instanceof Error ? error.message : String(error),
+      });
       setCalendarMode(previousMode);
       setModeError(error instanceof Error ? error.message : "Impossible d'enregistrer votre preference d'agenda.");
     } finally {
+      modeSaveInFlightRef.current = false;
       setModeSaving(null);
     }
   }, [calendarMode]);
