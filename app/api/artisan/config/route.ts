@@ -66,6 +66,45 @@ function touchesAnyField(body: Record<string, unknown>, fields: readonly string[
   return fields.some((field) => body[field] !== undefined)
 }
 
+function describeConfigError(error: unknown) {
+  if (error instanceof Error) {
+    const candidate = error as Error & {
+      code?: string
+      details?: string
+      hint?: string
+      status?: number
+    }
+    return {
+      type: error.constructor?.name || 'Error',
+      name: error.name,
+      message: error.message,
+      code: candidate.code || null,
+      details: candidate.details || null,
+      hint: candidate.hint || null,
+      status: candidate.status || null,
+    }
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const record = error as Record<string, unknown>
+    return {
+      type: 'Object',
+      name: typeof record.name === 'string' ? record.name : null,
+      message: typeof record.message === 'string' ? record.message : null,
+      code: typeof record.code === 'string' ? record.code : null,
+      details: typeof record.details === 'string' ? record.details : null,
+      hint: typeof record.hint === 'string' ? record.hint : null,
+      status: typeof record.status === 'number' ? record.status : null,
+      keys: Object.keys(record),
+    }
+  }
+
+  return {
+    type: typeof error,
+    message: error === undefined ? 'undefined' : String(error),
+  }
+}
+
 export async function GET() {
   try {
     const session = await getSession()
@@ -99,6 +138,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  let stage = 'session'
   try {
     const session = await getSession()
     if (!session) {
@@ -108,6 +148,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    stage = 'parse_body'
     const body = await request.json()
     const touchesCompanyField = touchesAnyField(body, COMPANY_OWNER_FIELDS)
     const touchesBusinessField = touchesAnyField(body, BUSINESS_SETTINGS_FIELDS)
@@ -119,6 +160,7 @@ export async function PATCH(request: NextRequest) {
     // Le profil personnel (prenom/nom/email) reste modifiable par tout membre
     // authentifie. En revanche, tout reglage tenant/global doit passer par la
     // matrice de permissions resolue depuis `tenant_members.role/status`.
+    stage = 'tenant_context'
     const tenantContext = touchesProtectedField ? await getCurrentTenantContext() : null
 
     const requireProtectedPermission = (permission: 'company.update' | 'business_settings.update' | 'billing.manage' | 'integrations.manage') => {
@@ -418,6 +460,7 @@ export async function PATCH(request: NextRequest) {
     if (body.travelConfig !== undefined) fields['travel_config'] = body.travelConfig
 
     if (body.businessConfig !== undefined) {
+      stage = 'load_existing_config'
       const existingConfig = await getArtisanConfig(session.artisanId)
       const existingBusinessConfig =
         existingConfig?.businessConfig && typeof existingConfig.businessConfig === 'object'
@@ -429,6 +472,7 @@ export async function PATCH(request: NextRequest) {
     console.log('[CONFIG PATCH] Champs recus:', Object.keys(body))
     console.log('[CONFIG PATCH] Champs ecrits Supabase:', Object.keys(fields))
 
+    stage = 'update_artisan_config'
     await updateArtisanConfig(session.artisanId, fields)
 
     const userFields: Record<string, unknown> = {}
@@ -436,14 +480,19 @@ export async function PATCH(request: NextRequest) {
     if (body.lastName !== undefined) userFields['last_name'] = body.lastName
     if (body.email !== undefined) userFields['email'] = body.email
     if (Object.keys(userFields).length > 0) {
+      stage = 'update_user'
       await updateUser(session.artisanId, userFields)
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[CONFIG PATCH]', error)
+    const described = describeConfigError(error)
+    console.error('[CONFIG PATCH]', {
+      stage,
+      error: described,
+    })
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: described.message || 'Erreur serveur' },
       { status: 500 }
     )
   }

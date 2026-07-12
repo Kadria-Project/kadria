@@ -706,9 +706,9 @@ export default function DesktopAgendaView() {
         throw new Error(json?.error || 'Sauvegarde impossible');
       }
       setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Calendar selectionne');
-    } catch {
+    } catch (error) {
       setCalendarMode(previousMode);
-      setModeError("Impossible d'enregistrer votre preference d'agenda.");
+      setModeError(error instanceof Error ? error.message : "Impossible d'enregistrer votre preference d'agenda.");
     } finally {
       setModeSaving(null);
     }

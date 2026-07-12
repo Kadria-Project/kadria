@@ -39,6 +39,47 @@ type ActivityRow = {
   action: string | null
 }
 
+function describeOperationsCenterError(error: unknown) {
+  if (error instanceof Error) {
+    const candidate = error as Error & {
+      code?: string
+      details?: string
+      hint?: string
+      status?: number
+      digest?: string
+    }
+    return {
+      type: error.constructor?.name || 'Error',
+      name: error.name,
+      message: error.message,
+      code: candidate.code || null,
+      details: candidate.details || null,
+      hint: candidate.hint || null,
+      status: candidate.status || null,
+      digest: candidate.digest || null,
+    }
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const record = error as Record<string, unknown>
+    return {
+      type: 'Object',
+      name: typeof record.name === 'string' ? record.name : null,
+      message: typeof record.message === 'string' ? record.message : null,
+      code: typeof record.code === 'string' ? record.code : null,
+      details: typeof record.details === 'string' ? record.details : null,
+      hint: typeof record.hint === 'string' ? record.hint : null,
+      status: typeof record.status === 'number' ? record.status : null,
+      keys: Object.keys(record),
+    }
+  }
+
+  return {
+    type: typeof error,
+    message: error === undefined ? 'undefined' : String(error),
+  }
+}
+
 function mapProjectForRecommendations(
   project: ReturnType<typeof mapSupabaseProject>,
   raw: Record<string, unknown>,
@@ -176,13 +217,16 @@ function withAutomationMetadata(
 }
 
 export async function GET() {
+  let stage = 'session'
   try {
     const session = await getSession()
     if (!session?.artisanId) {
       return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
     }
 
+    stage = 'tenant_context'
     const tenantContext = await getCurrentTenantContext()
+    stage = 'schema_capabilities'
     const supportsTenantId = await tableHasColumn(TABLES.projects, 'tenant_id')
     const supportsResponsibleUser = await projectResponsibilityColumnExists()
     const canReadAllProjects = checkPermission(tenantContext, 'projects.read_all')
@@ -206,6 +250,7 @@ export async function GET() {
       .order('start_time', { ascending: true })
       .limit(240)
 
+    stage = 'parallel_queries'
     const [projectsRes, artisanConfig, businessProfile, serviceProfiles, calendarResult, members, activityRes] = await Promise.all([
       projectsQuery,
       getArtisanConfig(session.artisanId).catch(() => null),
@@ -221,6 +266,7 @@ export async function GET() {
         .limit(400),
     ])
 
+    stage = 'projects_query_result'
     if (projectsRes.error) throw projectsRes.error
 
     const rawProjectRows = (projectsRes.data || []) as Record<string, unknown>[]
@@ -230,6 +276,7 @@ export async function GET() {
     if (tenantContext?.tenantId && !canReadAllProjects && !canReadAssignedProjects) {
       visibleProjects = []
     } else if (tenantContext?.tenantId && !canReadAllProjects && canReadAssignedProjects) {
+      stage = 'assigned_project_scope'
       const appointmentProjectIds = await getAssignedAppointmentProjectIds(tenantContext.tenantId, tenantContext.userId)
       visibleProjects = rawProjects.filter((project) =>
         project.responsibleUserId === tenantContext.userId || appointmentProjectIds.has(project.id),
@@ -246,7 +293,9 @@ export async function GET() {
       appointmentsScoped = appointmentsScoped.eq('assigned_user_id', tenantContext.userId)
     }
 
+    stage = 'appointments_query'
     const appointmentsRes = await appointmentsScoped
+    stage = 'appointments_query_result'
     if (appointmentsRes.error) throw appointmentsRes.error
 
     const userNames = new Map(
@@ -267,6 +316,7 @@ export async function GET() {
         .map((activity) => String(activity.project_id)),
     )
 
+    stage = 'build_operations_center'
     let operationsCenter = buildOperationsCenter({
       projects: visibleProjects.map((project) => {
         const raw = rawProjectRows.find((row) => String(row.id || '') === project.id) || {}
@@ -286,7 +336,9 @@ export async function GET() {
     })
 
     if (tenantContext?.tenantId) {
+      stage = 'automation_metadata'
       const metadata = await buildAutomationMetadataForTenant(tenantContext.tenantId).catch(() => ({ automations: [], runs: [] }))
+      stage = 'merge_automation_metadata'
       operationsCenter = {
         ...operationsCenter,
         recommendations: withAutomationMetadata(operationsCenter.recommendations, metadata.automations, metadata.runs),
@@ -303,6 +355,7 @@ export async function GET() {
       }
     }
 
+    stage = 'response'
     return NextResponse.json({
       success: true,
       operationsCenter,
@@ -315,7 +368,10 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error('[OPERATIONS_CENTER]', error instanceof Error ? error.message : String(error))
+    console.error('[OPERATIONS_CENTER]', {
+      stage,
+      error: describeOperationsCenterError(error),
+    })
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
   }
 }
