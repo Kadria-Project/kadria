@@ -9,7 +9,7 @@ import { getProjectDisplayTitle } from '@/src/lib/project-detail/project-headlin
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { getCurrentTenantContext, tableExists } from '@/src/lib/tenant-context'
+import { getCurrentTenantContext, tableExists, type TenantContext } from '@/src/lib/tenant-context'
 import { listTeamMembers } from '@/src/lib/team/service'
 import { checkPermission } from '@/src/lib/team/access'
 import { Resend } from 'resend'
@@ -264,10 +264,22 @@ async function ensureTenantAutomationRows(tenantId: string, createdBy: string | 
   if (error) throw new Error(error.message)
 }
 
-export async function listAutomationOverviewForCurrentTenant(): Promise<AutomationOverviewItem[]> {
-  const tenantContext = await getCurrentTenantContext()
+function requireAutomationPermission(
+  tenantContext: TenantContext | null,
+  permission: 'automations.read' | 'automations.manage',
+): TenantContext {
   if (!tenantContext) throw new Error('TENANT_CONTEXT_REQUIRED')
-  if (!checkPermission(tenantContext, 'automations.read')) throw new Error('FORBIDDEN')
+  if (!checkPermission(tenantContext, permission)) throw new Error('FORBIDDEN')
+  return tenantContext
+}
+
+export async function listAutomationOverviewForCurrentTenant(
+  tenantContextInput?: TenantContext | null,
+): Promise<AutomationOverviewItem[]> {
+  const tenantContext = requireAutomationPermission(
+    tenantContextInput ?? await getCurrentTenantContext(),
+    'automations.read',
+  )
   if (!(await tableExists(BUSINESS_AUTOMATIONS_TABLE))) {
     return AUTOMATION_TYPES.map((type) => ({ definition: DEFINITIONS[type], automation: buildDefaultAutomation(tenantContext.tenantId, type) }))
   }
@@ -300,10 +312,11 @@ export async function upsertAutomationForCurrentTenant(input: {
   delayValue: number | null
   delayUnit: 'hours' | 'days' | null
   channel: BusinessAutomationChannel | null
-}): Promise<BusinessAutomationRecord> {
-  const tenantContext = await getCurrentTenantContext()
-  if (!tenantContext) throw new Error('TENANT_CONTEXT_REQUIRED')
-  if (!checkPermission(tenantContext, 'automations.manage')) throw new Error('FORBIDDEN')
+}, tenantContextInput?: TenantContext | null): Promise<BusinessAutomationRecord> {
+  const tenantContext = requireAutomationPermission(
+    tenantContextInput ?? await getCurrentTenantContext(),
+    'automations.manage',
+  )
   if (!(await tableExists(BUSINESS_AUTOMATIONS_TABLE))) throw new Error('AUTOMATIONS_TABLE_MISSING')
 
   const definition = DEFINITIONS[input.type]

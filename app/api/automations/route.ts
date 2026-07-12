@@ -31,7 +31,7 @@ export async function GET() {
       automationsManage: canManage,
     })
 
-    const items = await listAutomationOverviewForCurrentTenant()
+    const items = await listAutomationOverviewForCurrentTenant(tenantContext)
     return NextResponse.json({ success: true, items })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -50,6 +50,7 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
+    const tenantContext = await getCurrentTenantContext()
     const automation = await upsertAutomationForCurrentTenant({
       type: String(body.type) as BusinessAutomationType,
       enabled: Boolean(body.enabled),
@@ -57,7 +58,7 @@ export async function PATCH(request: NextRequest) {
       delayValue: body.delayValue === null || body.delayValue === undefined ? null : Number(body.delayValue),
       delayUnit: body.delayUnit === 'hours' || body.delayUnit === 'days' ? body.delayUnit : null,
       channel: body.channel === 'email' || body.channel === 'internal' ? (body.channel as BusinessAutomationChannel) : null,
-    })
+    }, tenantContext)
     return NextResponse.json({ success: true, automation })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
