@@ -85,6 +85,14 @@ async function logExecutedAction(item: RecommendationItem) {
   }
 }
 
+async function postAutomationAction(url: string) {
+  const response = await fetch(url, { method: 'POST' })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok || payload.success === false) {
+    throw new Error(payload.error || 'Action impossible.')
+  }
+}
+
 function RecommendationActions({
   item,
   onExecute,
@@ -132,6 +140,17 @@ function RecommendationRow({
             <span className="text-base font-semibold text-[var(--text-2)]">{meta.icon}</span>
             <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
             <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.badge}`}>{meta.label}</span>
+            {item.automationLabel ? (
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                item.automationLabel === 'Automatique'
+                  ? 'border-blue-500/30 bg-blue-500/10 text-blue-100'
+                  : item.automationLabel === 'A valider'
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                    : 'border-zinc-700 bg-zinc-900 text-zinc-300'
+              }`}>
+                {item.automationLabel}
+              </span>
+            ) : null}
             {item.estimatedMinutes ? (
               <span className="rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-2 py-0.5 text-[11px] text-[var(--text-3)]">
                 ~{item.estimatedMinutes} min
@@ -280,6 +299,16 @@ export default function OperationsCenterSection({
   const handleExecute = async (item: RecommendationItem, variant: 'primary' | 'secondary' = 'primary') => {
     const route = variant === 'secondary' ? item.secondaryRoute : item.actionRoute
     if (!route) return
+    if ((variant === 'primary' ? item.actionType : item.secondaryAction) === 'execute_automation_run' || (variant === 'secondary' ? item.secondaryAction : item.actionType) === 'ignore_automation_run') {
+      try {
+        await postAutomationAction(route)
+        setExecutedIds((current) => ({ ...current, [item.id]: true }))
+        setToast({ message: variant === 'secondary' ? 'Action ignoree.' : 'Action effectuee.' })
+      } catch (error) {
+        setToast({ message: error instanceof Error ? error.message : 'Action impossible.', error: true })
+      }
+      return
+    }
     setExecutedIds((current) => ({ ...current, [item.id]: true }))
     setToast({ message: variant === 'secondary' ? 'Redirection terminee.' : 'Action effectuee.' })
     void logExecutedAction(item)

@@ -35,6 +35,8 @@ export const PERMISSIONS = [
   // Metier et activite (catalogue, prestations, automatisations)
   'business_settings.read',
   'business_settings.update',
+  'automations.read',
+  'automations.manage',
   // Integrations d'entreprise
   'integrations.read',
   'integrations.manage',
@@ -84,6 +86,8 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'planning.manage_team',
     'business_settings.read',
     'business_settings.update',
+    'automations.read',
+    'automations.manage',
     'integrations.read',
     'integrations.manage',
     'billing.read',
@@ -114,6 +118,8 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'planning.manage_team',
     'business_settings.read',
     'business_settings.update',
+    'automations.read',
+    'automations.manage',
     'integrations.read',
     'integrations.manage',
     'billing.read',
@@ -131,6 +137,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, readonly Permission[]> = {
     'planning.read_team',
     'planning.manage_team',
     'business_settings.read',
+    'automations.read',
     'integrations.read',
     // Projets/planning : manager opere sur tout le tenant.
     ...LOT4_PROJECT_PLANNING_PERMISSIONS_FOR_ADMIN_MANAGER,

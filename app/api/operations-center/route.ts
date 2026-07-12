@@ -9,6 +9,7 @@ import {
   type RecommendationConfigInput,
   type RecommendationMemberInput,
   type RecommendationProjectInput,
+  type RecommendationItem,
 } from '@/src/lib/recommendations'
 import { listServiceProfiles } from '@/src/lib/service-profiles'
 import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
@@ -17,6 +18,7 @@ import { checkPermission } from '@/src/lib/team/access'
 import { listTeamMembers } from '@/src/lib/team/service'
 import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context'
 import { getAssignedAppointmentProjectIds, projectResponsibilityColumnExists } from '@/src/lib/project-responsibility'
+import { buildAutomationMetadataForTenant } from '@/src/lib/automations'
 
 type AppointmentRow = {
   id: string
@@ -127,6 +129,52 @@ function mapConfigForRecommendations(input: {
   }
 }
 
+const RECOMMENDATION_TO_AUTOMATION: Partial<Record<string, string>> = {
+  follow_up_quote: 'quote_followup',
+  request_review: 'review_request',
+  schedule_intervention: 'won_project_followup',
+  assign_responsible: 'unassigned_project_alert',
+}
+
+function withAutomationMetadata(
+  recommendations: RecommendationItem[],
+  automationRows: Awaited<ReturnType<typeof buildAutomationMetadataForTenant>>['automations'],
+  pendingRuns: Awaited<ReturnType<typeof buildAutomationMetadataForTenant>>['runs'],
+): RecommendationItem[] {
+  const automationByType = new Map(automationRows.map((row) => [row.type, row]))
+  return recommendations.map((item) => {
+    const automationType = RECOMMENDATION_TO_AUTOMATION[item.type]
+    if (!automationType) return item
+    const automation = automationByType.get(automationType as typeof automationRows[number]['type'])
+    if (!automation) return item
+    const pendingRun = pendingRuns.find(
+      (run) => run.automationId === automation.id && run.entityType === item.entityType && run.entityId === (item.entityId || ''),
+    )
+    if (pendingRun && automation.mode === 'approval_required') {
+      return {
+        ...item,
+        automationType,
+        automationMode: automation.mode,
+        automationRunId: pendingRun.id,
+        automationStatus: pendingRun.status,
+        automationLabel: 'A valider',
+        actionType: 'execute_automation_run',
+        actionLabel: 'Valider et executer',
+        actionRoute: `/api/automations/runs/${pendingRun.id}/execute`,
+        secondaryAction: 'ignore_automation_run',
+        secondaryLabel: 'Ignorer',
+        secondaryRoute: `/api/automations/runs/${pendingRun.id}/ignore`,
+      }
+    }
+    return {
+      ...item,
+      automationType,
+      automationMode: automation.mode,
+      automationLabel: automation.mode === 'automatic' ? 'Automatique' : 'Manuel',
+    }
+  })
+}
+
 export async function GET() {
   try {
     const session = await getSession()
@@ -219,7 +267,7 @@ export async function GET() {
         .map((activity) => String(activity.project_id)),
     )
 
-    const operationsCenter = buildOperationsCenter({
+    let operationsCenter = buildOperationsCenter({
       projects: visibleProjects.map((project) => {
         const raw = rawProjectRows.find((row) => String(row.id || '') === project.id) || {}
         return mapProjectForRecommendations(project, raw)
@@ -236,6 +284,24 @@ export async function GET() {
       }),
       reviewRequestedProjectIds,
     })
+
+    if (tenantContext?.tenantId) {
+      const metadata = await buildAutomationMetadataForTenant(tenantContext.tenantId).catch(() => ({ automations: [], runs: [] }))
+      operationsCenter = {
+        ...operationsCenter,
+        recommendations: withAutomationMetadata(operationsCenter.recommendations, metadata.automations, metadata.runs),
+        todayFocus: withAutomationMetadata(operationsCenter.todayFocus, metadata.automations, metadata.runs),
+        opportunities: withAutomationMetadata(operationsCenter.opportunities, metadata.automations, metadata.runs),
+        risks: withAutomationMetadata(operationsCenter.risks, metadata.automations, metadata.runs),
+        groupedActions: {
+          relances: withAutomationMetadata(operationsCenter.groupedActions.relances, metadata.automations, metadata.runs),
+          planifications: withAutomationMetadata(operationsCenter.groupedActions.planifications, metadata.automations, metadata.runs),
+          affectations: withAutomationMetadata(operationsCenter.groupedActions.affectations, metadata.automations, metadata.runs),
+          avis: withAutomationMetadata(operationsCenter.groupedActions.avis, metadata.automations, metadata.runs),
+          configuration: withAutomationMetadata(operationsCenter.groupedActions.configuration, metadata.automations, metadata.runs),
+        },
+      }
+    }
 
     return NextResponse.json({
       success: true,

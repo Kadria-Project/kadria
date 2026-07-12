@@ -6,6 +6,7 @@ import {
   listProjectResponsiblesByTenant,
   projectResponsibilityColumnExists,
 } from '@/src/lib/project-responsibility'
+import { notifyAssignmentAutomationEvent } from '@/src/lib/automations'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { PermissionError, requirePermission } from '@/src/lib/team/access'
 
@@ -148,6 +149,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     } catch (activityError) {
       console.error('[PROJECT RESPONSIBLE PATCH][ACTIVITY]', activityError instanceof Error ? activityError.message : String(activityError))
     }
+
+    void notifyAssignmentAutomationEvent({
+      tenantId: authResult.tenantContext.tenantId,
+      artisanId: authResult.tenantContext.legacyArtisanId,
+      projectId: authResult.projectId,
+      type: 'responsible',
+      title: 'Affectation responsable mise a jour',
+      message: responsibleUser
+        ? `Responsable commercial mis a jour : ${responsibleUser.displayName}.`
+        : 'Responsable commercial retire.',
+    }).catch((automationError) => {
+      console.error('[PROJECT RESPONSIBLE PATCH][AUTOMATION]', automationError instanceof Error ? automationError.message : String(automationError))
+    })
 
     return NextResponse.json({
       success: true,

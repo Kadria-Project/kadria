@@ -30,6 +30,8 @@ export type RecommendationActionType =
   | 'open_settings_profile'
   | 'open_settings_calendar'
   | 'open_settings_catalog'
+  | 'execute_automation_run'
+  | 'ignore_automation_run'
 
 export interface RecommendationActionDescriptor {
   actionType: RecommendationActionType
@@ -61,6 +63,11 @@ export interface RecommendationItem {
   category: RecommendationCategory
   reason: string
   score: number
+  automationType?: string | null
+  automationMode?: 'manual' | 'approval_required' | 'automatic' | null
+  automationRunId?: string | null
+  automationStatus?: 'pending' | 'prepared' | 'executing' | 'succeeded' | 'failed' | 'ignored' | null
+  automationLabel?: 'Manuel' | 'A valider' | 'Automatique' | null
 }
 
 export interface OperationsHealthBreakdownItem {
