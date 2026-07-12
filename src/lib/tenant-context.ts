@@ -12,6 +12,22 @@ export type TenantMemberStatus = 'invited' | 'active' | 'suspended' | 'revoked'
 
 type RawRow = Record<string, unknown>
 
+function normalizeTenantRole(value: unknown): TenantRole {
+  const normalized = toText(value).trim().toLowerCase()
+  if (normalized === 'owner' || normalized === 'admin' || normalized === 'manager' || normalized === 'member' || normalized === 'viewer') {
+    return normalized
+  }
+  return 'member'
+}
+
+function normalizeTenantMemberStatus(value: unknown): TenantMemberStatus {
+  const normalized = toText(value).trim().toLowerCase()
+  if (normalized === 'invited' || normalized === 'active' || normalized === 'suspended' || normalized === 'revoked') {
+    return normalized
+  }
+  return 'active'
+}
+
 export interface Tenant {
   id: string
   name: string
@@ -106,8 +122,8 @@ function mapTenantMember(row: RawRow): TenantMember {
     id: toText(row.id),
     tenantId: toText(row.tenant_id),
     userId: toText(row.user_id),
-    role: (toText(row.role) || 'member') as TenantRole,
-    status: (toText(row.status) || 'active') as TenantMemberStatus,
+    role: normalizeTenantRole(row.role),
+    status: normalizeTenantMemberStatus(row.status),
     jobTitle: row.job_title ? toText(row.job_title) : null,
     invitedBy: row.invited_by ? toText(row.invited_by) : null,
     invitedAt: row.invited_at ? toText(row.invited_at) : null,
