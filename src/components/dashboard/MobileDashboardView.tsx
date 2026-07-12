@@ -41,6 +41,8 @@ import {
   type DashboardMode,
 } from '@/src/components/ArtisanDashboard';
 import type { ProgressRecommendations } from '@/src/lib/progression-engine';
+import type { OperationsCenterResult } from '@/src/lib/recommendations';
+import OperationsCenterSection from '@/src/components/dashboard/OperationsCenterSection';
 import AddressAutocomplete, { type AddressSelection } from '@/components/AddressAutocomplete';
 
 type Router = ReturnType<typeof useRouter>;
@@ -73,6 +75,7 @@ export interface MobileDashboardViewProps {
   kpiCards: KpiCard[];
   progressRecommendations?: ProgressRecommendations | null;
   progressCenterExpanded?: boolean;
+  operationsCenter?: OperationsCenterResult | null;
   router: Router;
   dashboardMode?: DashboardMode;
   setDashboardMode: (mode: DashboardMode) => void;
@@ -294,6 +297,7 @@ export default function MobileDashboardView({
   kpiCards,
   progressRecommendations = null,
   progressCenterExpanded = false,
+  operationsCenter = null,
   router,
   dashboardMode = 'value',
   setDashboardMode,
@@ -589,6 +593,8 @@ export default function MobileDashboardView({
           )}
         </div>
       )}
+
+      {operationsCenter && <OperationsCenterSection data={operationsCenter} compact />}
 
       {/* CENTRE D'ACTIONS */}
       {actionRows.length > 0 && (

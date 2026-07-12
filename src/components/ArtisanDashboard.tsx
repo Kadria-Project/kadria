@@ -70,6 +70,8 @@ import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
 import { getProjectLifecycle, PROJECT_STATUS_OPTIONS } from '@/src/lib/project-lifecycle';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
+import OperationsCenterSection from '@/src/components/dashboard/OperationsCenterSection';
+import type { OperationsCenterResult } from '@/src/lib/recommendations';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -1807,6 +1809,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [progressRecommendations, setProgressRecommendations] = useState<ProgressRecommendations | null>(null);
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
   const [progressCenterExpanded, setProgressCenterExpanded] = useState(false);
+  const [operationsCenter, setOperationsCenter] = useState<OperationsCenterResult | null>(null);
 
   const formattedToday = useMemo(() => {
     const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
@@ -1832,6 +1835,24 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       // Ignore unavailable localStorage.
     }
   }, [progressCenterExpanded]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/operations-center')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.success && data.operationsCenter) {
+          setOperationsCenter(data.operationsCenter);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setOperationsCenter(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -3429,6 +3450,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           kpiCards={kpiCards}
           progressRecommendations={progressRecommendations}
           progressCenterExpanded={progressCenterExpanded}
+          operationsCenter={operationsCenter}
           router={router}
           dashboardMode={dashboardMode}
           setDashboardMode={setDashboardMode}
@@ -3456,6 +3478,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
       {showValueOverview && !loading && (
         <div className="flex flex-col gap-6">
+          {operationsCenter && <OperationsCenterSection data={operationsCenter} />}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6">
             <h2 className="text-2xl font-bold text-[var(--text-1)]">Valeur générée par Kadria</h2>
             <p className="mt-1 text-sm text-[var(--text-2)]">
