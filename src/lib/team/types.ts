@@ -67,18 +67,18 @@ export interface SeatUsage {
 }
 
 export const TEAM_ROLE_LABELS: Record<TenantRole, string> = {
-  owner: 'Proprietaire',
+  owner: 'Proprietaire du compte',
   admin: 'Administrateur',
   manager: 'Responsable',
   member: 'Collaborateur',
-  viewer: 'Lecture seule',
+  viewer: 'Consultation uniquement',
 }
 
 export const TEAM_ROLE_DESCRIPTIONS: Record<Exclude<TenantRole, 'owner'>, string> = {
-  admin: "Peut gerer l'equipe, les parametres et l'ensemble des dossiers.",
-  manager: 'Peut superviser les operations autorisees sans gerer les acces sensibles.',
-  member: 'Accede aux fonctionnalites operationnelles qui lui sont autorisees.',
-  viewer: 'Peut consulter les informations sans les modifier.',
+  admin: "Gere l'equipe, les dossiers et les reglages.",
+  manager: "Suit l'activite et consulte l'ensemble des dossiers.",
+  member: 'Travaille sur les dossiers et rendez-vous qui lui sont confies.',
+  viewer: 'Peut consulter sans modifier.',
 }
 
 export const TEAM_JOB_TITLE_SUGGESTIONS = [

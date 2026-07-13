@@ -44,17 +44,13 @@ export function MemberCard({
             )}
             <div className="mt-3 flex flex-wrap gap-2">
               <Chip>{TEAM_ROLE_LABELS[member.role]}</Chip>
-              <Chip>{member.jobTitle || 'Fonction non renseignée'}</Chip>
+              <Chip>{member.jobTitle || 'Fonction non renseignee'}</Chip>
               <Chip tone={member.status === 'active' ? 'green' : member.status === 'suspended' ? 'amber' : 'red'}>
-                {member.status === 'active' ? 'Actif' : member.status === 'suspended' ? 'Suspendu' : 'Révoqué'}
+                {member.status === 'active' ? 'Acces actif' : member.status === 'suspended' ? 'Acces suspendu' : 'Acces retire'}
               </Chip>
             </div>
-            {/* Dernière connexion : la donnée n'existe pas dans la réponse de /api/team
-                (le type TeamMember n'expose que lastActiveAt, potentiellement null et
-                non garanti comme "dernière connexion" réelle côté auth). Affichée
-                uniquement si présente, jamais fabriquée. */}
             {member.lastActiveAt && (
-              <p className="mt-2 text-xs text-zinc-500">Dernière activité : {new Date(member.lastActiveAt).toLocaleString('fr-FR')}</p>
+              <p className="mt-2 text-xs text-zinc-500">Derniere activite : {new Date(member.lastActiveAt).toLocaleString('fr-FR')}</p>
             )}
           </div>
         </div>
@@ -77,14 +73,14 @@ export function MemberCard({
               onClick={onToggleSuspend}
               className="h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
             >
-              {member.status === 'suspended' ? 'Réactiver' : 'Suspendre'}
+              {member.status === 'suspended' ? "Reactiver l'acces" : "Suspendre l'acces"}
             </button>
             <button
               type="button"
               onClick={onRemove}
               className="h-11 rounded-xl border border-rose-500/20 px-3 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/10 sm:col-span-2"
             >
-              Retirer
+              Retirer de l'equipe
             </button>
           </div>
         )}

@@ -32,11 +32,6 @@ export default function TeamSettingsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [data, setData] = useState<TeamResponse | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  // `loadError` couvre uniquement l'echec du chargement initial de l'equipe
-  // (affiche un unique bloc d'erreur avec Reessayer / Retour). `error`
-  // couvre les actions ponctuelles (invite, revoke, etc.) une fois les
-  // donnees deja chargees. Garder ces deux etats separes evite d'afficher
-  // deux messages rouges simultanes au chargement.
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -74,8 +69,8 @@ export default function TeamSettingsPage() {
   const seatLabel = useMemo(() => {
     const seats = data?.seats
     if (!seats) return ''
-    if (seats.unlimited || seats.limit === null) return `${seats.used} siege(s) utilise(s)`
-    return `${seats.used} siege(s) utilise(s) sur ${seats.limit}`
+    if (seats.unlimited || seats.limit === null) return `${seats.used} acces utilises`
+    return `${seats.used} acces utilises sur ${seats.limit}`
   }, [data?.seats])
 
   const hasLoadedData = Boolean(data?.success && data?.tenant && data?.membership && data?.seats)
@@ -124,20 +119,20 @@ export default function TeamSettingsPage() {
   async function handleResend(id: string) {
     try {
       await submit(`/api/team/invitations/${id}/resend`)
-      setFeedback('Invitation renvoyee.')
+      setFeedback("L'invitation a ete renvoyee.")
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible de relancer l'invitation.")
+      setError(err instanceof Error ? err.message : "Impossible de renvoyer l'invitation.")
     }
   }
 
   async function handleRevoke(id: string) {
     try {
       await submit(`/api/team/invitations/${id}/revoke`)
-      setFeedback('Invitation revoquee.')
+      setFeedback("L'invitation a ete annulee.")
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible de revoquer l'invitation.")
+      setError(err instanceof Error ? err.message : "Impossible d'annuler l'invitation.")
     }
   }
 
@@ -146,24 +141,24 @@ export default function TeamSettingsPage() {
       await submit(`/api/team/members/${id}/${action}`)
       setFeedback(
         action === 'suspend'
-          ? 'Membre suspendu.'
+          ? "L'acces a ete suspendu."
           : action === 'reactivate'
-            ? 'Membre reactive.'
-            : 'Membre retire.',
+            ? "L'acces a ete reactive."
+            : "Le collaborateur a ete retire de l'equipe.",
       )
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action impossible.')
+      setError(err instanceof Error ? err.message : "Kadria n'a pas pu modifier cet acces.")
     }
   }
 
   async function handleRoleChange(memberId: string, role: string, jobTitle: string | null) {
     try {
       await submit(`/api/team/members/${memberId}`, 'PATCH', { role, jobTitle })
-      setFeedback('Membre mis a jour.')
+      setFeedback('Le role a ete modifie.')
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossible de mettre a jour le membre.')
+      setError(err instanceof Error ? err.message : "Kadria n'a pas pu modifier ce role.")
     }
   }
 
@@ -175,7 +170,7 @@ export default function TeamSettingsPage() {
             onClick={() => router.push('/parametres')}
             className="shrink-0 text-sm text-[var(--text-2)]"
           >
-            ← Retour
+            Retour
           </button>
           <div className="min-w-0 flex-1 sm:flex-none">
             <KadriaLogo size="sm" theme="dark" noLink />
@@ -193,7 +188,7 @@ export default function TeamSettingsPage() {
 
             {teamData && (
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                {teamData.tenant?.name} · role connecte : {TEAM_ROLE_LABELS[teamData.membership!.role]}
+                {teamData.tenant?.name} - Votre acces : {TEAM_ROLE_LABELS[teamData.membership!.role]}
               </p>
             )}
 
@@ -208,21 +203,19 @@ export default function TeamSettingsPage() {
             )}
 
             {teamData ? (
-              <>
-                <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <Metric label="Membres actifs" value={String(teamData.seats!.activeMembers)} />
-                  <Metric label="Invitations en attente" value={String(teamData.seats!.pendingInvitations)} />
-                  <Metric label="Sieges utilises" value={seatLabel} />
-                  <Metric
-                    label="Limite"
-                    value={teamData.seats!.unlimited ? 'Illimite' : (teamData.seats!.limit ? String(teamData.seats!.limit) : 'Non definie')}
-                  />
-                </div>
-              </>
+              <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Metric label="Collaborateurs actifs" value={String(teamData.seats!.activeMembers)} />
+                <Metric label="Invitations envoyees" value={String(teamData.seats!.pendingInvitations)} />
+                <Metric label="Acces utilises" value={seatLabel} />
+                <Metric
+                  label="Limite"
+                  value={teamData.seats!.unlimited ? 'Illimitee' : (teamData.seats!.limit ? String(teamData.seats!.limit) : 'Non definie')}
+                />
+              </div>
             ) : !loading && loadError ? (
               <div className="mt-5 rounded-[18px] border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">
                 <p className="m-0">
-                  Impossible de charger les informations equipe pour le moment. Rechargez la page ou reconnectez-vous si le probleme persiste.
+                  Impossible de charger l&apos;equipe pour le moment. Reessayez dans un instant.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -237,7 +230,7 @@ export default function TeamSettingsPage() {
                     onClick={() => router.push('/parametres')}
                     className="h-10 rounded-xl border border-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
                   >
-                    Retour aux parametres
+                    Retour aux reglages
                   </button>
                 </div>
               </div>
@@ -245,7 +238,7 @@ export default function TeamSettingsPage() {
 
             {teamData && teamData.seats?.reached && (
               <div className="mt-5 rounded-[16px] border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-                Votre limite d&apos;utilisateurs est atteinte. Decouvrir les offres ou contactez Kadria pour debloquer plus de sieges.
+                Votre limite d&apos;utilisateurs est atteinte. Decouvrez les offres ou contactez Kadria pour debloquer plus d&apos;acces.
               </div>
             )}
 
@@ -255,8 +248,8 @@ export default function TeamSettingsPage() {
 
           {teamData && (
             <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-              <h2 className="text-xl font-semibold text-white">Membres</h2>
-              <p className="mt-1 text-sm text-zinc-400">Collaborateurs deja rattaches a votre entreprise.</p>
+              <h2 className="text-xl font-semibold text-white">Equipe</h2>
+              <p className="mt-1 text-sm text-zinc-400">Retrouvez ici les personnes qui font deja partie de votre entreprise.</p>
 
               <div className="mt-5 grid gap-4">
                 {(teamData.members || []).map((member) => (
@@ -275,8 +268,8 @@ export default function TeamSettingsPage() {
 
           {teamData && (
             <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-              <h2 className="text-xl font-semibold text-white">Invitations en attente</h2>
-              <p className="mt-1 text-sm text-zinc-400">Relancez ou annulez les invitations non encore acceptees.</p>
+              <h2 className="text-xl font-semibold text-white">Invitations envoyees</h2>
+              <p className="mt-1 text-sm text-zinc-400">Suivez les invitations en attente et relancez-les si besoin.</p>
 
               <div className="mt-5 grid gap-4">
                 {pendingInvitations.map((invitation) => (

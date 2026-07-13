@@ -25,43 +25,34 @@ type RoleCardDef = {
 }
 
 const ROLE_CARDS: RoleCardDef[] = [
-  { role: 'member', emoji: '\u{1F464}', title: 'Collaborateur', description: 'Accès aux dossiers, agenda et missions autorisés.' },
-  { role: 'manager', emoji: '\u{1F468}‍\u{1F4BC}', title: 'Manager', description: 'Peut gérer les équipes, planning et suivi commercial.' },
-  { role: 'admin', emoji: '⚙️', title: 'Administrateur', description: 'Accès complet sauf facturation et propriétaire.' },
+  { role: 'member', emoji: '\u{1F464}', title: 'Collaborateur', description: 'Travaille sur les dossiers et rendez-vous qui lui sont confies.' },
+  { role: 'manager', emoji: '\u{1F468}\u200D\u{1F4BC}', title: 'Responsable', description: "Suit l'activite et consulte l'ensemble des dossiers." },
+  { role: 'admin', emoji: '\u2699\uFE0F', title: 'Administrateur', description: "Gere l'equipe, les dossiers et les reglages." },
 ]
 
 type PermissionKey =
-  | 'viewFolders'
-  | 'editFolders'
-  | 'createQuotes'
-  | 'viewPlanning'
-  | 'editPlanning'
-  | 'viewStats'
-  | 'inviteMembers'
-  | 'manageSettings'
+  | 'canManageTeam'
+  | 'canViewAllProjects'
+  | 'canEditProjects'
+  | 'canManagePlanning'
+  | 'canBeScheduled'
+  | 'readOnly'
 
 const PERMISSION_LABELS: Record<PermissionKey, string> = {
-  viewFolders: 'Voir les dossiers',
-  editFolders: 'Modifier les dossiers',
-  createQuotes: 'Créer des devis',
-  viewPlanning: 'Voir le planning',
-  editPlanning: 'Modifier le planning',
-  viewStats: 'Voir les statistiques',
-  inviteMembers: 'Inviter des collaborateurs',
-  manageSettings: 'Gérer les paramètres',
+  canManageTeam: "Peut gerer l'equipe",
+  canViewAllProjects: 'Peut voir tous les dossiers',
+  canEditProjects: 'Peut modifier les dossiers',
+  canManagePlanning: 'Peut gerer le planning',
+  canBeScheduled: 'Peut etre prevu sur un rendez-vous',
+  readOnly: 'Peut seulement consulter',
 }
 
-// NOTE UX/informatif uniquement : le backend Kadria (src/lib/team/permissions.ts)
-// n'expose que des permissions FIXES par rôle (canManageMembers, canInviteMembers,
-// canManageBilling, ...), pas de personnalisation individuelle par invitation.
-// Ce mapping sert donc uniquement à illustrer ce que chaque rôle inclut ; les
-// switches sont volontairement en lecture seule et ne sont jamais envoyés à l'API.
 const ROLE_PERMISSION_PREVIEW: Record<TenantRole, PermissionKey[]> = {
-  member: ['viewFolders', 'viewPlanning'],
-  manager: ['viewFolders', 'editFolders', 'createQuotes', 'viewPlanning', 'editPlanning', 'viewStats'],
-  admin: ['viewFolders', 'editFolders', 'createQuotes', 'viewPlanning', 'editPlanning', 'viewStats', 'inviteMembers', 'manageSettings'],
-  owner: Object.keys(PERMISSION_LABELS) as PermissionKey[],
-  viewer: ['viewFolders', 'viewPlanning'],
+  member: ['canEditProjects', 'canManagePlanning', 'canBeScheduled'],
+  manager: ['canViewAllProjects', 'canEditProjects', 'canManagePlanning', 'canBeScheduled'],
+  admin: ['canManageTeam', 'canViewAllProjects', 'canEditProjects', 'canManagePlanning', 'canBeScheduled'],
+  owner: ['canManageTeam', 'canViewAllProjects', 'canEditProjects', 'canManagePlanning', 'canBeScheduled'],
+  viewer: ['readOnly'],
 }
 
 export function InviteDrawer({
@@ -114,7 +105,6 @@ export function InviteDrawer({
             onClick={onClose}
           />
 
-          {/* Desktop: right panel */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -133,7 +123,6 @@ export function InviteDrawer({
             />
           </motion.div>
 
-          {/* Mobile: bottom sheet */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -200,7 +189,7 @@ function DrawerContent({
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-white">Inviter un collaborateur</h2>
             <p className="mt-1 text-sm leading-6 text-zinc-400">
-              Ajoutez un membre à votre entreprise. Il recevra un accès sécurisé à Kadria selon les permissions choisies.
+              Le collaborateur recevra un email pour rejoindre votre espace Kadria.
             </p>
           </div>
         </div>
@@ -212,11 +201,11 @@ function DrawerContent({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
         <SectionTitle>Informations</SectionTitle>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Prénom" value={form.firstName} onChange={(value) => onFormChange({ ...form, firstName: value })} />
+          <Field label="Prenom" value={form.firstName} onChange={(value) => onFormChange({ ...form, firstName: value })} />
           <Field label="Nom" value={form.lastName} onChange={(value) => onFormChange({ ...form, lastName: value })} />
         </div>
         <div className="mt-4">
-          <Field label="Email" value={form.email} onChange={(value) => onFormChange({ ...form, email: value })} type="email" />
+          <Field label="Adresse email" value={form.email} onChange={(value) => onFormChange({ ...form, email: value })} type="email" />
         </div>
 
         <SectionTitle className="mt-7">Fonction</SectionTitle>
@@ -224,7 +213,7 @@ function DrawerContent({
           <input
             list="team-job-titles"
             value={form.jobTitle}
-            placeholder="Chef d'équipe, Assistante, Technicien, Conducteur de travaux, Commercial, Administratif…"
+            placeholder="Chef d'equipe, assistante, technicien, conducteur de travaux..."
             onChange={(event) => onFormChange({ ...form, jobTitle: event.target.value })}
             className="h-11 w-full rounded-xl border border-white/10 bg-[#101214] px-4 text-sm text-white outline-none placeholder:text-zinc-600"
           />
@@ -235,7 +224,7 @@ function DrawerContent({
           </datalist>
         </label>
 
-        <SectionTitle className="mt-7">Niveau d&apos;accès</SectionTitle>
+        <SectionTitle className="mt-7">Role dans l'equipe</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-3">
           {ROLE_CARDS.map((card) => {
             const active = form.role === card.role
@@ -259,9 +248,9 @@ function DrawerContent({
           })}
         </div>
 
-        <SectionTitle className="mt-7">Permissions</SectionTitle>
+        <SectionTitle className="mt-7">Ce role permet de</SectionTitle>
         <p className="mb-3 -mt-1 text-xs text-zinc-500">
-          Aperçu informatif des accès inclus dans le rôle sélectionné.
+          Choisissez le role le plus simple selon ce que cette personne doit faire.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {(Object.keys(PERMISSION_LABELS) as PermissionKey[]).map((key) => (
@@ -269,11 +258,11 @@ function DrawerContent({
           ))}
         </div>
 
-        <SectionTitle className="mt-7">Message d&apos;accueil</SectionTitle>
+        <SectionTitle className="mt-7">Message (optionnel)</SectionTitle>
         <textarea
           value={form.message}
           onChange={(event) => onFormChange({ ...form, message: event.target.value })}
-          placeholder={'Bienvenue dans l’équipe !\nVoici quelques informations pour commencer…'}
+          placeholder={"Bienvenue dans l'equipe !\nVoici les premieres informations utiles..."}
           className="min-h-[110px] w-full rounded-xl border border-white/10 bg-[#101214] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600"
         />
       </div>
@@ -291,7 +280,7 @@ function DrawerContent({
           disabled={submitting}
           className="h-11 rounded-xl bg-[#22c55e] px-4 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
         >
-          {submitting ? 'Envoi...' : 'Inviter le collaborateur'}
+          {submitting ? 'Envoi...' : "Envoyer l'invitation"}
         </button>
       </div>
     </>
