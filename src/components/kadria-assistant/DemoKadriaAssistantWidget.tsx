@@ -105,7 +105,7 @@ export default function DemoKadriaAssistantWidget() {
                   </span>
                 </div>
                 <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
-                  Choisissez une question pour voir comment l’assistant Kadria peut vous aider en production.
+                  Choisissez une question pour voir comment l’assistant peut vous aider au quotidien.
                 </p>
               </div>
               <button
@@ -121,7 +121,7 @@ export default function DemoKadriaAssistantWidget() {
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {messages.length === 0 && (
                 <p className="mb-3 rounded-xl border border-[rgba(34,197,94,0.2)] bg-[rgba(34,197,94,0.06)] px-3 py-2 text-[13px] leading-snug text-[#d1fae5]">
-                  Mode démo : choisissez une question pour voir comment l’assistant Kadria peut vous aider en production.
+                  Mode démo : choisissez une question pour voir comment l’assistant peut vous aider sur vos dossiers.
                 </p>
               )}
 
@@ -153,7 +153,7 @@ export default function DemoKadriaAssistantWidget() {
 
               {activeSuggestions.length > 0 && (
                 <div className="mt-4 flex flex-col gap-2">
-                  <p className="text-[13px] text-[#9ca3af]">Suggestions :</p>
+                  <p className="text-[13px] text-[#9ca3af]">Questions utiles :</p>
                   {activeSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.id}
@@ -173,7 +173,7 @@ export default function DemoKadriaAssistantWidget() {
                   onClick={() => setNextSuggestions(suggestions)}
                   className="mt-4 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#101113] px-3 py-2 text-left text-[13px] text-[#f8fafc] hover:border-[#22c55e]/40"
                 >
-                  Revenir aux suggestions
+                  Voir d’autres questions
                 </button>
               )}
             </div>
@@ -183,11 +183,11 @@ export default function DemoKadriaAssistantWidget() {
               style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
             >
               <div className="cursor-not-allowed rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3 py-2 text-[12px] leading-snug text-[#6b7280]">
-                Saisie libre désactivée dans cette démo
+                Saisie libre indisponible dans cette démo
               </div>
               <p className="px-1 text-[11px] leading-snug text-[#6b7280]">
-                Dans cette démonstration, les réponses sont préconfigurées pour illustrer les usages. En production,
-                l’assistant peut répondre à vos questions sur vos propres dossiers.
+                Dans cette démonstration, les réponses sont préparées à l’avance. En production,
+                l’assistant répond à vos questions sur vos propres dossiers.
               </p>
             </div>
           </section>

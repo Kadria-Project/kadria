@@ -61,30 +61,30 @@ interface AssistantUsage {
 function getQuickStarts(pageContext: AssistantPageContext) {
   if (pageContext.pageType === 'project_detail') {
     return [
-      'Resumer ce dossier',
-      'Que faire maintenant ?',
-      'Quels elements manquent ?',
-      'Preparer une relance',
-      'Quel est le statut du devis ?',
-      "L'acompte est-il paye ?",
+      'Résumer ce dossier',
+      'Que me conseillez-vous maintenant ?',
+      'Que manque-t-il dans ce dossier ?',
+      'Préparer une relance',
+      'Où en est le devis ?',
+      "L'acompte a-t-il été réglé ?",
     ];
   }
 
   if (pageContext.pageType === 'settings') {
     return [
-      'Comment configurer mon widget ?',
-      'Pourquoi mes quotas sont limites ?',
-      'Que dois-je configurer en priorite ?',
-      'Comment ameliorer mon profil metier ?',
+      'Que dois-je régler en priorité ?',
+      'Comment améliorer mon profil métier ?',
+      'Comment ajouter mon lien d’avis Google ?',
+      'Comment connecter Google Agenda ?',
     ];
   }
 
   return [
-    "Que dois-je faire aujourd'hui ?",
-    'Quels dossiers traiter en priorite ?',
-    'Quels devis sont a relancer ?',
-    "Quels projets n'ont pas encore de rendez-vous ?",
-    'Aide-moi a ameliorer mon profil metier',
+    'Voir ce que je dois faire aujourd’hui',
+    'Voir les dossiers à traiter',
+    'Voir les devis à relancer',
+    'Voir les dossiers sans rendez-vous',
+    'Aidez-moi à améliorer mon profil métier',
     'Comment mieux convertir mes prospects ?',
   ];
 }
@@ -194,11 +194,11 @@ function savePersistedSession(session: PersistedSession) {
 }
 
 const QUICK_STARTS = [
-  "Que dois-je faire aujourd'hui ?",
-  'Que dois-je configurer en priorité ?',
-  'Aide-moi à améliorer mon profil métier',
+  'Voir ce que je dois faire aujourd’hui',
+  'Que dois-je régler en priorité ?',
+  'Aidez-moi à améliorer mon profil métier',
   'Quelles prestations devrais-je proposer ?',
-  'Aide-moi à définir mes tarifs indicatifs',
+  'Aidez-moi à définir mes tarifs indicatifs',
   'Comment améliorer mon centre de progression ?',
   'Comment mieux convertir mes prospects ?',
 ];
@@ -225,7 +225,7 @@ export default function KadriaAssistantWidget() {
   const quickStarts = getQuickStarts(pageContext);
 
   function isTodayActionsPrompt(value: string) {
-    return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour/i.test(value.trim());
+    return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour|voir ce que je dois faire aujourd’hui|voir ce que je dois faire aujourd'hui/i.test(value.trim());
   }
 
   async function loadTodayActions() {
@@ -238,7 +238,7 @@ export default function KadriaAssistantWidget() {
 
       if (!res.ok || !data?.success) {
         setTodayActions([]);
-        setTodayActionsError(data?.error || 'Impossible de charger les actions du jour pour le moment.');
+        setTodayActionsError(data?.error || 'Je n’ai pas pu récupérer vos priorités pour le moment.');
         return [];
       }
 
@@ -247,7 +247,7 @@ export default function KadriaAssistantWidget() {
       return actions as TodayActionCard[];
     } catch {
       setTodayActions([]);
-      setTodayActionsError('Impossible de charger les actions du jour pour le moment.');
+      setTodayActionsError('Je n’ai pas pu récupérer vos priorités pour le moment.');
       return [];
     } finally {
       setTodayActionsLoading(false);
@@ -267,12 +267,12 @@ export default function KadriaAssistantWidget() {
     const assistantMessage: ChatMessage = actions.length > 0
       ? {
           role: 'assistant',
-          content: 'Voici vos priorites du jour. Je vous propose de commencer par ces actions :',
+          content: 'Voici ce qui mérite votre attention aujourd’hui. Je vous conseille de commencer par là :',
           todayActions: actions,
         }
       : {
           role: 'assistant',
-          content: "Tout est a jour pour le moment. Je n'ai pas detecte d'action urgente.",
+          content: 'Rien d’urgence pour le moment.',
         };
 
     setMessages((prev) => [...prev, assistantMessage]);
@@ -292,12 +292,12 @@ export default function KadriaAssistantWidget() {
     const assistantMessage: ChatMessage = followups.length > 0
       ? {
           role: 'assistant',
-          content: `J'ai trouve ${followups.length} devis a examiner. Je peux vous ouvrir les dossiers concernes. Chaque relance demandera une confirmation avant envoi.`,
+          content: `J’ai trouvé ${followups.length} devis à relancer. Je peux vous ouvrir les bons dossiers, et chaque relance vous demandera votre accord avant l’envoi.`,
           todayActions: followups,
         }
       : {
           role: 'assistant',
-          content: "Je n'ai pas detecte de devis a relancer pour le moment.",
+          content: 'Aucun devis à relancer pour le moment.',
         };
 
     setMessages((prev) => [...prev, assistantMessage]);
@@ -387,10 +387,10 @@ export default function KadriaAssistantWidget() {
       if (!res.ok || !data?.success) {
         if (data?.code === 'ASSISTANT_QUOTA_REACHED') {
           setQuotaReached(true);
-          setError('Vous avez atteint votre limite mensuelle de questions Assistant Kadria.');
+          setError('Vous avez atteint votre limite mensuelle avec l’assistant Kadria.');
           return;
         }
-        setError(data?.error || "Une erreur est survenue. Merci de réessayer.");
+        setError(data?.error || 'Je n’ai pas pu répondre pour le moment. Réessayez dans un instant.');
         return;
       }
 
@@ -417,7 +417,7 @@ export default function KadriaAssistantWidget() {
         },
       ]);
     } catch {
-      setError('Connexion impossible. Vérifiez votre connexion et réessayez.');
+      setError('La connexion semble interrompue. Réessayez dans un instant.');
     } finally {
       setLoading(false);
     }
@@ -447,7 +447,7 @@ export default function KadriaAssistantWidget() {
         setMessages((prev) =>
           prev.map((m, i) =>
             i === messageIndex
-              ? { ...m, proposedActionState: 'error', proposedActionError: data?.error || "L'action n'a pas pu être appliquée." }
+              ? { ...m, proposedActionState: 'error', proposedActionError: data?.error || 'Je n’ai pas pu terminer cette action.' }
               : m
           )
         );
@@ -458,7 +458,7 @@ export default function KadriaAssistantWidget() {
     } catch {
       setMessages((prev) =>
         prev.map((m, i) =>
-          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'Connexion impossible. Réessayez.' } : m
+          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'La connexion semble interrompue. Réessayez dans un instant.' } : m
         )
       );
     }
@@ -481,12 +481,12 @@ export default function KadriaAssistantWidget() {
           <div className="mt-2 space-y-1 rounded-xl bg-[#17181b] px-3 py-2 text-[11px] leading-relaxed">
             {action.oldValueHint !== undefined && (
               <p className="text-[#9ca3af]">
-                Actuel : <span className="text-[#cbd5e1]">{action.oldValueHint || '(vide)'}</span>
+                Aujourd’hui : <span className="text-[#cbd5e1]">{action.oldValueHint || '(vide)'}</span>
               </p>
             )}
             {action.newValueHint !== undefined && (
               <p className="text-[#9ca3af]">
-                Nouveau : <span className="text-[#22c55e]">{action.newValueHint}</span>
+                Après changement : <span className="text-[#22c55e]">{action.newValueHint}</span>
               </p>
             )}
           </div>
@@ -502,33 +502,33 @@ export default function KadriaAssistantWidget() {
               onClick={() => applyProposedAction(messageIndex)}
               className="rounded-full bg-[#22c55e] px-3.5 py-1.5 text-xs font-semibold text-[#05130d] transition-colors hover:bg-[#34d979]"
             >
-              Appliquer
+              Faire maintenant
             </button>
             <button
               type="button"
               onClick={() => cancelProposedAction(messageIndex)}
               className="rounded-full border border-[rgba(255,255,255,0.12)] px-3.5 py-1.5 text-xs font-semibold text-[#f8fafc] transition-colors hover:bg-white/5"
             >
-              Annuler
+              Ne rien faire
             </button>
           </div>
         )}
 
         {state === 'applying' && (
-          <p className="mt-3 text-xs text-[#9ca3af]">Application en cours...</p>
+          <p className="mt-3 text-xs text-[#9ca3af]">Je prépare cette action...</p>
         )}
 
         {state === 'applied' && (
-          <p className="mt-3 text-xs font-medium text-[#22c55e]">Action appliquée avec succès.</p>
+          <p className="mt-3 text-xs font-medium text-[#22c55e]">C’est fait.</p>
         )}
 
         {state === 'cancelled' && (
-          <p className="mt-3 text-xs text-[#9ca3af]">Action annulée. Rien n&apos;a été modifié.</p>
+          <p className="mt-3 text-xs text-[#9ca3af]">Très bien. Rien n&apos;a été modifié.</p>
         )}
 
         {state === 'error' && (
           <div className="mt-3">
-            <p className="text-xs text-red-400">{message.proposedActionError || "Une erreur est survenue."}</p>
+            <p className="text-xs text-red-400">{message.proposedActionError || 'Je n’ai pas pu terminer cette action.'}</p>
             <div className="mt-2 flex gap-2">
               <button
                 type="button"
@@ -542,7 +542,7 @@ export default function KadriaAssistantWidget() {
                 onClick={() => cancelProposedAction(messageIndex)}
                 className="rounded-full border border-[rgba(255,255,255,0.12)] px-3.5 py-1.5 text-xs font-semibold text-[#f8fafc] transition-colors hover:bg-white/5"
               >
-                Annuler
+                Ne rien faire
               </button>
             </div>
           </div>
@@ -597,12 +597,12 @@ export default function KadriaAssistantWidget() {
                 }`}
               >
                 {action.status === 'blocked'
-                  ? 'Bloque'
+                  ? 'Bloqué'
                   : action.priority === 'high'
-                    ? 'Priorite haute'
+                    ? 'À traiter'
                     : action.priority === 'medium'
-                      ? 'A faire'
-                      : 'Info'}
+                      ? 'À voir'
+                      : 'À savoir'}
               </span>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[#cbd5e1]">{action.description}</p>
@@ -668,7 +668,7 @@ export default function KadriaAssistantWidget() {
             <div className="min-w-0">
               <h2 className="text-[19px] font-semibold leading-tight text-[#f8fafc]">Assistant Kadria</h2>
               <p className="mt-0.5 text-[13px] leading-snug text-[#9ca3af]">
-                Configuration, devis, profil métier et prochaines étapes.
+                Je vous aide à avancer sur vos dossiers.
               </p>
               {usage && (
                 <p className="mt-1 text-[11px] leading-snug text-[#6b7280]">
@@ -702,38 +702,37 @@ export default function KadriaAssistantWidget() {
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
                   <h3 className="text-base font-semibold text-[#f8fafc]">
-                    Comment puis-je vous aider ?
+                    Bonjour, que souhaitez-vous faire ?
                   </h3>
                   <p className="text-xs leading-relaxed text-[#9ca3af]">
-                    Je peux vous expliquer Kadria, analyser votre configuration et vous proposer
-                    les prochaines étapes.
+                    Je peux vous aider à retrouver un dossier, voir vos priorités ou préparer une action.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0f1115] p-3.5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-[#f8fafc]">Actions du jour</p>
+                      <p className="text-sm font-semibold text-[#f8fafc]">À faire aujourd’hui</p>
                       <p className="mt-1 text-xs leading-relaxed text-[#9ca3af]">
-                        Les priorites utiles detectees sur votre compte, sans action automatique ni envoi silencieux.
+                        Voici les points qui méritent votre attention, sans action faite à votre place.
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => appendTodayActionsMessage("Que dois-je faire aujourd'hui ?")}
+                      onClick={() => appendTodayActionsMessage('Voir ce que je dois faire aujourd’hui')}
                       className="rounded-full border border-[#22c55e]/30 bg-[#22c55e]/10 px-3 py-1.5 text-[11px] font-semibold text-[#22c55e] transition-colors hover:bg-[#22c55e]/20"
                     >
-                      Voir
+                      Ouvrir
                     </button>
                   </div>
                   {todayActionsLoading && (
-                    <p className="mt-3 text-xs text-[#9ca3af]">Chargement des actions du jour...</p>
+                    <p className="mt-3 text-xs text-[#9ca3af]">Je regarde vos priorités...</p>
                   )}
                   {!todayActionsLoading && todayActionsError && (
                     <p className="mt-3 text-xs text-red-300">{todayActionsError}</p>
                   )}
                   {!todayActionsLoading && !todayActionsError && todayActions.length === 0 && (
                     <p className="mt-3 text-xs text-[#cbd5e1]">
-                      Tout est a jour pour le moment. Je n&apos;ai pas detecte d&apos;action urgente.
+                      Rien d&apos;urgent pour le moment.
                     </p>
                   )}
                   {!todayActionsLoading && !todayActionsError && todayActions.length > 0 && renderTodayActionCards(todayActions.slice(0, 3))}
@@ -763,7 +762,7 @@ export default function KadriaAssistantWidget() {
                   onClick={() => setSuggestionsCollapsed((v) => !v)}
                   className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3 py-1 text-[11px] text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
                 >
-                  Suggestions {suggestionsCollapsed ? '▾' : '▴'}
+                  Idées de questions {suggestionsCollapsed ? '▾' : '▴'}
                 </button>
                 {!suggestionsCollapsed && (
                   <div className="mt-2 grid grid-cols-1 gap-2">
@@ -822,7 +821,7 @@ export default function KadriaAssistantWidget() {
             {loading && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-1.5 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-2.5 text-sm text-[#9ca3af]">
-                  <span>Kadria réfléchit</span>
+                  <span>Je rassemble les informations…</span>
                   <span className="flex gap-0.5">
                     <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e] [animation-delay:-0.3s]" />
                     <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e] [animation-delay:-0.15s]" />
@@ -837,7 +836,7 @@ export default function KadriaAssistantWidget() {
                 {error}
                 {quotaReached && usage?.limit === 50 && (
                   <p className="mt-1.5 text-xs text-red-300/90">
-                    Passez au plan Performance pour bénéficier de 200 questions par mois.
+                    Le plan Performance permet 200 questions par mois.
                   </p>
                 )}
               </div>
@@ -853,7 +852,7 @@ export default function KadriaAssistantWidget() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={quotaReached ? 'Limite mensuelle atteinte' : 'Écrivez votre question...'}
+                placeholder={quotaReached ? 'Limite mensuelle atteinte' : 'Écrivez votre question…'}
                 disabled={loading || quotaReached}
                 className="min-w-0 flex-1 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-4 py-2.5 text-sm text-[#f8fafc] placeholder:text-[#9ca3af] outline-none transition-colors focus:border-[#22c55e]/50 disabled:opacity-60"
               />
