@@ -231,7 +231,7 @@ function NewDevis() {
             );
           }
         } else {
-          setConfigError(configData.error || 'Erreur lors du chargement de la configuration.');
+          setConfigError(configData.error || 'Impossible de charger vos réglages de devis.');
           console.error('[DEVIS NEW] Config error:', configData.error);
         }
 
@@ -248,8 +248,8 @@ function NewDevis() {
           setNextDevisNumber(nextNumberData.nextNumber);
         }
       } catch (err) {
-        setError('Erreur lors du chargement des données.');
-        setConfigError('Erreur lors du chargement de la configuration.');
+        setError('Impossible de charger ce devis pour le moment.');
+        setConfigError('Impossible de charger vos réglages de devis.');
         console.error('[DEVIS NEW] Erreur de chargement:', err);
       } finally {
         setLoading(false);
@@ -432,13 +432,13 @@ function NewDevis() {
     recapAlerts.push('Aucune date de validité renseignée.');
   }
   if (!clientEmail.trim()) {
-    recapAlerts.push('Le client n\'a pas d\'email — l\'envoi par email ne sera pas possible.');
+    recapAlerts.push('Le client n\'a pas d\'email. Vous pourrez enregistrer le devis, mais pas l\'envoyer par email.');
   }
   if (itemLinesWithText.length === 0) {
     recapAlerts.push('Le devis ne contient aucune ligne de prestation.');
   }
   if (!clientAddress.trim()) {
-    recapAlerts.push('Aucune adresse client / lieu d\'exécution renseignée.');
+    recapAlerts.push('Le lieu du chantier n\'est pas encore renseigné.');
   }
   if (!artisanConfig?.siret) {
     recapAlerts.push('SIRET de l\'entreprise manquant.');
@@ -545,8 +545,8 @@ function NewDevis() {
           setSubmitMode(null);
           return;
         }
-        setError(data.error || 'Erreur lors de l\'enregistrement du devis.');
-        setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
+        setError(data.error || 'Impossible d\'enregistrer le devis.');
+        setToast({ type: 'error', message: 'Impossible d\'enregistrer le devis. Réessayez dans un instant.' });
         console.error('[DEVIS NEW] Erreur enregistrement:', data.error);
         setIsSubmitting(false);
         setSubmitMode(null);
@@ -563,8 +563,8 @@ function NewDevis() {
       });
       const finalizeData = await finalizeRes.json();
       if (!finalizeData.success) {
-        setError(finalizeData.error || 'Erreur lors de la génération du PDF.');
-        setToast({ type: 'error', message: '✗ Erreur lors de la génération du PDF — Veuillez réessayer' });
+        setError(finalizeData.error || 'Impossible de préparer le devis.');
+        setToast({ type: 'error', message: 'Impossible de préparer le devis. Réessayez dans un instant.' });
         console.error('[DEVIS NEW] Erreur finalize:', finalizeData.error);
         setIsSubmitting(false);
         setSubmitMode(null);
@@ -572,18 +572,18 @@ function NewDevis() {
       }
 
       if (mode === 'draft') {
-        setToast({ type: 'success', message: `✓ Devis ${numero} enregistré. Le PDF a été généré, vous pouvez maintenant l'envoyer au client depuis le dossier.` });
+        setToast({ type: 'success', message: `Devis ${numero} enregistré. Vous pourrez l'envoyer au client depuis le dossier.` });
       } else if (finalizeData.email_sent) {
-        setToast({ type: 'success', message: `✓ Devis ${numero} envoyé à ${clientEmail}. Le PDF est joint à l'email, votre client peut le consulter dès maintenant.` });
+        setToast({ type: 'success', message: `Devis ${numero} envoyé au client. Il peut maintenant le consulter.` });
       } else {
-        setToast({ type: 'warning', message: `⚠️ Devis ${numero} enregistré, mais l'email n'a pas pu être envoyé. Vérifiez l'adresse email du client puis réessayez l'envoi depuis le dossier.` });
+        setToast({ type: 'warning', message: `Devis ${numero} enregistré, mais l'envoi au client n'a pas abouti. Vérifiez son email puis réessayez.` });
       }
       setTimeout(() => {
         router.push(`/dashboard-v2/projet/${projetId}`);
       }, 2000);
     } catch (err) {
-      setError('Erreur lors de l\'enregistrement du devis.');
-      setToast({ type: 'error', message: '✗ Erreur lors de l\'enregistrement — Veuillez réessayer' });
+      setError('Impossible d\'enregistrer le devis.');
+      setToast({ type: 'error', message: 'Impossible d\'enregistrer le devis. Réessayez dans un instant.' });
       console.error('[DEVIS NEW] Erreur enregistrement:', err);
       setIsSubmitting(false);
       setSubmitMode(null);
@@ -662,7 +662,7 @@ function NewDevis() {
             <p style={{ color: 'var(--text-2)', marginBottom: '16px' }}>
               {configError
                 ? configError
-                : 'Vos informations légales sont incomplètes. Elles sont nécessaires pour générer un devis conforme.'}
+                  : 'Complétez vos informations d\'entreprise pour préparer un devis propre et complet.'}
             </p>
             {!configError && missingLegalFields.length > 0 && (
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px' }}>
@@ -674,7 +674,7 @@ function NewDevis() {
               </ul>
             )}
             <a href="/parametres" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '14px' }}>
-              Compléter mon profil →
+              Compléter mes informations →
             </a>
           </div>
         </main>
@@ -699,7 +699,7 @@ function NewDevis() {
             </Button>
             <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '12px 0 4px' }}>Nouveau devis</h1>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-              {clientName || 'Client'} — {devisNumberPreview}
+              {clientName || 'Client à renseigner'} · {devisNumberPreview}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -722,7 +722,7 @@ function NewDevis() {
             }}
           >
               {!canQuote && <Lock size={14} />}
-              📄 Aperçu PDF
+              Prévisualiser le devis
             </button>
           </div>
         </div>
@@ -751,13 +751,13 @@ function NewDevis() {
               fontSize: '13px',
             }}
           >
-            Passez à Performance pour envoyer vos devis, générer des PDF et suivre leur statut.
+            Passez à Performance pour envoyer vos devis et suivre la réponse du client.
           </div>
         )}
 
         {/* Section 1 — Infos générales */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Informations générales</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Repères du devis</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
             <div style={{ minWidth: 0 }}>
               <label style={labelStyle}>Numéro de devis</label>
@@ -768,13 +768,13 @@ function NewDevis() {
               <input style={inputStyle} type="date" value={dateEmission} onChange={(e) => setDateEmission(e.target.value)} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <label style={labelStyle}>Date de validité</label>
+              <label style={labelStyle}>Valable jusqu'au</label>
               <input style={inputStyle} type="date" value={dateValidite} onChange={(e) => setDateValidite(e.target.value)} />
             </div>
           </div>
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
             <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
-              Émetteur
+              Votre entreprise
             </p>
             <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 600, margin: '0 0 4px' }}>
               {artisanConfig?.raisonSociale || artisanConfig?.companyName}
@@ -816,7 +816,7 @@ function NewDevis() {
 
         {/* Section 1c — Objet du devis */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Objet du devis</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Pour quel chantier ?</h2>
           <textarea
             style={{ ...inputStyle, minHeight: '70px', resize: 'vertical', fontFamily: 'inherit' }}
             value={objet}
@@ -827,13 +827,13 @@ function NewDevis() {
 
         {/* Sélecteur manuel de modèle de devis */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px' }}>Partir d&apos;un modèle</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 4px' }}>Gagner du temps</h2>
           {(() => {
             const activeTemplates = artisanConfig?.businessConfig?.quoteTemplates?.filter((t) => t.isActive !== false) || [];
             if (activeTemplates.length === 0) {
               return (
                 <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                  Aucun modèle disponible. Ajoutez-en depuis Paramètres.
+                  Aucun modèle disponible. Vous pourrez en ajouter depuis vos réglages.
                 </p>
               );
             }
@@ -864,19 +864,19 @@ function NewDevis() {
                     cursor: selectedTemplateId ? 'pointer' : 'not-allowed',
                   }}
                 >
-                  {hasExistingContent ? 'Remplacer les lignes par ce modèle' : 'Appliquer le modèle'}
+                  {hasExistingContent ? 'Remplacer les prestations' : 'Utiliser ce modèle'}
                 </button>
               </div>
             );
           })()}
           {appliedTemplateName && (
             <p style={{ fontSize: '12px', color: 'var(--accent)', margin: '10px 0 0' }}>
-              Modèle appliqué : {appliedTemplateName}. Vérifiez et adaptez les lignes avant envoi.
+              Modèle appliqué : {appliedTemplateName}. Vérifiez les prestations avant d'envoyer le devis.
             </p>
           )}
           {quoteSettingsApplied && (
             <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '10px 0 0' }}>
-              Paramètres de devis appliqués depuis vos préférences.
+              Vos réglages de devis ont déjà été appliqués.
             </p>
           )}
         </div>
@@ -884,7 +884,7 @@ function NewDevis() {
         {/* Section 2 — Lignes du devis */}
         <div style={sectionCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Lignes du devis</h2>
+            <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Prestations du devis</h2>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={openPrestationsModal}
@@ -893,7 +893,7 @@ function NewDevis() {
                   borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
                 }}
               >
-                📚 Mes prestations
+                Mes prestations
               </button>
               <button
                 onClick={addSectionLine}
@@ -902,7 +902,7 @@ function NewDevis() {
                   borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer',
                 }}
               >
-                + Titre de section
+                + Ajouter un titre
               </button>
               <button
                 onClick={addItemLine}
@@ -912,7 +912,7 @@ function NewDevis() {
                   display: 'flex', alignItems: 'center', gap: '4px',
                 }}
               >
-                <Plus className="w-3.5 h-3.5" /> Ajouter une ligne
+                <Plus className="w-3.5 h-3.5" /> Ajouter une prestation
               </button>
             </div>
           </div>
@@ -927,7 +927,7 @@ function NewDevis() {
               color: 'var(--text-2)',
               fontSize: '12px',
             }}>
-              {prefilledTemplateName ? `Prérempli depuis le modèle : ${prefilledTemplateName}` : 'Suggestions Kadria à vérifier et adapter avant envoi.'}
+              {prefilledTemplateName ? `Prérempli à partir du modèle : ${prefilledTemplateName}` : 'Des suggestions ont été ajoutées. Vérifiez-les avant d\'envoyer le devis.'}
             </div>
           )}
 
@@ -951,7 +951,7 @@ function NewDevis() {
                       style={{ ...inputStyle, fontWeight: 700, textTransform: 'uppercase', fontSize: '13px' }}
                       value={line.description}
                       onChange={(e) => updateLine(line.id, { description: e.target.value })}
-                      placeholder="TITRE DE SECTION"
+                      placeholder="Titre de partie"
                     />
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button onClick={() => moveLine(line.id, -1)} disabled={index === 0} style={iconBtnStyle(index === 0)}>
@@ -972,7 +972,7 @@ function NewDevis() {
                         style={{ ...inputStyle, minHeight: '40px', resize: 'vertical', fontFamily: 'inherit', flex: 1 }}
                         value={line.description}
                         onChange={(e) => updateLine(line.id, { description: e.target.value })}
-                        placeholder="Description de la prestation"
+                        placeholder="Détail de la prestation"
                       />
                       <div style={{ display: 'flex', gap: '4px', flexShrink: 0, paddingTop: '2px' }}>
                         <button onClick={() => moveLine(line.id, -1)} disabled={index === 0} style={iconBtnStyle(index === 0)}>
@@ -988,7 +988,7 @@ function NewDevis() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px' }}>
                       <div>
-                        <label style={labelStyle}>Qté</label>
+                        <label style={labelStyle}>Quantité</label>
                         <input
                           style={inputStyle}
                           type="number"
@@ -1008,7 +1008,7 @@ function NewDevis() {
                         />
                       </div>
                       <div>
-                        <label style={labelStyle}>Prix HT</label>
+                        <label style={labelStyle}>Prix unitaire</label>
                         <input
                           style={inputStyle}
                           type="number"
@@ -1019,12 +1019,12 @@ function NewDevis() {
                         />
                         {prefilledFromSuggestions && (
                           <p style={{ color: line.unitPrice > 0 ? 'var(--accent)' : 'var(--text-3)', fontSize: '11px', margin: '4px 0 0' }}>
-                            {line.unitPrice > 0 ? (line.fromCatalog ? 'Depuis votre catalogue' : 'Montant suggéré') : 'Prix à compléter'}
+                            {line.unitPrice > 0 ? (line.fromCatalog ? 'Depuis vos prestations' : 'Montant suggéré') : 'Prix à compléter'}
                           </p>
                         )}
                       </div>
                       <div>
-                        <label style={labelStyle}>TVA %</label>
+                        <label style={labelStyle}>TVA</label>
                         <select
                           style={inputStyle}
                           value={line.tvaRate}
@@ -1079,7 +1079,7 @@ function NewDevis() {
 
         {/* Section 4 — Conditions & mentions */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Conditions & mentions</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Conditions du devis</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <label style={labelStyle}>Conditions de paiement</label>
@@ -1091,7 +1091,7 @@ function NewDevis() {
               />
             </div>
             <div>
-              <label style={labelStyle}>Délai d&apos;exécution</label>
+              <label style={labelStyle}>Délai estimé</label>
               <input
                 style={inputStyle}
                 value={delaiExecution}
@@ -1100,7 +1100,7 @@ function NewDevis() {
               />
             </div>
             <div>
-              <label style={labelStyle}>Mentions légales</label>
+              <label style={labelStyle}>Mentions à afficher</label>
               <textarea
                 style={{ ...inputStyle, minHeight: '80px', resize: 'vertical', fontFamily: 'inherit' }}
                 value={mentionsLegales}
@@ -1108,7 +1108,7 @@ function NewDevis() {
               />
             </div>
             <div>
-              <label style={labelStyle}>Note interne (non visible par le client)</label>
+              <label style={labelStyle}>Note interne</label>
               <textarea
                 style={{ ...inputStyle, minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
                 value={noteInterne}
@@ -1120,10 +1120,10 @@ function NewDevis() {
 
         {/* Section 5 — Récapitulatif du devis */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Récapitulatif du devis</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Résumé avant envoi</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Prestations</p>
               <p style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700, margin: 0 }}>{itemLines.length}</p>
             </div>
             <div>
@@ -1140,7 +1140,7 @@ function NewDevis() {
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: 'var(--text-2)', marginBottom: recapAlerts.length > 0 ? '16px' : 0 }}>
-            <p style={{ margin: 0 }}>Validité du devis : {dateValidite || 'non renseignée'}</p>
+            <p style={{ margin: 0 }}>Valable jusqu'au : {dateValidite || 'non renseignée'}</p>
             {depositPercent != null && (
               <p style={{ margin: 0 }}>Acompte demandé : {depositPercent}%</p>
             )}
@@ -1148,7 +1148,7 @@ function NewDevis() {
               <p style={{ margin: 0 }}>Conditions de paiement : {conditionsPaiement}</p>
             )}
             {delaiExecution.trim() && (
-              <p style={{ margin: 0 }}>Délai estimatif : {delaiExecution}</p>
+              <p style={{ margin: 0 }}>Délai estimé : {delaiExecution}</p>
             )}
           </div>
           {recapAlerts.length > 0 && (
@@ -1172,7 +1172,7 @@ function NewDevis() {
 
         {/* Section 6 — Prévisualisation simple */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Prévisualisation</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Prévisualisation du devis</h2>
           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '16px', fontSize: '13px', color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div>
               <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Client</p>
@@ -1181,18 +1181,18 @@ function NewDevis() {
             </div>
             {objet.trim() && (
               <div>
-                <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Objet</p>
+                <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Chantier</p>
                 <p style={{ margin: 0 }}>{objet}</p>
               </div>
             )}
             <div>
-              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Lignes</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 4px' }}>Prestations</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {lines.map((l) => (
                   <p key={l.id} style={{ margin: 0, color: l.type === 'section' ? 'var(--text-1)' : 'var(--text-2)', fontWeight: l.type === 'section' ? 700 : 400 }}>
                     {l.type === 'section'
-                      ? (l.description || 'Section sans titre')
-                      : `${l.description || 'Sans description'} — ${l.quantity} ${l.unit} × ${l.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+                      ? (l.description || 'Partie sans titre')
+                      : `${l.description || 'Détail à préciser'} — ${l.quantity} ${l.unit} × ${l.unitPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
                   </p>
                 ))}
               </div>
@@ -1201,12 +1201,12 @@ function NewDevis() {
               <p style={{ margin: 0 }}>Total HT : {totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € — Total TVA : {totalTVA.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € — Total TTC : {totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</p>
             </div>
             {conditionsPaiement.trim() && <p style={{ margin: 0, color: 'var(--text-2)' }}>Conditions de paiement : {conditionsPaiement}</p>}
-            {noteInterne.trim() && <p style={{ margin: 0, color: 'var(--text-3)', fontStyle: 'italic' }}>Note interne (non visible client) : {noteInterne}</p>}
+            {noteInterne.trim() && <p style={{ margin: 0, color: 'var(--text-3)', fontStyle: 'italic' }}>Note interne non visible par le client : {noteInterne}</p>}
           </div>
         </div>
 
         <p style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '12px', margin: 0 }}>
-          Rien n&apos;est envoyé automatiquement. Vous gardez la main jusqu&apos;à l&apos;envoi.
+          Rien n&apos;est envoyé sans votre accord. Vous gardez la main jusqu&apos;à l&apos;envoi.
         </p>
 
         {/* Section 7 — Barre d'action (fixe en bas, desktop et mobile) */}
@@ -1263,7 +1263,7 @@ function NewDevis() {
             >
               {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'draft' && <Loader2 className="animate-spin" size={14} />}
-              {isSubmitting && submitMode === 'draft' ? 'Génération du PDF...' : 'Enregistrer le devis · Envoyer plus tard'}
+              {isSubmitting && submitMode === 'draft' ? 'Préparation du devis...' : 'Enregistrer · envoyer plus tard'}
             </button>
             <button
               onClick={() => handleSubmit('send')}
@@ -1291,7 +1291,7 @@ function NewDevis() {
             >
               {!canQuote && <Lock size={14} />}
               {isSubmitting && submitMode === 'send' && <Loader2 className="animate-spin" size={14} />}
-              {isSubmitting && submitMode === 'send' ? 'Génération du PDF...' : 'Envoyer au client →'}
+              {isSubmitting && submitMode === 'send' ? 'Préparation du devis...' : 'Envoyer au client →'}
             </button>
           </div>
         </div>
@@ -1326,7 +1326,7 @@ function NewDevis() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Mes prestations</h2>
+              <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>Bibliothèque de prestations</h2>
               <button
                 onClick={() => setShowPrestationsModal(false)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: '4px' }}
@@ -1393,7 +1393,7 @@ function NewDevis() {
                   style={inputStyle}
                   value={newPrestation.description}
                   onChange={(e) => setNewPrestation((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Description de la prestation"
+                  placeholder="Nom de la prestation"
                 />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   <input
@@ -1409,7 +1409,7 @@ function NewDevis() {
                     step="any"
                     value={newPrestation.unitPrice}
                     onChange={(e) => setNewPrestation((prev) => ({ ...prev, unitPrice: e.target.value }))}
-                    placeholder="Prix HT"
+                    placeholder="Prix unitaire"
                   />
                   <select
                     style={inputStyle}
@@ -1435,7 +1435,7 @@ function NewDevis() {
                     cursor: savingPrestation || !newPrestation.description.trim() ? 'default' : 'pointer',
                   }}
                 >
-                  {savingPrestation ? 'Ajout...' : 'Ajouter à ma bibliothèque'}
+                  {savingPrestation ? 'Ajout...' : 'Ajouter à mes prestations'}
                 </button>
               </div>
             </div>

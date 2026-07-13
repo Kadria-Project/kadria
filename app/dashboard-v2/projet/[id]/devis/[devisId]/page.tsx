@@ -127,7 +127,7 @@ function DevisView() {
         if (devisData.success) {
           setDevis(devisData.devis);
         } else {
-          setError(devisData.error || 'Erreur lors du chargement du devis.');
+          setError(devisData.error || 'Impossible de charger ce devis.');
         }
 
         if (projectData.success) {
@@ -135,7 +135,7 @@ function DevisView() {
           setClientName(`${p.clientFirstName || ''} ${p.clientName || ''}`.trim());
         }
       } catch (err) {
-        setError('Erreur lors du chargement du devis.');
+        setError('Impossible de charger ce devis.');
         console.error('[DEVIS VIEW] Erreur de chargement:', err);
       } finally {
         setLoading(false);
@@ -163,18 +163,18 @@ function DevisView() {
         return;
       }
       if (!data.success) {
-        setToast({ type: 'error', message: '✗ Erreur lors de l\'envoi — Veuillez réessayer' });
+        setToast({ type: 'error', message: 'Impossible d\'envoyer le devis. Réessayez dans un instant.' });
         console.error('[DEVIS VIEW] Erreur finalize:', data.error);
         return;
       }
       setDevis((prev) => prev ? { ...prev, sent: true, statut: 'Envoyé', pdfUrl: data.pdf_url || prev.pdfUrl } : prev);
       if (data.email_sent) {
-        setToast({ type: 'success', message: `✓ Devis ${devis.devisNumber} envoyé à ${devis.clientEmail} — PDF joint à l'email` });
+        setToast({ type: 'success', message: `Devis ${devis.devisNumber} envoyé au client.` });
       } else {
-        setToast({ type: 'warning', message: `⚠️ Devis ${devis.devisNumber} enregistré mais l'email n'a pas pu être envoyé — vérifiez l'email client` });
+        setToast({ type: 'warning', message: `Le devis ${devis.devisNumber} est prêt, mais l'envoi au client n'a pas abouti.` });
       }
     } catch (err) {
-      setToast({ type: 'error', message: '✗ Erreur lors de l\'envoi — Veuillez réessayer' });
+      setToast({ type: 'error', message: 'Impossible d\'envoyer le devis. Réessayez dans un instant.' });
       console.error('[DEVIS VIEW] Erreur envoi:', err);
     } finally {
       setSending(false);
@@ -186,9 +186,9 @@ function DevisView() {
     const url = getPublicDevisUrl(devis.token);
     try {
       await navigator.clipboard.writeText(url);
-      setToast({ type: 'success', message: '✓ Lien copié. Vous pouvez le partager directement avec le client.' });
+      setToast({ type: 'success', message: 'Lien client copié. Vous pouvez le partager tout de suite.' });
     } catch (err) {
-      setToast({ type: 'error', message: '✗ Impossible de copier le lien' });
+      setToast({ type: 'error', message: 'Impossible de copier le lien client.' });
       console.error('[DEVIS VIEW] Erreur copie lien:', err);
     }
   };
@@ -228,7 +228,7 @@ function DevisView() {
             Retour
           </Button>
           <div style={{ ...sectionCard, marginTop: '16px', textAlign: 'center' }}>
-            <p className="text-zinc-300">{error || 'Devis introuvable.'}</p>
+            <p className="text-zinc-300">{error || 'Ce devis n’est plus disponible.'}</p>
           </div>
         </main>
       </div>
@@ -253,6 +253,31 @@ function DevisView() {
 
   const isSent = devis.sent || devis.statut === 'Envoyé';
   const isDeclined = devis.statut === 'Refusé' || Boolean(devis.declinedAt) || Boolean(devis.declineReason);
+  const quoteStateLabel = isDeclined
+    ? 'Refusé'
+    : devis.accepted
+      ? 'Accepté'
+      : devis.opensCount > 0
+        ? 'Consulté'
+        : isSent
+          ? 'Envoyé'
+          : 'Brouillon';
+  const lastActionLabel = isDeclined
+    ? `Refusé le ${formatDate(devis.declinedAt || '')}`
+    : devis.accepted
+      ? `Accepté le ${formatDate(devis.acceptedAt || '')}`
+      : devis.firstOpenedAt
+        ? `Consulté le ${formatDate(devis.firstOpenedAt)}`
+        : isSent
+          ? 'Devis envoyé'
+          : 'Pas encore envoyé';
+  const nextActionLabel = isDeclined
+    ? 'Voir la réponse du client'
+    : devis.accepted
+      ? 'Demander un acompte si besoin'
+      : isSent
+        ? (devis.opensCount > 0 ? 'Relancer le client si besoin' : 'Attendre ou relancer le client')
+        : 'Envoyer au client';
 
   const branding = resolveDevisBranding({
     plan: devis.branding?.plan,
@@ -344,7 +369,7 @@ function DevisView() {
             >
               {!canQuote && <Lock size={14} />}
               <Download size={14} />
-              Télécharger PDF
+              Télécharger le PDF
             </button>
             {!isSent && (
               <button
@@ -367,7 +392,7 @@ function DevisView() {
               >
                 {!canQuote && <Lock size={14} />}
                 {sending && <Loader2 className="animate-spin" size={14} />}
-                {sending ? 'Envoi...' : 'Envoyer maintenant →'}
+                {sending ? 'Envoi...' : 'Envoyer au client →'}
               </button>
             )}
           </div>
@@ -385,11 +410,11 @@ function DevisView() {
               marginBottom: '16px',
             }}
           >
-            Passez à Performance pour envoyer vos devis, générer des PDF et suivre leur statut.
+            Passez à Performance pour envoyer vos devis et suivre la réponse du client.
           </div>
         )}
 
-        {/* Apercu branding (ce que verra le client sur la page publique) */}
+        {/* Aperçu côté client */}
         <div style={{ ...sectionCard, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {branding.isWhiteLabelActive && branding.brandLogoUrl ? (
@@ -398,46 +423,52 @@ function DevisView() {
             ) : null}
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#d4d4d8' }}>
               {branding.isWhiteLabelActive
-                ? `Branding affiché au client : ${branding.brandName}`
-                : 'Branding affiché au client : Kadria'}
+                ? `Nom affiché au client : ${branding.brandName}`
+                : 'Nom affiché au client : Kadria'}
             </span>
           </div>
           <span style={{ fontSize: '12px', color: '#71717a' }}>{branding.poweredByLabel}</span>
         </div>
 
-        {/* Suivi */}
+        {/* Résumé */}
         <div style={sectionCard}>
-          <p style={labelStyle}>Suivi</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: devis.accepted ? '16px' : 0 }}>
+          <p style={labelStyle}>Résumé du devis</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Eye size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
               <div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Ouvertures</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{devis.opensCount}</p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>État du devis</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{quoteStateLabel}</p>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
               <div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Première ouverture</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{formatDate(devis.firstOpenedAt || '')}</p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Dernière action</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{lastActionLabel}</p>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isDeclined ? (
-                <XCircle size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
-              ) : devis.accepted ? (
-                <CheckCircle size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
-              ) : devis.opensCount > 0 ? (
-                <Eye size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
-              ) : (
-                <Clock size={16} style={{ color: '#71717a', flexShrink: 0 }} />
-              )}
+              <Clock size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
               <div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Statut</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: isDeclined ? '#dc2626' : undefined }}>
-                  {isDeclined ? 'Refusé' : devis.accepted ? 'Accepté' : devis.opensCount > 0 ? 'En attente' : 'Non ouvert'}
-                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Prochaine action</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{nextActionLabel}</p>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: devis.accepted ? '16px' : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Eye size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Consulté</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{devis.opensCount > 0 ? 'Oui' : 'Pas encore'}</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={16} style={{ color: '#a1a1aa', flexShrink: 0 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#71717a' }}>Première consultation</p>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{formatDate(devis.firstOpenedAt || '')}</p>
               </div>
             </div>
           </div>
@@ -451,13 +482,13 @@ function DevisView() {
               marginBottom: '16px',
             }}>
               <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#dc2626' }}>
-                ✕ Devis refusé le {formatDate(devis.declinedAt || '')}
+                Devis refusé le {formatDate(devis.declinedAt || '')}
               </p>
               <p style={{ margin: '10px 0 0', fontSize: '12px', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
                 Motif du refus
               </p>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#d4d4d8' }}>
-                {devis.declineReason || 'Non renseigné'}
+                {devis.declineReason || 'Aucun motif précisé'}
               </p>
             </div>
           )}
@@ -471,23 +502,20 @@ function DevisView() {
               marginBottom: '16px',
             }}>
               <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#22c55e' }}>
-                ✓ Devis accepté le {formatDate(devis.acceptedAt || '')}
+                Devis accepté le {formatDate(devis.acceptedAt || '')}
               </p>
-              {devis.acceptedIp && (
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#71717a' }}>IP : {devis.acceptedIp}</p>
-              )}
               {devis.acceptedSnapshotId && (
-                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#71717a' }}>Preuve d&apos;acceptation enregistrée</p>
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#71717a' }}>Réponse du client bien enregistrée</p>
               )}
             </div>
           )}
 
           {isDeclined && devis.declinedSnapshotId && (
-            <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#71717a' }}>Preuve de refus enregistrée</p>
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#71717a' }}>Refus du client bien enregistré</p>
           )}
 
           {devis.sentSnapshotId && (
-            <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#71717a' }}>Preuve d&apos;envoi enregistrée</p>
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: '#71717a' }}>Envoi au client bien enregistré</p>
           )}
 
           <button
@@ -510,9 +538,9 @@ function DevisView() {
           </button>
         </div>
 
-        {/* Infos générales */}
+        {/* Client et chantier */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Informations générales</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Client et chantier</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
               <p style={{ ...labelStyle, marginBottom: '10px' }}>Client</p>
@@ -522,9 +550,9 @@ function DevisView() {
               <p style={{ color: '#a1a1aa', fontSize: '13px', margin: '0 0 2px' }}>{devis.clientPhone || '—'}</p>
             </div>
             <div>
-              <p style={{ ...labelStyle, marginBottom: '10px' }}>Dates</p>
-              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: '0 0 4px' }}>Date d&apos;émission : <span style={{ color: 'white', fontWeight: 600 }}>{formatDate(devis.dateEmission)}</span></p>
-              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>Valide jusqu&apos;au : <span style={{ color: 'white', fontWeight: 600 }}>{formatDate(devis.dateValidite)}</span></p>
+              <p style={{ ...labelStyle, marginBottom: '10px' }}>Repères</p>
+              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: '0 0 4px' }}>Date du devis : <span style={{ color: 'white', fontWeight: 600 }}>{formatDate(devis.dateEmission)}</span></p>
+              <p style={{ color: '#a1a1aa', fontSize: '13px', margin: 0 }}>Valable jusqu&apos;au : <span style={{ color: 'white', fontWeight: 600 }}>{formatDate(devis.dateValidite)}</span></p>
             </div>
           </div>
 
@@ -542,9 +570,9 @@ function DevisView() {
           )}
         </div>
 
-        {/* Lignes */}
+        {/* Prestations */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Détail des prestations</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Prestations du devis</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {lines.map((line, index) =>
               line.type === 'section' ? (
@@ -604,7 +632,7 @@ function DevisView() {
 
         {/* Conditions */}
         <div style={sectionCard}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Conditions & mentions</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, margin: '0 0 16px' }}>Conditions du devis</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {devis.conditionsPaiement && (
               <div>
@@ -614,13 +642,13 @@ function DevisView() {
             )}
             {devis.delaiExecution && (
               <div>
-                <p style={labelStyle}>Délai d&apos;exécution</p>
+                <p style={labelStyle}>Délai estimé</p>
                 <p style={{ color: '#d4d4d8', fontSize: '13px', margin: 0 }}>{devis.delaiExecution}</p>
               </div>
             )}
             {devis.mentionsLegales && (
               <div>
-                <p style={labelStyle}>Mentions légales</p>
+                <p style={labelStyle}>Mentions à afficher</p>
                 <p style={{ color: '#71717a', fontSize: '12px', margin: 0, whiteSpace: 'pre-wrap' }}>{devis.mentionsLegales}</p>
               </div>
             )}
