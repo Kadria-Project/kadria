@@ -181,7 +181,7 @@ function getISOWeekNumber(date: Date): number {
 }
 
 function eventTimeRangeLabel(event: NormalizedCalendarEvent): string {
-  if (event.allDay || !event.start) return 'Toute la journée';
+  if (event.allDay || !event.start) return 'Toute la journ\u00e9e';
   try {
     const start = new Date(event.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     if (!event.end) return start;
@@ -193,16 +193,16 @@ function eventTimeRangeLabel(event: NormalizedCalendarEvent): string {
 }
 
 function formatShortDateTime(value: string | null) {
-  if (!value) return 'Non planifiÃ©'
+  if (!value) return 'Non planifi\u00e9'
   try {
     return new Date(value).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
   } catch {
-    return 'Non planifiÃ©'
+    return 'Non planifi\u00e9'
   }
 }
 
 function formatDuration(event: NormalizedCalendarEvent) {
-  if (!event.start || !event.end) return 'DurÃ©e non prÃ©cisÃ©e'
+  if (!event.start || !event.end) return 'Dur\u00e9e non pr\u00e9cis\u00e9e'
   const start = new Date(event.start)
   const end = new Date(event.end)
   const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
@@ -213,8 +213,8 @@ function formatDuration(event: NormalizedCalendarEvent) {
 }
 
 function getAvailabilityCopy(availability: 'available' | 'soon' | 'busy') {
-  if (availability === 'busy') return { label: 'Occupe', dot: '#ef4444', bg: 'rgba(239,68,68,0.12)' }
-  if (availability === 'soon') return { label: 'Bientot occupe', dot: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }
+  if (availability === 'busy') return { label: 'Occup\u00e9', dot: '#ef4444', bg: 'rgba(239,68,68,0.12)' }
+  if (availability === 'soon') return { label: 'Bient\u00f4t occup\u00e9', dot: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }
   return { label: 'Disponible', dot: '#34d399', bg: 'rgba(52,211,153,0.12)' }
 }
 
@@ -323,7 +323,7 @@ function EventPopover({
         <p className="mt-1 text-sm text-[var(--text-2)]">{eventTimeRangeLabel(event)}</p>
 
         {event.clientName && <p className="mt-3 text-sm font-semibold text-[var(--text-1)]">{event.clientName}</p>}
-        {event.clientPhone && <p className="mt-1 text-sm text-[var(--text-3)]">Tél. : {event.clientPhone}</p>}
+        {event.clientPhone && <p className="mt-1 text-sm text-[var(--text-3)]">T&eacute;l. : {event.clientPhone}</p>}
         {(event.address || event.location) && (
           <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--text-3)]">
             <MapPin className="h-3.5 w-3.5" />
@@ -333,7 +333,7 @@ function EventPopover({
 
         {event.projectReference && (
           <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-            <p className="text-xs font-semibold text-[var(--text-2)]">Dossier lié</p>
+            <p className="text-xs font-semibold text-[var(--text-2)]">Dossier concern&eacute;</p>
             <p className="mt-1 text-sm font-semibold text-[var(--text-1)]">{event.projectReference}</p>
             {event.responsibleUserName && (
               <p className="mt-1 text-xs text-[var(--text-3)]">Responsable commercial : {event.responsibleUserName}</p>
@@ -343,9 +343,9 @@ function EventPopover({
 
         {canReassignThisEvent && (
           <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-            <p className="text-xs font-semibold text-[var(--text-2)]">Collaborateur affecté</p>
+            <p className="text-xs font-semibold text-[var(--text-2)]">Collaborateur pr&eacute;vu</p>
             <p className="mt-1 text-sm text-[var(--text-1)]">
-              {event.isUnassigned ? 'Non affecté' : event.assignedUserName || 'Collaborateur'}
+              {event.isUnassigned ? 'Sans collaborateur' : event.assignedUserName || 'Collaborateur'}
             </p>
             <select
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-xs text-[var(--text-1)]"
@@ -353,7 +353,7 @@ function EventPopover({
               disabled={reassigning}
               onChange={(e) => onReassign(event, e.target.value || null)}
             >
-              <option value="">Non affecté</option>
+              <option value="">Sans collaborateur</option>
               {teamMembers.map((member) => (
                 <option key={member.userId} value={member.userId}>
                   {member.isMe ? `${member.name} (moi)` : member.name}
@@ -370,12 +370,12 @@ function EventPopover({
             <span className="font-medium text-[var(--text-1)]">{formatShortDateTime(event.start)}</span>
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <span>Durée</span>
+            <span>Dur&eacute;e</span>
             <span className="font-medium text-[var(--text-1)]">{formatDuration(event)}</span>
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <span>Collaborateur</span>
-            <span className="font-medium text-[var(--text-1)]">{event.isUnassigned ? 'Non affecté' : event.assignedUserName || '—'}</span>
+            <span>Collaborateur pr&eacute;vu</span>
+            <span className="font-medium text-[var(--text-1)]">{event.isUnassigned ? 'Sans collaborateur' : event.assignedUserName || '-'}</span>
           </div>
         </div>
 
@@ -416,7 +416,7 @@ function EventPopover({
               className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
             >
               <ExternalLink className="h-4 w-4" />
-              Ouvrir dans Google Calendar
+              Ouvrir dans Google Agenda
             </a>
           )}
           <button
@@ -679,7 +679,7 @@ export default function DesktopAgendaView() {
     if (!agendaParam) return;
 
     if (agendaParam === 'connected') {
-      setReturnMessage('Google Calendar connecte');
+      setReturnMessage('Google Agenda connect\u00e9');
       fetchStatus();
     } else if (agendaParam === 'error') {
       setReturnMessage('Connexion Google impossible');
@@ -743,7 +743,7 @@ export default function DesktopAgendaView() {
       if (!response.ok || !json.success) {
         throw new Error(json?.error || 'Sauvegarde impossible');
       }
-      setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Calendar selectionne');
+      setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Agenda affich\u00e9');
     } catch (error) {
       console.info('[DESKTOP_AGENDA][MODE_SAVE_FAILED]', {
         callCount: modeSaveCallCountRef.current,
@@ -765,12 +765,12 @@ export default function DesktopAgendaView() {
     try {
       const response = await fetch('/api/integrations/google-calendar/disconnect', { method: 'POST' });
       if (response.status === 401) {
-        setReturnMessage('Session expiree');
+        setReturnMessage('Session expir\u00e9e');
         return;
       }
       const json = await response.json();
       if (json.success) {
-        setReturnMessage('Google Calendar deconnecte. Kadria ne synchronisera plus votre agenda.');
+        setReturnMessage('Google Agenda d\u00e9connect\u00e9. Kadria ne mettra plus votre agenda \u00e0 jour.');
         setGoogleEvents([]);
         await fetchStatus();
       } else {
@@ -788,7 +788,7 @@ export default function DesktopAgendaView() {
     setCreateSuccess(null);
 
     if (!newEvent.titre || !newEvent.date || !newEvent.heureDebut || !newEvent.heureFin) {
-      setCreateError('Titre, date, heure de debut et heure de fin requis');
+      setCreateError('Motif, date, heure de d\u00e9but et heure de fin requis');
       return;
     }
 
@@ -810,7 +810,7 @@ export default function DesktopAgendaView() {
       });
 
       if (response.status === 401) {
-        setCreateError('Session expiree');
+        setCreateError('Session expir\u00e9e');
         return;
       }
 
@@ -820,7 +820,7 @@ export default function DesktopAgendaView() {
         return;
       }
 
-      setCreateSuccess("Rendez-vous planifie. L'evenement a ete ajoute a Google Calendar.");
+      setCreateSuccess("Rendez-vous planifi\u00e9. L'\u00e9v\u00e9nement a \u00e9t\u00e9 ajout\u00e9 \u00e0 Google Agenda.");
       setNewEvent(EMPTY_NEW_EVENT_FORM);
       setShowCreateForm(false);
       await fetchEvents();
@@ -1132,7 +1132,7 @@ export default function DesktopAgendaView() {
         <div>
           <h1 className="text-xl font-bold text-[var(--text-1)]">Agenda</h1>
           <p className="mt-1 text-sm text-[var(--text-2)]">
-            Vos rendez-vous, chantiers, relances et évènements Google en un coup d&apos;œil.
+            Vos rendez-vous, chantiers, relances et &eacute;v&eacute;nements Google en un coup d&apos;&oelig;il.
           </p>
         </div>
       </div>
@@ -1147,7 +1147,7 @@ export default function DesktopAgendaView() {
         >
           <p className="text-sm font-semibold text-[var(--text-1)]">{returnMessage}</p>
           <button type="button" onClick={() => setReturnMessage(null)} className="text-sm text-[var(--text-3)] hover:text-[var(--text-1)]">
-            ×
+            &times;
           </button>
         </div>
       )}
@@ -1176,11 +1176,11 @@ export default function DesktopAgendaView() {
         </button>
         <span className="mx-1 h-4 w-px bg-[var(--border)]" />
         {statusLoading ? (
-          <span className="text-xs text-[var(--text-3)]">Vérification Google...</span>
+          <span className="text-xs text-[var(--text-3)]">V&eacute;rification de Google Agenda...</span>
         ) : calendarStatus.connected ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-2)]">
             <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-            Google connecté{calendarStatus.email ? ` · ${calendarStatus.email}` : ''}
+            Google Agenda connect&eacute;{calendarStatus.email ? ` - ${calendarStatus.email}` : ""}
           </span>
         ) : (
           <button
@@ -1191,7 +1191,7 @@ export default function DesktopAgendaView() {
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-400 hover:underline"
           >
             <CalendarDays className="h-3.5 w-3.5" />
-            Connecter Google Calendar
+            Connecter Google Agenda
           </button>
         )}
         {calendarStatus.connected && (
@@ -1202,7 +1202,7 @@ export default function DesktopAgendaView() {
             className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--text-3)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
           >
             <Unplug className="h-3.5 w-3.5" />
-            Déconnecter
+            D&eacute;connecter Google Agenda
           </button>
         )}
         {modeError && <p className="w-full text-xs text-red-300">{modeError}</p>}
@@ -1214,10 +1214,10 @@ export default function DesktopAgendaView() {
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1.5">
           <Users className="ml-1 h-3.5 w-3.5 text-[var(--text-3)]" />
           {([
-            { key: 'all', label: 'Tous' },
-            { key: 'me', label: 'Moi' },
+            { key: "all", label: "Toute l'\u00e9quipe" },
+            { key: "me", label: "Mon planning" },
             ...teamMembers.filter((m) => !m.isMe).map((m) => ({ key: m.userId, label: m.name })),
-            { key: 'unassigned', label: 'Non affectés' },
+            { key: "unassigned", label: "Sans collaborateur" },
           ] as const).map((opt) => (
             <button
               key={opt.key}
@@ -1241,9 +1241,9 @@ export default function DesktopAgendaView() {
           style={{ borderColor: 'rgba(234,179,8,0.35)', background: 'rgba(234,179,8,0.08)' }}
         >
           <span className="text-sm font-semibold text-[var(--text-1)]">
-            {unassignedCount} intervention{unassignedCount > 1 ? 's' : ''} à affecter
+            {unassignedCount} rendez-vous{unassignedCount > 1 ? "s" : ""} sans collaborateur
           </span>
-          <span className="text-xs font-semibold text-yellow-500">Filtrer →</span>
+          <span className="text-xs font-semibold text-yellow-500">Voir ces rendez-vous &rarr;</span>
         </button>
       )}
 
@@ -1259,7 +1259,7 @@ export default function DesktopAgendaView() {
           </button>
           <button
             type="button"
-            aria-label="Semaine précédente"
+            aria-label="Semaine pr&eacute;c&eacute;dente"
             onClick={() => setWeekStart((w) => addDays(w, -7))}
             className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1.5 text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
           >
@@ -1323,7 +1323,7 @@ export default function DesktopAgendaView() {
             type="button"
             onClick={() => openQuickCreate()}
             disabled={!teamPermissions.canCreatePersonalAppointments}
-            title="Création rapide (planning d'équipe)"
+            title="Ajout rapide dans le planning d&apos;&eacute;quipe"
             className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm font-semibold text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
           >
             <Plus className="h-4 w-4" />
@@ -1336,11 +1336,11 @@ export default function DesktopAgendaView() {
         <div className="flex flex-col gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
           {!calendarStatus.connected && (
             <p className="text-xs text-[var(--text-3)]">
-              Connectez Google Calendar pour créer un rendez-vous synchronisé.
+              Connectez Google Agenda pour cr&eacute;er un rendez-vous synchronis&eacute;.
             </p>
           )}
           <input
-            placeholder="Titre"
+            placeholder="Motif du rendez-vous"
             value={newEvent.titre}
             onChange={(e) => setNewEvent((form) => ({ ...form, titre: e.target.value }))}
             className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
@@ -1366,13 +1366,13 @@ export default function DesktopAgendaView() {
             />
           </div>
           <input
-            placeholder="Lieu (optionnel)"
+            placeholder="Adresse (optionnel)"
             value={newEvent.lieu}
             onChange={(e) => setNewEvent((form) => ({ ...form, lieu: e.target.value }))}
             className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
           />
           <textarea
-            placeholder="Description (optionnel)"
+            placeholder="Notes utiles (optionnel)"
             value={newEvent.note}
             onChange={(e) => setNewEvent((form) => ({ ...form, note: e.target.value }))}
             className="min-h-[60px] resize-y rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
@@ -1399,14 +1399,14 @@ export default function DesktopAgendaView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-[var(--text-1)]">Création rapide</h3>
+              <h3 className="text-base font-bold text-[var(--text-1)]">Ajout rapide</h3>
               <button type="button" onClick={() => setShowQuickCreate(false)} className="text-[var(--text-3)] hover:text-[var(--text-1)]">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <input
-              placeholder="Titre"
+              placeholder="Motif du rendez-vous"
               value={quickCreateForm.titre}
               onChange={(e) => setQuickCreateForm((f) => ({ ...f, titre: e.target.value }))}
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
@@ -1429,7 +1429,7 @@ export default function DesktopAgendaView() {
               onChange={(e) => handleQuickCreateProjectChange(e.target.value)}
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
             >
-              <option value="">Aucun dossier lié (optionnel)</option>
+              <option value="">Aucun dossier li&eacute; (optionnel)</option>
               {projects.filter((p) => p.id).map((p) => (
                 <option key={p.id} value={p.id as string}>
                   {[p.clientFirstName, p.clientName].filter(Boolean).join(' ').trim() || p.id} {p.city ? `— ${p.city}` : ''}
@@ -1443,7 +1443,7 @@ export default function DesktopAgendaView() {
                 onChange={(e) => setQuickCreateForm((f) => ({ ...f, assignedUserId: e.target.value }))}
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
               >
-                <option value="">Non affecté</option>
+                <option value="">Sans collaborateur</option>
                 {teamMembers.map((m) => (
                   <option key={m.userId} value={m.userId}>
                     {m.isMe ? `${m.name} (moi)` : m.name}
@@ -1474,13 +1474,13 @@ export default function DesktopAgendaView() {
             </div>
 
             <input
-              placeholder="Lieu (optionnel)"
+              placeholder="Adresse (optionnel)"
               value={quickCreateForm.lieu}
               onChange={(e) => setQuickCreateForm((f) => ({ ...f, lieu: e.target.value }))}
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
             />
             <textarea
-              placeholder="Description (optionnel)"
+              placeholder="Notes utiles (optionnel)"
               value={quickCreateForm.description}
               onChange={(e) => setQuickCreateForm((f) => ({ ...f, description: e.target.value }))}
               className="min-h-[50px] w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text-1)]"
@@ -1494,7 +1494,7 @@ export default function DesktopAgendaView() {
               disabled={quickCreating}
               className="w-full rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400 disabled:opacity-60"
             >
-              {quickCreating ? 'Création...' : 'Créer le rendez-vous'}
+              {quickCreating ? 'Cr\u00e9ation...' : 'Enregistrer le rendez-vous'}
             </button>
           </div>
         </div>
@@ -1514,8 +1514,8 @@ export default function DesktopAgendaView() {
               { label: "Aujourd'hui", value: insights.summary.today },
               { label: 'Demain', value: insights.summary.tomorrow },
               { label: 'Cette semaine', value: insights.summary.thisWeek },
-              { label: 'Non affectés', value: insights.summary.unassigned },
-              { label: 'Conflits', value: insights.summary.conflicts },
+              { label: 'Sans collaborateur', value: insights.summary.unassigned },
+              { label: 'Chevauchements', value: insights.summary.conflicts },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-3)]">{item.label}</p>
@@ -1528,8 +1528,8 @@ export default function DesktopAgendaView() {
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Charge équipe</h2>
-                  <p className="mt-1 text-xs text-[var(--text-3)]">Disponibilités et charge du jour par collaborateur.</p>
+                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Charge de l&apos;&eacute;quipe</h2>
+                  <p className="mt-1 text-xs text-[var(--text-3)]">Qui est disponible aujourd&apos;hui et combien de rendez-vous chacun a.</p>
                 </div>
                 <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-3)]">
                   {selectedTimelineKey}
@@ -1566,14 +1566,14 @@ export default function DesktopAgendaView() {
 
             <div className="space-y-3">
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-                <h2 className="text-sm font-semibold text-[var(--text-1)]">Heatmap</h2>
+                <h2 className="text-sm font-semibold text-[var(--text-1)]">R&eacute;partition de la semaine</h2>
                 <div className="mt-3 space-y-2 text-sm text-[var(--text-2)]">
                   <div className="flex items-center justify-between">
-                    <span>Le plus chargé</span>
+                    <span>Le plus occup&eacute;</span>
                     <span className="font-semibold text-[var(--text-1)]">{insights.heatmap.busiest ? `${insights.heatmap.busiest.name} · ${insights.heatmap.busiest.count}` : '—'}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Le moins chargé</span>
+                    <span>Le moins occup&eacute;</span>
                     <span className="font-semibold text-[var(--text-1)]">{insights.heatmap.quietest ? `${insights.heatmap.quietest.name} · ${insights.heatmap.quietest.count}` : '—'}</span>
                   </div>
                 </div>
@@ -1581,20 +1581,20 @@ export default function DesktopAgendaView() {
 
               {(insights.conflicts.length > 0 || insights.travelWarnings.length > 0) && (
                 <div className="rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.08)] p-4">
-                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Alertes opérationnelles</h2>
+                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Points &agrave; v&eacute;rifier</h2>
                   <div className="mt-3 space-y-3">
                     {insights.conflicts.slice(0, 3).map((conflict) => (
                       <div key={conflict.appointmentId} className="rounded-xl border border-[rgba(245,158,11,0.25)] bg-black/10 p-3 text-xs text-[var(--text-2)]">
-                        <p className="font-semibold text-yellow-300">⚠ Chevauchement</p>
-                        <p className="mt-1">{conflict.collaboratorName} · {conflict.title}</p>
-                        <p>{formatShortDateTime(conflict.start)} · conflit avec {conflict.conflictingTitle}</p>
+                        <p className="font-semibold text-yellow-300">Attention : deux rendez-vous se chevauchent</p>
+                        <p className="mt-1">{conflict.collaboratorName} &middot; {conflict.title}</p>
+                        <p>{formatShortDateTime(conflict.start)} &middot; conflit avec {conflict.conflictingTitle}</p>
                       </div>
                     ))}
                     {insights.travelWarnings.slice(0, 2).map((warning) => (
                       <div key={warning.toAppointmentId} className="rounded-xl border border-[rgba(245,158,11,0.25)] bg-black/10 p-3 text-xs text-[var(--text-2)]">
-                        <p className="font-semibold text-yellow-300">⚠ Déplacement probablement trop court</p>
+                        <p className="font-semibold text-yellow-300">Attention : temps de trajet probablement trop court</p>
                         <p className="mt-1">{warning.collaboratorName} · {warning.gapMinutes} min pour {warning.distanceKm} km</p>
-                        <p>{warning.fromTitle} → {warning.toTitle}</p>
+                        <p>{warning.fromTitle} &rarr; {warning.toTitle}</p>
                       </div>
                     ))}
                   </div>
@@ -1607,8 +1607,8 @@ export default function DesktopAgendaView() {
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Timeline équipe</h2>
-                  <p className="mt-1 text-xs text-[var(--text-3)]">Glissez un rendez-vous pour changer l&apos;heure ou le collaborateur.</p>
+                  <h2 className="text-sm font-semibold text-[var(--text-1)]">Planning d&eacute;taill&eacute; de l&apos;&eacute;quipe</h2>
+                  <p className="mt-1 text-xs text-[var(--text-3)]">Glissez un rendez-vous pour changer l&apos;heure ou le collaborateur pr&eacute;vu.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {weekDays.map((day) => (
@@ -1646,7 +1646,7 @@ export default function DesktopAgendaView() {
                               </div>
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-semibold text-[var(--text-1)]">{member.name}</p>
-                                <p className="text-xs text-[var(--text-3)]">{member.todayCount} RDV</p>
+                                <p className="text-xs text-[var(--text-3)]">{member.todayCount} rendez-vous</p>
                               </div>
                             </div>
                             <span className="mt-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium" style={{ background: availability.bg, color: availability.dot }}>
@@ -1728,7 +1728,7 @@ export default function DesktopAgendaView() {
       {allDayEvents.length > 0 && (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-3)]">
-            Toute la journée / À planifier
+            Toute la journ&eacute;e / &Agrave; planifier
           </p>
           <div className="flex flex-wrap gap-2">
             {allDayEvents.map((event) => {
@@ -1869,8 +1869,8 @@ export default function DesktopAgendaView() {
       {!isLoading && collaboratorFilteredEvents.length === 0 && allDayEvents.length === 0 && (
         <p className="text-sm text-[var(--text-2)]">
           {calendarMode === 'google' && !calendarStatus.connected
-            ? 'Connectez votre agenda Google pour afficher vos rendez-vous synchronisés.'
-            : 'Aucun évènement à afficher pour cette période.'}
+            ? 'Connectez Google Agenda pour afficher vos rendez-vous synchronis\u00e9s.'
+            : 'Aucun rendez-vous ni action pr\u00e9vue sur cette p\u00e9riode.'}
         </p>
       )}
 
@@ -1891,9 +1891,9 @@ export default function DesktopAgendaView() {
       {showDisconnectConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-            <p className="text-base font-bold text-[var(--text-1)]">Deconnecter Google Calendar ?</p>
+            <p className="text-base font-bold text-[var(--text-1)]">D&eacute;connecter Google Agenda ?</p>
             <p className="mt-2 text-sm text-[var(--text-2)]">
-              Vos rendez-vous deja crees resteront dans Google Calendar, mais Kadria ne pourra plus synchroniser votre agenda.
+              Vos rendez-vous d&eacute;j&agrave; cr&eacute;&eacute;s resteront dans Google Agenda, mais Kadria ne pourra plus mettre cet agenda &agrave; jour.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -1997,7 +1997,7 @@ function MonthFallbackView({
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-[var(--text-3)]">Cliquez sur un jour pour ouvrir la semaine correspondante en vue détaillée.</p>
+      <p className="mt-2 text-[11px] text-[var(--text-3)]">Cliquez sur un jour pour ouvrir la semaine correspondante en vue d&eacute;taill&eacute;e.</p>
     </div>
   );
 }
