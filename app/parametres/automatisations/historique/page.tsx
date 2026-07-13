@@ -65,13 +65,13 @@ type RunsPayload = {
 }
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Tous les statuts' },
+  { value: '', label: 'Toutes les situations' },
   { value: 'pending', label: 'En attente' },
-  { value: 'prepared', label: 'A valider' },
+  { value: 'prepared', label: "Kadria attend votre accord" },
   { value: 'executing', label: 'En cours' },
-  { value: 'succeeded', label: 'Reussi' },
-  { value: 'failed', label: 'Echoue' },
-  { value: 'ignored', label: 'Ignore' },
+  { value: 'succeeded', label: 'Bien passee' },
+  { value: 'failed', label: 'A revoir' },
+  { value: 'ignored', label: 'Laissee de cote' },
 ]
 
 const TYPE_OPTIONS = [
@@ -85,15 +85,15 @@ const TYPE_OPTIONS = [
 ]
 
 const MODE_OPTIONS = [
-  { value: '', label: 'Tous les modes' },
-  { value: 'manual', label: 'Manuel' },
-  { value: 'approval_required', label: 'A valider' },
-  { value: 'automatic', label: 'Automatique' },
+  { value: '', label: 'Toutes les facons d agir' },
+  { value: 'manual', label: 'Je decide a chaque fois' },
+  { value: 'approval_required', label: "Kadria me demande avant d'agir" },
+  { value: 'automatic', label: 'Kadria agit seul' },
 ]
 
 const ENTITY_OPTIONS = [
-  { value: '', label: 'Toutes les entites' },
-  { value: 'project', label: 'Projet' },
+  { value: '', label: 'Tous les elements' },
+  { value: 'project', label: 'Dossier' },
   { value: 'appointment', label: 'Rendez-vous' },
   { value: 'configuration', label: 'Configuration' },
 ]
@@ -116,6 +116,69 @@ function formatDuration(value: number | null) {
   if (value < 1000) return `${value} ms`
   const seconds = Math.round(value / 1000)
   return `${seconds}s`
+}
+
+function getReadableStatusLabel(status: AutomationHistoryRun['status']) {
+  switch (status) {
+    case 'pending':
+      return 'En attente'
+    case 'prepared':
+      return "Kadria attend votre accord"
+    case 'executing':
+      return 'En cours'
+    case 'succeeded':
+      return 'Bien passee'
+    case 'failed':
+      return 'A revoir'
+    case 'ignored':
+      return 'Laissee de cote'
+    default:
+      return 'En attente'
+  }
+}
+
+function getReadableModeLabel(mode: AutomationHistoryRun['mode']) {
+  switch (mode) {
+    case 'manual':
+      return 'Je decide a chaque fois'
+    case 'approval_required':
+      return "Kadria me demande avant d'agir"
+    case 'automatic':
+      return 'Kadria agit seul'
+    default:
+      return 'A definir'
+  }
+}
+
+function getReadableEntityLabel(entityType: AutomationHistoryRun['entityType']) {
+  switch (entityType) {
+    case 'project':
+      return 'Dossier'
+    case 'appointment':
+      return 'Rendez-vous'
+    case 'configuration':
+      return 'Configuration'
+    default:
+      return 'Element'
+  }
+}
+
+function getChronologyLabel(value: string | null) {
+  if (!value) return 'Plus ancien'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Plus ancien'
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const weekStart = new Date(today)
+  weekStart.setDate(weekStart.getDate() - 6)
+
+  if (date >= today) return "Aujourd'hui"
+  if (date >= yesterday) return 'Hier'
+  if (date >= weekStart) return 'Cette semaine'
+  return 'Plus ancien'
 }
 
 function buildDateFrom(period: string) {
@@ -226,10 +289,24 @@ function AutomationsHistoryPageContent() {
   }
 
   const headerLabel = useMemo(() => {
-    if (!systemState) return 'Supervision des automatisations'
-    if (systemState.paused) return 'Automatisations en pause'
-    return 'Supervision des automatisations'
+    if (!systemState) return 'Ce que Kadria a fait pour vous'
+    if (systemState.paused) return 'Les actions automatiques sont en pause'
+    return 'Ce que Kadria a fait pour vous'
   }, [systemState])
+
+  const groupedRuns = useMemo(() => {
+    const groups = new Map<string, AutomationHistoryRun[]>()
+    for (const run of runs) {
+      const key = getChronologyLabel(run.createdAt)
+      const items = groups.get(key) || []
+      items.push(run)
+      groups.set(key, items)
+    }
+
+    return ["Aujourd'hui", 'Hier', 'Cette semaine', 'Plus ancien']
+      .map((label) => ({ label, runs: groups.get(label) || [] }))
+      .filter((group) => group.runs.length > 0)
+  }, [runs])
 
   return (
     <main className="min-h-screen bg-[var(--bg)] text-[var(--text-1)]">
@@ -246,10 +323,10 @@ function AutomationsHistoryPageContent() {
 
       <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 xl:px-10">
         <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Historique automatisations</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Suivi des actions Kadria</p>
           <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{headerLabel}</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
-            Visualisez les runs detectes, executes, ignores ou en echec, avec leurs raisons et leurs actions disponibles.
+            Retrouvez les actions deja lancees, celles qui attendent votre accord et celles qui meritent votre attention.
           </p>
         </section>
 
@@ -259,39 +336,60 @@ function AutomationsHistoryPageContent() {
 
         <section className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <SummaryCard label="Actives" value={String(summary?.activeAutomations || 0)} />
-            <SummaryCard label="Executees aujourd'hui" value={String(summary?.executedToday || 0)} />
-            <SummaryCard label="Reussies" value={String(summary?.success || 0)} />
-            <SummaryCard label="En echec" value={String(summary?.failed || 0)} />
-            <SummaryCard label="A valider" value={String(summary?.pendingApproval || 0)} />
-            <SummaryCard label="Ignorees" value={String(summary?.ignored || 0)} />
-            <SummaryCard label="Taux de reussite" value={`${summary?.successRate || 0}%`} />
-            <SummaryCard label="Temps estime economise" value={`${summary?.estimatedMinutesSaved || 0} min`} />
+            <SummaryCard label="Aides actives" value={String(summary?.activeAutomations || 0)} />
+            <SummaryCard label="Actions faites aujourd'hui" value={String(summary?.executedToday || 0)} />
+            <SummaryCard label="Actions bien passees" value={String(summary?.success || 0)} />
+            <SummaryCard label="Actions a revoir" value={String(summary?.failed || 0)} />
+            <SummaryCard label="Kadria attend votre accord" value={String(summary?.pendingApproval || 0)} />
+            <SummaryCard label="Actions laissees de cote" value={String(summary?.ignored || 0)} />
+            <SummaryCard label="Fiabilite recente" value={`${summary?.successRate || 0}%`} />
+            <SummaryCard label="Temps estime gagne" value={`${summary?.estimatedMinutesSaved || 0} min`} />
           </div>
 
           <div className="mt-5 rounded-[18px] border border-white/10 bg-black/20 p-4 text-sm text-zinc-300">
-            Dernier passage cron : {formatDateTime(systemState?.lastCronAt || null)}. Dernier succes : {formatDateTime(systemState?.lastCronSuccessAt || null)}.
-            {systemState?.lastCronErrorMessage ? <span className="block pt-2 text-rose-300">Derniere erreur : {systemState.lastCronErrorMessage}</span> : null}
+            Derniere verification : {formatDateTime(systemState?.lastCronAt || null)}. Derniere action bien passee : {formatDateTime(systemState?.lastCronSuccessAt || null)}.
+            {systemState?.lastCronErrorMessage ? <span className="block pt-2 text-rose-300">Dernier point a revoir : {systemState.lastCronErrorMessage}</span> : null}
           </div>
         </section>
 
         <section className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Retrouver une action en quelques secondes</p>
+              <p className="mt-1 text-sm text-zinc-400">Affinez simplement par periode, situation, aide concernee ou element suivi.</p>
+            </div>
+          </div>
           <div className="grid gap-3 lg:grid-cols-5">
-            <select value={filters.period} onChange={(event) => setFilters((current) => ({ ...current, period: event.target.value }))} className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
-              {PERIOD_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
-              {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))} className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
-              {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select value={filters.mode} onChange={(event) => setFilters((current) => ({ ...current, mode: event.target.value }))} className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
-              {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select value={filters.entityType} onChange={(event) => setFilters((current) => ({ ...current, entityType: event.target.value }))} className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
-              {ENTITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            <label className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Periode</span>
+              <select value={filters.period} onChange={(event) => setFilters((current) => ({ ...current, period: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
+                {PERIOD_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Situation</span>
+              <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
+                {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Aide concernee</span>
+              <select value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
+                {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Facon d agir</span>
+              <select value={filters.mode} onChange={(event) => setFilters((current) => ({ ...current, mode: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
+                {MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Element suivi</span>
+              <select value={filters.entityType} onChange={(event) => setFilters((current) => ({ ...current, entityType: event.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-sm text-white">
+                {ENTITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
           </div>
         </section>
 
@@ -300,57 +398,46 @@ function AutomationsHistoryPageContent() {
             <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement...</div>
           ) : !hasRuns ? (
             <div className="rounded-[18px] border border-dashed border-white/10 bg-black/10 p-5 text-sm text-zinc-500">
-              Aucun run ne correspond aux filtres actuels.
+              Aucune action ne correspond aux filtres actuels.
             </div>
           ) : (
             <>
-              <div className="hidden overflow-hidden rounded-[18px] border border-white/10 lg:block">
-                <div className="grid grid-cols-[1.3fr_0.9fr_0.8fr_1fr_1fr_0.8fr] gap-3 border-b border-white/10 bg-black/30 px-4 py-3 text-xs uppercase tracking-[0.14em] text-zinc-500">
-                  <span>Automatisation</span>
-                  <span>Entite</span>
-                  <span>Statut</span>
-                  <span>Mode</span>
-                  <span>Date</span>
-                  <span>Action</span>
-                </div>
-                {runs.map((run) => (
-                  <div key={run.id} className="grid grid-cols-[1.3fr_0.9fr_0.8fr_1fr_1fr_0.8fr] gap-3 border-b border-white/5 px-4 py-4 text-sm text-zinc-200 last:border-b-0">
-                    <div>
-                      <p className="font-semibold text-white">{run.automationTitle}</p>
-                      <p className="mt-1 text-xs text-zinc-500">{run.triggerReason}</p>
-                    </div>
-                    <div>{run.entityLabel}</div>
-                    <div>{run.statusLabel}</div>
-                    <div>{run.modeLabel}</div>
-                    <div>{formatDateTime(run.createdAt)}</div>
-                    <div className="flex justify-end">
-                      <button type="button" onClick={() => setSelectedRun(run)} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.06]">
-                        Details
-                      </button>
+              <div className="grid gap-5">
+                {groupedRuns.map((group) => (
+                  <div key={group.label}>
+                    <p className="mb-3 text-[11px] uppercase tracking-[0.18em] text-zinc-500">{group.label}</p>
+                    <div className="grid gap-3">
+                      {group.runs.map((run) => (
+                        <article key={run.id} className="rounded-[18px] border border-white/10 bg-black/20 p-4">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold text-white">{run.automationTitle}</p>
+                                <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[11px] text-zinc-300">
+                                  {getReadableStatusLabel(run.status)}
+                                </span>
+                                <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[11px] text-zinc-300">
+                                  {getReadableModeLabel(run.mode)}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-sm text-zinc-300">{run.entityLabel}</p>
+                              <p className="mt-2 text-xs text-zinc-500">{run.triggerReason}</p>
+                              <p className="mt-2 text-xs text-zinc-500">{formatDateTime(run.createdAt)}</p>
+                            </div>
+                            <button type="button" onClick={() => setSelectedRun(run)} className="rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.06]">
+                              Voir le detail
+                            </button>
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="grid gap-3 lg:hidden">
-                {runs.map((run) => (
-                  <article key={run.id} className="rounded-[18px] border border-white/10 bg-black/20 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-white">{run.automationTitle}</p>
-                      <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[11px] text-zinc-300">{run.statusLabel}</span>
-                    </div>
-                    <p className="mt-2 text-sm text-zinc-300">{run.entityLabel}</p>
-                    <p className="mt-2 text-xs text-zinc-500">{formatDateTime(run.createdAt)}</p>
-                    <button type="button" onClick={() => setSelectedRun(run)} className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/[0.06]">
-                      Voir le detail
-                    </button>
-                  </article>
-                ))}
-              </div>
-
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-zinc-400">
-                  {pagination.total} run(s) - page {pagination.page} / {Math.max(1, pagination.totalPages)}
+                  {pagination.total} action(s) - page {pagination.page} / {Math.max(1, pagination.totalPages)}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -392,24 +479,24 @@ function AutomationsHistoryPageContent() {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                <SummaryCard label="Statut" value={selectedRun.statusLabel} />
-                <SummaryCard label="Mode" value={selectedRun.modeLabel} />
-                <SummaryCard label="Date de creation" value={formatDateTime(selectedRun.createdAt)} />
-                <SummaryCard label="Duree" value={formatDuration(selectedRun.durationMs)} />
+                <SummaryCard label="Situation" value={getReadableStatusLabel(selectedRun.status)} />
+                <SummaryCard label="Facon d agir" value={getReadableModeLabel(selectedRun.mode)} />
+                <SummaryCard label="Date" value={formatDateTime(selectedRun.createdAt)} />
+                <SummaryCard label="Temps pris" value={formatDuration(selectedRun.durationMs)} />
               </div>
 
               <div className="mt-5 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Declencheur</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Pourquoi cette action est apparue</p>
                 <p className="mt-2 text-sm text-zinc-300">{selectedRun.triggerReason}</p>
               </div>
 
               <div className="mt-5 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Details</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Ce que vous devez savoir</p>
                 <div className="mt-3 space-y-2 text-sm text-zinc-300">
                   <p>Debut : {formatDateTime(selectedRun.startedAt)}</p>
                   <p>Fin : {formatDateTime(selectedRun.completedAt)}</p>
-                  <p>Validateur : {selectedRun.executedByLabel || 'Aucun'}</p>
-                  <p>Cle d&apos;idempotence : {selectedRun.idempotencyKeyPreview || 'n/a'}</p>
+                  <p>Decision prise par : {selectedRun.executedByLabel || 'Aucune personne'}</p>
+                  <p>Type d element : {getReadableEntityLabel(selectedRun.entityType)}</p>
                 </div>
               </div>
 
@@ -424,22 +511,22 @@ function AutomationsHistoryPageContent() {
               <div className="flex flex-wrap gap-3">
                 {selectedRun.entityHref ? (
                   <button type="button" onClick={() => router.push(selectedRun.entityHref || '/parametres')} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06]">
-                    Ouvrir l&apos;entite
+                    Ouvrir l&apos;element concerne
                   </button>
                 ) : null}
                 {selectedRun.canExecute ? (
                   <button type="button" disabled={submittingId === selectedRun.id} onClick={() => void runAction(selectedRun, 'execute')} className="rounded-xl bg-[#22c55e] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
-                    {submittingId === selectedRun.id ? 'Execution...' : 'Valider et executer'}
+                    {submittingId === selectedRun.id ? 'En cours...' : "Valider et laisser Kadria agir"}
                   </button>
                 ) : null}
                 {selectedRun.canIgnore ? (
                   <button type="button" disabled={submittingId === selectedRun.id} onClick={() => void runAction(selectedRun, 'ignore')} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-60">
-                    Ignorer
+                    Pas maintenant
                   </button>
                 ) : null}
                 {selectedRun.canRetry ? (
                   <button type="button" disabled={submittingId === selectedRun.id} onClick={() => void runAction(selectedRun, 'retry')} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-wait disabled:opacity-60">
-                    {submittingId === selectedRun.id ? 'Relance...' : 'Relancer'}
+                    {submittingId === selectedRun.id ? 'Nouvel essai...' : 'Reessayer'}
                   </button>
                 ) : null}
               </div>

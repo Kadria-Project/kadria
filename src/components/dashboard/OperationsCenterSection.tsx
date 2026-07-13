@@ -148,7 +148,7 @@ function RecommendationRow({
                     ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
                     : 'border-zinc-700 bg-zinc-900 text-zinc-300'
               }`}>
-                {item.automationLabel}
+                {item.automationLabel === 'A valider' ? "Kadria attend votre accord" : item.automationLabel === 'Manuel' ? 'Je decide a chaque fois' : item.automationLabel}
               </span>
             ) : null}
             {item.estimatedMinutes ? (
@@ -159,7 +159,7 @@ function RecommendationRow({
           </div>
           <p className="mt-2 text-sm text-[var(--text-2)]">{item.description}</p>
           <p className="mt-2 text-xs text-[var(--text-3)]">{item.reason}</p>
-          {executed ? <p className="mt-2 text-xs font-semibold text-green-300">Action realisee. Recalcul au prochain chargement.</p> : null}
+          {executed ? <p className="mt-2 text-xs font-semibold text-green-300">Action prise en compte. La liste se mettra a jour au prochain recalcul.</p> : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <span className="text-xs text-[var(--text-3)]">{formatDate(item.createdAt)}</span>
@@ -308,14 +308,14 @@ export default function OperationsCenterSection({
       try {
         await postAutomationAction(route)
         setExecutedIds((current) => ({ ...current, [item.id]: true }))
-        setToast({ message: variant === 'secondary' ? 'Action ignoree.' : 'Action effectuee.' })
+        setToast({ message: variant === 'secondary' ? 'Action laissee de cote.' : 'Action prise en compte.' })
       } catch (error) {
         setToast({ message: error instanceof Error ? error.message : 'Action impossible.', error: true })
       }
       return
     }
     setExecutedIds((current) => ({ ...current, [item.id]: true }))
-    setToast({ message: variant === 'secondary' ? 'Redirection terminee.' : 'Action effectuee.' })
+    setToast({ message: variant === 'secondary' ? 'Redirection terminee.' : 'Ouverture en cours.' })
     void logExecutedAction(item)
     router.push(route)
   }
@@ -324,7 +324,7 @@ export default function OperationsCenterSection({
     <div className="flex flex-col gap-4 sm:gap-5">
       <SectionCard
         title="Centre d'actions"
-        subtitle="Les actions a traiter maintenant, calculees a partir de vos statuts, delais, conflits et opportunites."
+        subtitle="Kadria vous met sous les yeux ce qui merite votre attention maintenant, comme le ferait une bonne secretaire commerciale."
         compact={compact}
       >
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -333,14 +333,14 @@ export default function OperationsCenterSection({
             onClick={() => router.push('/parametres/automatisations/historique')}
             className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
           >
-            Voir l'historique
+            Voir ce que Kadria a fait
           </button>
           <button
             type="button"
             onClick={() => router.push('/parametres/automatisations/historique?status=prepared')}
             className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-500/20"
           >
-            {pendingApprovalCount} action(s) a valider
+            {pendingApprovalCount} decision(s) a prendre
           </button>
         </div>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
