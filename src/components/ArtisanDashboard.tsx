@@ -4613,9 +4613,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div id="project-list-section" className="space-y-4 w-full">
             {showClientsWorkspace && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-                <p className="text-base font-bold text-[var(--text-1)]">Mes clients</p>
+                <p className="text-base font-bold text-[var(--text-1)]">Dossiers clients</p>
                 <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Suivez vos clients, leur historique, leur valeur et les prochaines actions à réaliser.
+                  Retrouvez vos clients, l&apos;avancement de leurs dossiers et ce qu&apos;il faut faire ensuite.
                 </p>
               </div>
             )}
@@ -4626,7 +4626,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                 <Input
                   className="pl-9 rounded-[10px] py-2.5 focus:border-green-500"
-                  placeholder={showClientsWorkspace ? 'Nom, e-mail, telephone, ville...' : 'Nom, projet, ville, reference...'}
+                  placeholder={showClientsWorkspace ? 'Nom, e-mail, téléphone, ville...' : 'Client, besoin, ville...'}
                   value={searchInput}
                   onChange={(e) => {
                     setSearchInput(e.target.value);
@@ -4675,11 +4675,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <Select value={filters.statut} onValueChange={(v) => updateFilter('statut', v === 'all' ? '' : v)}>
                 <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder={showClientsWorkspace ? 'Toutes les relations' : 'Tous les statuts'} />
+                  <SelectValue placeholder={showClientsWorkspace ? 'Tous les types de clients' : 'Tous les statuts'} />
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="all">{showClientsWorkspace ? 'Toutes les relations' : 'Tous les statuts'}</SelectItem>
+                  <SelectItem value="all">{showClientsWorkspace ? 'Tous les types de clients' : 'Tous les statuts'}</SelectItem>
 
                   {showClientsWorkspace
                     ? RELATION_STATUS_OPTIONS.map((o) => (
@@ -4786,13 +4786,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               {!showClientsWorkspace && responsibleOptions.length > 0 && (
                 <Select value={filters.responsible || 'all'} onValueChange={(v) => updateFilter('responsible', v === 'all' ? '' : v)}>
                   <SelectTrigger className="w-full sm:w-[220px]">
-                    <SelectValue placeholder="Tous les responsables" />
+                    <SelectValue placeholder="Tous les responsables du dossier" />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value="all">Tous les responsables</SelectItem>
+                    <SelectItem value="all">Tous les responsables du dossier</SelectItem>
                     {currentUserId && <SelectItem value={currentUserId}>Mes dossiers</SelectItem>}
-                    <SelectItem value="unassigned">Non affectés</SelectItem>
+                    <SelectItem value="unassigned">Sans responsable</SelectItem>
                     {responsibleOptions.map((option) => (
                       <SelectItem key={option.userId} value={option.userId}>
                         {option.displayName}
@@ -4853,9 +4853,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                 )}
                 {filters.responsible && (
                   <FilterPill
-                    label={`Responsable: ${
+                    label={`Responsable du dossier: ${
                       filters.responsible === 'unassigned'
-                        ? 'Non affectés'
+                        ? 'Sans responsable'
                         : filters.responsible === currentUserId
                           ? 'Mes dossiers'
                           : responsibleOptions.find((option) => option.userId === filters.responsible)?.displayName ?? filters.responsible
@@ -4901,7 +4901,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                           : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)]'
                       }`}
                     >
-                      Non affectés · {unassignedProjectsCount}
+                        Sans responsable · {unassignedProjectsCount}
                     </button>
                   </>
                 )}
@@ -4927,7 +4927,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       : 'border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-2)] hover:text-[var(--text-1)]'
                   }`}
                 >
-                  🗂️ Kanban
+                  🗂️ Suivi par étapes
                 </button>
                 </FeatureGate>
 
@@ -4949,7 +4949,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                         className="block w-full rounded-lg px-4 py-2.5 text-left text-sm text-[var(--text-1)] hover:bg-[var(--bg-hover)]"
                       >
                         Export CSV
-                        <p className="text-xs text-[var(--text-2)]">Tous les dossiers filtrés sélectionnés</p>
+                          <p className="text-xs text-[var(--text-2)]">Tous les dossiers affichés actuellement</p>
                       </button>
 
                       {canExportPdf ? (
@@ -5028,25 +5028,25 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     {quickFilter === 'today'
                       ? 'Relances du jour'
                       : quickFilter === 'overdue' || quickFilter === 'relance'
-                        ? 'Relances a effectuer'
+                        ? 'Relances à faire'
                         : quickFilter === 'hot'
                           ? 'Prospects chauds'
                           : quickFilter === 'risk'
-                            ? 'Opportunités à sécuriser'
+                            ? 'Dossiers à ne pas oublier'
                             : quickFilter === 'opportunities'
-                              ? 'Opportunites prioritaires'
+                              ? 'Dossiers à traiter en priorité'
                               : quickFilter === 'calls'
-                                ? 'Appels à effectuer'
+                                ? 'Appels à faire'
                                 : quickFilter === 'quotes'
                                   ? 'Devis à envoyer'
                                   : quickFilter === 'followups'
                                     ? 'Relances à faire'
-                                    : 'Priorites du jour'}
+                                    : 'Priorités du jour'}
                   </span>
                 </p>
 
                   <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setQuickFilter(null)}>
-                  Afficher tous les dossiers
+                  Voir tous les dossiers
                 </Button>
               </div>
             )}
@@ -5064,14 +5064,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                 <p className="text-[var(--text-2)] mt-1">
                   {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups'
-                    ? 'Aucun dossier dans cette catégorie.'
+                    ? 'Aucun dossier dans cette catégorie pour le moment.'
                     : filters.search
                       ? `Aucun résultat pour '${filters.search}'`
                       : filters.statut
                         ? showClientsWorkspace
                           ? `Aucun client avec le statut '${RELATION_STATUS_LABELS[filters.statut as ClientRelationshipStatus] ?? filters.statut}'`
                           : `Aucun dossier avec le statut '${filters.statut}'`
-                        : 'Essayez d’élargir vos critères de recherche'}
+                        : 'Essayez avec moins de filtres ou une recherche plus large.'}
                 </p>
 
                 {hasActiveFilters && (
@@ -5080,7 +5080,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                     onClick={resetFilters}
                     className="mt-4 rounded-[10px] bg-green-500 px-6 py-3 text-sm font-semibold text-zinc-950"
                   >
-                    Réinitialiser les filtres
+                    Effacer les filtres
                   </button>
                 )}
               </div>
@@ -5222,14 +5222,14 @@ export function ProjectList({
         className="hidden md:grid grid-cols-12 gap-4 bg-[var(--bg-elevated)] rounded-t-xl text-[var(--text-3)] uppercase tracking-widest"
         style={{ fontSize: '11px', padding: '10px 16px' }}
       >
-        <span className="col-span-1">Réf</span>
+        <span className="col-span-1">Dossier</span>
         <span className="col-span-1">Reçu</span>
         <span className="col-span-2">Client</span>
-        <span className="col-span-1">Projet</span>
-        <span className="col-span-2">Responsable</span>
+        <span className="col-span-1">Besoin</span>
+        <span className="col-span-2">Responsable du dossier</span>
         <span className="col-span-1">Ville</span>
-        <span className="col-span-1">Score</span>
-        <span className="col-span-1">Activité</span>
+        <span className="col-span-1">Dossier renseigné</span>
+        <span className="col-span-1">Historique</span>
         <span className="col-span-1">Statut</span>
         <span className="col-span-1"></span>
       </div>
@@ -5241,8 +5241,11 @@ export function ProjectList({
           onClick={() => router.push(`/dashboard-v2/projet/${p.id}`)}
         >
           <div className="hidden md:grid grid-cols-12 gap-4 items-center" style={{ fontSize: '13px', padding: '12px 16px' }}>
-            <span className="col-span-1 text-[var(--text-3)] font-mono">
-              {String(p.id).slice(0, 6)}
+            <span
+              className="col-span-1 text-[var(--text-2)]"
+              style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {p.projectType || p.trade || 'Dossier'}
             </span>
 
             <ReceivedAtLabel dateLike={p.createdAt} className="col-span-1 text-[var(--text-2)]" />
@@ -5258,14 +5261,14 @@ export function ProjectList({
               className="col-span-1 text-[var(--text-2)]"
               style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
-              {p.trade || '—'}
+              {p.trade || p.projectType || '—'}
             </span>
 
             <span className="col-span-1 text-[var(--text-2)] truncate">
               {p.city || '—'}
             </span>
 
-            <span className="col-span-1 text-[var(--text-2)]">
+            <span className="col-span-2 text-[var(--text-2)]">
               <ProjectResponsibleInline responsibleUser={p.responsibleUser || null} responsibleUserId={p.responsibleUserId || null} />
             </span>
 
@@ -5397,7 +5400,7 @@ export function KanbanBoard({
                 {colProjects.length === 0 ? (
                   <div className="py-8 text-center text-sm text-[var(--text-3)]">
                     <FolderOpen className="mx-auto mb-2 h-6 w-6 text-[var(--text-3)]" />
-                    Aucun dossier
+                    Aucun dossier dans cette étape
                   </div>
                 ) : (
                   colProjects.map((p) => (
@@ -5415,7 +5418,7 @@ export function KanbanBoard({
               </div>
 
               <div className="border-t border-[var(--border)] px-2 py-2 text-center text-xs text-[var(--text-2)]">
-                {colProjects.length} dossier{colProjects.length === 1 ? '' : 's'} · {formatAmount(total)} potentiel
+                {colProjects.length} dossier{colProjects.length === 1 ? '' : 's'} · {formatAmount(total)} de potentiel
               </div>
             </div>
           );
@@ -5423,7 +5426,7 @@ export function KanbanBoard({
         </div>
       </div>
 
-      <p className="mt-2 text-center text-xs text-[var(--text-3)] md:hidden">← Faites défiler →</p>
+      <p className="mt-2 text-center text-xs text-[var(--text-3)] md:hidden">← Faites glisser pour voir les autres étapes →</p>
     </div>
   );
 }
@@ -5472,7 +5475,7 @@ function KanbanCard({
         <StatusBadge status={project.status} />
       </div>
 
-      <p className="mt-1.5 truncate text-xs text-[var(--text-2)]">{project.trade || project.projectType || 'Projet'}</p>
+      <p className="mt-1.5 truncate text-xs text-[var(--text-2)]">{project.projectType || project.trade || 'Projet'}</p>
 
       <p className="truncate text-xs text-[var(--text-2)]">
         {project.city || '—'} · {project.budget || '—'}
@@ -5484,7 +5487,7 @@ function KanbanCard({
 
       <div className="mt-2 flex items-center justify-between">
         <span className="text-xs font-bold" style={{ color: scoreColor }}>
-          Score: {score}%
+          Dossier renseigné à {score}%
         </span>
 
         <ReceivedAtLabel dateLike={project.createdAt} className="ml-auto text-xs text-[var(--text-3)]" />

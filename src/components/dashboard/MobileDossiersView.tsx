@@ -19,12 +19,12 @@ type QuickChip = 'all' | 'todo' | 'callback' | 'quote' | 'won' | 'lost' | 'urgen
 
 const CHIPS: { key: QuickChip; label: string }[] = [
   { key: 'all', label: 'Tous' },
-  { key: 'todo', label: 'À traiter' },
+  { key: 'todo', label: 'À faire' },
   { key: 'callback', label: 'À rappeler' },
-  { key: 'quote', label: 'Devis' },
+  { key: 'quote', label: 'Devis envoyés' },
   { key: 'won', label: 'Gagnés' },
   { key: 'lost', label: 'Perdus' },
-  { key: 'urgent', label: 'Urgents' },
+  { key: 'urgent', label: 'En retard' },
 ];
 
 function clientLabel(p: Project): string {
@@ -161,9 +161,9 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '76px' }}>
       <div>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>Mes dossiers</h1>
+        <h1 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>Dossiers</h1>
         <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '4px 0 0' }}>
-          Tous vos chantiers, demandes et actions à traiter.
+          Retrouvez chaque client, l&apos;avancement du dossier et la prochaine action utile.
         </p>
       </div>
 
@@ -182,7 +182,7 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un dossier, client, ville..."
+          placeholder="Client, besoin, ville..."
           style={{
             width: '100%',
             background: 'var(--bg-hover)',
@@ -228,7 +228,7 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
           <SearchX style={{ width: 32, height: 32, color: 'var(--text-3)', margin: '0 auto 10px' }} />
           <p style={{ fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>Aucun dossier trouvé</p>
           <p style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '4px' }}>
-            Essayez d&apos;élargir votre recherche ou vos filtres.
+            Essayez avec moins de filtres ou une recherche plus large.
           </p>
         </div>
       ) : (
@@ -278,7 +278,7 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '10px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>
-                    {amount > 0 ? `💰 ${formatCurrency(amount)}` : '💰 Potentiel non renseigné'}
+                        {amount > 0 ? `💰 ${formatCurrency(amount)}` : '💰 Budget non renseigné'}
                   </span>
                   {urgency && (
                     <span
@@ -341,7 +341,7 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
                     }}
                   >
                     <FolderOpen style={{ width: 14, height: 14 }} />
-                    Ouvrir
+                    Ouvrir le dossier
                   </button>
                   <button
                     type="button"
@@ -363,7 +363,7 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
                     }}
                   >
                     <Send style={{ width: 14, height: 14 }} />
-                    Devis
+                    Voir le devis
                   </button>
                   {canRelance && (
                     <button
