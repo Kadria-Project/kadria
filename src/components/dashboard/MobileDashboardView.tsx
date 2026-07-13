@@ -599,7 +599,7 @@ export default function MobileDashboardView({
       {/* CENTRE D'ACTIONS */}
       {actionRows.length > 0 && (
         <div>
-          <div style={sectionTitle}>Centre d&apos;actions</div>
+      <div style={sectionTitle}>À faire aujourd&apos;hui</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {actionRows.map((row) => (
               <button
@@ -672,7 +672,7 @@ export default function MobileDashboardView({
       {/* DOSSIERS IMPORTANTS */}
       {topOpportunities.length > 0 && (
         <div>
-          <div style={sectionTitle}>Dossiers importants</div>
+          <div style={sectionTitle}>Dossiers à suivre</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {topOpportunities.map((project) => {
               const score = opportunityScore(project, []);
@@ -744,7 +744,7 @@ export default function MobileDashboardView({
 
       {/* PIPELINE */}
       <div>
-        <div style={sectionTitle}>Pipeline</div>
+        <div style={sectionTitle}>Avancement des dossiers</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {pipelineRemap.map((step) => (
             <button
@@ -1084,9 +1084,9 @@ export default function MobileDashboardView({
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div>
-                <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-1)' }}>Menu Kadria</div>
+                <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-1)' }}>Menu</div>
                 <div style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '2px' }}>
-                  Accédez aux espaces secondaires de pilotage.
+                  Retrouvez les autres pages utiles.
                 </div>
               </div>
               <button type="button" onClick={() => setMoreOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer', padding: '4px' }}>
@@ -1096,14 +1096,14 @@ export default function MobileDashboardView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <MenuRow
                 icon={TargetIcon}
-                title="Pipeline complet"
-                description="Toutes vos opportunités commerciales"
+                title="Suivi des dossiers"
+                description="Tous vos dossiers en un coup d'œil"
                 onClick={() => { setMoreOpen(false); setDashboardMode('pipeline'); resetFilters(); }}
               />
               <MenuRow
                 icon={BarChart3}
-                title="Valeur générée"
-                description="ROI, conversions et temps gagné"
+                title="Résultats Kadria"
+                description="Temps gagné et dossiers transformés"
                 onClick={() => { setMoreOpen(false); setDashboardMode('value-report'); }}
               />
               <MenuRow
@@ -1115,7 +1115,7 @@ export default function MobileDashboardView({
               <MenuRow
                 icon={CreditCard}
                 title="Mon abonnement"
-                description="Facturation et gestion Stripe"
+                description="Votre offre et vos factures"
                 onClick={() => {
                   setMoreOpen(false);
                   onSubscriptionClick();
@@ -1123,8 +1123,8 @@ export default function MobileDashboardView({
               />
               <MenuRow
                 icon={Settings}
-                title="Paramètres"
-                description="Préférences de votre compte"
+                title="Réglages"
+                description="Entreprise, équipe et réglages"
                 onClick={() => { setMoreOpen(false); router.push(settingsHref); }}
               />
               <MenuRow

@@ -52,9 +52,9 @@ const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }
   { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
   { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
   { id: 'apparence', label: 'Apparence', icon: '🌓' },
-  { id: 'offre', label: 'Offre & quotas', icon: '💳' },
-  { id: 'equipe', label: 'Equipe', icon: '👥', href: '/parametres/equipe' },
-  { id: 'automatisations', label: 'Automatisations', icon: '⚙️', href: '/parametres/automatisations' },
+  { id: 'offre', label: 'Mon offre', icon: '💳' },
+  { id: 'equipe', label: 'Mon équipe', icon: '👥', href: '/parametres/equipe' },
+  { id: 'automatisations', label: 'Actions automatiques', icon: '⚙️', href: '/parametres/automatisations' },
 ]
 
 const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: string }> = [
@@ -66,15 +66,15 @@ const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: str
   { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'apparence', label: 'Apparence', icon: '🌘' },
-  { id: 'offre', label: 'Offre & quotas', icon: '💳' },
-  { id: 'equipe', label: 'Equipe', icon: '👥', href: '/parametres/equipe' },
-  { id: 'automatisations', label: 'Automatisations', icon: '⚙️', href: '/parametres/automatisations' },
+  { id: 'offre', label: 'Mon offre', icon: '💳' },
+  { id: 'equipe', label: 'Mon équipe', icon: '👥', href: '/parametres/equipe' },
+  { id: 'automatisations', label: 'Actions automatiques', icon: '⚙️', href: '/parametres/automatisations' },
 ]
 
 // Groupes visuels du menu latéral des paramètres
 const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: string; icon: string; href?: string }> }> = [
   {
-    label: 'Configuration',
+    label: 'Mon entreprise',
     items: [
       SECTIONS[0]!,
       { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
@@ -83,7 +83,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: 
     ],
   },
   {
-    label: 'Activité',
+    label: 'Mon activité',
     items: [
       SECTIONS[4]!,
       SECTIONS[5]!,
@@ -91,7 +91,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: 
     ],
   },
   {
-    label: 'Compte',
+    label: 'Mon compte',
     items: [
       SECTIONS[6]!,
       SECTIONS[7]!,

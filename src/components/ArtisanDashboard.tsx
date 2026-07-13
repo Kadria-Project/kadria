@@ -2982,11 +2982,11 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     : null;
 
   const NAV_ITEMS: { mode: DashboardMode; label: string; icon: typeof Euro }[] = [
-    { mode: 'value', label: 'Valeur générée', icon: Euro },
-    { mode: 'commercial', label: 'Suivi commercial', icon: Target },
-    { mode: 'calendar', label: 'Calendrier', icon: CalendarDays },
-    { mode: 'clients', label: 'Mes clients', icon: FolderOpen },
-    { mode: 'tasks', label: 'Mes taches a faire', icon: CheckCircle },
+    { mode: 'value', label: 'Accueil', icon: Euro },
+    { mode: 'commercial', label: 'Suivi', icon: Target },
+    { mode: 'calendar', label: 'Agenda', icon: CalendarDays },
+    { mode: 'clients', label: 'Clients', icon: FolderOpen },
+    { mode: 'tasks', label: 'À faire', icon: CheckCircle },
   ];
 
   return (
@@ -3852,13 +3852,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div className="flex flex-col gap-4">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-[var(--text-1)]">Santé commerciale</p>
+                <p className="text-sm font-bold text-[var(--text-1)]">État de vos dossiers</p>
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: businessHealth.color }} />
               </div>
               <p className="mt-1 text-sm font-semibold" style={{ color: businessHealth.color }}>{businessHealth.label}</p>
               {averageMaturityScore !== null && (
                 <p className="mt-1 text-xs text-[var(--text-2)]">
-                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} critique(s) · {highActionsCount} action(s) à traiter
+                  Avancement moyen {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} point(s) urgent(s) · {highActionsCount} action(s) à traiter
                 </p>
               )}
             </div>
@@ -3875,8 +3875,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[var(--text-1)]">Mes tâches à faire</p>
-                <p className="text-sm text-[var(--text-2)]">Les actions qui peuvent débloquer des chantiers ou récupérer du chiffre d&apos;affaires.</p>
+                <p className="font-bold text-[var(--text-1)]">À faire aujourd&apos;hui</p>
+                <p className="text-sm text-[var(--text-2)]">Les actions utiles pour faire avancer vos dossiers et éviter les oublis.</p>
               </div>
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{mesTachesItems.length} action(s)</span>
             </div>
@@ -3895,23 +3895,23 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <ActionSummary icon={PhoneCall} label="appels a effectuer" value={taskCounts.call || 0} onClick={() => goToCommercialFilter('calls')} />
-              <ActionSummary icon={FolderOpen} label="devis a envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
-              <ActionSummary icon={Mail} label="relances a faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} onClick={() => goToCommercialFilter('followups')} />
+              <ActionSummary icon={PhoneCall} label="appels à faire" value={taskCounts.call || 0} onClick={() => goToCommercialFilter('calls')} />
+              <ActionSummary icon={FolderOpen} label="devis à envoyer" value={taskCounts.quote || 0} onClick={() => goToCommercialFilter('quotes')} />
+              <ActionSummary icon={Mail} label="relances à faire" value={(taskCounts.followUp || 0) + (taskCounts.email || 0)} onClick={() => goToCommercialFilter('followups')} />
               <ActionSummary
                 icon={CalendarDays}
-                label="rendez-vous a planifier"
+                label="rendez-vous à planifier"
                 value={actionEngineCounters.schedule_appointment || 0}
                 onClick={() => setActionEngineFilter(actionEngineFilter === 'schedule_appointment' ? null : 'schedule_appointment')}
               />
               <ActionSummary
                 icon={CreditCard}
-                label="acomptes a suivre"
+                label="acomptes à suivre"
                 value={depositProjects.toAsk.length + depositProjects.requested.length}
                 onClick={() => setActionEngineFilter(actionEngineFilter === 'deposits' ? null : 'deposits')}
               />
             </div>
-            <p className="mt-2 text-xs text-[var(--text-3)]">Cliquer pour filtrer le suivi commercial</p>
+            <p className="mt-2 text-xs text-[var(--text-3)]">Cliquez sur un bloc pour filtrer la liste</p>
             <div className="mt-4 space-y-2">
               {mesTachesItems.map((item, index) => {
                 const project = item.kind === 'call' ? allProjects.find((p) => p.id === item.task.projectId) : item.project;
@@ -3948,7 +3948,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">Action prioritaire</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">À faire en premier</p>
                         <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{title} — {clientLabel}</p>
                         {amountLabel && <p className="text-xs text-[var(--impact-text-soft)]">{amountLabel}</p>}
                       </div>
@@ -3988,13 +3988,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div className="flex flex-col gap-4">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-[var(--text-1)]">Santé commerciale</p>
+                <p className="text-sm font-bold text-[var(--text-1)]">État de vos dossiers</p>
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: businessHealth.color }} />
               </div>
               <p className="mt-1 text-sm font-semibold" style={{ color: businessHealth.color }}>{businessHealth.label}</p>
               {averageMaturityScore !== null && (
                 <p className="mt-1 text-xs text-[var(--text-2)]">
-                  Maturité moyenne {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} critique(s) · {highActionsCount} action(s) à traiter
+                  Avancement moyen {Math.round(averageMaturityScore)}/100 · {criticalActionsCount} point(s) urgent(s) · {highActionsCount} action(s) à traiter
                 </p>
               )}
             </div>
@@ -4053,7 +4053,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   flexShrink: 0,
                 }}
               >
-                Voir les retards →
+                Voir les dossiers en retard →
               </button>
             </div>
           )}
@@ -4100,7 +4100,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                   flexShrink: 0,
                 }}
               >
-                Voir les relances →
+                Voir les relances à faire →
               </button>
             </div>
           )}
@@ -4169,14 +4169,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-base font-bold text-[var(--text-1)]">Opportunites prioritaires</p>
+                  <p className="text-base font-bold text-[var(--text-1)]">Dossiers à traiter en priorité</p>
                   <p className="mt-1 text-xs text-[var(--text-2)]">
-                    Les dossiers a rappeler en premier selon completude, budget, urgence, delai, reactivite et distance.
+                    Les dossiers à traiter d&apos;abord selon l&apos;urgence, le budget, la réactivité du client et l&apos;avancement.
                   </p>
                 </div>
 
                 <span className="inline-flex w-fit rounded-full border border-green-500/25 bg-green-500/[0.08] px-3 py-1 text-xs text-green-400">
-                  🤖 Score IA
+                  Priorité Kadria
                 </span>
               </div>
 
@@ -4256,7 +4256,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
                       <div className="h-3 w-1/2 rounded bg-[var(--bg-hover)]/80" />
                     </div>
                     <p className="mt-4 text-xs leading-5 text-[var(--text-3)]">
-                      Classement IA des dossiers prioritaires disponible avec Performance.
+                      Classement des dossiers prioritaires disponible avec Performance.
                     </p>
                   </button>
                 ))}
@@ -4271,7 +4271,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div>
             <div className="relative my-8 border-t border-[var(--border)]">
               <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-[var(--bg)] px-4 text-xs uppercase tracking-[0.08em] text-[var(--text-2)]">
-                Analyses détaillées
+                Voir plus de détails
               </span>
             </div>
 
