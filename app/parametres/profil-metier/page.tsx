@@ -455,9 +455,9 @@ export default function ProfilMetierPage() {
       }
       setSelectedTemplateNames(new Set())
       const parts: string[] = []
-      if (imported.length > 0) parts.push(`${imported.length} prestation${imported.length > 1 ? 's' : ''} importée${imported.length > 1 ? 's' : ''}`)
-      if (skipped.length > 0) parts.push(`${skipped.length} ignorée${skipped.length > 1 ? 's' : ''} (déjà existante${skipped.length > 1 ? 's' : ''})`)
-      setTemplateImportMessage(parts.join(' · ') || 'Aucune prestation importée.')
+      if (imported.length > 0) parts.push(`${imported.length} prestation${imported.length > 1 ? 's' : ''} ajoutée${imported.length > 1 ? 's' : ''}`)
+      if (skipped.length > 0) parts.push(`${skipped.length} déjà présente${skipped.length > 1 ? 's' : ''}`)
+      setTemplateImportMessage(parts.join(' · ') || 'Aucune prestation ajoutée.')
     } finally {
       setImportingTemplates(false)
     }
@@ -560,7 +560,7 @@ export default function ProfilMetierPage() {
 
   async function saveServiceProfile() {
     if (!serviceProfileForm.name.trim()) {
-      setServiceProfileError('Le nom de la prestation est requis')
+      setServiceProfileError('Le nom de la prestation est requis.')
       return
     }
     setSavingServiceProfile(true)
@@ -574,11 +574,11 @@ export default function ProfilMetierPage() {
         body: JSON.stringify(buildServiceProfilePayload()),
       })
       const data = await res.json()
-      if (!data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      if (!data.success) throw new Error(data.error || "Kadria n'a pas pu enregistrer cette prestation.")
       setServiceProfiles((prev) => (isNew ? [...prev, data.profile] : prev.map((p) => (p.id === data.profile.id ? data.profile : p))))
       setEditingServiceProfile(null)
     } catch (err) {
-      setServiceProfileError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+      setServiceProfileError(err instanceof Error ? err.message : "Kadria n'a pas pu enregistrer cette prestation.")
     } finally {
       setSavingServiceProfile(false)
     }
@@ -592,10 +592,10 @@ export default function ProfilMetierPage() {
         body: JSON.stringify({ isActive: !row.is_active }),
       })
       const data = await res.json()
-      if (!data.success) throw new Error(data.error || 'Erreur')
+      if (!data.success) throw new Error(data.error || "Kadria n'a pas pu mettre cette prestation à jour.")
       setServiceProfiles((prev) => prev.map((p) => (p.id === row.id ? data.profile : p)))
     } catch (err) {
-      setServiceProfileError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour')
+      setServiceProfileError(err instanceof Error ? err.message : "Kadria n'a pas pu mettre cette prestation à jour.")
     }
   }
 
@@ -612,7 +612,7 @@ export default function ProfilMetierPage() {
         body: JSON.stringify(fields),
       })
       const data = await res.json()
-      if (!data.success) throw new Error(data.error || 'Erreur lors de la sauvegarde')
+      if (!data.success) throw new Error(data.error || "Kadria n'a pas pu enregistrer vos modifications.")
       const savedProfile = profileFromRow(data.profile)
       setProfile(savedProfile)
       setSpecialtiesText(toCsv(savedProfile.specialties))
@@ -621,7 +621,7 @@ export default function ProfilMetierPage() {
       setModuleSaved((m) => ({ ...m, [moduleKey]: true }))
       setTimeout(() => setModuleSaved((m) => ({ ...m, [moduleKey]: false })), 2000)
     } catch (err) {
-      setModuleError((m) => ({ ...m, [moduleKey]: err instanceof Error ? err.message : 'Erreur lors de la sauvegarde' }))
+      setModuleError((m) => ({ ...m, [moduleKey]: err instanceof Error ? err.message : "Kadria n'a pas pu enregistrer vos modifications." }))
     } finally {
       setModuleSaving((m) => ({ ...m, [moduleKey]: false }))
     }
@@ -731,7 +731,7 @@ export default function ProfilMetierPage() {
             cursor: isSaving ? 'default' : 'pointer', whiteSpace: 'nowrap',
           }}
         >
-          {isSaved ? '✓ Module enregistré' : isSaving ? 'Enregistrement...' : 'Enregistrer ce module'}
+          {isSaved ? '✓ Enregistré' : isSaving ? 'Enregistrement...' : 'Enregistrer'}
         </button>
         {error && <span style={{ color: '#f87171', fontSize: '12px' }}>{error}</span>}
       </div>
@@ -780,7 +780,7 @@ export default function ProfilMetierPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+      setSaveError(err instanceof Error ? err.message : "Kadria n'a pas pu enregistrer vos modifications.")
     } finally {
       setSaving(false)
     }
@@ -944,7 +944,7 @@ export default function ProfilMetierPage() {
           color: '#4ade80',
           fontSize: '13px',
         }}>
-          Profil métier enregistré. Les prochaines suggestions de devis utiliseront désormais ces informations.
+          Votre activité a été mise à jour.
         </div>
       )}
 
@@ -1023,12 +1023,12 @@ export default function ProfilMetierPage() {
                   borderRadius: '8px', padding: '9px 16px', fontSize: '13px', cursor: 'pointer',
                 }}
               >
-                Configurer mon métier
+                  Continuer
               </button>
             ) : (
               <div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
-                  <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Profil métier</span>
+                  <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Activité</span>
                   <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Prestations</span>
                   <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Tarifs</span>
                   <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>✓ Agenda</span>
@@ -1050,10 +1050,10 @@ export default function ProfilMetierPage() {
           }}>
             <div style={{ fontSize: '28px', marginBottom: '8px' }}>🧰</div>
             <h3 style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700, margin: '0 0 6px' }}>
-              Aucun profil métier configuré
+              Votre activité n’est pas encore renseignée
             </h3>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-              Renseignez votre métier, votre zone d&apos;intervention et votre chiffrage pour que Kadria sache vous représenter fidèlement. Rien n&apos;est encore connecté au chat, au vocal ou aux devis.
+              Indiquez votre métier, votre zone d’intervention et vos repères de prix pour que Kadria puisse mieux vous aider.
             </p>
           </div>
         )}
@@ -1061,10 +1061,10 @@ export default function ProfilMetierPage() {
         {/* 1. Identité métier */}
         <div style={sectionCard}>
           <h3 style={{ color: 'var(--accent)', fontSize: '14px', fontWeight: 700, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            🪪 Profil métier
+            🪪 Mon activité
           </h3>
           <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
-            Définissez votre métier principal, vos domaines complémentaires et les prestations que Kadria doit qualifier.
+            Renseignez votre métier principal, vos autres activités et les prestations que vous proposez.
           </p>
           <div style={fieldWrap}>
             <label style={labelStyle}>Métier principal</label>
@@ -1090,19 +1090,19 @@ export default function ProfilMetierPage() {
             </div>
           )}
           <div style={fieldWrap}>
-            <label style={labelStyle}>Métiers secondaires</label>
+              <label style={labelStyle}>Autres métiers proposés</label>
             <TradeMultiSearchSelect
               options={ARTISAN_TRADES.filter((t) => t.value !== 'autre' && t.value !== profile.primaryTrade)}
               values={profile.coveredTrades}
               onAdd={addCoveredTrade}
               onRemove={removeCoveredTrade}
-              placeholder="Ajouter un domaine couvert..."
+                placeholder="Ajouter un autre métier..."
               inputStyle={inputStyle}
               labelFor={(v) => ARTISAN_TRADES.find((t) => t.value === v)?.label || v}
             />
           </div>
           <div style={fieldWrap}>
-            <label style={labelStyle}>Spécialités (séparées par des virgules)</label>
+              <label style={labelStyle}>Prestations ou spécialités</label>
             <input
               type="text"
               value={specialtiesText}
@@ -1115,7 +1115,7 @@ export default function ProfilMetierPage() {
             />
           </div>
           <div style={fieldWrap}>
-            <label style={labelStyle}>Prestations exclues (séparées par des virgules)</label>
+              <label style={labelStyle}>Prestations non proposées</label>
             <input
               type="text"
               value={excludedServicesText}
@@ -1146,7 +1146,7 @@ export default function ProfilMetierPage() {
               />
             </div>
             <div style={fieldWrap}>
-              <label style={labelStyle}>Rayon (km)</label>
+              <label style={labelStyle}>Distance maximale (km)</label>
               <input
                 type="number"
                 value={profile.interventionRadiusKm}
@@ -1164,7 +1164,7 @@ export default function ProfilMetierPage() {
               />
             </div>
             <div style={fieldWrap}>
-              <label style={labelStyle}>Frais au km (optionnel, €/km)</label>
+              <label style={labelStyle}>Frais au km (optionnel)</label>
               <input
                 type="number"
                 value={profile.travelFeePerKm}
@@ -1179,7 +1179,7 @@ export default function ProfilMetierPage() {
         {/* 3. Horaires */}
         <div style={sectionCard}>
           <h3 style={{ color: 'var(--accent)', fontSize: '14px', fontWeight: 700, margin: '0 0 16px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            🕒 Horaires
+            🕒 Horaires de travail
           </h3>
           <div style={fieldWrap}>
             <label style={labelStyle}>Jours travaillés</label>
@@ -1349,7 +1349,7 @@ export default function ProfilMetierPage() {
               border: '1px dashed var(--border)', borderRadius: '12px',
               color: 'var(--text-3)', fontSize: '13px', marginBottom: '16px',
             }}>
-              Aucune prestation dans le catalogue pour l&apos;instant. Ajoutez votre première prestation ci-dessous.
+              Aucune prestation ajoutée pour le moment. Ajoutez votre première prestation ci-dessous.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
@@ -1464,7 +1464,7 @@ export default function ProfilMetierPage() {
         <div style={sectionCard}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '10px', flexWrap: 'wrap' }}>
             <h3 style={{ color: 'var(--accent)', fontSize: '14px', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              🧩 Bibliothèque de prestations
+            🧩 Prestations proposées
             </h3>
             <button
               onClick={openNewServiceProfile}
@@ -1473,13 +1473,13 @@ export default function ProfilMetierPage() {
                 background: 'var(--accent)', color: 'black', fontWeight: 700, fontSize: '13px', cursor: 'pointer',
               }}
             >
-              + Nouvelle fiche
+              + Ajouter une prestation
             </button>
           </div>
 
-          <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
-            Décrivez comment chaque prestation doit être qualifiée, chiffrée et planifiée. Pas encore connecté au chat, au vocal, aux devis ou à l&apos;Action Engine.
-          </p>
+            <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 16px' }}>
+              Décrivez chaque prestation pour aider Kadria à poser les bonnes questions et préparer vos devis.
+            </p>
 
           <div style={{
             border: '1px solid var(--border)', borderRadius: '12px',
@@ -1487,14 +1487,14 @@ export default function ProfilMetierPage() {
             background: 'var(--bg-hover)',
           }}>
             <div style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-              🚀 Démarrer plus vite
+              🚀 Gagner du temps
             </div>
             <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '0 0 14px' }}>
               Importez des modèles de prestations adaptés à votre métier, puis ajustez-les à votre façon de travailler.
             </p>
 
             <div style={fieldWrap}>
-              <label style={labelStyle}>Métier</label>
+              <label style={labelStyle}>Métier principal</label>
               <select
                 value={templateTrade}
                 onChange={(e) => { setTemplateTrade(e.target.value); setSelectedTemplateNames(new Set()); setTemplateImportMessage('') }}
@@ -1566,7 +1566,7 @@ export default function ProfilMetierPage() {
               border: '1px dashed var(--border)', borderRadius: '12px',
               color: 'var(--text-3)', fontSize: '13px',
             }}>
-              La bibliothèque de prestations n&apos;est pas encore disponible (migration Supabase non exécutée).
+              Les prestations proposées ne sont pas encore disponibles sur cet écran.
             </div>
           ) : serviceProfiles.length === 0 ? (
             <div style={{
@@ -1575,7 +1575,7 @@ export default function ProfilMetierPage() {
               color: 'var(--text-3)', fontSize: '13px',
             }}>
               <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
-              Aucune fiche prestation pour l&apos;instant. Créez votre première fiche pour préciser comment une prestation doit être qualifiée et chiffrée.
+              Aucune prestation détaillée pour le moment. Ajoutez votre première prestation pour préciser quoi demander au client et comment préparer le devis.
             </div>
           ) : (
             <div style={{
@@ -1645,7 +1645,7 @@ export default function ProfilMetierPage() {
                           color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                         }}
                       >
-                        Configurer
+                        Modifier
                       </button>
                       <button
                         type="button"
@@ -1680,7 +1680,7 @@ export default function ProfilMetierPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h2 style={{ color: 'var(--text-1)', fontSize: '16px', fontWeight: 700, margin: 0 }}>
-                {editingServiceProfile === 'new' ? 'Nouvelle fiche prestation' : 'Configurer la prestation'}
+                {editingServiceProfile === 'new' ? 'Nouvelle prestation' : 'Modifier la prestation'}
               </h2>
               <button
                 onClick={() => setEditingServiceProfile(null)}
@@ -1753,13 +1753,13 @@ export default function ProfilMetierPage() {
 
             {/* 2. Détection */}
             <ServiceProfileAccordion
-              title="🔍 Détection"
+               title="🔍 Repères pour reconnaître cette demande"
               sectionKey="detection"
               open={openServiceProfileSections.has('detection')}
               onToggle={toggleServiceProfileSection}
             >
               <div style={fieldWrap}>
-                <label style={labelStyle}>Mots-clés de détection (séparés par des virgules)</label>
+                 <label style={labelStyle}>Mots-clés utiles (séparés par des virgules)</label>
                 <input
                   type="text"
                   value={toCsv(serviceProfileForm.detectionKeywords)}
@@ -1772,13 +1772,13 @@ export default function ProfilMetierPage() {
 
             {/* 3. Qualification */}
             <ServiceProfileAccordion
-              title="❓ Qualification"
+               title="❓ Informations à demander au client"
               sectionKey="qualification"
               open={openServiceProfileSections.has('qualification')}
               onToggle={toggleServiceProfileSection}
             >
               <div style={fieldWrap}>
-                <label style={labelStyle}>Questions à poser (séparées par des virgules)</label>
+                 <label style={labelStyle}>Questions à poser</label>
                 <textarea
                   value={toCsv(serviceProfileForm.qualificationQuestions)}
                   onChange={(e) => setServiceProfileForm((p) => ({ ...p, qualificationQuestions: fromCsv(e.target.value) }))}
@@ -1787,9 +1787,9 @@ export default function ProfilMetierPage() {
                 />
               </div>
               <div style={fieldWrap}>
-                <label style={labelStyle}>Questions de qualification structurées</label>
+                 <label style={labelStyle}>Questions détaillées</label>
                 <p style={{ fontSize: '12px', color: 'var(--text-2)', margin: '0 0 8px' }}>
-                  Tant qu&apos;aucune question structurée n&apos;est ajoutée ici, les questions ci-dessus (texte libre) restent utilisées.
+                   Kadria utilisera ces questions pour demander les bonnes informations au bon moment.
                 </p>
                 {serviceProfileForm.qualificationFields.map((field, idx) => {
                   const needsOptions = field.type === 'select' || field.type === 'multiselect'
@@ -1933,11 +1933,11 @@ export default function ProfilMetierPage() {
                     background: 'transparent', color: 'var(--text-2)', fontSize: '12px', cursor: 'pointer',
                   }}
                 >
-                  + Ajouter une question structurée
+                  + Ajouter une question
                 </button>
               </div>
               <div style={fieldWrap}>
-                <label style={labelStyle}>Informations indispensables (séparées par des virgules)</label>
+                <label style={labelStyle}>Informations indispensables</label>
                 <textarea
                   value={toCsv(serviceProfileForm.requiredInformation)}
                   onChange={(e) => setServiceProfileForm((p) => ({ ...p, requiredInformation: fromCsv(e.target.value) }))}
@@ -2146,7 +2146,7 @@ export default function ProfilMetierPage() {
 
             {/* 5. Planification */}
             <ServiceProfileAccordion
-              title="🗓️ Planification"
+               title="🗓️ Rendez-vous"
               sectionKey="planification"
               open={openServiceProfileSections.has('planification')}
               onToggle={toggleServiceProfileSection}
@@ -2157,7 +2157,7 @@ export default function ProfilMetierPage() {
                   checked={serviceProfileForm.appointmentRecommended}
                   onChange={(e) => setServiceProfileForm((p) => ({ ...p, appointmentRecommended: e.target.checked }))}
                 />
-                Rendez-vous conseillé
+                 Rendez-vous conseillé
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer', marginBottom: '10px' }}>
                 <input
@@ -2165,7 +2165,7 @@ export default function ProfilMetierPage() {
                   checked={serviceProfileForm.travelRequired}
                   onChange={(e) => setServiceProfileForm((p) => ({ ...p, travelRequired: e.target.checked }))}
                 />
-                Déplacement nécessaire
+                 Déplacement nécessaire
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '13px', cursor: 'pointer' }}>
                 <input
@@ -2173,10 +2173,10 @@ export default function ProfilMetierPage() {
                   checked={serviceProfileForm.emergencySupported}
                   onChange={(e) => setServiceProfileForm((p) => ({ ...p, emergencySupported: e.target.checked }))}
                 />
-                Urgence possible
+                 Intervention urgente possible
               </label>
               <div style={{ ...fieldWrap, marginTop: '12px' }}>
-                <label style={labelStyle}>Prestations liées (séparées par des virgules)</label>
+                 <label style={labelStyle}>Prestations liées</label>
                 <input
                   type="text"
                   value={toCsv(serviceProfileForm.relatedServices)}

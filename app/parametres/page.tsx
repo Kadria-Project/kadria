@@ -59,7 +59,7 @@ const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }
 
 const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: string }> = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
-  { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
+  { id: 'profil-metier', label: 'Mon activité', icon: '🛠️', href: '/parametres/profil-metier' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
   { id: 'legal', label: 'Infos légales', icon: '📋' },
   { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
@@ -77,7 +77,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: 
     label: 'Mon entreprise',
     items: [
       SECTIONS[0]!,
-      { id: 'profil-metier', label: 'Profil métier', icon: '🛠️', href: '/parametres/profil-metier' },
+      { id: 'profil-metier', label: 'Mon activité', icon: '🛠️', href: '/parametres/profil-metier' },
       SECTIONS[2]!,
       SECTIONS[3]!,
     ],
@@ -306,17 +306,17 @@ function buildConfigurationKadriaItems(input: {
     },
     {
       key: 'metier',
-      label: 'Profil metier',
-      description: 'Votre metier aide Kadria a mieux qualifier les demandes.',
+      label: 'Mon activité',
+      description: 'Votre métier aide Kadria à poser les bonnes questions à vos clients.',
       status: metierConfigured ? 'done' : 'todo',
       href: '/parametres/profil-metier',
-      cta: 'Configurer',
+      cta: 'Compléter',
       evaluable: true,
     },
     {
       key: 'prestations',
-      label: 'Prestations configurees',
-      description: 'Ajoutez vos prestations pour accelerer la qualification et les devis.',
+      label: 'Prestations proposées',
+      description: 'Ajoutez vos prestations pour gagner du temps dans les devis.',
       status: prestationsConfigured ? 'done' : 'todo',
       href: '/parametres/profil-metier',
       cta: 'Ajouter',
@@ -333,8 +333,8 @@ function buildConfigurationKadriaItems(input: {
     },
     {
       key: 'google_review',
-      label: 'Lien avis Google',
-      description: "Ajoutez votre lien d'avis Google pour activer les demandes d'avis client.",
+      label: 'Lien vers vos avis Google',
+      description: "Ajoutez ce lien pour permettre à Kadria de demander un avis à vos clients.",
       status: hasTextValue(input.googleReviewUrl) ? 'done' : 'todo',
       href: '/parametres?section=entreprise',
       cta: 'Ajouter',
@@ -342,8 +342,8 @@ function buildConfigurationKadriaItems(input: {
     },
     {
       key: 'calendar',
-      label: 'Agenda',
-      description: 'Connectez Google Calendar pour synchroniser vos rendez-vous.',
+      label: 'Google Agenda',
+      description: 'Connectez Google Agenda pour éviter les doublons de rendez-vous.',
       status: input.calendarConnected ? 'done' : 'todo',
       href: '/dashboard-v2',
       cta: 'Voir',
@@ -1552,10 +1552,10 @@ function ParametresPageContent() {
                   ✓
                 </span>
                 <strong style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)' }}>
-                  Configuration complète
+                  Votre entreprise est prête
                 </strong>
                 <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                  Toutes les briques sont validées.
+                  Tous les réglages suivis ici sont complétés.
                 </span>
               </div>
               <button
@@ -1611,15 +1611,15 @@ function ParametresPageContent() {
                       ✓
                     </span>
                     <strong style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: 800 }}>
-                      {configurationPercent >= 100 ? 'Configuration complète' : `Configuration à ${configurationPercent}%`}
+                      {configurationPercent >= 100 ? 'Votre entreprise est prête' : `${configurationCompletedCount} étape${configurationCompletedCount > 1 ? 's' : ''} terminée${configurationCompletedCount > 1 ? 's' : ''} sur ${configurationItems.length}`}
                     </strong>
                   </div>
                   <p style={{ margin: '6px 0 0', color: 'var(--text-2)', fontSize: '12px', lineHeight: 1.5 }}>
                     {configurationPercent >= 100
-                      ? 'Tous les modules essentiels sont prêts. Vous pouvez consulter le détail à tout moment.'
+                      ? 'Les réglages essentiels sont prêts. Vous pouvez revoir le détail à tout moment.'
                       : configurationPrimaryCta
-                        ? `${configurationRemainingCount} élément(s) à compléter. Commencez par ${configurationPrimaryCta.label}.`
-                        : 'Finalisez les réglages essentiels pour exploiter pleinement votre espace.'}
+                        ? `Il reste ${configurationRemainingCount} réglage${configurationRemainingCount > 1 ? 's' : ''} à compléter. Commencez par ${configurationPrimaryCta.label}.`
+                        : 'Finalisez les réglages utiles pour profiter pleinement de Kadria.'}
                   </p>
                 </div>
 
@@ -1676,8 +1676,8 @@ function ParametresPageContent() {
               }}>
                 <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '12px' }}>
                   {configurationPercent >= 100
-                    ? 'Toutes les briques suivies ici sont complétées.'
-                    : `${configurationRemainingCount} élément(s) restent à compléter sur ${configurationItems.length}.`}
+                    ? 'Tous les réglages suivis ici sont complétés.'
+                    : `Il reste ${configurationRemainingCount} réglage${configurationRemainingCount > 1 ? 's' : ''} à compléter sur ${configurationItems.length}.`}
                 </p>
                 {configurationPrimaryCta && (
                   <button
@@ -1773,7 +1773,7 @@ function ParametresPageContent() {
                         fontWeight: 700,
                         color: done ? '#4ade80' : 'var(--text-2)',
                       }}>
-                        {done ? 'Termine' : 'A completer'}
+                        {done ? 'Terminé' : 'À compléter'}
                       </span>
                       {!done && (
                         <button
