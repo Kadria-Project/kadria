@@ -178,17 +178,17 @@ function buildIsoDateTime(date: string, time: string) {
 }
 
 function formatDayLabel(value: string | null) {
-  if (!value) return 'A planifier';
+  if (!value) return 'À planifier';
   try {
     return new Date(value).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
   } catch {
-    return 'A planifier';
+    return 'À planifier';
   }
 }
 
 function getAvailabilityMeta(availability: 'available' | 'soon' | 'busy') {
-  if (availability === 'busy') return { label: 'Occupe', color: '#fca5a5', background: 'rgba(239,68,68,0.14)' };
-  if (availability === 'soon') return { label: 'Bientot occupe', color: '#fcd34d', background: 'rgba(245,158,11,0.14)' };
+  if (availability === 'busy') return { label: 'Occupé', color: '#fca5a5', background: 'rgba(239,68,68,0.14)' };
+  if (availability === 'soon') return { label: 'Bientôt occupé', color: '#fcd34d', background: 'rgba(245,158,11,0.14)' };
   return { label: 'Disponible', color: '#6ee7b7', background: 'rgba(16,185,129,0.14)' };
 }
 
@@ -332,11 +332,11 @@ function AppointmentCard({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
           <User style={{ width: 12, height: 12, marginRight: '6px', verticalAlign: 'middle' }} />
-          {appointment.isUnassigned ? 'Non affecte' : appointment.assignedUserName || 'Collaborateur a confirmer'}
+          {appointment.isUnassigned ? 'Sans collaborateur' : appointment.assignedUserName || 'Collaborateur prévu'}
         </p>
         {appointment.clientName && (
           <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
-            Client : {appointment.clientName}
+            Client · {appointment.clientName}
           </p>
         )}
         {(appointment.address || appointment.location) && (
@@ -347,7 +347,7 @@ function AppointmentCard({
         )}
         {appointment.projectTitle && (
           <p style={{ margin: 0, fontSize: '12px', color: COLORS.text3 }}>
-            Projet : {appointment.projectTitle}
+            Dossier · {appointment.projectTitle}
           </p>
         )}
       </div>
@@ -396,7 +396,7 @@ function AppointmentCard({
             }}
           >
             <MapPin style={{ width: 14, height: 14 }} />
-            Itineraire
+            Itinéraire
           </a>
         )}
       </div>
@@ -489,7 +489,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     try {
       const response = await fetch('/api/integrations/google-calendar/status');
       if (response.status === 401) {
-        setStatusError('Session expiree');
+        setStatusError('Session expirée');
         setCalendarStatus({ connected: false, email: null });
         return;
       }
@@ -514,7 +514,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     try {
       const response = await fetch('/api/integrations/google-calendar/events');
       if (response.status === 401) {
-        setEventsError('Session expiree');
+        setEventsError('Session expirée');
         return;
       }
       const json = await response.json();
@@ -536,7 +536,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     try {
       const response = await fetch('/api/projects');
       if (response.status === 401) {
-        setProjectsError('Session expiree');
+        setProjectsError('Session expirée');
         return;
       }
       const json = await response.json();
@@ -591,7 +591,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
       }
       const response = await fetch(`/api/appointments/list?${params.toString()}`, { cache: 'no-store' });
       if (response.status === 401) {
-        setAppointmentsError('Session expiree');
+        setAppointmentsError('Session expirée');
         return;
       }
       const json = await response.json();
@@ -635,7 +635,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     if (!agendaParam) return;
 
     if (agendaParam === 'connected') {
-      setReturnMessage('Google Calendar connecte');
+      setReturnMessage('Google Agenda connecté');
       void fetchStatus();
     } else if (agendaParam === 'error') {
       setReturnMessage('Connexion Google impossible');
@@ -663,10 +663,10 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
       if (!response.ok || !json.success) {
         throw new Error(json?.error || 'Sauvegarde impossible');
       }
-      setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Calendar selectionne');
+      setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Agenda affiché');
     } catch (error) {
       setCalendarMode(previousMode);
-      setModeError(error instanceof Error ? error.message : "Impossible d'enregistrer votre preference d'agenda.");
+      setModeError(error instanceof Error ? error.message : "Impossible d'enregistrer votre préférence d'agenda.");
     } finally {
       setModeSaving(null);
     }
@@ -678,12 +678,12 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     try {
       const response = await fetch('/api/integrations/google-calendar/disconnect', { method: 'POST' });
       if (response.status === 401) {
-        setReturnMessage('Session expiree');
+        setReturnMessage('Session expirée');
         return;
       }
       const json = await response.json();
       if (json.success) {
-        setReturnMessage('Google Calendar deconnecte. Kadria ne synchronisera plus votre agenda.');
+        setReturnMessage('Google Agenda déconnecté. Kadria ne mettra plus votre agenda à jour.');
         setEvents([]);
         await fetchStatus();
       } else {
@@ -701,7 +701,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     setGoogleCreateSuccess(null);
 
     if (!newGoogleEvent.titre || !newGoogleEvent.date || !newGoogleEvent.heureDebut || !newGoogleEvent.heureFin) {
-      setGoogleCreateError('Titre, date, heure de debut et heure de fin requis');
+      setGoogleCreateError('Motif, date, heure de début et heure de fin requis');
       return;
     }
 
@@ -723,7 +723,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
       });
 
       if (response.status === 401) {
-        setGoogleCreateError('Session expiree');
+        setGoogleCreateError('Session expirée');
         return;
       }
 
@@ -733,7 +733,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
         return;
       }
 
-      setGoogleCreateSuccess("Rendez-vous planifie. L'evenement a ete ajoute a Google Calendar.");
+      setGoogleCreateSuccess("Rendez-vous planifié. L'événement a été ajouté à Google Agenda.");
       setNewGoogleEvent(EMPTY_NEW_GOOGLE_EVENT_FORM);
       setShowCreateGoogleForm(false);
       await fetchEvents();
@@ -749,7 +749,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     setAppointmentCreateSuccess(null);
 
     if (!newAppointment.titre || !newAppointment.date || !newAppointment.heureDebut || !newAppointment.heureFin) {
-      setAppointmentCreateError('Titre, date, heure de debut et heure de fin requis');
+      setAppointmentCreateError('Motif, date, heure de début et heure de fin requis');
       return;
     }
 
@@ -775,11 +775,11 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
 
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.success) {
-        setAppointmentCreateError(json?.error || 'Creation du rendez-vous impossible');
+        setAppointmentCreateError(json?.error || "Impossible d'enregistrer ce rendez-vous.");
         return;
       }
 
-      setAppointmentCreateSuccess(json.conflictWarning?.message || 'Rendez-vous cree');
+      setAppointmentCreateSuccess(json.conflictWarning?.message || 'Rendez-vous créé');
       setNewAppointment(EMPTY_NEW_APPOINTMENT_FORM);
       setShowCreateAppointmentForm(false);
       await fetchAppointments();
@@ -830,9 +830,9 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
           <CalendarDays style={{ width: 14, height: 14 }} />
           Agenda Kadria
         </div>
-        <h1 style={{ fontSize: '20px', fontWeight: 800, color: COLORS.text1, margin: '10px 0 0' }}>Planning d'equipe</h1>
+        <h1 style={{ fontSize: '20px', fontWeight: 800, color: COLORS.text1, margin: '10px 0 0' }}>Planning de l'équipe</h1>
         <p style={{ fontSize: '13px', color: COLORS.text2, margin: '4px 0 0' }}>
-          Retrouvez vos rendez-vous Kadria ou votre agenda Google selon votre facon de travailler.
+          Retrouvez vos rendez-vous Kadria ou votre agenda Google selon votre façon de travailler.
         </p>
       </div>
 
@@ -863,22 +863,22 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
           <Link2 style={{ width: 18, height: 18, color: COLORS.accent }} />
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Mode agenda</h2>
-            <p style={{ fontSize: '12px', color: COLORS.text2, margin: '4px 0 0' }}>Planning Kadria fonctionne sans connexion Google.</p>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Agenda affiché</h2>
+            <p style={{ fontSize: '12px', color: COLORS.text2, margin: '4px 0 0' }}>Choisissez simplement la vue qui vous aide le plus aujourd'hui.</p>
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <ModeCard
             title="Planning Kadria"
-            description="Rendez-vous, interventions et suivi d'equipe securises par tenant."
+            description="Vos rendez-vous et actions du jour dans Kadria."
             active={calendarMode === 'kadria'}
             disabled={modeSaving !== null}
             onClick={() => void saveMode('kadria')}
           />
           <ModeCard
-            title="Google Calendar"
-            description="Evenements synchronises et creation de rendez-vous Google."
+            title="Google Agenda"
+            description="Vos rendez-vous Google sur le même écran."
             active={calendarMode === 'google'}
             disabled={modeSaving !== null}
             onClick={() => void saveMode('google')}
@@ -896,7 +896,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Planning Kadria</h2>
                 <p style={{ fontSize: '12px', color: COLORS.text2, margin: '4px 0 0' }}>
                   {teamPermissions.canManageTeamPlanning
-                    ? `${normalizedAppointments.length} rendez-vous visibles${unassignedCount > 0 ? ` · ${unassignedCount} non affecte(s)` : ''}`
+                    ? `${normalizedAppointments.length} rendez-vous visibles${unassignedCount > 0 ? ` · ${unassignedCount} sans collaborateur` : ''}`
                     : `${normalizedAppointments.length} rendez-vous sur votre planning`}
                 </p>
               </div>
@@ -936,7 +936,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
               {teamPermissions.canManageTeamPlanning && (
                 <>
                   <FilterChip
-                    label="Toute l'equipe"
+                    label="Toute l'équipe"
                     active={collaboratorFilter === 'all'}
                     onClick={() => {
                       setCollaboratorFilter('all');
@@ -944,7 +944,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     }}
                   />
                   <FilterChip
-                    label="Non affectes"
+                    label="Sans collaborateur"
                     active={collaboratorFilter === 'unassigned'}
                     onClick={() => {
                       setCollaboratorFilter('unassigned');
@@ -958,7 +958,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
             {teamPermissions.canManageTeamPlanning && teamMembers.length > 0 && (
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: 600, color: COLORS.text2 }}>
-                  Collaborateur
+                  Collaborateur prévu
                 </label>
                 <select
                   value={collaboratorFilter === 'all' || collaboratorFilter === 'unassigned' || collaboratorFilter === 'me' ? '' : collaboratorFilter}
@@ -977,7 +977,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     fontSize: '13px',
                   }}
                 >
-                  <option value="">Selectionner un collaborateur</option>
+                  <option value="">Choisir un collaborateur</option>
                   {teamMembers.map((member) => (
                     <option key={member.userId} value={member.userId}>
                       {member.isMe ? `${member.name} (moi)` : member.name}
@@ -993,8 +993,8 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   {[
                     { label: "Aujourd'hui", value: insights.summary.today },
                     { label: 'Demain', value: insights.summary.tomorrow },
-                    { label: 'Semaine', value: insights.summary.thisWeek },
-                    { label: 'Non affectes', value: insights.summary.unassigned },
+                    { label: 'Cette semaine', value: insights.summary.thisWeek },
+                    { label: 'Sans collaborateur', value: insights.summary.unassigned },
                   ].map((item) => (
                     <div key={item.label} style={{ padding: '12px', borderRadius: '14px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
                       <p style={{ margin: 0, fontSize: '11px', color: COLORS.text3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.label}</p>
@@ -1007,11 +1007,11 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   <div style={{ padding: '12px', borderRadius: '14px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
                       <div>
-                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>Charge equipe</p>
-                        <p style={{ margin: '4px 0 0', fontSize: '11px', color: COLORS.text3 }}>Disponibilites et charge du jour.</p>
+                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>Charge de l'équipe</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '11px', color: COLORS.text3 }}>Qui est disponible aujourd'hui et combien de rendez-vous chacun a.</p>
                       </div>
                       {insights.heatmap.busiest && (
-                        <span style={{ fontSize: '11px', color: COLORS.text3 }}>Pic: {insights.heatmap.busiest.name}</span>
+                        <span style={{ fontSize: '11px', color: COLORS.text3 }}>Le plus chargé : {insights.heatmap.busiest.name}</span>
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1026,7 +1026,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                                 <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>{member.name}</p>
-                                <span style={{ fontSize: '11px', color: COLORS.text3 }}>{member.todayCount} RDV</span>
+                                <span style={{ fontSize: '11px', color: COLORS.text3 }}>{member.todayCount} rendez-vous</span>
                               </div>
                               <div style={{ marginTop: '6px', height: 6, borderRadius: '999px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
                                 <div style={{ width: `${member.loadPercent}%`, height: '100%', borderRadius: '999px', background: color }} />
@@ -1044,7 +1044,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
 
                 {(insights.conflicts.length > 0 || insights.travelWarnings.length > 0) && (
                   <div style={{ padding: '12px', borderRadius: '14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.24)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>Alertes operationnelles</p>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: COLORS.text1 }}>Points à vérifier</p>
                     {insights.conflicts.slice(0, 2).map((conflict) => (
                       <div key={conflict.appointmentId} style={{ padding: '10px', borderRadius: '12px', background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(245,158,11,0.18)' }}>
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#fcd34d' }}>Chevauchement</p>
@@ -1053,7 +1053,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     ))}
                     {insights.travelWarnings.slice(0, 1).map((warning) => (
                       <div key={warning.toAppointmentId} style={{ padding: '10px', borderRadius: '12px', background: 'rgba(0,0,0,0.12)', border: '1px solid rgba(245,158,11,0.18)' }}>
-                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#fcd34d' }}>Deplacement probablement trop court</p>
+                        <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#fcd34d' }}>Temps de trajet trop court</p>
                         <p style={{ margin: '4px 0 0', fontSize: '12px', color: COLORS.text2 }}>{warning.collaboratorName} · {warning.gapMinutes} min pour {warning.distanceKm} km</p>
                       </div>
                     ))}
@@ -1087,14 +1087,14 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 }}
               >
                 <CalendarDays style={{ width: 16, height: 16 }} />
-                Nouveau rendez-vous
+                Créer un rendez-vous
               </button>
             )}
 
             {showCreateAppointmentForm && teamPermissions.canCreatePersonalAppointments && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                 <input
-                  placeholder="Titre"
+                  placeholder="Motif du rendez-vous"
                   value={newAppointment.titre}
                   onChange={(e) => setNewAppointment((form) => ({ ...form, titre: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
@@ -1115,7 +1115,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   onChange={(e) => setNewAppointment((form) => ({ ...form, projectId: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
                 >
-                  <option value="">Aucun dossier lie</option>
+                  <option value="">Aucun dossier lié</option>
                   {projectOptions.map((project) => (
                     <option key={project.id} value={project.id}>
                       {project.meta ? `${project.label} · ${project.meta}` : project.label}
@@ -1143,7 +1143,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   />
                 </div>
                 <input
-                  placeholder="Lieu"
+                  placeholder="Adresse"
                   value={newAppointment.lieu}
                   onChange={(e) => setNewAppointment((form) => ({ ...form, lieu: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
@@ -1154,7 +1154,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     onChange={(e) => setNewAppointment((form) => ({ ...form, assignedUserId: e.target.value }))}
                     style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bg, color: COLORS.text1 }}
                   >
-                    <option value="">Non affecte</option>
+                    <option value="">Sans collaborateur</option>
                     {teamMembers.map((member) => (
                       <option key={member.userId} value={member.userId}>
                         {member.isMe ? `${member.name} (moi)` : member.name}
@@ -1163,7 +1163,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   </select>
                 )}
                 <textarea
-                  placeholder="Notes (optionnel)"
+                  placeholder="Notes utiles (optionnel)"
                   value={newAppointment.note}
                   onChange={(e) => setNewAppointment((form) => ({ ...form, note: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', resize: 'vertical', minHeight: '60px', background: COLORS.bg, color: COLORS.text1 }}
@@ -1189,7 +1189,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     opacity: creatingAppointment ? 0.7 : 1,
                   }}
                 >
-                  {creatingAppointment ? 'Creation...' : 'Valider'}
+                  {creatingAppointment ? 'Création...' : 'Enregistrer le rendez-vous'}
                 </button>
               </div>
             )}
@@ -1207,13 +1207,13 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 ))}
               </div>
             ) : normalizedAppointments.length === 0 ? (
-              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous a afficher pour ce filtre.</p>
+              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous pour ce filtre.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {appointmentsByDay.map(([dayKey, dayAppointments]) => (
                   <div key={dayKey} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: COLORS.text2, textTransform: 'capitalize' }}>
-                      {dayKey === 'unplanned' ? 'A planifier' : formatDayLabel(dayAppointments[0]?.start || null)}
+                      {dayKey === 'unplanned' ? 'À planifier' : formatDayLabel(dayAppointments[0]?.start || null)}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {dayAppointments.map((appointment) => (
@@ -1235,15 +1235,15 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
           <div style={card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
               <Link2 style={{ width: 18, height: 18, color: COLORS.accent }} />
-              <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Agenda Google</h2>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Google Agenda</h2>
             </div>
 
             {statusLoading ? (
-              <p style={{ fontSize: '13px', color: COLORS.text3, margin: 0 }}>Verification de la connexion...</p>
+              <p style={{ fontSize: '13px', color: COLORS.text3, margin: 0 }}>Vérification de la connexion...</p>
             ) : calendarStatus.connected ? (
               <>
                 <p style={{ fontSize: '13px', color: COLORS.text2, margin: '0 0 10px' }}>
-                  Google Calendar connecte{calendarStatus.email ? ` - ${calendarStatus.email}` : ''}
+                  Google Agenda connecté{calendarStatus.email ? ` - ${calendarStatus.email}` : ''}
                 </p>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
@@ -1267,7 +1267,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     }}
                   >
                     <RefreshCw style={{ width: 14, height: 14 }} />
-                    Synchroniser
+                    Mettre à jour
                   </button>
                   <button
                     type="button"
@@ -1290,14 +1290,14 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     }}
                   >
                     <Unplug style={{ width: 14, height: 14 }} />
-                    Deconnecter
+                    Déconnecter
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <p style={{ fontSize: '13px', color: COLORS.text2, margin: '0 0 14px' }}>
-                  Connectez Google Calendar pour retrouver vos rendez-vous synchronises dans Kadria.
+                  Connectez Google Agenda pour retrouver vos rendez-vous synchronisés dans Kadria.
                 </p>
                 <button
                   type="button"
@@ -1320,7 +1320,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   }}
                 >
                   <CalendarDays style={{ width: 16, height: 16 }} />
-                  Connecter Google Calendar
+                  Connecter Google Agenda
                 </button>
                 {statusError && (
                   <div
@@ -1341,7 +1341,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
 
           <div style={card}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Prochains rendez-vous</h2>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: 0 }}>Rendez-vous Google à venir</h2>
               {calendarStatus.connected && (
                 <button
                   type="button"
@@ -1365,7 +1365,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   }}
                 >
                   <FileText style={{ width: 14, height: 14 }} />
-                  Nouveau
+                  Créer un rendez-vous
                 </button>
               )}
             </div>
@@ -1373,7 +1373,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
             {showCreateGoogleForm && calendarStatus.connected && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                 <input
-                  placeholder="Titre"
+                  placeholder="Motif du rendez-vous"
                   value={newGoogleEvent.titre}
                   onChange={(e) => setNewGoogleEvent((form) => ({ ...form, titre: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
@@ -1399,13 +1399,13 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   />
                 </div>
                 <input
-                  placeholder="Lieu (optionnel)"
+                  placeholder="Adresse (optionnel)"
                   value={newGoogleEvent.lieu}
                   onChange={(e) => setNewGoogleEvent((form) => ({ ...form, lieu: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', background: COLORS.bgElevated, color: COLORS.text1 }}
                 />
                 <textarea
-                  placeholder="Description (optionnel)"
+                  placeholder="Notes utiles (optionnel)"
                   value={newGoogleEvent.note}
                   onChange={(e) => setNewGoogleEvent((form) => ({ ...form, note: e.target.value }))}
                   style={{ padding: '10px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, fontSize: '13px', resize: 'vertical', minHeight: '60px', background: COLORS.bgElevated, color: COLORS.text1 }}
@@ -1429,13 +1429,13 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                     opacity: creatingGoogleEvent ? 0.7 : 1,
                   }}
                 >
-                  {creatingGoogleEvent ? 'Creation...' : 'Valider'}
+                  {creatingGoogleEvent ? 'Création...' : 'Enregistrer le rendez-vous'}
                 </button>
               </div>
             )}
 
             {!calendarStatus.connected ? (
-              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Connectez Google pour afficher vos rendez-vous synchronises.</p>
+              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Connectez Google Agenda pour afficher vos rendez-vous.</p>
             ) : eventsError ? (
               <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>{eventsError}</p>
             ) : eventsLoading ? (
@@ -1449,7 +1449,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 ))}
               </div>
             ) : events.length === 0 ? (
-              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous a venir.</p>
+              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous à venir.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {events.map((event) => (
@@ -1484,9 +1484,9 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
           }}
         >
           <div style={{ ...card, maxWidth: '380px', width: '100%' }}>
-            <p style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: '0 0 8px' }}>Deconnecter Google Calendar ?</p>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text1, margin: '0 0 8px' }}>Déconnecter Google Agenda ?</p>
             <p style={{ fontSize: '13px', color: COLORS.text2, margin: '0 0 16px' }}>
-              Vos rendez-vous deja crees resteront dans Google Calendar, mais Kadria ne pourra plus synchroniser votre agenda.
+              Vos rendez-vous déjà créés resteront dans Google Agenda, mais Kadria ne pourra plus mettre cet agenda à jour.
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -1521,7 +1521,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                   opacity: disconnecting ? 0.7 : 1,
                 }}
               >
-                Deconnecter
+                Déconnecter
               </button>
             </div>
           </div>
