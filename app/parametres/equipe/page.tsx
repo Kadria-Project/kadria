@@ -26,6 +26,73 @@ type TeamResponse = {
   error?: string
 }
 
+type ConfirmActionState =
+  | {
+      kind: 'member-action'
+      memberId: string
+      action: 'suspend' | 'reactivate' | 'remove'
+      title: string
+      description: string
+      confirmLabel: string
+      tone?: 'default' | 'danger'
+    }
+  | {
+      kind: 'role-change'
+      memberId: string
+      role: string
+      jobTitle: string | null
+      title: string
+      description: string
+      confirmLabel: string
+      tone?: 'default' | 'danger'
+    }
+  | {
+      kind: 'invitation-action'
+      invitationId: string
+      action: 'resend' | 'revoke'
+      title: string
+      description: string
+      confirmLabel: string
+      tone?: 'default' | 'danger'
+    }
+
+function humanizeTeamError(message: string | undefined, fallback: string) {
+  if (!message) return fallback
+
+  const normalized = message.trim().toLowerCase()
+
+  if (
+    normalized.includes('forbidden') ||
+    normalized.includes('unauthorized') ||
+    normalized.includes("permission")
+  ) {
+    return "Vous n'avez pas acces a cette action."
+  }
+
+  if (
+    normalized.includes('invite_already_exists') ||
+    normalized.includes('invitation already exists') ||
+    normalized.includes('invitation pending') ||
+    normalized.includes('already pending')
+  ) {
+    return 'Une invitation est deja en attente pour cette adresse.'
+  }
+
+  if (
+    normalized.includes('already member') ||
+    normalized.includes('already part of the team') ||
+    normalized.includes('already belongs')
+  ) {
+    return 'Cette personne fait deja partie de l equipe.'
+  }
+
+  if (normalized.includes('[object object]')) {
+    return fallback
+  }
+
+  return message
+}
+
 export default function TeamSettingsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -35,6 +102,7 @@ export default function TeamSettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionState | null>(null)
   const [inviteForm, setInviteForm] = useState<InviteFormState>({
     firstName: '',
     lastName: '',
@@ -51,12 +119,12 @@ export default function TeamSettingsPage() {
       const response = await fetch('/api/team', { cache: 'no-store' })
       const payload = (await response.json()) as TeamResponse
       if (!response.ok || !payload.success) {
-        throw new Error(payload.error || "Impossible de charger l'equipe.")
+        throw new Error(humanizeTeamError(payload.error, "Impossible de charger l'equipe."))
       }
       setData(payload)
     } catch (err) {
       setData(null)
-      setLoadError(err instanceof Error ? err.message : "Impossible de charger l'equipe.")
+      setLoadError(err instanceof Error ? humanizeTeamError(err.message, "Impossible de charger l'equipe.") : "Impossible de charger l'equipe.")
     } finally {
       setLoading(false)
     }
@@ -77,7 +145,12 @@ export default function TeamSettingsPage() {
   const pendingInvitations = (data?.invitations || []).filter((invitation) => invitation.status === 'pending')
   const teamData = hasLoadedData ? data : null
 
-  async function submit(path: string, method: 'POST' | 'PATCH' = 'POST', body?: Record<string, unknown>) {
+  async function submit(
+    path: string,
+    method: 'POST' | 'PATCH' = 'POST',
+    body?: Record<string, unknown>,
+    fallbackError = 'Action impossible.',
+  ) {
     setSubmitting(true)
     setFeedback(null)
     setError(null)
@@ -89,7 +162,7 @@ export default function TeamSettingsPage() {
       })
       const payload = await response.json().catch(() => ({}))
       if (!response.ok || !payload.success) {
-        throw new Error(payload.error || 'Action impossible.')
+        throw new Error(humanizeTeamError(payload.error, fallbackError))
       }
       return payload
     } finally {
@@ -99,8 +172,13 @@ export default function TeamSettingsPage() {
 
   async function handleInvite() {
     try {
-      const payload = await submit('/api/team/invitations', 'POST', inviteForm)
-      setFeedback(payload.warning || `Invitation envoyee a ${inviteForm.email}`)
+      const payload = await submit(
+        '/api/team/invitations',
+        'POST',
+        inviteForm,
+        "L'invitation n'a pas pu etre envoyee.",
+      )
+      setFeedback(payload.warning || 'Invitation envoyee.')
       setInviteOpen(false)
       setInviteForm({
         firstName: '',
@@ -112,54 +190,98 @@ export default function TeamSettingsPage() {
       })
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'envoyer l'invitation.")
+      setError(err instanceof Error ? humanizeTeamError(err.message, "L'invitation n'a pas pu etre envoyee.") : "L'invitation n'a pas pu etre envoyee.")
     }
   }
 
   async function handleResend(id: string) {
     try {
-      await submit(`/api/team/invitations/${id}/resend`)
-      setFeedback("L'invitation a ete renvoyee.")
+      await submit(
+        `/api/team/invitations/${id}/resend`,
+        'POST',
+        undefined,
+        "L'invitation n'a pas pu etre envoyee.",
+      )
+      setFeedback('Invitation renvoyee.')
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible de renvoyer l'invitation.")
+      setError(err instanceof Error ? humanizeTeamError(err.message, "L'invitation n'a pas pu etre envoyee.") : "L'invitation n'a pas pu etre envoyee.")
     }
   }
 
   async function handleRevoke(id: string) {
     try {
-      await submit(`/api/team/invitations/${id}/revoke`)
-      setFeedback("L'invitation a ete annulee.")
+      await submit(
+        `/api/team/invitations/${id}/revoke`,
+        'POST',
+        undefined,
+        "Kadria n'a pas pu modifier cette invitation.",
+      )
+      setFeedback('Invitation annulee.')
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'annuler l'invitation.")
+      setError(err instanceof Error ? humanizeTeamError(err.message, "Kadria n'a pas pu modifier cette invitation.") : "Kadria n'a pas pu modifier cette invitation.")
     }
   }
 
   async function handleMemberAction(id: string, action: 'suspend' | 'reactivate' | 'remove') {
     try {
-      await submit(`/api/team/members/${id}/${action}`)
+      await submit(
+        `/api/team/members/${id}/${action}`,
+        'POST',
+        undefined,
+        "Kadria n'a pas pu modifier cet acces.",
+      )
       setFeedback(
         action === 'suspend'
-          ? "L'acces a ete suspendu."
+          ? 'Acces suspendu.'
           : action === 'reactivate'
-            ? "L'acces a ete reactive."
-            : "Le collaborateur a ete retire de l'equipe.",
+            ? 'Acces reactive.'
+            : "Personne retiree de l'equipe.",
       )
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kadria n'a pas pu modifier cet acces.")
+      setError(err instanceof Error ? humanizeTeamError(err.message, "Kadria n'a pas pu modifier cet acces.") : "Kadria n'a pas pu modifier cet acces.")
     }
   }
 
   async function handleRoleChange(memberId: string, role: string, jobTitle: string | null) {
     try {
-      await submit(`/api/team/members/${memberId}`, 'PATCH', { role, jobTitle })
-      setFeedback('Le role a ete modifie.')
+      await submit(
+        `/api/team/members/${memberId}`,
+        'PATCH',
+        { role, jobTitle },
+        "Kadria n'a pas pu modifier cet acces.",
+      )
+      setFeedback('Role modifie.')
       await loadTeam()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kadria n'a pas pu modifier ce role.")
+      setError(err instanceof Error ? humanizeTeamError(err.message, "Kadria n'a pas pu modifier cet acces.") : "Kadria n'a pas pu modifier cet acces.")
     }
+  }
+
+  async function handleConfirmAction() {
+    if (!confirmAction) return
+
+    const currentAction = confirmAction
+    setConfirmAction(null)
+
+    if (currentAction.kind === 'member-action') {
+      await handleMemberAction(currentAction.memberId, currentAction.action)
+      return
+    }
+
+    if (currentAction.kind === 'role-change') {
+      await handleRoleChange(currentAction.memberId, currentAction.role, currentAction.jobTitle)
+      return
+    }
+
+    if (currentAction.action === 'resend') {
+      await handleResend(currentAction.invitationId)
+      return
+    }
+
+    await handleRevoke(currentAction.invitationId)
   }
 
   return (
@@ -257,11 +379,63 @@ export default function TeamSettingsPage() {
                     key={member.membershipId}
                     member={member}
                     canManage={Boolean(teamData.permissions?.canManageMembers)}
-                    onRoleChange={(role) => handleRoleChange(member.membershipId, role, member.jobTitle)}
-                    onToggleSuspend={() => handleMemberAction(member.membershipId, member.status === 'suspended' ? 'reactivate' : 'suspend')}
-                    onRemove={() => handleMemberAction(member.membershipId, 'remove')}
+                    onRoleChange={(role) =>
+                      setConfirmAction({
+                        kind: 'role-change',
+                        memberId: member.membershipId,
+                        role,
+                        jobTitle: member.jobTitle,
+                        title: "Modifier le role dans l'equipe ?",
+                        description: 'Ses acces seront mis a jour immediatement.',
+                        confirmLabel: 'Confirmer le changement',
+                      })}
+                    onToggleSuspend={() =>
+                      setConfirmAction(
+                        member.status === 'suspended'
+                          ? {
+                              kind: 'member-action',
+                              memberId: member.membershipId,
+                              action: 'reactivate',
+                              title: 'Reactiver cet acces ?',
+                              description: 'Cette personne pourra se reconnecter a Kadria et reprendre son activite.',
+                              confirmLabel: "Reactiver l'acces",
+                            }
+                          : {
+                              kind: 'member-action',
+                              memberId: member.membershipId,
+                              action: 'suspend',
+                              title: "Suspendre l'acces de cette personne ?",
+                              description: "Elle ne pourra plus se connecter a Kadria tant que son acces restera suspendu.",
+                              confirmLabel: "Suspendre l'acces",
+                            },
+                      )}
+                    onRemove={() =>
+                      setConfirmAction({
+                        kind: 'member-action',
+                        memberId: member.membershipId,
+                        action: 'remove',
+                        title: "Retirer cette personne de l'equipe ?",
+                        description: "Elle perdra l'acces aux dossiers et au planning. Cette action doit etre clairement assumee.",
+                        confirmLabel: "Retirer de l'equipe",
+                        tone: 'danger',
+                      })}
                   />
                 ))}
+
+                {teamData.members?.length === 0 && (
+                  <div className="rounded-[18px] border border-dashed border-white/10 bg-black/10 p-5 text-sm text-zinc-500">
+                    <p>Aucun collaborateur pour le moment.</p>
+                    {data?.permissions?.canInviteMembers && (
+                      <button
+                        type="button"
+                        onClick={() => setInviteOpen(true)}
+                        className="mt-4 inline-flex h-10 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
+                      >
+                        Inviter un collaborateur
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -277,8 +451,25 @@ export default function TeamSettingsPage() {
                     key={invitation.id}
                     invitation={invitation}
                     submitting={submitting}
-                    onResend={() => handleResend(invitation.id)}
-                    onRevoke={() => handleRevoke(invitation.id)}
+                    onResend={() =>
+                      setConfirmAction({
+                        kind: 'invitation-action',
+                        invitationId: invitation.id,
+                        action: 'resend',
+                        title: "Renvoyer l'invitation ?",
+                        description: 'Un nouvel email sera envoye pour aider cette personne a rejoindre votre espace Kadria.',
+                        confirmLabel: "Renvoyer l'invitation",
+                      })}
+                    onRevoke={() =>
+                      setConfirmAction({
+                        kind: 'invitation-action',
+                        invitationId: invitation.id,
+                        action: 'revoke',
+                        title: "Annuler cette invitation ?",
+                        description: "Cette personne ne pourra plus utiliser cette invitation pour rejoindre votre equipe.",
+                        confirmLabel: "Annuler l'invitation",
+                        tone: 'danger',
+                      })}
                   />
                 ))}
 
@@ -301,6 +492,17 @@ export default function TeamSettingsPage() {
         onSubmit={handleInvite}
         submitting={submitting}
       />
+
+      <ConfirmActionDialog
+        open={Boolean(confirmAction)}
+        submitting={submitting}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.confirmLabel || 'Confirmer'}
+        tone={confirmAction?.tone || 'default'}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => void handleConfirmAction()}
+      />
     </main>
   )
 }
@@ -310,6 +512,60 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
       <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">{label}</p>
       <p className="mt-3 text-lg font-semibold text-white sm:text-xl">{value}</p>
+    </div>
+  )
+}
+
+function ConfirmActionDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  submitting,
+  tone,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean
+  title: string
+  description: string
+  confirmLabel: string
+  submitting: boolean
+  tone: 'default' | 'danger'
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 pb-4 pt-10 backdrop-blur-sm sm:items-center sm:p-6">
+      <div className="w-full max-w-md rounded-[24px] border border-white/10 bg-[#111315] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)] sm:p-6">
+        <p className="text-lg font-semibold text-white">{title}</p>
+        <p className="mt-3 text-sm leading-7 text-zinc-400">{description}</p>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/[0.04] disabled:opacity-60"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={submitting}
+            className={`h-11 rounded-xl px-4 text-sm font-semibold transition disabled:opacity-60 ${
+              tone === 'danger'
+                ? 'border border-rose-500/20 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                : 'bg-[#22c55e] text-black hover:opacity-90'
+            }`}
+          >
+            {submitting ? 'Enregistrement...' : confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
