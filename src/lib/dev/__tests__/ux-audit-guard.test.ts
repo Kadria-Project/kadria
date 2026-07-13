@@ -16,13 +16,13 @@ import assert from 'node:assert/strict'
 
 register('./server-only-shim.loader.mjs', import.meta.url)
 
-const guard = await import('../ux-audit-guard.ts')
+const guard = await import('../ux-audit-guard')
 const {
   isUxAuditModeConfigured,
   getConfiguredAuditEmail,
   isLocalHostHeader,
   assertUxAuditRequestAllowed,
-} = guard as typeof import('../ux-audit-guard.ts')
+} = guard as typeof import('../ux-audit-guard')
 
 const ENV_KEYS = ['NODE_ENV', 'KADRIA_LOCAL_REAL_AUDIT', 'KADRIA_AUDIT_USER_EMAIL'] as const
 
@@ -32,16 +32,22 @@ function withEnv(overrides: Partial<Record<(typeof ENV_KEYS)[number], string | u
 
   for (const key of ENV_KEYS) {
     const value = overrides[key]
-    if (value === undefined) delete process.env[key]
-    else process.env[key] = value
+    if (value === undefined) {
+      Reflect.deleteProperty(process.env, key)
+    } else {
+      Object.assign(process.env, { [key]: value })
+    }
   }
 
   try {
     fn()
   } finally {
     for (const key of ENV_KEYS) {
-      if (original[key] === undefined) delete process.env[key]
-      else process.env[key] = original[key]
+      if (original[key] === undefined) {
+        Reflect.deleteProperty(process.env, key)
+      } else {
+        Object.assign(process.env, { [key]: original[key] })
+      }
     }
   }
 }
@@ -139,16 +145,14 @@ test('assertUxAuditRequestAllowed exposes no role/tenant/redirect/claims fields 
   withEnv(BASE_ENABLED_ENV, () => {
     // The guard's input surface is limited to hostHeader + requestedEmail.
     // Passing extra/arbitrary fields must have no effect on the outcome.
-    const result = assertUxAuditRequestAllowed({
+    const request = {
       hostHeader: 'localhost:3000',
       requestedEmail: CONFIGURED_EMAIL,
-      // @ts-expect-error intentionally passing fields the guard does not accept
       role: 'Admin',
-      // @ts-expect-error intentionally passing fields the guard does not accept
       tenantId: 'some-other-tenant',
-      // @ts-expect-error intentionally passing fields the guard does not accept
       redirectPath: 'https://evil.example.com',
-    })
+    }
+    const result = assertUxAuditRequestAllowed(request)
     assert.equal(result.enabled, true)
   })
 })
