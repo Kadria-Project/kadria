@@ -4,7 +4,7 @@ import { TABLES, getAllSentDevis, getArtisanConfig, resolveProjectId, updateDevi
 import { notifyArtisanQuoteFollowedUp } from '@/src/lib/artisan-notifications'
 import { getPublicDevisUrl } from '@/src/lib/base-url'
 import { createArtisanNotification } from '@/src/lib/notifications'
-import { generateQuoteFollowupEmailForStage, getQuoteFollowupState } from '@/src/lib/quote-followup'
+import { generateQuoteFollowupEmailForStage, getQuoteFollowupState, type QuoteFollowupState } from '@/src/lib/quote-followup'
 import { getProjectDisplayTitle } from '@/src/lib/project-detail/project-headline'
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
@@ -155,7 +155,25 @@ export interface AutomationHistoryRunItem {
   canRetry: boolean
 }
 
+interface QuoteFollowupCronDebugSummary {
+  automationsEvaluated: number
+  projectsScanned: number
+  quotesScanned: number
+  eligibleQuotes: number
+  runsCreated: number
+  rejectedByReason: Record<string, number>
+}
+
 const TENANTS_TABLE = 'tenants'
+
+const EMPTY_QUOTE_FOLLOWUP_CRON_DEBUG_SUMMARY: QuoteFollowupCronDebugSummary = {
+  automationsEvaluated: 0,
+  projectsScanned: 0,
+  quotesScanned: 0,
+  eligibleQuotes: 0,
+  runsCreated: 0,
+  rejectedByReason: {},
+}
 
 const AUTOMATION_TIME_SAVED_MINUTES: Record<BusinessAutomationType, number> = {
   quote_followup: 3,
@@ -407,6 +425,49 @@ function clampPage(value: number) {
 function clampLimit(value: number) {
   if (!Number.isFinite(value) || value < 1) return 25
   return Math.min(100, Math.floor(value))
+}
+
+function incrementQuoteFollowupDebugReason(
+  summary: QuoteFollowupCronDebugSummary,
+  reason: string,
+) {
+  summary.rejectedByReason[reason] = (summary.rejectedByReason[reason] || 0) + 1
+}
+
+function getQuoteFollowupRejectionReason(
+  devis: {
+    statut?: string | null
+    sent?: boolean | null
+    quoteSentAt?: string | null
+    accepted?: boolean | null
+    acceptedAt?: string | null
+    declined?: boolean | null
+    declinedAt?: string | null
+    declineReason?: string | null
+    followUpDisabled?: boolean | null
+    followUpCount?: number | null
+    clientEmail?: string | null
+  },
+  state: QuoteFollowupState,
+) {
+  if (state.shouldAutoFollowUp) return null
+  if (state.stage === 'completed') {
+    if (Boolean(devis.accepted) || devis.acceptedAt) return 'accepted_or_completed'
+    if (Boolean(devis.declined) || devis.declinedAt || devis.declineReason) return 'declined_or_completed'
+    if ((devis.followUpCount || 0) >= 3) return 'max_followups_reached'
+    return 'completed_status'
+  }
+  if (state.stage === 'expired') return 'quote_expired'
+  if (state.stage === 'stopped') return 'followup_disabled'
+  if (state.stage === 'none') {
+    if (!Boolean(devis.sent) && !(devis.statut || '').toLowerCase().trim().startsWith('envoy')) return 'quote_not_sent'
+    if (!devis.quoteSentAt) return 'quote_sent_at_missing'
+    if (state.reason.includes('invalide')) return 'quote_sent_at_invalid'
+    if (state.canFollowUp && !devis.clientEmail) return 'client_email_missing'
+    return 'not_due_yet'
+  }
+  if (state.canFollowUp && !devis.clientEmail) return 'client_email_missing'
+  return 'not_eligible'
 }
 
 async function ensureTenantAutomationRows(tenantId: string, createdBy: string | null) {
@@ -941,7 +1002,16 @@ async function createAutomationRun(input: {
     .maybeSingle()
 
   if (error) {
-    if (String(error.code || '') === '23505') return null
+    if (String(error.code || '') === '23505') {
+      console.info('[AUTOMATIONS][RUN_DUPLICATE]', {
+        automation_type: input.automation.type,
+        tenant_id: input.automation.tenantId,
+        entity_type: input.entityType,
+        entity_id: input.entityId,
+        idempotency_key: input.idempotencyKey,
+      })
+      return null
+    }
     throw new Error(error.message)
   }
   return data ? mapRun(data as Record<string, unknown>) : null
@@ -1153,14 +1223,75 @@ async function createInternalReminderNotification(input: { artisanId: string; te
   })
 }
 
-async function evaluateForAutomation(automation: BusinessAutomationRecord, tenant: { id: string; name: string; legacyArtisanId: string | null }) {
+async function evaluateForAutomation(
+  automation: BusinessAutomationRecord,
+  tenant: { id: string; name: string; legacyArtisanId: string | null },
+  diagnostics?: { quoteFollowup?: QuoteFollowupCronDebugSummary },
+) {
   switch (automation.type) {
     case 'quote_followup': {
       const allSent = await getAllSentDevis()
+      const quoteSummary = diagnostics?.quoteFollowup
+      if (quoteSummary) {
+        quoteSummary.automationsEvaluated += 1
+        quoteSummary.quotesScanned += allSent.length
+      }
+
       const due = allSent
-        .filter((devis) => devis.artisanId === tenant.legacyArtisanId)
-        .map((devis) => ({ devis, state: getQuoteFollowupState(devis) }))
+        .filter((devis) => {
+          const sameTenant = devis.artisanId === tenant.legacyArtisanId
+          if (!sameTenant && quoteSummary) {
+            incrementQuoteFollowupDebugReason(quoteSummary, 'tenant_legacy_artisan_mismatch')
+          }
+          return sameTenant
+        })
+        .map((devis) => {
+          const state = getQuoteFollowupState(devis)
+          const rejectionReason = getQuoteFollowupRejectionReason(devis, state)
+          console.info('[AUTOMATIONS][QUOTE_FOLLOWUP][EVALUATE]', {
+            tenant_id: tenant.id,
+            tenant_legacy_artisan_id: tenant.legacyArtisanId,
+            project_id: devis.projectId,
+            devis_id: devis.id,
+            project_status: null,
+            lead_status: null,
+            devis_status: devis.statut || null,
+            quote_sent_at: devis.quoteSentAt || null,
+            accepted: Boolean(devis.accepted),
+            accepted_at: devis.acceptedAt || null,
+            declined_at: devis.declinedAt || null,
+            last_follow_up_at: devis.lastFollowUpAt || null,
+            follow_up_count: devis.followUpCount || 0,
+            client_channel_email_available: Boolean(devis.clientEmail),
+            automation_enabled: automation.enabled,
+            mode: automation.mode,
+            delay_value: automation.delayValue,
+            delay_unit: automation.delayUnit,
+            threshold_calculated: state.stage,
+            should_auto_follow_up: state.shouldAutoFollowUp,
+            can_follow_up: state.canFollowUp,
+            idempotency_key: buildIdempotencyKey({
+              tenantId: automation.tenantId,
+              type: automation.type,
+              entityType: 'project',
+              entityId: devis.projectId,
+              windowKey: `${new Date().toISOString().slice(0, 10)}-${state.stage}`,
+            }),
+            blocked_by_existing_run_or_activity: false,
+            rejection_reason: rejectionReason,
+            decision_reason: state.reason,
+          })
+          if (quoteSummary) {
+            quoteSummary.projectsScanned += devis.projectId ? 1 : 0
+            if (rejectionReason) incrementQuoteFollowupDebugReason(quoteSummary, rejectionReason)
+          }
+          return { devis, state }
+        })
         .filter(({ state }) => state.shouldAutoFollowUp)
+
+      if (quoteSummary) {
+        quoteSummary.eligibleQuotes += due.length
+      }
       return due.map(({ devis, state }) => ({
         entityType: 'project' as const,
         entityId: devis.projectId,
@@ -1317,6 +1448,9 @@ export async function processBusinessAutomationsCron() {
   let createdRuns = 0
   let executedRuns = 0
   const failures: string[] = []
+  const diagnostics = {
+    quoteFollowup: { ...EMPTY_QUOTE_FOLLOWUP_CRON_DEBUG_SUMMARY, rejectedByReason: {} as Record<string, number> },
+  }
   const rows = (data || []) as Array<Record<string, unknown> & { tenants?: Record<string, unknown> }>
 
   const tenantBuckets = new Map<
@@ -1361,7 +1495,7 @@ export async function processBusinessAutomationsCron() {
 
       for (const automation of automations) {
         try {
-          const candidates = await evaluateForAutomation(automation, tenant)
+          const candidates = await evaluateForAutomation(automation, tenant, diagnostics)
           for (const candidate of candidates) {
             const run = await createAutomationRun({
               automation,
@@ -1378,8 +1512,16 @@ export async function processBusinessAutomationsCron() {
               }),
               status: automation.mode === 'automatic' && DEFINITIONS[automation.type].automaticAllowed ? 'pending' : 'prepared',
             })
-            if (!run) continue
+            if (!run) {
+              if (automation.type === 'quote_followup') {
+                incrementQuoteFollowupDebugReason(diagnostics.quoteFollowup, 'duplicate_idempotency_key')
+              }
+              continue
+            }
             createdRuns += 1
+            if (automation.type === 'quote_followup') {
+              diagnostics.quoteFollowup.runsCreated += 1
+            }
             if (automation.mode === 'automatic' && DEFINITIONS[automation.type].automaticAllowed) {
               const result = await executeRun(automation, tenant, run, null)
               if (result.status === 'succeeded') executedRuns += 1
@@ -1405,6 +1547,8 @@ export async function processBusinessAutomationsCron() {
       }).catch(() => undefined)
     }
   }
+
+  console.info('[AUTOMATIONS][QUOTE_FOLLOWUP][SUMMARY]', diagnostics.quoteFollowup)
 
   return {
     processedTenants: tenantBuckets.size,
