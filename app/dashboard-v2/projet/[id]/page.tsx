@@ -2276,9 +2276,9 @@ function ProjectDetail() {
   const smsCompletionHasPhone = hasMeaningfulValue(project.clientPhone);
   const smsCompletionHasLink = hasMeaningfulValue(project.smsCompletionUrl);
   const smsCompletionPhotosCount = Array.isArray(project.photos) ? project.photos.length : 0;
-  const heroSubtitle = [clientLabel, project.trade || 'Metier non renseigne', project.city || 'Ville non renseignee', sourceLabel].join(' · ');
-  const budgetLabel = project.budget || 'Budget non renseigne';
-  const timelineLabel = project.desiredTimeline || 'Delai non precise';
+  const heroSubtitle = [clientLabel, project.trade || 'Besoin à préciser', project.city || 'Lieu à préciser', sourceLabel].join(' · ');
+  const budgetLabel = project.budget || 'Non renseigné';
+  const timelineLabel = project.desiredTimeline || 'Non précisé';
   const scrollToActionsAndQuote = () => {
     actionsAndQuoteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -2715,7 +2715,7 @@ function ProjectDetail() {
       },
       {
         key: 'retours',
-        title: 'Retours client',
+        title: 'Messages du client',
         content: (() => {
           const clientMessages = parseClientMessages(project?.clientMessages);
           const clientUpdateCount = Number(project?.clientUpdateCount) || 0;
@@ -2747,7 +2747,7 @@ function ProjectDetail() {
               )}
 
               <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                Discussion client
+                Messages échangés
               </p>
 
               {discussionEvents.length === 0 && !useLegacyFallback && (
@@ -2844,7 +2844,7 @@ function ProjectDetail() {
                     cursor: (clientReplySending || !clientReplyMessage.trim()) ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}
+                  {clientReplySending ? 'Envoi...' : 'Envoyer au client'}
                 </button>
               </div>
             </div>
@@ -2900,7 +2900,7 @@ function ProjectDetail() {
       },
       {
         key: 'analyse',
-        title: 'Analyse détaillée',
+        title: 'Ce qu’il faut savoir',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-2)' }}>
             <p style={{ margin: 0 }}>Score : {analysis.score}/100 — {analysis.temperatureLabel}</p>
@@ -2912,7 +2912,7 @@ function ProjectDetail() {
       },
       {
         key: 'documents',
-        title: 'Documents',
+        title: 'Devis et documents',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {devisList.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun document</p>}
@@ -2932,12 +2932,12 @@ function ProjectDetail() {
       },
       {
         key: 'activity',
-        title: 'Activite du dossier',
+        title: 'Historique du dossier',
         summary: activityUnavailable
-          ? 'Activite indisponible'
+          ? 'Historique indisponible'
           : recentActivityItems.length > 0
             ? `${activityItems.length} evenement${activityItems.length > 1 ? 's' : ''} enregistre${activityItems.length > 1 ? 's' : ''}`
-            : 'Aucune activite enregistree',
+            : 'Aucune action enregistree',
         content: (
           <div className="flex flex-col gap-3">
             <div>
@@ -2952,12 +2952,12 @@ function ProjectDetail() {
             )}
             {activityUnavailable && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Activite indisponible pour le moment.
+                Historique indisponible pour le moment.
               </div>
             )}
             {!activityUnavailable && recentActivityItems.length === 0 && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Aucune activite enregistree pour le moment.
+                Aucune action enregistree pour le moment.
                 Les relances, demandes d'avis et changements importants apparaitront ici.
               </div>
             )}
@@ -3026,7 +3026,7 @@ function ProjectDetail() {
                 {lifecycle.displayStatus || 'Nouveau'}
               </span>
               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
-                Maturité {nextAction.maturityScore}/100
+                Avancement {nextAction.maturityScore}/100
               </span>
               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '999px', border: '1px solid var(--border)', color: nextAction.priority === 'critical' ? '#dc2626' : nextAction.priority === 'high' ? '#ea580c' : 'var(--text-2)' }}>
                 Priorité {nextAction.priority === 'critical' ? 'critique' : nextAction.priority === 'high' ? 'haute' : nextAction.priority === 'medium' ? 'moyenne' : 'basse'}
@@ -3044,7 +3044,7 @@ function ProjectDetail() {
           {/* Carte Action recommandée */}
           <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px' }}>
             <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-3)', margin: '0 0 6px' }}>
-              Action recommandée
+              À faire maintenant
             </p>
             <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 4px' }}>{recommendedAction.title}</p>
             <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>{recommendedAction.meta}</p>
@@ -3238,7 +3238,7 @@ function ProjectDetail() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {[
               { label: '✉️ Message', disabled: !project.clientEmail, onClick: () => { if (project.clientEmail) window.location.href = `mailto:${project.clientEmail}`; } },
-              { label: '🔗 Portail client', disabled: clientPortalLoading || !project?.id, onClick: copyClientPortalLink },
+              { label: '🔗 Espace client', disabled: clientPortalLoading || !project?.id, onClick: copyClientPortalLink },
               { label: '🔁 Relancer', disabled: !decision.canFollowUpQuote, onClick: () => { if (decision.canFollowUpQuote && latestDevis) requestQuoteFollowUp(latestDevis); } },
               ...(isGoogleReviewEligibleStatus
                 ? [{
@@ -3292,7 +3292,7 @@ function ProjectDetail() {
                 <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: 'var(--text-1)' }}>{formatDateTime(appointment.start)}</p>
                 {appointment.location && <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>📍 {appointment.location}</p>}
                 <p style={{ margin: '0 0 2px', fontSize: '12px', color: 'var(--text-2)' }}>
-                  👤 {appointment.isUnassigned ? 'Non affecté' : appointment.assignedUserName || 'Collaborateur à confirmer'}
+                  👤 {appointment.isUnassigned ? 'Personne prévue pour le moment' : appointment.assignedUserName || 'Collaborateur à définir'}
                 </p>
                 <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>
                   {appointment.eventType === 'intervention' ? 'Intervention' : appointment.eventType === 'site_visit' ? 'Visite technique' : 'Rendez-vous client'}
@@ -3301,9 +3301,9 @@ function ProjectDetail() {
               </div>
             ) : (
               <div>
-                <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--text-2)' }}>Aucun rendez-vous</p>
+                <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--text-2)' }}>Aucun rendez-vous prévu</p>
                 <button onClick={openAppointmentModal} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
-                  Planifier
+                  Planifier un rendez-vous
                 </button>
               </div>
             )}
@@ -3421,7 +3421,7 @@ function ProjectDetail() {
 
               <div>
                 <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">
-                  Collaborateur affecté
+                  Collaborateur prévu
                 </label>
                 {appointmentCanAssign ? (
                   <select
@@ -3429,7 +3429,7 @@ function ProjectDetail() {
                     onChange={(e) => setAppointmentAssignedUserId(e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
                   >
-                    <option value="">Non affecté</option>
+                    <option value="">Personne prévue pour le moment</option>
                     {appointmentTeamMembers.map((member) => (
                       <option key={member.userId} value={member.userId}>
                         {member.isMe ? `${member.name} (moi)` : member.name}
@@ -3438,7 +3438,7 @@ function ProjectDetail() {
                   </select>
                 ) : (
                   <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-2)]">
-                    Affecté à vous à la confirmation.
+                    Vous serez prévu sur ce rendez-vous à la confirmation.
                   </p>
                 )}
               </div>
@@ -3673,7 +3673,7 @@ function ProjectDetail() {
               Complétez vos informations légales pour générer des devis professionnels.
             </p>
             <a href="/parametres" className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--accent)' }}>
-              Compléter mon profil →
+              Compléter mes infos →
             </a>
           </div>
         )}
@@ -3731,7 +3731,7 @@ function ProjectDetail() {
                   margin: '0 0 4px',
                   textAlign: isMobile ? 'left' : 'right',
                 }}>
-                  Statut dossier
+                  Statut
                 </p>
                 <span style={{
                   background: currentStyle.bg,
@@ -3761,7 +3761,7 @@ function ProjectDetail() {
                   border: '1px solid rgba(34,197,94,0.2)',
                   color: 'var(--text-2)',
                 }}>
-                  Score {nextAction.maturityScore}/100
+                  Dossier renseigné à {nextAction.maturityScore}%
                 </span>
                 <span style={{
                   fontSize: '11px',
@@ -3924,7 +3924,7 @@ function ProjectDetail() {
             {/* Action recommandée */}
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Action recommandée
+                À faire maintenant
               </p>
               <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-1)', margin: '0 0 2px' }}>
                 {recommendedAction.title}
@@ -4137,7 +4137,7 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📞 Suivi client
+              📞 Relance client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {decision.canFollowUpQuote
@@ -4161,7 +4161,7 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📄 Devis client
+              📄 Devis
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {!latestDevis
@@ -4231,7 +4231,7 @@ function ProjectDetail() {
             }}
           >
             <p style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', margin: '0 0 6px' }}>
-              🔗 Portail client
+              🔗 Espace client
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 600, margin: 0 }}>
               {clientPortalLoading ? 'Copie en cours...' : 'Copier le lien'}
@@ -4266,7 +4266,7 @@ function ProjectDetail() {
                 fontSize: '14px',
                 letterSpacing: '0.02em'
               }}>
-                Analyse Kadria
+                Ce qu’il faut savoir
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -4445,7 +4445,7 @@ function ProjectDetail() {
             </div>
             <div style={{ background: 'var(--bg-elevated)', padding: '12px 16px' }}>
               <p style={{ color: 'var(--text-3)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>
-                Infos manquantes
+                Informations à compléter
               </p>
               {analysis.missingInfo.length > 0 ? (
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -4607,11 +4607,11 @@ function ProjectDetail() {
               textTransform: 'uppercase',
               margin: '0 0 10px',
             }}>
-              Résumé du projet
+              Résumé du besoin
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
-                { icon: '🏗️', label: 'Le projet', value: summary.projet },
+                { icon: '🏗️', label: 'Le besoin', value: summary.projet },
                 { icon: '💶', label: 'L\'enjeu', value: summary.enjeu },
                 { icon: '🎯', label: 'Priorité', value: summary.priorite },
               ].map((item, i) => (
@@ -4813,7 +4813,7 @@ function ProjectDetail() {
                   lineHeight: '1.6',
                   margin: '8px 0 0',
                 }}>
-                  Des compléments client sont disponibles dans la section Retours client.
+                  Des compléments client sont disponibles dans la section Messages du client.
                 </p>
               )}
             </div>
@@ -4845,7 +4845,7 @@ function ProjectDetail() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                 <p style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 700, margin: 0 }}>
-                  Retours client
+                  Messages du client
                 </p>
                 {hasClientActivity && (
                   <span style={{
@@ -4910,7 +4910,7 @@ function ProjectDetail() {
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                     <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                      Discussion client
+                      Messages échangés
                     </p>
 
                     {discussionEvents.length === 0 && !useLegacyFallback && (
@@ -4992,7 +4992,7 @@ function ProjectDetail() {
                 gap: '8px',
               }}>
                 <p style={{ color: 'var(--text-1)', fontSize: '13px', fontWeight: 600, margin: 0 }}>
-                  Répondre au client
+                  Envoyer un message au client
                 </p>
                 <textarea
                   value={clientReplyMessage}
@@ -5001,7 +5001,7 @@ function ProjectDetail() {
                     setClientReplyError('');
                     setClientReplySuccess('');
                   }}
-                  placeholder="Votre réponse sera visible par le client dans son portail..."
+                  placeholder="Votre message sera visible par le client dans son espace..."
                   rows={3}
                   maxLength={2000}
                   style={{
@@ -5042,7 +5042,7 @@ function ProjectDetail() {
                     transition: 'background 0.15s ease, box-shadow 0.15s ease',
                   }}
                 >
-                  {clientReplySending ? 'Publication...' : 'Publier dans le portail client'}
+                  {clientReplySending ? 'Envoi...' : 'Envoyer au client'}
                 </button>
               </div>
             </div>
@@ -5056,7 +5056,7 @@ function ProjectDetail() {
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--text-1)]">Activite du dossier</h2>
+              <h2 className="text-lg font-semibold text-[var(--text-1)]">Historique du dossier</h2>
               <p className="mt-1 text-sm text-[var(--text-2)]">
                 Les dernieres actions enregistrees sur ce projet.
               </p>
@@ -5071,13 +5071,13 @@ function ProjectDetail() {
           <div className="mt-5 flex flex-col gap-3">
             {activityUnavailable && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Activite indisponible pour le moment.
+                Historique indisponible pour le moment.
               </div>
             )}
 
             {!activityUnavailable && recentActivityItems.length === 0 && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Aucune activite enregistree pour le moment.
+                Aucune action enregistree pour le moment.
                 Les relances, demandes d'avis et changements importants apparaitront ici.
               </div>
             )}
@@ -6631,7 +6631,7 @@ function ProjectDetail() {
 
             <div>
               <label className="block text-xs text-[var(--text-2)] uppercase tracking-wide mb-1">
-                Collaborateur affecté
+                Collaborateur prévu
               </label>
               {appointmentCanAssign ? (
                 <select
@@ -6639,7 +6639,7 @@ function ProjectDetail() {
                   onChange={(e) => setAppointmentAssignedUserId(e.target.value)}
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-1)]"
                 >
-                  <option value="">Non affecté</option>
+                  <option value="">Personne prévue pour le moment</option>
                   {appointmentTeamMembers.map((member) => (
                     <option key={member.userId} value={member.userId}>
                       {member.isMe ? `${member.name} (moi)` : member.name}
@@ -6648,7 +6648,7 @@ function ProjectDetail() {
                 </select>
               ) : (
                 <p className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-2 text-sm text-[var(--text-2)]">
-                  Affecté à vous à la confirmation.
+                  Vous serez prévu sur ce rendez-vous à la confirmation.
                 </p>
               )}
             </div>
