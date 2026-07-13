@@ -9,7 +9,7 @@ import { getProjectDisplayTitle } from '@/src/lib/project-detail/project-headlin
 import { resolveDevisEmailBranding } from '@/src/lib/devis-email-branding'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { getCurrentTenantContext, tableExists, type TenantContext } from '@/src/lib/tenant-context'
+import { getCurrentTenantContext, tableExists, tableHasColumn, type TenantContext } from '@/src/lib/tenant-context'
 import { listTeamMembers } from '@/src/lib/team/service'
 import { checkPermission } from '@/src/lib/team/access'
 import { Resend } from 'resend'
@@ -85,6 +85,85 @@ export interface BusinessAutomationRunRecord {
 export interface AutomationOverviewItem {
   definition: BusinessAutomationDefinition
   automation: BusinessAutomationRecord
+}
+
+export interface AutomationSystemState {
+  paused: boolean
+  pausedAt: string | null
+  pausedBy: string | null
+  pauseReason: string | null
+  lastCronAt: string | null
+  lastCronSuccessAt: string | null
+  lastCronErrorAt: string | null
+  lastCronErrorMessage: string | null
+}
+
+export interface AutomationMonitoringSummary {
+  activeAutomations: number
+  executedToday: number
+  success: number
+  failed: number
+  pendingApproval: number
+  ignored: number
+  successRate: number
+  estimatedMinutesSaved: number
+}
+
+export interface AutomationMonitoringOverview {
+  items: AutomationOverviewItem[]
+  systemState: AutomationSystemState
+  summary: AutomationMonitoringSummary
+  recentRuns: AutomationHistoryRunItem[]
+}
+
+export interface AutomationRunListFilters {
+  page: number
+  limit: number
+  status: string[]
+  type: BusinessAutomationType[]
+  mode: BusinessAutomationMode[]
+  entityType: Array<'project' | 'appointment' | 'configuration'>
+  dateFrom: string | null
+  dateTo: string | null
+}
+
+export interface AutomationHistoryRunItem {
+  id: string
+  automationId: string
+  automationType: BusinessAutomationType
+  automationTitle: string
+  mode: BusinessAutomationMode
+  modeLabel: 'Manuel' | 'A valider' | 'Automatique'
+  status: BusinessAutomationRunStatus
+  statusLabel: string
+  entityType: 'project' | 'appointment' | 'configuration'
+  entityId: string
+  entityLabel: string
+  entityHref: string | null
+  triggerReason: string
+  createdAt: string | null
+  startedAt: string | null
+  completedAt: string | null
+  durationMs: number | null
+  executedBy: string | null
+  executedByLabel: string | null
+  errorMessage: string | null
+  errorLabel: string | null
+  idempotencyKeyPreview: string | null
+  canExecute: boolean
+  canIgnore: boolean
+  canRetry: boolean
+}
+
+const TENANTS_TABLE = 'tenants'
+
+const AUTOMATION_TIME_SAVED_MINUTES: Record<BusinessAutomationType, number> = {
+  quote_followup: 3,
+  review_request: 2,
+  won_project_followup: 1,
+  unassigned_project_alert: 1,
+  appointment_reminder: 2,
+  assignment_notification: 1,
 }
 
 const DEFINITIONS: Record<BusinessAutomationType, BusinessAutomationDefinition> = {
@@ -236,6 +315,100 @@ function buildDefaultAutomation(tenantId: string, type: BusinessAutomationType):
   }
 }
 
+function formatModeLabel(mode: BusinessAutomationMode): 'Manuel' | 'A valider' | 'Automatique' {
+  if (mode === 'automatic') return 'Automatique'
+  if (mode === 'approval_required') return 'A valider'
+  return 'Manuel'
+}
+
+function formatRunStatusLabel(status: BusinessAutomationRunStatus): string {
+  switch (status) {
+    case 'pending':
+      return 'En attente'
+    case 'prepared':
+      return 'A valider'
+    case 'executing':
+      return 'En cours'
+    case 'succeeded':
+      return 'Reussi'
+    case 'failed':
+      return 'Echoue'
+    case 'ignored':
+      return 'Ignore'
+  }
+}
+
+function mapAutomationErrorToLabel(message: string | null): string | null {
+  if (!message) return null
+  switch (message) {
+    case 'CLIENT_EMAIL_MISSING':
+      return "Le client ne possede pas d'adresse email."
+    case 'GOOGLE_REVIEW_URL_MISSING':
+      return "Aucun lien d'avis Google n'est configure."
+    case 'RESEND_API_KEY_MISSING':
+      return "Le canal email n'est pas configure."
+    case 'PROJECT_NOT_FOUND':
+      return 'Le projet cible est introuvable.'
+    case 'DEVIS_NOT_FOUND':
+      return 'Le devis cible est introuvable.'
+    case 'LEGACY_ARTISAN_ID_MISSING':
+      return "Le tenant n'est pas relie a un artisan legacy exploitable."
+    case 'RUN_NOT_FOUND':
+      return "L'execution cible est introuvable."
+    default:
+      if (message.startsWith('CLIENT_EMAIL_')) return "Le client ne possede pas d'adresse email."
+      if (message.includes('plus necessaire')) return "L'action n'est plus necessaire."
+      return message
+  }
+}
+
+function buildEntityHref(entityType: BusinessAutomationRunRecord['entityType'], payload: Record<string, unknown>, entityId: string): string | null {
+  const projectId = toNullableText(payload.projectId)
+  if (entityType === 'project' && projectId) return `/dashboard-v2/projet/${projectId}`
+  if (entityType === 'project') return `/dashboard-v2/projet/${entityId}`
+  if (entityType === 'appointment') {
+    const targetProjectId = projectId
+    if (targetProjectId) {
+      return `/dashboard-v2/projet/${targetProjectId}?tab=rendez-vous`
+    }
+    return '/dashboard-v2?mode=calendar'
+  }
+  return '/parametres'
+}
+
+function buildEntityLabel(run: BusinessAutomationRunRecord, payload: Record<string, unknown>, projectLabels: Map<string, string>, appointmentLabels: Map<string, string>): string {
+  if (run.entityType === 'project') {
+    const projectId = toNullableText(payload.projectId) || run.entityId
+    return projectLabels.get(projectId) || `Projet ${projectId.slice(0, 8)}`
+  }
+  if (run.entityType === 'appointment') {
+    return appointmentLabels.get(run.entityId) || toNullableText(payload.title) || `Rendez-vous ${run.entityId.slice(0, 8)}`
+  }
+  return 'Configuration'
+}
+
+function buildIdempotencyPreview(key: string | null): string | null {
+  if (!key) return null
+  if (key.length <= 18) return key
+  return `${key.slice(0, 10)}...${key.slice(-6)}`
+}
+
+function toStartOfDayIso() {
+  const value = new Date()
+  value.setHours(0, 0, 0, 0)
+  return value.toISOString()
+}
+
+function clampPage(value: number) {
+  if (!Number.isFinite(value) || value < 1) return 1
+  return Math.floor(value)
+}
+
+function clampLimit(value: number) {
+  if (!Number.isFinite(value) || value < 1) return 25
+  return Math.min(100, Math.floor(value))
+}
+
 async function ensureTenantAutomationRows(tenantId: string, createdBy: string | null) {
   if (!(await tableExists(BUSINESS_AUTOMATIONS_TABLE))) return
 
@@ -261,6 +434,98 @@ async function ensureTenantAutomationRows(tenantId: string, createdBy: string | 
     .from(BUSINESS_AUTOMATIONS_TABLE)
     .upsert(defaults, { onConflict: 'tenant_id,type', ignoreDuplicates: true })
 
+  if (error) throw new Error(error.message)
+}
+
+async function tenantsSupportAutomationSystemState() {
+  const requiredColumns = [
+    'automation_paused',
+    'automation_paused_at',
+    'automation_paused_by',
+    'automation_pause_reason',
+    'automation_last_cron_at',
+    'automation_last_cron_success_at',
+    'automation_last_cron_error_at',
+    'automation_last_cron_error_message',
+  ]
+
+  for (const column of requiredColumns) {
+    if (!(await tableHasColumn(TENANTS_TABLE, column))) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const DEFAULT_AUTOMATION_SYSTEM_STATE: AutomationSystemState = {
+  paused: false,
+  pausedAt: null,
+  pausedBy: null,
+  pauseReason: null,
+  lastCronAt: null,
+  lastCronSuccessAt: null,
+  lastCronErrorAt: null,
+  lastCronErrorMessage: null,
+}
+
+async function getTenantAutomationSystemState(tenantId: string): Promise<AutomationSystemState> {
+  if (!(await tenantsSupportAutomationSystemState())) {
+    return { ...DEFAULT_AUTOMATION_SYSTEM_STATE }
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from(TENANTS_TABLE)
+    .select('automation_paused, automation_paused_at, automation_paused_by, automation_pause_reason, automation_last_cron_at, automation_last_cron_success_at, automation_last_cron_error_at, automation_last_cron_error_message')
+    .eq('id', tenantId)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+
+  if (!data) {
+    return { ...DEFAULT_AUTOMATION_SYSTEM_STATE }
+  }
+
+  return {
+    paused: Boolean(data.automation_paused),
+    pausedAt: toNullableText(data.automation_paused_at),
+    pausedBy: toNullableText(data.automation_paused_by),
+    pauseReason: toNullableText(data.automation_pause_reason),
+    lastCronAt: toNullableText(data.automation_last_cron_at),
+    lastCronSuccessAt: toNullableText(data.automation_last_cron_success_at),
+    lastCronErrorAt: toNullableText(data.automation_last_cron_error_at),
+    lastCronErrorMessage: toNullableText(data.automation_last_cron_error_message),
+  }
+}
+
+async function updateTenantAutomationSystemState(
+  tenantId: string,
+  patch: Partial<{
+    paused: boolean
+    pausedAt: string | null
+    pausedBy: string | null
+    pauseReason: string | null
+    lastCronAt: string | null
+    lastCronSuccessAt: string | null
+    lastCronErrorAt: string | null
+    lastCronErrorMessage: string | null
+  }>,
+) {
+  if (!(await tenantsSupportAutomationSystemState())) return
+
+  const payload: Record<string, unknown> = {}
+  if (patch.paused !== undefined) payload.automation_paused = patch.paused
+  if (patch.pausedAt !== undefined) payload.automation_paused_at = patch.pausedAt
+  if (patch.pausedBy !== undefined) payload.automation_paused_by = patch.pausedBy
+  if (patch.pauseReason !== undefined) payload.automation_pause_reason = patch.pauseReason
+  if (patch.lastCronAt !== undefined) payload.automation_last_cron_at = patch.lastCronAt
+  if (patch.lastCronSuccessAt !== undefined) payload.automation_last_cron_success_at = patch.lastCronSuccessAt
+  if (patch.lastCronErrorAt !== undefined) payload.automation_last_cron_error_at = patch.lastCronErrorAt
+  if (patch.lastCronErrorMessage !== undefined) payload.automation_last_cron_error_message = patch.lastCronErrorMessage
+  if (Object.keys(payload).length === 0) return
+
+  const { error } = await supabaseAdmin.from(TENANTS_TABLE).update(payload).eq('id', tenantId)
   if (error) throw new Error(error.message)
 }
 
@@ -364,6 +629,278 @@ export async function listPendingAutomationRunsForTenant(tenantId: string) {
 
   if (error) throw new Error(error.message)
   return ((data || []) as Record<string, unknown>[]).map(mapRun)
+}
+
+async function loadProjectLabels(tenantId: string, projectIds: string[]) {
+  const result = new Map<string, string>()
+  if (!projectIds.length) return result
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.projects)
+    .select('id, client_name, city, project_type, trade')
+    .eq('tenant_id', tenantId)
+    .in('id', projectIds)
+
+  if (error) throw new Error(error.message)
+
+  for (const row of (data || []) as Record<string, unknown>[]) {
+    const parts = [
+      toNullableText(row.client_name),
+      toNullableText(row.project_type) || toNullableText(row.trade),
+      toNullableText(row.city),
+    ].filter(Boolean)
+    result.set(toText(row.id), parts.join(' · ') || `Projet ${toText(row.id).slice(0, 8)}`)
+  }
+
+  return result
+}
+
+async function loadAppointmentLabels(tenantId: string, appointmentIds: string[]) {
+  const result = new Map<string, string>()
+  if (!appointmentIds.length || !(await tableExists('project_appointments'))) return result
+
+  const { data, error } = await supabaseAdmin
+    .from('project_appointments')
+    .select('id, title, start_time')
+    .eq('tenant_id', tenantId)
+    .in('id', appointmentIds)
+
+  if (error) throw new Error(error.message)
+
+  for (const row of (data || []) as Record<string, unknown>[]) {
+    const title = toNullableText(row.title) || 'Rendez-vous'
+    const start = toNullableText(row.start_time)
+    const dateLabel = start ? new Date(start).toLocaleString('fr-FR') : null
+    result.set(toText(row.id), dateLabel ? `${title} · ${dateLabel}` : title)
+  }
+
+  return result
+}
+
+async function loadUserLabels(userIds: string[]) {
+  const result = new Map<string, string>()
+  if (!userIds.length) return result
+
+  const { data, error } = await supabaseAdmin
+    .from('Users')
+    .select('id, first_name, last_name, email')
+    .in('id', userIds)
+
+  if (error) throw new Error(error.message)
+
+  for (const row of (data || []) as Record<string, unknown>[]) {
+    const name = [toNullableText(row.first_name), toNullableText(row.last_name)].filter(Boolean).join(' ').trim()
+    result.set(toText(row.id), name || toText(row.email) || 'Utilisateur')
+  }
+
+  return result
+}
+
+function buildHistoryRunItem(input: {
+  run: BusinessAutomationRunRecord
+  automation: BusinessAutomationRecord
+  projectLabels: Map<string, string>
+  appointmentLabels: Map<string, string>
+  userLabels: Map<string, string>
+}): AutomationHistoryRunItem {
+  const { run, automation, projectLabels, appointmentLabels, userLabels } = input
+  const startedAt = run.startedAt ? new Date(run.startedAt).getTime() : null
+  const completedAt = run.completedAt ? new Date(run.completedAt).getTime() : null
+  const durationMs =
+    startedAt !== null && completedAt !== null && !Number.isNaN(startedAt) && !Number.isNaN(completedAt)
+      ? Math.max(0, completedAt - startedAt)
+      : null
+
+  return {
+    id: run.id,
+    automationId: automation.id,
+    automationType: automation.type,
+    automationTitle: DEFINITIONS[automation.type].title,
+    mode: automation.mode,
+    modeLabel: formatModeLabel(automation.mode),
+    status: run.status,
+    statusLabel: formatRunStatusLabel(run.status),
+    entityType: run.entityType,
+    entityId: run.entityId,
+    entityLabel: buildEntityLabel(run, run.payload, projectLabels, appointmentLabels),
+    entityHref: buildEntityHref(run.entityType, run.payload, run.entityId),
+    triggerReason: run.triggerReason,
+    createdAt: run.createdAt,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    durationMs,
+    executedBy: run.executedBy,
+    executedByLabel: run.executedBy ? userLabels.get(run.executedBy) || null : null,
+    errorMessage: run.errorMessage,
+    errorLabel: mapAutomationErrorToLabel(run.errorMessage),
+    idempotencyKeyPreview: buildIdempotencyPreview(run.idempotencyKey),
+    canExecute: run.status === 'prepared',
+    canIgnore: run.status === 'pending' || run.status === 'prepared',
+    canRetry: run.status === 'failed',
+  }
+}
+
+async function buildAutomationSummaryForTenant(tenantId: string, automations: BusinessAutomationRecord[]) {
+  if (!(await tableExists(BUSINESS_AUTOMATION_RUNS_TABLE))) {
+    return {
+      activeAutomations: automations.filter((item) => item.enabled).length,
+      executedToday: 0,
+      success: 0,
+      failed: 0,
+      pendingApproval: 0,
+      ignored: 0,
+      successRate: 0,
+      estimatedMinutesSaved: 0,
+    } satisfies AutomationMonitoringSummary
+  }
+
+  const baseQuery = () => supabaseAdmin.from(BUSINESS_AUTOMATION_RUNS_TABLE).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId)
+  const [success, failed, pendingApproval, ignored, executedToday] = await Promise.all([
+    baseQuery().eq('status', 'succeeded'),
+    baseQuery().eq('status', 'failed'),
+    baseQuery().eq('status', 'prepared'),
+    baseQuery().eq('status', 'ignored'),
+    baseQuery().gte('created_at', toStartOfDayIso()).in('status', ['succeeded', 'prepared', 'ignored']),
+  ])
+
+  const successCount = success.count || 0
+  const failedCount = failed.count || 0
+  const pendingApprovalCount = pendingApproval.count || 0
+  const ignoredCount = ignored.count || 0
+  const denominator = successCount + failedCount
+  const successRate = denominator > 0 ? Number(((successCount / denominator) * 100).toFixed(1)) : 0
+
+  const estimatedMinutesSaved = automations.reduce((total, automation) => {
+    if (!automation.enabled) return total
+    return total + (AUTOMATION_TIME_SAVED_MINUTES[automation.type] || 0)
+  }, 0) * successCount
+
+  return {
+    activeAutomations: automations.filter((item) => item.enabled).length,
+    executedToday: executedToday.count || 0,
+    success: successCount,
+    failed: failedCount,
+    pendingApproval: pendingApprovalCount,
+    ignored: ignoredCount,
+    successRate,
+    estimatedMinutesSaved,
+  } satisfies AutomationMonitoringSummary
+}
+
+export async function listAutomationRunsForCurrentTenant(
+  filters: Partial<AutomationRunListFilters> = {},
+  tenantContextInput?: TenantContext | null,
+) {
+  const tenantContext = requireAutomationPermission(
+    tenantContextInput ?? await getCurrentTenantContext(),
+    'automations.read',
+  )
+
+  if (!(await tableExists(BUSINESS_AUTOMATION_RUNS_TABLE))) {
+    return {
+      runs: [] as AutomationHistoryRunItem[],
+      pagination: { page: 1, limit: clampLimit(filters.limit ?? 25), total: 0, totalPages: 0 },
+      summary: await buildAutomationSummaryForTenant(tenantContext.tenantId, []),
+      systemState: await getTenantAutomationSystemState(tenantContext.tenantId),
+    }
+  }
+
+  await ensureTenantAutomationRows(tenantContext.tenantId, tenantContext.userId)
+
+  const page = clampPage(filters.page ?? 1)
+  const limit = clampLimit(filters.limit ?? 25)
+  const status = (filters.status || []).filter(Boolean) as BusinessAutomationRunStatus[]
+  const type = (filters.type || []).filter(Boolean) as BusinessAutomationType[]
+  const mode = (filters.mode || []).filter(Boolean) as BusinessAutomationMode[]
+  const entityType = (filters.entityType || []).filter(Boolean) as Array<'project' | 'appointment' | 'configuration'>
+
+  const overview = await listAutomationOverviewForCurrentTenant(tenantContext)
+  const automationRows = overview.map((item) => item.automation)
+  const allowedAutomationIds = automationRows
+    .filter((automation) => (!type.length || type.includes(automation.type)) && (!mode.length || mode.includes(automation.mode)))
+    .map((automation) => automation.id)
+
+  if ((type.length || mode.length) && allowedAutomationIds.length === 0) {
+    return {
+      runs: [] as AutomationHistoryRunItem[],
+      pagination: { page, limit, total: 0, totalPages: 0 },
+      summary: await buildAutomationSummaryForTenant(tenantContext.tenantId, automationRows),
+      systemState: await getTenantAutomationSystemState(tenantContext.tenantId),
+    }
+  }
+
+  let query = supabaseAdmin
+    .from(BUSINESS_AUTOMATION_RUNS_TABLE)
+    .select('*', { count: 'exact' })
+    .eq('tenant_id', tenantContext.tenantId)
+    .order('created_at', { ascending: false })
+
+  if (status.length) query = query.in('status', status)
+  if (entityType.length) query = query.in('entity_type', entityType)
+  if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom)
+  if (filters.dateTo) query = query.lte('created_at', filters.dateTo)
+  if (allowedAutomationIds.length) query = query.in('automation_id', allowedAutomationIds)
+
+  const from = (page - 1) * limit
+  const to = from + limit - 1
+  const { data, error, count } = await query.range(from, to)
+  if (error) throw new Error(error.message)
+
+  const runs = ((data || []) as Record<string, unknown>[]).map(mapRun)
+  const automationById = new Map(automationRows.map((item) => [item.id, item] as const))
+  const projectIds = Array.from(
+    new Set(
+      runs
+        .filter((run) => run.entityType === 'project')
+        .map((run) => toNullableText(run.payload.projectId) || run.entityId)
+        .filter(Boolean),
+    ),
+  ) as string[]
+  const appointmentIds = Array.from(new Set(runs.filter((run) => run.entityType === 'appointment').map((run) => run.entityId)))
+  const executedByIds = Array.from(new Set(runs.map((run) => run.executedBy).filter(Boolean))) as string[]
+  const [projectLabels, appointmentLabels, userLabels, systemState, summary] = await Promise.all([
+    loadProjectLabels(tenantContext.tenantId, projectIds),
+    loadAppointmentLabels(tenantContext.tenantId, appointmentIds),
+    loadUserLabels(executedByIds),
+    getTenantAutomationSystemState(tenantContext.tenantId),
+    buildAutomationSummaryForTenant(tenantContext.tenantId, automationRows),
+  ])
+
+  return {
+    runs: runs
+      .map((run) => {
+        const automation = automationById.get(run.automationId)
+        if (!automation) return null
+        return buildHistoryRunItem({ run, automation, projectLabels, appointmentLabels, userLabels })
+      })
+      .filter(Boolean) as AutomationHistoryRunItem[],
+    pagination: {
+      page,
+      limit,
+      total: count || 0,
+      totalPages: count ? Math.ceil(count / limit) : 0,
+    },
+    summary,
+    systemState,
+  }
+}
+
+export async function getAutomationMonitoringOverviewForCurrentTenant(
+  tenantContextInput?: TenantContext | null,
+): Promise<AutomationMonitoringOverview> {
+  const tenantContext = requireAutomationPermission(
+    tenantContextInput ?? await getCurrentTenantContext(),
+    'automations.read',
+  )
+
+  const items = await listAutomationOverviewForCurrentTenant(tenantContext)
+  const history = await listAutomationRunsForCurrentTenant({ page: 1, limit: 6 }, tenantContext)
+
+  return {
+    items,
+    systemState: history.systemState,
+    summary: history.summary,
+    recentRuns: history.runs,
+  }
 }
 
 export function buildIdempotencyKey(params: {
@@ -773,7 +1310,7 @@ export async function processBusinessAutomationsCron() {
   }
   const { data, error } = await supabaseAdmin
     .from(BUSINESS_AUTOMATIONS_TABLE)
-    .select('*, tenants!inner(id, name, legacy_artisan_id)')
+    .select('*, tenants!inner(id, name, legacy_artisan_id, automation_paused)')
     .eq('enabled', true)
   if (error) throw new Error(error.message)
 
@@ -782,47 +1319,95 @@ export async function processBusinessAutomationsCron() {
   const failures: string[] = []
   const rows = (data || []) as Array<Record<string, unknown> & { tenants?: Record<string, unknown> }>
 
+  const tenantBuckets = new Map<
+    string,
+    {
+      tenant: { id: string; name: string; legacyArtisanId: string | null; paused: boolean }
+      automations: BusinessAutomationRecord[]
+    }
+  >()
+
   for (const row of rows) {
     const automation = mapAutomation(row)
     const tenantRow = row.tenants || {}
-    const tenant = {
-      id: automation.tenantId,
-      name: toText((tenantRow as Record<string, unknown>).name),
-      legacyArtisanId: toNullableText((tenantRow as Record<string, unknown>).legacy_artisan_id),
+    const tenantId = automation.tenantId
+    const existing = tenantBuckets.get(tenantId)
+    if (existing) {
+      existing.automations.push(automation)
+      continue
     }
+    tenantBuckets.set(tenantId, {
+      tenant: {
+        id: tenantId,
+        name: toText((tenantRow as Record<string, unknown>).name),
+        legacyArtisanId: toNullableText((tenantRow as Record<string, unknown>).legacy_artisan_id),
+        paused: Boolean((tenantRow as Record<string, unknown>).automation_paused),
+      },
+      automations: [automation],
+    })
+  }
+
+  for (const { tenant, automations } of tenantBuckets.values()) {
     try {
-      const candidates = await evaluateForAutomation(automation, tenant)
-      for (const candidate of candidates) {
-        const run = await createAutomationRun({
-          automation,
-          entityType: candidate.entityType,
-          entityId: candidate.entityId,
-          triggerReason: candidate.triggerReason,
-          payload: candidate.payload,
-          idempotencyKey: buildIdempotencyKey({
-            tenantId: automation.tenantId,
-            type: automation.type,
-            entityType: candidate.entityType,
-            entityId: candidate.entityId,
-            windowKey: candidate.windowKey,
-          }),
-          status: automation.mode === 'automatic' && DEFINITIONS[automation.type].automaticAllowed ? 'pending' : 'prepared',
-        })
-        if (!run) continue
-        createdRuns += 1
-        if (automation.mode === 'automatic' && DEFINITIONS[automation.type].automaticAllowed) {
-          const result = await executeRun(automation, tenant, run, null)
-          if (result.status === 'succeeded') executedRuns += 1
-          else failures.push(`${automation.type}:${candidate.entityId}:${result.error || 'UNKNOWN_ERROR'}`)
+      await updateTenantAutomationSystemState(tenant.id, {
+        lastCronAt: nowIso(),
+        lastCronErrorAt: null,
+        lastCronErrorMessage: null,
+      })
+
+      if (tenant.paused) {
+        continue
+      }
+
+      for (const automation of automations) {
+        try {
+          const candidates = await evaluateForAutomation(automation, tenant)
+          for (const candidate of candidates) {
+            const run = await createAutomationRun({
+              automation,
+              entityType: candidate.entityType,
+              entityId: candidate.entityId,
+              triggerReason: candidate.triggerReason,
+              payload: candidate.payload,
+              idempotencyKey: buildIdempotencyKey({
+                tenantId: automation.tenantId,
+                type: automation.type,
+                entityType: candidate.entityType,
+                entityId: candidate.entityId,
+                windowKey: candidate.windowKey,
+              }),
+              status: automation.mode === 'automatic' && DEFINITIONS[automation.type].automaticAllowed ? 'pending' : 'prepared',
+            })
+            if (!run) continue
+            createdRuns += 1
+            if (automation.mode === 'automatic' && DEFINITIONS[automation.type].automaticAllowed) {
+              const result = await executeRun(automation, tenant, run, null)
+              if (result.status === 'succeeded') executedRuns += 1
+              else failures.push(`${automation.type}:${candidate.entityId}:${result.error || 'UNKNOWN_ERROR'}`)
+            }
+          }
+        } catch (error) {
+          failures.push(`${automation.type}:${automation.tenantId}:${error instanceof Error ? error.message : String(error)}`)
         }
       }
+
+      await updateTenantAutomationSystemState(tenant.id, {
+        lastCronSuccessAt: nowIso(),
+        lastCronErrorAt: null,
+        lastCronErrorMessage: null,
+      })
     } catch (error) {
-      failures.push(`${automation.type}:${automation.tenantId}:${error instanceof Error ? error.message : String(error)}`)
+      const message = error instanceof Error ? error.message : String(error)
+      failures.push(`tenant:${tenant.id}:${message}`)
+      await updateTenantAutomationSystemState(tenant.id, {
+        lastCronErrorAt: nowIso(),
+        lastCronErrorMessage: message,
+      }).catch(() => undefined)
     }
   }
 
   return {
-    processedTenants: new Set(rows.map((row) => toText(row.tenant_id))).size,
+    processedTenants: tenantBuckets.size,
     createdRuns,
     executedRuns,
     failures,
@@ -871,7 +1456,81 @@ export async function buildAutomationMetadataForTenant(tenantId: string) {
     ? ((await supabaseAdmin.from(BUSINESS_AUTOMATIONS_TABLE).select('*').eq('tenant_id', tenantId)).data || []).map((row) => mapAutomation(row as Record<string, unknown>))
     : []
   const runs = await listPendingAutomationRunsForTenant(tenantId)
-  return { automations: overview, runs }
+  const systemState = await getTenantAutomationSystemState(tenantId)
+  const summary = await buildAutomationSummaryForTenant(tenantId, overview)
+  return { automations: overview, runs, systemState, summary }
+}
+
+export async function setAutomationPauseStateForCurrentTenant(input: { paused: boolean; reason?: string | null }) {
+  const tenantContext = requireAutomationPermission(await getCurrentTenantContext(), 'automations.manage')
+  await updateTenantAutomationSystemState(tenantContext.tenantId, {
+    paused: input.paused,
+    pausedAt: input.paused ? nowIso() : null,
+    pausedBy: input.paused ? tenantContext.userId : null,
+    pauseReason: input.paused ? toNullableText(input.reason) : null,
+  })
+  return getTenantAutomationSystemState(tenantContext.tenantId)
+}
+
+async function findEligibleCandidateForRun(
+  automation: BusinessAutomationRecord,
+  tenant: { id: string; name: string; legacyArtisanId: string | null; paused?: boolean },
+  run: BusinessAutomationRunRecord,
+) {
+  const candidates = await evaluateForAutomation(automation, tenant)
+  return candidates.find((candidate) => candidate.entityType === run.entityType && candidate.entityId === run.entityId) || null
+}
+
+export async function retryAutomationRunForCurrentTenant(runId: string) {
+  const tenantContext = requireAutomationPermission(await getCurrentTenantContext(), 'automations.manage')
+  const { data, error } = await supabaseAdmin
+    .from(BUSINESS_AUTOMATION_RUNS_TABLE)
+    .select('*, business_automations!inner(*)')
+    .eq('id', runId)
+    .eq('tenant_id', tenantContext.tenantId)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('RUN_NOT_FOUND')
+
+  const run = mapRun(data as Record<string, unknown>)
+  if (run.status !== 'failed') throw new Error('RUN_NOT_RETRYABLE')
+  const automation = mapAutomation((data as Record<string, unknown>).business_automations as Record<string, unknown>)
+  if (!automation.enabled) throw new Error('AUTOMATION_DISABLED')
+
+  const tenant = {
+    id: tenantContext.tenantId,
+    name: tenantContext.tenant.name,
+    legacyArtisanId: tenantContext.legacyArtisanId,
+  }
+
+  const candidate = await findEligibleCandidateForRun(automation, tenant, run)
+  if (!candidate) {
+    throw new Error('RUN_NOT_ELIGIBLE')
+  }
+
+  const retryRun = await createAutomationRun({
+    automation,
+    entityType: candidate.entityType,
+    entityId: candidate.entityId,
+    triggerReason: `${candidate.triggerReason} (retry)`,
+    payload: candidate.payload,
+    idempotencyKey: buildIdempotencyKey({
+      tenantId: automation.tenantId,
+      type: automation.type,
+      entityType: candidate.entityType,
+      entityId: candidate.entityId,
+      windowKey: `retry-${Date.now()}`,
+    }),
+    status: 'pending',
+  })
+
+  if (!retryRun) {
+    throw new Error('RETRY_DUPLICATE')
+  }
+
+  return executeRun(automation, tenant, retryRun, tenantContext.userId)
 }
 
 export async function notifyAssignmentAutomationEvent(input: {

@@ -290,6 +290,11 @@ export default function OperationsCenterSection({
     [data],
   )
 
+  const pendingApprovalCount = useMemo(
+    () => data.recommendations.filter((item) => item.automationLabel === 'A valider').length,
+    [data.recommendations],
+  )
+
   useEffect(() => {
     if (!toast) return undefined
     const timeout = window.setTimeout(() => setToast(null), 2200)
@@ -322,6 +327,22 @@ export default function OperationsCenterSection({
         subtitle="Les actions a traiter maintenant, calculees a partir de vos statuts, delais, conflits et opportunites."
         compact={compact}
       >
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/parametres/automatisations/historique')}
+            className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
+          >
+            Voir l'historique
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/parametres/automatisations/historique?status=prepared')}
+            className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-500/20"
+          >
+            {pendingApprovalCount} action(s) a valider
+          </button>
+        </div>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
           <div className="space-y-3">
             {data.todayFocus.length === 0 ? (

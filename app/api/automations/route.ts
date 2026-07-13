@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listAutomationOverviewForCurrentTenant, upsertAutomationForCurrentTenant, type BusinessAutomationChannel, type BusinessAutomationMode, type BusinessAutomationType } from '@/src/lib/automations'
+import {
+  getAutomationMonitoringOverviewForCurrentTenant,
+  upsertAutomationForCurrentTenant,
+  type BusinessAutomationChannel,
+  type BusinessAutomationMode,
+  type BusinessAutomationType,
+} from '@/src/lib/automations'
 import { getSession } from '@/src/lib/auth-utils'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { checkPermission } from '@/src/lib/team/access'
@@ -31,8 +37,18 @@ export async function GET() {
       automationsManage: canManage,
     })
 
-    const items = await listAutomationOverviewForCurrentTenant(tenantContext)
-    return NextResponse.json({ success: true, items })
+    const overview = await getAutomationMonitoringOverviewForCurrentTenant(tenantContext)
+    return NextResponse.json({
+      success: true,
+      items: overview.items,
+      summary: overview.summary,
+      systemState: overview.systemState,
+      recentRuns: overview.recentRuns,
+      permissions: {
+        canRead,
+        canManage,
+      },
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     const status =
