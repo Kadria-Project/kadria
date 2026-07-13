@@ -57,8 +57,26 @@ export function getConfiguredAuditEmail(): string | null {
 export function isLocalHostHeader(hostHeader: string | null | undefined): boolean {
   if (!hostHeader) return false
   const host = hostHeader.trim().toLowerCase()
+
+  // Bracketed IPv6 form, e.g. "[::1]" or "[::1]:3000". Extract everything
+  // between the brackets as the hostname instead of naively splitting on
+  // ":" (which would otherwise break on the colons inside the address
+  // itself and yield "[" as the hostname — a false negative, fail-closed,
+  // but a real usability bug for anyone running the audit server on an
+  // IPv6-only loopback binding).
+  if (host.startsWith('[')) {
+    const closingBracketIndex = host.indexOf(']')
+    if (closingBracketIndex === -1) return false
+    const hostname = host.slice(1, closingBracketIndex)
+    return hostname === '::1'
+  }
+
+  // Bare (unbracketed) IPv6 loopback, e.g. "::1" with no port — has no
+  // ambiguity to resolve since there's no port suffix to strip.
+  if (host === '::1') return true
+
   const hostname = host.split(':')[0]
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  return hostname === 'localhost' || hostname === '127.0.0.1'
 }
 
 /**

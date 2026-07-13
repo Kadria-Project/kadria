@@ -59,6 +59,42 @@ Shared guard logic lives in `src/lib/dev/ux-audit-guard.ts`
 middleware change was needed or made. Both the page and the API route
 perform their own independent, fail-closed checks before doing anything.
 
+## Vercel deployment assumption (read before use)
+
+This mechanism is designed for, and only reasonably safe under, **this
+project's current Vercel deployment architecture**. The Host-header check in
+`isLocalHostHeader()` is the load-bearing per-request control, and it is only
+trustworthy because:
+
+- Vercel's edge/routing layer does not let a remote client freely set the
+  `Host` header seen by the Next.js server/middleware to an arbitrary value
+  such as `localhost` — the `Host` reaching the app reflects the actual
+  request target (e.g. `*.vercel.app` or the production domain), not a
+  client-supplied override.
+- `X-Forwarded-Host` and `Forwarded` are deliberately never read by the guard
+  (see `isLocalHostHeader` / `assertUxAuditRequestAllowed` in
+  `src/lib/dev/ux-audit-guard.ts`), so even if an intermediary added those
+  headers, they have no effect.
+
+If this project ever moves off Vercel to a **self-hosted reverse proxy**
+(Docker, Nginx, a custom Node server behind another proxy, etc.), this
+assumption must be re-evaluated before relying on this mechanism again: a
+misconfigured self-hosted proxy could forward a client-controlled `Host`
+value as-is, which would let a remote client satisfy the local-host check
+that is otherwise unspoofable on Vercel. This is documented as residual risk
+**M-1** in `docs/SECURITY_REVIEW_LOCAL_UX_AUDIT_AUTH.md`.
+
+Additional hard rules, regardless of deployment target:
+
+- **Never** expose a local development server with `KADRIA_LOCAL_REAL_AUDIT=true`
+  set to the public Internet (e.g. binding to `0.0.0.0` on an open network,
+  or running it on a machine with a public IP and no firewall).
+- **Never** use this mechanism through a public tunnel (ngrok, Cloudflare
+  Tunnel, `localhost.run`, VS Code port forwarding set to "public", etc.).
+  Any such tunnel would present a `Host` header that could plausibly be
+  `localhost`-like or otherwise satisfy the guard while being reachable from
+  the public Internet, defeating the entire point of the check.
+
 ## Required environment variables (server-only, never `NEXT_PUBLIC_`)
 
 | Variable | Purpose |
@@ -155,6 +191,28 @@ Remove or unset `KADRIA_LOCAL_REAL_AUDIT` (or set it to anything other than
 make both `/dev/ux-audit-login` and `/api/dev/ux-audit-login` return a plain
 404 with no session created. No code change or redeploy is required beyond
 the env var change.
+
+## `KADRIA_LOCAL_UX_AUDIT` vs `KADRIA_LOCAL_REAL_AUDIT` — these are two different mechanisms
+
+The names are intentionally similar but they gate **two unrelated
+mechanisms**. Do not confuse them; neither variable name was changed by this
+document (renaming was explicitly out of scope).
+
+| | `KADRIA_LOCAL_UX_AUDIT` | `KADRIA_LOCAL_REAL_AUDIT` |
+|---|---|---|
+| Where enforced | `middleware.ts` (inline check inside the `/demo-dashboard`/`/demo-parametres` branch) | `src/lib/dev/ux-audit-guard.ts`, called from `app/dev/ux-audit-login/page.tsx` and `app/api/dev/ux-audit-login/route.ts` |
+| What it grants access to | `/demo-dashboard`, `/demo-parametres` — the **demo** product surface (fixture/demo data, no real artisan account) | `/dashboard-v2` and below — the **real, authenticated** artisan product surface |
+| Uses a real artisan account | No — bypasses the demo-access approval flow only | Yes — the single, explicitly-configured test account named by `KADRIA_AUDIT_USER_EMAIL` |
+| Creates a `kadria-auth` session | No — no cookie is set by this flag; it only skips the demo-access gate in middleware | Yes — sets the real `kadria-auth` JWT cookie via `createToken()`, identical to the production magic-link flow |
+| Host/IP check | None beyond `NODE_ENV !== 'production'` | Strict `Host` header check (`isLocalHostHeader`) on every request, in addition to `NODE_ENV !== 'production'` |
+| Additional required variable | None | `KADRIA_AUDIT_USER_EMAIL` (exact account email) |
+| Purpose | Let a local agent view demo/fixture screens without going through the demo-access request/approval flow | Let a local Playwright agent log into the real product as a dedicated, harmless test account, for UX/UI audits against real screens/data |
+
+If you only need to look at demo/fixture screens, use `KADRIA_LOCAL_UX_AUDIT`.
+If you need to audit the real, authenticated product experience
+(`/dashboard-v2`), use `KADRIA_LOCAL_REAL_AUDIT` as documented in this file.
+Setting one does not enable the other — they are independent flags checked
+by independent code paths.
 
 ## Security tests performed
 
