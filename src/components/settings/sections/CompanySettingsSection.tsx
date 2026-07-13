@@ -16,16 +16,13 @@ export type CompanySettingsValues = {
 
 type CompanySettingsSectionProps = {
   role: TenantRole | null;
-  /** Valeurs actuelles issues du state global `config` (source de verite partagee, cf. audit du lot). */
   values: CompanySettingsValues;
   loading: boolean;
   isMobile: boolean;
   uploading: boolean;
   uploadError: string | null;
-  /** Reutilise le helper d'upload deja existant dans la page (POST /api/uploads/artisan-branding, target=company_logo). */
   onUploadLogo: (file: File) => Promise<void>;
   onRemoveLogo: () => void;
-  /** Propage les valeurs sauvegardees vers le state global `config`, lu ailleurs sur la page (widget, checklist). */
   onSaved: (values: CompanySettingsValues) => void;
 };
 
@@ -71,26 +68,6 @@ const sectionCard: React.CSSProperties = {
   minWidth: 0,
 };
 
-/**
- * Section "Identite entreprise" extraite du monolithe `app/parametres/page.tsx`.
- *
- * Champs geres ici (identifies a l'audit comme la carte "Identite" gatee par
- * `company.update`) : nom commercial, site web, lien d'avis Google, nom de
- * l'assistant affiche dans le widget, logo. Sauvegarde locale et isolee :
- * bouton "Enregistrer" propre a la section, appel `PATCH /api/artisan/config`
- * avec un payload STRICTEMENT limite a ces 5 champs (l'endpoint accepte un
- * payload partiel : chaque champ n'est ecrit que s'il est present dans le
- * body, cf. `app/api/artisan/config/route.ts`). Le bouton global de la page
- * n'envoie plus ces champs (cf. `save()` dans `page.tsx`) pour eviter toute
- * double-ecriture.
- *
- * Permissions : lecture `company.read` (implicite, visible pour tout membre
- * actif), edition `company.update` (owner uniquement selon la matrice) — la
- * meme regle que le serveur applique deja dans `PATCH /api/artisan/config`
- * (`COMPANY_LEGAL_FIELDS`... non, ces 5 champs ne sont pas dans la liste
- * legale, mais restent proteges cote UI par cohérence avec le lot precedent
- * qui gatait deja cette carte visuelle sur `company.update`).
- */
 export function CompanySettingsSection({
   role,
   values,
@@ -109,8 +86,7 @@ export function CompanySettingsSection({
     if (loading || seeded.current) return;
     seeded.current = true;
     setLocal(values);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [loading, values]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -120,11 +96,11 @@ export function CompanySettingsSection({
 
   const handleSave = async () => {
     if (!isValidOptionalHttpUrl(local.googleReviewUrl)) {
-      setError("Le lien de demande d'avis Google doit etre une URL valide");
+      setError("Le lien vers vos avis Google doit etre valide.");
       return;
     }
     if (!isValidOptionalHttpUrl(local.websiteUrl)) {
-      setError('Le site web doit etre une URL valide');
+      setError('Le site web doit etre valide.');
       return;
     }
 
@@ -145,13 +121,13 @@ export function CompanySettingsSection({
       });
       const data = await res.json();
       if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de la sauvegarde');
+        throw new Error("Kadria n'a pas pu enregistrer ces modifications.");
       }
       onSaved(local);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
+      setError(err instanceof Error ? err.message : "Kadria n'a pas pu enregistrer ces modifications.");
     } finally {
       setSaving(false);
     }
@@ -160,21 +136,24 @@ export function CompanySettingsSection({
   return (
     <PermissionGate role={role} permission="company.read" fallback={null}>
       <SettingsSectionShell
-        title="🏢 Mon entreprise"
+        title="Mon entreprise"
         readOnly={!canEdit}
         readOnlyReason="owner_only"
       >
         <div style={sectionCard}>
-          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>Identité</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>Identite de l'entreprise</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-              <label style={labelStyle}>Nom de l&apos;entreprise</label>
+              <label style={labelStyle}>Nom commercial</label>
               <input
                 value={local.companyName}
                 onChange={(e) => setLocal((c) => ({ ...c, companyName: e.target.value }))}
-                placeholder="Martin Rénovation"
+                placeholder="Martin Renovation"
                 style={inputStyle}
               />
+              <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
+                Nom affiche a vos clients.
+              </p>
             </div>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
               <label style={labelStyle}>Site web</label>
@@ -186,7 +165,7 @@ export function CompanySettingsSection({
               />
             </div>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-              <label style={labelStyle}>Lien de demande d&apos;avis Google</label>
+              <label style={labelStyle}>Lien vers vos avis Google</label>
               <input
                 id="field-google-review-url"
                 value={local.googleReviewUrl}
@@ -195,47 +174,54 @@ export function CompanySettingsSection({
                 style={inputStyle}
               />
               <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                Ajoutez votre lien d&apos;avis Google pour activer les demandes d&apos;avis client.
-                Vous pouvez le recuperer depuis votre fiche Google Business Profile.
+                Ajoutez ce lien pour pouvoir demander des avis a vos clients.
               </p>
             </div>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-              <label style={labelStyle}>Nom de l&apos;assistant dans le widget</label>
+              <label style={labelStyle}>Nom affiche dans le widget</label>
               <input
                 value={local.welcomeName}
                 onChange={(e) => setLocal((c) => ({ ...c, welcomeName: e.target.value }))}
-                placeholder="Assistant Martin Rénovation"
+                placeholder="Assistant Martin Renovation"
                 style={inputStyle}
               />
               <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                Affiché dans le header du widget à la place de &quot;Kadria&quot; (remplacé par la marque blanche si elle est activée).
+                C'est le nom visible par vos clients dans le widget.
               </p>
             </div>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-              <label style={labelStyle}>Logo de l&apos;entreprise</label>
+              <label style={labelStyle}>Logo de l'entreprise</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 {local.logoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={local.logoUrl}
                     alt="Logo entreprise"
                     style={{
-                      height: '40px', maxWidth: '120px',
-                      objectFit: 'contain', borderRadius: '6px',
-                      border: '1px solid var(--border)', background: 'var(--bg-hover)', padding: '4px',
+                      height: '40px',
+                      maxWidth: '120px',
+                      objectFit: 'contain',
+                      borderRadius: '6px',
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-hover)',
+                      padding: '4px',
                     }}
                     onError={(e) => (e.currentTarget.style.display = 'none')}
                   />
                 )}
                 <label
                   style={{
-                    padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                    border: '1px solid var(--border)', background: 'var(--bg-hover)',
-                    color: 'var(--text-2)', cursor: uploading ? 'default' : 'pointer',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-hover)',
+                    color: 'var(--text-2)',
+                    cursor: uploading ? 'default' : 'pointer',
                     opacity: uploading ? 0.6 : 1,
                   }}
                 >
-                  {uploading ? 'Import en cours...' : local.logoUrl ? 'Remplacer' : 'Importer un logo'}
+                  {uploading ? 'Import en cours...' : local.logoUrl ? 'Remplacer le logo' : 'Importer un logo'}
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -257,9 +243,13 @@ export function CompanySettingsSection({
                       onRemoveLogo();
                     }}
                     style={{
-                      padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
-                      border: '1px solid var(--border)', background: 'transparent',
-                      color: 'var(--text-3)', cursor: 'pointer',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      border: '1px solid var(--border)',
+                      background: 'transparent',
+                      color: 'var(--text-3)',
+                      cursor: 'pointer',
                     }}
                   >
                     Supprimer
@@ -293,7 +283,7 @@ export function CompanySettingsSection({
                   opacity: saving ? 0.7 : 1,
                 }}
               >
-                {saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Enregistrer'}
+                {saved ? 'Modifications enregistrees.' : saving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
               {error && (
                 <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#ef4444' }}>{error}</p>

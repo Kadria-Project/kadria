@@ -30,24 +30,23 @@ export type AccountStatusSummary = {
 
 const USAGE_STATUS_LABELS: Record<UsageStatus, string> = {
   ok: 'OK',
-  warning: 'Proche limite',
+  warning: 'Proche de la limite',
   limit_reached: 'Limite atteinte',
-  exceeded: 'Dépassé',
+  exceeded: 'Depasse',
 };
 
 const ACCOUNT_STATUS_LABELS: Record<string, string> = {
   essai: 'Essai',
   trial: 'Essai',
-  trialing: 'Essai gratuit en cours',
+  trialing: 'Essai en cours',
   actif: 'Actif',
   active: 'Actif',
   en_cours: 'Actif',
   suspendu: 'Suspendu',
   suspended: 'Suspendu',
-  annule: 'Annulé',
-  annulé: 'Annulé',
-  cancelled: 'Annulé',
-  canceled: 'Annulé',
+  annule: 'Annule',
+  cancelled: 'Annule',
+  canceled: 'Annule',
 };
 
 const sectionCard: React.CSSProperties = {
@@ -70,31 +69,9 @@ type BillingSettingsSectionProps = {
   accountStatus: AccountStatusSummary | null;
   portalLoading: boolean;
   portalError: string | null;
-  /** Reutilise l'appel existant `POST /api/stripe/portal` deja implemente dans la page (non recree ici). */
   onOpenBillingPortal: () => void;
 };
 
-/**
- * Section "Offre & quotas" extraite du monolithe `app/parametres/page.tsx`.
- *
- * Ne gere aucun champ du state global `config` : cette section est purement
- * en lecture (plan, statut, compteurs d'usage) plus une action Stripe
- * (portail de facturation, `POST /api/stripe/portal`, deja protegee cote
- * serveur par `requirePermission(context, 'billing.manage')`). Elle ne
- * possede donc pas de bouton "Enregistrer" local : il n'y a jamais rien eu a
- * sauvegarder ici (le monolithe original n'ecrivait pas non plus ces
- * donnees via le bouton global).
- *
- * Permissions : `billing.read` pour voir la section (owner + admin),
- * masquee entierement pour manager/member (pas de `billing.read` dans la
- * matrice). `billing.manage` pour l'action "Gérer mon abonnement" (owner
- * uniquement) — admin voit les informations sans l'action.
- *
- * Hors perimetre de ce lot : le bloc "Stripe Connect" (onboarding/sync
- * d'acompte) vit dans l'onglet "Catalogue & devis" du monolithe, explicitement
- * hors perimetre de ce lot — il n'est donc pas deplace ici pour eviter de
- * toucher a la section catalogue.
- */
 export function BillingSettingsSection({
   role,
   isMobile,
@@ -116,12 +93,12 @@ export function BillingSettingsSection({
       permission="billing.read"
       fallback={
         <div>
-          <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>💳 Offre & quotas</h2>
-          <ReadOnlyNotice reason="owner_only" message="Section réservée au propriétaire et aux administrateurs de l'entreprise." />
+          <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: 700 }}>Mon offre</h2>
+          <ReadOnlyNotice reason="owner_only" message="Cette partie est reservee au proprietaire du compte et a l'administrateur." />
         </div>
       }
     >
-      <SettingsSectionShell title="💳 Offre & quotas">
+      <SettingsSectionShell title="Mon offre">
         {teamTabVisible && (
           <button
             type="button"
@@ -138,17 +115,25 @@ export function BillingSettingsSection({
               background: 'var(--bg-elevated)',
             }}
           >
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: '40px', height: '40px', borderRadius: '10px',
-              background: 'rgba(34,197,94,0.12)', color: 'var(--accent)', flexShrink: 0,
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'rgba(34,197,94,0.12)',
+                color: 'var(--accent)',
+                flexShrink: 0,
+              }}
+            >
               <Users size={20} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Équipe</p>
+              <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--text-1)' }}>Mon equipe</p>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-3)' }}>
-                Invitez vos collaborateurs et gérez leurs accès à Kadria.
+                Invitez vos collaborateurs et gerez leurs acces a Kadria.
               </p>
             </div>
           </button>
@@ -156,21 +141,21 @@ export function BillingSettingsSection({
 
         {usageLoading ? (
           <div style={sectionCard}>
-            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Chargement…</p>
+            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Kadria prepare vos informations...</p>
           </div>
         ) : usageError || !monthlyUsage ? (
           <div style={sectionCard}>
             <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>
-              Informations d&apos;utilisation indisponibles pour le moment.
+              Impossible de charger ces informations pour le moment.
             </p>
           </div>
         ) : (
           <>
             <div style={sectionCard}>
-              <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>Votre offre</h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>Votre offre actuelle</h3>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
                 <div>
-                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Plan actuel</p>
+                  <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Offre choisie</p>
                   <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700, textTransform: 'capitalize' }}>
                     {accountStatus?.plan || monthlyUsage.plan}
                   </p>
@@ -180,12 +165,12 @@ export function BillingSettingsSection({
                   <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                     {accountStatus?.status
                       ? (ACCOUNT_STATUS_LABELS[accountStatus.status.toLowerCase()] || accountStatus.status)
-                      : 'Statut non disponible'}
+                      : 'Information indisponible'}
                   </p>
                 </div>
                 {accountStatus?.trialEndDate && (
                   <div>
-                    <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Fin d&apos;essai</p>
+                    <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Fin de l'essai</p>
                     <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.trialEndDate}</p>
                   </div>
                 )}
@@ -198,7 +183,7 @@ export function BillingSettingsSection({
                 {accountStatus?.nextBilling && (
                   <div>
                     <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>
-                      {accountStatus.cancelAtPeriodEnd ? 'Fin d’accès le' : 'Renouvellement le'}
+                      {accountStatus.cancelAtPeriodEnd ? "Fin d'acces le" : 'Renouvellement le'}
                     </p>
                     <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: 600 }}>{accountStatus.nextBilling}</p>
                   </div>
@@ -207,7 +192,7 @@ export function BillingSettingsSection({
 
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
                 {!canManage && (
-                  <ReadOnlyNotice reason="owner_only" message="Gestion de l'abonnement réservée au propriétaire de l'entreprise." />
+                  <ReadOnlyNotice reason="owner_only" message="La gestion de l'abonnement est reservee au proprietaire du compte." />
                 )}
                 {accountStatus?.hasStripeCustomer && canManage ? (
                   <>
@@ -226,7 +211,7 @@ export function BillingSettingsSection({
                         opacity: portalLoading ? 0.7 : 1,
                       }}
                     >
-                      {portalLoading ? 'Redirection...' : 'Gérer mon abonnement'}
+                      {portalLoading ? 'Ouverture...' : 'Gerer mon abonnement'}
                     </button>
                     {portalError && (
                       <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#ef4444' }}>{portalError}</p>
@@ -234,7 +219,7 @@ export function BillingSettingsSection({
                   </>
                 ) : (
                   <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '13px' }}>
-                    Aucun abonnement Stripe actif
+                    Aucun abonnement actif pour le moment.
                   </p>
                 )}
               </div>
@@ -243,15 +228,21 @@ export function BillingSettingsSection({
             <div style={sectionCard}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--accent)' }}>Utilisation du mois</h3>
-                <span style={{
-                  fontSize: '11px', fontWeight: 700, borderRadius: '20px', padding: '2px 10px',
-                  background: 'rgba(34,197,94,0.1)', color: 'var(--accent)',
-                }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    borderRadius: '20px',
+                    padding: '2px 10px',
+                    background: 'rgba(34,197,94,0.1)',
+                    color: 'var(--accent)',
+                  }}
+                >
                   {USAGE_STATUS_LABELS[
-                    ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('exceeded') && 'exceeded')
-                    || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('limit_reached') && 'limit_reached')
-                    || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('warning') && 'warning')
-                    || 'ok'
+                    (([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('exceeded') && 'exceeded')
+                      || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('limit_reached') && 'limit_reached')
+                      || ([monthlyUsage.projects.status, monthlyUsage.vapi.status, monthlyUsage.assistant?.status].includes('warning') && 'warning')
+                      || 'ok')
                   ]}
                 </span>
               </div>
@@ -260,7 +251,7 @@ export function BillingSettingsSection({
                   <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Dossiers</p>
                   <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                     {monthlyUsage.projects.unlimited
-                      ? `${monthlyUsage.projects.used} / Illimité`
+                      ? `${monthlyUsage.projects.used} / Illimite`
                       : `${monthlyUsage.projects.used} / ${monthlyUsage.projects.limit ?? 0}`}
                   </p>
                 </div>
@@ -268,7 +259,7 @@ export function BillingSettingsSection({
                   <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Appels vocaux</p>
                   <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                     {monthlyUsage.vapi.callsUnlimited
-                      ? `${monthlyUsage.vapi.callsUsed} / Illimité`
+                      ? `${monthlyUsage.vapi.callsUsed} / Illimite`
                       : monthlyUsage.vapi.callsLimit === 0
                         ? 'Non inclus'
                         : `${monthlyUsage.vapi.callsUsed} / ${monthlyUsage.vapi.callsLimit}`}
@@ -278,7 +269,7 @@ export function BillingSettingsSection({
                   <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Minutes vocales</p>
                   <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
                     {monthlyUsage.vapi.minutesLimit === null
-                      ? `${monthlyUsage.vapi.minutesUsed} min / Non limité`
+                      ? `${monthlyUsage.vapi.minutesUsed} min / Sans limite`
                       : `${monthlyUsage.vapi.minutesUsed} / ${monthlyUsage.vapi.minutesLimit} min`}
                   </p>
                 </div>
@@ -286,7 +277,7 @@ export function BillingSettingsSection({
                   <div>
                     <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '12px' }}>Assistant Kadria</p>
                     <p style={{ margin: '4px 0 0', fontSize: '16px', fontWeight: 700 }}>
-                      {monthlyUsage.assistant.used} / {monthlyUsage.assistant.limit} questions utilisées ce mois-ci
+                      {monthlyUsage.assistant.used} / {monthlyUsage.assistant.limit} questions ce mois-ci
                     </p>
                   </div>
                 )}
@@ -295,7 +286,7 @@ export function BillingSettingsSection({
 
             <div style={sectionCard}>
               <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6 }}>
-                Ces compteurs se réinitialisent automatiquement chaque mois. Aucune action n&apos;est requise de votre part.
+                Ces compteurs se reinitialisent automatiquement chaque mois. Vous n'avez rien a faire.
               </p>
             </div>
           </>

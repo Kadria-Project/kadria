@@ -3,8 +3,8 @@
 export type ReadOnlyReason = 'owner_only' | 'read_only';
 
 const MESSAGES: Record<ReadOnlyReason, string> = {
-  owner_only: 'Modification réservée au propriétaire de l\'entreprise.',
-  read_only: 'Vous disposez d\'un accès en lecture seule.',
+  owner_only: "Cette partie est reservee au proprietaire de l'entreprise.",
+  read_only: 'Vous pouvez consulter cette partie, sans la modifier.',
 };
 
 type ReadOnlyNoticeProps = {
@@ -13,12 +13,6 @@ type ReadOnlyNoticeProps = {
   style?: React.CSSProperties;
 };
 
-/**
- * Bandeau reutilisable affiche a la place (ou au-dessus) d'une section quand
- * le role courant n'a pas la permission requise. Ne code jamais le message en
- * dur ailleurs : toujours passer par ce composant pour garder un vocabulaire
- * coherent (cf. AGENTS.md du lot "gouvernance UI /parametres").
- */
 export function ReadOnlyNotice({ reason = 'read_only', message, style }: ReadOnlyNoticeProps) {
   return (
     <div
@@ -37,7 +31,7 @@ export function ReadOnlyNotice({ reason = 'read_only', message, style }: ReadOnl
         ...style,
       }}
     >
-      <span aria-hidden="true">🔒</span>
+      <span aria-hidden="true">Verrouille</span>
       <span>{message || MESSAGES[reason]}</span>
     </div>
   );

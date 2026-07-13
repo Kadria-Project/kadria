@@ -39,16 +39,16 @@ export function SettingsPageShell({
   onSectionChange,
   saveState,
   statusMessage,
-  title = 'Configuration',
+  title = 'Reglages',
 }: SettingsPageShellProps) {
   const saveLabel =
     saveState === 'saved'
-      ? '✓ Sauvegarde simulee'
+      ? 'Enregistre'
       : saveState === 'saving'
-        ? 'Sauvegarde...'
+        ? 'Enregistrement...'
         : saveState === 'error'
           ? 'Reessayer'
-          : 'Sauvegarder';
+          : 'Enregistrer';
 
   return (
     <main
@@ -86,12 +86,12 @@ export function SettingsPageShell({
               gap: '6px',
             }}
           >
-            ← Retour
+            Retour
           </button>
           <div className="flex min-w-0 items-baseline gap-2">
             <KadriaLogo size="sm" theme="dark" noLink />
             <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
-              · {title}
+              - {title}
             </span>
             {mode === 'demo' && (
               <span
@@ -171,11 +171,6 @@ export function SettingsPageShell({
         </div>
       )}
 
-      {/*
-        Disposition alignée sur la prod (app/parametres/page.tsx) : onglets à
-        plat en haut (plus de menu latéral étroit ni de groupes), contenu en
-        dessous sur toute la largeur (max-w-[1500px], comme en prod).
-      */}
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-4 sm:px-6 sm:py-6 xl:px-10" style={{ alignItems: 'stretch' }}>
         <div
           style={{
