@@ -122,6 +122,58 @@ L'onboarding réel n'a jamais été capturé (faux positif corrigé — voir
   mais n'est pas un bug d'affichage — c'est une caractéristique des fixtures
   démo. Voir P3-DKP-03.
 
+## Plan / gating (Planning & Équipe) — même bug que Dossiers/Kanban/Devis
+- Reproduit à l'identique sur le calendrier : `planning-12-essential-
+  desktop.png` (`?scenario=essential`) et `planning-13-performance-
+  desktop.png` (`?scenario=performance`) sont pixel-identiques. Le
+  calendrier desktop est pourtant explicitement protégé par
+  `<FeatureGate feature="calendar" requiredPlan="performance">` dans
+  `DemoArtisanDashboard.tsx` (L3979) — en plan Essentiel réel, cet écran
+  devrait être verrouillé (overlay "Disponible avec Performance"). Cause
+  racine identique aux lots précédents : `DEMO_PLAN` est une constante
+  hardcodée à `'performance'` (L152, injectée dans `<PlanProvider
+  plan={DEMO_PLAN}>` L596), jamais dérivée du `scenario` choisi dans la
+  toolbar d'audit. `FeatureGate` lit `useCurrentPlan()` (contexte
+  `PlanProvider`), pas `artisan.plan` (contexte `DemoModeContext`, qui lui
+  varie correctement par scénario) — les deux notions de "plan" sont
+  déconnectées en mode démo. Voir P1 dans `UX_UI_AUDIT_PLANNING_EQUIPE.md`.
+
+## Divergence calendrier démo vs calendrier réel (Planning & Équipe)
+- Le calendrier affiché en mode démo (`src/components/DemoCalendar.tsx`,
+  monté via `DemoCalendarAdapter`) est un composant distinct et plus simple
+  que le vrai calendrier de production
+  (`src/components/dashboard/DesktopAgendaView.tsx` /
+  `MobileAgendaView.tsx`), avec un commentaire explicite dans le code
+  expliquant la substitution ("Mode demo : DesktopAgendaView appelle
+  reellement /api/projects et l'OAuth Google Calendar. On utilise
+  DemoCalendarAdapter... a la place."). Conséquence pour l'audit : les
+  fonctionnalités "team scheduling" récentes (filtre collaborateur Tous/Moi/
+  Non affectés, réaffectation d'un rendez-vous, vue de charge par
+  collaborateur, détection de conflits) sont **invisibles en mode démo**,
+  bien qu'elles existent dans le code de production. Elles n'ont donc pas pu
+  être auditées visuellement dans ce lot — limite structurelle, pas un oubli
+  de test. Voir P1 dans `UX_UI_AUDIT_PLANNING_EQUIPE.md`.
+
+## Navigation mobile vers le calendrier — impasse
+- Sur mobile, le bouton "Menu" du bottom nav (`MobileBottomNav`, dernier
+  item) appelle `onMenuClick={() => setDashboardMode('value')}`
+  (`DemoArtisanDashboard.tsx` L4916) au lieu d'ouvrir un menu ou de naviguer
+  vers le calendrier — il ramène simplement à l'accueil. Le seul élément de
+  navigation qui référence `dashboardMode==='calendar'` sur desktop est la
+  sidebar (`NAV_ITEMS`, absente du DOM mobile). Résultat : sur mobile, il
+  n'existe aucun chemin de navigation standard vers le calendrier — capturé
+  dans `planning-04-mobile-navigation-deadend.png`. Un artisan sur mobile ne
+  peut pas consulter son planning depuis la nav principale. Voir P1 dans
+  `UX_UI_AUDIT_PLANNING_EQUIPE.md`.
+
+## Encodage : libellé "Non affectés" corrompu (code de production, hors démo)
+- Dans `src/components/dashboard/DesktopAgendaView.tsx` (L1087), le libellé
+  du bucket "Non affectés" dans la vue de charge par collaborateur est
+  encodé en dur `'Non affectÃ©s'` (double encodage UTF-8), ce qui afficherait
+  un texte corrompu à l'écran en production. Repéré par lecture de code (la
+  vue mobile démo ne permet pas de le capturer, voir ci-dessus). Voir P2
+  dans `UX_UI_AUDIT_PLANNING_EQUIPE.md`.
+
 ## Non couvert par ce document
 Les familles suivantes ne peuvent pas être évaluées faute d'écrans testés
 dans les lots réalisés à ce jour : rendu PDF simulé réel des devis (le clic

@@ -10,7 +10,14 @@ sélecteur utilisé). **Non testé** = pas de tentative dans ce lot.
 | Dashboard (accueil) | `/demo-dashboard` | `desktop-dashboard-normal.png` | `mobile-dashboard-normal.png` | normal | Chargement, scroll implicite | Vu |
 | Dashboard (param dense) | `/demo-dashboard?scenario=dense` | `desktop-dashboard-dense-param.png` | — | dense (via query) | Navigation directe | Vu (mais aucune différence visible vs normal, voir P2) |
 | Suivi commercial | onglet dashboard | `desktop-suivi-commercial.png` | — | normal | Clic onglet nav latérale | Vu |
-| Calendrier | onglet dashboard | `desktop-calendrier.png` | — | normal | Clic onglet nav latérale | Vu |
+| Calendrier — vue Mois | onglet dashboard "Calendrier" | `desktop-calendrier.png` (lot précédent), `planning-01-normal-desktop.png`, `planning-02-dense-desktop.png`, `planning-03-empty-desktop.png`, `planning-12-essential-desktop.png`, `planning-13-performance-desktop.png` | — | normal / dense / empty / essential / performance | Clic onglet nav latérale, comparaison 5 scénarios | Vu — voir `UX_UI_AUDIT_PLANNING_EQUIPE.md` pour l'analyse complète (P1 : plan figé sur "performance", identique au bug déjà documenté sur Dossiers/Kanban/Devis) |
+| Calendrier — vue Semaine | onglet dashboard "Calendrier", bouton "Semaine" | `planning-05-semaine.png` | — | normal | Clic "Semaine" | Vu — grille horaire 8h+ vide (aucun événement démo cette semaine-là), voir note densité rapport dédié |
+| Calendrier — vue Jour | onglet dashboard "Calendrier" | — | — | — | Recherche de bouton "Jour" | **N'existe pas** — seuls "Mois" et "Semaine" sont implémentés dans `src/components/DemoCalendar.tsx` (confirmé en lisant le code, pas de bouton "Jour" dans le JSX) |
+| Calendrier — créer un événement | onglet dashboard "Calendrier", bouton "+ Événement" | `planning-14-modal.png` | — | normal | Clic "+ Événement" | Vu — modale "Nouvel événement" (type RDV/Relance/Rappel/Intervention, titre, date, heure, durée, notes) |
+| Calendrier — éditer un événement | onglet dashboard "Calendrier", clic sur un événement existant | `planning-08-rendezvous.png` | — | normal | Clic sur événement "Intervention chantier - Julien Rousseau" | Vu — modale "Modifier l'événement" avec bouton "Marquer comme fait" et "Supprimer" |
+| Calendrier — conflits de créneaux | onglet dashboard "Calendrier" | — | — | — | Recherche de tout indicateur visuel de conflit | **Non applicable** — `src/components/DemoCalendar.tsx` (utilisé en mode démo local à la place du vrai `DesktopAgendaView.tsx`) n'a aucune logique de détection de conflit ; cette fonctionnalité existe uniquement dans le composant de production réel (non branché en mode démo, voir `UX_UI_AUDIT_PLANNING_EQUIPE.md`) |
+| Calendrier — vue équipe / affectation collaborateur | onglet dashboard "Calendrier" | — | — | — | Recherche de sélecteur "Tous/Moi/collaborateur/Non affectés" | **Non applicable en mode démo** — ce sélecteur existe réellement dans `src/components/dashboard/DesktopAgendaView.tsx` (lots "team scheduling", filtre `CollaboratorFilter`, réaffectation via `/api/appointments/:id/assign`) mais `DemoArtisanDashboard.tsx` substitue ce composant par `DemoCalendarAdapter`/`DemoCalendar`, qui ne branche ni le multi-utilisateur ni l'affectation. Voir P1 dans `UX_UI_AUDIT_PLANNING_EQUIPE.md` |
+| Calendrier — vue mobile | dashboard mobile | `planning-04-mobile-navigation-deadend.png` | normal | Recherche d'un chemin de navigation vers le calendrier depuis la nav mobile | **Impasse de navigation confirmée** — le bouton "Menu" du bottom nav mobile appelle `setDashboardMode('value')` (retour à l'accueil) au lieu d'ouvrir un menu ou le calendrier (`DemoArtisanDashboard.tsx` L4916) ; aucun autre contrôle mobile n'atteint `dashboardMode==='calendar'` hors une action contextuelle ponctuelle ("Planifier l'intervention" dans la carte Coach, qui mène en réalité à la fiche projet, pas au calendrier). Voir P1 dans `UX_UI_AUDIT_PLANNING_EQUIPE.md` |
 | Mes clients | onglet dashboard | `desktop-mes-clients.png` | — | normal | Clic onglet nav latérale | Vu |
 | Mes taches a faire | onglet dashboard | `desktop-mes-taches.png` | — | normal | Clic onglet nav latérale | Vu |
 | Notifications (panneau) | dashboard, cloche | `desktop-notifications-open.png` | — | normal | Clic cloche notif, ouverture panneau | Vu |
@@ -38,7 +45,7 @@ sélecteur utilisé). **Non testé** = pas de tentative dans ce lot.
 | Fiche projet avec rendez-vous planifié | `/demo-dashboard/projet/demo_102` | `projet-04-rendez-vous-desktop.png` | `projet-07-mobile-rdv.png` | normal | Navigation directe | Vu |
 | Fiche projet — modale "Planifier un rendez-vous" | `/demo-dashboard/projet/demo_101` | `projet-06-modal-rdv-desktop.png` | — | normal | Clic "Planifier un rendez-vous" | Vu |
 | Menu mobile "Menu Kadria" (bottom-sheet secondaire) | dashboard mobile | — | ~~`mobile-menu-sheet.png`~~ | normal | Clic bouton "Menu" | **Doublon strict de `mobile-nav-open.png`** (ligne ci-dessus) — pas un second écran distinct, malgré la présentation initiale de ce tableau ; rejeté, non commité |
-| Planning d'équipe | inconnue | — | — | — | Aucune | Non testé |
+| Planning d'équipe (multi-collaborateurs) | n'existe pas en mode démo | — | — | — | Voir ligne "vue équipe / affectation collaborateur" ci-dessus | Non applicable en mode démo — composant réel non branché |
 | Catalogue / prestations (écran dédié) | inconnue | — | — | — | Aucune | Non testé (seul l'onglet paramètres "Catalogue & devis" a été vu) |
 | Équipe et collaborateurs | inconnue | — | — | — | Aucune | Non testé |
 | Centre de progression (détail) | dashboard, bouton "Voir le détail" | — | — | — | Aucune | Non testé |
@@ -48,7 +55,7 @@ sélecteur utilisé). **Non testé** = pas de tentative dans ce lot.
 | Scénario `empty` (zone Dossiers/Kanban) | `/demo-dashboard?scenario=empty` | `dossiers-03-liste-empty-desktop.png`, `kanban-03-empty-desktop.png` | — | empty | Navigation directe | Vu — 1 dossier (pas 0), voir note rapport dédié |
 | Scénario `performance` (zone Dossiers/Kanban) | `/demo-dashboard?scenario=normal` (plan figé "performance" par défaut dans toute la démo) | voir lignes Dossiers/Kanban ci-dessus | — | normal=performance | — | Vu implicitement — le plan démo est toujours "performance" (voir P1) |
 
-**Total captures committées (cumulé, tous lots)**: 55 fichiers PNG dans
+**Total captures committées (cumulé, tous lots)**: 64 fichiers PNG dans
 `docs/ux-audit-screenshots/` (19 zone Dossiers/Kanban/Fiche projet, cf.
 `UX_UI_AUDIT_DOSSIERS_KANBAN_PROJET.md` + 20 zone Devis — 19 captures
 validées + 1 conservée comme preuve de bug (`devis-11-apercu-source-
@@ -64,3 +71,12 @@ montrent une page "Configuration" du widget, pas l'onboarding réel),
 intactes, hors périmètre de ce lot : `desktop-dossiers-pipeline.png` et
 `dossiers-02-liste-dense-desktop.png` (zone Dossiers, déjà traitée),
 `desktop-assistant-open.png` (zone Assistant, explicitement hors périmètre).
+Ajouté par le lot Planning & Équipe (9 captures) : `planning-01-normal-
+desktop.png`, `planning-02-dense-desktop.png`, `planning-03-empty-
+desktop.png`, `planning-04-mobile-navigation-deadend.png` (conservée comme
+preuve de l'impasse de navigation mobile, pas comme preuve d'un calendrier
+mobile fonctionnel), `planning-05-semaine.png`, `planning-08-rendezvous.png`,
+`planning-12-essential-desktop.png`, `planning-13-performance-desktop.png`
+(conservée avec la précédente comme preuve pixel-identique du bug de plan
+figé), `planning-14-modal.png`. Voir `UX_UI_AUDIT_PLANNING_EQUIPE.md` pour le
+détail complet de ce lot.
