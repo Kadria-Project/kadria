@@ -2432,7 +2432,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
   const relanceCount = (taskCounts.followUp || 0) + overdueCallbacks.length + overdueEvents.length;
   const showValueOverview = dashboardMode === 'value';
-  const showBusinessOverview = dashboardMode === 'commercial';
   const showTasksOverview = dashboardMode === 'tasks';
   const showCommercialWorkspace = dashboardMode === 'commercial';
   const showClientsWorkspace = dashboardMode === 'clients';
@@ -2440,7 +2439,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const showCalendarWorkspaceDesktop = showCalendarWorkspace && !isMobile;
   const showPipelineWorkspace = dashboardMode === 'pipeline';
   const showValueReportWorkspace = dashboardMode === 'value-report';
-  const showBusinessOverviewDesktop = showBusinessOverview && !isMobile;
+  // Le Suivi V2 remplace le reporting commercial historique sur desktop.
+  // Les blocs existants restent en place pour les parcours mobiles en attendant
+  // leur propre refonte, mais ne sont plus montés sous TrackingWorkspace.
+  const showLegacyCommercialOverviewDesktop = false;
   // Layout conditionnel du Suivi commercial desktop : la grande colonne
   // gauche est portee par le bloc le plus utile selon la presence ou non
   // de dossiers en risque.
@@ -3796,7 +3798,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* Barre période */}
-      {showBusinessOverviewDesktop && (
+      {showLegacyCommercialOverviewDesktop && (
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-[var(--text-2)]">Période analysée · {periodLabel}</p>
 
@@ -3826,7 +3828,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {/* KPIs */}
-      {showBusinessOverviewDesktop && (
+      {showLegacyCommercialOverviewDesktop && (
       <div style={{ padding: 0, marginBottom: '24px' }}>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" style={{ gap: isMobile ? '12px' : '16px' }}>
@@ -3864,7 +3866,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       </div>
       )}
 
-      {showBusinessOverviewDesktop && !loading && (
+      {showLegacyCommercialOverviewDesktop && !loading && (
         <div className="mb-6 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             {hasRiskProjects ? opportunitesCard : actionsATraiterCard}
@@ -4010,10 +4012,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showBusinessOverviewDesktop && !loading && guidelineCommercialeSection}
+      {showLegacyCommercialOverviewDesktop && !loading && guidelineCommercialeSection}
 
       {/* Alertes */}
-      {showBusinessOverviewDesktop && !loading && (overdueCount > 0 || todayCount > 0) && (
+      {showLegacyCommercialOverviewDesktop && !loading && (overdueCount > 0 || todayCount > 0) && (
         <div style={{ padding: 0, marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {overdueCount > 0 && (
             <div
