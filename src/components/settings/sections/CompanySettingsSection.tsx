@@ -283,7 +283,7 @@ export function CompanySettingsSection({
                   opacity: saving ? 0.7 : 1,
                 }}
               >
-                {saved ? 'Modifications enregistrees.' : saving ? 'Enregistrement...' : 'Enregistrer'}
+                {saved ? 'Modifications enregistrees.' : saving ? 'Enregistrement en cours...' : 'Enregistrer'}
               </button>
               {error && (
                 <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#ef4444' }}>{error}</p>

@@ -35,10 +35,10 @@ import {
 // (permission manquante — message explicite plutot qu'une erreur technique),
 // 404 (ressource introuvable), 500/autres (erreur serveur generique).
 function describeSettingsError(status: number, fallback: string): string {
-  if (status === 401) return 'Votre session a expire. Veuillez vous reconnecter.'
-  if (status === 403) return "Modification reservee au propriétaire de l'entreprise."
-  if (status === 404) return 'Ressource introuvable.'
-  if (status >= 500) return 'Une erreur est survenue, réessayez.'
+  if (status === 401) return 'Votre session a expire. Reconnectez-vous.'
+  if (status === 403) return "Vous n'avez pas acces a cette partie."
+  if (status === 404) return "Cet element n'est plus disponible."
+  if (status >= 500) return "Kadria n'a pas pu terminer cette action. Reessayez dans un instant."
   return fallback
 }
 
@@ -1409,7 +1409,7 @@ function ParametresPageContent() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       color: 'var(--text-2)', fontFamily: 'system-ui',
     }}>
-      Chargement...
+      Kadria prepare vos reglages...
     </div>
   )
 
@@ -1447,7 +1447,7 @@ function ParametresPageContent() {
         <div className="flex shrink-0 items-center gap-3">
           {!isMobile && (
             <span style={{ color: saved ? '#4ade80' : 'var(--text-3)', fontSize: '12px', whiteSpace: 'nowrap' }}>
-              {saved ? 'Dernière sauvegarde · à l’instant' : saving ? 'Sauvegarde en cours…' : canSaveActiveSection ? 'Configuration en cours' : 'Section en lecture seule'}
+              {saved ? "Modifications enregistrees a l'instant" : saving ? 'Enregistrement en cours...' : canSaveActiveSection ? 'Reglages prets a etre enregistres' : 'Section en lecture seule'}
             </span>
           )}
           <button
@@ -1467,7 +1467,7 @@ function ParametresPageContent() {
               opacity: !canSaveActiveSection ? 0.7 : 1,
             }}
           >
-            {!canSaveActiveSection ? 'Lecture seule' : saved ? '✓ Sauvegardé' : saving ? 'Sauvegarde...' : 'Sauvegarder'}
+            {!canSaveActiveSection ? 'Lecture seule' : saved ? 'Modifications enregistrees' : saving ? 'Enregistrement en cours...' : 'Enregistrer'}
           </button>
         </div>
       </div>
@@ -4085,7 +4085,7 @@ export default function ParametresPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: 'var(--text-2)', fontFamily: 'system-ui',
       }}>
-        Chargement...
+        Kadria prepare vos reglages...
       </div>
     }>
       <ParametresPageContent />

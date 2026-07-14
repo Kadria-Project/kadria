@@ -395,10 +395,10 @@ function AutomationsHistoryPageContent() {
 
         <section className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
           {loading ? (
-            <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement...</div>
+            <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement de l'historique...</div>
           ) : !hasRuns ? (
             <div className="rounded-[18px] border border-dashed border-white/10 bg-black/10 p-5 text-sm text-zinc-500">
-              Aucune action ne correspond aux filtres actuels.
+              Aucune action ne correspond a ces filtres pour le moment.
             </div>
           ) : (
             <>
@@ -516,7 +516,7 @@ function AutomationsHistoryPageContent() {
                 ) : null}
                 {selectedRun.canExecute ? (
                   <button type="button" disabled={submittingId === selectedRun.id} onClick={() => void runAction(selectedRun, 'execute')} className="rounded-xl bg-[#22c55e] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
-                    {submittingId === selectedRun.id ? 'En cours...' : "Valider et laisser Kadria agir"}
+                    {submittingId === selectedRun.id ? 'Action en cours...' : "Valider et laisser Kadria agir"}
                   </button>
                 ) : null}
                 {selectedRun.canIgnore ? (
@@ -526,7 +526,7 @@ function AutomationsHistoryPageContent() {
                 ) : null}
                 {selectedRun.canRetry ? (
                   <button type="button" disabled={submittingId === selectedRun.id} onClick={() => void runAction(selectedRun, 'retry')} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-wait disabled:opacity-60">
-                    {submittingId === selectedRun.id ? 'Nouvel essai...' : 'Reessayer'}
+                    {submittingId === selectedRun.id ? 'Nouvel essai en cours...' : 'Reessayer'}
                   </button>
                 ) : null}
               </div>
@@ -553,7 +553,7 @@ export default function AutomationsHistoryPage() {
             fontFamily: 'system-ui',
           }}
         >
-          Chargement...
+          Kadria prepare l'historique...
         </div>
       }
     >

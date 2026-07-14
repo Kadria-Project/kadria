@@ -280,7 +280,7 @@ function DrawerContent({
           disabled={submitting}
           className="h-11 rounded-xl bg-[#22c55e] px-4 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60"
         >
-          {submitting ? 'Envoi...' : "Envoyer l'invitation"}
+          {submitting ? 'Envoi en cours...' : "Envoyer l'invitation"}
         </button>
       </div>
     </>

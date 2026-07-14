@@ -357,7 +357,7 @@ export default function AutomationsSettingsPage() {
                       : 'border border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20'
                   }`}
                 >
-                    {pauseSaving ? 'Mise a jour...' : systemState.paused ? 'Reprendre les actions automatiques' : 'Tout mettre en pause'}
+                    {pauseSaving ? 'Mise a jour en cours...' : systemState.paused ? 'Reprendre les actions automatiques' : 'Tout mettre en pause'}
                 </button>
               ) : null}
             </div>
@@ -435,7 +435,7 @@ export default function AutomationsSettingsPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-white">Ce que Kadria a fait recemment</h2>
-              <p className="mt-1 text-sm text-zinc-400">Un apercu simple des derniers dossiers pris en charge, demandes en attente et points a revoir.</p>
+              <p className="mt-1 text-sm text-zinc-400">Un apercu simple des dernieres actions realisees, de celles en attente et des points a verifier.</p>
             </div>
             <button
               type="button"
@@ -448,10 +448,10 @@ export default function AutomationsSettingsPage() {
 
           <div className="mt-5 grid gap-3">
             {loading ? (
-              <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement...</div>
+              <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement des dernieres actions...</div>
             ) : recentRuns.length === 0 ? (
               <div className="rounded-[18px] border border-dashed border-white/10 bg-black/10 p-5 text-sm text-zinc-500">
-                Rien de recent a afficher pour le moment.
+                Aucune action enregistree pour le moment.
               </div>
             ) : (
               recentRuns.map((run) => (
@@ -489,7 +489,7 @@ export default function AutomationsSettingsPage() {
 
         <div className="mt-6 grid gap-4">
           {loading ? (
-            <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement...</div>
+            <div className="rounded-[18px] border border-white/10 bg-black/10 p-5 text-sm text-zinc-400">Chargement des reglages...</div>
           ) : (
             items.map((item) => (
               <article key={item.automation.type} className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">

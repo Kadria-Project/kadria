@@ -566,7 +566,7 @@ function ConfirmActionDialog({
                 : 'bg-[#22c55e] text-black hover:opacity-90'
             }`}
           >
-            {submitting ? 'Enregistrement...' : confirmLabel}
+            {submitting ? 'Mise a jour en cours...' : confirmLabel}
           </button>
         </div>
       </div>

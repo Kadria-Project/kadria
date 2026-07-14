@@ -272,7 +272,7 @@ export default function KadriaAssistantWidget() {
         }
       : {
           role: 'assistant',
-          content: 'Rien d’urgence pour le moment.',
+          content: "Rien d'urgent pour le moment.",
         };
 
     setMessages((prev) => [...prev, assistantMessage]);
@@ -387,7 +387,7 @@ export default function KadriaAssistantWidget() {
       if (!res.ok || !data?.success) {
         if (data?.code === 'ASSISTANT_QUOTA_REACHED') {
           setQuotaReached(true);
-          setError('Vous avez atteint votre limite mensuelle avec l’assistant Kadria.');
+          setError("Vous avez atteint votre limite mensuelle avec l'assistant Kadria.");
           return;
         }
         setError(data?.error || 'Je n’ai pas pu répondre pour le moment. Réessayez dans un instant.');
@@ -417,7 +417,7 @@ export default function KadriaAssistantWidget() {
         },
       ]);
     } catch {
-      setError('La connexion semble interrompue. Réessayez dans un instant.');
+      setError('La connexion semble interrompue. Reessayez dans un instant.');
     } finally {
       setLoading(false);
     }
@@ -458,7 +458,7 @@ export default function KadriaAssistantWidget() {
     } catch {
       setMessages((prev) =>
         prev.map((m, i) =>
-          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'La connexion semble interrompue. Réessayez dans un instant.' } : m
+          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'La connexion semble interrompue. Reessayez dans un instant.' } : m
         )
       );
     }
@@ -821,7 +821,7 @@ export default function KadriaAssistantWidget() {
             {loading && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-1.5 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-2.5 text-sm text-[#9ca3af]">
-                  <span>Je rassemble les informations…</span>
+                  <span>Je rassemble les informations...</span>
                   <span className="flex gap-0.5">
                     <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e] [animation-delay:-0.3s]" />
                     <span className="h-1 w-1 animate-bounce rounded-full bg-[#22c55e] [animation-delay:-0.15s]" />

@@ -141,7 +141,7 @@ export function BillingSettingsSection({
 
         {usageLoading ? (
           <div style={sectionCard}>
-            <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Kadria prepare vos informations...</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px', margin: 0 }}>Kadria prepare votre offre...</p>
           </div>
         ) : usageError || !monthlyUsage ? (
           <div style={sectionCard}>
@@ -211,7 +211,7 @@ export function BillingSettingsSection({
                         opacity: portalLoading ? 0.7 : 1,
                       }}
                     >
-                      {portalLoading ? 'Ouverture...' : 'Gerer mon abonnement'}
+                      {portalLoading ? 'Ouverture en cours...' : 'Gerer mon abonnement'}
                     </button>
                     {portalError && (
                       <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#ef4444' }}>{portalError}</p>
