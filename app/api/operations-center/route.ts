@@ -31,8 +31,8 @@ type AppointmentRow = {
   end_time: string | null
   title: string | null
   location: string | null
-  latitude: number | null
-  longitude: number | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 type ActivityRow = {
@@ -427,7 +427,7 @@ export async function GET() {
 
     const appointmentsQuery = supabaseAdmin
       .from('project_appointments')
-      .select('id, project_id, tenant_id, artisan_id, assigned_user_id, start_time, end_time, title, location, latitude, longitude')
+      .select('id, project_id, tenant_id, artisan_id, assigned_user_id, start_time, end_time, title, location')
       .order('start_time', { ascending: true })
       .limit(240)
 
@@ -487,10 +487,35 @@ export async function GET() {
     )
 
     const visibleProjectIds = new Set(visibleProjects.map((project) => project.id))
+    const projectCoordinatesById = new Map(
+      rawProjectRows
+        .map((row) => {
+          const id = typeof row.id === 'string' ? row.id : ''
+          if (!id) return null
+          return [
+            id,
+            {
+              latitude: typeof row.latitude === 'number' ? row.latitude : null,
+              longitude: typeof row.longitude === 'number' ? row.longitude : null,
+            },
+          ] as const
+        })
+        .filter((entry): entry is readonly [string, { latitude: number | null; longitude: number | null }] => entry !== null),
+    )
     const appointments = ((appointmentsRes.data || []) as unknown[])
       .filter(isAppointmentRow)
       .filter((row) => !row.project_id || visibleProjectIds.has(row.project_id))
-      .map((row) => mapAppointmentForRecommendations(row, userNames))
+      .map((row) => {
+        const coordinates = row.project_id ? projectCoordinatesById.get(row.project_id) : null
+        return mapAppointmentForRecommendations(
+          {
+            ...row,
+            latitude: coordinates?.latitude ?? null,
+            longitude: coordinates?.longitude ?? null,
+          },
+          userNames,
+        )
+      })
 
     stage = 'activities_normalize'
     const activities = ((activityRes.data || []) as unknown[]).filter(isActivityRow)
