@@ -417,7 +417,7 @@ export default function KadriaAssistantWidget() {
         },
       ]);
     } catch {
-      setError('La connexion semble interrompue. Reessayez dans un instant.');
+      setError('La connexion semble interrompue. Réessayez dans un instant.');
     } finally {
       setLoading(false);
     }
@@ -458,7 +458,7 @@ export default function KadriaAssistantWidget() {
     } catch {
       setMessages((prev) =>
         prev.map((m, i) =>
-          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'La connexion semble interrompue. Reessayez dans un instant.' } : m
+          i === messageIndex ? { ...m, proposedActionState: 'error', proposedActionError: 'La connexion semble interrompue. Réessayez dans un instant.' } : m
         )
       );
     }

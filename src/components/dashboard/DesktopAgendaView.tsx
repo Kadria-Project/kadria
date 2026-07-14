@@ -345,7 +345,7 @@ function EventPopover({
           <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
             <p className="text-xs font-semibold text-[var(--text-2)]">Collaborateur pr&eacute;vu</p>
             <p className="mt-1 text-sm text-[var(--text-1)]">
-              {event.isUnassigned ? 'Sans collaborateur' : event.assignedUserName || 'Collaborateur'}
+              {event.isUnassigned ? 'Sans collaborateur' : event.assignedUserName || 'Collaborateur pr\u00E9vu'}
             </p>
             <select
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1.5 text-xs text-[var(--text-1)]"
