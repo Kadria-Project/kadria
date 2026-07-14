@@ -149,6 +149,7 @@ export interface OperationsWorkbenchItem {
 }
 
 export interface OperationsWorkbenchSummary {
+  activeAutomationCount: number
   todayCount: number
   approvalCount: number
   completedTodayCount: number
@@ -168,6 +169,10 @@ export interface OperationsCenterResult {
     recentlyCompleted: OperationsWorkbenchItem[]
     needsAttention: OperationsWorkbenchItem[]
     summary: OperationsWorkbenchSummary
+    permissions: {
+      canReadAutomations: boolean
+      canManageAutomations: boolean
+    }
   }
   health: OperationsHealthSummary
   commercialLoad: CommercialLoadItem[]
@@ -1061,10 +1066,15 @@ export function buildOperationsCenter(input: BuildOperationsCenterInput): Operat
       recentlyCompleted: [],
       needsAttention: [],
       summary: {
+        activeAutomationCount: 0,
         todayCount: 0,
         approvalCount: 0,
         completedTodayCount: 0,
         attentionCount: 0,
+      },
+      permissions: {
+        canReadAutomations: false,
+        canManageAutomations: false,
       },
     },
     health: {

@@ -325,6 +325,9 @@ function buildWorkbench(input: {
   recommendations: RecommendationItem[]
   runs: Awaited<ReturnType<typeof listAutomationRunsForCurrentTenant>>['runs']
   now: Date
+  activeAutomationCount: number
+  canReadAutomations: boolean
+  canManageAutomations: boolean
 }) {
   const approvalRuns = input.runs.filter((run) => run.status === 'prepared')
   const failedRuns = input.runs.filter((run) => run.status === 'failed')
@@ -370,10 +373,15 @@ function buildWorkbench(input: {
     recentlyCompleted,
     needsAttention,
     summary: {
+      activeAutomationCount: input.activeAutomationCount,
       todayCount: todayActions.length,
       approvalCount: approvalRuns.length,
       completedTodayCount: succeededRuns.length,
       attentionCount: needsAttention.length,
+    },
+    permissions: {
+      canReadAutomations: input.canReadAutomations,
+      canManageAutomations: input.canManageAutomations,
     },
   }
 }
@@ -394,6 +402,8 @@ export async function GET() {
     const supportsResponsibleUser = await projectResponsibilityColumnExists()
     const canReadAllProjects = checkPermission(tenantContext, 'projects.read_all')
     const canReadAssignedProjects = checkPermission(tenantContext, 'projects.read_assigned')
+    const canReadAutomations = checkPermission(tenantContext, 'automations.read')
+    const canManageAutomations = checkPermission(tenantContext, 'automations.manage')
 
     let projectsQuery = supabaseAdmin
       .from(TABLES.projects)
@@ -498,7 +508,7 @@ export async function GET() {
       reviewRequestedProjectIds,
     })
 
-    if (tenantContext?.tenantId && checkPermission(tenantContext, 'automations.read')) {
+    if (tenantContext?.tenantId && canReadAutomations) {
       stage = 'automation_metadata'
       const metadata = await buildAutomationMetadataForTenant(tenantContext.tenantId).catch(() => ({ automations: [], runs: [] }))
       const automationHistory = await listAutomationRunsForCurrentTenant(
@@ -532,6 +542,21 @@ export async function GET() {
           recommendations,
           runs: automationHistory.runs,
           now,
+          activeAutomationCount: metadata.automations.filter((automation) => automation.enabled).length,
+          canReadAutomations,
+          canManageAutomations,
+        }),
+      }
+    } else {
+      operationsCenter = {
+        ...operationsCenter,
+        workbench: buildWorkbench({
+          recommendations: operationsCenter.recommendations,
+          runs: [],
+          now,
+          activeAutomationCount: 0,
+          canReadAutomations: false,
+          canManageAutomations: false,
         }),
       }
     }

@@ -267,6 +267,165 @@ function WorkbenchColumn({
   )
 }
 
+type OperationsWorkbenchSectionsProps = {
+  data: OperationsCenterResult
+  compact?: boolean
+  recentlyCompletedLimit?: number
+}
+
+export function OperationsWorkbenchSections({
+  data,
+  compact = false,
+  recentlyCompletedLimit = 5,
+}: OperationsWorkbenchSectionsProps) {
+  const router = useRouter()
+  const [busyIds, setBusyIds] = useState<Record<string, true>>({})
+  const [hiddenIds, setHiddenIds] = useState<Record<string, true>>({})
+  const [toast, setToast] = useState<ToastState>(null)
+
+  useEffect(() => {
+    if (!toast) return undefined
+    const timeout = window.setTimeout(() => setToast(null), 2200)
+    return () => window.clearTimeout(timeout)
+  }, [toast])
+
+  const sections = useMemo(() => {
+    const filterHidden = (items: OperationsWorkbenchItem[]) => items.filter((item) => !hiddenIds[item.id])
+    return {
+      approvals: filterHidden(data.workbench.waitingForApproval),
+      today: filterHidden(data.workbench.todayActions),
+      attention: filterHidden(data.workbench.needsAttention),
+      completed: filterHidden(data.workbench.recentlyCompleted).slice(0, recentlyCompletedLimit),
+    }
+  }, [data.workbench, hiddenIds, recentlyCompletedLimit])
+
+  const handleAction = async (item: OperationsWorkbenchItem, variant: 'primary' | 'secondary' = 'primary') => {
+    const route = variant === 'secondary' ? item.secondaryActionRoute : item.primaryActionRoute
+    if (!route) return
+
+    const actionLabel = variant === 'secondary' ? item.secondaryActionLabel : item.primaryActionLabel
+    const isServerAction =
+      route.startsWith('/api/automations/runs/') ||
+      (variant === 'primary' ? item.canExecuteDirectly : false)
+
+    if (isServerAction) {
+      setBusyIds((current) => ({ ...current, [item.id]: true }))
+      try {
+        await postAction(route)
+        setHiddenIds((current) => ({ ...current, [item.id]: true }))
+        setToast({
+          message: actionLabel === 'Ne rien faire' ? 'Cette action a été laissée de côté.' : "C'est fait.",
+        })
+      } catch (error) {
+        setToast({
+          message: error instanceof Error ? error.message : "Kadria n'a pas pu terminer cette action.",
+          error: true,
+        })
+      } finally {
+        setBusyIds((current) => {
+          const next = { ...current }
+          delete next[item.id]
+          return next
+        })
+      }
+      return
+    }
+
+    if (route.startsWith('/dashboard-v2') || route.startsWith('/parametres')) {
+      void logExecutedAction(item)
+      setToast({ message: 'Ouverture en cours.' })
+      router.push(route)
+    }
+  }
+
+  const visibleSections = [
+    sections.approvals.length > 0
+      ? (
+        <WorkbenchColumn
+          key="approvals"
+          title="Kadria attend votre accord"
+          subtitle="Les actions sont prêtes. Vous pouvez décider tout de suite."
+          items={sections.approvals}
+          onAction={handleAction}
+          busyIds={busyIds}
+          emptyTitle="Aucune décision en attente."
+          emptyDescription="Kadria vous signalera ici les actions qui demandent votre accord."
+        />
+      )
+      : null,
+    sections.today.length > 0
+      ? (
+        <WorkbenchColumn
+          key="today"
+          title="À faire aujourd'hui"
+          subtitle="Les prochaines actions utiles pour garder vos dossiers en mouvement."
+          items={sections.today}
+          onAction={handleAction}
+          busyIds={busyIds}
+          emptyTitle="Tout est à jour pour le moment."
+          emptyDescription="Kadria vous signalera ici ce qui mérite votre attention."
+        />
+      )
+      : null,
+    sections.attention.length > 0
+      ? (
+        <WorkbenchColumn
+          key="attention"
+          title="À vérifier"
+          subtitle="Les points bloqués ou les situations qui demandent une intervention."
+          items={sections.attention}
+          onAction={handleAction}
+          busyIds={busyIds}
+          emptyTitle="Aucun point à vérifier."
+          emptyDescription="Kadria n'a rien de bloquant à vous signaler pour le moment."
+        />
+      )
+      : null,
+    sections.completed.length > 0
+      ? (
+        <WorkbenchColumn
+          key="completed"
+          title="Ce que Kadria a fait"
+          subtitle="Un résumé compact des dernières actions utiles déjà prises en charge."
+          items={sections.completed}
+          onAction={handleAction}
+          busyIds={busyIds}
+          emptyTitle="Kadria n'a encore réalisé aucune action récemment."
+          emptyDescription="Les dernières actions utiles apparaîtront ici."
+          secondary
+        />
+      )
+      : null,
+  ].filter(Boolean)
+
+  const hasAnyItem =
+    sections.approvals.length > 0 ||
+    sections.today.length > 0 ||
+    sections.attention.length > 0 ||
+    sections.completed.length > 0
+
+  return (
+    <>
+      {!hasAnyItem ? (
+        <EmptyState
+          title="Tout est à jour pour le moment."
+          description="Kadria vous signalera ici ce qui mérite votre attention."
+        />
+      ) : (
+        <div className={`grid grid-cols-1 gap-4 ${compact ? '' : 'xl:grid-cols-2'}`}>{visibleSections}</div>
+      )}
+
+      <div
+        className={`fixed bottom-6 right-6 z-50 rounded-xl border px-4 py-3 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
+          toast ? 'opacity-100' : 'pointer-events-none opacity-0'
+        } ${toast?.error ? 'border-red-600 bg-[var(--bg-elevated)] text-red-400' : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'}`}
+      >
+        {toast?.message || ''}
+      </div>
+    </>
+  )
+}
+
 function CommercialLoadTable({ items }: { items: CommercialLoadItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
@@ -339,67 +498,12 @@ export default function OperationsCenterSection({
   compact?: boolean
 }) {
   const router = useRouter()
-  const [busyIds, setBusyIds] = useState<Record<string, true>>({})
-  const [hiddenIds, setHiddenIds] = useState<Record<string, true>>({})
-  const [toast, setToast] = useState<ToastState>(null)
   const healthClassName = HEALTH_META[data.health.label] || 'text-[var(--text-1)]'
 
-  useEffect(() => {
-    if (!toast) return undefined
-    const timeout = window.setTimeout(() => setToast(null), 2200)
-    return () => window.clearTimeout(timeout)
-  }, [toast])
-
-  const sections = useMemo(() => {
-    const filterHidden = (items: OperationsWorkbenchItem[]) => items.filter((item) => !hiddenIds[item.id])
-    return {
-      approvals: filterHidden(data.workbench.waitingForApproval),
-      today: filterHidden(data.workbench.todayActions),
-      attention: filterHidden(data.workbench.needsAttention),
-      completed: filterHidden(data.workbench.recentlyCompleted),
-    }
-  }, [data.workbench, hiddenIds])
-
-  const handleAction = async (item: OperationsWorkbenchItem, variant: 'primary' | 'secondary' = 'primary') => {
+  const handlePreviewAction = (item: OperationsWorkbenchItem, variant: 'primary' | 'secondary' = 'primary') => {
     const route = variant === 'secondary' ? item.secondaryActionRoute : item.primaryActionRoute
     if (!route) return
-
-    const actionLabel = variant === 'secondary' ? item.secondaryActionLabel : item.primaryActionLabel
-    const isServerAction =
-      route.startsWith('/api/automations/runs/') ||
-      (variant === 'primary' ? item.canExecuteDirectly : false)
-
-    if (isServerAction) {
-      setBusyIds((current) => ({ ...current, [item.id]: true }))
-      try {
-        await postAction(route)
-        setHiddenIds((current) => ({ ...current, [item.id]: true }))
-        setToast({
-          message:
-            actionLabel === 'Ne rien faire'
-              ? 'Cette action a été laissée de côté.'
-              : actionLabel === 'Réessayer'
-                ? "C'est fait."
-                : "C'est fait.",
-        })
-      } catch (error) {
-        setToast({
-          message: error instanceof Error ? error.message : "Kadria n'a pas pu terminer cette action.",
-          error: true,
-        })
-      } finally {
-        setBusyIds((current) => {
-          const next = { ...current }
-          delete next[item.id]
-          return next
-        })
-      }
-      return
-    }
-
     if (route.startsWith('/dashboard-v2') || route.startsWith('/parametres')) {
-      void logExecutedAction(item)
-      setToast({ message: 'Ouverture en cours.' })
       router.push(route)
     }
   }
@@ -412,58 +516,12 @@ export default function OperationsCenterSection({
         compact={compact}
       >
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <SummaryPill label="à faire aujourd'hui" value={data.workbench.summary.todayCount} />
+          <SummaryPill label="automatisation(s) active(s)" value={data.workbench.summary.activeAutomationCount} />
           <SummaryPill label="accord(s) attendu(s)" value={data.workbench.summary.approvalCount} />
           <SummaryPill label="action(s) faite(s)" value={data.workbench.summary.completedTodayCount} />
           <SummaryPill label="point(s) à vérifier" value={data.workbench.summary.attentionCount} />
-          <button
-            type="button"
-            onClick={() => router.push('/parametres/automatisations/historique')}
-            className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
-          >
-            Voir tout l'historique
-          </button>
         </div>
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <WorkbenchColumn
-            title="Kadria attend votre accord"
-            subtitle="Les actions sont prêtes. Vous pouvez décider tout de suite."
-            items={sections.approvals}
-            onAction={handleAction}
-            busyIds={busyIds}
-            emptyTitle="Aucune décision en attente."
-            emptyDescription="Kadria vous signalera ici les actions qui demandent votre accord."
-          />
-          <WorkbenchColumn
-            title="À faire aujourd'hui"
-            subtitle="Les prochaines actions utiles pour garder vos dossiers en mouvement."
-            items={sections.today}
-            onAction={handleAction}
-            busyIds={busyIds}
-            emptyTitle="Tout est à jour pour le moment."
-            emptyDescription="Kadria vous signalera ici ce qui mérite votre attention."
-          />
-          <WorkbenchColumn
-            title="À vérifier"
-            subtitle="Les points bloqués ou les situations qui demandent une intervention."
-            items={sections.attention}
-            onAction={handleAction}
-            busyIds={busyIds}
-            emptyTitle="Aucun point à vérifier."
-            emptyDescription="Kadria n'a rien de bloquant à vous signaler pour le moment."
-          />
-          <WorkbenchColumn
-            title="Ce que Kadria a fait"
-            subtitle="Un résumé compact des dernières actions utiles déjà prises en charge."
-            items={sections.completed}
-            onAction={handleAction}
-            busyIds={busyIds}
-            emptyTitle="Kadria n'a encore réalisé aucune action aujourd'hui."
-            emptyDescription="Les dernières actions utiles apparaîtront ici."
-            secondary
-          />
-        </div>
+        <OperationsWorkbenchSections data={data} compact={compact} recentlyCompletedLimit={5} />
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
@@ -506,8 +564,8 @@ export default function OperationsCenterSection({
                   <WorkbenchCard
                     key={`opp-${item.id}`}
                     item={recommendationToWorkbenchItem(item, 'today')}
-                    onAction={handleAction}
-                    busy={Boolean(busyIds[item.id])}
+                    onAction={handlePreviewAction}
+                    busy={false}
                   />
                 ))}
                 {data.opportunities.length === 0 ? <EmptyState title="Rien d'urgent pour le moment." description="Les prochaines opportunités apparaîtront ici." /> : null}
@@ -520,8 +578,8 @@ export default function OperationsCenterSection({
                   <WorkbenchCard
                     key={`risk-${item.id}`}
                     item={recommendationToWorkbenchItem(item, 'attention')}
-                    onAction={handleAction}
-                    busy={Boolean(busyIds[item.id])}
+                    onAction={handlePreviewAction}
+                    busy={false}
                   />
                 ))}
                 {data.risks.length === 0 ? <EmptyState title="Aucun risque remonté." description="Kadria vous signalera ici les points sensibles." /> : null}
@@ -538,14 +596,6 @@ export default function OperationsCenterSection({
       <SectionCard title="Charge terrain" subtitle="Vue par collaborateur : interventions du jour, temps planifié, disponibilité et incohérences." compact={compact}>
         <FieldLoadTable items={data.fieldLoad} />
       </SectionCard>
-
-      <div
-        className={`fixed bottom-6 right-6 z-50 rounded-xl border px-4 py-3 text-sm shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-300 ${
-          toast ? 'opacity-100' : 'pointer-events-none opacity-0'
-        } ${toast?.error ? 'border-red-600 bg-[var(--bg-elevated)] text-red-400' : 'border-green-500/30 bg-[var(--bg-elevated)] text-[var(--text-1)]'}`}
-      >
-        {toast?.message || ''}
-      </div>
     </div>
   )
 }

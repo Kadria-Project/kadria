@@ -70,7 +70,7 @@ import { getProjectCommercialAnalysis } from '@/src/lib/project-scoring';
 import { computeNextAction as computeActionEngineNextAction, computeProjectHealth, type ActionEngineProjectInput, type ActionType, type NextAction } from '@/src/lib/action-engine';
 import { getProjectLifecycle, PROJECT_STATUS_OPTIONS } from '@/src/lib/project-lifecycle';
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
-import OperationsCenterSection from '@/src/components/dashboard/OperationsCenterSection';
+import OperationsCenterSection, { OperationsWorkbenchSections } from '@/src/components/dashboard/OperationsCenterSection';
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
@@ -3876,11 +3876,55 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[var(--text-1)]">À faire aujourd&apos;hui</p>
-                <p className="text-sm text-[var(--text-2)]">Les actions utiles pour faire avancer vos dossiers et éviter les oublis.</p>
+                <p className="font-bold text-[var(--text-1)]">Kadria travaille avec vous aujourd&apos;hui</p>
+                <p className="text-sm text-[var(--text-2)]">Voyez immédiatement ce que Kadria gère, ce qui attend votre accord et ce qui mérite votre attention.</p>
               </div>
               <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--text-2)]">{mesTachesItems.length} action(s)</span>
             </div>
+            {operationsCenter && (
+              <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-base font-bold text-[var(--text-1)]">En un coup d&apos;œil</p>
+                    <p className="mt-1 text-sm text-[var(--text-2)]">
+                      Kadria vous aide déjà à avancer sans quitter cette page.
+                    </p>
+                  </div>
+                  {operationsCenter.workbench.permissions.canReadAutomations ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push('/parametres/automatisations')}
+                      className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
+                    >
+                      {operationsCenter.workbench.permissions.canManageAutomations ? 'Gérer les actions automatiques' : 'Voir les réglages'}
+                      {!operationsCenter.workbench.permissions.canManageAutomations ? ' · Lecture seule' : ''}
+                    </button>
+                  ) : null}
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+                  <ActionSummary
+                    icon={Sparkles}
+                    label="automatisations actives"
+                    value={operationsCenter.workbench.summary.activeAutomationCount}
+                  />
+                  <ActionSummary
+                    icon={Bell}
+                    label="en attente de votre accord"
+                    value={operationsCenter.workbench.summary.approvalCount}
+                  />
+                  <ActionSummary
+                    icon={CheckCircle}
+                    label="réalisées récemment"
+                    value={operationsCenter.workbench.recentlyCompleted.length}
+                  />
+                  <ActionSummary
+                    icon={AlertTriangle}
+                    label="à vérifier"
+                    value={operationsCenter.workbench.summary.attentionCount}
+                  />
+                </div>
+              </div>
+            )}
             {actionEngineFilter && (
               <div className="mb-3 flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-[var(--text-2)]">
@@ -3913,74 +3957,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               />
             </div>
             <p className="mt-2 text-xs text-[var(--text-3)]">Cliquez sur un bloc pour filtrer la liste</p>
-            <div className="mt-4 space-y-2">
-              {mesTachesItems.map((item, index) => {
-                const project = item.kind === 'call' ? allProjects.find((p) => p.id === item.task.projectId) : item.project;
-                const title = item.kind === 'call' ? item.task.title : item.kind === 'deposit' ? item.title : item.action.title;
-                const clientLabel = [project?.clientFirstName, project?.clientName].filter(Boolean).join(' ') || project?.projectType || 'Dossier';
-                const amount = project ? projectValue(project) : 0;
-                const amountLabel = item.kind === 'call'
-                  ? (amount > 0
-                    ? (item.task.type === 'followUp' || item.task.type === 'email' ? `${formatCurrency(amount)} en attente` : `Budget estime ${formatCurrency(amount)}`)
-                    : null)
-                  : item.kind === 'deposit'
-                    ? item.subtitle
-                    : (amount > 0 ? `Budget estime ${formatCurrency(amount)}` : null);
-                const badgeLabel = item.kind === 'call'
-                  ? (item.task.priority === 'high' ? 'Priorite haute' : 'A faire')
-                  : item.kind === 'engine'
-                    ? (item.action.priority === 'critical' ? 'Critique' : item.action.priority === 'high' ? 'Priorite haute' : 'A faire')
-                    : 'A faire';
-                const badgeHigh = item.kind === 'call'
-                  ? item.task.priority === 'high'
-                  : item.kind === 'engine'
-                    ? item.action.priority === 'critical' || item.action.priority === 'high'
-                    : false;
-                const projectId = item.kind === 'call' ? item.task.projectId : item.project.id;
-                const key = item.kind === 'call' ? `call-${item.task.id}` : item.kind === 'deposit' ? `deposit-${item.project.id}` : `engine-${item.project.id}`;
-
-                if (index === 0) {
-                  return (
-                    <ImpactCard
-                      key={key}
-                      variant="priority"
-                      as="button"
-                      onClick={() => router.push(`/dashboard-v2/projet/${projectId}`)}
-                      className="flex w-full flex-col items-start gap-2 text-left sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--impact-badge-text)] bg-[var(--impact-badge-bg)] inline-block rounded px-1.5 py-0.5">À faire en premier</p>
-                        <p className="mt-1 text-sm font-semibold text-[var(--impact-text)]">{title} — {clientLabel}</p>
-                        {amountLabel && <p className="text-xs text-[var(--impact-text-soft)]">{amountLabel}</p>}
-                      </div>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--impact-cta)]">
-                        Voir le dossier <ChevronRight className="h-4 w-4" />
-                      </span>
-                    </ImpactCard>
-                  );
-                }
-
-                return (
-                  <button
-                    key={key}
-                    onClick={() => router.push(`/dashboard-v2/projet/${projectId}`)}
-                    className="flex w-full flex-col items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left hover:border-green-500/25 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--text-1)]">{title}</p>
-                      <p className="text-xs text-[var(--text-2)]">{clientLabel}</p>
-                      {amountLabel && <p className="text-xs text-green-400">{amountLabel}</p>}
-                    </div>
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${badgeHigh ? 'bg-red-500/15 text-red-300' : 'bg-amber-500/15 text-amber-300'}`}>
-                      {badgeLabel}
-                    </span>
-                  </button>
-                );
-              })}
-              {mesTachesItems.length === 0 && (
+            <div className="mt-4">
+              {operationsCenter ? (
+                <OperationsWorkbenchSections data={operationsCenter} recentlyCompletedLimit={3} />
+              ) : (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
                   <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
-                  <p className="mt-1 text-xs text-[var(--text-2)]">Les prochains dossiers a traiter apparaitront ici.</p>
+                  <p className="mt-1 text-xs text-[var(--text-2)]">Kadria vous signalera ici ce qui mérite votre attention.</p>
                 </div>
               )}
             </div>
