@@ -53,17 +53,16 @@ function dossierPhone(p: Project): string | null {
   return phone && String(phone).trim() ? String(phone).trim() : null;
 }
 
-// Statuts réels utilisés dans le pipeline (cf. pipelineSteps / STATUS_OPTIONS dans ArtisanDashboard.tsx)
 const STATUS_BADGE_LABEL: Record<string, string> = {
-  'Nouveau': 'Nouveau',
+  Nouveau: 'Nouveau',
   'À rappeler': 'À rappeler',
-  'Qualifié': 'Qualifié',
+  Qualifié: 'Qualifié',
   'En cours': 'En cours',
   'Devis envoyé': 'Devis envoyé',
   'En risque': 'En risque',
   'A relancer': 'À relancer',
-  'Gagné': 'Gagné',
-  'Perdu': 'Perdu',
+  Gagné: 'Gagné',
+  Perdu: 'Perdu',
 };
 
 function statusOrdinal(p: Project): number {
@@ -73,7 +72,7 @@ function statusOrdinal(p: Project): number {
   if (risk.status === 'atRisk') return 0;
   if (status === 'A relancer' || risk.status === 'followUp') return 1;
   if (status === 'En risque') return 2;
-  if (status === 'Qualifié' && dossierAmount(p) === 0) return 3; // devis à envoyer
+  if (status === 'Qualifié' && dossierAmount(p) === 0) return 3;
   if (status === 'Nouveau' || status === 'À rappeler') return 4;
   if (status === 'Qualifié') return 5;
   if (status === 'Devis envoyé') return 6;
@@ -226,9 +225,15 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
       {sorted.length === 0 ? (
         <div style={{ ...cardBase, textAlign: 'center', padding: '32px 16px' }}>
           <SearchX style={{ width: 32, height: 32, color: 'var(--text-3)', margin: '0 auto 10px' }} />
-          <p style={{ fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>Aucun dossier trouvé</p>
+          <p style={{ fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            {search.trim() ? 'Aucun résultat trouvé' : chip !== 'all' ? 'Aucun dossier ne correspond à ce filtre' : 'Aucun dossier pour le moment'}
+          </p>
           <p style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '4px' }}>
-            Essayez avec moins de filtres ou une recherche plus large.
+            {search.trim()
+              ? 'Vérifiez le nom du client ou le besoin recherché.'
+              : chip !== 'all'
+                ? 'Essayez un autre filtre.'
+                : 'Les nouvelles demandes de vos clients apparaîtront ici.'}
           </p>
         </div>
       ) : (
@@ -278,7 +283,7 @@ export default function MobileDossiersView({ projects, router, getProjectHref }:
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '10px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>
-                        {amount > 0 ? `💰 ${formatCurrency(amount)}` : '💰 Budget non renseigné'}
+                    {amount > 0 ? `💰 ${formatCurrency(amount)}` : '💰 Budget non renseigné'}
                   </span>
                   {urgency && (
                     <span

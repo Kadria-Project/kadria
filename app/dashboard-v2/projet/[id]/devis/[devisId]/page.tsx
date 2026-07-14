@@ -214,7 +214,7 @@ function DevisView() {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-        <p className="text-zinc-400">Chargement...</p>
+        <p className="text-zinc-400">Chargement du devis...</p>
       </div>
     );
   }
@@ -392,7 +392,7 @@ function DevisView() {
               >
                 {!canQuote && <Lock size={14} />}
                 {sending && <Loader2 className="animate-spin" size={14} />}
-                {sending ? 'Envoi...' : 'Envoyer au client →'}
+                {sending ? 'Envoi au client en cours...' : 'Envoyer au client →'}
               </button>
             )}
           </div>

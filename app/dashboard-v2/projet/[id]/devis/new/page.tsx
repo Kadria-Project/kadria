@@ -645,7 +645,7 @@ function NewDevis() {
   if (loading || configLoading) {
     return (
       <div className="dashboard-shell min-h-screen bg-[var(--bg)] text-[var(--text-1)] flex items-center justify-center">
-        <p style={{ color: 'var(--text-3)' }}>Chargement...</p>
+        <p style={{ color: 'var(--text-3)' }}>Préparation du devis...</p>
       </div>
     );
   }
@@ -1336,7 +1336,7 @@ function NewDevis() {
             </div>
 
             {loadingPrestations ? (
-              <p style={{ color: 'var(--text-3)', fontSize: '13px' }}>Chargement...</p>
+              <p style={{ color: 'var(--text-3)', fontSize: '13px' }}>Chargement des prestations…</p>
             ) : prestations.length === 0 ? (
               <p style={{ color: 'var(--text-3)', fontSize: '13px', marginBottom: '16px' }}>
                 Aucune prestation enregistrée pour le moment.

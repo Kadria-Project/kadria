@@ -54,9 +54,6 @@ function devisAmount(p: Project): number {
   return Number((p as any).devisAmount) || 0;
 }
 
-// Un projet est "devis-relevant" dès qu'il a dépassé le stade purement
-// prospect (Nouveau/À rappeler/Qualifié sans montant) — cf. statuts réels du
-// pipeline (STATUS_OPTIONS dans ArtisanDashboard.tsx).
 function isDevisRelevant(p: Project): boolean {
   const status = (p as any).status as string | undefined;
   if (status === 'Nouveau' || status === 'À rappeler') return false;
@@ -64,9 +61,6 @@ function isDevisRelevant(p: Project): boolean {
   return true;
 }
 
-// Statut devis dérivé des champs réels disponibles sur Project :
-// status, quoteSentAt, acceptedAt — pas de champ "viewed"/"motif" dans le
-// modèle, donc pas de sous-état "Consulté" et pas de vrai motif de refus.
 function getDevisStatus(p: Project): DevisStatus {
   const status = (p as any).status as string | undefined;
   const quoteSentAt = (p as any).quoteSentAt as string | null | undefined;
@@ -81,7 +75,6 @@ function getDevisStatus(p: Project): DevisStatus {
   if (status === 'A relancer' || status === 'En risque') return 'follow_up';
   if (status === 'Devis envoyé' || quoteSentAt) return 'sent';
 
-  // Qualifié avec montant mais pas encore envoyé.
   return 'to_send';
 }
 
@@ -286,9 +279,15 @@ export default function MobileDevisView({ projects, router, getProjectHref }: Mo
       {sorted.length === 0 ? (
         <div style={{ ...cardBase, textAlign: 'center', padding: '32px 16px' }}>
           <SearchX style={{ width: 32, height: 32, color: 'var(--text-3)', margin: '0 auto 10px' }} />
-          <p style={{ fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>Aucun devis trouvé</p>
+          <p style={{ fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            {search.trim() ? 'Aucun résultat trouvé' : chip !== 'all' ? 'Aucun devis ne correspond à ce filtre' : 'Aucun devis pour le moment'}
+          </p>
           <p style={{ fontSize: '13px', color: 'var(--text-2)', marginTop: '4px' }}>
-            Essayez d&apos;élargir votre recherche ou vos filtres.
+            {search.trim()
+              ? 'Vérifiez le nom du client ou le besoin recherché.'
+              : chip !== 'all'
+                ? 'Essayez un autre filtre.'
+                : 'Vos devis apparaîtront ici dès qu’un dossier avancera.'}
           </p>
         </div>
       ) : (
@@ -313,7 +312,6 @@ export default function MobileDevisView({ projects, router, getProjectHref }: Mo
               primaryLabel = 'Voir le chantier';
               PrimaryIcon = FolderOpen;
             } else if (devisStatus === 'refused') {
-              // Pas de champ "motif" sur Project : fallback honnête vers le dossier.
               primaryLabel = 'Voir le dossier';
               PrimaryIcon = FileX;
             }

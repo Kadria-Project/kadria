@@ -2893,7 +2893,7 @@ function ProjectDetail() {
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>
-              Aucune photo jointe
+              Aucune photo ajoutée pour le moment.
             </p>
           )
         ),
@@ -2915,7 +2915,7 @@ function ProjectDetail() {
         title: 'Devis et documents',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {devisList.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun document</p>}
+            {devisList.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2)' }}>Aucun devis créé pour ce dossier.</p>}
             {devisList.map((d) => (
               <a
                 key={d.id}
@@ -2937,7 +2937,7 @@ function ProjectDetail() {
           ? 'Historique indisponible'
           : recentActivityItems.length > 0
             ? `${activityItems.length} evenement${activityItems.length > 1 ? 's' : ''} enregistre${activityItems.length > 1 ? 's' : ''}`
-            : 'Aucune action enregistree',
+            : 'Aucune action récente',
         content: (
           <div className="flex flex-col gap-3">
             <div>
@@ -2957,8 +2957,8 @@ function ProjectDetail() {
             )}
             {!activityUnavailable && recentActivityItems.length === 0 && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Aucune action enregistree pour le moment.
-                Les relances, demandes d'avis et changements importants apparaitront ici.
+                Rien ne s'est encore passé sur ce dossier.
+                Les relances, demandes d'avis et changements importants apparaîtront ici.
               </div>
             )}
             {!activityUnavailable && recentActivityItems.map((item) => {
@@ -3301,7 +3301,7 @@ function ProjectDetail() {
               </div>
             ) : (
               <div>
-                <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--text-2)' }}>Aucun rendez-vous prévu</p>
+                <p style={{ margin: '0 0 8px', fontSize: '13px', color: 'var(--text-2)' }}>Aucun rendez-vous prévu.</p>
                 <button onClick={openAppointmentModal} style={{ background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 600, borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
                   Planifier un rendez-vous
                 </button>
@@ -3316,7 +3316,7 @@ function ProjectDetail() {
             {latestDevis && <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-2)' }}>{formatMoney(latestDevis.amount)} €</p>}
             <p style={{ margin: '0 0 2px', fontSize: '11px', color: 'var(--text-3)' }}>
               {!latestDevis
-                ? 'Aucune proposition envoyée pour le moment.'
+                ? 'Aucun devis envoyé au client.'
                 : latestDevis.accepted
                   ? `Accepté le ${formatShortDate(latestDevis.accepted_at)}`
                   : latestDevis.declined
@@ -4117,7 +4117,7 @@ function ProjectDetail() {
               📅 Rendez-vous
             </p>
             <p style={{ fontSize: '13px', color: appointment ? 'var(--accent)' : 'var(--text-1)', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
-              {loadingAppointment ? 'Chargement...' : summarizeAppointment(appointment).detail}
+              {loadingAppointment ? 'Chargement des rendez-vous…' : summarizeAppointment(appointment).detail}
             </p>
           </button>
 
@@ -6378,14 +6378,14 @@ function ProjectDetail() {
           <div className="mt-5 flex flex-col gap-3">
             {activityUnavailable && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Activite indisponible pour le moment.
+                Historique indisponible pour le moment.
               </div>
             )}
 
             {!activityUnavailable && recentActivityItems.length === 0 && (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-4 text-sm text-[var(--text-2)]">
-                Aucune activite enregistree pour le moment.
-                Les relances, demandes d'avis et changements importants apparaitront ici.
+                Rien ne s'est encore passé sur ce dossier.
+                Les relances, demandes d'avis et changements importants apparaîtront ici.
               </div>
             )}
 
