@@ -331,6 +331,9 @@ export default function AutomationsSettingsPage() {
               <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
                 Tout est desactive par defaut. Vous gardez toujours la main, et chaque reglage reste clair, modifiable et reversible.
               </p>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-500">
+                Les actions qui attendent votre accord apparaissent directement sur votre accueil, pour que vous puissiez decider et agir sans revenir dans les reglages.
+              </p>
               <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                 <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">6 aides prêtes a regler</span>
                 <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">Rien ne part sans votre choix</span>
@@ -339,6 +342,13 @@ export default function AutomationsSettingsPage() {
             </div>
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[260px]">
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard-v2')}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+              >
+                Voir les actions du jour
+              </button>
               <button
                 type="button"
                 onClick={() => router.push('/parametres/automatisations/historique')}

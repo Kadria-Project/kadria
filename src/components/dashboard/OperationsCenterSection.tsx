@@ -6,8 +6,9 @@ import type {
   CommercialLoadItem,
   FieldLoadItem,
   OperationsCenterResult,
-  RecommendationItem,
+  OperationsWorkbenchItem,
   RecommendationPriority,
+  RecommendationItem,
 } from '@/src/lib/recommendations'
 
 const PRIORITY_META: Record<RecommendationPriority, { icon: string; label: string; badge: string }> = {
@@ -24,6 +25,8 @@ const HEALTH_META = {
   Critique: 'text-red-300',
 } as const
 
+type ToastState = { message: string; error?: boolean } | null
+
 function formatHealthLabel(label: keyof typeof HEALTH_META | string) {
   return label === 'A ameliorer' ? 'À améliorer' : label
 }
@@ -32,12 +35,6 @@ function formatCurrency(value: number) {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)} MEUR`
   if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)} kEUR`
   return `${Math.round(value)} EUR`
-}
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return 'Maintenant'
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
 function toMinutesLabel(value: number) {
@@ -70,18 +67,58 @@ function SectionCard({
   )
 }
 
-async function logExecutedAction(item: RecommendationItem) {
+function recommendationToWorkbenchItem(
+  item: RecommendationItem,
+  category: OperationsWorkbenchItem['category'],
+): OperationsWorkbenchItem {
+  return {
+    id: item.id,
+    category,
+    title: item.title,
+    description: item.description,
+    reason: item.reason,
+    priority: item.priority,
+    statusLabel: null,
+    dateLabel: null,
+    entityType: item.entityType,
+    entityId: item.entityId,
+    entityLabel: null,
+    projectId: item.entityType === 'project' ? item.entityId : null,
+    quoteId: typeof item.actionPayload?.quoteId === 'string' ? item.actionPayload.quoteId : null,
+    appointmentId:
+      item.entityType === 'appointment'
+        ? item.entityId
+        : typeof item.actionPayload?.appointmentId === 'string'
+          ? item.actionPayload.appointmentId
+          : null,
+    clientName: null,
+    projectTitle: null,
+    primaryActionLabel: item.actionLabel,
+    primaryActionType: item.actionType,
+    primaryActionRoute: item.actionRoute,
+    primaryActionPayload: item.actionPayload,
+    secondaryActionLabel: item.secondaryLabel,
+    secondaryActionType: item.secondaryAction,
+    secondaryActionRoute: item.secondaryRoute,
+    secondaryActionPayload: item.secondaryPayload,
+    canExecuteDirectly: item.actionType === 'execute_automation_run',
+    source: 'recommendation',
+    sourceType: item.type,
+  }
+}
+
+async function logExecutedAction(item: OperationsWorkbenchItem) {
   try {
     await fetch('/api/operations-center/actions/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         recommendationId: item.id,
-        actionType: item.actionType,
+        actionType: item.primaryActionType,
         title: item.title,
         entityType: item.entityType,
         entityId: item.entityId,
-        actionRoute: item.actionRoute,
+        actionRoute: item.primaryActionRoute,
       }),
     })
   } catch {
@@ -89,120 +126,140 @@ async function logExecutedAction(item: RecommendationItem) {
   }
 }
 
-async function postAutomationAction(url: string) {
+async function postAction(url: string) {
   const response = await fetch(url, { method: 'POST' })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok || payload.success === false) {
-    throw new Error(payload.error || 'Action impossible.')
+    throw new Error(payload.error || "Kadria n'a pas pu terminer cette action.")
   }
 }
 
-function RecommendationActions({
-  item,
-  onExecute,
-  small = false,
-}: {
-  item: RecommendationItem
-  onExecute: (item: RecommendationItem, variant?: 'primary' | 'secondary') => void
-  small?: boolean
-}) {
-  const primaryClassName = small
-    ? 'inline-flex items-center rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1.5 text-xs font-semibold text-green-300 transition-colors hover:bg-green-500/[0.16] focus:outline-none focus:ring-2 focus:ring-green-500/50'
-    : 'inline-flex items-center rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1.5 text-xs font-semibold text-green-300 transition-colors hover:bg-green-500/[0.16] focus:outline-none focus:ring-2 focus:ring-green-500/50'
-  const secondaryClassName =
-    'inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--border)]'
-
+function SummaryPill({ label, value }: { label: string; value: number }) {
   return (
-    <div className={`flex ${small ? 'flex-wrap justify-end gap-2' : 'flex-wrap gap-2'}`}>
-      <button type="button" onClick={() => onExecute(item)} className={primaryClassName}>
-        {item.actionLabel}
-      </button>
-      {item.secondaryAction && item.secondaryLabel && (
-        <button type="button" onClick={() => onExecute(item, 'secondary')} className={secondaryClassName}>
-          {item.secondaryLabel}
-        </button>
-      )}
+    <div className="rounded-full border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--text-2)]">
+      <span className="font-semibold text-[var(--text-1)]">{value}</span> {label}
     </div>
   )
 }
 
-function RecommendationRow({
+function WorkbenchActionButtons({
   item,
-  onExecute,
-  executed,
+  onAction,
+  busy,
 }: {
-  item: RecommendationItem
-  onExecute: (item: RecommendationItem, variant?: 'primary' | 'secondary') => void
-  executed: boolean
+  item: OperationsWorkbenchItem
+  onAction: (item: OperationsWorkbenchItem, variant?: 'primary' | 'secondary') => void
+  busy: boolean
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {item.primaryActionLabel && item.primaryActionRoute ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAction(item)}
+          className="inline-flex items-center rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1.5 text-xs font-semibold text-green-300 transition-colors hover:bg-green-500/[0.16] disabled:cursor-wait disabled:opacity-60"
+        >
+          {busy ? 'Mise à jour…' : item.primaryActionLabel}
+        </button>
+      ) : null}
+      {item.secondaryActionLabel && item.secondaryActionRoute ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAction(item, 'secondary')}
+          className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)] disabled:cursor-wait disabled:opacity-60"
+        >
+          {item.secondaryActionLabel}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+function WorkbenchCard({
+  item,
+  onAction,
+  busy,
+}: {
+  item: OperationsWorkbenchItem
+  onAction: (item: OperationsWorkbenchItem, variant?: 'primary' | 'secondary') => void
+  busy: boolean
 }) {
   const meta = PRIORITY_META[item.priority]
   return (
-    <div className={`rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 transition-all ${executed ? 'ring-1 ring-green-500/40' : ''}`}>
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-base font-semibold text-[var(--text-2)]">{meta.icon}</span>
             <p className="text-sm font-semibold text-[var(--text-1)]">{item.title}</p>
             <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.badge}`}>{meta.label}</span>
-            {item.automationLabel ? (
-              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
-                item.automationLabel === 'Automatique'
-                  ? 'border-blue-500/30 bg-blue-500/10 text-blue-100'
-                  : item.automationLabel === 'A valider'
-                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
-                    : 'border-zinc-700 bg-zinc-900 text-zinc-300'
-              }`}>
-                {item.automationLabel === 'A valider' ? "Kadria attend votre accord" : item.automationLabel === 'Manuel' ? 'Je décide à chaque fois' : item.automationLabel}
-              </span>
-            ) : null}
-            {item.estimatedMinutes ? (
-              <span className="rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-2 py-0.5 text-[11px] text-[var(--text-3)]">
-                ~{item.estimatedMinutes} min
+            {item.statusLabel ? (
+              <span className="rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-2 py-0.5 text-[11px] text-[var(--text-2)]">
+                {item.statusLabel}
               </span>
             ) : null}
           </div>
           <p className="mt-2 text-sm text-[var(--text-2)]">{item.description}</p>
           <p className="mt-2 text-xs text-[var(--text-3)]">{item.reason}</p>
-          {executed ? <p className="mt-2 text-xs font-semibold text-green-300">Action prise en compte. Cette liste se mettra à jour dans un instant.</p> : null}
+          {item.entityLabel ? <p className="mt-2 text-xs text-[var(--text-3)]">{item.entityLabel}</p> : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className="text-xs text-[var(--text-3)]">{formatDate(item.createdAt)}</span>
-          <RecommendationActions item={item} onExecute={onExecute} />
+          {item.dateLabel ? <span className="text-xs text-[var(--text-3)]">{item.dateLabel}</span> : null}
+          <WorkbenchActionButtons item={item} onAction={onAction} busy={busy} />
         </div>
       </div>
     </div>
   )
 }
 
-function SmallList({
+function EmptyState({
   title,
-  items,
-  onExecute,
+  description,
 }: {
   title: string
-  items: RecommendationItem[]
-  onExecute: (item: RecommendationItem, variant?: 'primary' | 'secondary') => void
+  description: string
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
-      <p className="text-sm font-semibold text-[var(--text-1)]">{title}</p>
-      <div className="mt-3 space-y-3">
+    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg)] p-4">
+      <p className="text-sm font-medium text-[var(--text-2)]">{title}</p>
+      <p className="mt-1 text-sm text-[var(--text-3)]">{description}</p>
+    </div>
+  )
+}
+
+function WorkbenchColumn({
+  title,
+  subtitle,
+  items,
+  onAction,
+  busyIds,
+  emptyTitle,
+  emptyDescription,
+  secondary = false,
+}: {
+  title: string
+  subtitle: string
+  items: OperationsWorkbenchItem[]
+  onAction: (item: OperationsWorkbenchItem, variant?: 'primary' | 'secondary') => void
+  busyIds: Record<string, true>
+  emptyTitle: string
+  emptyDescription: string
+  secondary?: boolean
+}) {
+  return (
+    <div className={`rounded-2xl border ${secondary ? 'border-white/5 bg-[var(--bg)]/70' : 'border-[var(--border)] bg-[var(--bg)]'} p-4`}>
+      <div className="mb-3">
+        <p className="text-sm font-semibold text-[var(--text-1)]">{title}</p>
+        <p className="mt-1 text-xs text-[var(--text-3)]">{subtitle}</p>
+      </div>
+      <div className="space-y-3">
         {items.length === 0 ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-[var(--text-2)]">Rien d'urgent pour le moment.</p>
-            <p className="text-xs text-[var(--text-3)]">Kadria affichera ici les prochaines actions utiles.</p>
-          </div>
+          <EmptyState title={emptyTitle} description={emptyDescription} />
         ) : (
           items.map((item) => (
-            <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] p-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--text-1)]">{item.title}</p>
-                  <p className="mt-1 text-xs text-[var(--text-3)]">{item.reason}</p>
-                </div>
-                <RecommendationActions item={item} onExecute={onExecute} small />
-              </div>
-            </div>
+            <WorkbenchCard key={item.id} item={item} onAction={onAction} busy={Boolean(busyIds[item.id])} />
           ))
         )}
       </div>
@@ -282,25 +339,10 @@ export default function OperationsCenterSection({
   compact?: boolean
 }) {
   const router = useRouter()
-  const [executedIds, setExecutedIds] = useState<Record<string, true>>({})
-  const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null)
+  const [busyIds, setBusyIds] = useState<Record<string, true>>({})
+  const [hiddenIds, setHiddenIds] = useState<Record<string, true>>({})
+  const [toast, setToast] = useState<ToastState>(null)
   const healthClassName = HEALTH_META[data.health.label] || 'text-[var(--text-1)]'
-
-  const groupedColumns = useMemo(
-    () => [
-      { label: 'Commercial', items: data.groupedActions.relances },
-      { label: 'Planning', items: [...data.groupedActions.planifications, ...data.groupedActions.affectations].slice(0, 4) },
-      { label: 'Entreprise', items: data.groupedActions.configuration.slice(0, 2) },
-      { label: 'Configuration', items: data.groupedActions.configuration },
-      { label: 'Avis', items: data.groupedActions.avis },
-    ],
-    [data],
-  )
-
-  const pendingApprovalCount = useMemo(
-    () => data.recommendations.filter((item) => item.automationLabel === 'A valider').length,
-    [data.recommendations],
-  )
 
   useEffect(() => {
     if (!toast) return undefined
@@ -308,131 +350,185 @@ export default function OperationsCenterSection({
     return () => window.clearTimeout(timeout)
   }, [toast])
 
-  const handleExecute = async (item: RecommendationItem, variant: 'primary' | 'secondary' = 'primary') => {
-    const route = variant === 'secondary' ? item.secondaryRoute : item.actionRoute
+  const sections = useMemo(() => {
+    const filterHidden = (items: OperationsWorkbenchItem[]) => items.filter((item) => !hiddenIds[item.id])
+    return {
+      approvals: filterHidden(data.workbench.waitingForApproval),
+      today: filterHidden(data.workbench.todayActions),
+      attention: filterHidden(data.workbench.needsAttention),
+      completed: filterHidden(data.workbench.recentlyCompleted),
+    }
+  }, [data.workbench, hiddenIds])
+
+  const handleAction = async (item: OperationsWorkbenchItem, variant: 'primary' | 'secondary' = 'primary') => {
+    const route = variant === 'secondary' ? item.secondaryActionRoute : item.primaryActionRoute
     if (!route) return
-    if ((variant === 'primary' ? item.actionType : item.secondaryAction) === 'execute_automation_run' || (variant === 'secondary' ? item.secondaryAction : item.actionType) === 'ignore_automation_run') {
+
+    const actionLabel = variant === 'secondary' ? item.secondaryActionLabel : item.primaryActionLabel
+    const isServerAction =
+      route.startsWith('/api/automations/runs/') ||
+      (variant === 'primary' ? item.canExecuteDirectly : false)
+
+    if (isServerAction) {
+      setBusyIds((current) => ({ ...current, [item.id]: true }))
       try {
-        await postAutomationAction(route)
-        setExecutedIds((current) => ({ ...current, [item.id]: true }))
-        setToast({ message: variant === 'secondary' ? 'Action laissée de côté.' : 'Action prise en compte.' })
+        await postAction(route)
+        setHiddenIds((current) => ({ ...current, [item.id]: true }))
+        setToast({
+          message:
+            actionLabel === 'Ne rien faire'
+              ? 'Cette action a été laissée de côté.'
+              : actionLabel === 'Réessayer'
+                ? "C'est fait."
+                : "C'est fait.",
+        })
       } catch (error) {
-        setToast({ message: error instanceof Error ? error.message : 'Action impossible.', error: true })
+        setToast({
+          message: error instanceof Error ? error.message : "Kadria n'a pas pu terminer cette action.",
+          error: true,
+        })
+      } finally {
+        setBusyIds((current) => {
+          const next = { ...current }
+          delete next[item.id]
+          return next
+        })
       }
       return
     }
-    setExecutedIds((current) => ({ ...current, [item.id]: true }))
-    setToast({ message: variant === 'secondary' ? 'Redirection en cours.' : 'Ouverture en cours.' })
-    void logExecutedAction(item)
-    router.push(route)
+
+    if (route.startsWith('/dashboard-v2') || route.startsWith('/parametres')) {
+      void logExecutedAction(item)
+      setToast({ message: 'Ouverture en cours.' })
+      router.push(route)
+    }
   }
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       <SectionCard
         title="Centre d'actions"
-        subtitle="Kadria met en avant ce qui mérite votre attention maintenant, comme le ferait une bonne secrétaire commerciale."
+        subtitle="Votre bureau du jour : ce que vous devez faire, ce que Kadria a préparé, ce qui a déjà été traité et ce qui mérite une vérification."
         compact={compact}
       >
         <div className="mb-4 flex flex-wrap items-center gap-2">
+          <SummaryPill label="à faire aujourd'hui" value={data.workbench.summary.todayCount} />
+          <SummaryPill label="accord(s) attendu(s)" value={data.workbench.summary.approvalCount} />
+          <SummaryPill label="action(s) faite(s)" value={data.workbench.summary.completedTodayCount} />
+          <SummaryPill label="point(s) à vérifier" value={data.workbench.summary.attentionCount} />
           <button
             type="button"
             onClick={() => router.push('/parametres/automatisations/historique')}
             className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
           >
-            Voir les actions déjà faites
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/parametres/automatisations/historique?status=prepared')}
-            className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-500/20"
-          >
-            {pendingApprovalCount} décision(s) à prendre
+            Voir tout l'historique
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
-          <div className="space-y-3">
-            {data.todayFocus.length === 0 ? (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
-                <p className="text-sm font-medium text-[var(--text-2)]">Rien d'urgent pour le moment.</p>
-                <p className="mt-1 text-sm text-[var(--text-3)]">Tout est à jour. Les prochaines priorités apparaîtront ici.</p>
-              </div>
-            ) : (
-              data.todayFocus.map((item) => (
-                <RecommendationRow key={item.id} item={item} onExecute={handleExecute} executed={Boolean(executedIds[item.id])} />
-              ))
-            )}
-          </div>
 
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
-              <p className="text-sm font-semibold text-[var(--text-1)]">Santé de l'entreprise</p>
-              <div className="mt-3 flex items-end justify-between gap-3">
-                <div>
-                  <p className={`text-3xl font-bold ${healthClassName}`}>{data.health.score}/100</p>
-                  <p className="mt-1 text-sm text-[var(--text-2)]">{formatHealthLabel(data.health.label)}</p>
-                </div>
-                <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-300">
-                  {data.recommendations.length} signaux suivis
-                </span>
-              </div>
-              <div className="mt-4 space-y-2">
-                {data.health.breakdown.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between rounded-xl bg-[var(--bg-hover)] px-3 py-2 text-sm">
-                    <span className="text-[var(--text-2)]">{item.label}</span>
-                    <span
-                      className={
-                        item.status === 'critical'
-                          ? 'font-semibold text-red-200'
-                          : item.status === 'warning'
-                            ? 'font-semibold text-amber-200'
-                            : 'font-semibold text-emerald-200'
-                      }
-                    >
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <SmallList title="Ce qu'il faut faire aujourd'hui" items={data.todayFocus.slice(0, 5)} onExecute={handleExecute} />
-          </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <WorkbenchColumn
+            title="Kadria attend votre accord"
+            subtitle="Les actions sont prêtes. Vous pouvez décider tout de suite."
+            items={sections.approvals}
+            onAction={handleAction}
+            busyIds={busyIds}
+            emptyTitle="Aucune décision en attente."
+            emptyDescription="Kadria vous signalera ici les actions qui demandent votre accord."
+          />
+          <WorkbenchColumn
+            title="À faire aujourd'hui"
+            subtitle="Les prochaines actions utiles pour garder vos dossiers en mouvement."
+            items={sections.today}
+            onAction={handleAction}
+            busyIds={busyIds}
+            emptyTitle="Tout est à jour pour le moment."
+            emptyDescription="Kadria vous signalera ici ce qui mérite votre attention."
+          />
+          <WorkbenchColumn
+            title="À vérifier"
+            subtitle="Les points bloqués ou les situations qui demandent une intervention."
+            items={sections.attention}
+            onAction={handleAction}
+            busyIds={busyIds}
+            emptyTitle="Aucun point à vérifier."
+            emptyDescription="Kadria n'a rien de bloquant à vous signaler pour le moment."
+          />
+          <WorkbenchColumn
+            title="Ce que Kadria a fait"
+            subtitle="Un résumé compact des dernières actions utiles déjà prises en charge."
+            items={sections.completed}
+            onAction={handleAction}
+            busyIds={busyIds}
+            emptyTitle="Kadria n'a encore réalisé aucune action aujourd'hui."
+            emptyDescription="Les dernières actions utiles apparaîtront ici."
+            secondary
+          />
         </div>
       </SectionCard>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <SmallList title="Opportunités" items={data.opportunities} onExecute={handleExecute} />
-        <SmallList title="Risques" items={data.risks} onExecute={handleExecute} />
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-          <p className="text-sm font-semibold text-[var(--text-1)]">Mur des actions</p>
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {groupedColumns.map((group) => (
-              <div key={group.label} className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-[var(--text-1)]">{group.label}</p>
-                  <span className="rounded-full bg-[var(--bg-hover)] px-2 py-0.5 text-xs text-[var(--text-2)]">{group.items.length}</span>
-                </div>
-                <div className="mt-3 space-y-3">
-                  {group.items.slice(0, 2).map((item) => (
-                    <div key={item.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-hover)] p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-[var(--text-1)]">{item.title}</p>
-                          <p className="mt-1 text-[11px] text-[var(--text-3)]">{item.estimatedMinutes ? `~${item.estimatedMinutes} min` : 'Action rapide'}</p>
-                        </div>
-                        <button type="button" onClick={() => handleExecute(item)} className="text-xs font-semibold text-green-300 hover:text-green-200">
-                          {item.actionLabel}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {group.items.length === 0 ? <p className="text-xs text-[var(--text-3)]">Aucune action à préparer pour le moment.</p> : null}
-                </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <SectionCard title="Santé de l'entreprise" subtitle="Une lecture rapide des points commerciaux et de planning à surveiller." compact={compact}>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className={`text-3xl font-bold ${healthClassName}`}>{data.health.score}/100</p>
+              <p className="mt-1 text-sm text-[var(--text-2)]">{formatHealthLabel(data.health.label)}</p>
+            </div>
+            <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-300">
+              {data.recommendations.length} signaux suivis
+            </span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {data.health.breakdown.map((item) => (
+              <div key={item.label} className="flex items-center justify-between rounded-xl bg-[var(--bg)] px-3 py-2 text-sm">
+                <span className="text-[var(--text-2)]">{item.label}</span>
+                <span
+                  className={
+                    item.status === 'critical'
+                      ? 'font-semibold text-red-200'
+                      : item.status === 'warning'
+                        ? 'font-semibold text-amber-200'
+                        : 'font-semibold text-emerald-200'
+                  }
+                >
+                  {item.value}
+                </span>
               </div>
             ))}
           </div>
-        </div>
+        </SectionCard>
+
+        <SectionCard title="Opportunités et risques" subtitle="Les signaux commerciaux les plus utiles, sans doublons avec les actions préparées." compact={compact}>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-1)]">Opportunités</p>
+              <div className="mt-3 space-y-3">
+                {data.opportunities.slice(0, 3).map((item) => (
+                  <WorkbenchCard
+                    key={`opp-${item.id}`}
+                    item={recommendationToWorkbenchItem(item, 'today')}
+                    onAction={handleAction}
+                    busy={Boolean(busyIds[item.id])}
+                  />
+                ))}
+                {data.opportunities.length === 0 ? <EmptyState title="Rien d'urgent pour le moment." description="Les prochaines opportunités apparaîtront ici." /> : null}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-1)]">Risques</p>
+              <div className="mt-3 space-y-3">
+                {data.risks.slice(0, 3).map((item) => (
+                  <WorkbenchCard
+                    key={`risk-${item.id}`}
+                    item={recommendationToWorkbenchItem(item, 'attention')}
+                    onAction={handleAction}
+                    busy={Boolean(busyIds[item.id])}
+                  />
+                ))}
+                {data.risks.length === 0 ? <EmptyState title="Aucun risque remonté." description="Kadria vous signalera ici les points sensibles." /> : null}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
       </div>
 
       <SectionCard title="Charge commerciale" subtitle="Vue par responsable commercial : dossiers, devis, gagnés/perdus et potentiel." compact={compact}>

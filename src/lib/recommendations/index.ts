@@ -116,6 +116,45 @@ export interface RecommendationBucket {
   configuration: RecommendationItem[]
 }
 
+export type OperationsWorkbenchCategory = 'today' | 'approval' | 'completed' | 'attention'
+
+export interface OperationsWorkbenchItem {
+  id: string
+  category: OperationsWorkbenchCategory
+  title: string
+  description: string
+  reason: string
+  priority: RecommendationPriority
+  statusLabel: string | null
+  dateLabel: string | null
+  entityType: RecommendationEntityType
+  entityId: string | null
+  entityLabel: string | null
+  projectId: string | null
+  quoteId: string | null
+  appointmentId: string | null
+  clientName: string | null
+  projectTitle: string | null
+  primaryActionLabel: string | null
+  primaryActionType: RecommendationActionType | null
+  primaryActionRoute: string | null
+  primaryActionPayload: Record<string, string | number | boolean | null> | null
+  secondaryActionLabel: string | null
+  secondaryActionType: RecommendationActionType | null
+  secondaryActionRoute: string | null
+  secondaryActionPayload: Record<string, string | number | boolean | null> | null
+  canExecuteDirectly: boolean
+  source: 'recommendation' | 'automation_run'
+  sourceType: string | null
+}
+
+export interface OperationsWorkbenchSummary {
+  todayCount: number
+  approvalCount: number
+  completedTodayCount: number
+  attentionCount: number
+}
+
 export interface OperationsCenterResult {
   generatedAt: string
   recommendations: RecommendationItem[]
@@ -123,6 +162,13 @@ export interface OperationsCenterResult {
   opportunities: RecommendationItem[]
   risks: RecommendationItem[]
   groupedActions: RecommendationBucket
+  workbench: {
+    todayActions: OperationsWorkbenchItem[]
+    waitingForApproval: OperationsWorkbenchItem[]
+    recentlyCompleted: OperationsWorkbenchItem[]
+    needsAttention: OperationsWorkbenchItem[]
+    summary: OperationsWorkbenchSummary
+  }
   health: OperationsHealthSummary
   commercialLoad: CommercialLoadItem[]
   fieldLoad: FieldLoadItem[]
@@ -1009,6 +1055,18 @@ export function buildOperationsCenter(input: BuildOperationsCenterInput): Operat
     opportunities,
     risks,
     groupedActions,
+    workbench: {
+      todayActions: [],
+      waitingForApproval: [],
+      recentlyCompleted: [],
+      needsAttention: [],
+      summary: {
+        todayCount: 0,
+        approvalCount: 0,
+        completedTodayCount: 0,
+        attentionCount: 0,
+      },
+    },
     health: {
       score: healthScore,
       label: healthLabel,

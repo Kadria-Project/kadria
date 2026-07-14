@@ -596,8 +596,8 @@ export default function MobileDashboardView({
 
       {operationsCenter && <OperationsCenterSection data={operationsCenter} compact />}
 
-      {/* CENTRE D'ACTIONS */}
-      {actionRows.length > 0 && (
+      {/* CENTRE D'ACTIONS legacy : masqué quand le Centre d'actions unifié est disponible */}
+      {!operationsCenter && actionRows.length > 0 && (
         <div>
       <div style={sectionTitle}>À faire aujourd&apos;hui</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

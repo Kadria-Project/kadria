@@ -5,6 +5,7 @@ import { getBusinessProfile } from '@/src/lib/business-profile'
 import { getCalendarIntegration } from '@/src/lib/google-calendar'
 import {
   buildOperationsCenter,
+  type OperationsWorkbenchItem,
   type RecommendationAppointmentInput,
   type RecommendationConfigInput,
   type RecommendationMemberInput,
@@ -18,7 +19,7 @@ import { checkPermission } from '@/src/lib/team/access'
 import { listTeamMembers } from '@/src/lib/team/service'
 import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context'
 import { getAssignedAppointmentProjectIds, projectResponsibilityColumnExists } from '@/src/lib/project-responsibility'
-import { buildAutomationMetadataForTenant } from '@/src/lib/automations'
+import { buildAutomationMetadataForTenant, listAutomationRunsForCurrentTenant } from '@/src/lib/automations'
 
 type AppointmentRow = {
   id: string
@@ -216,9 +217,171 @@ function withAutomationMetadata(
   })
 }
 
+function toRelativeDateLabel(value: string | null, now: Date) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  const diffMs = now.getTime() - date.getTime()
+  if (diffMs < 60000) return "à l'instant"
+  const diffMinutes = Math.floor(diffMs / 60000)
+  if (diffMinutes < 60) return `il y a ${diffMinutes} min`
+  const diffHours = Math.floor(diffMs / 3600000)
+  if (diffHours < 24) return `il y a ${diffHours} h`
+  const diffDays = Math.floor(diffMs / 86400000)
+  if (diffDays < 7) return `il y a ${diffDays} j`
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+}
+
+function recommendationAutomationKey(item: RecommendationItem) {
+  if (!item.automationType || !item.entityType || !item.entityId) return null
+  return `${item.automationType}:${item.entityType}:${item.entityId}`
+}
+
+function historyAutomationKey(run: {
+  automationType: string
+  entityType: string
+  entityId: string
+}) {
+  return `${run.automationType}:${run.entityType}:${run.entityId}`
+}
+
+function recommendationToWorkbenchItem(item: RecommendationItem, category: OperationsWorkbenchItem['category']): OperationsWorkbenchItem {
+  const payload = item.actionPayload || {}
+  return {
+    id: item.id,
+    category,
+    title: item.title,
+    description: item.description,
+    reason: item.reason,
+    priority: item.priority,
+    statusLabel: category === 'approval' ? 'En attente de votre accord' : null,
+    dateLabel: null,
+    entityType: item.entityType,
+    entityId: item.entityId,
+    entityLabel: null,
+    projectId: typeof payload.projectId === 'string' ? payload.projectId : item.entityType === 'project' ? item.entityId : null,
+    quoteId: typeof payload.quoteId === 'string' ? payload.quoteId : null,
+    appointmentId: typeof payload.appointmentId === 'string' ? payload.appointmentId : item.entityType === 'appointment' ? item.entityId : null,
+    clientName: null,
+    projectTitle: null,
+    primaryActionLabel: item.actionLabel,
+    primaryActionType: item.actionType,
+    primaryActionRoute: item.actionRoute,
+    primaryActionPayload: item.actionPayload,
+    secondaryActionLabel: item.secondaryLabel,
+    secondaryActionType: item.secondaryAction,
+    secondaryActionRoute: item.secondaryRoute,
+    secondaryActionPayload: item.secondaryPayload,
+    canExecuteDirectly: item.actionType === 'execute_automation_run',
+    source: 'recommendation',
+    sourceType: item.type,
+  }
+}
+
+function runToWorkbenchItem(
+  run: Awaited<ReturnType<typeof listAutomationRunsForCurrentTenant>>['runs'][number],
+  category: OperationsWorkbenchItem['category'],
+  now: Date,
+): OperationsWorkbenchItem {
+  return {
+    id: `run-${run.id}`,
+    category,
+    title: run.automationTitle,
+    description: run.entityLabel,
+    reason: run.errorLabel || run.triggerReason,
+    priority: category === 'attention' ? 'high' : 'normal',
+    statusLabel:
+      category === 'completed'
+        ? 'Terminé'
+        : category === 'attention'
+          ? 'À vérifier'
+          : category === 'approval'
+            ? 'En attente de votre accord'
+            : null,
+    dateLabel: toRelativeDateLabel(run.completedAt || run.createdAt, now),
+    entityType: run.entityType,
+    entityId: run.entityId,
+    entityLabel: run.entityLabel,
+    projectId: run.entityType === 'project' ? run.entityId : null,
+    quoteId: null,
+    appointmentId: run.entityType === 'appointment' ? run.entityId : null,
+    clientName: null,
+    projectTitle: run.entityLabel,
+    primaryActionLabel: run.canRetry ? 'Réessayer' : run.entityHref ? 'Ouvrir le dossier' : null,
+    primaryActionType: run.canRetry ? null : 'open_project',
+    primaryActionRoute: run.canRetry ? `/api/automations/runs/${run.id}/retry` : run.entityHref,
+    primaryActionPayload: null,
+    secondaryActionLabel: run.canRetry && run.entityHref ? 'Ouvrir le dossier' : null,
+    secondaryActionType: run.canRetry ? 'open_project' : null,
+    secondaryActionRoute: run.canRetry ? run.entityHref : null,
+    secondaryActionPayload: null,
+    canExecuteDirectly: run.canRetry,
+    source: 'automation_run',
+    sourceType: run.automationType,
+  }
+}
+
+function buildWorkbench(input: {
+  recommendations: RecommendationItem[]
+  runs: Awaited<ReturnType<typeof listAutomationRunsForCurrentTenant>>['runs']
+  now: Date
+}) {
+  const approvalRuns = input.runs.filter((run) => run.status === 'prepared')
+  const failedRuns = input.runs.filter((run) => run.status === 'failed')
+  const succeededRuns = input.runs.filter((run) => run.status === 'succeeded').slice(0, 5)
+
+  const runKeys = new Set(input.runs.map(historyAutomationKey))
+
+  const waitingForApproval = input.recommendations
+    .filter((item) => item.automationLabel === 'A valider')
+    .filter((item) => {
+      const key = recommendationAutomationKey(item)
+      return key ? runKeys.has(key) : true
+    })
+    .map((item) => recommendationToWorkbenchItem(item, 'approval'))
+
+  const todayActions = input.recommendations
+    .filter((item) => item.automationLabel !== 'A valider')
+    .filter((item) => {
+      const key = recommendationAutomationKey(item)
+      return key ? !runKeys.has(key) : true
+    })
+    .slice(0, 6)
+    .map((item) => recommendationToWorkbenchItem(item, 'today'))
+
+  const needsAttention = [
+    ...failedRuns.map((run) => runToWorkbenchItem(run, 'attention', input.now)),
+    ...input.recommendations
+      .filter((item) => item.priority === 'critical' || item.priority === 'high')
+      .filter((item) => item.automationLabel !== 'A valider')
+      .filter((item) => {
+        const key = recommendationAutomationKey(item)
+        return key ? !runKeys.has(key) : true
+      })
+      .slice(0, 4)
+      .map((item) => recommendationToWorkbenchItem(item, 'attention')),
+  ]
+
+  const recentlyCompleted = succeededRuns.map((run) => runToWorkbenchItem(run, 'completed', input.now))
+
+  return {
+    todayActions,
+    waitingForApproval,
+    recentlyCompleted,
+    needsAttention,
+    summary: {
+      todayCount: todayActions.length,
+      approvalCount: approvalRuns.length,
+      completedTodayCount: succeededRuns.length,
+      attentionCount: needsAttention.length,
+    },
+  }
+}
+
 export async function GET() {
   let stage = 'session'
   try {
+    const now = new Date()
     const session = await getSession()
     if (!session?.artisanId) {
       return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
@@ -335,23 +498,41 @@ export async function GET() {
       reviewRequestedProjectIds,
     })
 
-    if (tenantContext?.tenantId) {
+    if (tenantContext?.tenantId && checkPermission(tenantContext, 'automations.read')) {
       stage = 'automation_metadata'
       const metadata = await buildAutomationMetadataForTenant(tenantContext.tenantId).catch(() => ({ automations: [], runs: [] }))
+      const automationHistory = await listAutomationRunsForCurrentTenant(
+        {
+          page: 1,
+          limit: 12,
+          status: ['prepared', 'failed', 'succeeded'],
+        },
+        tenantContext,
+      ).catch(() => ({ runs: [] as Awaited<ReturnType<typeof listAutomationRunsForCurrentTenant>>['runs'] }))
       stage = 'merge_automation_metadata'
+      const recommendations = withAutomationMetadata(operationsCenter.recommendations, metadata.automations, metadata.runs)
+      const todayFocus = withAutomationMetadata(operationsCenter.todayFocus, metadata.automations, metadata.runs)
+      const opportunities = withAutomationMetadata(operationsCenter.opportunities, metadata.automations, metadata.runs)
+      const risks = withAutomationMetadata(operationsCenter.risks, metadata.automations, metadata.runs)
+      const groupedActions = {
+        relances: withAutomationMetadata(operationsCenter.groupedActions.relances, metadata.automations, metadata.runs),
+        planifications: withAutomationMetadata(operationsCenter.groupedActions.planifications, metadata.automations, metadata.runs),
+        affectations: withAutomationMetadata(operationsCenter.groupedActions.affectations, metadata.automations, metadata.runs),
+        avis: withAutomationMetadata(operationsCenter.groupedActions.avis, metadata.automations, metadata.runs),
+        configuration: withAutomationMetadata(operationsCenter.groupedActions.configuration, metadata.automations, metadata.runs),
+      }
       operationsCenter = {
         ...operationsCenter,
-        recommendations: withAutomationMetadata(operationsCenter.recommendations, metadata.automations, metadata.runs),
-        todayFocus: withAutomationMetadata(operationsCenter.todayFocus, metadata.automations, metadata.runs),
-        opportunities: withAutomationMetadata(operationsCenter.opportunities, metadata.automations, metadata.runs),
-        risks: withAutomationMetadata(operationsCenter.risks, metadata.automations, metadata.runs),
-        groupedActions: {
-          relances: withAutomationMetadata(operationsCenter.groupedActions.relances, metadata.automations, metadata.runs),
-          planifications: withAutomationMetadata(operationsCenter.groupedActions.planifications, metadata.automations, metadata.runs),
-          affectations: withAutomationMetadata(operationsCenter.groupedActions.affectations, metadata.automations, metadata.runs),
-          avis: withAutomationMetadata(operationsCenter.groupedActions.avis, metadata.automations, metadata.runs),
-          configuration: withAutomationMetadata(operationsCenter.groupedActions.configuration, metadata.automations, metadata.runs),
-        },
+        recommendations,
+        todayFocus,
+        opportunities,
+        risks,
+        groupedActions,
+        workbench: buildWorkbench({
+          recommendations,
+          runs: automationHistory.runs,
+          now,
+        }),
       }
     }
 
