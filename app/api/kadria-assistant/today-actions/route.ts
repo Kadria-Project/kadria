@@ -72,7 +72,8 @@ function hasText(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0
 }
 
-function formatClientName(project: ProjectCandidateRow) {
+function formatClientName(project?: ProjectCandidateRow | null) {
+  if (!project) return 'Dossier'
   return [project.client_first_name, project.client_name].filter(Boolean).join(' ').trim() || project.project_type || 'Dossier'
 }
 
@@ -256,7 +257,7 @@ export async function GET() {
         reason: sanitizeActionText(state.reason, 'Devis envoye sans reponse recente.'),
         projectId: devis.projectId,
         devisId: devis.id,
-        clientName: devis.clientName || project ? formatClientName(project as ProjectCandidateRow) : 'Dossier',
+        clientName: devis.clientName || formatClientName(project),
         eligible: true,
         clientEmailPresent: true,
         primaryActionLabel: 'Ouvrir le dossier et relancer',

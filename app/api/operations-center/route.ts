@@ -40,6 +40,14 @@ type ActivityRow = {
   action: string | null
 }
 
+function isAppointmentRow(value: unknown): value is AppointmentRow {
+  return typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string'
+}
+
+function isActivityRow(value: unknown): value is ActivityRow {
+  return typeof value === 'object' && value !== null
+}
+
 function describeOperationsCenterError(error: unknown) {
   if (error instanceof Error) {
     const candidate = error as Error & {
@@ -471,6 +479,7 @@ export async function GET() {
     stage = 'appointments_query_result'
     if (appointmentsRes.error) throw appointmentsRes.error
 
+    stage = 'appointments_normalize'
     const userNames = new Map(
       members
         .filter((member) => member.userId)
@@ -478,11 +487,13 @@ export async function GET() {
     )
 
     const visibleProjectIds = new Set(visibleProjects.map((project) => project.id))
-    const appointments = ((appointmentsRes.data || []) as AppointmentRow[])
+    const appointments = ((appointmentsRes.data || []) as unknown[])
+      .filter(isAppointmentRow)
       .filter((row) => !row.project_id || visibleProjectIds.has(row.project_id))
       .map((row) => mapAppointmentForRecommendations(row, userNames))
 
-    const activities = (activityRes.data || []) as ActivityRow[]
+    stage = 'activities_normalize'
+    const activities = ((activityRes.data || []) as unknown[]).filter(isActivityRow)
     const reviewRequestedProjectIds = new Set(
       activities
         .filter((activity) => activity.action === 'GOOGLE_REVIEW_REQUEST_SENT' && activity.project_id && visibleProjectIds.has(activity.project_id))
