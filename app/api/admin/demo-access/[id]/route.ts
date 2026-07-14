@@ -10,7 +10,7 @@ function normalizeText(value: unknown) {
   return String(value || '').trim()
 }
 
-export async function PATCH(request: NextRequest, context: RouteContext<'/api/admin/demo-access/[id]'>) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
