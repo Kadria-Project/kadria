@@ -24,6 +24,10 @@ const HEALTH_META = {
   Critique: 'text-red-300',
 } as const
 
+function formatHealthLabel(label: keyof typeof HEALTH_META | string) {
+  return label === 'A ameliorer' ? 'À améliorer' : label
+}
+
 function formatCurrency(value: number) {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)} MEUR`
   if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)} kEUR`
@@ -148,7 +152,7 @@ function RecommendationRow({
                     ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
                     : 'border-zinc-700 bg-zinc-900 text-zinc-300'
               }`}>
-                {item.automationLabel === 'A valider' ? "Kadria attend votre accord" : item.automationLabel === 'Manuel' ? 'Je decide a chaque fois' : item.automationLabel}
+                {item.automationLabel === 'A valider' ? "Kadria attend votre accord" : item.automationLabel === 'Manuel' ? 'Je décide à chaque fois' : item.automationLabel}
               </span>
             ) : null}
             {item.estimatedMinutes ? (
@@ -159,7 +163,7 @@ function RecommendationRow({
           </div>
           <p className="mt-2 text-sm text-[var(--text-2)]">{item.description}</p>
           <p className="mt-2 text-xs text-[var(--text-3)]">{item.reason}</p>
-          {executed ? <p className="mt-2 text-xs font-semibold text-green-300">Action prise en compte. La liste se mettra a jour au prochain recalcul.</p> : null}
+          {executed ? <p className="mt-2 text-xs font-semibold text-green-300">Action prise en compte. Cette liste se mettra à jour dans un instant.</p> : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <span className="text-xs text-[var(--text-3)]">{formatDate(item.createdAt)}</span>
@@ -184,7 +188,7 @@ function SmallList({
       <p className="text-sm font-semibold text-[var(--text-1)]">{title}</p>
       <div className="mt-3 space-y-3">
         {items.length === 0 ? (
-          <p className="text-sm text-[var(--text-3)]">Aucune action prioritaire pour cette rubrique.</p>
+          <p className="text-sm text-[var(--text-3)]">Rien d'urgent pour le moment.</p>
         ) : (
           items.map((item) => (
             <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] p-3">
@@ -221,9 +225,9 @@ function CommercialLoadTable({ items }: { items: CommercialLoadItem[] }) {
             <div><p className="text-[var(--text-3)]">Dossiers</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.projectCount}</p></div>
             <div><p className="text-[var(--text-3)]">Prospects</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.prospectsCount}</p></div>
             <div><p className="text-[var(--text-3)]">Devis</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.quotesCount}</p></div>
-            <div><p className="text-[var(--text-3)]">Gagnes</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.wonCount}</p></div>
+            <div><p className="text-[var(--text-3)]">Gagnés</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.wonCount}</p></div>
             <div><p className="text-[var(--text-3)]">Perdus</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.lostCount}</p></div>
-            <div><p className="text-[var(--text-3)]">CA estime</p><p className="mt-1 font-semibold text-[var(--text-1)]">{formatCurrency(item.estimatedRevenue)}</p></div>
+            <div><p className="text-[var(--text-3)]">CA estimé</p><p className="mt-1 font-semibold text-[var(--text-1)]">{formatCurrency(item.estimatedRevenue)}</p></div>
           </div>
         </div>
       ))}
@@ -250,16 +254,16 @@ function FieldLoadTable({ items }: { items: FieldLoadItem[] }) {
                     : 'bg-emerald-500/10 text-emerald-200'
               }`}
             >
-              {item.availability === 'busy' ? 'Occupe' : item.availability === 'soon' ? 'Bientot occupe' : 'Disponible'}
+              {item.availability === 'busy' ? 'Occupé' : item.availability === 'soon' ? 'Bientôt occupé' : 'Disponible'}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div><p className="text-[var(--text-3)]">Interventions</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.appointmentCount}</p></div>
-            <div><p className="text-[var(--text-3)]">Temps planifie</p><p className="mt-1 font-semibold text-[var(--text-1)]">{toMinutesLabel(item.plannedMinutes)}</p></div>
+            <div><p className="text-[var(--text-3)]">Temps planifié</p><p className="mt-1 font-semibold text-[var(--text-1)]">{toMinutesLabel(item.plannedMinutes)}</p></div>
             <div><p className="text-[var(--text-3)]">Temps libre</p><p className="mt-1 font-semibold text-[var(--text-1)]">{toMinutesLabel(item.freeMinutes)}</p></div>
             <div><p className="text-[var(--text-3)]">Conflits</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.conflicts}</p></div>
-            <div><p className="text-[var(--text-3)]">Km estimes</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.estimatedKm.toFixed(1)} km</p></div>
-            <div><p className="text-[var(--text-3)]">Trajets incoherents</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.incoherentTravelCount}</p></div>
+            <div><p className="text-[var(--text-3)]">Km estimés</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.estimatedKm.toFixed(1)} km</p></div>
+            <div><p className="text-[var(--text-3)]">Trajets incohérents</p><p className="mt-1 font-semibold text-[var(--text-1)]">{item.incoherentTravelCount}</p></div>
           </div>
         </div>
       ))}
@@ -308,14 +312,14 @@ export default function OperationsCenterSection({
       try {
         await postAutomationAction(route)
         setExecutedIds((current) => ({ ...current, [item.id]: true }))
-        setToast({ message: variant === 'secondary' ? 'Action laissee de cote.' : 'Action prise en compte.' })
+        setToast({ message: variant === 'secondary' ? 'Action laissée de côté.' : 'Action prise en compte.' })
       } catch (error) {
         setToast({ message: error instanceof Error ? error.message : 'Action impossible.', error: true })
       }
       return
     }
     setExecutedIds((current) => ({ ...current, [item.id]: true }))
-    setToast({ message: variant === 'secondary' ? 'Redirection terminee.' : 'Ouverture en cours.' })
+    setToast({ message: variant === 'secondary' ? 'Redirection en cours.' : 'Ouverture en cours.' })
     void logExecutedAction(item)
     router.push(route)
   }
@@ -324,7 +328,7 @@ export default function OperationsCenterSection({
     <div className="flex flex-col gap-4 sm:gap-5">
       <SectionCard
         title="Centre d'actions"
-        subtitle="Kadria vous met sous les yeux ce qui merite votre attention maintenant, comme le ferait une bonne secretaire commerciale."
+        subtitle="Kadria met en avant ce qui mérite votre attention maintenant, comme le ferait une bonne secrétaire commerciale."
         compact={compact}
       >
         <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -333,21 +337,21 @@ export default function OperationsCenterSection({
             onClick={() => router.push('/parametres/automatisations/historique')}
             className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:text-[var(--text-1)]"
           >
-            Voir ce que Kadria a fait
+            Voir les actions déjà faites
           </button>
           <button
             type="button"
             onClick={() => router.push('/parametres/automatisations/historique?status=prepared')}
             className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-500/20"
           >
-            {pendingApprovalCount} decision(s) a prendre
+            {pendingApprovalCount} décision(s) à prendre
           </button>
         </div>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
           <div className="space-y-3">
             {data.todayFocus.length === 0 ? (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 text-sm text-[var(--text-3)]">
-                Rien de critique aujourd'hui. Votre cockpit est a jour.
+                Rien d'urgent pour le moment. Tout est à jour.
               </div>
             ) : (
               data.todayFocus.map((item) => (
@@ -358,11 +362,11 @@ export default function OperationsCenterSection({
 
           <div className="space-y-3">
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
-              <p className="text-sm font-semibold text-[var(--text-1)]">Sante de l'entreprise</p>
+              <p className="text-sm font-semibold text-[var(--text-1)]">Santé de l'entreprise</p>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <div>
                   <p className={`text-3xl font-bold ${healthClassName}`}>{data.health.score}/100</p>
-                  <p className="mt-1 text-sm text-[var(--text-2)]">{data.health.label}</p>
+                  <p className="mt-1 text-sm text-[var(--text-2)]">{formatHealthLabel(data.health.label)}</p>
                 </div>
                 <span className="rounded-full border border-green-500/30 bg-green-500/[0.08] px-3 py-1 text-xs font-semibold text-green-300">
                   {data.recommendations.length} signaux suivis
@@ -394,7 +398,7 @@ export default function OperationsCenterSection({
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <SmallList title="Opportunites" items={data.opportunities} onExecute={handleExecute} />
+        <SmallList title="Opportunités" items={data.opportunities} onExecute={handleExecute} />
         <SmallList title="Risques" items={data.risks} onExecute={handleExecute} />
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
           <p className="text-sm font-semibold text-[var(--text-1)]">Mur des actions</p>
@@ -419,7 +423,7 @@ export default function OperationsCenterSection({
                       </div>
                     </div>
                   ))}
-                  {group.items.length === 0 ? <p className="text-xs text-[var(--text-3)]">Aucune action.</p> : null}
+                  {group.items.length === 0 ? <p className="text-xs text-[var(--text-3)]">Aucune action pour le moment.</p> : null}
                 </div>
               </div>
             ))}
@@ -427,11 +431,11 @@ export default function OperationsCenterSection({
         </div>
       </div>
 
-      <SectionCard title="Charge commerciale" subtitle="Vue par responsable commercial : dossiers, devis, gagne/perdu et potentiel." compact={compact}>
+      <SectionCard title="Charge commerciale" subtitle="Vue par responsable commercial : dossiers, devis, gagnés/perdus et potentiel." compact={compact}>
         <CommercialLoadTable items={data.commercialLoad} />
       </SectionCard>
 
-      <SectionCard title="Charge terrain" subtitle="Vue par collaborateur : interventions du jour, temps planifie, disponibilite et incoherences." compact={compact}>
+      <SectionCard title="Charge terrain" subtitle="Vue par collaborateur : interventions du jour, temps planifié, disponibilité et incohérences." compact={compact}>
         <FieldLoadTable items={data.fieldLoad} />
       </SectionCard>
 

@@ -1601,14 +1601,14 @@ function ProjectDetail() {
           document.execCommand('copy');
           document.body.removeChild(tempInput);
         }
-        setClientPortalToast({ type: 'success', message: 'Lien portail client copié' });
+        setClientPortalToast({ type: 'success', message: 'Lien client copié.' });
       } catch (copyError) {
         console.error('[CLIENT PORTAL COPY LINK]', copyError);
-        setClientPortalToast({ type: 'error', message: `Impossible de copier automatiquement. Lien : ${url}` });
+        setClientPortalToast({ type: 'error', message: 'Impossible de copier le lien. Réessayez dans un instant.' });
       }
     } catch (error) {
       console.error('[CLIENT PORTAL LINK]', error);
-      setClientPortalToast({ type: 'error', message: 'Erreur réseau, réessayez.' });
+      setClientPortalToast({ type: 'error', message: 'La connexion semble interrompue. Réessayez.' });
     } finally {
       setClientPortalLoading(false);
     }
@@ -1678,7 +1678,7 @@ function ProjectDetail() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Impossible de mettre a jour les relances');
+        throw new Error(data.error || 'Impossible de mettre à jour les relances');
       }
 
       setDevisList((prev) =>
@@ -1698,7 +1698,7 @@ function ProjectDetail() {
     } catch (error) {
       setFollowUpToast({
         type: 'error',
-        message: error instanceof Error ? error.message : 'Impossible de mettre a jour les relances',
+        message: error instanceof Error ? error.message : 'Impossible de mettre à jour les relances',
       });
     }
   }
@@ -1837,7 +1837,7 @@ function ProjectDetail() {
       const res = await fetch(url);
       const data = await res.json();
       if (!data.success) {
-        setAppointmentError('Erreur Google Calendar — réessayez.');
+        setAppointmentError("Google Agenda n'a pas pu être mis à jour. Réessayez.");
         setAppointmentConnected(true);
         setAppointmentSlots([]);
         return;
@@ -1845,7 +1845,7 @@ function ProjectDetail() {
       setAppointmentConnected(!!data.connected);
       setAppointmentSlots(data.connected ? data.slots || [] : []);
     } catch {
-      setAppointmentError('Erreur Google Calendar — réessayez.');
+      setAppointmentError("Google Agenda n'a pas pu être mis à jour. Réessayez.");
     } finally {
       setLoadingSlots(false);
     }
@@ -1931,7 +1931,7 @@ function ProjectDetail() {
           setBookingSlot(null);
           await refreshAppointmentSlots();
         } else {
-          setAppointmentError('Erreur Google Calendar — réessayez.');
+          setAppointmentError("Google Agenda n'a pas pu être mis à jour. Réessayez.");
         }
         return;
       }
@@ -1939,7 +1939,7 @@ function ProjectDetail() {
       setShowAppointmentModal(false);
       setBookingSlot(null);
     } catch {
-      setAppointmentError('Erreur Google Calendar — réessayez.');
+      setAppointmentError("Google Agenda n'a pas pu être mis à jour. Réessayez.");
     }
   }
 

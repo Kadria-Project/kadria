@@ -531,13 +531,13 @@ export default function DesktopAgendaView() {
       }
       const json = await response.json();
       if (!json.success) {
-        setStatusError('Connexion Google impossible');
+        setStatusError("Connexion à Google Agenda impossible");
         setCalendarStatus({ connected: false, email: null });
         return;
       }
       setCalendarStatus({ connected: !!json.connected, email: json.email || null });
     } catch {
-      setStatusError('Connexion Google impossible');
+      setStatusError("Connexion à Google Agenda impossible");
       setCalendarStatus({ connected: false, email: null });
     } finally {
       setStatusLoading(false);
@@ -555,12 +555,12 @@ export default function DesktopAgendaView() {
       }
       const json = await response.json();
       if (!json.success) {
-        setEventsError('Connexion Google impossible');
+        setEventsError("Connexion à Google Agenda impossible");
         return;
       }
       setGoogleEvents(Array.isArray(json.events) ? json.events : []);
     } catch {
-      setEventsError('Connexion Google impossible');
+      setEventsError("Connexion à Google Agenda impossible");
     } finally {
       setEventsLoading(false);
     }
@@ -743,7 +743,7 @@ export default function DesktopAgendaView() {
       if (!response.ok || !json.success) {
         throw new Error(json?.error || 'Sauvegarde impossible');
       }
-      setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Agenda affich\u00e9');
+      setReturnMessage(nextMode === 'kadria' ? 'Planning Kadria actif' : 'Google Agenda affiché');
     } catch (error) {
       console.info('[DESKTOP_AGENDA][MODE_SAVE_FAILED]', {
         callCount: modeSaveCallCountRef.current,
@@ -770,14 +770,14 @@ export default function DesktopAgendaView() {
       }
       const json = await response.json();
       if (json.success) {
-        setReturnMessage('Google Agenda d\u00e9connect\u00e9. Kadria ne mettra plus votre agenda \u00e0 jour.');
+        setReturnMessage("Google Agenda déconnecté. Kadria ne mettra plus votre agenda à jour.");
         setGoogleEvents([]);
         await fetchStatus();
       } else {
-        setReturnMessage('Connexion Google impossible');
+        setReturnMessage("Connexion à Google Agenda impossible");
       }
     } catch {
-      setReturnMessage('Connexion Google impossible');
+      setReturnMessage("Connexion à Google Agenda impossible");
     } finally {
       setDisconnecting(false);
     }
@@ -816,16 +816,16 @@ export default function DesktopAgendaView() {
 
       const json = await response.json();
       if (!json.success) {
-        setCreateError(json.error || 'Connexion Google impossible');
+        setCreateError(json.error || "Connexion à Google Agenda impossible");
         return;
       }
 
-      setCreateSuccess("Rendez-vous planifi\u00e9. L'\u00e9v\u00e9nement a \u00e9t\u00e9 ajout\u00e9 \u00e0 Google Agenda.");
+      setCreateSuccess("Rendez-vous ajouté. Il apparaît maintenant dans Google Agenda.");
       setNewEvent(EMPTY_NEW_EVENT_FORM);
       setShowCreateForm(false);
       await fetchEvents();
     } catch {
-      setCreateError('Connexion Google impossible');
+      setCreateError("Connexion à Google Agenda impossible");
     } finally {
       setCreating(false);
     }
@@ -891,8 +891,8 @@ export default function DesktopAgendaView() {
 
       const json = await response.json();
       if (!json.success) {
-        setQuickCreateError(json.error || 'Création impossible');
-        showToast(json.error || 'Création du rendez-vous impossible', true);
+        setQuickCreateError(json.error || "Impossible d'ajouter le rendez-vous");
+        showToast(json.error || "Impossible d'ajouter le rendez-vous", true);
         return;
       }
 
@@ -901,8 +901,8 @@ export default function DesktopAgendaView() {
       showToast(json.conflictWarning?.message || 'Rendez-vous créé', Boolean(json.conflictWarning));
       await fetchAppointments(weekStart);
     } catch {
-      setQuickCreateError('Création impossible');
-      showToast('Création du rendez-vous impossible', true);
+      setQuickCreateError("Impossible d'ajouter le rendez-vous");
+      showToast("Impossible d'ajouter le rendez-vous", true);
     } finally {
       setQuickCreating(false);
     }
@@ -925,16 +925,16 @@ export default function DesktopAgendaView() {
       });
       const json = await response.json();
       if (!json.success) {
-        setReassignError(json.error || 'Réaffectation impossible');
-        showToast(json.error || 'Réaffectation impossible', true);
+        setReassignError(json.error || 'Impossible de changer le collaborateur prévu');
+        showToast(json.error || 'Impossible de changer le collaborateur prévu', true);
         return;
       }
       setSelectedEvent(null);
-      showToast('Collaborateur réaffecté');
+      showToast('Collaborateur prévu mis à jour');
       await fetchAppointments(weekStart);
     } catch {
-      setReassignError('Réaffectation impossible');
-      showToast('Réaffectation impossible', true);
+      setReassignError('Impossible de changer le collaborateur prévu');
+      showToast('Impossible de changer le collaborateur prévu', true);
     } finally {
       setReassigning(false);
     }
@@ -969,13 +969,13 @@ export default function DesktopAgendaView() {
       });
       const json = await response.json();
       if (!json.success) {
-        showToast(json.error || 'DÃ©placement impossible', true);
+        showToast(json.error || 'Impossible de déplacer le rendez-vous', true);
         return;
       }
-      showToast(json.conflictWarning?.message || 'Rendez-vous dÃ©placÃ©', Boolean(json.conflictWarning));
+      showToast(json.conflictWarning?.message || 'Rendez-vous déplacé', Boolean(json.conflictWarning));
       await fetchAppointments(weekStart);
     } catch {
-      showToast('DÃ©placement impossible', true);
+      showToast('Impossible de déplacer le rendez-vous', true);
     }
   }
 
@@ -1141,8 +1141,8 @@ export default function DesktopAgendaView() {
         <div
           className="flex items-center justify-between gap-3 rounded-2xl border p-4"
           style={{
-            borderColor: returnMessage === 'Connexion Google impossible' ? 'rgba(220,38,38,0.3)' : 'var(--border)',
-            background: returnMessage === 'Connexion Google impossible' ? 'rgba(220,38,38,0.08)' : 'var(--bg-elevated)',
+            borderColor: returnMessage === "Connexion à Google Agenda impossible" ? 'rgba(220,38,38,0.3)' : 'var(--border)',
+            background: returnMessage === "Connexion à Google Agenda impossible" ? 'rgba(220,38,38,0.08)' : 'var(--bg-elevated)',
           }}
         >
           <p className="text-sm font-semibold text-[var(--text-1)]">{returnMessage}</p>
@@ -1909,7 +1909,7 @@ export default function DesktopAgendaView() {
                 disabled={disconnecting}
                 className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-black disabled:opacity-60"
               >
-                Deconnecter
+                Déconnecter
               </button>
             </div>
           </div>

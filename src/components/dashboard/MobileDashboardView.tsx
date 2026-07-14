@@ -401,10 +401,10 @@ export default function MobileDashboardView({
         const createdProjectId = data.projectId || data.recordId || data.project?.id;
         if (createdProjectId) router.push(getProjectHref(createdProjectId));
       } else {
-        showToast(data?.error || 'Erreur lors de la création', true);
+        showToast(data?.error || "Impossible de créer le dossier.", true);
       }
     } catch {
-      showToast('Erreur réseau', true);
+      showToast("La connexion semble interrompue. Réessayez.", true);
     } finally {
       setCreating(false);
     }
@@ -1038,7 +1038,7 @@ export default function MobileDashboardView({
                   opacity: creating ? 0.6 : 1,
                 }}
               >
-                {creating ? 'Création...' : 'Créer le dossier'}
+                {creating ? 'Création en cours...' : 'Créer le dossier'}
               </button>
             </div>
           </div>
