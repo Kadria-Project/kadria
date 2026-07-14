@@ -73,6 +73,7 @@ import { computeProgressRecommendations, type ProgressRecommendations } from '@/
 import OperationsCenterSection, { OperationsWorkbenchSections } from '@/src/components/dashboard/OperationsCenterSection';
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
 import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
+import TrackingWorkspace from '@/src/components/workspace/tracking/TrackingWorkspace';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -3488,6 +3489,13 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           onOpenAgenda={() => setDashboardMode('calendar')}
         />
       )}
+      {showCommercialWorkspace && !loading && !isMobile && (
+        <TrackingWorkspace
+          projects={allProjects}
+          priorityProjects={topOpportunities}
+          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+        />
+      )}
       {showValueOverview && !loading && isMobile && (
         <div className="flex flex-col gap-6">
           {operationsCenter && <OperationsCenterSection data={operationsCenter} />}
@@ -4153,9 +4161,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         />
       )}
 
-      {(showCommercialWorkspace || showClientsWorkspace) &&
-        !(isMobile && showClientsWorkspace) &&
-        !(isMobile && showCommercialWorkspace) && (
+      {showClientsWorkspace && !isMobile && (
       <div className="flex flex-col gap-6 w-full" style={{ marginBottom: '24px' }}>
           {/* ZONE 1 — Top 3 opportunités */}
           {showCommercialWorkspace && !loading && topOpportunities.length > 0 && (

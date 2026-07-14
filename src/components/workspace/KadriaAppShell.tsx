@@ -67,12 +67,12 @@ export default function KadriaAppShell({ children }: { children: ReactNode }) {
     <div className="kadria-app-shell flex h-screen min-w-0 overflow-hidden bg-[#f6f8f7]">
       <KadriaSidebar compact={compactSidebar} activeMode={activeMode} onToggle={updateSidebar} onSelectMode={selectMode} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <KadriaTopbar collaboratorOpen={collaboratorOpen} onToggleCollaborator={() => updateCollaborator(!collaboratorOpen)} />
+        <KadriaTopbar activeMode={activeMode} collaboratorOpen={collaboratorOpen} onToggleCollaborator={() => updateCollaborator(!collaboratorOpen)} />
         <div ref={canvasRef} className="flex min-h-0 flex-1 overflow-hidden">
           <WorkspaceCanvas>{children}</WorkspaceCanvas>
         </div>
       </div>
-      <KadriaCollaboratorPanel open={collaboratorOpen} onClose={() => updateCollaborator(false)} />
+      <KadriaCollaboratorPanel open={collaboratorOpen} trackingActive={activeMode === 'commercial'} onClose={() => updateCollaborator(false)} />
       <style jsx global>{`
         .kadria-app-shell .kadria-workspace-canvas .dashboard-shell {
           min-height: 0 !important;

@@ -4,19 +4,22 @@ import Link from 'next/link';
 import { Bot, ChevronDown, Plus, Search } from 'lucide-react';
 import NotificationBell from '@/src/components/notifications/NotificationBell';
 import WorkspaceHeader from './layout/WorkspaceHeader';
+import type { WorkspaceMode } from './KadriaSidebar';
 
 interface KadriaTopbarProps {
+  activeMode: WorkspaceMode;
   collaboratorOpen: boolean;
   onToggleCollaborator: () => void;
 }
 
-export default function KadriaTopbar({ collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
+export default function KadriaTopbar({ activeMode, collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
+  const tracking = activeMode === 'commercial';
   return (
     <header className="flex min-h-[76px] shrink-0 items-center border-b border-slate-200 bg-white px-5 xl:px-7">
       <div className="w-full">
         <WorkspaceHeader
-          eyebrow="Workspace / Accueil"
-          title="Accueil"
+          eyebrow={tracking ? 'Workspace / Suivi' : 'Workspace / Accueil'}
+          title={tracking ? 'Suivi commercial' : 'Accueil'}
           actions={
             <>
               <label className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500 lg:flex">
