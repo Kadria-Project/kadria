@@ -462,6 +462,15 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
     [normalizedAppointments],
   );
 
+  const planningEmptyMessage =
+    collaboratorFilter === 'me'
+      ? 'Aucun rendez-vous prévu pour vous.'
+      : collaboratorFilter === 'all'
+        ? "Aucun rendez-vous prévu pour l'équipe."
+        : collaboratorFilter === 'unassigned'
+          ? 'Aucun rendez-vous sans collaborateur.'
+          : 'Aucun rendez-vous pour ce filtre.'
+
   const appointmentsByDay = useMemo(() => {
     const map = new Map<string, NormalizedCalendarEvent[]>();
     for (const appointment of normalizedAppointments) {
@@ -1172,7 +1181,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 {appointmentCreateError && <p style={{ fontSize: '12px', color: '#fca5a5', margin: 0 }}>{appointmentCreateError}</p>}
                 {appointmentCreateSuccess && <p style={{ fontSize: '12px', color: COLORS.accent, margin: 0 }}>{appointmentCreateSuccess}</p>}
                 {projectsError && <p style={{ fontSize: '12px', color: COLORS.text3, margin: 0 }}>{projectsError}</p>}
-                {projectsLoading && <p style={{ fontSize: '12px', color: COLORS.text3, margin: 0 }}>Chargement des dossiers...</p>}
+                {projectsLoading && <p style={{ fontSize: '12px', color: COLORS.text3, margin: 0 }}>Chargement des disponibilités...</p>}
 
                 <button
                   type="button"
@@ -1199,6 +1208,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
             ) : appointmentsLoading ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <LoadingStyles />
+                <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Chargement du planning…</p>
                 {[0, 1, 2].map((i) => (
                   <div key={i} style={{ padding: '10px 12px', borderRadius: '12px', background: COLORS.bg, border: `1px solid ${COLORS.border}` }}>
                     <LoadingSkeleton width="55%" height="13px" style={{ marginBottom: '6px' }} />
@@ -1207,7 +1217,7 @@ export default function MobileAgendaView({ router }: MobileAgendaViewProps) {
                 ))}
               </div>
             ) : normalizedAppointments.length === 0 ? (
-              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>Aucun rendez-vous pour ce filtre.</p>
+              <p style={{ fontSize: '13px', color: COLORS.text2, margin: 0 }}>{planningEmptyMessage}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {appointmentsByDay.map(([dayKey, dayAppointments]) => (

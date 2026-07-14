@@ -1124,6 +1124,13 @@ export default function DesktopAgendaView() {
   const isLoading =
     (calendarMode === 'google' && eventsLoading) || (calendarMode === 'kadria' && projectsLoading) || appointmentsLoading;
 
+  const planningEmptyMessage =
+    collaboratorFilter === 'me'
+      ? 'Aucun rendez-vous prévu pour vous.'
+      : collaboratorFilter === 'unassigned'
+        ? 'Aucun rendez-vous sans collaborateur.'
+        : 'Aucun rendez-vous prévu sur cette période.'
+
   const today = new Date();
 
   return (
@@ -1176,7 +1183,7 @@ export default function DesktopAgendaView() {
         </button>
         <span className="mx-1 h-4 w-px bg-[var(--border)]" />
         {statusLoading ? (
-          <span className="text-xs text-[var(--text-3)]">V&eacute;rification de Google Agenda...</span>
+          <span className="text-xs text-[var(--text-3)]">Chargement de Google Agenda...</span>
         ) : calendarStatus.connected ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-2)]">
             <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
@@ -1781,6 +1788,7 @@ export default function DesktopAgendaView() {
             {/* Corps grille */}
             {isLoading ? (
               <div className="flex flex-col gap-2 p-4">
+                <p className="text-sm text-[var(--text-2)]">Chargement du planning…</p>
                 {[0, 1, 2].map((i) => (
                   <LoadingSkeleton key={i} width="100%" height="48px" />
                 ))}
@@ -1870,7 +1878,7 @@ export default function DesktopAgendaView() {
         <p className="text-sm text-[var(--text-2)]">
           {calendarMode === 'google' && !calendarStatus.connected
             ? 'Connectez Google Agenda pour afficher vos rendez-vous synchronis\u00e9s.'
-            : 'Aucun rendez-vous ni action pr\u00e9vue sur cette p\u00e9riode.'}
+            : planningEmptyMessage}
         </p>
       )}
 

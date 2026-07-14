@@ -334,6 +334,10 @@ export default function TeamSettingsPage() {
                   value={teamData.seats!.unlimited ? 'Illimitee' : (teamData.seats!.limit ? String(teamData.seats!.limit) : 'Non definie')}
                 />
               </div>
+            ) : loading ? (
+              <div className="mt-5 rounded-[18px] border border-white/10 bg-black/10 p-4 text-sm text-zinc-400">
+                Chargement de l&apos;equipe…
+              </div>
             ) : !loading && loadError ? (
               <div className="mt-5 rounded-[18px] border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">
                 <p className="m-0">
