@@ -72,6 +72,7 @@ import { getProjectLifecycle, PROJECT_STATUS_OPTIONS } from '@/src/lib/project-l
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
 import OperationsCenterSection, { OperationsWorkbenchSections } from '@/src/components/dashboard/OperationsCenterSection';
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
+import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -3476,7 +3477,18 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       ) : (
       <>
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
-      {showValueOverview && !loading && (
+      {showValueOverview && !loading && !isMobile && (
+        <HomeWorkspace
+          firstName={artisanFirstName || null}
+          todayLabel={todayLabel}
+          projects={allProjects}
+          todayEvents={todayEvents}
+          operationsCenter={operationsCenter}
+          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+          onOpenAgenda={() => setDashboardMode('calendar')}
+        />
+      )}
+      {showValueOverview && !loading && isMobile && (
         <div className="flex flex-col gap-6">
           {operationsCenter && <OperationsCenterSection data={operationsCenter} />}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 sm:p-6">

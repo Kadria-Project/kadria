@@ -8,7 +8,7 @@ interface KadriaCollaboratorPanelProps {
   onClose: () => void;
 }
 
-const quickActions = ['Comprendre votre journée', 'Préparer des actions', 'Répondre à vos questions'];
+const quickActions = ['Résume-moi ma journée', 'Explique mes priorités', 'Prépare les actions du jour', 'Qu’est-ce qui est déjà sous contrôle ?'];
 
 export default function KadriaCollaboratorPanel({ open, onClose }: KadriaCollaboratorPanelProps) {
   const [draft, setDraft] = useState('');
