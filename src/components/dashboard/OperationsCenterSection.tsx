@@ -188,7 +188,10 @@ function SmallList({
       <p className="text-sm font-semibold text-[var(--text-1)]">{title}</p>
       <div className="mt-3 space-y-3">
         {items.length === 0 ? (
-          <p className="text-sm text-[var(--text-3)]">Rien d'urgent pour le moment.</p>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-[var(--text-2)]">Rien d'urgent pour le moment.</p>
+            <p className="text-xs text-[var(--text-3)]">Kadria affichera ici les prochaines actions utiles.</p>
+          </div>
         ) : (
           items.map((item) => (
             <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] p-3">
@@ -350,8 +353,9 @@ export default function OperationsCenterSection({
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
           <div className="space-y-3">
             {data.todayFocus.length === 0 ? (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 text-sm text-[var(--text-3)]">
-                Rien d'urgent pour le moment. Tout est à jour.
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
+                <p className="text-sm font-medium text-[var(--text-2)]">Rien d'urgent pour le moment.</p>
+                <p className="mt-1 text-sm text-[var(--text-3)]">Tout est à jour. Les prochaines priorités apparaîtront ici.</p>
               </div>
             ) : (
               data.todayFocus.map((item) => (
@@ -423,7 +427,7 @@ export default function OperationsCenterSection({
                       </div>
                     </div>
                   ))}
-                  {group.items.length === 0 ? <p className="text-xs text-[var(--text-3)]">Aucune action pour le moment.</p> : null}
+                  {group.items.length === 0 ? <p className="text-xs text-[var(--text-3)]">Aucune action à préparer pour le moment.</p> : null}
                 </div>
               </div>
             ))}

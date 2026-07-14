@@ -138,7 +138,7 @@ const ProspectsLeafletMap = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-full min-h-[240px] w-full items-center justify-center bg-muted/40 text-sm text-muted-foreground">
-        Chargement de la carte...
+        Kadria prépare la carte...
       </div>
     ),
   },
@@ -544,7 +544,7 @@ function ActivityCell({ activity, compact }: { activity?: ClientActivityInfo; co
   const lastAt = activity?.lastEventAt || null;
 
   if (!activity || (!unreadCount && !lastType)) {
-    return <span className="text-xs text-[var(--text-3)]">Aucune activité</span>;
+    return <span className="text-xs text-[var(--text-3)]">Rien à signaler</span>;
   }
 
   if (unreadCount > 0) {
@@ -1984,7 +1984,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     : null;
 
   const businessHealth: { label: string; color: string; emoji: string } = !actionEngineEntries.length
-    ? { label: 'Pas encore de donnees', color: 'var(--text-2)', emoji: '⚪' }
+    ? { label: 'En attente des premiers dossiers', color: 'var(--text-2)', emoji: '⚪' }
     : criticalActionsCount > 0
       ? { label: 'Actions urgentes', color: '#dc2626', emoji: '🔴' }
       : highActionsCount >= 3 || (averageMaturityScore !== null && averageMaturityScore < 50)
@@ -2725,7 +2725,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             </div>
           );
         })}
-        {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier en risque pour le moment.</p>}
+        {riskProjects.length === 0 && <p className="text-sm text-[var(--text-3)]">Aucun dossier à surveiller pour le moment.</p>}
       </div>
       {riskProjects.length > 2 && (
         <button
@@ -2777,7 +2777,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           {actionsATraiterParts && <p className="mt-1 text-sm text-[var(--text-2)]">{actionsATraiterParts}</p>}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-2)]">Aucune action urgente pour le moment.</p>
+        <p className="text-sm text-[var(--text-2)]">Tout est à jour pour le moment.</p>
       )}
       <button
         type="button"
@@ -3537,7 +3537,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
           {!hasValueData && (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4 sm:p-5">
-              <p className="text-sm text-[var(--text-2)]">Aucune donnée sur cette période.</p>
+              <p className="text-sm font-medium text-[var(--text-2)]">Aucun résultat sur cette période.</p>
+              <p className="mt-1 text-sm text-[var(--text-3)]">Changez la période pour voir davantage d'activité.</p>
             </div>
           )}
 
@@ -3594,7 +3595,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
                 {kpiPeriodData.sparkline.length < 2 || kpiPeriodData.sparkline.every((d) => d.value === 0) ? (
                   <p className="mt-3 text-sm text-[var(--text-3)]">
-                    Pas encore assez de données pour afficher une évolution.
+                    Pas encore assez d'activité pour afficher une évolution.
                   </p>
                 ) : (
                   <>
@@ -3978,7 +3979,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               })}
               {mesTachesItems.length === 0 && (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-4 text-center">
-                  <p className="text-sm font-semibold text-[var(--text-1)]">Aucune action urgente pour le moment.</p>
+                  <p className="text-sm font-semibold text-[var(--text-1)]">Tout est à jour pour le moment.</p>
                   <p className="mt-1 text-xs text-[var(--text-2)]">Les prochains dossiers a traiter apparaitront ici.</p>
                 </div>
               )}
@@ -5060,18 +5061,20 @@ function Dashboard({ plan }: { plan: PlanKey }) {
             ) : (showClientsWorkspace ? displayedClients.length === 0 : displayedProjects.length === 0) ? (
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-8 text-center sm:p-16">
                 <SearchX className="w-10 h-10 text-[var(--text-3)] mx-auto mb-3" />
-                <p className="font-bold text-[var(--text-1)]">{showClientsWorkspace ? 'Aucun client trouvé' : 'Aucun dossier trouvé'}</p>
+                <p className="font-bold text-[var(--text-1)]">{showClientsWorkspace ? 'Aucun client pour le moment' : 'Aucun dossier pour le moment'}</p>
 
                 <p className="text-[var(--text-2)] mt-1">
                   {quickFilter === 'calls' || quickFilter === 'quotes' || quickFilter === 'followups'
-                    ? 'Aucun dossier dans cette catégorie pour le moment.'
+                    ? 'Aucun dossier dans cette sélection pour le moment.'
                     : filters.search
                       ? `Aucun résultat pour '${filters.search}'`
                       : filters.statut
                         ? showClientsWorkspace
                           ? `Aucun client avec le statut '${RELATION_STATUS_LABELS[filters.statut as ClientRelationshipStatus] ?? filters.statut}'`
                           : `Aucun dossier avec le statut '${filters.statut}'`
-                        : 'Essayez avec moins de filtres ou une recherche plus large.'}
+                        : showClientsWorkspace
+                          ? 'Les nouveaux clients apparaîtront ici.'
+                          : 'Les demandes de vos clients apparaîtront ici.'}
                 </p>
 
                 {hasActiveFilters && (
@@ -5400,7 +5403,7 @@ export function KanbanBoard({
                 {colProjects.length === 0 ? (
                   <div className="py-8 text-center text-sm text-[var(--text-3)]">
                     <FolderOpen className="mx-auto mb-2 h-6 w-6 text-[var(--text-3)]" />
-                    Aucun dossier dans cette étape
+                    Aucun dossier dans cette étape pour le moment
                   </div>
                 ) : (
                   colProjects.map((p) => (
@@ -5777,7 +5780,7 @@ function MonthlyUsageCard({
     return (
       <div className="h-full rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
         <p className="text-xs font-semibold text-[var(--text-2)]">Utilisation</p>
-        <p className="mt-2 text-sm text-[var(--text-3)]">Indisponible pour le moment.</p>
+        <p className="mt-2 text-sm text-[var(--text-3)]">Ces informations ne sont pas disponibles pour le moment.</p>
       </div>
     );
   }
