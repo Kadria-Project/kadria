@@ -12,7 +12,7 @@ import {
 import { isEventType } from '@/src/lib/calendar/event-types'
 import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
-import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context'
 import { sendAppointmentPush } from '@/src/lib/push'
 
 async function syncGoogleAppointment(artisanId: string, googleEventId: string, method: 'PATCH' | 'DELETE', payload?: Record<string, unknown>) {
@@ -49,11 +49,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: 'Corps de requête invalide' }, { status: 400 })
     }
 
-    const { data: existing, error: fetchError } = await supabaseAdmin
+    const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
+    const { data: existingResult, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, location, description, status, event_type, provider, google_event_id')
+      .select(['id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, location, description, status, event_type, provider, google_event_id', confirmationAvailable ? 'confirmation_status, confirmation_version' : ''].filter(Boolean).join(', '))
       .eq('id', id)
       .maybeSingle()
+    const existing = existingResult as unknown as Record<string, unknown> | null
 
     if (fetchError) {
       console.error('[APPOINTMENTS PATCH] Erreur lecture rendez-vous:', fetchError.message)
@@ -131,6 +133,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (!synced) return NextResponse.json({ success: false, error: 'Impossible de mettre a jour Google Agenda.' }, { status: 502 })
     }
 
+    const wasRescheduled = nextStart !== String(existing.start_time) || nextEnd !== String(existing.end_time)
     const updatePayload = {
       ...(body.title !== undefined ? { title: String(body.title || '') } : {}),
       ...(body.start !== undefined ? { start_time: nextStart } : {}),
@@ -142,6 +145,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
       assigned_user_id: nextAssignedUserId,
       is_unassigned: false,
+      ...(confirmationAvailable && wasRescheduled ? { confirmation_status: 'pending', confirmation_source: 'system', confirmation_note: null, confirmation_updated_at: new Date().toISOString(), confirmation_updated_by: tenantContext.userId, confirmation_version: Number((existing as Record<string, unknown>).confirmation_version || 0) + 1 } : {}),
       updated_at: new Date().toISOString(),
     }
 

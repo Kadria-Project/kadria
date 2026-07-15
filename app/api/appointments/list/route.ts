@@ -36,6 +36,11 @@ type AppointmentRow = {
   qualified_at: string | null
   qualified_by: string | null
   qualification_version: number | null
+  confirmation_status: string | null
+  confirmation_source: string | null
+  confirmation_note: string | null
+  confirmation_updated_at: string | null
+  confirmation_version: number | null
 }
 
 type ProjectLookup = {
@@ -104,6 +109,7 @@ export async function GET(request: NextRequest) {
 
     const canManageTeam = canManageTeamPlanning(tenantContext)
     const qualificationAvailable = await tableHasColumn('project_appointments', 'qualification_status')
+    const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
     const { searchParams } = request.nextUrl
     const from = searchParams.get('from')
     const to = searchParams.get('to')
@@ -112,6 +118,7 @@ export async function GET(request: NextRequest) {
     const appointmentColumns = [
       'id, project_id, start_time, end_time, location, status, client_name, google_event_id, title, tenant_id, assigned_user_id, event_type, all_day, description, is_unassigned',
       qualificationAvailable ? 'qualification_status, qualification_outcome, qualification_note, qualification_next_action, qualified_at, qualified_by, qualification_version' : '',
+      confirmationAvailable ? 'confirmation_status, confirmation_source, confirmation_note, confirmation_updated_at, confirmation_version' : '',
     ].filter(Boolean).join(', ')
 
     let query = supabaseAdmin
@@ -248,6 +255,9 @@ export async function GET(request: NextRequest) {
                 qualifiedBy: record.qualified_by ? String(record.qualified_by) : null,
                 version: Number(record.qualification_version || 0),
               }
+            : null,
+          confirmation: confirmationAvailable
+            ? { status: String(record.confirmation_status || 'pending'), source: record.confirmation_source ? String(record.confirmation_source) : null, note: record.confirmation_note ? String(record.confirmation_note) : null, updatedAt: record.confirmation_updated_at ? String(record.confirmation_updated_at) : null, version: Number(record.confirmation_version || 0) }
             : null,
           responsibleUserId: project?.responsibleUserId || null,
           responsibleUserName:
@@ -402,6 +412,7 @@ export async function GET(request: NextRequest) {
       success: true,
       appointments,
       qualificationAvailable,
+      confirmationAvailable,
       insights: {
         generatedAt: now.toISOString(),
         summary: {

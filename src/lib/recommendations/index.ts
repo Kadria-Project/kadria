@@ -217,6 +217,7 @@ export interface RecommendationAppointmentInput {
   longitude: number | null
   qualificationStatus?: string | null
   qualificationOutcome?: string | null
+  confirmationStatus?: string | null
 }
 
 export interface RecommendationMemberInput {
@@ -702,6 +703,17 @@ export function buildOperationsCenter(input: BuildOperationsCenterInput): Operat
   }
 
   const appointmentsByMember = new Map<string, RecommendationAppointmentInput[]>()
+  for (const appointment of input.appointments) {
+    const start = appointment.start ? new Date(appointment.start) : null
+    const upcoming = Boolean(start && !Number.isNaN(start.getTime()) && start.getTime() >= now.getTime())
+    if (upcoming && appointment.confirmationStatus === 'change_requested') {
+      recommendations.push(recommendation({ id: `appointment-change-${appointment.id}`, type: 'appointment_change_requested', score: 92, title: 'Traiter la demande de changement', description: 'Le client a demandé un autre créneau.', reason: 'Rendez-vous à replanifier.', action: { actionType: 'open_schedule_appointment', actionLabel: 'Replanifier', actionRoute: planningRoute({ appointmentId: appointment.id }), actionPayload: { appointmentId: appointment.id } }, entityType: 'appointment', entityId: appointment.id, category: 'Planning', createdAt: appointment.start || now.toISOString(), estimatedMinutes: 3 }))
+    } else if (upcoming && appointment.confirmationStatus === 'pending') {
+      recommendations.push(recommendation({ id: `appointment-confirm-${appointment.id}`, type: 'appointment_confirmation', score: 84, title: 'Confirmer le rendez-vous', description: 'Le client doit encore confirmer ce créneau.', reason: 'Rendez-vous à venir sans confirmation.', action: { actionType: 'open_schedule_appointment', actionLabel: 'Préparer', actionRoute: planningRoute({ appointmentId: appointment.id }), actionPayload: { appointmentId: appointment.id } }, entityType: 'appointment', entityId: appointment.id, category: 'Planning', createdAt: appointment.start || now.toISOString(), estimatedMinutes: 2 }))
+    } else if (upcoming && !appointment.location) {
+      recommendations.push(recommendation({ id: `appointment-address-${appointment.id}`, type: 'appointment_address', score: 76, title: 'Ajouter l’adresse du rendez-vous', description: 'L’adresse est nécessaire pour préparer le déplacement.', reason: 'Rendez-vous à venir sans adresse.', action: { actionType: 'open_schedule_appointment', actionLabel: 'Ajouter l’adresse', actionRoute: planningRoute({ appointmentId: appointment.id }), actionPayload: { appointmentId: appointment.id } }, entityType: 'appointment', entityId: appointment.id, category: 'Planning', createdAt: appointment.start || now.toISOString(), estimatedMinutes: 1 }))
+    }
+  }
   for (const appointment of input.appointments) {
     const key = appointment.assignedUserId || '__unassigned__'
     if (!appointmentsByMember.has(key)) appointmentsByMember.set(key, [])

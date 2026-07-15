@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { sendAppointmentPush, type PushAppointment } from '@/src/lib/push'
+import { tableHasColumn } from '@/src/lib/tenant-context'
 
 function isAuthorized(request: NextRequest) {
   const expected = process.env.CRON_SECRET
@@ -14,21 +15,24 @@ export async function GET(request: NextRequest) {
   const now = new Date()
   const windowStart = new Date(now.getTime() + 55 * 60_000).toISOString()
   const windowEnd = new Date(now.getTime() + 65 * 60_000).toISOString()
-  const { data: appointments, error } = await supabaseAdmin
+  const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
+  let appointmentsQuery = supabaseAdmin
     .from('project_appointments')
-    .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, updated_at, status')
+    .select(['id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, updated_at, status', confirmationAvailable ? 'confirmation_status' : ''].filter(Boolean).join(', '))
     .not('tenant_id', 'is', null)
     .not('assigned_user_id', 'is', null)
     .gte('start_time', windowStart)
     .lte('start_time', windowEnd)
     .neq('status', 'cancelled')
+  if (confirmationAvailable) appointmentsQuery = appointmentsQuery.neq('confirmation_status', 'cancelled')
+  const { data: appointments, error } = await appointmentsQuery
 
   if (error) {
     console.error('[PUSH][REMINDER_QUERY]', { message: error.message })
     return NextResponse.json({ success: false, error: 'Impossible de préparer les rappels.' }, { status: 500 })
   }
 
-  await Promise.all((appointments || []).map(async (row) => {
+  await Promise.all(((appointments || []) as unknown as Array<Record<string, unknown>>).map(async (row) => {
     const appointment: PushAppointment = {
       id: String(row.id),
       tenantId: String(row.tenant_id),

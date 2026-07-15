@@ -48,6 +48,7 @@ export interface NormalizedCalendarEvent {
   isAssignedToCurrentUser: boolean
   isUnassigned: boolean
   qualification: RawKadriaAppointment['qualification']
+  confirmation: RawKadriaAppointment['confirmation']
   // Identifiant brut en base (project_appointments.id), uniquement présent
   // pour les rendez-vous Kadria — nécessaire pour la réaffectation rapide
   // (PATCH /api/appointments/[id]/assign) sans dépendre du préfixe `id`.
@@ -102,6 +103,7 @@ export function normalizeGoogleEvent(event: RawGoogleEvent): NormalizedCalendarE
     isAssignedToCurrentUser: false,
     isUnassigned: false,
     qualification: null,
+    confirmation: null,
     rawAppointmentId: null,
   }
 }
@@ -141,6 +143,7 @@ export interface RawKadriaAppointment {
     qualifiedBy: string | null
     version: number
   } | null
+  confirmation?: { status: string; source: string | null; note: string | null; updatedAt: string | null; version: number } | null
 }
 
 function guessAppointmentType(a: RawKadriaAppointment): NormalizedEventType {
@@ -198,6 +201,7 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     isAssignedToCurrentUser: Boolean(a.isAssignedToCurrentUser),
     isUnassigned: Boolean(a.isUnassigned),
     qualification: a.qualification || null,
+    confirmation: a.confirmation || null,
     rawAppointmentId: a.id,
   }
 }
@@ -251,6 +255,7 @@ export function normalizeKadriaPlanningItem(item: RawKadriaPlanningItemLike): No
     isAssignedToCurrentUser: false,
     isUnassigned: false,
     qualification: null,
+    confirmation: null,
     rawAppointmentId: null,
   }
 }

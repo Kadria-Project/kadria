@@ -6,8 +6,10 @@ import { X } from 'lucide-react';
 import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalendarEvent, type RawGoogleEvent, type RawKadriaAppointment } from '@/src/lib/calendar/normalized-event';
 import { isEventType } from '@/src/lib/calendar/event-types';
 import type { AppointmentQualificationOutcome, AppointmentQualificationStatus } from '@/src/lib/appointment-qualification';
+import type { AppointmentConfirmationSource, AppointmentConfirmationStatus } from '@/src/lib/appointment-confirmation';
 import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
 import AppointmentQualificationModal from './AppointmentQualificationModal';
+import AppointmentConfirmationModal from './AppointmentConfirmationModal';
 import CalendarBriefing from './CalendarBriefing';
 import CalendarSummary from './CalendarSummary';
 import DayActivityTimeline from './DayActivityTimeline';
@@ -46,6 +48,10 @@ export default function CalendarWorkspace() {
   const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [qualificationAvailable, setQualificationAvailable] = useState(false);
+  const [confirmationAvailable, setConfirmationAvailable] = useState(false);
+  const [confirmingEvent, setConfirmingEvent] = useState<NormalizedCalendarEvent | null>(null);
+  const [confirmationSaving, setConfirmationSaving] = useState(false);
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
   const [qualifyingEvent, setQualifyingEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [qualificationSaving, setQualificationSaving] = useState(false);
   const [qualificationError, setQualificationError] = useState<string | null>(null);
@@ -67,6 +73,7 @@ export default function CalendarWorkspace() {
       setAppointments(Array.isArray(json.appointments) ? json.appointments : []);
       setInsights(json.insights || null);
       setQualificationAvailable(Boolean(json.qualificationAvailable));
+      setConfirmationAvailable(Boolean(json.confirmationAvailable));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Impossible de charger le planning.');
     } finally {
@@ -190,6 +197,36 @@ export default function CalendarWorkspace() {
       setQualificationSaving(false);
     }
   };
+  const handleConfirmation = async (input: { status: AppointmentConfirmationStatus; source: AppointmentConfirmationSource; note: string; expectedVersion: number }) => {
+    if (!confirmingEvent?.rawAppointmentId) return;
+    setConfirmationSaving(true);
+    setConfirmationError(null);
+    try {
+      const response = await fetch('/api/appointments/' + confirmingEvent.rawAppointmentId + '/confirmation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...input, requestId: crypto.randomUUID() }) });
+      const json = await response.json();
+      if (!response.ok || !json?.success) throw new Error(json?.error || 'Impossible d’enregistrer cette confirmation.');
+      setConfirmingEvent(null);
+      await fetchAppointments();
+      setSuccessMessage('Confirmation enregistrée.');
+    } catch (confirmationError) {
+      setConfirmationError(confirmationError instanceof Error ? confirmationError.message : 'Impossible d’enregistrer cette confirmation.');
+    } finally { setConfirmationSaving(false); }
+  };
+  const handleConfirmationSend = async (input: { channel: 'sms' | 'email'; message: string; expectedVersion: number }) => {
+    if (!confirmingEvent?.rawAppointmentId) return;
+    setConfirmationSaving(true);
+    setConfirmationError(null);
+    try {
+      const response = await fetch('/api/appointments/' + confirmingEvent.rawAppointmentId + '/confirmation/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...input, requestId: crypto.randomUUID() }) });
+      const json = await response.json();
+      if (!response.ok || !json?.success) throw new Error(json?.error || 'Impossible d’envoyer la confirmation.');
+      setConfirmingEvent(null);
+      await fetchAppointments();
+      setSuccessMessage('Confirmation envoyée.');
+    } catch (sendError) {
+      setConfirmationError(sendError instanceof Error ? sendError.message : 'Impossible d’envoyer la confirmation.');
+    } finally { setConfirmationSaving(false); }
+  };
   const updateFormField = (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => {
     if (field === 'location') setLocationTouched(true);
     setCreateError(null);
@@ -282,7 +319,7 @@ export default function CalendarWorkspace() {
           <DayActivityTimeline events={todayEvents} />
         </div>
         <aside className="space-y-3">
-          <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} />
+          <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} onEdit={() => nextAppointment && openEvent(nextAppointment)} onConfirm={() => { if (nextAppointment && confirmationAvailable) { setConfirmationError(null); setConfirmingEvent(nextAppointment); } }} />
           <ScheduleAvailabilityPanel minutes={availableMinutes} />
           <ScheduleConflictPanel conflict={selectedConflict} onOpenConflict={() => selectedConflict && setSelectedEvent(events.find((event) => event.rawAppointmentId === selectedConflict.appointmentId) || null)} />
           <ScheduleRecommendations insights={insights} onOpenConflict={() => selectedConflict && setSelectedEvent(events.find((event) => event.rawAppointmentId === selectedConflict.appointmentId) || null)} />
@@ -302,6 +339,7 @@ export default function CalendarWorkspace() {
       {createOpen && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} error={createError} endIsValid={endIsValid} onClose={() => !creating && setCreateOpen(false)} onSubmit={() => void handleCreate()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
       {editingAppointmentId && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} deleting={deleting} error={createError} endIsValid={endIsValid} mode="edit" onClose={() => !creating && !deleting && setEditingAppointmentId(null)} onSubmit={() => void handleUpdate()} onDelete={() => void handleDelete()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
       {qualifyingEvent && <AppointmentQualificationModal event={qualifyingEvent} saving={qualificationSaving} error={qualificationError} onClose={() => !qualificationSaving && setQualifyingEvent(null)} onSave={(input) => void handleQualification(input)} />}
+      {confirmingEvent && <AppointmentConfirmationModal event={confirmingEvent} saving={confirmationSaving} error={confirmationError} onClose={() => !confirmationSaving && setConfirmingEvent(null)} onSave={(input) => void handleConfirmation(input)} onSend={(input) => void handleConfirmationSend(input)} />}
     </div>
   );
 }

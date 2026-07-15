@@ -35,6 +35,7 @@ type AppointmentRow = {
   longitude?: number | null
   qualification_status?: string | null
   qualification_outcome?: string | null
+  confirmation_status?: string | null
 }
 
 type ActivityRow = {
@@ -135,6 +136,7 @@ function mapAppointmentForRecommendations(row: AppointmentRow, userNames: Map<st
     longitude: typeof row.longitude === 'number' ? row.longitude : null,
     qualificationStatus: row.qualification_status || null,
     qualificationOutcome: row.qualification_outcome || null,
+    confirmationStatus: row.confirmation_status || null,
   }
 }
 
@@ -412,6 +414,7 @@ export async function GET() {
     stage = 'schema_capabilities'
     const supportsTenantId = await tableHasColumn(TABLES.projects, 'tenant_id')
     const supportsAppointmentQualification = await tableHasColumn('project_appointments', 'qualification_status')
+    const supportsAppointmentConfirmation = await tableHasColumn('project_appointments', 'confirmation_status')
     const supportsResponsibleUser = await projectResponsibilityColumnExists()
     const canReadAllProjects = checkPermission(tenantContext, 'projects.read_all')
     const canReadAssignedProjects = checkPermission(tenantContext, 'projects.read_assigned')
@@ -433,6 +436,7 @@ export async function GET() {
     const appointmentColumns = [
       'id, project_id, tenant_id, artisan_id, assigned_user_id, start_time, end_time, title, location',
       supportsAppointmentQualification ? 'qualification_status, qualification_outcome' : null,
+      supportsAppointmentConfirmation ? 'confirmation_status' : null,
     ].filter(Boolean).join(', ')
 
     const appointmentsQuery = supabaseAdmin
