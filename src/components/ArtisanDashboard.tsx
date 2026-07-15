@@ -74,6 +74,7 @@ import OperationsCenterSection, { OperationsWorkbenchSections } from '@/src/comp
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
 import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
 import TrackingWorkspace from '@/src/components/workspace/tracking/TrackingWorkspace';
+import TasksWorkspace from '@/src/components/workspace/tasks/TasksWorkspace';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -3498,6 +3499,14 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
         />
       )}
+      {showTasksOverview && !loading && !isMobile && (
+        <TasksWorkspace
+          firstName={artisanFirstName}
+          operationsCenter={operationsCenter}
+          todayEvents={todayEvents}
+          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+        />
+      )}
       {showValueOverview && !loading && isMobile && (
         <div className="flex flex-col gap-6">
           {operationsCenter && <OperationsCenterSection data={operationsCenter} />}
@@ -3893,7 +3902,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         </div>
       )}
 
-      {showTasksOverview && !loading && (
+      {showTasksOverview && !loading && isMobile && (
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
