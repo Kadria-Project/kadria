@@ -142,7 +142,7 @@ export default function CalendarWorkspace() {
       <CalendarSummary appointmentCount={todayEvents.length} plannedMinutes={plannedMinutes} conflictCount={insights?.summary.conflicts || 0} travelWarningCount={insights?.travelWarnings.length || 0} />
       {error && <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_290px]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
         <div className="min-w-0 space-y-4">
           <ScheduleTimeline view={view} selectedDate={weekStart} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setWeekStart(startOfWeekMonday(new Date()))} onViewChange={setView} onOpenEvent={setSelectedEvent} onCreate={openCreate} />
           <DayActivityTimeline events={todayEvents} />
@@ -150,7 +150,7 @@ export default function CalendarWorkspace() {
         <aside className="space-y-3">
           <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} />
           <ScheduleAvailabilityPanel minutes={availableMinutes} />
-          {selectedConflict && <ScheduleConflictPanel conflict={selectedConflict} />}
+          <ScheduleConflictPanel conflict={selectedConflict} onOpenConflict={() => selectedConflict && setSelectedEvent(events.find((event) => event.rawAppointmentId === selectedConflict.appointmentId) || null)} />
           <ScheduleRecommendations insights={insights} onOpenConflict={() => selectedConflict && setSelectedEvent(events.find((event) => event.rawAppointmentId === selectedConflict.appointmentId) || null)} />
           <ScheduleTravelPanel events={todayEvents} />
         </aside>
