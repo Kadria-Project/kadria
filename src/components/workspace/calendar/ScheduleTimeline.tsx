@@ -9,6 +9,7 @@ import {
   Plus,
   Users,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
 import { QUALIFICATION_STATUS_LABELS } from '@/src/lib/appointment-qualification';
 import type { CalendarView } from './calendar-workspace-types';
@@ -25,6 +26,7 @@ type ScheduleTimelineProps = {
   onOpenEvent: (event: NormalizedCalendarEvent) => void;
   onCreate: () => void;
   qualificationAvailable: boolean;
+  onMoveEvent: (event: NormalizedCalendarEvent, start: Date) => void;
 };
 
 const HOURS = Array.from({ length: 11 }, (_, index) => index + 8);
@@ -81,7 +83,7 @@ function compactAssigneeName(event: NormalizedCalendarEvent) {
   return parts.length > 1 ? `${parts[0]} ${parts[1].charAt(0)}.` : parts[0]
 }
 
-function TimelineEvent({ event, onOpen, qualificationAvailable }: { event: NormalizedCalendarEvent; onOpen: (event: NormalizedCalendarEvent) => void; qualificationAvailable: boolean }) {
+function TimelineEvent({ event, onOpen, qualificationAvailable, onDragStart, onDragEnd }: { event: NormalizedCalendarEvent; onOpen: (event: NormalizedCalendarEvent) => void; qualificationAvailable: boolean; onDragStart: (event: NormalizedCalendarEvent) => void; onDragEnd: () => void }) {
   const start = eventDate(event);
   if (!start) return null;
 
@@ -98,8 +100,11 @@ function TimelineEvent({ event, onOpen, qualificationAvailable }: { event: Norma
   return (
     <button
       type="button"
+      draggable={Boolean(event.rawAppointmentId && event.status !== 'cancelled')}
+      onDragStart={(dragEvent) => { dragEvent.dataTransfer.effectAllowed = 'move'; dragEvent.dataTransfer.setData('text/appointment-id', event.rawAppointmentId || ''); onDragStart(event); }}
+      onDragEnd={onDragEnd}
       onClick={() => onOpen(event)}
-      className={['absolute inset-x-1 z-10 overflow-hidden rounded-lg border px-2.5 py-1.5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500', getEventTone(event)].join(' ')}
+      className={['absolute inset-x-1 z-10 overflow-hidden rounded-lg border px-2.5 py-1.5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500', event.rawAppointmentId && event.status !== 'cancelled' ? 'cursor-grab active:cursor-grabbing' : '', getEventTone(event)].join(' ')}
       style={{ top, height }}
     >
       <span className="flex items-center gap-1.5 truncate text-[10px] font-semibold">
@@ -127,7 +132,12 @@ export default function ScheduleTimeline({
   onOpenEvent,
   onCreate,
   qualificationAvailable,
+  onMoveEvent,
 }: ScheduleTimelineProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<NormalizedCalendarEvent | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
   const days = view === 'jour'
     ? [selectedDate]
     : Array.from({ length: 7 }, (_, index) => {
@@ -136,7 +146,8 @@ export default function ScheduleTimeline({
         return date;
       });
   const timed = events.filter((event) => eventDate(event) && !event.allDay);
-  const today = new Date();
+  const today = now;
+  const moveToNow = () => scrollRef.current?.scrollTo({ top: Math.max(0, ((now.getHours() - 8) * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT - 90)), behavior: 'smooth' });
 
   return (
     <section id="workspace-section-calendar" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.025)] sm:p-5">
@@ -145,6 +156,7 @@ export default function ScheduleTimeline({
           <p className="mr-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><CalendarDays className="size-4 text-emerald-600" />Planning</p>
           <button type="button" onClick={onPrevious} aria-label="Période précédente" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronLeft className="size-4" /></button>
           <button type="button" onClick={onToday} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Aujourd’hui</button>
+          <button type="button" onClick={moveToNow} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Maintenant</button>
           <button type="button" onClick={onNext} aria-label="Période suivante" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronRight className="size-4" /></button>
         </div>
         <div className="flex items-center gap-2">
@@ -156,7 +168,7 @@ export default function ScheduleTimeline({
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto pb-1">
+      <div ref={scrollRef} className="mt-4 max-h-[650px] overflow-auto pb-1">
         <div className={['grid min-w-[760px]', view === 'jour' ? 'grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-[56px_repeat(7,minmax(120px,1fr))]'].join(' ')}>
           <div className="border-r border-[#DCE5E2]" />
           {days.map((day) => {
@@ -177,9 +189,10 @@ export default function ScheduleTimeline({
             const isToday = isSameDay(day, today);
 
             return (
-              <div key={day.toISOString()} className={['relative border-r border-[#DCE5E2]', isToday ? 'bg-[#F7FCF9]' : 'bg-white'].join(' ')} style={{ height: HOURS.length * HOUR_HEIGHT }}>
+              <div key={day.toISOString()} onDragOver={(dragEvent) => { if (dragging) dragEvent.preventDefault(); }} onDrop={(dragEvent) => { dragEvent.preventDefault(); if (!dragging) return; const bounds = dragEvent.currentTarget.getBoundingClientRect(); const offset = Math.max(0, Math.min(HOURS.length * HOUR_HEIGHT - 1, dragEvent.clientY - bounds.top)); const minutes = Math.round(((offset / HOUR_HEIGHT) * 60) / 15) * 15; const start = new Date(day); start.setHours(8 + Math.floor(minutes / 60), minutes % 60, 0, 0); onMoveEvent(dragging, start); setDragging(null); }} className={['relative border-r border-[#DCE5E2]', isToday ? 'bg-[#F7FCF9]' : 'bg-white'].join(' ')} style={{ height: HOURS.length * HOUR_HEIGHT }}>
                 {HOURS.map((hour) => <div key={hour} className="h-[54px] border-b border-dashed border-[#EDF2F0]" />)}
-                {dayEvents.map((event) => <TimelineEvent key={event.id} event={event} onOpen={onOpenEvent} qualificationAvailable={qualificationAvailable} />)}
+                {isToday && now.getHours() >= 8 && now.getHours() < 19 ? <div aria-label="Heure actuelle" className="pointer-events-none absolute inset-x-0 z-20 border-t-2 border-rose-400" style={{ top: ((now.getHours() - 8) * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT }}><span className="absolute -left-1 -top-1.5 size-2.5 rounded-full bg-rose-400" /></div> : null}
+                {dayEvents.map((event) => <TimelineEvent key={event.id} event={event} onOpen={onOpenEvent} qualificationAvailable={qualificationAvailable} onDragStart={setDragging} onDragEnd={() => setDragging(null)} />)}
                 {!dayEvents.length ? (
                   <button type="button" onClick={onCreate} className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg border border-dashed border-emerald-200 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500">
                     <Plus className="size-3.5" />

@@ -68,6 +68,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
 
+    if (body.move === true && existing.status === 'cancelled') {
+      return NextResponse.json({ success: false, error: 'Un rendez-vous annulé ne peut pas être déplacé.' }, { status: 409 })
+    }
+
     const nextAssignedUserId = body.assignedUserId === undefined
       ? (existing.assigned_user_id ? String(existing.assigned_user_id) : tenantContext.userId)
       : body.assignedUserId
@@ -122,6 +126,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       end: nextEnd,
       excludeAppointmentId: id,
     })
+    if (body.move === true && conflict && body.forceConflict !== true) {
+      console.info('[CALENDAR][APPOINTMENT_MOVE_CONFLICT]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: nextAssignedUserId, previousStart: existing.start_time, nextStart })
+      return NextResponse.json({ success: false, error: 'Ce collaborateur possède déjà un rendez-vous sur cette plage horaire.', code: 'APPOINTMENT_CONFLICT', conflict }, { status: 409 })
+    }
     if (existing.provider === 'google' && existing.google_event_id) {
       const synced = await syncGoogleAppointment(String(existing.artisan_id || session.artisanId), String(existing.google_event_id), 'PATCH', {
         summary: body.title !== undefined ? String(body.title || '') : existing.title,
@@ -158,6 +166,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .single()
 
     if (updateError) {
+      console.error('[CALENDAR][APPOINTMENT_MOVE_ERROR]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: nextAssignedUserId, previousStart: existing.start_time, nextStart, message: updateError.message })
       console.error('[APPOINTMENTS PATCH] Erreur mise à jour:', updateError.message)
       return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
     }
@@ -182,6 +191,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }, 'appointment_updated', tenantContext.userId).catch((error) => {
       console.warn('[PUSH][APPOINTMENT_UPDATED]', { appointmentId: updated.id, message: error instanceof Error ? error.message : String(error) })
     }))
+    if (wasRescheduled) console.info('[CALENDAR][APPOINTMENT_MOVE_SUCCESS]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: updated.assigned_user_id, previousStart: existing.start_time, nextStart: updated.start_time })
 
     return NextResponse.json({
       success: true,

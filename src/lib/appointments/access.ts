@@ -97,6 +97,7 @@ export async function findAppointmentConflict(input: {
     .eq('assigned_user_id', input.assignedUserId)
     .lt('start_time', input.end)
     .gt('end_time', input.start)
+    .neq('status', 'cancelled')
     .limit(1)
 
   if (input.excludeAppointmentId) {

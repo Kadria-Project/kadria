@@ -306,6 +306,32 @@ export default function CalendarWorkspace() {
       setDeleting(false);
     }
   };
+  const handleMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false) => {
+    if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
+    const previousStart = event.start;
+    const previousEnd = event.end;
+    const duration = new Date(previousEnd).getTime() - new Date(previousStart).getTime();
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    const nextEnd = new Date(nextStart.getTime() + duration).toISOString();
+    const nextStartIso = nextStart.toISOString();
+    const localConflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === event.assignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStartIso < candidate.end && nextEnd > candidate.start);
+    if (localConflict && !forceConflict && !window.confirm(`Ce collaborateur possède déjà un rendez-vous sur cette plage horaire${localConflict.title ? ` : ${localConflict.title}` : ''}.\n\nConserver quand même ?`)) return;
+    setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: nextStartIso, end: nextEnd } : item));
+    try {
+      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(localConflict || forceConflict) }) });
+      const json = await response.json();
+      if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
+        setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
+        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, true);
+        return;
+      }
+      if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
+      setSuccessMessage(`Rendez-vous déplacé à ${nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`);
+    } catch {
+      setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
+      setError('Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 pb-6">
@@ -315,7 +341,7 @@ export default function CalendarWorkspace() {
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
         <div className="min-w-0 space-y-4">
-          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} />
+          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} />
           <DayActivityTimeline events={todayEvents} />
         </div>
         <aside className="space-y-3">
