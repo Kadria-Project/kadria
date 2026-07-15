@@ -3,6 +3,7 @@ import { waitUntil } from '@vercel/functions'
 import { getSession } from '@/src/lib/auth-utils'
 import {
   canDeleteAppointment,
+  canAssignAppointments,
   canEditAppointment,
   findAppointmentConflict,
   listAssignableAppointmentMembers,
@@ -79,6 +80,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         ? String(body.assignedUserId)
         : tenantContext.userId
     const shouldUpdateAssignee = body.assignedUserId !== undefined || !existing.assigned_user_id
+    const wasReassigned = shouldUpdateAssignee && nextAssignedUserId !== (existing.assigned_user_id ? String(existing.assigned_user_id) : null)
+
+    if (wasReassigned && !canAssignAppointments(tenantContext)) {
+      return NextResponse.json({ success: false, error: "Vous n'avez pas accès à cette affectation." }, { status: 403 })
+    }
 
     if (body.eventType !== undefined && !isEventType(body.eventType)) {
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
@@ -195,7 +201,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       start: updated.start_time,
       end: updated.end_time,
       eventVersion: updated.updated_at,
-    }, 'appointment_updated', tenantContext.userId).catch((error) => {
+    }, wasReassigned ? 'appointment_assigned' : 'appointment_updated', tenantContext.userId).catch((error) => {
       console.warn('[PUSH][APPOINTMENT_UPDATED]', { appointmentId: updated.id, message: error instanceof Error ? error.message : String(error) })
     }))
     if (wasRescheduled) console.info('[CALENDAR][APPOINTMENT_MOVE_SUCCESS]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: updated.assigned_user_id, previousStart: existing.start_time, nextStart: updated.start_time })

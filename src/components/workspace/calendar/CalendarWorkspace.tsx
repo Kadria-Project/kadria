@@ -20,10 +20,12 @@ import ScheduleConflictPanel from './ScheduleConflictPanel';
 import ScheduleRecommendations from './ScheduleRecommendations';
 import ScheduleTimeline from './ScheduleTimeline';
 import ScheduleTravelPanel from './ScheduleTravelPanel';
-import type { CalendarView, PlanningInsights } from './calendar-workspace-types';
+import TeamScheduleTimeline from './TeamScheduleTimeline';
+import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
 import { addDays, durationMinutes, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
 
 type CalendarMode = 'kadria' | 'google';
+type PlanningMode = 'personal' | 'team';
 const DAY_MINUTES = 8 * 60;
 const MINIMUM_APPOINTMENT_DURATION_MS = 15 * 60_000;
 
@@ -35,6 +37,7 @@ function formatInputDate(date: Date) {
 export default function CalendarWorkspace() {
   const router = useRouter();
   const [mode, setMode] = useState<CalendarMode>('kadria');
+  const [planningMode, setPlanningMode] = useState<PlanningMode>('personal');
   const [view, setView] = useState<CalendarView>('semaine');
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [appointments, setAppointments] = useState<RawKadriaAppointment[]>([]);
@@ -59,6 +62,10 @@ export default function CalendarWorkspace() {
   const [qualificationError, setQualificationError] = useState<string | null>(null);
   const [workHours, setWorkHours] = useState({ start: null as string | null, end: null as string | null });
   const [savingAppointmentIds, setSavingAppointmentIds] = useState<Set<string>>(() => new Set());
+  const [teamMembers, setTeamMembers] = useState<TeamPlanningMember[]>([]);
+  const [selectedTeamMemberIds, setSelectedTeamMemberIds] = useState<string[]>([]);
+  const [teamPermissions, setTeamPermissions] = useState<TeamPlanningPermissions | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
   const [locationTouched, setLocationTouched] = useState(false);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
@@ -101,6 +108,24 @@ export default function CalendarWorkspace() {
       }
     };
     void loadCalendarMode();
+  }, []);
+
+  useEffect(() => {
+    const loadTeamMembers = async () => {
+      try {
+        const response = await fetch('/api/team/members-lite');
+        const json = await response.json();
+        if (!response.ok || !json?.success) return;
+        const members = Array.isArray(json.members) ? json.members as TeamPlanningMember[] : [];
+        setTeamMembers(members);
+        setSelectedTeamMemberIds(members.map((member) => member.userId));
+        setTeamPermissions(json.permissions || null);
+        setCurrentUserId(typeof json.currentUserId === 'string' ? json.currentUserId : null);
+      } catch {
+        // The personal planning remains available when the team directory is unavailable.
+      }
+    };
+    void loadTeamMembers();
   }, []);
 
   useEffect(() => {
@@ -147,14 +172,15 @@ export default function CalendarWorkspace() {
   }).sort((left, right) => (eventDate(left)?.getTime() || 0) - (eventDate(right)?.getTime() || 0))[0] || null, [currentTime, events]);
   const selectedConflict = insights?.conflicts[0] || null;
   const endIsValid = Boolean(form.start && form.end && new Date(form.end).getTime() > new Date(form.start).getTime());
+  const teamPlanningAvailable = mode === 'kadria' && Boolean(teamPermissions?.canManageTeamPlanning) && teamMembers.length > 1;
 
   const updatePeriod = (offset: number) => setSelectedDate((current) => addDays(current, offset * (view === 'jour' ? 1 : 7)));
   const openProject = (event: NormalizedCalendarEvent) => {
     if (event.projectId) router.push('/dashboard-v2/projet/' + event.projectId);
   };
-  const openCreate = () => {
+  const openCreate = (assignedUserId?: string) => {
     const now = new Date();
-    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
+    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', description: '', projectId: null, assignedUserId: assignedUserId || currentUserId || '', eventType: 'appointment' });
     setSelectedProject(null);
     setLocationTouched(false);
     setCreateError(null);
@@ -377,6 +403,47 @@ export default function CalendarWorkspace() {
     if (!event.start) return;
     void handleMoveEvent(event, new Date(event.start), false, nextEnd);
   };
+  const handleTeamMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string, forceConflict = false) => {
+    if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
+    if (savingAppointmentIds.has(event.rawAppointmentId) && !forceConflict) return;
+    const previousStart = event.start;
+    const previousEnd = event.end;
+    const previousAssignedUserId = event.assignedUserId;
+    const duration = new Date(previousEnd).getTime() - new Date(previousStart).getTime();
+    if (!Number.isFinite(duration) || duration < MINIMUM_APPOINTMENT_DURATION_MS) return;
+    const nextStartIso = nextStart.toISOString();
+    const nextEnd = new Date(nextStart.getTime() + duration).toISOString();
+    const localConflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === nextAssignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStartIso < candidate.end && nextEnd > candidate.start);
+    if (localConflict && !forceConflict && !window.confirm(`Ce collaborateur possède déjà un rendez-vous sur cette plage horaire${localConflict.title ? ` : ${localConflict.title}` : ''}.\n\nConserver quand même ?`)) return;
+    const assigneeName = teamMembers.find((member) => member.userId === nextAssignedUserId)?.name || event.assignedUserName;
+    setSavingAppointmentIds((current) => new Set(current).add(event.rawAppointmentId!));
+    setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: nextStartIso, end: nextEnd, assignedUserId: nextAssignedUserId, assignedUserName: assigneeName, isUnassigned: false } : item));
+    try {
+      const response = await fetch('/api/appointments/' + event.rawAppointmentId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(localConflict || forceConflict), ...(nextAssignedUserId !== previousAssignedUserId ? { assignedUserId: nextAssignedUserId } : {}) }),
+      });
+      const json = await response.json();
+      if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
+        setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd, assignedUserId: previousAssignedUserId, assignedUserName: event.assignedUserName, isUnassigned: event.isUnassigned } : item));
+        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleTeamMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, nextAssignedUserId, true);
+        return;
+      }
+      if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
+      const time = nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      setSuccessMessage(nextAssignedUserId !== previousAssignedUserId ? `Rendez-vous réaffecté à ${assigneeName || 'ce collaborateur'} et déplacé à ${time}.` : `Rendez-vous déplacé à ${time}.`);
+    } catch {
+      setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd, assignedUserId: previousAssignedUserId, assignedUserName: event.assignedUserName, isUnassigned: event.isUnassigned } : item));
+      setError('Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
+    } finally {
+      setSavingAppointmentIds((current) => {
+        const next = new Set(current);
+        next.delete(event.rawAppointmentId!);
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 pb-6">
@@ -386,7 +453,8 @@ export default function CalendarWorkspace() {
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
         <div className="min-w-0 space-y-4">
-          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />
+          {teamPlanningAvailable ? <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><button type="button" onClick={() => setPlanningMode('personal')} className={['rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors', planningMode === 'personal' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Mon planning</button><button type="button" onClick={() => setPlanningMode('team')} className={['rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors', planningMode === 'team' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Planning d’équipe</button></div> : null}
+          {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={appointments.map(normalizeKadriaAppointment)} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
           <DayActivityTimeline events={todayEvents} />
         </div>
         <aside className="space-y-3">
