@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { getSession } from '@/src/lib/auth-utils'
 import {
   canCreatePersonalAppointments,
@@ -12,6 +13,7 @@ import {
 import { isEventType } from '@/src/lib/calendar/event-types'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { sendAppointmentPush } from '@/src/lib/push'
 
 export async function POST(request: NextRequest) {
   try {
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
     const { data: appointment, error: insertError } = await supabaseAdmin
       .from('project_appointments')
       .insert(insertRow)
-      .select('id, start_time, end_time, location, status, assigned_user_id, is_unassigned, event_type')
+      .select('id, title, client_name, project_id, start_time, end_time, location, status, assigned_user_id, is_unassigned, event_type, updated_at')
       .single()
 
     if (insertError) {
@@ -152,6 +154,22 @@ export async function POST(request: NextRequest) {
         ? `Rendez-vous créé et affecté à ${assignableMembers.find((member) => member.userId === assignedUserId)?.firstName || 'un collaborateur'}`
         : 'Rendez-vous créé sans collaborateur affecté',
     })
+
+    // The primary API response stays independent from an optional Push delivery.
+    waitUntil(sendAppointmentPush({
+      id: appointment.id,
+      tenantId: tenantContext.tenantId,
+      artisanId: tenantContext.legacyArtisanId || session.artisanId,
+      assignedUserId: appointment.assigned_user_id,
+      projectId: appointment.project_id,
+      title: appointment.title,
+      clientName: appointment.client_name,
+      start: appointment.start_time,
+      end: appointment.end_time,
+      eventVersion: appointment.updated_at,
+    }, 'appointment_created', tenantContext.userId).catch((error) => {
+      console.warn('[PUSH][APPOINTMENT_CREATED]', { appointmentId: appointment.id, message: error instanceof Error ? error.message : String(error) })
+    }))
 
     return NextResponse.json({
       success: true,

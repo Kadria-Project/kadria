@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { getSession } from '@/src/lib/auth-utils'
 import {
   canCreatePersonalAppointments,
@@ -12,6 +13,7 @@ import { fetchBusyIntervals } from '@/src/lib/google-calendar-busy'
 import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
 import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { sendAppointmentPush } from '@/src/lib/push'
 
 interface GoogleEvent {
   id: string
@@ -179,7 +181,7 @@ export async function POST(request: NextRequest) {
     const { data: appointment, error: insertError } = await supabaseAdmin
       .from('project_appointments')
       .insert(insertRow)
-      .select('id, start_time, end_time, location, status, assigned_user_id, event_type, is_unassigned')
+      .select('id, title, client_name, project_id, start_time, end_time, location, status, assigned_user_id, event_type, is_unassigned, updated_at')
       .single()
 
     if (insertError) {
@@ -194,6 +196,23 @@ export async function POST(request: NextRequest) {
         ? `Rendez-vous planifié pour ${assignedUserName || 'un collaborateur'}`
         : 'Rendez-vous planifié sans collaborateur affecté',
     })
+
+    if (tenantContext) {
+      waitUntil(sendAppointmentPush({
+        id: appointment.id,
+        tenantId: tenantContext.tenantId,
+        artisanId: tenantContext.legacyArtisanId || session.artisanId,
+        assignedUserId: appointment.assigned_user_id,
+        projectId: appointment.project_id,
+        title: appointment.title,
+        clientName: appointment.client_name,
+        start: appointment.start_time,
+        end: appointment.end_time,
+        eventVersion: appointment.updated_at,
+      }, 'appointment_created', tenantContext.userId).catch((error) => {
+        console.warn('[PUSH][APPOINTMENT_BOOKED]', { appointmentId: appointment.id, message: error instanceof Error ? error.message : String(error) })
+      }))
+    }
 
     return NextResponse.json({
       success: true,

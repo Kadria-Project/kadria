@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { getSession } from '@/src/lib/auth-utils'
 import { canAssignAppointments, listAssignableAppointmentMembers, logAppointmentActivity } from '@/src/lib/appointments/access'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { sendAppointmentPush } from '@/src/lib/push'
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -26,7 +28,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, project_id, assigned_user_id')
+      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time')
       .eq('id', id)
       .maybeSingle()
 
@@ -76,6 +78,23 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         ? `Collaborateur affecté : ${nextAssignedUserName || 'Collaborateur'}`
         : 'Rendez-vous remis en non affecté',
     })
+
+    if (nextAssignedUserId && nextAssignedUserId !== existing.assigned_user_id) {
+      waitUntil(sendAppointmentPush({
+        id: String(existing.id),
+        tenantId: tenantContext.tenantId,
+        artisanId: String(existing.artisan_id || session.artisanId),
+        assignedUserId: nextAssignedUserId,
+        projectId: existing.project_id ? String(existing.project_id) : null,
+        title: existing.title ? String(existing.title) : null,
+        clientName: existing.client_name ? String(existing.client_name) : null,
+        start: existing.start_time ? String(existing.start_time) : null,
+        end: existing.end_time ? String(existing.end_time) : null,
+        eventVersion: new Date().toISOString(),
+      }, 'appointment_assigned', tenantContext.userId).catch((error) => {
+        console.warn('[PUSH][APPOINTMENT_ASSIGNED]', { appointmentId: existing.id, message: error instanceof Error ? error.message : String(error) })
+      }))
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { getSession } from '@/src/lib/auth-utils'
 import {
   canDeleteAppointment,
@@ -12,6 +13,7 @@ import { isEventType } from '@/src/lib/calendar/event-types'
 import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { sendAppointmentPush } from '@/src/lib/push'
 
 async function syncGoogleAppointment(artisanId: string, googleEventId: string, method: 'PATCH' | 'DELETE', payload?: Record<string, unknown>) {
   const { row, tableMissing } = await getCalendarIntegration(artisanId)
@@ -49,7 +51,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, start_time, end_time, location, description, status, event_type, provider, google_event_id')
+      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, location, description, status, event_type, provider, google_event_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -152,7 +154,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .update(updatePayload)
       .eq('id', id)
       .eq('tenant_id', tenantContext.tenantId)
-      .select('id, title, start_time, end_time, location, description, status, event_type, assigned_user_id, is_unassigned')
+      .select('id, title, client_name, project_id, start_time, end_time, location, description, status, event_type, assigned_user_id, is_unassigned, updated_at')
       .single()
 
     if (updateError) {
@@ -165,6 +167,21 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       action: 'APPOINTMENT_UPDATED',
       description: 'Rendez-vous mis à jour',
     })
+
+    waitUntil(sendAppointmentPush({
+      id: updated.id,
+      tenantId: tenantContext.tenantId,
+      artisanId: String(existing.artisan_id || session.artisanId),
+      assignedUserId: updated.assigned_user_id,
+      projectId: updated.project_id,
+      title: updated.title,
+      clientName: updated.client_name || existing.client_name,
+      start: updated.start_time,
+      end: updated.end_time,
+      eventVersion: updated.updated_at,
+    }, 'appointment_updated', tenantContext.userId).catch((error) => {
+      console.warn('[PUSH][APPOINTMENT_UPDATED]', { appointmentId: updated.id, message: error instanceof Error ? error.message : String(error) })
+    }))
 
     return NextResponse.json({
       success: true,
@@ -208,7 +225,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     const { id } = await context.params
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, provider, google_event_id')
+      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, provider, google_event_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -243,6 +260,21 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
       action: 'APPOINTMENT_DELETED',
       description: 'Rendez-vous supprimé',
     })
+
+    waitUntil(sendAppointmentPush({
+      id: String(existing.id),
+      tenantId: tenantContext.tenantId,
+      artisanId: String(existing.artisan_id || session.artisanId),
+      assignedUserId: existing.assigned_user_id ? String(existing.assigned_user_id) : null,
+      projectId: existing.project_id ? String(existing.project_id) : null,
+      title: existing.title ? String(existing.title) : null,
+      clientName: existing.client_name ? String(existing.client_name) : null,
+      start: existing.start_time ? String(existing.start_time) : null,
+      end: existing.end_time ? String(existing.end_time) : null,
+      eventVersion: new Date().toISOString(),
+    }, 'appointment_cancelled', tenantContext.userId).catch((error) => {
+      console.warn('[PUSH][APPOINTMENT_CANCELLED]', { appointmentId: existing.id, message: error instanceof Error ? error.message : String(error) })
+    }))
 
     return NextResponse.json({ success: true })
   } catch (error) {
