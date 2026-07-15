@@ -13,6 +13,114 @@ export type CalendarTimeRange = {
   endMinutes: number;
 };
 
+export type AppointmentOverlapInput = {
+  id: string;
+  start: string | null;
+  end: string | null;
+  status?: string | null;
+  sortLabel?: string | null;
+};
+
+export type AppointmentOverlapPlacement = {
+  id: string;
+  groupId: string;
+  column: number;
+  columnCount: number;
+  overlapCount: number;
+};
+
+export type AppointmentOverlapGroup = {
+  id: string;
+  appointmentIds: string[];
+  start: string;
+  end: string;
+  columnCount: number;
+};
+
+export type AppointmentOverlapLayout = {
+  groups: AppointmentOverlapGroup[];
+  placements: AppointmentOverlapPlacement[];
+};
+
+type ParsedOverlapInput = AppointmentOverlapInput & {
+  startMs: number;
+  endMs: number;
+};
+
+function overlaps(left: ParsedOverlapInput, right: ParsedOverlapInput) {
+  return left.startMs < right.endMs && left.endMs > right.startMs;
+}
+
+/**
+ * Regroupe les rendez-vous qui se chevauchent, y compris les chaines de
+ * chevauchement indirectes, puis leur attribue une colonne reutilisable.
+ * Les rendez-vous qui se touchent seulement restent dans la meme colonne.
+ */
+export function buildAppointmentOverlapGroups(items: AppointmentOverlapInput[]): AppointmentOverlapLayout {
+  const valid = items
+    .filter((item) => item.status !== 'cancelled' && item.start && item.end)
+    .map((item): ParsedOverlapInput | null => {
+      const startMs = new Date(item.start!).getTime();
+      const endMs = new Date(item.end!).getTime();
+      return Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs
+        ? { ...item, startMs, endMs }
+        : null;
+    })
+    .filter((item): item is ParsedOverlapInput => item !== null)
+    .sort((left, right) => left.startMs - right.startMs || right.endMs - left.endMs || (left.sortLabel || left.id).localeCompare(right.sortLabel || right.id) || left.id.localeCompare(right.id));
+
+  const chains: ParsedOverlapInput[][] = [];
+  let chain: ParsedOverlapInput[] = [];
+  let chainEnd = Number.NEGATIVE_INFINITY;
+
+  for (const item of valid) {
+    if (chain.length && item.startMs >= chainEnd) {
+      chains.push(chain);
+      chain = [];
+      chainEnd = Number.NEGATIVE_INFINITY;
+    }
+    chain.push(item);
+    chainEnd = Math.max(chainEnd, item.endMs);
+  }
+  if (chain.length) chains.push(chain);
+
+  const groups: AppointmentOverlapGroup[] = [];
+  const placements: AppointmentOverlapPlacement[] = [];
+
+  chains.forEach((members, index) => {
+    const columnEnds: number[] = [];
+    const columns = new Map<string, number>();
+    for (const member of members) {
+      const availableColumn = columnEnds.findIndex((end) => end <= member.startMs);
+      const column = availableColumn === -1 ? columnEnds.length : availableColumn;
+      columnEnds[column] = member.endMs;
+      columns.set(member.id, column);
+    }
+
+    const groupId = `overlap-${index}-${members[0].id}`;
+    const columnCount = columnEnds.length;
+    groups.push({
+      id: groupId,
+      appointmentIds: members.map((member) => member.id),
+      start: new Date(Math.min(...members.map((member) => member.startMs))).toISOString(),
+      end: new Date(Math.max(...members.map((member) => member.endMs))).toISOString(),
+      columnCount,
+    });
+
+    for (const member of members) {
+      placements.push({
+        id: member.id,
+        groupId,
+        column: columns.get(member.id) || 0,
+        columnCount,
+        overlapCount: members.filter((candidate) => candidate.id !== member.id && overlaps(member, candidate)).length,
+      });
+    }
+  });
+
+  return { groups, placements };
+}
+
 function timeToMinutes(value: string | null | undefined) {
   if (typeof value !== 'string') return null;
   const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());

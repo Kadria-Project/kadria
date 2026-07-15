@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -18,6 +19,7 @@ import type { CalendarView } from './calendar-workspace-types';
 import {
   CALENDAR_HOUR_HEIGHT,
   CALENDAR_SLOT_MINUTES,
+  buildAppointmentOverlapGroups,
   calculateCalendarTimeRange,
   durationMinutes,
   eventDate,
@@ -27,6 +29,8 @@ import {
   minutesSinceStartOfDay,
   snapMinutes,
   startOfWeekMonday,
+  type AppointmentOverlapLayout,
+  type AppointmentOverlapPlacement,
   type CalendarTimeRange,
 } from './calendar-workspace-utils';
 
@@ -52,6 +56,11 @@ type ResizeState = {
   event: NormalizedCalendarEvent;
   dayKey: string;
   end: string;
+};
+
+type OverflowState = {
+  label: string;
+  events: NormalizedCalendarEvent[];
 };
 
 function dayKey(day: Date) {
@@ -85,10 +94,13 @@ function compactAssigneeName(event: NormalizedCalendarEvent) {
   return parts.length > 1 ? `${parts[0]} ${parts[1].charAt(0)}.` : parts[0];
 }
 
-function TimelineEvent({ event, range, currentTime, onOpen, qualificationAvailable, saving, onDragStart, onDragEnd, onResizeStart, onResizeKeyDown }: {
+function TimelineEvent({ event, range, currentTime, placement, displayColumns, highlighted, onOpen, qualificationAvailable, saving, onDragStart, onDragEnd, onResizeStart, onResizeKeyDown }: {
   event: NormalizedCalendarEvent;
   range: CalendarTimeRange;
   currentTime: number;
+  placement?: AppointmentOverlapPlacement;
+  displayColumns: number;
+  highlighted: boolean;
   onOpen: (event: NormalizedCalendarEvent) => void;
   qualificationAvailable: boolean;
   saving: boolean;
@@ -106,9 +118,15 @@ function TimelineEvent({ event, range, currentTime, onOpen, qualificationAvailab
     : qualificationAvailable && event.rawAppointmentId && event.end && new Date(event.end).getTime() <= currentTime ? 'À qualifier' : null;
   const top = ((minutesSinceStartOfDay(start) - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT;
   const height = Math.max(38, (durationMinutes(event) / 60) * CALENDAR_HOUR_HEIGHT || 42);
+  const column = placement?.column || 0;
+  const conflictLabel = placement?.overlapCount
+    ? placement.overlapCount === 1 ? 'Chevauche un autre rendez-vous' : `Chevauche ${placement.overlapCount} autres rendez-vous`
+    : null;
+  const width = `calc(${100 / displayColumns}% - 8px)`;
+  const left = `calc(${(column / displayColumns) * 100}% + 4px)`;
 
   return (
-    <div className="group absolute inset-x-1 z-10" style={{ top, height }} aria-busy={saving}>
+    <div className="group absolute z-10" style={{ top, height, left, width }} aria-busy={saving}>
       <button
         type="button"
         draggable={Boolean(event.rawAppointmentId && event.status !== 'cancelled' && !saving)}
@@ -119,10 +137,12 @@ function TimelineEvent({ event, range, currentTime, onOpen, qualificationAvailab
           'h-full w-full overflow-hidden rounded-lg border px-2.5 py-1.5 pr-5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500',
           event.rawAppointmentId && event.status !== 'cancelled' && !saving ? 'cursor-grab active:cursor-grabbing' : '',
           saving ? 'opacity-70' : '',
+          conflictLabel ? 'border-amber-300 ring-1 ring-amber-200/80' : '',
+          !highlighted ? 'opacity-55' : '',
           getEventTone(event),
         ].join(' ')}
       >
-        <span className="flex items-center gap-1.5 truncate text-[10px] font-semibold"><EventTypeIcon event={event} />{formatTime(event.start)}</span>
+        <span className="flex items-center gap-1.5 truncate text-[10px] font-semibold"><EventTypeIcon event={event} />{formatTime(event.start)}{conflictLabel ? <span className="ml-auto inline-flex shrink-0 text-amber-700" title={conflictLabel} aria-label={conflictLabel}><AlertTriangle className="size-3.5" aria-hidden="true" /></span> : null}</span>
         <span className="block truncate text-[11px] font-bold leading-4">{event.title}</span>
         {event.confirmation ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{CONFIRMATION_STATUS_LABELS[event.confirmation.status as keyof typeof CONFIRMATION_STATUS_LABELS]}</span> : null}
         {qualificationLabel ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{qualificationLabel}</span> : null}
@@ -147,6 +167,8 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
   const [resize, setResize] = useState<ResizeState | null>(null);
   const [interactionRange, setInteractionRange] = useState<CalendarTimeRange | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [conflictsOnly, setConflictsOnly] = useState(false);
+  const [overflow, setOverflow] = useState<OverflowState | null>(null);
 
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
 
@@ -164,6 +186,23 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
   const range = interactionRange || calculatedRange;
   const hours = useMemo(() => Array.from({ length: Math.ceil((range.endMinutes - range.startMinutes) / 60) }, (_, index) => Math.floor(range.startMinutes / 60) + index), [range]);
   const gridHeight = ((range.endMinutes - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT;
+  const overlapLayouts = useMemo(() => new Map(days.map((day) => {
+    const dayEvents = visibleTimed.map((event) => resize?.event.rawAppointmentId === event.rawAppointmentId ? { ...event, end: resize.end } : event).filter((event) => {
+      const date = eventDate(event);
+      return date ? isSameDay(date, day) : false;
+    });
+    return [dayKey(day), buildAppointmentOverlapGroups(dayEvents.map((event) => ({
+      id: event.id,
+      start: event.start,
+      end: event.end,
+      status: event.status,
+      sortLabel: event.title,
+    })))] as const;
+  })), [days, resize, visibleTimed]);
+  const conflictGroupCount = useMemo(
+    () => Array.from(overlapLayouts.values()).flatMap((layout) => layout.groups).filter((group) => group.columnCount > 1).length,
+    [overlapLayouts],
+  );
 
   const scrollToNow = () => {
     const target = Math.max(0, ((minutesSinceStartOfDay(now) - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT - 90);
@@ -240,6 +279,7 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
         <div className="flex flex-wrap items-center gap-2"><p className="mr-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500"><CalendarDays className="size-4 text-emerald-600" />Planning</p><button type="button" onClick={onPrevious} aria-label="Période précédente" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronLeft className="size-4" /></button><button type="button" onClick={onToday} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Aujourd’hui</button><button type="button" onClick={handleNow} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Maintenant</button><button type="button" onClick={onNext} aria-label="Période suivante" className="grid size-8 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><ChevronRight className="size-4" /></button></div>
         <div className="flex items-center gap-2"><div className="flex rounded-lg border border-slate-200 p-0.5"><button type="button" onClick={() => onViewChange('jour')} className={['rounded-md px-3 py-1.5 text-xs font-semibold', view === 'jour' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'].join(' ')}>Jour</button><button type="button" onClick={() => onViewChange('semaine')} className={['rounded-md px-3 py-1.5 text-xs font-semibold', view === 'semaine' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-500'].join(' ')}>Semaine</button></div><button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"><ListFilter className="size-3.5" />Filtres</button></div>
       </div>
+      {conflictGroupCount > 0 ? <div className="mt-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"><span className="inline-flex items-center gap-1.5 font-semibold"><AlertTriangle className="size-3.5" aria-hidden="true" />{conflictGroupCount} conflit{conflictGroupCount > 1 ? 's' : ''} détecté{conflictGroupCount > 1 ? 's' : ''} sur cette période.</span><button type="button" onClick={() => setConflictsOnly((current) => !current)} className="rounded-md px-2 py-1 font-semibold text-amber-800 hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600">{conflictsOnly ? 'Voir tous les rendez-vous' : 'Voir les conflits'}</button></div> : null}
       <div ref={scrollRef} className="mt-4 h-[clamp(420px,calc(100vh-300px),650px)] overflow-auto pb-1">
         <div className={['grid min-w-[760px]', view === 'jour' ? 'grid-cols-[56px_minmax(0,1fr)]' : 'grid-cols-[56px_repeat(7,minmax(120px,1fr))]'].join(' ')}>
           <div className="sticky left-0 top-0 z-40 border-b border-r border-[#DCE5E2] bg-white" />
@@ -248,17 +288,33 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
           {days.map((day) => {
             const key = dayKey(day);
             const dayEvents = visibleTimed.filter((event) => { const date = eventDate(event); return date ? isSameDay(date, day) : false; });
+            const overlapLayout: AppointmentOverlapLayout = overlapLayouts.get(key) || { groups: [], placements: [] };
+            const placementById = new Map(overlapLayout.placements.map((placement) => [placement.id, placement]));
+            const groupById = new Map(overlapLayout.groups.map((group) => [group.id, group]));
             const isToday = isSameDay(day, now);
             return <div key={key} ref={(node) => { if (node) dayColumnsRef.current.set(key, node); else dayColumnsRef.current.delete(key); }} onDragOver={(dragEvent) => { if (dragging) dragEvent.preventDefault(); }} onDrop={(dragEvent) => { dragEvent.preventDefault(); if (!dragging) return; const bounds = dragEvent.currentTarget.getBoundingClientRect(); const offset = Math.max(0, Math.min(gridHeight - 1, dragEvent.clientY - bounds.top)); const minutes = range.startMinutes + snapMinutes((offset / CALENDAR_HOUR_HEIGHT) * 60); const start = new Date(day); start.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0); onMoveEvent(dragging, start); setDragging(null); setInteractionRange(null); }} className={['relative border-r border-[#DCE5E2]', isToday ? 'bg-[#F7FCF9]' : 'bg-white'].join(' ')} style={{ height: gridHeight }}>
               {hours.map((hour) => <div key={hour} className="h-[54px] border-b border-dashed border-[#EDF2F0]" />)}
               {isToday && minutesSinceStartOfDay(now) >= range.startMinutes && minutesSinceStartOfDay(now) < range.endMinutes ? <div aria-label="Heure actuelle" className="pointer-events-none absolute inset-x-0 z-20 border-t-2 border-rose-400" style={{ top: ((minutesSinceStartOfDay(now) - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT }}><span className="absolute -left-1 -top-1.5 size-2.5 rounded-full bg-rose-400" /></div> : null}
-              {dayEvents.map((event) => { const preview = resize?.event.rawAppointmentId === event.rawAppointmentId ? { ...event, end: resize.end } : event; return <TimelineEvent key={event.id} event={preview} range={range} currentTime={now.getTime()} onOpen={onOpenEvent} qualificationAvailable={qualificationAvailable} saving={savingEventIds.has(event.rawAppointmentId || '')} onDragStart={(item) => { setInteractionRange(calculatedRange); setDragging(item); }} onDragEnd={() => { setDragging(null); setInteractionRange(null); }} onResizeStart={(item, mouseEvent) => handleResizeStart(item, day, mouseEvent)} onResizeKeyDown={handleResizeKeyDown} />; })}
+              {dayEvents.map((event) => {
+                const preview = resize?.event.rawAppointmentId === event.rawAppointmentId ? { ...event, end: resize.end } : event;
+                const placement = placementById.get(event.id);
+                const group = placement ? groupById.get(placement.groupId) : null;
+                if (placement && group && group.columnCount > 4 && placement.column >= 3) return null;
+                return <TimelineEvent key={event.id} event={preview} range={range} currentTime={now.getTime()} placement={placement} displayColumns={group && group.columnCount > 4 ? 4 : Math.max(1, placement?.columnCount || 1)} highlighted={!conflictsOnly || Boolean(placement?.overlapCount)} onOpen={onOpenEvent} qualificationAvailable={qualificationAvailable} saving={savingEventIds.has(event.rawAppointmentId || '')} onDragStart={(item) => { setInteractionRange(calculatedRange); setDragging(item); }} onDragEnd={() => { setDragging(null); setInteractionRange(null); }} onResizeStart={(item, mouseEvent) => handleResizeStart(item, day, mouseEvent)} onResizeKeyDown={handleResizeKeyDown} />;
+              })}
+              {overlapLayout.groups.filter((group) => group.columnCount > 4).map((group) => {
+                const hiddenEvents = group.appointmentIds.map((id) => dayEvents.find((event) => event.id === id)).filter((event): event is NormalizedCalendarEvent => Boolean(event && (placementById.get(event.id)?.column || 0) >= 3));
+                const top = ((minutesSinceStartOfDay(new Date(group.start)) - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT;
+                const height = Math.max(42, ((new Date(group.end).getTime() - new Date(group.start).getTime()) / 3_600_000) * CALENDAR_HOUR_HEIGHT);
+                return <button key={group.id} type="button" onClick={() => setOverflow({ label: day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), events: hiddenEvents })} className="absolute z-10 flex items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-2 text-center text-[11px] font-bold text-amber-900 shadow-sm hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-600" style={{ top, height, left: 'calc(75% + 4px)', width: 'calc(25% - 8px)' }} aria-label={`Voir ${hiddenEvents.length} rendez-vous supplémentaires en conflit`} title={`${hiddenEvents.length} rendez-vous supplémentaires`}>+{hiddenEvents.length}</button>;
+              })}
               {!dayEvents.length ? <button type="button" onClick={onCreate} className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-lg border border-dashed border-emerald-200 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"><Plus className="size-3.5" />Ajouter un créneau</button> : null}
             </div>;
           })}
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3"><p className="text-xs text-slate-500">Déplacez ou redimensionnez un rendez-vous pour ajuster votre journée.</p><Clock3 className="size-4 text-slate-300" aria-hidden="true" /></div>
+      {overflow ? <div role="dialog" aria-modal="true" aria-label="Rendez-vous supplémentaires" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onClick={() => setOverflow(null)}><div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-slate-950">Rendez-vous en conflit</p><p className="mt-1 text-xs text-slate-500">{overflow.label}</p></div><button type="button" onClick={() => setOverflow(null)} className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">Fermer</button></div><div className="mt-4 space-y-2">{overflow.events.map((event) => <button key={event.id} type="button" onClick={() => { setOverflow(null); onOpenEvent(event); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"><span className="block text-sm font-semibold text-slate-900">{event.title}</span><span className="mt-0.5 block text-xs text-slate-500">{event.clientName || event.projectTitle || 'Rendez-vous'}</span></button>)}</div></div></div> : null}
     </section>
   );
 }
