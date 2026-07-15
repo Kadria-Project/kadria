@@ -25,6 +25,7 @@ import { addDays, durationMinutes, eventDate, isSameDay, startOfDay, startOfWeek
 
 type CalendarMode = 'kadria' | 'google';
 const DAY_MINUTES = 8 * 60;
+const MINIMUM_APPOINTMENT_DURATION_MS = 15 * 60_000;
 
 function formatInputDate(date: Date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
@@ -56,6 +57,8 @@ export default function CalendarWorkspace() {
   const [qualifyingEvent, setQualifyingEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [qualificationSaving, setQualificationSaving] = useState(false);
   const [qualificationError, setQualificationError] = useState<string | null>(null);
+  const [workHours, setWorkHours] = useState({ start: null as string | null, end: null as string | null });
+  const [savingAppointmentIds, setSavingAppointmentIds] = useState<Set<string>>(() => new Set());
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
   const [locationTouched, setLocationTouched] = useState(false);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
@@ -98,6 +101,23 @@ export default function CalendarWorkspace() {
       }
     };
     void loadCalendarMode();
+  }, []);
+
+  useEffect(() => {
+    const loadWorkHours = async () => {
+      try {
+        const response = await fetch('/api/artisan/business-profile');
+        const json = await response.json();
+        if (!response.ok || !json?.success || !json.profile) return;
+        setWorkHours({
+          start: typeof json.profile.work_start_time === 'string' ? json.profile.work_start_time : null,
+          end: typeof json.profile.work_end_time === 'string' ? json.profile.work_end_time : null,
+        });
+      } catch {
+        // The calendar uses its centralized fallback when the profile is unavailable.
+      }
+    };
+    void loadWorkHours();
   }, []);
 
   useEffect(() => {
@@ -314,31 +334,48 @@ export default function CalendarWorkspace() {
       setDeleting(false);
     }
   };
-  const handleMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false) => {
+  const handleMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false, resizedEnd?: Date) => {
     if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
+    if (savingAppointmentIds.has(event.rawAppointmentId) && !forceConflict) return;
     const previousStart = event.start;
     const previousEnd = event.end;
     const duration = new Date(previousEnd).getTime() - new Date(previousStart).getTime();
-    if (!Number.isFinite(duration) || duration <= 0) return;
-    const nextEnd = new Date(nextStart.getTime() + duration).toISOString();
+    if (!Number.isFinite(duration) || duration < MINIMUM_APPOINTMENT_DURATION_MS) return;
+    const nextEnd = resizedEnd ? resizedEnd.toISOString() : new Date(nextStart.getTime() + duration).toISOString();
+    if (new Date(nextEnd).getTime() - nextStart.getTime() < MINIMUM_APPOINTMENT_DURATION_MS) return;
     const nextStartIso = nextStart.toISOString();
     const localConflict = events.find((candidate) => candidate.rawAppointmentId !== event.rawAppointmentId && candidate.assignedUserId === event.assignedUserId && candidate.status !== 'cancelled' && candidate.start && candidate.end && nextStartIso < candidate.end && nextEnd > candidate.start);
     if (localConflict && !forceConflict && !window.confirm(`Ce collaborateur possède déjà un rendez-vous sur cette plage horaire${localConflict.title ? ` : ${localConflict.title}` : ''}.\n\nConserver quand même ?`)) return;
+    setSavingAppointmentIds((current) => new Set(current).add(event.rawAppointmentId!));
     setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: nextStartIso, end: nextEnd } : item));
     try {
-      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(localConflict || forceConflict) }) });
+      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: !resizedEnd, resize: Boolean(resizedEnd), forceConflict: Boolean(localConflict || forceConflict) }) });
       const json = await response.json();
       if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
         setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
-        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, true);
+        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, true, resizedEnd);
         return;
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
-      setSuccessMessage(`Rendez-vous déplacé à ${nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`);
+      setSuccessMessage(resizedEnd
+        ? `Durée du rendez-vous modifiée jusqu’à ${resizedEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`
+        : `Rendez-vous déplacé à ${nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`);
     } catch {
       setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
-      setError('Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
+      setError(resizedEnd
+        ? 'La durée du rendez-vous n’a pas pu être modifiée. La durée précédente a été restaurée.'
+        : 'Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
+    } finally {
+      setSavingAppointmentIds((current) => {
+        const next = new Set(current);
+        next.delete(event.rawAppointmentId!);
+        return next;
+      });
     }
+  };
+  const handleResizeEvent = (event: NormalizedCalendarEvent, nextEnd: Date) => {
+    if (!event.start) return;
+    void handleMoveEvent(event, new Date(event.start), false, nextEnd);
   };
 
   return (
@@ -349,7 +386,7 @@ export default function CalendarWorkspace() {
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
         <div className="min-w-0 space-y-4">
-          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} />
+          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />
           <DayActivityTimeline events={todayEvents} />
         </div>
         <aside className="space-y-3">

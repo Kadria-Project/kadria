@@ -68,7 +68,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
 
-    if (body.move === true && existing.status === 'cancelled') {
+    const isTemporalAdjustment = body.move === true || body.resize === true
+    if (isTemporalAdjustment && existing.status === 'cancelled') {
       return NextResponse.json({ success: false, error: 'Un rendez-vous annulé ne peut pas être déplacé.' }, { status: 409 })
     }
 
@@ -77,6 +78,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       : body.assignedUserId
         ? String(body.assignedUserId)
         : tenantContext.userId
+    const shouldUpdateAssignee = body.assignedUserId !== undefined || !existing.assigned_user_id
 
     if (body.eventType !== undefined && !isEventType(body.eventType)) {
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
@@ -119,6 +121,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         { status: 400 },
       )
     }
+    if (isTemporalAdjustment && endDate.getTime() - startDate.getTime() < 15 * 60_000) {
+      return NextResponse.json(
+        { success: false, error: 'La durée minimale d’un rendez-vous est de 15 minutes.' },
+        { status: 400 },
+      )
+    }
     const conflict = await findAppointmentConflict({
       tenantId: tenantContext.tenantId,
       assignedUserId: nextAssignedUserId,
@@ -126,7 +134,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       end: nextEnd,
       excludeAppointmentId: id,
     })
-    if (body.move === true && conflict && body.forceConflict !== true) {
+    if (isTemporalAdjustment && conflict && body.forceConflict !== true) {
       console.info('[CALENDAR][APPOINTMENT_MOVE_CONFLICT]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: nextAssignedUserId, previousStart: existing.start_time, nextStart })
       return NextResponse.json({ success: false, error: 'Ce collaborateur possède déjà un rendez-vous sur cette plage horaire.', code: 'APPOINTMENT_CONFLICT', conflict }, { status: 409 })
     }
@@ -151,8 +159,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.status !== undefined ? { status: String(body.status || '') } : {}),
       ...(body.eventType !== undefined ? { event_type: body.eventType } : {}),
       ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
-      assigned_user_id: nextAssignedUserId,
-      is_unassigned: false,
+      ...(shouldUpdateAssignee ? { assigned_user_id: nextAssignedUserId, is_unassigned: false } : {}),
       ...(confirmationAvailable && wasRescheduled ? { confirmation_status: 'pending', confirmation_source: 'system', confirmation_note: null, confirmation_updated_at: new Date().toISOString(), confirmation_updated_by: tenantContext.userId, confirmation_version: Number((existing as Record<string, unknown>).confirmation_version || 0) + 1 } : {}),
       updated_at: new Date().toISOString(),
     }
