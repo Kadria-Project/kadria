@@ -6,15 +6,17 @@ import { ArrowUp, ChevronRight, MessageCircle, Sparkles, X } from 'lucide-react'
 interface KadriaCollaboratorPanelProps {
   open: boolean;
   trackingActive?: boolean;
+  tasksActive?: boolean;
   onClose: () => void;
 }
 
 const defaultQuickActions = ['Résume-moi ma journée', 'Explique mes priorités', 'Prépare les actions du jour', 'Qu’est-ce qui est déjà sous contrôle ?'];
 const trackingQuickActions = ['Résume mon pipeline', 'Explique les opportunités prioritaires', 'Quels devis perdent de l’élan ?', 'Prépare les prochaines décisions'];
+const tasksQuickActions = ['Résume mes actions du jour', 'Pourquoi cet ordre ?', 'Que peux-tu préparer à ma place ?', 'Qu’est-ce qui attend ma validation ?'];
 
-export default function KadriaCollaboratorPanel({ open, trackingActive = false, onClose }: KadriaCollaboratorPanelProps) {
+export default function KadriaCollaboratorPanel({ open, trackingActive = false, tasksActive = false, onClose }: KadriaCollaboratorPanelProps) {
   const [draft, setDraft] = useState('');
-  const quickActions = trackingActive ? trackingQuickActions : defaultQuickActions;
+  const quickActions = tasksActive ? tasksQuickActions : trackingActive ? trackingQuickActions : defaultQuickActions;
 
   const openExistingAssistant = (event?: FormEvent) => {
     event?.preventDefault();
@@ -45,7 +47,7 @@ export default function KadriaCollaboratorPanel({ open, trackingActive = false, 
 
         <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900"><MessageCircle className="h-4 w-4" /> Aujourd&apos;hui</div>
-          <p className="mt-2 text-sm leading-6 text-emerald-950/75">{trackingActive ? 'Je peux vous aider à comprendre votre pipeline et à préparer les prochaines décisions.' : 'Je peux vous aider à garder le fil de votre journée et à préparer les prochaines actions utiles.'}</p>
+          <p className="mt-2 text-sm leading-6 text-emerald-950/75">{tasksActive ? 'Je peux vous aider à organiser vos actions, préparer ce qui peut l’être et garder uniquement les décisions qui nécessitent votre attention.' : trackingActive ? 'Je peux vous aider à comprendre votre pipeline et à préparer les prochaines décisions.' : 'Je peux vous aider à garder le fil de votre journée et à préparer les prochaines actions utiles.'}</p>
         </section>
 
         <section className="mt-6">

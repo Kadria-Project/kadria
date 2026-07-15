@@ -72,7 +72,7 @@ export default function KadriaAppShell({ children }: { children: ReactNode }) {
           <WorkspaceCanvas>{children}</WorkspaceCanvas>
         </div>
       </div>
-      <KadriaCollaboratorPanel open={collaboratorOpen} trackingActive={activeMode === 'commercial'} onClose={() => updateCollaborator(false)} />
+      <KadriaCollaboratorPanel open={collaboratorOpen} trackingActive={activeMode === 'commercial'} tasksActive={activeMode === 'tasks'} onClose={() => updateCollaborator(false)} />
       <style jsx global>{`
         .kadria-app-shell .kadria-workspace-canvas .dashboard-shell {
           min-height: 0 !important;

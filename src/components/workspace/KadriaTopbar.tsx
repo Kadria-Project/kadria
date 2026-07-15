@@ -13,13 +13,23 @@ interface KadriaTopbarProps {
 }
 
 export default function KadriaTopbar({ activeMode, collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
-  const tracking = activeMode === 'commercial';
+  const workspace = activeMode === 'commercial'
+    ? { eyebrow: 'Workspace / Suivi', title: 'Suivi commercial' }
+    : activeMode === 'tasks'
+      ? { eyebrow: 'Workspace / À faire', title: 'À faire' }
+      : activeMode === 'calendar'
+        ? { eyebrow: 'Workspace / Agenda', title: 'Agenda' }
+        : activeMode === 'clients'
+          ? { eyebrow: 'Workspace / Clients', title: 'Clients' }
+          : activeMode === 'value-report'
+            ? { eyebrow: 'Workspace / Performance', title: 'Performance' }
+            : { eyebrow: 'Workspace / Accueil', title: 'Accueil' };
   return (
     <header className="flex min-h-[76px] shrink-0 items-center border-b border-slate-200 bg-white px-5 xl:px-7">
       <div className="w-full">
         <WorkspaceHeader
-          eyebrow={tracking ? 'Workspace / Suivi' : 'Workspace / Accueil'}
-          title={tracking ? 'Suivi commercial' : 'Accueil'}
+          eyebrow={workspace.eyebrow}
+          title={workspace.title}
           actions={
             <>
               <label className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500 lg:flex">
