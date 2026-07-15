@@ -60,6 +60,14 @@ export async function POST(request: NextRequest) {
     }
 
     const endValue = end || start
+    const startDate = new Date(start)
+    const endDate = new Date(endValue)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+      return NextResponse.json(
+        { success: false, error: "La fin du rendez-vous doit \u00eatre apr\u00e8s son d\u00e9but." },
+        { status: 400 },
+      )
+    }
     if (!isEventType(eventType)) {
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
     }
