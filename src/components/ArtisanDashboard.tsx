@@ -75,6 +75,9 @@ import type { OperationsCenterResult } from '@/src/lib/recommendations';
 import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
 import TrackingWorkspace from '@/src/components/workspace/tracking/TrackingWorkspace';
 import TasksWorkspace from '@/src/components/workspace/tasks/TasksWorkspace';
+import { useWorkspaceNavigation, type DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
+
+export type { DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
 
 type UsageStatus = 'ok' | 'warning' | 'limit_reached' | 'exceeded';
 
@@ -152,8 +155,6 @@ type GetProjectsOutputType = {
 };
 
 export type Project = GetProjectsOutputType['projects'][0];
-export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
-
 // Mappe un Project du dashboard vers l'input de l'Action Engine, en ne
 // reprenant que des champs reellement presents sur le projet (cf.
 // src/lib/action-engine.ts — "ne jamais inventer de donnees"). Aucun signal
@@ -1632,7 +1633,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [searchInput, setSearchInput] = useState(filters.search);
   const [quickFilter, setQuickFilter] = useState<'today' | 'overdue' | 'hot' | 'risk' | 'priority' | 'relance' | 'opportunities' | 'calls' | 'quotes' | 'followups' | null>(null);
   const [actionEngineFilter, setActionEngineFilter] = useState<'critical' | 'today' | 'week' | 'deposits' | 'deposits_paid' | ActionType | null>(null);
-  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
+  const { dashboardMode, navigate: navigateWorkspace } = useWorkspaceNavigation();
+  const setDashboardMode = useCallback((mode: DashboardMode) => navigateWorkspace({ mode }), [navigateWorkspace]);
   const [overdueEvents, setOverdueEvents] = useState<any[]>([]);
   const [todayEvents, setTodayEvents] = useState<any[]>([]);
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageSummary | null>(null);
@@ -3496,6 +3498,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         <TrackingWorkspace
           projects={allProjects}
           priorityProjects={topOpportunities}
+          operationsCenter={operationsCenter}
           onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
         />
       )}

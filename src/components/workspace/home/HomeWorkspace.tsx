@@ -1,6 +1,7 @@
 import type { Project } from '@/src/components/ArtisanDashboard';
 import type { OperationsCenterResult, OperationsWorkbenchItem } from '@/src/lib/recommendations';
 import { Eye, Flame } from 'lucide-react';
+import { useWorkspaceNavigation } from '../WorkspaceNavigationContext';
 
 type Props = {
   firstName: string | null;
@@ -42,7 +43,7 @@ function getPriorities(data: OperationsCenterResult | null) {
   return Array.from(new Map(items.map((item) => [item.id, item])).values()).slice(0, 3);
 }
 
-function Decision({ item, primary, onOpen }: { item: OperationsWorkbenchItem; primary?: boolean; onOpen: (id: string) => void }) {
+function Decision({ item, primary, onOpenTask }: { item: OperationsWorkbenchItem; primary?: boolean; onOpenTask: (item: OperationsWorkbenchItem) => void }) {
   return (
     <article className={`rounded-2xl border ${primary ? 'border-orange-200 bg-[#fffaf0] p-4' : 'border-slate-200 bg-white px-4 py-3.5'}`}>
       <div className="flex items-start justify-between gap-3">
@@ -53,13 +54,14 @@ function Decision({ item, primary, onOpen }: { item: OperationsWorkbenchItem; pr
           <p className="mt-2 text-xs leading-4 text-slate-500"><span className="font-semibold text-slate-700">Pourquoi :</span> {item.reason}</p>
           {primary && <p className="mt-1 text-xs leading-4 text-slate-500"><span className="font-semibold text-slate-700">Prochaine décision :</span> {item.primaryActionLabel || 'Ouvrir le dossier'}</p>}
         </div>
-        {item.projectId && <button type="button" onClick={() => onOpen(item.projectId!)} className="shrink-0 text-sm font-semibold text-emerald-700 hover:text-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500">Ouvrir →</button>}
+        {item.projectId && <button type="button" onClick={() => onOpenTask(item)} className="shrink-0 text-sm font-semibold text-emerald-700 hover:text-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500">Ouvrir →</button>}
       </div>
     </article>
   );
 }
 
 export default function HomeWorkspace({ firstName, todayLabel, projects, todayEvents: rawEvents, operationsCenter, onOpenProject, onOpenAgenda }: Props) {
+  const { navigate } = useWorkspaceNavigation();
   const priorities = getPriorities(operationsCenter);
   const events = getTodayEvents(rawEvents);
   const activity = projects.filter((project) => isToday(project.createdAt) || isToday(project.acceptedAt) || isToday(project.updatedAt)).slice(0, 5);
@@ -69,11 +71,11 @@ export default function HomeWorkspace({ firstName, todayLabel, projects, todayEv
   const summary = priorities.length ? `${priorities.length} décision${priorities.length > 1 ? 's importantes méritent' : ' importante mérite'} votre attention. Je garde le reste à l’œil.` : events.length ? `La journée est calme. ${events.length} rendez-vous ${events.length > 1 ? 'sont prévus' : 'est prévu'}. Le reste est sous contrôle.` : 'Tout est sous contrôle aujourd’hui. Vous pouvez vous concentrer sur vos interventions.';
 
   return <div className="mx-auto max-w-[1380px] space-y-5 pb-4">
-    <section className="rounded-2xl border border-slate-200 bg-white px-6 py-4">
+    <section id="workspace-section-briefing" className="rounded-2xl border border-slate-200 bg-white px-6 py-4">
       <div className="flex items-end justify-between gap-6"><div><p className="text-[10px] font-bold uppercase tracking-[0.13em] text-slate-500">{todayLabel}</p><h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{summary}</p></div><div className="hidden shrink-0 gap-5 text-center xl:flex"><div><p className="text-sm font-semibold text-[#0b2232]">{activity.length}</p><p className="text-[10px] text-slate-500">activité{activity.length > 1 ? 's' : ''}</p></div><div><p className="text-sm font-semibold text-[#0b2232]">{events.length}</p><p className="text-[10px] text-slate-500">rendez-vous</p></div><div><p className="text-sm font-semibold text-[#0b2232]">{week}</p><p className="text-[10px] text-slate-500">cette semaine</p></div></div></div>
     </section>
 
-    <section><p className="text-xs font-bold uppercase tracking-[0.13em] text-slate-600">Décisions à prendre</p>{priorities.length ? <div className="mt-3 grid gap-3 lg:grid-cols-2"><div className="lg:col-span-2"> <Decision item={priorities[0]} primary onOpen={onOpenProject} /></div>{priorities.slice(1).map((item) => <Decision key={item.id} item={item} onOpen={onOpenProject} />)}</div> : <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4"><p className="font-semibold text-emerald-950">Tout est sous contrôle.</p><p className="mt-1 text-sm text-emerald-900/75">Aucune action urgente aujourd’hui.</p></div>}</section>
+    <section id="workspace-section-decisions"><p className="text-xs font-bold uppercase tracking-[0.13em] text-slate-600">Décisions à prendre</p>{priorities.length ? <div className="mt-3 grid gap-3 lg:grid-cols-2"><div className="lg:col-span-2"> <Decision item={priorities[0]} primary onOpenTask={(item) => navigate({ mode: 'tasks', actionId: item.id, section: 'queue' })} /></div>{priorities.slice(1).map((item) => <Decision key={item.id} item={item} onOpenTask={(decision) => navigate({ mode: 'tasks', actionId: decision.id, section: 'queue' })} />)}</div> : <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4"><p className="font-semibold text-emerald-950">Tout est sous contrôle.</p><p className="mt-1 text-sm text-emerald-900/75">Aucune action urgente aujourd’hui.</p></div>}</section>
 
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_0.9fr]">
       <section className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase tracking-[0.13em] text-slate-600">Depuis minuit</p>{activity.length ? <div className="mt-3 divide-y divide-slate-100">{activity.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project.id)} className="flex w-full items-center gap-3 py-3 text-left hover:bg-slate-50"><span className="w-10 text-xs font-semibold text-slate-500">{project.acceptedAt ? '✓' : '•'}</span><span className="min-w-0 flex-1"><span className="block text-sm font-medium text-slate-800">{project.acceptedAt ? 'Devis accepté' : project.createdAt ? 'Nouveau dossier' : 'Dossier mis à jour'}</span><span className="block truncate text-xs text-slate-500">{clientLabel(project)}</span></span><span className="text-emerald-700">→</span></button>)}</div> : <p className="mt-3 text-sm text-slate-500">Aucun événement important depuis minuit.</p>}</section>
