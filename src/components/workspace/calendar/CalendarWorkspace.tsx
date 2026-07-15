@@ -45,7 +45,7 @@ export default function CalendarWorkspace() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
   const [locationTouched, setLocationTouched] = useState(false);
-  const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', projectId: null, eventType: 'appointment' });
+  const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
   const [currentTime] = useState(() => Date.now());
 
   const fetchAppointments = useCallback(async () => {
@@ -119,7 +119,7 @@ export default function CalendarWorkspace() {
   };
   const openCreate = () => {
     const now = new Date();
-    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', projectId: null, eventType: 'appointment' });
+    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
     setSelectedProject(null);
     setLocationTouched(false);
     setCreateError(null);
@@ -138,7 +138,9 @@ export default function CalendarWorkspace() {
       start: appointment.start ? formatInputDate(new Date(appointment.start)) : '',
       end: appointment.end ? formatInputDate(new Date(appointment.end)) : '',
       location: appointment.location || '',
+      description: appointment.description || '',
       projectId: appointment.projectId,
+      assignedUserId: appointment.assignedUserId || '',
       eventType: isEventType(appointment.eventType) ? appointment.eventType : 'appointment',
     });
     setSelectedProject(appointment.projectId ? {
@@ -180,7 +182,7 @@ export default function CalendarWorkspace() {
       const response = await fetch('/api/appointments/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || undefined, projectId: form.projectId, eventType: 'appointment' }),
+        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || undefined, description: form.description || undefined, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType }),
       });
       const json = await response.json();
       if (!response.ok || !json?.success) throw new Error(json?.error || "Impossible d'ajouter le rendez-vous.");
@@ -204,7 +206,7 @@ export default function CalendarWorkspace() {
       const response = await fetch('/api/appointments/' + editingAppointmentId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, projectId: form.projectId, eventType: form.eventType }),
+        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, description: form.description || null, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType }),
       });
       const json = await response.json();
       if (!response.ok || !json?.success) throw new Error(json?.error || "La modification n'a pas pu etre enregistree.");

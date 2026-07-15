@@ -225,6 +225,7 @@ export async function GET(request: NextRequest) {
           description: record.description ? String(record.description) : null,
           assignedUserId,
           assignedUserName: assignedUserId ? userNameById.get(assignedUserId) || null : null,
+          isAssignedToCurrentUser: assignedUserId === tenantContext?.userId,
           isUnassigned: Boolean(record.is_unassigned),
           responsibleUserId: project?.responsibleUserId || null,
           responsibleUserName:

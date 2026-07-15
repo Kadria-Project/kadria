@@ -71,6 +71,14 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+function compactAssigneeName(event: NormalizedCalendarEvent) {
+  if (event.isAssignedToCurrentUser) return 'Moi'
+  if (!event.assignedUserName) return null
+
+  const parts = event.assignedUserName.split(/\s+/).filter(Boolean)
+  return parts.length > 1 ? `${parts[0]} ${parts[1].charAt(0)}.` : parts[0]
+}
+
 function TimelineEvent({ event, onOpen }: { event: NormalizedCalendarEvent; onOpen: (event: NormalizedCalendarEvent) => void }) {
   const start = eventDate(event);
   if (!start) return null;
@@ -93,7 +101,7 @@ function TimelineEvent({ event, onOpen }: { event: NormalizedCalendarEvent; onOp
       <span className="block truncate text-[11px] font-bold leading-4">{event.title}</span>
       <span className="flex min-w-0 items-center gap-1.5 truncate text-[10px] text-current/70">
         {event.assignedUserName ? <span className="grid size-4 shrink-0 place-items-center rounded-full bg-white/80 text-[8px] font-bold">{getInitials(event.assignedUserName)}</span> : null}
-        <span className="truncate">{event.clientName || event.projectTitle || event.assignedUserName || 'Rendez-vous'}</span>
+        <span className="truncate">{[event.clientName || event.projectTitle, compactAssigneeName(event)].filter(Boolean).join(' · ') || 'Rendez-vous'}</span>
       </span>
     </button>
   );

@@ -41,18 +41,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
-    let nextAssignedUserId: string | null = null
+    const nextAssignedUserId = assignedUserId || tenantContext.userId
     let nextAssignedUserName: string | null = null
 
-    if (assignedUserId) {
-      const member = assignableMembers.find((item) => item.userId === assignedUserId)
+    if (nextAssignedUserId) {
+      const member = assignableMembers.find((item) => item.userId === nextAssignedUserId)
       if (!member) {
         return NextResponse.json(
           { success: false, error: "Le collaborateur sélectionné n'appartient pas à votre équipe." },
           { status: 403 },
         )
       }
-      nextAssignedUserId = assignedUserId
       nextAssignedUserName = [member.firstName, member.lastName].filter(Boolean).join(' ').trim() || member.email
     }
 
@@ -60,7 +59,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .from('project_appointments')
       .update({
         assigned_user_id: nextAssignedUserId,
-        is_unassigned: !nextAssignedUserId,
+        is_unassigned: false,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -74,9 +73,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     await logAppointmentActivity({
       projectId: existing.project_id ? String(existing.project_id) : null,
       action: 'APPOINTMENT_REASSIGNED',
-      description: nextAssignedUserId
-        ? `Collaborateur affecté : ${nextAssignedUserName || 'Collaborateur'}`
-        : 'Rendez-vous remis en non affecté',
+      description: `Collaborateur affecté : ${nextAssignedUserName || 'Collaborateur'}`,
     })
 
     if (nextAssignedUserId && nextAssignedUserId !== existing.assigned_user_id) {

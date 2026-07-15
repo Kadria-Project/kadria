@@ -45,6 +45,7 @@ export interface NormalizedCalendarEvent {
   // pour les rendez-vous Kadria — null pour Google/actions de planning).
   assignedUserId: string | null
   assignedUserName: string | null
+  isAssignedToCurrentUser: boolean
   isUnassigned: boolean
   // Identifiant brut en base (project_appointments.id), uniquement présent
   // pour les rendez-vous Kadria — nécessaire pour la réaffectation rapide
@@ -97,6 +98,7 @@ export function normalizeGoogleEvent(event: RawGoogleEvent): NormalizedCalendarE
     status: null,
     assignedUserId: null,
     assignedUserName: null,
+    isAssignedToCurrentUser: false,
     isUnassigned: false,
     rawAppointmentId: null,
   }
@@ -122,6 +124,7 @@ export interface RawKadriaAppointment {
   eventType?: string | null
   assignedUserId?: string | null
   assignedUserName?: string | null
+  isAssignedToCurrentUser?: boolean
   isUnassigned?: boolean
   description?: string | null
   allDay?: boolean
@@ -181,6 +184,7 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     status: a.status,
     assignedUserId: a.assignedUserId || null,
     assignedUserName: a.assignedUserName || null,
+    isAssignedToCurrentUser: Boolean(a.isAssignedToCurrentUser),
     isUnassigned: Boolean(a.isUnassigned),
     rawAppointmentId: a.id,
   }
@@ -232,6 +236,7 @@ export function normalizeKadriaPlanningItem(item: RawKadriaPlanningItemLike): No
     status: null,
     assignedUserId: null,
     assignedUserName: null,
+    isAssignedToCurrentUser: false,
     isUnassigned: false,
     rawAppointmentId: null,
   }

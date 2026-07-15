@@ -94,10 +94,8 @@ export async function POST(request: NextRequest) {
     const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
     const assignableMemberIds = new Set(assignableMembers.map((member) => member.userId))
 
-    let assignedUserId: string | null = null
-    if (!canManageTeam) {
-      assignedUserId = tenantContext.userId
-    } else if (requestedAssignedUserId) {
+    let assignedUserId = tenantContext.userId
+    if (canManageTeam && requestedAssignedUserId) {
       if (!assignableMemberIds.has(requestedAssignedUserId)) {
         return NextResponse.json(
           { success: false, error: "Le collaborateur sélectionné n'appartient pas à votre équipe." },
@@ -132,7 +130,7 @@ export async function POST(request: NextRequest) {
       all_day: Boolean(allDay),
       description: description || null,
       source: 'team-planning',
-      is_unassigned: !assignedUserId,
+      is_unassigned: false,
       updated_at: new Date().toISOString(),
     }
 
@@ -150,9 +148,7 @@ export async function POST(request: NextRequest) {
     await logAppointmentActivity({
       projectId: projectId || null,
       action: 'APPOINTMENT_CREATED',
-      description: assignedUserId
-        ? `Rendez-vous créé et affecté à ${assignableMembers.find((member) => member.userId === assignedUserId)?.firstName || 'un collaborateur'}`
-        : 'Rendez-vous créé sans collaborateur affecté',
+      description: `Rendez-vous créé et affecté à ${assignableMembers.find((member) => member.userId === assignedUserId)?.firstName || 'un collaborateur'}`,
     })
 
     // The primary API response stays independent from an optional Push delivery.

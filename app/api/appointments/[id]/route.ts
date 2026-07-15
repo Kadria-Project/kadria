@@ -67,10 +67,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const nextAssignedUserId = body.assignedUserId === undefined
-      ? (existing.assigned_user_id ? String(existing.assigned_user_id) : null)
+      ? (existing.assigned_user_id ? String(existing.assigned_user_id) : tenantContext.userId)
       : body.assignedUserId
         ? String(body.assignedUserId)
-        : null
+        : tenantContext.userId
 
     if (body.eventType !== undefined && !isEventType(body.eventType)) {
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
@@ -140,12 +140,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.status !== undefined ? { status: String(body.status || '') } : {}),
       ...(body.eventType !== undefined ? { event_type: body.eventType } : {}),
       ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
-      ...(body.assignedUserId !== undefined
-        ? {
-            assigned_user_id: nextAssignedUserId,
-            is_unassigned: !nextAssignedUserId,
-          }
-        : {}),
+      assigned_user_id: nextAssignedUserId,
+      is_unassigned: false,
       updated_at: new Date().toISOString(),
     }
 

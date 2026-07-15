@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarCheck2, CalendarDays, CircleAlert, Clock3, FolderKanban, MapPin, Search, X } from 'lucide-react';
 import { EVENT_TYPES_UI, EVENT_TYPE_LABELS, type EventType } from '@/src/lib/calendar/event-types';
+import AppointmentAssigneeSelect from './AppointmentAssigneeSelect';
 
 export type AppointmentProjectOption = { id: string; clientName: string; clientFirstName: string; projectTitle: string; projectType: string; status: string; city: string; siteAddress: string };
-export type AppointmentCreateForm = { title: string; start: string; end: string; location: string; projectId: string | null; eventType: EventType };
+export type AppointmentCreateForm = { title: string; start: string; end: string; location: string; description: string; projectId: string | null; assignedUserId: string; eventType: EventType };
 
 type Props = {
   form: AppointmentCreateForm;
@@ -73,7 +74,7 @@ export default function AppointmentCreateModal({ form, selectedProject, creating
       return;
     }
     if (event.key !== 'Tab' || !dialogRef.current) return;
-    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])'));
+    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'));
     const first = focusable[0];
     const last = focusable.at(-1);
     if (!first || !last) return;
@@ -124,6 +125,8 @@ export default function AppointmentCreateModal({ form, selectedProject, creating
           </div>
           {selectedProject ? <div className="rounded-xl border border-[#344657] bg-[#111F2E] p-3"><div className="flex items-start gap-3"><FolderKanban className="mt-0.5 size-4 shrink-0 text-emerald-400" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-wide text-[#B7C4D1]">Projet li{'\u00e9'}</p><p className="mt-1 truncate text-sm font-semibold text-white">{labelFor(selectedProject)} {'\u00b7'} {selectedProject.projectTitle || selectedProject.projectType || 'Dossier'}</p><p className="mt-1 truncate text-xs text-[#B7C4D1]">Statut : {selectedProject.status || 'Non renseign\u00e9'}{selectedProject.city ? ' \u00b7 ' + selectedProject.city : ''}</p></div><button type="button" onClick={() => onProjectChange(null)} aria-label={'Retirer le projet li\u00e9'} className="grid size-7 place-items-center rounded-md text-[#B7C4D1] hover:bg-white/10 hover:text-white"><X className="size-4" /></button></div></div> : null}
           <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-medium text-[#E7EDF4]"><span className="flex items-center gap-2"><CalendarDays className="size-4 text-[#B7C4D1]" />D{'\u00e9'}but</span><input type="datetime-local" value={form.start} onChange={(event) => onFieldChange('start', event.target.value)} className={'mt-2 ' + fieldClassName} /></label><label className="block text-sm font-medium text-[#E7EDF4]"><span className="flex items-center gap-2"><Clock3 className="size-4 text-[#B7C4D1]" />Fin</span><input type="datetime-local" value={form.end} onChange={(event) => onFieldChange('end', event.target.value)} className={'mt-2 ' + fieldClassName} /></label></div>
+          <AppointmentAssigneeSelect value={form.assignedUserId} onChange={(assignedUserId) => onFieldChange('assignedUserId', assignedUserId)} disabled={creating || deleting} />
+          <label className="block text-sm font-medium text-[#E7EDF4]">Notes <span className="font-normal text-[#8291A2]">- facultatif</span><textarea value={form.description} onChange={(event) => onFieldChange('description', event.target.value)} placeholder="Informations utiles pour ce rendez-vous..." rows={3} className={'mt-2 resize-y ' + fieldClassName} /></label>
           <label className="block text-sm font-medium text-[#E7EDF4]">Type de rendez-vous<select value={form.eventType} onChange={(event) => onFieldChange('eventType', event.target.value)} className={'mt-2 ' + fieldClassName}>{EVENT_TYPES_UI.map((eventType) => <option key={eventType} value={eventType}>{EVENT_TYPE_LABELS[eventType]}</option>)}</select></label>
           {!endIsValid ? <p className="flex items-center gap-2 text-sm text-red-300"><CircleAlert className="size-4" />L&apos;heure de fin doit {'\u00ea'}tre apr{'\u00e8'}s l&apos;heure de d{'\u00e9'}but.</p> : null}
           <label className="block text-sm font-medium text-[#E7EDF4]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#B7C4D1]" />Adresse <span className="font-normal text-[#8291A2]">- facultatif</span></span><input value={form.location} onChange={(event) => onFieldChange('location', event.target.value)} placeholder="Ex. : 12 rue de la Paix, 59000 Lille" className={'mt-2 ' + fieldClassName} /></label>
