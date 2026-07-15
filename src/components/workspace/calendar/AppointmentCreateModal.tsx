@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { CalendarCheck2, CalendarDays, CircleAlert, Clock3, FolderKanban, MapPin, Search, X } from 'lucide-react';
+import { EVENT_TYPES_UI, EVENT_TYPE_LABELS, type EventType } from '@/src/lib/calendar/event-types';
 
 export type AppointmentProjectOption = { id: string; clientName: string; clientFirstName: string; projectTitle: string; projectType: string; status: string; city: string; siteAddress: string };
-export type AppointmentCreateForm = { title: string; start: string; end: string; location: string; projectId: string | null };
+export type AppointmentCreateForm = { title: string; start: string; end: string; location: string; projectId: string | null; eventType: EventType };
 
 type Props = {
   form: AppointmentCreateForm;
@@ -12,8 +13,11 @@ type Props = {
   creating: boolean;
   error: string | null;
   endIsValid: boolean;
+  mode?: 'create' | 'edit';
+  deleting?: boolean;
   onClose: () => void;
   onSubmit: () => void;
+  onDelete?: () => void;
   onFieldChange: (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => void;
   onProjectChange: (project: AppointmentProjectOption | null) => void;
 };
@@ -22,7 +26,7 @@ const fieldClassName = 'w-full rounded-lg border border-[#3A4A59] bg-[#111F2E] p
 const labelFor = (project: AppointmentProjectOption) => [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectTitle || 'Dossier';
 const detailsFor = (project: AppointmentProjectOption) => [project.projectTitle || project.projectType, project.city].filter(Boolean).join(' \u00b7 ');
 
-export default function AppointmentCreateModal({ form, selectedProject, creating, error, endIsValid, onClose, onSubmit, onFieldChange, onProjectChange }: Props) {
+export default function AppointmentCreateModal({ form, selectedProject, creating, error, endIsValid, mode = 'create', deleting = false, onClose, onSubmit, onDelete, onFieldChange, onProjectChange }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const [projects, setProjects] = useState<AppointmentProjectOption[]>([]);
@@ -103,7 +107,7 @@ export default function AppointmentCreateModal({ form, selectedProject, creating
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(6,16,26,0.55)] p-4 backdrop-blur-[2px]" onMouseDown={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="appointment-create-title" onMouseDown={(event) => event.stopPropagation()} onKeyDown={onDialogKeyDown} className="max-h-[calc(100vh-32px)] w-full max-w-[470px] overflow-y-auto rounded-[18px] border border-[#2A3948] bg-[#0E1926] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.48)] sm:p-6">
         <div className="flex items-start justify-between gap-4">
-          <div><h2 id="appointment-create-title" className="text-xl font-bold tracking-tight text-white">Ajouter un cr{'\u00e9'}neau</h2><p className="mt-1 text-sm leading-5 text-[#B7C4D1]">Planifiez un rendez-vous et rattachez-le {'\u00e0'} un dossier Kadria.</p></div>
+          <div><h2 id="appointment-create-title" className="text-xl font-bold tracking-tight text-white">{mode === 'edit' ? 'Modifier le rendez-vous' : <>Ajouter un cr{'\u00e9'}neau</>}</h2><p className="mt-1 text-sm leading-5 text-[#B7C4D1]">{mode === 'edit' ? 'Mettez a jour les informations de ce rendez-vous.' : <>Planifiez un rendez-vous et rattachez-le {'\u00e0'} un dossier Kadria.</>}</p></div>
           <button type="button" onClick={onClose} aria-label="Fermer la modale" className="grid size-9 shrink-0 place-items-center rounded-lg text-[#B7C4D1] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"><X className="size-5" /></button>
         </div>
         <div className="mt-6 space-y-4">
@@ -120,11 +124,12 @@ export default function AppointmentCreateModal({ form, selectedProject, creating
           </div>
           {selectedProject ? <div className="rounded-xl border border-[#344657] bg-[#111F2E] p-3"><div className="flex items-start gap-3"><FolderKanban className="mt-0.5 size-4 shrink-0 text-emerald-400" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold uppercase tracking-wide text-[#B7C4D1]">Projet li{'\u00e9'}</p><p className="mt-1 truncate text-sm font-semibold text-white">{labelFor(selectedProject)} {'\u00b7'} {selectedProject.projectTitle || selectedProject.projectType || 'Dossier'}</p><p className="mt-1 truncate text-xs text-[#B7C4D1]">Statut : {selectedProject.status || 'Non renseign\u00e9'}{selectedProject.city ? ' \u00b7 ' + selectedProject.city : ''}</p></div><button type="button" onClick={() => onProjectChange(null)} aria-label={'Retirer le projet li\u00e9'} className="grid size-7 place-items-center rounded-md text-[#B7C4D1] hover:bg-white/10 hover:text-white"><X className="size-4" /></button></div></div> : null}
           <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-medium text-[#E7EDF4]"><span className="flex items-center gap-2"><CalendarDays className="size-4 text-[#B7C4D1]" />D{'\u00e9'}but</span><input type="datetime-local" value={form.start} onChange={(event) => onFieldChange('start', event.target.value)} className={'mt-2 ' + fieldClassName} /></label><label className="block text-sm font-medium text-[#E7EDF4]"><span className="flex items-center gap-2"><Clock3 className="size-4 text-[#B7C4D1]" />Fin</span><input type="datetime-local" value={form.end} onChange={(event) => onFieldChange('end', event.target.value)} className={'mt-2 ' + fieldClassName} /></label></div>
+          <label className="block text-sm font-medium text-[#E7EDF4]">Type de rendez-vous<select value={form.eventType} onChange={(event) => onFieldChange('eventType', event.target.value)} className={'mt-2 ' + fieldClassName}>{EVENT_TYPES_UI.map((eventType) => <option key={eventType} value={eventType}>{EVENT_TYPE_LABELS[eventType]}</option>)}</select></label>
           {!endIsValid ? <p className="flex items-center gap-2 text-sm text-red-300"><CircleAlert className="size-4" />L&apos;heure de fin doit {'\u00ea'}tre apr{'\u00e8'}s l&apos;heure de d{'\u00e9'}but.</p> : null}
           <label className="block text-sm font-medium text-[#E7EDF4]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#B7C4D1]" />Adresse <span className="font-normal text-[#8291A2]">- facultatif</span></span><input value={form.location} onChange={(event) => onFieldChange('location', event.target.value)} placeholder="Ex. : 12 rue de la Paix, 59000 Lille" className={'mt-2 ' + fieldClassName} /></label>
           {error ? <p role="alert" className="flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2.5 text-sm text-red-200"><CircleAlert className="mt-0.5 size-4 shrink-0" />{error}</p> : null}
         </div>
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} disabled={creating} className="rounded-lg border border-[#3A4A59] px-4 py-2.5 text-sm font-semibold text-[#E7EDF4] transition-colors hover:bg-white/5 disabled:opacity-60">Annuler</button><button type="button" onClick={onSubmit} disabled={creating || !form.title.trim() || !form.start || !form.end || !endIsValid} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"><CalendarCheck2 className="size-4" />{creating ? 'Enregistrement en cours...' : 'Enregistrer le rendez-vous'}</button></div>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">{mode === 'edit' && onDelete ? <button type="button" onClick={onDelete} disabled={creating || deleting} className="text-sm font-semibold text-red-300 hover:text-red-200 disabled:opacity-50">Supprimer le rendez-vous</button> : <span />}<div className="flex flex-col-reverse gap-3 sm:flex-row"><button type="button" onClick={onClose} disabled={creating || deleting} className="rounded-lg border border-[#3A4A59] px-4 py-2.5 text-sm font-semibold text-[#E7EDF4] transition-colors hover:bg-white/5 disabled:opacity-60">Annuler</button><button type="button" onClick={onSubmit} disabled={creating || deleting || !form.title.trim() || !form.start || !form.end || !endIsValid} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"><CalendarCheck2 className="size-4" />{creating ? 'Enregistrement en cours...' : mode === 'edit' ? 'Enregistrer les modifications' : 'Enregistrer le rendez-vous'}</button></div></div>
       </div>
     </div>
   );

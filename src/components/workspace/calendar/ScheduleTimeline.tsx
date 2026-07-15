@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
 import type { CalendarView } from './calendar-workspace-types';
-import { durationMinutes, eventDate, formatTime, isSameDay } from './calendar-workspace-utils';
+import { durationMinutes, eventDate, formatTime, isSameDay, startOfWeekMonday } from './calendar-workspace-utils';
 
 type ScheduleTimelineProps = {
   view: CalendarView;
@@ -113,7 +113,7 @@ export default function ScheduleTimeline({
   const days = view === 'jour'
     ? [selectedDate]
     : Array.from({ length: 7 }, (_, index) => {
-        const date = new Date(selectedDate);
+        const date = startOfWeekMonday(selectedDate);
         date.setDate(date.getDate() + index);
         return date;
       });

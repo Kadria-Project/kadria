@@ -9,8 +9,25 @@ import {
   resolveProjectForAppointment,
 } from '@/src/lib/appointments/access'
 import { isEventType } from '@/src/lib/calendar/event-types'
+import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+
+async function syncGoogleAppointment(artisanId: string, googleEventId: string, method: 'PATCH' | 'DELETE', payload?: Record<string, unknown>) {
+  const { row, tableMissing } = await getCalendarIntegration(artisanId)
+  if (tableMissing || !row || !row.is_connected) return false
+  const accessToken = await getValidAccessToken(row)
+  if (!accessToken) return false
+  const response = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + encodeURIComponent(googleEventId),
+    {
+      method,
+      headers: { Authorization: 'Bearer ' + accessToken, ...(payload ? { 'Content-Type': 'application/json' } : {}) },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    },
+  )
+  return response.ok
+}
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -32,7 +49,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, location, description, status, event_type')
+      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, title, start_time, end_time, location, description, status, event_type, provider, google_event_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -57,9 +74,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
     }
 
-    if (body.projectId) {
+    const nextProjectId = body.projectId === undefined
+      ? (existing.project_id ? String(existing.project_id) : null)
+      : body.projectId
+        ? String(body.projectId)
+        : null
+
+    if (nextProjectId) {
       const project = await resolveProjectForAppointment({
-        projectId: String(body.projectId),
+        projectId: nextProjectId,
         tenantContext,
       })
       if (!project) {
@@ -80,6 +103,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const nextStart = body.start ? String(body.start) : String(existing.start_time)
     const nextEnd = body.end ? String(body.end) : String(existing.end_time)
+    const startDate = new Date(nextStart)
+    const endDate = new Date(nextEnd)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+      return NextResponse.json(
+        { success: false, error: "La fin du rendez-vous doit \u00eatre apr\u00e8s son d\u00e9but." },
+        { status: 400 },
+      )
+    }
     const conflict = await findAppointmentConflict({
       tenantId: tenantContext.tenantId,
       assignedUserId: nextAssignedUserId,
@@ -87,6 +118,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       end: nextEnd,
       excludeAppointmentId: id,
     })
+    if (existing.provider === 'google' && existing.google_event_id) {
+      const synced = await syncGoogleAppointment(String(existing.artisan_id || session.artisanId), String(existing.google_event_id), 'PATCH', {
+        summary: body.title !== undefined ? String(body.title || '') : existing.title,
+        description: body.description !== undefined ? (body.description ? String(body.description) : undefined) : existing.description,
+        location: body.location !== undefined ? (body.location ? String(body.location) : undefined) : existing.location,
+        start: { dateTime: nextStart, timeZone: 'Europe/Paris' },
+        end: { dateTime: nextEnd, timeZone: 'Europe/Paris' },
+      })
+      if (!synced) return NextResponse.json({ success: false, error: 'Impossible de mettre a jour Google Agenda.' }, { status: 502 })
+    }
 
     const updatePayload = {
       ...(body.title !== undefined ? { title: String(body.title || '') } : {}),
@@ -96,6 +137,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.description !== undefined ? { description: body.description ? String(body.description) : null } : {}),
       ...(body.status !== undefined ? { status: String(body.status || '') } : {}),
       ...(body.eventType !== undefined ? { event_type: body.eventType } : {}),
+      ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
       ...(body.assignedUserId !== undefined
         ? {
             assigned_user_id: nextAssignedUserId,
@@ -119,7 +161,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     await logAppointmentActivity({
-      projectId: existing.project_id ? String(existing.project_id) : null,
+      projectId: nextProjectId,
       action: 'APPOINTMENT_UPDATED',
       description: 'Rendez-vous mis à jour',
     })
@@ -166,7 +208,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     const { id } = await context.params
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, project_id, assigned_user_id')
+      .select('id, tenant_id, artisan_id, project_id, assigned_user_id, provider, google_event_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -179,6 +221,10 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     }
     if (!canDeleteAppointment(tenantContext, existing.assigned_user_id ? String(existing.assigned_user_id) : null)) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
+    }
+    if (existing.provider === 'google' && existing.google_event_id) {
+      const synced = await syncGoogleAppointment(String(existing.artisan_id || session.artisanId), String(existing.google_event_id), 'DELETE')
+      if (!synced) return NextResponse.json({ success: false, error: 'Impossible de supprimer le rendez-vous dans Google Agenda.' }, { status: 502 })
     }
 
     const { error: deleteError } = await supabaseAdmin

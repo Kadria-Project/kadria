@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalendarEvent, type RawGoogleEvent, type RawKadriaAppointment } from '@/src/lib/calendar/normalized-event';
+import { isEventType } from '@/src/lib/calendar/event-types';
 import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
 import CalendarBriefing from './CalendarBriefing';
 import CalendarSummary from './CalendarSummary';
@@ -15,7 +16,7 @@ import ScheduleRecommendations from './ScheduleRecommendations';
 import ScheduleTimeline from './ScheduleTimeline';
 import ScheduleTravelPanel from './ScheduleTravelPanel';
 import type { CalendarView, PlanningInsights } from './calendar-workspace-types';
-import { addDays, durationMinutes, eventDate, isSameDay, startOfWeekMonday } from './calendar-workspace-utils';
+import { addDays, durationMinutes, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
 
 type CalendarMode = 'kadria' | 'google';
 const DAY_MINUTES = 8 * 60;
@@ -29,7 +30,7 @@ export default function CalendarWorkspace() {
   const router = useRouter();
   const [mode, setMode] = useState<CalendarMode>('kadria');
   const [view, setView] = useState<CalendarView>('semaine');
-  const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [appointments, setAppointments] = useState<RawKadriaAppointment[]>([]);
   const [googleEvents, setGoogleEvents] = useState<RawGoogleEvent[]>([]);
   const [insights, setInsights] = useState<PlanningInsights | null>(null);
@@ -38,17 +39,20 @@ export default function CalendarWorkspace() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
   const [locationTouched, setLocationTouched] = useState(false);
-  const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', projectId: null });
+  const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', projectId: null, eventType: 'appointment' });
   const [currentTime] = useState(() => Date.now());
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const weekStart = startOfWeekMonday(selectedDate);
       const from = addDays(weekStart, -1).toISOString();
       const to = addDays(weekStart, 8).toISOString();
       const response = await fetch('/api/appointments/list?' + new URLSearchParams({ from, to }).toString());
@@ -61,7 +65,7 @@ export default function CalendarWorkspace() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart]);
+  }, [selectedDate]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => { void fetchAppointments(); }, 0);
@@ -109,18 +113,47 @@ export default function CalendarWorkspace() {
   const selectedConflict = insights?.conflicts[0] || null;
   const endIsValid = Boolean(form.start && form.end && new Date(form.end).getTime() > new Date(form.start).getTime());
 
-  const updatePeriod = (offset: number) => setWeekStart((current) => addDays(current, offset * 7));
+  const updatePeriod = (offset: number) => setSelectedDate((current) => addDays(current, offset * (view === 'jour' ? 1 : 7)));
   const openProject = (event: NormalizedCalendarEvent) => {
     if (event.projectId) router.push('/dashboard-v2/projet/' + event.projectId);
   };
   const openCreate = () => {
     const now = new Date();
-    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', projectId: null });
+    setForm({ title: '', start: formatInputDate(now), end: formatInputDate(new Date(now.getTime() + 60 * 60_000)), location: '', projectId: null, eventType: 'appointment' });
     setSelectedProject(null);
     setLocationTouched(false);
     setCreateError(null);
     setSuccessMessage(null);
     setCreateOpen(true);
+  };
+  const openEvent = (event: NormalizedCalendarEvent) => {
+    if (!event.rawAppointmentId) {
+      setSelectedEvent(event);
+      return;
+    }
+    const appointment = appointments.find((item) => item.id === event.rawAppointmentId);
+    if (!appointment) return;
+    setForm({
+      title: appointment.title || '',
+      start: appointment.start ? formatInputDate(new Date(appointment.start)) : '',
+      end: appointment.end ? formatInputDate(new Date(appointment.end)) : '',
+      location: appointment.location || '',
+      projectId: appointment.projectId,
+      eventType: isEventType(appointment.eventType) ? appointment.eventType : 'appointment',
+    });
+    setSelectedProject(appointment.projectId ? {
+      id: appointment.projectId,
+      clientName: appointment.clientName || '',
+      clientFirstName: '',
+      projectTitle: appointment.projectType || '',
+      projectType: appointment.projectType || '',
+      status: appointment.status || '',
+      city: appointment.city || '',
+      siteAddress: appointment.address || '',
+    } : null);
+    setLocationTouched(false);
+    setCreateError(null);
+    setEditingAppointmentId(appointment.id);
   };
   const updateFormField = (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => {
     if (field === 'location') setLocationTouched(true);
@@ -160,6 +193,47 @@ export default function CalendarWorkspace() {
       setCreating(false);
     }
   };
+  const handleUpdate = async () => {
+    if (!editingAppointmentId || !form.title.trim() || !form.start || !form.end || !endIsValid) {
+      setCreateError('V\u00e9rifiez le motif, le d\u00e9but et la fin du rendez-vous.');
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const response = await fetch('/api/appointments/' + editingAppointmentId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, projectId: form.projectId, eventType: form.eventType }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json?.success) throw new Error(json?.error || "La modification n'a pas pu etre enregistree.");
+      setEditingAppointmentId(null);
+      await fetchAppointments();
+      setSuccessMessage('Rendez-vous modifi\u00e9.');
+    } catch (updateError) {
+      setCreateError(updateError instanceof Error ? updateError.message : "La modification n'a pas pu etre enregistree.");
+    } finally {
+      setCreating(false);
+    }
+  };
+  const handleDelete = async () => {
+    if (!editingAppointmentId || !window.confirm('Supprimer ce rendez-vous ?\n\nCette action retirera le rendez-vous du planning.')) return;
+    setDeleting(true);
+    setCreateError(null);
+    try {
+      const response = await fetch('/api/appointments/' + editingAppointmentId, { method: 'DELETE' });
+      const json = await response.json();
+      if (!response.ok || !json?.success) throw new Error(json?.error || "La suppression n'a pas pu etre effectuee.");
+      setEditingAppointmentId(null);
+      await fetchAppointments();
+      setSuccessMessage('Rendez-vous supprim\u00e9.');
+    } catch (deleteError) {
+      setCreateError(deleteError instanceof Error ? deleteError.message : "La suppression n'a pas pu etre effectuee.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 pb-6">
@@ -169,7 +243,7 @@ export default function CalendarWorkspace() {
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
         <div className="min-w-0 space-y-4">
-          <ScheduleTimeline view={view} selectedDate={weekStart} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setWeekStart(startOfWeekMonday(new Date()))} onViewChange={setView} onOpenEvent={setSelectedEvent} onCreate={openCreate} />
+          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} />
           <DayActivityTimeline events={todayEvents} />
         </div>
         <aside className="space-y-3">
@@ -191,6 +265,7 @@ export default function CalendarWorkspace() {
         </div>
       )}
       {createOpen && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} error={createError} endIsValid={endIsValid} onClose={() => !creating && setCreateOpen(false)} onSubmit={() => void handleCreate()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
+      {editingAppointmentId && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} deleting={deleting} error={createError} endIsValid={endIsValid} mode="edit" onClose={() => !creating && !deleting && setEditingAppointmentId(null)} onSubmit={() => void handleUpdate()} onDelete={() => void handleDelete()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
     </div>
   );
 }
