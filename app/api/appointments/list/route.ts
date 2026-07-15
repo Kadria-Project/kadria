@@ -50,6 +50,7 @@ type ProjectLookup = {
   city: string
   artisanId: string
   clientPhone: string | null
+  clientEmail: string | null
   siteAddress: string | null
   latitude: number | null
   longitude: number | null
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
     if (projectIds.length) {
       const { data: projects, error: projectsError } = await supabaseAdmin
         .from(TABLES.projects)
-        .select('id, client_name, client_first_name, client_phone, project_type, city, artisan_id, site_address, latitude, longitude, responsible_user_id')
+        .select('id, client_name, client_first_name, client_phone, client_email, project_type, city, artisan_id, site_address, latitude, longitude, responsible_user_id')
         .in('id', projectIds)
 
       if (!projectsError && projects) {
@@ -181,6 +182,7 @@ export async function GET(request: NextRequest) {
             city: String(record.city || ''),
             artisanId: String(record.artisan_id || ''),
             clientPhone: record.client_phone ? String(record.client_phone) : null,
+            clientEmail: record.client_email ? String(record.client_email) : null,
             siteAddress: record.site_address ? String(record.site_address) : null,
             latitude: typeof record.latitude === 'number' ? record.latitude : null,
             longitude: typeof record.longitude === 'number' ? record.longitude : null,
@@ -229,6 +231,7 @@ export async function GET(request: NextRequest) {
           projectType: project?.projectType || null,
           city: project?.city || null,
           clientPhone: project?.clientPhone || null,
+          clientEmail: project?.clientEmail || null,
           address: project?.siteAddress || row.location || null,
           latitude: project?.latitude || null,
           longitude: project?.longitude || null,

@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
 import { QUALIFICATION_STATUS_LABELS } from '@/src/lib/appointment-qualification';
+import { CONFIRMATION_STATUS_LABELS } from '@/src/lib/appointment-confirmation';
 import type { CalendarView } from './calendar-workspace-types';
 import { durationMinutes, eventDate, formatTime, isSameDay, startOfWeekMonday } from './calendar-workspace-utils';
 
@@ -112,6 +113,7 @@ function TimelineEvent({ event, onOpen, qualificationAvailable, onDragStart, onD
         {formatTime(event.start)}
       </span>
       <span className="block truncate text-[11px] font-bold leading-4">{event.title}</span>
+      {event.confirmation ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{CONFIRMATION_STATUS_LABELS[event.confirmation.status as keyof typeof CONFIRMATION_STATUS_LABELS]}</span> : null}
       {qualificationLabel ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{qualificationLabel}</span> : null}
       <span className="flex min-w-0 items-center gap-1.5 truncate text-[10px] text-current/70">
         {event.assignedUserName ? <span className="grid size-4 shrink-0 place-items-center rounded-full bg-white/80 text-[8px] font-bold">{getInitials(event.assignedUserName)}</span> : null}

@@ -29,6 +29,7 @@ export interface NormalizedCalendarEvent {
   projectReference: string | null
   clientName: string | null
   clientPhone: string | null
+  clientEmail: string | null
   address: string | null
   latitude: number | null
   longitude: number | null
@@ -86,6 +87,7 @@ export function normalizeGoogleEvent(event: RawGoogleEvent): NormalizedCalendarE
     projectReference: null,
   clientName: null,
   clientPhone: null,
+  clientEmail: null,
   address: event.location,
   latitude: null,
   longitude: null,
@@ -114,6 +116,7 @@ export interface RawKadriaAppointment {
   projectNumber: string | null
   clientName: string | null
   clientPhone?: string | null
+  clientEmail?: string | null
   address?: string | null
   latitude?: number | null
   longitude?: number | null
@@ -183,7 +186,8 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     projectInternalNumber: a.projectNumber,
     projectReference: reference ? `${reference}${clientLabel}` : null,
     clientName: a.clientName,
-    clientPhone: a.clientPhone || null,
+  clientPhone: a.clientPhone || null,
+    clientEmail: a.clientEmail || null,
     address: a.address || a.location || null,
     latitude: typeof a.latitude === 'number' ? a.latitude : null,
     longitude: typeof a.longitude === 'number' ? a.longitude : null,
@@ -238,6 +242,7 @@ export function normalizeKadriaPlanningItem(item: RawKadriaPlanningItemLike): No
     projectReference: reference,
     clientName: item.clientLabel,
     clientPhone: null,
+    clientEmail: null,
     address: null,
     latitude: null,
     longitude: null,

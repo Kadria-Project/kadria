@@ -10,6 +10,7 @@ import type { AppointmentConfirmationSource, AppointmentConfirmationStatus } fro
 import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
 import AppointmentQualificationModal from './AppointmentQualificationModal';
 import AppointmentConfirmationModal from './AppointmentConfirmationModal';
+import AppointmentDetailsModal from './AppointmentDetailsModal';
 import CalendarBriefing from './CalendarBriefing';
 import CalendarSummary from './CalendarSummary';
 import DayActivityTimeline from './DayActivityTimeline';
@@ -140,7 +141,7 @@ export default function CalendarWorkspace() {
     setSuccessMessage(null);
     setCreateOpen(true);
   };
-  const openEvent = (event: NormalizedCalendarEvent) => {
+  const openEvent = (event: NormalizedCalendarEvent, edit = false) => {
     if (!event.rawAppointmentId) {
       setSelectedEvent(event);
       return;
@@ -152,6 +153,7 @@ export default function CalendarWorkspace() {
       setQualifyingEvent(event);
       return;
     }
+    if (!edit && event.end && new Date(event.end).getTime() > Date.now()) { setSelectedEvent(event); return; }
     setForm({
       title: appointment.title || '',
       start: appointment.start ? formatInputDate(new Date(appointment.start)) : '',
@@ -353,7 +355,7 @@ export default function CalendarWorkspace() {
         </aside>
       </div>
       {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}
-      {selectedEvent && (
+      {selectedEvent?.rawAppointmentId ? <AppointmentDetailsModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onPrepare={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onManual={() => { setSelectedEvent(null); setConfirmationError(null); setConfirmingEvent(selectedEvent); }} onReplan={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onEdit={() => { const event = selectedEvent; setSelectedEvent(null); openEvent(event, true); }} onOpenProject={() => openProject(selectedEvent)} /> : selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4" onClick={() => setSelectedEvent(null)}>
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold text-slate-950">{selectedEvent.title}</p><p className="mt-1 text-sm text-slate-500">{selectedEvent.clientName || selectedEvent.projectTitle || 'Rendez-vous'}</p></div><button type="button" onClick={() => setSelectedEvent(null)} aria-label="Fermer le rendez-vous" className="grid size-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100"><X className="size-4" /></button></div>
