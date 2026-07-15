@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import ClientAppointmentCard, { type ClientPortalAppointment } from '@/src/components/client-portal/ClientAppointmentCard';
 
 interface ArtisanBranding {
   brandName: string;
@@ -170,6 +171,8 @@ export default function ClientPortalPage() {
   const [project, setProject] = useState<PortalProject | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [quote, setQuote] = useState<PortalQuote | null>(null);
+  const [appointment, setAppointment] = useState<ClientPortalAppointment | null>(null);
+  const [appointmentError, setAppointmentError] = useState('');
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -240,6 +243,7 @@ export default function ClientPortalPage() {
         setProject(data.project || null);
         setTimelineEvents(Array.isArray(data.timelineEvents) ? data.timelineEvents : []);
         setQuote(data.quote || null);
+        setAppointment(data.appointment || null);
         // Préremplissage réel des champs connus (mêmes valeurs que la fiche
         // projet artisan), pas seulement en placeholder : le client doit
         // retrouver ses informations déjà éditables, y compris le Nom.
@@ -289,6 +293,25 @@ export default function ClientPortalPage() {
     } catch {
       // non bloquant
     }
+  };
+
+  const handleAppointmentResponse = async (input: { status: 'confirmed' | 'change_requested' | 'cancelled'; note: string; requestId: string; expectedVersion: number }) => {
+    if (!appointment) return;
+    setAppointmentError('');
+    const response = await fetch(`/api/client-portal/${token}/appointments/${appointment.id}/confirmation`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    const data = await response.json();
+    if (!response.ok || !data?.success) {
+      if (data?.errorCode === 'APPOINTMENT_VERSION_CONFLICT') {
+        const refreshed = await fetch(`/api/client-portal/${token}`).then((item) => item.json()).catch(() => null);
+        if (refreshed?.appointment) setAppointment(refreshed.appointment);
+      }
+      setAppointmentError(data?.error || 'Votre réponse n’a pas pu être enregistrée. Réessayez dans un instant.');
+      return;
+    }
+    setAppointment(data.appointment);
+    await refetchTimeline();
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -656,6 +679,9 @@ export default function ClientPortalPage() {
             )}
           </div>
         )}
+
+        {appointment && <ClientAppointmentCard appointment={appointment} onSubmit={handleAppointmentResponse} />}
+        {appointmentError && <p role="alert" style={{ margin: '-8px 0 16px', color: '#b91c1c', fontSize: '13px' }}>{appointmentError}</p>}
 
         {/* Discussion avec l'artisan — bulles façon iOS, réservées aux
             SEULS types de discussion (client_message / artisan_reply).

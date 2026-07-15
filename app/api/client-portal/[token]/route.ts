@@ -43,7 +43,7 @@ function normalizeClientSupplement(value: string): string {
 // pipeline acompte existant (src/lib/deposit.ts) — jamais de nouveau champ
 // paiement créé ici, simple lecture si déjà renseigné par l'artisan.
 const PUBLIC_PROJECT_COLUMNS =
-  'id, artisan_id, status, completeness_score, client_first_name, client_name, client_email, ' +
+  'id, tenant_id, artisan_id, status, completeness_score, client_first_name, client_name, client_email, ' +
   'client_phone, site_address, city, postal_code, project_type, trade, budget, desired_timeline, ' +
   'ai_summary, photos, created_at, client_portal_token, client_messages, client_last_update_at, ' +
   'client_update_count, deposit_payment_url, deposit_amount, deposit_status, deposit_paid_at'
@@ -252,6 +252,16 @@ export async function GET(
     const photos = Array.isArray(project.photos) ? project.photos : []
     const timelineEvents = await getPublicTimelineEvents(String(project.id))
     const quote = await buildPublicQuoteBlock(project)
+    const { data: appointment } = await supabaseAdmin
+      .from('project_appointments')
+      .select('id, title, start_time, end_time, confirmation_status, confirmation_source, confirmation_note, confirmation_updated_at, confirmation_version')
+      .eq('project_id', project.id)
+      .eq('tenant_id', project.tenant_id)
+      .neq('status', 'cancelled')
+      .gte('start_time', new Date().toISOString())
+      .order('start_time', { ascending: true })
+      .limit(1)
+      .maybeSingle()
 
     return NextResponse.json({
       valid: true,
@@ -282,6 +292,17 @@ export async function GET(
       },
       timelineEvents,
       quote,
+      appointment: appointment ? {
+        id: String(appointment.id),
+        title: String(appointment.title || 'Rendez-vous'),
+        start: appointment.start_time ? String(appointment.start_time) : null,
+        end: appointment.end_time ? String(appointment.end_time) : null,
+        status: String(appointment.confirmation_status || 'pending'),
+        source: appointment.confirmation_source ? String(appointment.confirmation_source) : null,
+        note: appointment.confirmation_source === 'client' && appointment.confirmation_note ? String(appointment.confirmation_note) : null,
+        updatedAt: appointment.confirmation_updated_at ? String(appointment.confirmation_updated_at) : null,
+        version: Number(appointment.confirmation_version || 0),
+      } : null,
     })
   } catch (e) {
     console.error('[CLIENT-PORTAL GET] Unexpected error:', e instanceof Error ? e.message : String(e))
