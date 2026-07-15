@@ -48,7 +48,15 @@ const collaboratorContexts: Record<WorkspaceMode, CollaboratorContext> = {
       { label: 'Quelle action aura le plus d’impact ?', mode: 'tasks', focusSection: 'queue' },
     ],
   },
-  calendar: { summary: 'Votre agenda reste disponible ici dès que cet espace sera prêt.', quickActions: [] },
+  calendar: {
+    summary: 'Je peux vous aider à comprendre votre planning, préparer vos rendez-vous et évaluer les conséquences d’un changement.',
+    quickActions: [
+      { label: 'Propose une meilleure organisation', mode: 'calendar', focusSection: 'calendar' },
+      { label: 'Prépare mon prochain rendez-vous', mode: 'calendar', focusSection: 'next-appointment' },
+      { label: 'Voir mes trajets et temps de route', mode: 'calendar', focusSection: 'calendar' },
+      { label: 'Résume ma journée en 1 minute', mode: 'calendar', focusSection: 'briefing' },
+    ],
+  },
   clients: { summary: 'Vos clients resteront accessibles ici dès que cet espace sera prêt.', quickActions: [] },
   'value-report': { summary: 'Votre performance restera accessible ici dès que cet espace sera prêt.', quickActions: [] },
 };

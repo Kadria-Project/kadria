@@ -118,8 +118,6 @@ interface MonthlyUsageSummary {
   updatedAt?: string;
 }
 
-const Calendar = dynamic(() => import('./Calendar'), { ssr: false });
-
 const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardView'), { ssr: false });
 
 const MobileDossiersView = dynamic(() => import('./dashboard/MobileDossiersView'), { ssr: false });
@@ -131,7 +129,7 @@ const MobilePipelineView = dynamic(() => import('./dashboard/MobilePipelineView'
 const MobileValueReportView = dynamic(() => import('./dashboard/MobileValueReportView'), { ssr: false });
 
 const MobileAgendaView = dynamic(() => import('./dashboard/MobileAgendaView'), { ssr: false });
-const DesktopAgendaView = dynamic(() => import('./dashboard/DesktopAgendaView'), { ssr: false });
+const CalendarWorkspace = dynamic(() => import('./workspace/calendar/CalendarWorkspace'), { ssr: false });
 
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
@@ -4128,7 +4126,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {showCalendarWorkspaceDesktop && (
         <FeatureGate feature="calendar" requiredPlan="performance">
           <div className="mb-6">
-            <DesktopAgendaView />
+            <CalendarWorkspace />
           </div>
         </FeatureGate>
       )}

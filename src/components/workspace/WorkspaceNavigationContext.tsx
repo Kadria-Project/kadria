@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 
 export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
-export type WorkspaceSection = 'briefing' | 'decisions' | 'priorities' | 'queue' | 'automations' | 'validations' | 'later';
+export type WorkspaceSection = 'briefing' | 'decisions' | 'priorities' | 'queue' | 'automations' | 'validations' | 'later' | 'calendar' | 'next-appointment';
 
 export type WorkspaceNavigation = {
   mode: DashboardMode;
