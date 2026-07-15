@@ -215,6 +215,8 @@ export interface RecommendationAppointmentInput {
   location: string | null
   latitude: number | null
   longitude: number | null
+  qualificationStatus?: string | null
+  qualificationOutcome?: string | null
 }
 
 export interface RecommendationMemberInput {
@@ -389,6 +391,14 @@ function planningRoute(extraParams?: Record<string, string | number | boolean | 
 export function buildOperationsCenter(input: BuildOperationsCenterInput): OperationsCenterResult {
   const now = input.now || new Date()
   const recommendations: RecommendationItem[] = []
+  // A post-appointment qualification is more specific than a generic
+  // commercial signal, so it owns the matching quote recommendation.
+  const projectIdsWithQualifiedQuote = new Set(
+    input.appointments
+      .filter((appointment) => appointment.qualificationStatus === 'completed' && appointment.qualificationOutcome === 'quote_to_prepare')
+      .map((appointment) => appointment.projectId)
+      .filter((projectId): projectId is string => Boolean(projectId)),
+  )
 
   const progress = computeSetupProgress({
     artisanConfig: input.config.artisanConfig,
@@ -720,6 +730,43 @@ export function buildOperationsCenter(input: BuildOperationsCenterInput): Operat
         }),
       )
     }
+
+    const qualificationAction = appointment.qualificationStatus === 'reschedule' || appointment.qualificationStatus === 'client_absent'
+      ? { title: 'Replanifier le rendez-vous', description: 'Le dernier rendez-vous doit être replanifié.', reason: 'Qualification post-rendez-vous.', actionLabel: 'Replanifier' }
+      : appointment.qualificationStatus === 'completed' && appointment.qualificationOutcome === 'quote_to_prepare'
+        ? { title: 'Préparer le devis', description: 'Le rendez-vous est réalisé et le devis peut être préparé.', reason: 'Résultat du rendez-vous : devis à préparer.', actionLabel: 'Préparer' }
+        : appointment.qualificationStatus === 'completed' && appointment.qualificationOutcome === 'missing_information'
+          ? { title: 'Demander les informations manquantes', description: 'Des informations restent nécessaires après le rendez-vous.', reason: 'Résultat du rendez-vous : informations manquantes.', actionLabel: 'Voir le dossier' }
+          : appointment.qualificationStatus === 'completed' && appointment.qualificationOutcome === 'intervention_confirmed'
+            ? { title: "Planifier l'intervention", description: "L'intervention est confirmée après le rendez-vous.", reason: 'Résultat du rendez-vous : intervention confirmée.', actionLabel: 'Planifier' }
+            : appointment.qualificationStatus === 'completed' && appointment.qualificationOutcome === 'client_decision_pending'
+              ? { title: 'Prévoir une relance', description: 'Le client doit encore prendre sa décision.', reason: 'Résultat du rendez-vous : décision en attente.', actionLabel: 'Voir le dossier' }
+              : appointment.qualificationStatus === 'completed' && appointment.qualificationOutcome === 'project_not_retained'
+                ? { title: 'Confirmer la suite du dossier', description: 'Le projet non retenu est enregistré, sans changement automatique de statut.', reason: 'Décision humaine à confirmer.', actionLabel: 'Voir le dossier' }
+                : null
+
+    if (qualificationAction && appointment.projectId) {
+      recommendations.push(recommendation({
+        id: `appointment-qualification-${appointment.id}`,
+        type: 'appointment_qualification',
+        score: 80,
+        title: qualificationAction.title,
+        description: qualificationAction.description,
+        reason: qualificationAction.reason,
+        action: {
+          actionType: qualificationAction.title === 'Préparer le devis' ? 'open_quote_create' : qualificationAction.title === "Planifier l'intervention" || qualificationAction.title === 'Replanifier le rendez-vous' ? 'open_schedule_appointment' : 'open_project',
+          actionLabel: qualificationAction.actionLabel,
+          actionRoute: qualificationAction.title === 'Préparer le devis' ? `/dashboard-v2/projet/${appointment.projectId}/devis/new` : projectRoute(appointment.projectId),
+          actionPayload: { projectId: appointment.projectId, appointmentId: appointment.id },
+        },
+        secondaryAction: null,
+        entityType: 'appointment',
+        entityId: appointment.id,
+        category: 'Commercial',
+        createdAt: appointment.end || now.toISOString(),
+        estimatedMinutes: 3,
+      }))
+    }
   }
 
   const fieldLoad: FieldLoadItem[] = input.members
@@ -1028,7 +1075,9 @@ export function buildOperationsCenter(input: BuildOperationsCenterInput): Operat
     if (!existing || item.score > existing.score) recommendationMap.set(item.id, item)
   }
 
-  const uniqueRecommendations = Array.from(recommendationMap.values()).sort((a, b) => b.score - a.score)
+  const uniqueRecommendations = Array.from(recommendationMap.values())
+    .filter((item) => item.type !== 'prepare_quote' || !item.entityId || !projectIdsWithQualifiedQuote.has(item.entityId))
+    .sort((a, b) => b.score - a.score)
   const todayFocus = uniqueRecommendations.slice(0, 10)
   const opportunities = uniqueRecommendations.filter((item) => item.category === 'Commercial' || item.category === 'Devis' || item.category === 'Avis').slice(0, 6)
   const risks = uniqueRecommendations.filter((item) => item.priority === 'critical' || item.priority === 'high' || item.category === 'Planning' || item.category === 'Clients').slice(0, 6)

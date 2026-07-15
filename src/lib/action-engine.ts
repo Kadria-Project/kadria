@@ -71,6 +71,11 @@ export interface ActionEngineProjectInput {
   appointment?: {
     start: string
   } | null
+  appointmentQualification?: {
+    status: 'completed' | 'client_absent' | 'reschedule' | 'cancelled'
+    outcome: 'quote_to_prepare' | 'missing_information' | 'intervention_confirmed' | 'client_decision_pending' | 'project_not_retained' | 'no_action_required' | null
+    nextAction?: string | null
+  } | null
   latestDevis?: {
     sent?: boolean
     accepted?: boolean
@@ -198,6 +203,7 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
   const timelineKnown = hasText(project.desiredTimeline) && !isVague(project.desiredTimeline)
   const hasPhotos = !!(project.photos && project.photos.length > 0)
   const hasAppointment = !!project.appointment
+  const appointmentQualification = project.appointmentQualification || null
   const completeness = Number(project.completenessScore) || 0
 
   const devis = project.latestDevis || null
@@ -291,6 +297,47 @@ export function computeNextAction(project: ActionEngineProjectInput, now: Date =
       priority: 'low',
       urgency: 'none',
     })
+  }
+
+  // Les actions post-rendez-vous restent dérivées du fait de qualification,
+  // jamais persistées comme une seconde liste de tâches.
+  if (appointmentQualification?.status === 'reschedule' || appointmentQualification?.status === 'client_absent') {
+    return buildAction({
+      actionType: 'schedule_appointment',
+      title: 'Replanifier le rendez-vous',
+      subtitle: appointmentQualification.status === 'client_absent' ? 'Client absent' : 'Rendez-vous à replanifier',
+      description: appointmentQualification.nextAction || 'Le rendez-vous doit être replanifié avant de poursuivre le dossier.',
+      priority: 'high',
+      urgency: 'today',
+    })
+  }
+
+  if (appointmentQualification?.status === 'completed') {
+    if (appointmentQualification.outcome === 'no_action_required') {
+      return buildAction({
+        actionType: 'monitor',
+        title: 'Tout est à jour',
+        subtitle: 'Rendez-vous réalisé',
+        description: 'Aucune action supplémentaire n’est nécessaire après ce rendez-vous.',
+        priority: 'low',
+        urgency: 'none',
+      })
+    }
+    if (appointmentQualification.outcome === 'quote_to_prepare' && !devisExists) {
+      return buildAction({ actionType: 'send_quote', title: 'Préparer le devis', subtitle: 'Rendez-vous réalisé', description: appointmentQualification.nextAction || 'Le rendez-vous est réalisé : le devis peut être préparé.', priority: 'high', urgency: 'soon' })
+    }
+    if (appointmentQualification.outcome === 'missing_information') {
+      return buildAction({ actionType: 'complete_qualification', title: 'Demander les informations manquantes', subtitle: 'Rendez-vous réalisé', description: appointmentQualification.nextAction || 'Des informations restent nécessaires avant de poursuivre.', priority: 'high', urgency: 'soon' })
+    }
+    if (appointmentQualification.outcome === 'intervention_confirmed') {
+      return buildAction({ actionType: 'schedule_intervention', title: "Planifier l'intervention", subtitle: 'Rendez-vous réalisé', description: appointmentQualification.nextAction || "L'intervention est confirmée et peut être programmée.", priority: 'high', urgency: 'soon' })
+    }
+    if (appointmentQualification.outcome === 'client_decision_pending') {
+      return buildAction({ actionType: 'monitor', title: 'Prévoir une relance', subtitle: 'Décision client en attente', description: appointmentQualification.nextAction || 'Le client doit encore prendre sa décision.', priority: 'medium', urgency: 'soon' })
+    }
+    if (appointmentQualification.outcome === 'project_not_retained') {
+      return buildAction({ actionType: 'monitor', title: 'Confirmer la suite du dossier', subtitle: 'Projet non retenu', description: 'Le résultat est enregistré. Le passage du dossier en Perdu reste une décision distincte.', priority: 'medium', urgency: 'soon' })
+    }
   }
 
   // 1. Qualification incomplete.

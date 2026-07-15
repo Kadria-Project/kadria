@@ -1,5 +1,6 @@
 import { BriefcaseBusiness, CalendarDays, CarFront, MapPin, UserRound } from 'lucide-react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
+import { QUALIFICATION_STATUS_LABELS } from '@/src/lib/appointment-qualification';
 import { durationMinutes, formatDuration, formatTime } from './calendar-workspace-utils';
 
 function compactAssigneeName(event: NormalizedCalendarEvent) {
@@ -25,6 +26,7 @@ export default function ScheduleEventCard({ event, onOpen }: { event: Normalized
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-slate-900">{event.title}</span>
         <span className="mt-0.5 block truncate text-xs text-slate-500">{event.clientName || event.projectTitle || 'Rendez-vous'}</span>
+        {event.qualification ? <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">{QUALIFICATION_STATUS_LABELS[event.qualification.status as keyof typeof QUALIFICATION_STATUS_LABELS] || 'Qualifié'}</span> : null}
       </span>
       {assigneeLabel ? <span className="hidden items-center gap-1 text-xs text-slate-500 md:flex"><UserRound className="size-3.5 shrink-0" />{assigneeLabel}</span> : null}
       {place ? <span className="hidden max-w-44 items-center gap-1 truncate text-xs text-slate-500 lg:flex"><MapPin className="size-3.5 shrink-0" />{place}</span> : null}

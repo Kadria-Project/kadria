@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalendarEvent, type RawGoogleEvent, type RawKadriaAppointment } from '@/src/lib/calendar/normalized-event';
 import { isEventType } from '@/src/lib/calendar/event-types';
+import type { AppointmentQualificationOutcome, AppointmentQualificationStatus } from '@/src/lib/appointment-qualification';
 import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
+import AppointmentQualificationModal from './AppointmentQualificationModal';
 import CalendarBriefing from './CalendarBriefing';
 import CalendarSummary from './CalendarSummary';
 import DayActivityTimeline from './DayActivityTimeline';
@@ -43,6 +45,10 @@ export default function CalendarWorkspace() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [qualificationAvailable, setQualificationAvailable] = useState(false);
+  const [qualifyingEvent, setQualifyingEvent] = useState<NormalizedCalendarEvent | null>(null);
+  const [qualificationSaving, setQualificationSaving] = useState(false);
+  const [qualificationError, setQualificationError] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<AppointmentProjectOption | null>(null);
   const [locationTouched, setLocationTouched] = useState(false);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
@@ -60,6 +66,7 @@ export default function CalendarWorkspace() {
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Impossible de charger le planning.');
       setAppointments(Array.isArray(json.appointments) ? json.appointments : []);
       setInsights(json.insights || null);
+      setQualificationAvailable(Boolean(json.qualificationAvailable));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Impossible de charger le planning.');
     } finally {
@@ -133,6 +140,11 @@ export default function CalendarWorkspace() {
     }
     const appointment = appointments.find((item) => item.id === event.rawAppointmentId);
     if (!appointment) return;
+    if (qualificationAvailable && event.end && new Date(event.end).getTime() <= Date.now()) {
+      setQualificationError(null);
+      setQualifyingEvent(event);
+      return;
+    }
     setForm({
       title: appointment.title || '',
       start: appointment.start ? formatInputDate(new Date(appointment.start)) : '',
@@ -156,6 +168,27 @@ export default function CalendarWorkspace() {
     setLocationTouched(false);
     setCreateError(null);
     setEditingAppointmentId(appointment.id);
+  };
+  const handleQualification = async (input: { status: AppointmentQualificationStatus; outcome: AppointmentQualificationOutcome | null; note: string; nextAction: string; expectedVersion: number }) => {
+    if (!qualifyingEvent?.rawAppointmentId) return;
+    setQualificationSaving(true);
+    setQualificationError(null);
+    try {
+      const response = await fetch('/api/appointments/' + qualifyingEvent.rawAppointmentId + '/qualify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...input, requestId: crypto.randomUUID() }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json?.success) throw new Error(json?.error || "Impossible d'enregistrer cette qualification.");
+      setQualifyingEvent(null);
+      await fetchAppointments();
+      setSuccessMessage('Qualification enregistrée.');
+    } catch (qualificationError) {
+      setQualificationError(qualificationError instanceof Error ? qualificationError.message : "Impossible d'enregistrer cette qualification.");
+    } finally {
+      setQualificationSaving(false);
+    }
   };
   const updateFormField = (field: Exclude<keyof AppointmentCreateForm, 'projectId'>, value: string) => {
     if (field === 'location') setLocationTouched(true);
@@ -245,7 +278,7 @@ export default function CalendarWorkspace() {
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
         <div className="min-w-0 space-y-4">
-          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} />
+          <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} />
           <DayActivityTimeline events={todayEvents} />
         </div>
         <aside className="space-y-3">
@@ -268,6 +301,7 @@ export default function CalendarWorkspace() {
       )}
       {createOpen && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} error={createError} endIsValid={endIsValid} onClose={() => !creating && setCreateOpen(false)} onSubmit={() => void handleCreate()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
       {editingAppointmentId && <AppointmentCreateModal form={form} selectedProject={selectedProject} creating={creating} deleting={deleting} error={createError} endIsValid={endIsValid} mode="edit" onClose={() => !creating && !deleting && setEditingAppointmentId(null)} onSubmit={() => void handleUpdate()} onDelete={() => void handleDelete()} onFieldChange={updateFormField} onProjectChange={updateProject} />}
+      {qualifyingEvent && <AppointmentQualificationModal event={qualifyingEvent} saving={qualificationSaving} error={qualificationError} onClose={() => !qualificationSaving && setQualifyingEvent(null)} onSave={(input) => void handleQualification(input)} />}
     </div>
   );
 }

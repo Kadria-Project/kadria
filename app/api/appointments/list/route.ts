@@ -6,7 +6,7 @@ import { canManageTeamPlanning, canReadPlanning } from '@/src/lib/appointments/a
 import { listProjectResponsiblesByTenant } from '@/src/lib/project-responsibility'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { listTeamMembers } from '@/src/lib/team/service'
-import { getCurrentTenantContext } from '@/src/lib/tenant-context'
+import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context'
 
 function tableMissing(error: unknown): boolean {
   const message = (error as { message?: string } | null)?.message || ''
@@ -29,6 +29,13 @@ type AppointmentRow = {
   all_day: boolean | null
   description: string | null
   is_unassigned: boolean | null
+  qualification_status: string | null
+  qualification_outcome: string | null
+  qualification_note: string | null
+  qualification_next_action: string | null
+  qualified_at: string | null
+  qualified_by: string | null
+  qualification_version: number | null
 }
 
 type ProjectLookup = {
@@ -96,16 +103,20 @@ export async function GET(request: NextRequest) {
     }
 
     const canManageTeam = canManageTeamPlanning(tenantContext)
+    const qualificationAvailable = await tableHasColumn('project_appointments', 'qualification_status')
     const { searchParams } = request.nextUrl
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     const collaborator = searchParams.get('collaborator')
 
+    const appointmentColumns = [
+      'id, project_id, start_time, end_time, location, status, client_name, google_event_id, title, tenant_id, assigned_user_id, event_type, all_day, description, is_unassigned',
+      qualificationAvailable ? 'qualification_status, qualification_outcome, qualification_note, qualification_next_action, qualified_at, qualified_by, qualification_version' : '',
+    ].filter(Boolean).join(', ')
+
     let query = supabaseAdmin
       .from('project_appointments')
-      .select(
-        'id, project_id, start_time, end_time, location, status, client_name, google_event_id, title, tenant_id, assigned_user_id, event_type, all_day, description, is_unassigned',
-      )
+      .select(appointmentColumns)
       .order('start_time', { ascending: true })
       .limit(500)
 
@@ -141,7 +152,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
     }
 
-    const rows = (data || []) as AppointmentRow[]
+    const rows = (data || []) as unknown as AppointmentRow[]
     const projectIds = Array.from(new Set(rows.map((row) => row.project_id).filter(Boolean)))
     const projectById = new Map<string, ProjectLookup>()
 
@@ -227,6 +238,17 @@ export async function GET(request: NextRequest) {
           assignedUserName: assignedUserId ? userNameById.get(assignedUserId) || null : null,
           isAssignedToCurrentUser: assignedUserId === tenantContext?.userId,
           isUnassigned: Boolean(record.is_unassigned),
+          qualification: qualificationAvailable && record.qualification_status
+            ? {
+                status: String(record.qualification_status),
+                outcome: record.qualification_outcome ? String(record.qualification_outcome) : null,
+                note: record.qualification_note ? String(record.qualification_note) : null,
+                nextAction: record.qualification_next_action ? String(record.qualification_next_action) : null,
+                qualifiedAt: record.qualified_at ? String(record.qualified_at) : null,
+                qualifiedBy: record.qualified_by ? String(record.qualified_by) : null,
+                version: Number(record.qualification_version || 0),
+              }
+            : null,
           responsibleUserId: project?.responsibleUserId || null,
           responsibleUserName:
             project?.responsibleUserId
@@ -379,6 +401,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       appointments,
+      qualificationAvailable,
       insights: {
         generatedAt: now.toISOString(),
         summary: {
