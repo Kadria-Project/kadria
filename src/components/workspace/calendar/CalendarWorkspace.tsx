@@ -221,6 +221,12 @@ export default function CalendarWorkspace() {
     try {
       const response = await fetch('/api/appointments/' + confirmingEvent.rawAppointmentId + '/confirmation/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...input, requestId: crypto.randomUUID() }) });
       const json = await response.json();
+      if (json?.statusSaved && !json?.emailSent) {
+        setConfirmingEvent(null);
+        await fetchAppointments();
+        setError(json.error || 'Le statut a été enregistré, mais l’email n’a pas pu être envoyé.');
+        return;
+      }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Impossible d’envoyer la confirmation.');
       setConfirmingEvent(null);
       await fetchAppointments();
