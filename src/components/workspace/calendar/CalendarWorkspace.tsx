@@ -214,7 +214,7 @@ export default function CalendarWorkspace() {
       setConfirmationError(confirmationError instanceof Error ? confirmationError.message : 'Impossible d’enregistrer cette confirmation.');
     } finally { setConfirmationSaving(false); }
   };
-  const handleConfirmationSend = async (input: { channel: 'sms' | 'email'; message: string; expectedVersion: number }) => {
+  const handleConfirmationSend = async (input: { status: AppointmentConfirmationStatus; message: string; expectedVersion: number }) => {
     if (!confirmingEvent?.rawAppointmentId) return;
     setConfirmationSaving(true);
     setConfirmationError(null);
@@ -224,7 +224,7 @@ export default function CalendarWorkspace() {
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Impossible d’envoyer la confirmation.');
       setConfirmingEvent(null);
       await fetchAppointments();
-      setSuccessMessage('Confirmation envoyée.');
+      setSuccessMessage('Statut enregistré et email envoyé au client.');
     } catch (sendError) {
       setConfirmationError(sendError instanceof Error ? sendError.message : 'Impossible d’envoyer la confirmation.');
     } finally { setConfirmationSaving(false); }
