@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:ux-audit-guard": "node --experimental-strip-types --test src/lib/dev/__tests__/ux-audit-guard.test.ts"
+    "test:ux-audit-guard": "node --experimental-strip-types --test src/lib/dev/__tests__/ux-audit-guard.test.ts",
+    "test:client-resolution": "node --experimental-strip-types --test src/lib/clients/__tests__/client-resolution.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
