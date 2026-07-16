@@ -40,7 +40,7 @@ export async function recordAppointmentLifecycleActivity(input: { projectId: str
 
 function validEmail(value: string | null) { return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) }
 
-export async function sendAppointmentReconfirmationEmail(input: { appointmentId: string; projectId: string | null; artisanId: string; clientEmail: string | null; clientName: string | null; title: string | null; start: string | null }) {
+export async function sendAppointmentReconfirmationEmail(input: { appointmentId: string; projectId: string | null; artisanId: string; clientEmail: string | null; clientName: string | null; title: string | null; start: string | null; reason?: 'rescheduling' | 'modification' }) {
   if (!input.projectId || !validEmail(input.clientEmail)) return { sent: false, errorCode: 'CLIENT_EMAIL_UNAVAILABLE' }
   if (!process.env.RESEND_API_KEY) return { sent: false, errorCode: 'RESEND_NOT_CONFIGURED' }
   try {
@@ -49,8 +49,11 @@ export async function sendAppointmentReconfirmationEmail(input: { appointmentId:
     const config = await getArtisanConfig(input.artisanId)
     const companyName = config?.companyName || 'Kadria'
     const date = input.start ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'full', timeStyle: 'short' }).format(new Date(input.start)) : 'à préciser'
-    const payload = { preheader: 'Nouvelle confirmation requise pour votre rendez-vous', title: 'Nouvelle confirmation requise pour votre rendez-vous', intro: `Bonjour ${input.clientName || ''}, votre rendez-vous${input.title ? ` (${input.title})` : ''} a été modifié. Nouvelle date : ${date}.`, ctaLabel: 'Confirmer ou répondre', ctaUrl: portalUrl, secondaryText: portalUrl, artisanName: companyName }
-    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.RESEND_FROM_EMAIL || 'Kadria <devis@kadria.fr>', to: input.clientEmail!, subject: 'Nouvelle confirmation requise pour votre rendez-vous', html: renderBaseEmail(payload), text: renderBaseEmailText(payload) })
+    const isNewProposal = input.reason === 'rescheduling'
+    const payload = isNewProposal
+      ? { preheader: 'Votre artisan vous propose un nouveau créneau', title: 'Nouvelle proposition de rendez-vous', intro: `Bonjour ${input.clientName || ''}, votre artisan vous propose un nouveau créneau${input.title ? ` pour ${input.title}` : ''}. Nouvelle date : ${date}. Merci de confirmer, demander un autre changement ou refuser depuis votre espace client.`, ctaLabel: 'Confirmer ou répondre', ctaUrl: portalUrl, secondaryText: portalUrl, artisanName: companyName }
+      : { preheader: 'Nouvelle confirmation requise pour votre rendez-vous', title: 'Nouvelle confirmation requise pour votre rendez-vous', intro: `Bonjour ${input.clientName || ''}, votre rendez-vous${input.title ? ` (${input.title})` : ''} a été modifié. Nouvelle date : ${date}.`, ctaLabel: 'Confirmer ou répondre', ctaUrl: portalUrl, secondaryText: portalUrl, artisanName: companyName }
+    const result = await new Resend(process.env.RESEND_API_KEY).emails.send({ from: process.env.RESEND_FROM_EMAIL || 'Kadria <devis@kadria.fr>', to: input.clientEmail!, subject: isNewProposal ? 'Nouvelle proposition de rendez-vous' : 'Nouvelle confirmation requise pour votre rendez-vous', html: renderBaseEmail(payload), text: renderBaseEmailText(payload) })
     if (result.error || !result.data?.id) return { sent: false, errorCode: 'EMAIL_SEND_FAILED' }
     return { sent: true, emailId: result.data.id }
   } catch {

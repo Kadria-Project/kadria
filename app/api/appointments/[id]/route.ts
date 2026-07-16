@@ -180,9 +180,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (!synced) return NextResponse.json({ success: false, error: 'Impossible de mettre a jour Google Agenda.' }, { status: 502 })
     }
 
+    const reschedulingAfterClientRequest = Boolean(
+      existing.confirmation_status === 'change_requested'
+      && changes.substantiveChange,
+    )
     const reconfirmationRequired = Boolean(
       confirmationAvailable
-      && existing.confirmation_status === 'confirmed'
+      && (existing.confirmation_status === 'confirmed' || reschedulingAfterClientRequest)
       && changes.substantiveChange
       && existing.status !== 'cancelled',
     )
@@ -252,7 +256,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: updateError ? 'Erreur serveur' : 'Le rendez-vous a été modifié entre-temps. Rechargez le planning avant de recommencer.', code: updateError ? undefined : 'APPOINTMENT_VERSION_CONFLICT' }, { status: updateError ? 500 : 409 })
     }
 
-    const changeActivity = changes.assigneeChanged && (changes.startChanged || changes.endChanged)
+    const changeActivity = reschedulingAfterClientRequest && (changes.startChanged || changes.endChanged)
+      ? { action: 'APPOINTMENT_RESCHEDULED', description: `Rendez-vous replanifié au ${new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(updated.start_time))}.` }
+      : changes.assigneeChanged && (changes.startChanged || changes.endChanged)
       ? { action: 'APPOINTMENT_UPDATED', description: 'Rendez-vous déplacé et réaffecté.' }
       : changes.assigneeChanged
         ? { action: 'APPOINTMENT_REASSIGNED', description: 'Rendez-vous réaffecté.' }
@@ -296,11 +302,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         clientName: project?.client_name || (existing.client_name ? String(existing.client_name) : null),
         title: updated.title || null,
         start: updated.start_time || null,
+        reason: reschedulingAfterClientRequest ? 'rescheduling' : 'modification',
       })
       : { sent: false as const }
     if (reconfirmationRequired && emailResult.sent) {
       console.info('[APPOINTMENT][RECONFIRMATION_EMAIL_SENT]', { appointmentId: id, projectId: nextProjectId, tenantId: tenantContext.tenantId, requestId, emailId: emailResult.emailId })
-      await recordAppointmentLifecycleActivity({ projectId: nextProjectId, action: 'APPOINTMENT_RECONFIRMATION_EMAIL_SENT', description: 'Email de nouvelle confirmation envoyé au client.' }).catch((error) => {
+      await recordAppointmentLifecycleActivity({ projectId: nextProjectId, action: 'APPOINTMENT_RECONFIRMATION_EMAIL_SENT', description: reschedulingAfterClientRequest ? 'Email de nouvelle proposition envoyé au client.' : 'Email de nouvelle confirmation envoyé au client.' }).catch((error) => {
         console.warn('[APPOINTMENT][ACTIVITY_FAILED]', { appointmentId: id, projectId: nextProjectId, requestId, message: error instanceof Error ? error.message : String(error) })
       })
     } else if (reconfirmationRequired) {
@@ -311,8 +318,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       success: true,
       appointmentUpdated: true,
       reconfirmationRequired,
+      ...(reschedulingAfterClientRequest ? { reconfirmationReason: 'rescheduling' as const } : {}),
       emailSent: emailResult.sent,
-      ...(reconfirmationRequired && !emailResult.sent ? { warningCode: 'RECONFIRMATION_EMAIL_FAILED', warning: 'Le rendez-vous a été modifié, mais l’email n’a pas pu être envoyé.' } : {}),
+      ...(reconfirmationRequired && !emailResult.sent ? { warningCode: 'RECONFIRMATION_EMAIL_FAILED', warning: reschedulingAfterClientRequest ? 'Le nouveau créneau a été enregistré, mais l’email n’a pas pu être envoyé.' : 'Le rendez-vous a été modifié, mais l’email n’a pas pu être envoyé.' } : {}),
       requestId,
     }
 

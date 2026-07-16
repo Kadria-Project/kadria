@@ -11,6 +11,7 @@ export type AppointmentMutationResponse = {
   error?: string
   appointmentUpdated?: boolean
   reconfirmationRequired?: boolean
+  reconfirmationReason?: 'rescheduling'
   emailSent?: boolean
   idempotent?: boolean
   warningCode?: string

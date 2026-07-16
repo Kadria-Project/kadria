@@ -33,6 +33,11 @@ function formatInputDate(date: Date) {
 
 function appointmentMutationFeedback(response: AppointmentMutationResponse, fallback: string) {
   if (!response.reconfirmationRequired || response.idempotent) return fallback;
+  if (response.reconfirmationReason === 'rescheduling') {
+    return response.emailSent
+      ? 'Nouveau créneau enregistré. Une demande de confirmation a été envoyée au client.'
+      : 'Nouveau créneau enregistré. L’email n’a pas pu être envoyé.';
+  }
   if (response.emailSent) return 'Rendez-vous modifié. Une nouvelle demande de confirmation a été envoyée au client.';
   return response.warning || 'Rendez-vous modifié. Une nouvelle confirmation est requise, mais l’email n’a pas pu être envoyé.';
 }

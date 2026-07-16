@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const project = existing.project_id
       ? await resolveProjectForAppointment({ projectId: String(existing.project_id), tenantContext })
       : null
-    const reconfirmationRequired = existing.confirmation_status === 'confirmed'
+    const reconfirmationRequired = existing.confirmation_status === 'confirmed' || existing.confirmation_status === 'change_requested'
     const now = new Date().toISOString()
 
     const { data: updated, error: updateError } = await supabaseAdmin
