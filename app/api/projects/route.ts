@@ -16,6 +16,8 @@ import { attachTenantIdToPayload, getCurrentTenantContext, resolveTenantIdentity
 import { canCreateProject, recordProjectCreatedUsage } from '@/src/lib/usage/quotas';
 import { getClientActivitySummaries } from '@/src/lib/client-events';
 import { createProjectNotification } from '@/src/lib/notifications';
+import { createProjectWithCanonicalClient } from '@/src/lib/clients/project-client-dual-write';
+import { randomUUID } from 'crypto';
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo';
 
@@ -343,21 +345,36 @@ export async function POST(request: Request) {
       },
     )
 
-    const { data: record, error } = await supabaseAdmin
-      .from(TABLES.projects)
-      .insert(safePayload)
-      .select('id')
-      .single();
-
-    if (error) {
-      throw error;
+    if (!tenantIdentity?.tenantId) {
+      throw new Error('Tenant requis pour créer un dossier.');
     }
 
-    const usageResult = await recordProjectCreatedUsage({
+    const requestId = typeof input.requestId === 'string' && input.requestId.trim()
+      ? input.requestId.trim().slice(0, 160)
+      : randomUUID();
+    const creation = await createProjectWithCanonicalClient({
+      tenantId: tenantIdentity.tenantId,
+      artisanId,
+      requestId,
+      source: typeof input.source === 'string' ? input.source : 'web',
+      projectPayload: safePayload,
+      client: {
+        firstName: typeof input.clientFirstName === 'string' ? input.clientFirstName : null,
+        lastName: typeof input.clientName === 'string' ? input.clientName : null,
+        email: typeof input.clientEmail === 'string' ? input.clientEmail : null,
+        phone: typeof input.clientPhone === 'string' ? input.clientPhone : null,
+        city: typeof input.city === 'string' ? input.city : null,
+        postalCode: typeof input.postalCode === 'string' ? input.postalCode : null,
+        acquisitionSource: typeof input.source === 'string' ? input.source : 'web',
+      },
+    });
+    const record = { id: creation.projectId };
+
+    const usageResult = !creation.idempotent ? await recordProjectCreatedUsage({
       artisanId,
       projectId: record.id,
       source: typeof input.source === 'string' ? input.source : 'web',
-    });
+    }) : { success: true };
 
     if (!usageResult.success) {
       console.error('[PROJECT_QUOTA] Project created but usage tracking failed:', usageResult.error || 'unknown error');
@@ -368,7 +385,7 @@ export async function POST(request: Request) {
     const clientLabel = typeof input.clientName === 'string' && input.clientName.trim()
       ? input.clientName.trim()
       : 'Un prospect';
-    await createProjectNotification(
+    if (!creation.idempotent) await createProjectNotification(
       { id: record.id, artisanId },
       'new_project',
       {
@@ -380,7 +397,7 @@ export async function POST(request: Request) {
 
     // Email de confirmation client (best-effort) : ne doit jamais faire
     // echouer la creation du projet, ni etre attendu de facon bloquante.
-    await sendClientProjectConfirmationEmailBestEffort({
+    if (!creation.idempotent) await sendClientProjectConfirmationEmailBestEffort({
       projectId: record.id,
       artisanId,
       clientEmail: String(input.clientEmail || ''),
@@ -398,6 +415,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       recordId: record.id,
+      clientId: creation.clientId,
+      clientResolutionOutcome: creation.clientResolutionOutcome,
+      clientResolutionWarning: creation.clientResolutionWarning,
+      idempotent: creation.idempotent,
     });
   } catch (error) {
     console.error('CREATE_PROJECT_ERROR', error instanceof Error ? error.message : String(error));

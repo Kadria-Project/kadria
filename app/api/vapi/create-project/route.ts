@@ -12,6 +12,7 @@ import { canUseVapi, recordProjectCreatedUsage, recordVapiCallUsage } from '@/sr
 import { sendOvhSms } from '@/src/lib/sms/ovh-sms'
 import { getBaseUrl } from '@/src/lib/base-url'
 import { sendClientProjectConfirmationEmailBestEffort } from '@/src/lib/email/client-project-confirmation'
+import { createProjectWithCanonicalClient } from '@/src/lib/clients/project-client-dual-write'
 
 const FALLBACK_ARTISAN_ID = 'Artisan_demo'
 
@@ -458,16 +459,29 @@ export async function POST(request: NextRequest) {
       artisanId,
     })
 
-    const { data: result, error } = await supabaseAdmin
-      .from(TABLES.projects)
-      .insert(payload)
-      .select('id')
-      .single()
+    if (!tenantIdentity?.tenantId) {
+      throw new Error('Tenant requis pour créer un dossier Vapi.')
+    }
+    const creation = await createProjectWithCanonicalClient({
+      tenantId: tenantIdentity.tenantId,
+      artisanId,
+      requestId: callId || `vapi_${randomBytes(16).toString('hex')}`,
+      source: 'vapi',
+      projectPayload: payload,
+      client: {
+        firstName: clientFirstName || null,
+        lastName: clientName || null,
+        email: clientEmail || null,
+        phone: clientPhone || null,
+        city: city || null,
+        acquisitionSource: 'vapi',
+      },
+    })
+    const result = { id: creation.projectId }
+    const creationOk = true
 
-    const creationOk = !error
-
-    if (error) {
-      console.error('[VAPI] Supabase error:', error.message)
+    if (creation.idempotent) {
+      console.log('[VAPI] Idempotent project creation retry - recordId:', result.id)
     } else {
       console.log('[VAPI] Project created - recordId:', result.id)
       console.log(`[VAPI_TIMING] project_created in ${Date.now() - processingStartTime}ms`)
@@ -636,18 +650,15 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (!creationOk) {
-      return NextResponse.json(
-        { success: false, error: 'Supabase creation failed', details: error?.message || null },
-        { status: 500 },
-      )
-    }
-
     return NextResponse.json({
       success: true,
       projectId: result.id,
       message: 'Dossier projet créé',
       callId,
+      clientId: creation.clientId,
+      clientResolutionOutcome: creation.clientResolutionOutcome,
+      clientResolutionWarning: creation.clientResolutionWarning,
+      idempotent: creation.idempotent,
     })
   } catch (error) {
     console.error('[VAPI] Unexpected error:', error)
