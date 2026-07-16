@@ -7,6 +7,7 @@ import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalend
 import { isEventType } from '@/src/lib/calendar/event-types';
 import type { AppointmentQualificationOutcome, AppointmentQualificationStatus } from '@/src/lib/appointment-qualification';
 import type { AppointmentConfirmationSource, AppointmentConfirmationStatus } from '@/src/lib/appointment-confirmation';
+import { createAppointmentMutationRequestId, type AppointmentMutationResponse } from '@/src/lib/appointments/mutation-contract';
 import AppointmentCreateModal, { type AppointmentCreateForm, type AppointmentProjectOption } from './AppointmentCreateModal';
 import AppointmentQualificationModal from './AppointmentQualificationModal';
 import AppointmentConfirmationModal from './AppointmentConfirmationModal';
@@ -326,13 +327,14 @@ export default function CalendarWorkspace() {
     }
     setCreating(true);
     setCreateError(null);
+    const requestId = createAppointmentMutationRequestId();
     try {
       const response = await fetch('/api/appointments/' + editingAppointmentId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, description: form.description || null, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType }),
+        body: JSON.stringify({ title: form.title.trim(), start: new Date(form.start).toISOString(), end: new Date(form.end).toISOString(), location: form.location || null, description: form.description || null, projectId: form.projectId, assignedUserId: form.assignedUserId || undefined, eventType: form.eventType, requestId }),
       });
-      const json = await response.json();
+      const json = await response.json() as AppointmentMutationResponse;
       if (!response.ok || !json?.success) throw new Error(json?.error || "La modification n'a pas pu etre enregistree.");
       setEditingAppointmentId(null);
       await fetchAppointments();
@@ -360,7 +362,7 @@ export default function CalendarWorkspace() {
       setDeleting(false);
     }
   };
-  const handleMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false, resizedEnd?: Date) => {
+  const handleMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, forceConflict = false, resizedEnd?: Date, requestId = createAppointmentMutationRequestId()) => {
     if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
     if (savingAppointmentIds.has(event.rawAppointmentId) && !forceConflict) return;
     const previousStart = event.start;
@@ -375,11 +377,11 @@ export default function CalendarWorkspace() {
     setSavingAppointmentIds((current) => new Set(current).add(event.rawAppointmentId!));
     setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: nextStartIso, end: nextEnd } : item));
     try {
-      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: !resizedEnd, resize: Boolean(resizedEnd), forceConflict: Boolean(localConflict || forceConflict) }) });
-      const json = await response.json();
+      const response = await fetch('/api/appointments/' + event.rawAppointmentId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: !resizedEnd, resize: Boolean(resizedEnd), forceConflict: Boolean(localConflict || forceConflict), requestId }) });
+      const json = await response.json() as AppointmentMutationResponse & { code?: string; error?: string };
       if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
         setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
-        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, true, resizedEnd);
+        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, true, resizedEnd, requestId);
         return;
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
@@ -403,7 +405,7 @@ export default function CalendarWorkspace() {
     if (!event.start) return;
     void handleMoveEvent(event, new Date(event.start), false, nextEnd);
   };
-  const handleTeamMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string, forceConflict = false) => {
+  const handleTeamMoveEvent = async (event: NormalizedCalendarEvent, nextStart: Date, nextAssignedUserId: string, forceConflict = false, requestId = createAppointmentMutationRequestId()) => {
     if (!event.rawAppointmentId || !event.start || !event.end || event.status === 'cancelled') return;
     if (savingAppointmentIds.has(event.rawAppointmentId) && !forceConflict) return;
     const previousStart = event.start;
@@ -422,12 +424,12 @@ export default function CalendarWorkspace() {
       const response = await fetch('/api/appointments/' + event.rawAppointmentId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(localConflict || forceConflict), ...(nextAssignedUserId !== previousAssignedUserId ? { assignedUserId: nextAssignedUserId } : {}) }),
+        body: JSON.stringify({ start: nextStartIso, end: nextEnd, move: true, forceConflict: Boolean(localConflict || forceConflict), requestId, ...(nextAssignedUserId !== previousAssignedUserId ? { assignedUserId: nextAssignedUserId } : {}) }),
       });
-      const json = await response.json();
+      const json = await response.json() as AppointmentMutationResponse & { code?: string; error?: string };
       if (response.status === 409 && json?.code === 'APPOINTMENT_CONFLICT' && !forceConflict) {
         setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd, assignedUserId: previousAssignedUserId, assignedUserName: event.assignedUserName, isUnassigned: event.isUnassigned } : item));
-        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleTeamMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, nextAssignedUserId, true);
+        if (window.confirm(`${json.error}\n\nConserver quand même ?`)) await handleTeamMoveEvent({ ...event, start: previousStart, end: previousEnd }, nextStart, nextAssignedUserId, true, requestId);
         return;
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');

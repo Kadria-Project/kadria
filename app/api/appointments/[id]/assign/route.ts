@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { waitUntil } from '@vercel/functions'
 import { getSession } from '@/src/lib/auth-utils'
 import { canAssignAppointments, listAssignableAppointmentMembers, logAppointmentActivity } from '@/src/lib/appointments/access'
+import { normalizeAppointmentMutationRequestId, type AppointmentMutationRequest, type AppointmentMutationResponse } from '@/src/lib/appointments/mutation-contract'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { sendAppointmentPush } from '@/src/lib/push'
@@ -25,6 +26,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const { assignedUserId } = body as { assignedUserId?: string | null }
+    const requestId = normalizeAppointmentMutationRequestId((body as AppointmentMutationRequest).requestId)
 
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
@@ -93,8 +95,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }))
     }
 
-    return NextResponse.json({
+    const mutationResponse: AppointmentMutationResponse = {
       success: true,
+      appointmentUpdated: true,
+      reconfirmationRequired: false,
+      emailSent: false,
+      requestId,
+    }
+
+    return NextResponse.json({
+      ...mutationResponse,
       assignedUserId: nextAssignedUserId,
       assignedUserName: nextAssignedUserName,
     })

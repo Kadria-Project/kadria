@@ -34,6 +34,7 @@ import {
   type RawKadriaAppointment,
 } from '@/src/lib/calendar/normalized-event';
 import { EVENT_TYPES_UI, EVENT_TYPE_LABELS, type EventType } from '@/src/lib/calendar/event-types';
+import { createAppointmentMutationRequestId } from '@/src/lib/appointments/mutation-contract';
 
 type CalendarStatus = {
   connected: boolean;
@@ -921,7 +922,7 @@ export default function DesktopAgendaView() {
       const response = await fetch(`/api/appointments/${event.rawAppointmentId}/assign`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedUserId: nextAssignedUserId }),
+        body: JSON.stringify({ assignedUserId: nextAssignedUserId, requestId: createAppointmentMutationRequestId() }),
       });
       const json = await response.json();
       if (!json.success) {
@@ -965,6 +966,7 @@ export default function DesktopAgendaView() {
           start: nextStart.toISOString(),
           end: nextEnd.toISOString(),
           assignedUserId: params.targetUserId,
+          requestId: createAppointmentMutationRequestId(),
         }),
       });
       const json = await response.json();

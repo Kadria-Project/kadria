@@ -10,6 +10,7 @@ import {
   logAppointmentActivity,
   resolveProjectForAppointment,
 } from '@/src/lib/appointments/access'
+import { normalizeAppointmentMutationRequestId, type AppointmentMutationRequest, type AppointmentMutationResponse } from '@/src/lib/appointments/mutation-contract'
 import { isEventType } from '@/src/lib/calendar/event-types'
 import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
@@ -50,6 +51,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: 'Corps de requête invalide' }, { status: 400 })
     }
 
+    const requestId = normalizeAppointmentMutationRequestId((body as AppointmentMutationRequest).requestId)
     const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
     const { data: existingResult, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
@@ -206,8 +208,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }))
     if (wasRescheduled) console.info('[CALENDAR][APPOINTMENT_MOVE_SUCCESS]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: updated.assigned_user_id, previousStart: existing.start_time, nextStart: updated.start_time })
 
-    return NextResponse.json({
+    const mutationResponse: AppointmentMutationResponse = {
       success: true,
+      appointmentUpdated: true,
+      reconfirmationRequired: false,
+      emailSent: false,
+      requestId,
+    }
+
+    return NextResponse.json({
+      ...mutationResponse,
       appointment: {
         id: updated.id,
         title: updated.title,
