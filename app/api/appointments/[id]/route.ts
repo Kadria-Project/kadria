@@ -11,6 +11,7 @@ import {
   resolveProjectForAppointment,
 } from '@/src/lib/appointments/access'
 import { normalizeAppointmentMutationRequestId, type AppointmentMutationRequest, type AppointmentMutationResponse } from '@/src/lib/appointments/mutation-contract'
+import { detectSubstantiveAppointmentChange, recordAppointmentLifecycleActivity, sendAppointmentReconfirmationEmail } from '@/src/lib/appointments/reconfirmation'
 import { isEventType } from '@/src/lib/calendar/event-types'
 import { getCalendarIntegration, getValidAccessToken } from '@/src/lib/google-calendar'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
@@ -55,7 +56,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
     const { data: existingResult, error: fetchError } = await supabaseAdmin
       .from('project_appointments')
-      .select(['id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, location, description, status, event_type, provider, google_event_id', confirmationAvailable ? 'confirmation_status, confirmation_version' : ''].filter(Boolean).join(', '))
+      .select(['id, tenant_id, artisan_id, project_id, assigned_user_id, title, client_name, start_time, end_time, location, description, status, event_type, provider, google_event_id, updated_at', confirmationAvailable ? 'confirmation_status, confirmation_version, confirmation_request_id' : ''].filter(Boolean).join(', '))
       .eq('id', id)
       .maybeSingle()
     const existing = existingResult as unknown as Record<string, unknown> | null
@@ -98,14 +99,14 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         ? String(body.projectId)
         : null
 
-    if (nextProjectId) {
-      const project = await resolveProjectForAppointment({
+    const project = nextProjectId
+      ? await resolveProjectForAppointment({
         projectId: nextProjectId,
         tenantContext,
       })
-      if (!project) {
-        return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
-      }
+      : null
+    if (nextProjectId && !project) {
+      return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
     }
 
     if (nextAssignedUserId) {
@@ -119,8 +120,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       }
     }
 
-    const nextStart = body.start ? String(body.start) : String(existing.start_time)
-    const nextEnd = body.end ? String(body.end) : String(existing.end_time)
+    const nextStart = body.start !== undefined ? String(body.start || '') : String(existing.start_time || '')
+    const nextEnd = body.end !== undefined ? String(body.end || '') : String(existing.end_time || '')
     const startDate = new Date(nextStart)
     const endDate = new Date(nextEnd)
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
@@ -135,14 +136,36 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         { status: 400 },
       )
     }
-    const conflict = await findAppointmentConflict({
-      tenantId: tenantContext.tenantId,
-      assignedUserId: nextAssignedUserId,
-      start: nextStart,
-      end: nextEnd,
-      excludeAppointmentId: id,
-    })
-    if (isTemporalAdjustment && conflict && body.forceConflict !== true) {
+    const changes = detectSubstantiveAppointmentChange(
+      { start: existing.start_time ? String(existing.start_time) : null, end: existing.end_time ? String(existing.end_time) : null, assignedUserId: existing.assigned_user_id ? String(existing.assigned_user_id) : null },
+      { start: nextStart, end: nextEnd, assignedUserId: nextAssignedUserId },
+    )
+    if (changes.substantiveChange && existing.status === 'cancelled') {
+      return NextResponse.json({ success: false, error: 'Un rendez-vous annulé ne peut pas être modifié.' }, { status: 409 })
+    }
+
+    const isReconfirmationRetry = Boolean(
+      confirmationAvailable
+      && requestId
+      && existing.confirmation_request_id === requestId
+      && existing.confirmation_status === 'pending'
+      && !changes.substantiveChange,
+    )
+    if (isReconfirmationRetry) {
+      console.info('[APPOINTMENT][RECONFIRMATION_IDEMPOTENT]', { appointmentId: id, tenantId: tenantContext.tenantId, requestId })
+      return NextResponse.json({ success: true, appointmentUpdated: true, reconfirmationRequired: true, emailSent: false, idempotent: true, requestId } satisfies AppointmentMutationResponse)
+    }
+
+    const conflict = changes.substantiveChange
+      ? await findAppointmentConflict({
+        tenantId: tenantContext.tenantId,
+        assignedUserId: nextAssignedUserId,
+        start: nextStart,
+        end: nextEnd,
+        excludeAppointmentId: id,
+      })
+      : null
+    if (changes.substantiveChange && conflict && body.forceConflict !== true) {
       console.info('[CALENDAR][APPOINTMENT_MOVE_CONFLICT]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: nextAssignedUserId, previousStart: existing.start_time, nextStart })
       return NextResponse.json({ success: false, error: 'Ce collaborateur possède déjà un rendez-vous sur cette plage horaire.', code: 'APPOINTMENT_CONFLICT', conflict }, { status: 409 })
     }
@@ -157,7 +180,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (!synced) return NextResponse.json({ success: false, error: 'Impossible de mettre a jour Google Agenda.' }, { status: 502 })
     }
 
-    const wasRescheduled = nextStart !== String(existing.start_time) || nextEnd !== String(existing.end_time)
+    const reconfirmationRequired = Boolean(
+      confirmationAvailable
+      && existing.confirmation_status === 'confirmed'
+      && changes.substantiveChange
+      && existing.status !== 'cancelled',
+    )
+    const now = new Date().toISOString()
     const updatePayload = {
       ...(body.title !== undefined ? { title: String(body.title || '') } : {}),
       ...(body.start !== undefined ? { start_time: nextStart } : {}),
@@ -168,8 +197,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.eventType !== undefined ? { event_type: body.eventType } : {}),
       ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
       ...(shouldUpdateAssignee ? { assigned_user_id: nextAssignedUserId, is_unassigned: false } : {}),
-      ...(confirmationAvailable && wasRescheduled ? { confirmation_status: 'pending', confirmation_source: 'system', confirmation_note: null, confirmation_updated_at: new Date().toISOString(), confirmation_updated_by: tenantContext.userId, confirmation_version: Number((existing as Record<string, unknown>).confirmation_version || 0) + 1 } : {}),
-      updated_at: new Date().toISOString(),
+      ...(reconfirmationRequired ? {
+        confirmation_status: 'pending',
+        confirmation_source: 'artisan',
+        confirmation_note: null,
+        confirmation_updated_at: now,
+        confirmation_updated_by: tenantContext.userId,
+        confirmation_version: Number(existing.confirmation_version || 0) + 1,
+        confirmation_request_id: requestId,
+      } : {}),
+      updated_at: now,
     }
 
     const { data: updated, error: updateError } = await supabaseAdmin
@@ -177,20 +214,62 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .update(updatePayload)
       .eq('id', id)
       .eq('tenant_id', tenantContext.tenantId)
+      .eq('updated_at', String(existing.updated_at || ''))
       .select('id, title, client_name, project_id, start_time, end_time, location, description, status, event_type, assigned_user_id, is_unassigned, updated_at')
-      .single()
+      .maybeSingle()
 
-    if (updateError) {
-      console.error('[CALENDAR][APPOINTMENT_MOVE_ERROR]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: nextAssignedUserId, previousStart: existing.start_time, nextStart, message: updateError.message })
-      console.error('[APPOINTMENTS PATCH] Erreur mise à jour:', updateError.message)
-      return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 })
+    if (updateError || !updated) {
+      if (!updateError) {
+        const { data: currentResult } = await supabaseAdmin
+          .from('project_appointments')
+          .select(confirmationAvailable ? 'start_time, end_time, assigned_user_id, confirmation_status, confirmation_request_id' : 'start_time, end_time, assigned_user_id')
+          .eq('id', id)
+          .eq('tenant_id', tenantContext.tenantId)
+          .maybeSingle()
+        const current = currentResult as Record<string, unknown> | null
+        const retryApplied = Boolean(
+          confirmationAvailable
+          && requestId
+          && current?.confirmation_request_id === requestId
+          && current.confirmation_status === 'pending'
+          && !detectSubstantiveAppointmentChange(
+            {
+              start: typeof current?.start_time === 'string' ? current.start_time : null,
+              end: typeof current?.end_time === 'string' ? current.end_time : null,
+              assignedUserId: typeof current?.assigned_user_id === 'string' ? current.assigned_user_id : null,
+            },
+            { start: nextStart, end: nextEnd, assignedUserId: nextAssignedUserId },
+          ).substantiveChange,
+        )
+        if (retryApplied) {
+          console.info('[APPOINTMENT][RECONFIRMATION_IDEMPOTENT]', { appointmentId: id, tenantId: tenantContext.tenantId, requestId })
+          return NextResponse.json({ success: true, appointmentUpdated: true, reconfirmationRequired: true, emailSent: false, idempotent: true, requestId } satisfies AppointmentMutationResponse)
+        }
+      }
+      const safeUpdateError = updateError || { message: 'La version du rendez-vous a changé.' }
+      console.error('[CALENDAR][APPOINTMENT_MOVE_ERROR]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: nextAssignedUserId, previousStart: existing.start_time, nextStart, message: safeUpdateError.message })
+      console.error('[APPOINTMENTS PATCH] Erreur mise à jour:', safeUpdateError.message)
+      return NextResponse.json({ success: false, error: updateError ? 'Erreur serveur' : 'Le rendez-vous a été modifié entre-temps. Rechargez le planning avant de recommencer.', code: updateError ? undefined : 'APPOINTMENT_VERSION_CONFLICT' }, { status: updateError ? 500 : 409 })
     }
 
-    await logAppointmentActivity({
-      projectId: nextProjectId,
-      action: 'APPOINTMENT_UPDATED',
-      description: 'Rendez-vous mis à jour',
+    const changeActivity = changes.assigneeChanged && (changes.startChanged || changes.endChanged)
+      ? { action: 'APPOINTMENT_UPDATED', description: 'Rendez-vous déplacé et réaffecté.' }
+      : changes.assigneeChanged
+        ? { action: 'APPOINTMENT_REASSIGNED', description: 'Rendez-vous réaffecté.' }
+        : changes.startChanged
+          ? { action: 'APPOINTMENT_UPDATED', description: 'Rendez-vous déplacé.' }
+          : changes.endChanged
+            ? { action: 'APPOINTMENT_UPDATED', description: 'Durée du rendez-vous modifiée.' }
+            : { action: 'APPOINTMENT_UPDATED', description: 'Rendez-vous mis à jour.' }
+    await recordAppointmentLifecycleActivity({ projectId: nextProjectId, ...changeActivity }).catch((error) => {
+      console.warn('[APPOINTMENT][ACTIVITY_FAILED]', { appointmentId: id, projectId: nextProjectId, requestId, message: error instanceof Error ? error.message : String(error) })
     })
+    if (reconfirmationRequired) {
+      console.info('[APPOINTMENT][RECONFIRMATION_REQUIRED]', { appointmentId: id, projectId: nextProjectId, tenantId: tenantContext.tenantId, requestId, changes })
+      await recordAppointmentLifecycleActivity({ projectId: nextProjectId, action: 'APPOINTMENT_RECONFIRMATION_REQUIRED', description: 'Nouvelle confirmation client requise après modification du rendez-vous.' }).catch((error) => {
+        console.warn('[APPOINTMENT][ACTIVITY_FAILED]', { appointmentId: id, projectId: nextProjectId, requestId, message: error instanceof Error ? error.message : String(error) })
+      })
+    }
 
     waitUntil(sendAppointmentPush({
       id: updated.id,
@@ -206,13 +285,34 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }, wasReassigned ? 'appointment_assigned' : 'appointment_updated', tenantContext.userId).catch((error) => {
       console.warn('[PUSH][APPOINTMENT_UPDATED]', { appointmentId: updated.id, message: error instanceof Error ? error.message : String(error) })
     }))
-    if (wasRescheduled) console.info('[CALENDAR][APPOINTMENT_MOVE_SUCCESS]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: updated.assigned_user_id, previousStart: existing.start_time, nextStart: updated.start_time })
+    if (changes.startChanged || changes.endChanged) console.info('[CALENDAR][APPOINTMENT_MOVE_SUCCESS]', { appointmentId: id, tenantId: tenantContext.tenantId, assignedUserId: updated.assigned_user_id, previousStart: existing.start_time, nextStart: updated.start_time })
+
+    const emailResult: { sent: boolean; emailId?: string; errorCode?: string } = reconfirmationRequired
+      ? await sendAppointmentReconfirmationEmail({
+        appointmentId: id,
+        projectId: nextProjectId,
+        artisanId: project?.artisanId || String(existing.artisan_id || session.artisanId || ''),
+        clientEmail: project?.clientEmail || null,
+        clientName: project?.client_name || (existing.client_name ? String(existing.client_name) : null),
+        title: updated.title || null,
+        start: updated.start_time || null,
+      })
+      : { sent: false as const }
+    if (reconfirmationRequired && emailResult.sent) {
+      console.info('[APPOINTMENT][RECONFIRMATION_EMAIL_SENT]', { appointmentId: id, projectId: nextProjectId, tenantId: tenantContext.tenantId, requestId, emailId: emailResult.emailId })
+      await recordAppointmentLifecycleActivity({ projectId: nextProjectId, action: 'APPOINTMENT_RECONFIRMATION_EMAIL_SENT', description: 'Email de nouvelle confirmation envoyé au client.' }).catch((error) => {
+        console.warn('[APPOINTMENT][ACTIVITY_FAILED]', { appointmentId: id, projectId: nextProjectId, requestId, message: error instanceof Error ? error.message : String(error) })
+      })
+    } else if (reconfirmationRequired) {
+      console.warn('[APPOINTMENT][RECONFIRMATION_EMAIL_FAILED]', { appointmentId: id, projectId: nextProjectId, tenantId: tenantContext.tenantId, requestId, errorCode: emailResult.errorCode || null })
+    }
 
     const mutationResponse: AppointmentMutationResponse = {
       success: true,
       appointmentUpdated: true,
-      reconfirmationRequired: false,
-      emailSent: false,
+      reconfirmationRequired,
+      emailSent: emailResult.sent,
+      ...(reconfirmationRequired && !emailResult.sent ? { warningCode: 'RECONFIRMATION_EMAIL_FAILED', warning: 'Le rendez-vous a été modifié, mais l’email n’a pas pu être envoyé.' } : {}),
       requestId,
     }
 

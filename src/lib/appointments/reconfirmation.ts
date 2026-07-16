@@ -6,12 +6,22 @@ import { getClientPortalUrl } from '@/src/lib/client-portal'
 import { renderBaseEmail, renderBaseEmailText } from '@/src/lib/email/templates/base-email'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
-type AppointmentSnapshot = { start: string | null; end: string | null; assignedUserId: string | null }
+export type AppointmentSnapshot = { start: string | null; end: string | null; assignedUserId: string | null }
+
+function normalizeInstant(value: string | null) {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value.trim() || null : date.toISOString()
+}
+
+function normalizeAssignee(value: string | null) {
+  return value?.trim() || null
+}
 
 export function detectSubstantiveAppointmentChange(before: AppointmentSnapshot, after: AppointmentSnapshot) {
-  const startChanged = before.start !== after.start
-  const endChanged = before.end !== after.end
-  const assigneeChanged = before.assignedUserId !== after.assignedUserId
+  const startChanged = normalizeInstant(before.start) !== normalizeInstant(after.start)
+  const endChanged = normalizeInstant(before.end) !== normalizeInstant(after.end)
+  const assigneeChanged = normalizeAssignee(before.assignedUserId) !== normalizeAssignee(after.assignedUserId)
   return { startChanged, endChanged, assigneeChanged, substantiveChange: startChanged || endChanged || assigneeChanged }
 }
 

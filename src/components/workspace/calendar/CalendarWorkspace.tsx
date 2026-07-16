@@ -35,6 +35,12 @@ function formatInputDate(date: Date) {
   return local.toISOString().slice(0, 16);
 }
 
+function appointmentMutationFeedback(response: AppointmentMutationResponse, fallback: string) {
+  if (!response.reconfirmationRequired || response.idempotent) return fallback;
+  if (response.emailSent) return 'Rendez-vous modifié. Une nouvelle demande de confirmation a été envoyée au client.';
+  return response.warning || 'Rendez-vous modifié. Une nouvelle confirmation est requise, mais l’email n’a pas pu être envoyé.';
+}
+
 export default function CalendarWorkspace() {
   const router = useRouter();
   const [mode, setMode] = useState<CalendarMode>('kadria');
@@ -338,7 +344,7 @@ export default function CalendarWorkspace() {
       if (!response.ok || !json?.success) throw new Error(json?.error || "La modification n'a pas pu etre enregistree.");
       setEditingAppointmentId(null);
       await fetchAppointments();
-      setSuccessMessage('Rendez-vous modifi\u00e9.');
+      setSuccessMessage(appointmentMutationFeedback(json, 'Rendez-vous modifié.'));
     } catch (updateError) {
       setCreateError(updateError instanceof Error ? updateError.message : "La modification n'a pas pu etre enregistree.");
     } finally {
@@ -385,9 +391,9 @@ export default function CalendarWorkspace() {
         return;
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
-      setSuccessMessage(resizedEnd
+      setSuccessMessage(appointmentMutationFeedback(json, resizedEnd
         ? `Durée du rendez-vous modifiée jusqu’à ${resizedEnd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`
-        : `Rendez-vous déplacé à ${nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`);
+        : `Rendez-vous déplacé à ${nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`));
     } catch {
       setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd } : item));
       setError(resizedEnd
@@ -434,7 +440,7 @@ export default function CalendarWorkspace() {
       }
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Le rendez-vous n’a pas pu être déplacé.');
       const time = nextStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      setSuccessMessage(nextAssignedUserId !== previousAssignedUserId ? `Rendez-vous réaffecté à ${assigneeName || 'ce collaborateur'} et déplacé à ${time}.` : `Rendez-vous déplacé à ${time}.`);
+      setSuccessMessage(appointmentMutationFeedback(json, nextAssignedUserId !== previousAssignedUserId ? `Rendez-vous réaffecté à ${assigneeName || 'ce collaborateur'} et déplacé à ${time}.` : `Rendez-vous déplacé à ${time}.`));
     } catch {
       setAppointments((current) => current.map((item) => item.id === event.rawAppointmentId ? { ...item, start: previousStart, end: previousEnd, assignedUserId: previousAssignedUserId, assignedUserName: event.assignedUserName, isUnassigned: event.isUnassigned } : item));
       setError('Le rendez-vous n’a pas pu être déplacé. Son horaire précédent a été restauré.');
