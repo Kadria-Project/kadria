@@ -22,7 +22,7 @@ export function Gallery({ config }: { config: SiteVitrineConfig }) {
               className="grid overflow-hidden rounded-md sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
               style={{ background: 'var(--sv-paper)', border: '1px solid var(--sv-line)' }}
             >
-              <SchematicVisual variant={first.visual} label={first.category} className="min-h-44" />
+              <SchematicVisual variant={first.visual} className="min-h-44" />
               <div className="p-6 sm:p-8">
                 <CardMeta category={first.category} location={first.location} />
                 <h3 className="mt-2 text-xl font-bold tracking-tight" style={{ color: 'var(--sv-ink)', fontFamily: 'var(--font-sv-display)' }}>
@@ -46,7 +46,7 @@ export function Gallery({ config }: { config: SiteVitrineConfig }) {
                 className="flex h-full flex-col overflow-hidden rounded-md"
                 style={{ background: 'var(--sv-paper)', border: '1px solid var(--sv-line)' }}
               >
-                <SchematicVisual variant={item.visual} label={item.category} className="h-36" />
+                <SchematicVisual variant={item.visual} className="h-36" />
                 <div className="flex flex-1 flex-col p-5">
                   <CardMeta category={item.category} location={item.location} />
                   <h3 className="mt-2 text-base font-bold" style={{ color: 'var(--sv-ink)' }}>

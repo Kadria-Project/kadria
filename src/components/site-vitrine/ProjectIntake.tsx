@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import type { SiteVitrineConfig } from '@/src/lib/site-vitrine/types'
 import { buildIntakeUrl } from '@/src/lib/site-vitrine/theme'
 import { Reveal } from './motion'
@@ -19,7 +20,24 @@ import { Reveal } from './motion'
  */
 export function ProjectIntake({ config }: { config: SiteVitrineConfig }) {
   const intake = config.projectIntake
-  const [need, setNeed] = useState(intake.needs[0]?.id ?? '')
+
+  // Les CTA de la section Prestations arrivent ici avec `?besoin=<id>` :
+  // on présélectionne alors le besoin correspondant. Toute valeur inconnue
+  // est ignorée, et le visiteur peut toujours corriger son choix à la main.
+  const searchParams = useSearchParams()
+  const rawRequested = searchParams.get('besoin')
+  const requestedNeed =
+    rawRequested && intake.needs.some((n) => n.id === rawRequested) ? rawRequested : null
+
+  // État dérivé pendant le rendu (pas d'effet) : le choix manuel est mémorisé
+  // avec le `?besoin=` qui l'a vu naître — un nouveau `?besoin=` re-présélectionne.
+  const [manualChoice, setManualChoice] = useState<{ need: string; forRequest: string | null } | null>(null)
+  const need =
+    manualChoice && manualChoice.forRequest === requestedNeed
+      ? manualChoice.need
+      : requestedNeed ?? intake.needs[0]?.id ?? ''
+  const setNeed = (id: string) => setManualChoice({ need: id, forRequest: requestedNeed })
+
   const intakeUrl = buildIntakeUrl(intake.formPath, intake.tracking, need ? { need } : undefined)
 
   return (

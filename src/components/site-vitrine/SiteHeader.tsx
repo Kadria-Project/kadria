@@ -54,7 +54,7 @@ export function SiteHeader({
       }}
     >
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:h-[72px] lg:px-8">
-        <a href="#haut" className="flex min-w-0 items-baseline gap-2" aria-label={`${wordmark[0]} ${wordmark[1]} — retour en haut de page`}>
+        <a href="#haut" className="flex min-w-0 items-baseline gap-2" aria-label={`${wordmark[0]} ${wordmark[1]}, ${tagline} — retour en haut de page`}>
           <span
             className="text-xl font-extrabold leading-none tracking-tight"
             style={{ color: 'var(--sv-night)', fontFamily: 'var(--font-sv-display)' }}
@@ -65,9 +65,8 @@ export function SiteHeader({
             </span>
             {wordmark[1]}
           </span>
-          <span className="hidden truncate text-xs lg:inline" style={{ color: 'var(--sv-muted)' }}>
-            {tagline}
-          </span>
+          {/* La tagline reste dans l'aria-label ; à l'écran, l'eyebrow du hero
+              porte déjà « métier + ville » — l'afficher ici finissait tronquée. */}
         </a>
 
         <nav aria-label="Navigation principale" className="hidden items-center gap-6 lg:flex">

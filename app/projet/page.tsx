@@ -3,11 +3,25 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
+import { getSiteVitrineDemoContext } from '@/src/lib/site-vitrine/demo-context'
 
 function ProjetContent() {
   const searchParams = useSearchParams()
   const artisanId = searchParams.get('artisan_id') ?? searchParams.get('artisanId') ?? ''
   const demoMode = searchParams.get('demoMode') === 'true'
+
+  // Précontextualisation « site vitrine » — mode démo uniquement.
+  // Les paramètres source/site/need posés par les sites vitrines de
+  // démonstration personnalisent l'accueil de l'assistant (nom du site
+  // d'origine, besoin annoncé, couleur de marque). Tout paramètre inconnu
+  // est ignoré ; hors demoMode, rien ne change.
+  const vitrineContext = demoMode
+    ? getSiteVitrineDemoContext({
+        source: searchParams.get('source'),
+        site: searchParams.get('site'),
+        need: searchParams.get('need'),
+      })
+    : null
 
   return (
     <main
@@ -35,6 +49,14 @@ function ProjetContent() {
             inline
             fitParentHeight
             demoMode={demoMode}
+            {...(vitrineContext
+              ? {
+                  artisanName: vitrineContext.siteName,
+                  welcomeNameOverride: vitrineContext.siteName,
+                  welcomeMessageOverride: vitrineContext.welcomeMessage,
+                  primaryColor: vitrineContext.brandColor,
+                }
+              : {})}
           />
         </div>
       </div>

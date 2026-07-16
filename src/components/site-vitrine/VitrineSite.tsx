@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import type { SiteVitrineConfig } from '@/src/lib/site-vitrine/types'
 import { themeToCssVars, buildIntakeUrl } from '@/src/lib/site-vitrine/theme'
 import { SiteHeader } from './SiteHeader'
@@ -22,7 +23,8 @@ import { SiteFooter } from './SiteFooter'
  */
 export function VitrineSite({ config }: { config: SiteVitrineConfig }) {
   const s = config.sections
-  const headerCta = buildIntakeUrl(config.projectIntake.formPath, config.projectIntake.tracking, { need: 'header' })
+  // Pas de `need` : depuis le header, le visiteur n'a encore rien choisi.
+  const headerCta = buildIntakeUrl(config.projectIntake.formPath, config.projectIntake.tracking)
 
   return (
     <div
@@ -57,7 +59,12 @@ export function VitrineSite({ config }: { config: SiteVitrineConfig }) {
         {s.caseStudy ? <CaseStudy config={config} /> : null}
         {s.gallery ? <Gallery config={config} /> : null}
         {s.method ? <Method config={config} /> : null}
-        {s.projectIntake ? <ProjectIntake config={config} /> : null}
+        {/* Suspense : ProjectIntake lit `?besoin=` via useSearchParams. */}
+        {s.projectIntake ? (
+          <Suspense fallback={null}>
+            <ProjectIntake config={config} />
+          </Suspense>
+        ) : null}
         {s.zone ? <Zone config={config} /> : null}
         {s.reviews ? <Reviews config={config} /> : null}
         {s.faq ? <Faq config={config} /> : null}

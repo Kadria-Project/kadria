@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { SiteVitrineConfig } from '@/src/lib/site-vitrine/types'
 import { Section } from './SectionShell'
 import { Reveal } from './motion'
@@ -52,8 +53,10 @@ export function Prestations({ config }: { config: SiteVitrineConfig }) {
                 </ul>
               </div>
               <div className="lg:text-right">
-                <a
-                  href="#projet"
+                {/* Le besoin de la prestation est reporté dans l'URL (`?besoin=`) :
+                    la section « Votre demande » le présélectionne à l'arrivée. */}
+                <Link
+                  href={`?besoin=${encodeURIComponent(p.id)}#projet`}
                   className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline-offset-4 hover:underline"
                   style={{ color: 'var(--sv-brand)' }}
                 >
@@ -61,7 +64,7 @@ export function Prestations({ config }: { config: SiteVitrineConfig }) {
                   <span aria-hidden="true" style={{ color: 'var(--sv-accent)' }}>
                     →
                   </span>
-                </a>
+                </Link>
               </div>
             </article>
           </Reveal>

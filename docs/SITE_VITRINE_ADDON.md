@@ -44,12 +44,22 @@ Après audit, l'option la plus sûre : **redirection vers le parcours conversati
 - URL générée : `/projet?demoMode=true&source=site_vitrine_demo&trade=electricien&site=ad_electricite&need=<choix>`.
 - `demoMode=true` est géré nativement par `ChatWidgetInline` : photos gardées en local (`URL.createObjectURL`), envoi du dossier **simulé** côté client — aucun dossier réel n'est créé pour l'artisan fictif, aucun contournement d'auth/multi-tenant.
 - Le widget affiche lui-même le déroulé complet de la collecte : type de besoin, description, questions techniques métier, photos, délais, commune, coordonnées.
+- Sur la page vitrine, les CTA de prestations (`?besoin=<id>#projet`) présélectionnent le besoin correspondant dans la section « Votre demande » (lecture via `useSearchParams`, valeur inconnue ignorée, choix corrigeable à la main).
+
+### Lecture des paramètres par le parcours de démonstration (implémenté)
+
+`app/projet/page.tsx` lit `source`, `site` et `need` **uniquement quand `demoMode=true`**, via `src/lib/site-vitrine/demo-context.ts` (`getSiteVitrineDemoContext`) :
+
+- `source` doit valoir `site_vitrine_demo` et `site` doit correspondre à un slug du registre local (`ad_electricite`) — sinon le parcours reste strictement inchangé ;
+- si le contexte est reconnu, l'assistant est précontextualisé sans toucher `ChatWidgetInline` (props existantes) : message d'accueil citant le site d'origine et le besoin annoncé (`need` traduit en libellé, valeur inconnue ignorée), nom d'artisan `AD Électricité` dans les messages, couleur primaire du widget alignée sur le bleu de marque du site ;
+- le visiteur reste libre de choisir un autre besoin ; aucun dossier réel n'est créé (branche `demoMode` de `saveDossier`), rien n'est persisté, aucun tenant n'est résolu ;
+- `trade` est posé dans l'URL mais pas encore consommé : il servira au raccordement production (résolution de l'artisan), qui reste un chantier futur.
 
 ### Raccordement production (futur)
 
 1. Créer le compte Kadria de l'artisan réel ; le site pointe alors vers `/projet?artisan_id=<id>` (sans `demoMode`), ce qui crée de vrais dossiers via `POST /api/projects`.
-2. Faire lire par le widget les paramètres `source`, `trade`, `site`, `need` et les propager dans le payload (`source: 'site_vitrine'` au lieu de `'chat-widget'`) — le contrat d'URL est déjà en place côté site.
-3. Optionnel : pré-amorcer l'intent du chat depuis `need`.
+2. Propager `source`, `trade`, `site`, `need` dans le payload `POST /api/projects` (`source: 'site_vitrine'` au lieu de `'chat-widget'`) — le contrat d'URL et la lecture côté démo (`demo-context.ts`) sont déjà en place.
+3. Optionnel : pré-amorcer l'intent du chat depuis `need` (aujourd'hui `need` précontextualise le message d'accueil, sans démarrer la conversation à la place du visiteur).
 
 ## Données fictives
 
@@ -70,8 +80,8 @@ Entreprise, coordonnées (`03 XX XX XX XX`, adresse et e-mail `.exemple`), réal
 ## Limites connues
 
 - Une seule page, un seul métier ; pas d'édition sans redéploiement.
-- Le parcours `/projet` garde son habillage sombre Kadria (pas encore thémé aux couleurs du site vitrine).
-- Les paramètres de tracking sont posés dans l'URL mais pas encore consommés par le widget (contrat prêt, lecture à implémenter côté widget).
+- Le parcours `/projet` garde son habillage sombre Kadria ; seule la couleur primaire du widget est alignée sur la marque du site vitrine en mode démo.
+- `trade` est posé dans l'URL mais pas encore consommé (réservé au raccordement production) ; `source`, `site` et `need` sont lus par le parcours de démonstration (voir plus haut).
 - Photos réelles absentes : placeholders schématiques élégants en attendant (voir ci-dessous).
 
 ## Médias à fournir pour transformer la démo en vrai site client
