@@ -34,6 +34,10 @@ export interface NormalizedCalendarEvent {
   latitude: number | null
   longitude: number | null
   projectTitle: string | null
+  projectSummary: string | null
+  budget: string | null
+  desiredTimeline: string | null
+  photoCount: number
   responsibleUserId: string | null
   responsibleUserName: string | null
   actionUrl: string | null
@@ -92,6 +96,10 @@ export function normalizeGoogleEvent(event: RawGoogleEvent): NormalizedCalendarE
   latitude: null,
   longitude: null,
   projectTitle: null,
+  projectSummary: null,
+  budget: null,
+  desiredTimeline: null,
+  photoCount: 0,
   responsibleUserId: null,
   responsibleUserName: null,
   actionUrl: null,
@@ -121,6 +129,10 @@ export interface RawKadriaAppointment {
   latitude?: number | null
   longitude?: number | null
   projectType: string | null
+  projectSummary?: string | null
+  budget?: string | null
+  desiredTimeline?: string | null
+  photoCount?: number | null
   city: string | null
   title: string | null
   start: string | null
@@ -146,7 +158,7 @@ export interface RawKadriaAppointment {
     qualifiedBy: string | null
     version: number
   } | null
-  confirmation?: { status: string; source: string | null; note: string | null; updatedAt: string | null; version: number } | null
+  confirmation?: { status: string | null; source: string | null; note: string | null; updatedAt: string | null; version: number } | null
 }
 
 function guessAppointmentType(a: RawKadriaAppointment): NormalizedEventType {
@@ -192,6 +204,10 @@ export function normalizeKadriaAppointment(a: RawKadriaAppointment): NormalizedC
     latitude: typeof a.latitude === 'number' ? a.latitude : null,
     longitude: typeof a.longitude === 'number' ? a.longitude : null,
     projectTitle: a.projectType,
+    projectSummary: a.projectSummary || null,
+    budget: a.budget || null,
+    desiredTimeline: a.desiredTimeline || null,
+    photoCount: Number.isFinite(a.photoCount) ? Number(a.photoCount) : 0,
     responsibleUserId: a.responsibleUserId || null,
     responsibleUserName: a.responsibleUserName || null,
     actionUrl: hasProject ? `/dashboard-v2/projet/${a.projectId}` : null,
@@ -247,6 +263,10 @@ export function normalizeKadriaPlanningItem(item: RawKadriaPlanningItemLike): No
     latitude: null,
     longitude: null,
     projectTitle: item.subtitle,
+    projectSummary: null,
+    budget: null,
+    desiredTimeline: null,
+    photoCount: 0,
     responsibleUserId: null,
     responsibleUserName: null,
     actionUrl: hasProject ? `/dashboard-v2/projet/${item.projectId}` : null,

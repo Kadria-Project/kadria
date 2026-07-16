@@ -539,7 +539,7 @@ export default function CalendarWorkspace() {
         </div>
         <aside className="space-y-3">
            <AgendaAttentionPanel events={events} conflicts={insights?.summary.conflicts || 0} onOpen={(event) => { setSelectedEvent(event); }} />
-           <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} onEdit={() => nextAppointment && openEvent(nextAppointment)} />
+           <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} />
         </aside>
       </div>
       {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}

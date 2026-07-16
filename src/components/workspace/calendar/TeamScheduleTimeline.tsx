@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Clock3, Plus, UsersRound } from 'lucide-react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
+import { getAppointmentStatusPresentation } from '@/src/lib/calendar/appointment-status-presentation';
 import type { CalendarView, TeamPlanningMember } from './calendar-workspace-types';
 import { CALENDAR_HOUR_HEIGHT, buildAppointmentOverlapGroups, calculateCalendarTimeRange, eventDate, formatDuration, formatTime, isSameDay, minutesSinceStartOfDay, snapMinutes, startOfWeekMonday } from './calendar-workspace-utils';
 
@@ -27,16 +28,9 @@ type TeamScheduleTimelineProps = {
 };
 
 const UNASSIGNED_ID = '__unassigned__';
-const MEMBER_COLORS = ['border-emerald-300 bg-emerald-50 text-emerald-950', 'border-sky-300 bg-sky-50 text-sky-950', 'border-violet-300 bg-violet-50 text-violet-950', 'border-amber-300 bg-amber-50 text-amber-950', 'border-rose-300 bg-rose-50 text-rose-950'];
 
 function dayKey(day: Date) {
   return `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
-}
-
-function memberColor(memberId: string) {
-  let hash = 0;
-  for (const character of memberId) hash = (hash * 31 + character.charCodeAt(0)) | 0;
-  return MEMBER_COLORS[Math.abs(hash) % MEMBER_COLORS.length];
 }
 
 function startForDrop(day: Date, minutes: number) {
@@ -60,6 +54,7 @@ function TeamAppointment({ event, range, placement, saving, onOpen, onDragStart,
   const top = ((minutesSinceStartOfDay(start) - range.startMinutes) / 60) * CALENDAR_HOUR_HEIGHT;
   const height = Math.max(42, ((end.getTime() - start.getTime()) / 3_600_000) * CALENDAR_HOUR_HEIGHT - 4);
   const movable = event.status !== 'cancelled' && !saving;
+  const statusPresentation = getAppointmentStatusPresentation(event.confirmation);
   return (
     <button
       type="button"
@@ -74,14 +69,15 @@ function TeamAppointment({ event, range, placement, saving, onOpen, onDragStart,
       onDragEnd={onDragEnd}
       className={[
         'group absolute z-10 overflow-hidden rounded-lg border-l-4 px-2 py-1.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.08)] transition hover:-translate-y-px hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500',
-        memberColor(event.assignedUserId || event.id),
+        statusPresentation.cardClassName,
         movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default opacity-75',
       ].join(' ')}
       style={{ top, height, left: `calc(${((placement?.column || 0) / Math.max(1, placement?.columnCount || 1)) * 100}% + 4px)`, width: `calc(${100 / Math.max(1, placement?.columnCount || 1)}% - 8px)` }}
-      aria-label={`${event.title}, ${formatTime(event.start) || ''}`}
+      aria-label={`${event.title}, ${statusPresentation.label}, ${formatTime(event.start) || ''}`}
     >
       <span className="block truncate text-[11px] font-bold leading-4">{event.title}</span>
       <span className="block truncate text-[10px] leading-4 opacity-75">{event.clientName || event.projectTitle || 'Rendez-vous'}</span>
+      {height >= 64 ? <span className={['absolute bottom-1 right-1 rounded-full px-1 py-0.5 text-[8px] font-bold', statusPresentation.badgeClassName].join(' ')}>{statusPresentation.label}</span> : null}
       {height >= 64 ? <span className="block text-[10px] font-semibold leading-4 opacity-75">{formatTime(event.start)} · {formatDuration(Math.round((end.getTime() - start.getTime()) / 60_000))}</span> : null}
       {saving ? <span className="absolute right-1 top-1 rounded bg-white/80 px-1 text-[9px] font-semibold">Enregistrement…</span> : null}
     </button>

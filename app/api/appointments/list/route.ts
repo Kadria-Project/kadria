@@ -47,6 +47,11 @@ type ProjectLookup = {
   id: string
   clientName: string
   projectType: string
+  projectTitle: string
+  aiSummary: string | null
+  budget: string | null
+  desiredTimeline: string | null
+  photoCount: number
   city: string
   artisanId: string
   clientPhone: string | null
@@ -167,7 +172,7 @@ export async function GET(request: NextRequest) {
     if (projectIds.length) {
       const { data: projects, error: projectsError } = await supabaseAdmin
         .from(TABLES.projects)
-        .select('id, client_name, client_first_name, client_phone, client_email, project_type, city, artisan_id, site_address, latitude, longitude, responsible_user_id')
+        .select('id, client_name, client_first_name, client_phone, client_email, project_type, project_title, ai_summary, budget, desired_timeline, photos, city, artisan_id, site_address, latitude, longitude, responsible_user_id')
         .in('id', projectIds)
 
       if (!projectsError && projects) {
@@ -179,6 +184,11 @@ export async function GET(request: NextRequest) {
             id,
             clientName: [record.client_first_name, record.client_name].filter(Boolean).join(' ').trim(),
             projectType: String(record.project_type || ''),
+            projectTitle: String(record.project_title || record.project_type || ''),
+            aiSummary: record.ai_summary ? String(record.ai_summary) : null,
+            budget: record.budget ? String(record.budget) : null,
+            desiredTimeline: record.desired_timeline ? String(record.desired_timeline) : null,
+            photoCount: Array.isArray(record.photos) ? record.photos.length : 0,
             city: String(record.city || ''),
             artisanId: String(record.artisan_id || ''),
             clientPhone: record.client_phone ? String(record.client_phone) : null,
@@ -228,7 +238,11 @@ export async function GET(request: NextRequest) {
           projectId: row.project_id || null,
           projectNumber: project ? project.id.slice(-6) : row.project_id ? String(row.project_id).slice(-6) : null,
           clientName: project?.clientName || row.client_name || null,
-          projectType: project?.projectType || null,
+          projectType: project?.projectTitle || project?.projectType || null,
+          projectSummary: project?.aiSummary || null,
+          budget: project?.budget || null,
+          desiredTimeline: project?.desiredTimeline || null,
+          photoCount: project?.photoCount || 0,
           city: project?.city || null,
           clientPhone: project?.clientPhone || null,
           clientEmail: project?.clientEmail || null,
@@ -260,7 +274,7 @@ export async function GET(request: NextRequest) {
               }
             : null,
           confirmation: confirmationAvailable
-            ? { status: String(record.confirmation_status || 'pending'), source: record.confirmation_source ? String(record.confirmation_source) : null, note: record.confirmation_note ? String(record.confirmation_note) : null, updatedAt: record.confirmation_updated_at ? String(record.confirmation_updated_at) : null, version: Number(record.confirmation_version || 0) }
+            ? { status: record.confirmation_status ? String(record.confirmation_status) : null, source: record.confirmation_source ? String(record.confirmation_source) : null, note: record.confirmation_note ? String(record.confirmation_note) : null, updatedAt: record.confirmation_updated_at ? String(record.confirmation_updated_at) : null, version: Number(record.confirmation_version || 0) }
             : null,
           responsibleUserId: project?.responsibleUserId || null,
           responsibleUserName:

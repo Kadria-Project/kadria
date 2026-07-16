@@ -13,7 +13,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
 import { QUALIFICATION_STATUS_LABELS } from '@/src/lib/appointment-qualification';
-import { confirmationStatusLabel } from '@/src/lib/appointment-confirmation';
+import { getAppointmentStatusPresentation } from '@/src/lib/calendar/appointment-status-presentation';
 import type { CalendarView } from './calendar-workspace-types';
 import {
   CALENDAR_HOUR_HEIGHT,
@@ -75,13 +75,6 @@ function EventTypeIcon({ event }: { event: NormalizedCalendarEvent }) {
   return <CalendarDays className={className} aria-hidden="true" />;
 }
 
-function getEventTone(event: NormalizedCalendarEvent) {
-  const type = (event.type + ' ' + event.title).toLowerCase();
-  if (type.includes('chantier') || type.includes('visite')) return 'border-emerald-200 bg-emerald-50 text-emerald-950';
-  if (type.includes('devis')) return 'border-violet-200 bg-violet-50 text-violet-950';
-  return 'border-blue-200 bg-blue-50 text-blue-950';
-}
-
 function getInitials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase();
 }
@@ -110,6 +103,7 @@ function TimelineEvent({ event, range, currentTime, placement, displayColumns, h
 }) {
   const start = eventDate(event);
   if (!start) return null;
+  const statusPresentation = getAppointmentStatusPresentation(event.confirmation);
   const end = event.end ? new Date(event.end) : null;
   const canResize = Boolean(event.rawAppointmentId && event.status !== 'cancelled' && end && !Number.isNaN(end.getTime()) && end > start);
   const qualificationLabel = event.qualification
@@ -129,6 +123,7 @@ function TimelineEvent({ event, range, currentTime, placement, displayColumns, h
       <button
         type="button"
         draggable={Boolean(event.rawAppointmentId && event.status !== 'cancelled' && !saving)}
+        aria-label={`${event.title}, ${event.source === 'kadria-appointment' ? statusPresentation.label : 'rendez-vous'}, ${formatTime(event.start) || ''}`}
         onDragStart={(dragEvent) => { dragEvent.dataTransfer.effectAllowed = 'move'; dragEvent.dataTransfer.setData('text/appointment-id', event.rawAppointmentId || ''); onDragStart(event); }}
         onDragEnd={onDragEnd}
         onClick={() => onOpen(event)}
@@ -138,12 +133,12 @@ function TimelineEvent({ event, range, currentTime, placement, displayColumns, h
           saving ? 'opacity-70' : '',
           conflictLabel ? 'border-amber-300 ring-1 ring-amber-200/80' : '',
           !highlighted ? 'opacity-55' : '',
-          getEventTone(event),
+          event.source === 'kadria-appointment' ? statusPresentation.cardClassName : 'border-slate-200 bg-slate-50 text-slate-900',
         ].join(' ')}
       >
         <span className="flex items-center gap-1.5 truncate text-[10px] font-semibold"><EventTypeIcon event={event} />{formatTime(event.start)}{conflictLabel ? <span className="ml-auto inline-flex shrink-0 text-amber-700" title={conflictLabel} aria-label={conflictLabel}><AlertTriangle className="size-3.5" aria-hidden="true" /></span> : null}</span>
         <span className="block truncate text-[11px] font-bold leading-4">{event.title}</span>
-        {event.confirmation ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{confirmationStatusLabel(event.confirmation.status, event.confirmation.source)}</span> : null}
+        {event.source === 'kadria-appointment' ? <span className={['inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold', statusPresentation.badgeClassName].join(' ')}>{statusPresentation.label}</span> : null}
         {qualificationLabel ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{qualificationLabel}</span> : null}
         <span className="flex min-w-0 items-center gap-1.5 truncate text-[10px] text-current/70">
           {event.assignedUserName ? <span className="grid size-4 shrink-0 place-items-center rounded-full bg-white/80 text-[8px] font-bold">{getInitials(event.assignedUserName)}</span> : null}
