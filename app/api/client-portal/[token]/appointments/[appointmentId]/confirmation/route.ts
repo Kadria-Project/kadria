@@ -12,10 +12,11 @@ function fail(status: number, errorCode: string, error: string) {
   return NextResponse.json({ success: false, errorCode, error }, { status })
 }
 
-function actionCopy(status: AppointmentConfirmationStatus) {
-  if (status === 'confirmed') return { title: 'Rendez-vous confirmé par le client', notification: 'Le client a confirmé le rendez-vous.' }
-  if (status === 'change_requested') return { title: 'Changement demandé par le client', notification: 'Le client demande une modification du rendez-vous.' }
-  return { title: 'Rendez-vous refusé par le client', notification: 'Le client a refusé le rendez-vous.' }
+function actionCopy(status: AppointmentConfirmationStatus, appointmentTitle: string | null) {
+  const label = appointmentTitle || 'Rendez-vous'
+  if (status === 'confirmed') return { title: `${label} confirmé par le client`, notification: 'Le client a confirmé le rendez-vous.' }
+  if (status === 'change_requested') return { title: `${label} : changement demandé par le client`, notification: 'Le client demande une modification du rendez-vous.' }
+  return { title: `${label} refusé par le client`, notification: 'Le client a refusé le rendez-vous.' }
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ token: string; appointmentId: string }> }) {
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
 
     const rpcResult = data as { idempotent?: boolean } | null
     if (!rpcResult?.idempotent) {
-      const copy = actionCopy(body.status)
+      const copy = actionCopy(body.status, appointment.title ? String(appointment.title) : null)
       await createClientEvent({
         projectId: String(project.id), artisanId: String(project.artisan_id), tenantId: String(project.tenant_id),
         eventType: 'appointment_updated', visibility: 'client', source: 'client', title: copy.title, message: note,

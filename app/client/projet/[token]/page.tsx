@@ -171,7 +171,8 @@ export default function ClientPortalPage() {
   const [project, setProject] = useState<PortalProject | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [quote, setQuote] = useState<PortalQuote | null>(null);
-  const [appointment, setAppointment] = useState<ClientPortalAppointment | null>(null);
+  const [appointments, setAppointments] = useState<ClientPortalAppointment[]>([]);
+  const [appointmentErrors, setAppointmentErrors] = useState<Record<string, string>>({});
   const [appointmentError, setAppointmentError] = useState('');
 
   const [firstName, setFirstName] = useState('');
@@ -181,8 +182,6 @@ export default function ClientPortalPage() {
   const [address, setAddress] = useState('');
   const [budget, setBudget] = useState('');
   const [timeline, setTimeline] = useState('');
-  const [availability, setAvailability] = useState('');
-  const [urgency, setUrgency] = useState('');
   const [details, setDetails] = useState('');
   const [message, setMessage] = useState('');
 
@@ -206,7 +205,7 @@ export default function ClientPortalPage() {
   // chaque envoi réussi pour repasser hasChanges à false.
   type FormSnapshot = {
     firstName: string; lastName: string; email: string; phone: string; address: string;
-    budget: string; timeline: string; availability: string; urgency: string; details: string;
+     budget: string; timeline: string; details: string;
     message: string; photos: string;
   };
   const [snapshot, setSnapshot] = useState<FormSnapshot | null>(null);
@@ -219,8 +218,6 @@ export default function ClientPortalPage() {
     address: address.trim(),
     budget: budget.trim(),
     timeline: timeline.trim(),
-    availability: availability.trim(),
-    urgency: urgency.trim(),
     details: details.trim(),
     message: message.trim(),
     photos: JSON.stringify(photos.map((p) => p.url)),
@@ -243,7 +240,7 @@ export default function ClientPortalPage() {
         setProject(data.project || null);
         setTimelineEvents(Array.isArray(data.timelineEvents) ? data.timelineEvents : []);
         setQuote(data.quote || null);
-        setAppointment(data.appointment || null);
+        setAppointments(Array.isArray(data.appointments) ? data.appointments : data.appointment ? [data.appointment] : []);
         // Préremplissage réel des champs connus (mêmes valeurs que la fiche
         // projet artisan), pas seulement en placeholder : le client doit
         // retrouver ses informations déjà éditables, y compris le Nom.
@@ -262,8 +259,6 @@ export default function ClientPortalPage() {
           address: (data.project?.siteAddress || '').trim(),
           budget: (data.project?.budget || '').trim(),
           timeline: (data.project?.desiredTimeline || '').trim(),
-          availability: '',
-          urgency: '',
           details: '',
           message: '',
           photos: JSON.stringify([]),
@@ -283,35 +278,36 @@ export default function ClientPortalPage() {
 
   // Rafraîchit uniquement la timeline après un envoi (refetch simple, plus
   // sûr qu'une mise à jour optimiste pour ce lot V1).
-  const refetchTimeline = async () => {
+  const refetchPortal = async () => {
     try {
       const res = await fetch(`/api/client-portal/${token}`);
       const data = await res.json();
       if (res.ok) {
         setTimelineEvents(Array.isArray(data.timelineEvents) ? data.timelineEvents : []);
+        setAppointments(Array.isArray(data.appointments) ? data.appointments : data.appointment ? [data.appointment] : []);
       }
     } catch {
       // non bloquant
     }
   };
 
-  const handleAppointmentResponse = async (input: { status: 'confirmed' | 'change_requested' | 'cancelled'; note: string; requestId: string; expectedVersion: number }) => {
-    if (!appointment) return;
-    setAppointmentError('');
-    const response = await fetch(`/api/client-portal/${token}/appointments/${appointment.id}/confirmation`, {
+  const handleAppointmentResponse = async (appointmentId: string, input: { status: 'confirmed' | 'change_requested' | 'cancelled'; note: string; requestId: string; expectedVersion: number }) => {
+    setAppointmentErrors((current) => ({ ...current, [appointmentId]: '' }));
+    const response = await fetch(`/api/client-portal/${token}/appointments/${appointmentId}/confirmation`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });
     const data = await response.json();
     if (!response.ok || !data?.success) {
       if (data?.errorCode === 'APPOINTMENT_VERSION_CONFLICT') {
         const refreshed = await fetch(`/api/client-portal/${token}`).then((item) => item.json()).catch(() => null);
-        if (refreshed?.appointment) setAppointment(refreshed.appointment);
+        if (Array.isArray(refreshed?.appointments)) setAppointments(refreshed.appointments);
+        else if (refreshed?.appointment) setAppointments([refreshed.appointment]);
       }
       setAppointmentError(data?.error || 'Votre réponse n’a pas pu être enregistrée. Réessayez dans un instant.');
       return;
     }
-    setAppointment(data.appointment);
-    await refetchTimeline();
+    setAppointments((current) => current.map((appointment) => appointment.id === appointmentId ? data.appointment : appointment));
+    await refetchPortal();
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -356,8 +352,6 @@ export default function ClientPortalPage() {
           address: address.trim(),
           budget: budget.trim(),
           timeline: timeline.trim(),
-          availability: availability.trim(),
-          urgency,
           details: details.trim(),
           message: message.trim(),
           photos,
@@ -384,13 +378,11 @@ export default function ClientPortalPage() {
         address: address.trim(),
         budget: budget.trim(),
         timeline: timeline.trim(),
-        availability: '',
-        urgency: '',
         details: '',
         message: '',
         photos: JSON.stringify([]),
       });
-      await refetchTimeline();
+       await refetchPortal();
     } catch {
       setSubmitError("Erreur lors de l'enregistrement");
     } finally {
@@ -680,7 +672,7 @@ export default function ClientPortalPage() {
           </div>
         )}
 
-        {appointment && <ClientAppointmentCard appointment={appointment} onSubmit={handleAppointmentResponse} />}
+        {appointments.length > 0 && <section style={{ marginBottom: '20px' }}><h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px' }}>Vos rendez-vous</h2>{appointments.map((appointment) => <div key={appointment.id}><ClientAppointmentCard appointment={appointment} onSubmit={handleAppointmentResponse} />{appointmentErrors[appointment.id] && <p role="alert" style={{ margin: '-8px 0 16px', color: '#b91c1c', fontSize: '13px' }}>{appointmentErrors[appointment.id]}</p>}</div>)}</section>}
         {appointmentError && <p role="alert" style={{ margin: '-8px 0 16px', color: '#b91c1c', fontSize: '13px' }}>{appointmentError}</p>}
 
         {/* Discussion avec l'artisan — bulles façon iOS, réservées aux
@@ -909,21 +901,6 @@ export default function ClientPortalPage() {
               <label style={labelStyle}>Délai souhaité</label>
               <input style={inputStyle} value={timeline} onChange={(e) => setTimeline(e.target.value)} maxLength={200} placeholder="Ex : dans le mois" />
             </div>
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={labelStyle}>Disponibilités</label>
-            <input style={inputStyle} value={availability} onChange={(e) => setAvailability(e.target.value)} maxLength={300} placeholder="Ex : en semaine après 18h" />
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={labelStyle}>Urgence</label>
-            <select style={inputStyle} value={urgency} onChange={(e) => setUrgency(e.target.value)}>
-              <option value="">Non précisé</option>
-              <option value="low">Pas urgent</option>
-              <option value="normal">Normal</option>
-              <option value="high">Urgent</option>
-            </select>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
