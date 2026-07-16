@@ -165,11 +165,13 @@ export default function ScheduleTimeline({ view, selectedDate, events, onPreviou
   const [dragging, setDragging] = useState<NormalizedCalendarEvent | null>(null);
   const [resize, setResize] = useState<ResizeState | null>(null);
   const [interactionRange, setInteractionRange] = useState<CalendarTimeRange | null>(null);
-  const [now, setNow] = useState(() => new Date());
+  // The initial value must be identical during SSR and hydration. The real
+  // current time is installed by the effect immediately after hydration.
+  const [now, setNow] = useState(() => new Date(0));
   const [conflictsOnly, setConflictsOnly] = useState(false);
   const [overflow, setOverflow] = useState<OverflowState | null>(null);
 
-  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
+  useEffect(() => { const frame = window.requestAnimationFrame(() => setNow(new Date())); const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => { window.cancelAnimationFrame(frame); window.clearInterval(timer); }; }, []);
 
   const days = useMemo(() => view === 'jour' ? [selectedDate] : Array.from({ length: 7 }, (_, index) => {
     const date = startOfWeekMonday(selectedDate);

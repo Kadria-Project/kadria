@@ -91,8 +91,9 @@ function TeamAppointment({ event, range, placement, saving, onOpen, onDragStart,
 export default function TeamScheduleTimeline({ view, selectedDate, events, members, selectedMemberIds, onToggleMember, onPrevious, onNext, onToday, onDaySelect, onViewChange, onOpenEvent, onCreate, onMoveEvent, workStartTime, workEndTime, savingEventIds }: TeamScheduleTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<NormalizedCalendarEvent | null>(null);
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
+  // Keep SSR and the first client render deterministic before starting the clock.
+  const [now, setNow] = useState(() => new Date(0));
+  useEffect(() => { const frame = window.requestAnimationFrame(() => setNow(new Date())); const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => { window.cancelAnimationFrame(frame); window.clearInterval(timer); }; }, []);
 
   const visibleMembers = useMemo(() => members.filter((member) => selectedMemberIds.includes(member.userId)), [members, selectedMemberIds]);
   const days = useMemo(() => view === 'jour' ? [selectedDate] : Array.from({ length: 7 }, (_, index) => {
