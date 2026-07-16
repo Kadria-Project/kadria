@@ -163,7 +163,7 @@ function initials(name: string): string {
 
 export default function ClientPortalPage() {
   const params = useParams();
-  const token = params.token as string;
+  const token = typeof params.token === 'string' ? params.token : '';
 
   const [loading, setLoading] = useState(true);
   const [invalid, setInvalid] = useState(false);
@@ -269,11 +269,8 @@ export default function ClientPortalPage() {
         setLoading(false);
       }
     };
-    if (token) load();
-    else {
-      setInvalid(true);
-      setLoading(false);
-    }
+    if (!token) return;
+    void load();
   }, [token]);
 
   // Rafraîchit uniquement la timeline après un envoi (refetch simple, plus
@@ -399,7 +396,7 @@ export default function ClientPortalPage() {
     padding: '24px',
   };
 
-  if (loading) {
+  if (loading && token) {
     return (
       <div style={pageWrapperStyle}>
         <p style={{ color: '#6b7280' }}>Chargement...</p>
@@ -407,7 +404,7 @@ export default function ClientPortalPage() {
     );
   }
 
-  if (invalid || !project) {
+  if (!token || invalid || !project) {
     return (
       <div style={pageWrapperStyle}>
         <div style={{ textAlign: 'center', color: '#374151' }}>
