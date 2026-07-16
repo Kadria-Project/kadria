@@ -36,7 +36,8 @@ export function buildProjectCreationPayloadHash(value: unknown): string {
 }
 
 function projectPayloadForIdempotency(payload: Record<string, unknown>): Record<string, unknown> {
-  const { responsible_assigned_at: _responsibleAssignedAt, ...stablePayload } = payload
+  const stablePayload = { ...payload }
+  delete stablePayload.responsible_assigned_at
   return stablePayload
 }
 
