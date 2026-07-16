@@ -16,7 +16,7 @@ const increment = (map: Record<string, number>, key: string) => { map[key] = (ma
 const isUuid = (value: string | null) => Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
 
 function project(row: Record<string, unknown>): LegacyProjectClientRow {
-  return { id: String(row.id || ''), tenantId: text(row.tenant_id), clientId: text(row.client_id), clientFirstName: text(row.client_first_name), clientName: text(row.client_name), clientEmail: text(row.client_email), clientPhone: text(row.client_phone), city: text(row.city), postalCode: text(row.postal_code), source: text(row.source), projectSource: text(row.project_source), createdFrom: text(row.created_from), createdAt: text(row.created_at), status: text(row.status) }
+  return { id: String(row.id || ''), tenantId: text(row.tenant_id), clientId: text(row.client_id), clientFirstName: text(row.client_first_name), clientName: text(row.client_name), clientEmail: text(row.client_email), clientPhone: text(row.client_phone), city: text(row.city), postalCode: text(row.postal_code), source: text(row.source), createdAt: text(row.created_at), status: text(row.status) }
 }
 
 async function clientStats() {
@@ -31,7 +31,7 @@ async function clientStats() {
 }
 
 async function page(cursor: Cursor | null): Promise<LegacyProjectClientRow[]> {
-  let query = getSupabaseAdmin().from(TABLES.projects).select('id,tenant_id,client_id,client_first_name,client_name,client_email,client_phone,city,postal_code,source,project_source,created_from,created_at,status').order('created_at', { ascending: true }).order('id', { ascending: true }).limit(BATCH_SIZE)
+  let query = getSupabaseAdmin().from(TABLES.projects).select('id,tenant_id,client_id,client_first_name,client_name,client_email,client_phone,city,postal_code,source,created_at,status').order('created_at', { ascending: true }).order('id', { ascending: true }).limit(BATCH_SIZE)
   if (cursor) query = query.or(`created_at.gt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.gt.${cursor.id})`)
   const { data, error } = await query
   if (error) throw new Error(`Unable to scan projects: ${error.message}`)
@@ -47,7 +47,7 @@ async function main() {
     const rows = await page(cursor); if (!rows.length) break; summary.totalProjectsScanned += rows.length
     let index = 0
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, rows.length) }, async () => { while (index < rows.length) {
-      const row = rows[index++]; const source = `${row.source || ''} ${row.projectSource || ''}`.toLowerCase()
+      const row = rows[index++]; const source = (row.source || '').toLowerCase()
       if (row.status?.toLowerCase() === 'deleted') { summary.excludedDeleted = Number(summary.excludedDeleted) + 1; continue }
       if (/(^|[\s_-])demo([\s_-]|$)/.test(source)) { summary.excludedDemo = Number(summary.excludedDemo) + 1; continue }
       if (!isUuid(row.tenantId)) { summary.invalidTenantProjects = Number(summary.invalidTenantProjects) + 1; continue }

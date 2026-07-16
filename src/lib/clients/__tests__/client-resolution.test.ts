@@ -7,8 +7,10 @@ register('./typescript-resolution.loader.mjs', import.meta.url)
 
 const normalization = await import('../client-normalization')
 const engine = await import('../client-resolution-engine')
+const legacy = await import('../legacy-project-client')
 const { normalizeClientEmail, normalizeClientPhone, prepareClientResolutionInput } = normalization
 const { resolveClientCandidates } = engine
+const { mapLegacyProjectClientIdentity } = legacy
 
 const tenantId = 'tenant-a'
 
@@ -41,6 +43,24 @@ function client(overrides: Partial<ClientResolutionRecord> = {}): ClientResoluti
     status: 'prospect',
     archivedAt: null,
     mergedIntoClientId: null,
+    ...overrides,
+  }
+}
+
+function legacyProject(overrides: Partial<Parameters<typeof mapLegacyProjectClientIdentity>[0]> = {}) {
+  return {
+    id: 'project-a',
+    tenantId,
+    clientId: null,
+    clientFirstName: 'Claire',
+    clientName: 'Dupont',
+    clientEmail: 'claire@example.test',
+    clientPhone: '06 12 34 56 78',
+    city: 'Lyon',
+    postalCode: '69001',
+    source: 'site-web',
+    createdAt: '2026-07-01T08:00:00.000Z',
+    status: 'new',
     ...overrides,
   }
 }
@@ -127,4 +147,21 @@ test('archived, merged, and other-tenant candidates are ignored', () => {
     client({ id: 'client-c', tenantId: 'tenant-b' }),
   ])
   assert.equal(result.outcome, 'no_match')
+})
+
+test('maps the available source as acquisition and creation source', () => {
+  const mapped = mapLegacyProjectClientIdentity(legacyProject())
+  assert.ok(mapped)
+  assert.equal(mapped.input.acquisitionSource, 'site-web')
+  assert.equal(mapped.input.createdFrom, 'site-web')
+  assert.equal(mapped.input.firstName, 'Claire')
+  assert.equal(mapped.input.lastName, 'Dupont')
+  assert.equal(mapped.input.addressLine1, null)
+})
+
+test('uses a safe legacy fallback when the optional source is absent', () => {
+  const mapped = mapLegacyProjectClientIdentity(legacyProject({ source: null }))
+  assert.ok(mapped)
+  assert.equal(mapped.input.acquisitionSource, null)
+  assert.equal(mapped.input.createdFrom, 'legacy-project')
 })

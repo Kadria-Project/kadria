@@ -6,7 +6,7 @@ import type { ClientResolutionInput, ClientResolutionResult, PreparedClientResol
 export interface LegacyProjectClientRow {
   id: string; tenantId: string | null; clientId: string | null; clientFirstName: string | null; clientName: string | null
   clientEmail: string | null; clientPhone: string | null; city: string | null; postalCode: string | null
-  source: string | null; projectSource: string | null; createdFrom: string | null; createdAt: string | null; status: string | null
+  source: string | null; createdAt: string | null; status: string | null
 }
 export interface LegacyProjectResolutionInput { projectId: string; input: ClientResolutionInput; prepared: PreparedClientResolutionInput; alreadyLinked: boolean }
 export type LegacyClusterSummary = { estimatedCanonicalClients: number; certainGroups: number; ambiguousGroups: number; isolatedProjects: number }
@@ -22,7 +22,7 @@ export function mapLegacyProjectClientIdentity(project: LegacyProjectClientRow):
     tenantId, firstName: text(project.clientFirstName), lastName: text(project.clientName), companyName: null,
     email: text(project.clientEmail), phone: text(project.clientPhone), addressLine1: null,
     postalCode: text(project.postalCode), city: text(project.city), countryCode: null,
-    acquisitionSource: text(project.source), createdFrom: text(project.createdFrom) || text(project.projectSource) || text(project.source) || 'legacy-project',
+    acquisitionSource: text(project.source), createdFrom: text(project.source) || 'legacy-project',
   }
   return { projectId: project.id, input, prepared: prepareClientResolutionInput(input), alreadyLinked: Boolean(text(project.clientId)) }
 }
