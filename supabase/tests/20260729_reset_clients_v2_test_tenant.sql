@@ -9,6 +9,8 @@ declare
   target_tenant constant uuid := '6392ae57-f34b-48ac-92ca-7faf848b5582';
   expected_projects constant integer := 11;
   expected_appointments constant integer := 12;
+  expected_linked_appointments constant integer := 7;
+  expected_orphan_appointments constant integer := 5;
   expected_devis constant integer := 38;
   expected_activities constant integer := 77;
   expected_events constant integer := 10;
@@ -28,8 +30,12 @@ begin
     raise exception 'CLIENTS_V2_RESET_PROJECT_COUNT_MISMATCH: expected %, got %', expected_projects, actual_count;
   end if;
 
-  select count(*) into actual_count from public.project_appointments where tenant_id = target_tenant and project_id = any(project_ids);
+  select count(*) into actual_count from public.project_appointments where tenant_id = target_tenant;
   if actual_count <> expected_appointments then raise exception 'CLIENTS_V2_RESET_APPOINTMENT_COUNT_MISMATCH'; end if;
+  select count(*) into actual_count from public.project_appointments where tenant_id = target_tenant and project_id = any(project_ids);
+  if actual_count <> expected_linked_appointments then raise exception 'CLIENTS_V2_RESET_LINKED_APPOINTMENT_COUNT_MISMATCH'; end if;
+  select count(*) into actual_count from public.project_appointments where tenant_id = target_tenant and (project_id is null or project_id <> all(project_ids));
+  if actual_count <> expected_orphan_appointments then raise exception 'CLIENTS_V2_RESET_ORPHAN_APPOINTMENT_COUNT_MISMATCH'; end if;
   select count(*) into actual_count from public."Devis" where tenant_id = target_tenant and project_id = any(project_ids);
   if actual_count <> expected_devis then raise exception 'CLIENTS_V2_RESET_DEVIS_COUNT_MISMATCH'; end if;
   select count(*) into actual_count from public."Activity" where project_id = any(project_ids);
@@ -44,14 +50,15 @@ begin
   -- All deletes use the explicit pre-collected project IDs; no tenant-wide event deletion.
   delete from public."ArtisanNotifications" where tenant_id = target_tenant and project_id::text = any(project_ids);
   delete from public."ProjectClientEvents" where project_id::text = any(project_ids);
-  delete from public.project_appointments where tenant_id = target_tenant and project_id = any(project_ids);
+  -- Appointments may be standalone; remove all 12 only inside the fixed tenant.
+  delete from public.project_appointments where tenant_id = target_tenant;
   delete from public."Devis" where tenant_id = target_tenant and project_id = any(project_ids);
   delete from public."VapiCalls" where tenant_id = target_tenant and project_id = any(project_ids);
   delete from public."Activity" where project_id = any(project_ids);
   delete from public."Projects" where tenant_id = target_tenant and id::text = any(project_ids);
 
   if exists (select 1 from public."Projects" where tenant_id = target_tenant)
-     or exists (select 1 from public.project_appointments where tenant_id = target_tenant and project_id = any(project_ids))
+     or exists (select 1 from public.project_appointments where tenant_id = target_tenant)
      or exists (select 1 from public."Devis" where tenant_id = target_tenant and project_id = any(project_ids))
      or exists (select 1 from public."Activity" where project_id = any(project_ids))
      or exists (select 1 from public."ProjectClientEvents" where project_id::text = any(project_ids))
