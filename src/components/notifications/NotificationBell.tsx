@@ -47,13 +47,16 @@ export default function NotificationBell({ variant = 'desktop', className }: Not
   }, [load]);
 
   useEffect(() => {
-    loadInitial();
+    const initialLoad = window.setTimeout(() => { void loadInitial(); }, 0);
     // Refresh discret : ne bloque jamais l'UI, ne remplace pas un vrai
     // temps réel (hors scope V1, cf. brief).
     const interval = setInterval(() => {
-      load();
+      void load();
     }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
   }, [loadInitial, load]);
 
   useEffect(() => {
@@ -66,6 +69,15 @@ export default function NotificationBell({ variant = 'desktop', className }: Not
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [variant, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [open]);
 
   const handleToggle = () => {
     setOpen((v) => {
@@ -108,7 +120,7 @@ export default function NotificationBell({ variant = 'desktop', className }: Not
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative' }} className={className}>
+    <div ref={containerRef} style={{ position: 'relative' }} className={['[--bg-elevated:#ffffff] [--bg-hover:#f8fafc] [--border:#e2e8f0] [--text-1:#0f172a] [--text-2:#475569] [--text-3:#64748b] [--accent:#059669]', className].filter(Boolean).join(' ')}>
       <button
         type="button"
         onClick={handleToggle}
@@ -119,14 +131,15 @@ export default function NotificationBell({ variant = 'desktop', className }: Not
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: variant === 'mobile' ? 40 : 36,
-          height: variant === 'mobile' ? 40 : 36,
+          width: 40,
+          height: 40,
           borderRadius: 10,
-          border: '1px solid var(--border)',
-          background: 'var(--bg-elevated)',
-          color: 'var(--text-2)',
+          border: '1px solid #cbd5e1',
+          background: '#ffffff',
+          color: '#334155',
           cursor: 'pointer',
         }}
+        className="transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2"
       >
         <Bell className="h-4 w-4" />
         <NotificationBadge count={unreadCount} />
@@ -140,11 +153,11 @@ export default function NotificationBell({ variant = 'desktop', className }: Not
             right: 0,
             width: 360,
             maxHeight: 440,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
+            background: '#ffffff',
+            border: '1px solid #dbe3ec',
             borderRadius: 14,
             boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
-            zIndex: 60,
+            zIndex: 80,
             overflow: 'hidden',
           }}
         >
@@ -180,7 +193,7 @@ export default function NotificationBell({ variant = 'desktop', className }: Not
               position: 'relative',
               width: '100%',
               maxHeight: '75vh',
-              background: 'var(--bg-elevated)',
+              background: '#ffffff',
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               display: 'flex',

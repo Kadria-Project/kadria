@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalendarEvent, type RawGoogleEvent, type RawKadriaAppointment } from '@/src/lib/calendar/normalized-event';
 import { isEventType } from '@/src/lib/calendar/event-types';
 import type { AppointmentQualificationOutcome, AppointmentQualificationStatus } from '@/src/lib/appointment-qualification';
@@ -74,11 +74,30 @@ export default function CalendarWorkspace() {
   const [currentTime] = useState(() => Date.now());
   const [confirmationFilter, setConfirmationFilter] = useState('all');
   const [collaboratorFilter, setCollaboratorFilter] = useState('all');
+  const [filterDraft, setFilterDraft] = useState({ confirmation: 'all', collaborator: 'all' });
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const savingAppointmentIdsRef = useRef(savingAppointmentIds);
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     savingAppointmentIdsRef.current = savingAppointmentIds;
   }, [savingAppointmentIds]);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) setFiltersOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFiltersOpen(false);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [filtersOpen]);
 
   const fetchAppointments = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
     if (background && savingAppointmentIdsRef.current.size > 0) return;
@@ -202,6 +221,7 @@ export default function CalendarWorkspace() {
     return date ? isSameDay(date, new Date()) : false;
   }), [events]);
   const plannedMinutes = useMemo(() => todayEvents.reduce((total, event) => total + durationMinutes(event), 0), [todayEvents]);
+  const unassignedCount = useMemo(() => events.filter((event) => event.source === 'kadria-appointment' && !event.assignedUserId).length, [events]);
   const availableMinutes = Math.max(0, DAY_MINUTES - plannedMinutes);
   const nextAppointment = useMemo(() => events.filter((event) => {
     const date = eventDate(event);
@@ -211,6 +231,25 @@ export default function CalendarWorkspace() {
   const teamPlanningAvailable = mode === 'kadria' && Boolean(teamPermissions?.canManageTeamPlanning) && teamMembers.length > 1;
 
   const updatePeriod = (offset: number) => setSelectedDate((current) => addDays(current, offset * (view === 'jour' ? 1 : 7)));
+  const activeFilterCount = Number(confirmationFilter !== 'all') + Number(collaboratorFilter !== 'all');
+  const openFilters = () => {
+    setFilterDraft({ confirmation: confirmationFilter, collaborator: collaboratorFilter });
+    setFiltersOpen(true);
+  };
+  const applyFilters = () => {
+    setConfirmationFilter(filterDraft.confirmation);
+    setCollaboratorFilter(filterDraft.collaborator);
+    setFiltersOpen(false);
+  };
+  const resetFilters = () => {
+    setConfirmationFilter('all');
+    setCollaboratorFilter('all');
+    setFilterDraft({ confirmation: 'all', collaborator: 'all' });
+  };
+  const showUnassigned = () => {
+    setCollaboratorFilter('unassigned');
+    setFilterDraft((current) => ({ ...current, collaborator: 'unassigned' }));
+  };
   const openProject = (event: NormalizedCalendarEvent) => {
     if (event.projectId) router.push('/dashboard-v2/projet/' + event.projectId);
   };
@@ -485,10 +524,14 @@ export default function CalendarWorkspace() {
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 pb-6">
       <CalendarBriefing appointmentCount={todayEvents.length} conflictCount={insights?.summary.conflicts || 0} availableMinutes={availableMinutes} view={view} onToggleView={() => setView((current) => current === 'jour' ? 'semaine' : 'jour')} onCreate={openCreate} />
-      <CalendarSummary appointmentCount={todayEvents.length} plannedMinutes={plannedMinutes} conflictCount={insights?.summary.conflicts || 0} travelWarningCount={insights?.travelWarnings.length || 0} />
+       <CalendarSummary appointmentCount={todayEvents.length} plannedMinutes={plannedMinutes} conflictCount={insights?.summary.conflicts || 0} unassignedCount={unassignedCount} onShowUnassigned={showUnassigned} />
       {error && <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs"><span className="font-semibold text-slate-700">Filtres</span><select value={confirmationFilter} onChange={(event) => setConfirmationFilter(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-1.5"><option value="all">Tous les statuts</option><option value="pending">À confirmer</option><option value="confirmed">Confirmé</option><option value="change_requested">Changement demandé</option><option value="cancelled">Annulé / refusé</option></select><select value={collaboratorFilter} onChange={(event) => setCollaboratorFilter(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-1.5"><option value="all">Tous les collaborateurs</option><option value="me">Moi</option><option value="unassigned">Non affectés</option>{teamMembers.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}</select>{(confirmationFilter !== 'all' || collaboratorFilter !== 'all') && <button type="button" onClick={() => { setConfirmationFilter('all'); setCollaboratorFilter('all'); }} className="font-semibold text-emerald-700">Réinitialiser</button>}</div>
+       <div ref={filtersRef} className="relative z-20 mb-3 flex items-center gap-2">
+         <button type="button" onClick={openFilters} aria-label="Ouvrir les filtres Agenda" aria-expanded={filtersOpen} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2"><SlidersHorizontal className="size-4 text-slate-600" />Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}</button>
+         {activeFilterCount > 0 && <button type="button" onClick={resetFilters} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">Réinitialiser</button>}
+         {filtersOpen && <div role="dialog" aria-label="Filtres Agenda" className="absolute left-0 top-[calc(100%+8px)] z-50 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.18)]"><p className="text-sm font-bold text-slate-950">Filtres</p><label className="mt-4 block text-xs font-semibold text-slate-700">Statut<select value={filterDraft.confirmation} onChange={(event) => setFilterDraft((current) => ({ ...current, confirmation: event.target.value }))} className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"><option value="all">Tous les statuts</option><option value="pending">À confirmer</option><option value="confirmed">Confirmé</option><option value="change_requested">Changement demandé</option><option value="cancelled">Annulé / refusé</option></select></label><label className="mt-4 block text-xs font-semibold text-slate-700">Collaborateur<select value={filterDraft.collaborator} onChange={(event) => setFilterDraft((current) => ({ ...current, collaborator: event.target.value }))} className="mt-1.5 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"><option value="all">Tous les collaborateurs</option><option value="me">Moi</option><option value="unassigned">Non affectés</option>{teamMembers.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}</select></label><div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={resetFilters} className="text-sm font-semibold text-slate-600 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">Réinitialiser</button><button type="button" onClick={applyFilters} className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2">Appliquer</button></div></div>}
+       </div>
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-4">
           {teamPlanningAvailable ? <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><button type="button" onClick={() => setPlanningMode('personal')} className={['rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors', planningMode === 'personal' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Mon planning</button><button type="button" onClick={() => setPlanningMode('team')} className={['rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors', planningMode === 'team' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Planning d’équipe</button></div> : null}
