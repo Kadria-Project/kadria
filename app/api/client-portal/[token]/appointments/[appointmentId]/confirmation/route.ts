@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
 
     const { data: appointment, error: appointmentError } = await supabaseAdmin
       .from('project_appointments')
-      .select('id, tenant_id, project_id, assigned_user_id, title, client_name, start_time, end_time, status, confirmation_status, confirmation_version')
+      .select('id, tenant_id, project_id, assigned_user_id, title, client_name, start_time, end_time, status, confirmation_status, confirmation_source, confirmation_updated_at, confirmation_version')
       .eq('id', appointmentId)
       .eq('project_id', project.id)
       .eq('tenant_id', project.tenant_id)
@@ -66,25 +66,48 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
       throw error
     }
 
-    const copy = actionCopy(body.status)
-    await createClientEvent({
-      projectId: String(project.id), artisanId: String(project.artisan_id), tenantId: String(project.tenant_id),
-      eventType: 'appointment_updated', visibility: 'client', source: 'client', title: copy.title, message: note,
-    })
-    const fallbackUser = appointment.assigned_user_id ? null : await getUserByArtisanIdentifier(String(project.artisan_id))
-    waitUntil(sendAppointmentPush({
-      id: String(appointment.id), tenantId: String(project.tenant_id), artisanId: String(project.artisan_id),
-      assignedUserId: appointment.assigned_user_id ? String(appointment.assigned_user_id) : fallbackUser?.id || null,
-      projectId: String(project.id), title: appointment.title ? String(appointment.title) : null,
-      clientName: appointment.client_name ? String(appointment.client_name) : null,
-      start: appointment.start_time ? String(appointment.start_time) : null, end: appointment.end_time ? String(appointment.end_time) : null,
-      eventVersion: new Date().toISOString(),
-    }, 'appointment_updated').catch(() => undefined))
+    // The RPC owns persistence. Read it back before returning success so the portal
+    // never renders a requested status that was not actually stored.
+    const { data: persisted, error: persistedError } = await supabaseAdmin
+      .from('project_appointments')
+      .select('id, title, start_time, end_time, confirmation_status, confirmation_source, confirmation_note, confirmation_updated_at, confirmation_version')
+      .eq('id', appointment.id)
+      .eq('tenant_id', project.tenant_id)
+      .maybeSingle()
+    if (persistedError) throw persistedError
+    if (!persisted || persisted.confirmation_status !== body.status || persisted.confirmation_source !== 'client') {
+      console.error('[CLIENT-PORTAL][APPOINTMENT_CONFIRMATION_PERSISTENCE]', {
+        appointmentId: appointment.id,
+        requestedStatus: body.status,
+        persistedStatus: persisted?.confirmation_status || null,
+        persistedSource: persisted?.confirmation_source || null,
+      })
+      return fail(409, 'APPOINTMENT_CONFIRMATION_NOT_PERSISTED', 'Votre réponse n’a pas pu être vérifiée. Réessayez dans un instant.')
+    }
+
+    const rpcResult = data as { idempotent?: boolean } | null
+    if (!rpcResult?.idempotent) {
+      const copy = actionCopy(body.status)
+      await createClientEvent({
+        projectId: String(project.id), artisanId: String(project.artisan_id), tenantId: String(project.tenant_id),
+        eventType: 'appointment_updated', visibility: 'client', source: 'client', title: copy.title, message: note,
+      })
+      const fallbackUser = appointment.assigned_user_id ? null : await getUserByArtisanIdentifier(String(project.artisan_id))
+      waitUntil(sendAppointmentPush({
+        id: String(appointment.id), tenantId: String(project.tenant_id), artisanId: String(project.artisan_id),
+        assignedUserId: appointment.assigned_user_id ? String(appointment.assigned_user_id) : fallbackUser?.id || null,
+        projectId: String(project.id), title: appointment.title ? String(appointment.title) : null,
+        clientName: appointment.client_name ? String(appointment.client_name) : null,
+        start: appointment.start_time ? String(appointment.start_time) : null, end: appointment.end_time ? String(appointment.end_time) : null,
+        eventVersion: persisted.confirmation_updated_at ? String(persisted.confirmation_updated_at) : new Date().toISOString(),
+      }, 'appointment_updated').catch(() => undefined))
+    }
 
     return NextResponse.json({ success: true, appointment: {
-      id: String(appointment.id), title: String(appointment.title || 'Rendez-vous'), start: appointment.start_time ? String(appointment.start_time) : null,
-      end: appointment.end_time ? String(appointment.end_time) : null, status: body.status, source: 'client', note,
-      updatedAt: new Date().toISOString(), version: Number((data as { confirmation_version?: number } | null)?.confirmation_version || Number(appointment.confirmation_version || 0) + 1),
+      id: String(persisted.id), title: String(persisted.title || 'Rendez-vous'), start: persisted.start_time ? String(persisted.start_time) : null,
+      end: persisted.end_time ? String(persisted.end_time) : null, status: String(persisted.confirmation_status), source: String(persisted.confirmation_source),
+      note: persisted.confirmation_note ? String(persisted.confirmation_note) : null,
+      updatedAt: persisted.confirmation_updated_at ? String(persisted.confirmation_updated_at) : null, version: Number(persisted.confirmation_version || 0),
     } })
   } catch (error) {
     console.error('[CLIENT-PORTAL][APPOINTMENT_CONFIRMATION]', { message: error instanceof Error ? error.message : 'Unknown error' })

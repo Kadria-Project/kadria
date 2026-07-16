@@ -11,6 +11,18 @@ export const CONFIRMATION_STATUS_LABELS: Record<AppointmentConfirmationStatus, s
   cancelled: 'Annulé',
 }
 
+export function confirmationStatusLabel(
+  status: AppointmentConfirmationStatus | string | null | undefined,
+  source: AppointmentConfirmationSource | string | null | undefined,
+) {
+  if (status === 'cancelled') {
+    if (source === 'client') return 'Refusé par le client'
+    if (source === 'artisan') return 'Annulé par l’artisan'
+  }
+
+  return isConfirmationStatus(status) ? CONFIRMATION_STATUS_LABELS[status] : 'À confirmer'
+}
+
 export function isConfirmationStatus(value: unknown): value is AppointmentConfirmationStatus {
   return typeof value === 'string' && APPOINTMENT_CONFIRMATION_STATUSES.includes(value as AppointmentConfirmationStatus)
 }

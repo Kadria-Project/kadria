@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalendarEvent, type RawGoogleEvent, type RawKadriaAppointment } from '@/src/lib/calendar/normalized-event';
@@ -77,31 +77,59 @@ export default function CalendarWorkspace() {
   const [locationTouched, setLocationTouched] = useState(false);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
   const [currentTime] = useState(() => Date.now());
+  const savingAppointmentIdsRef = useRef(savingAppointmentIds);
 
-  const fetchAppointments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    savingAppointmentIdsRef.current = savingAppointmentIds;
+  }, [savingAppointmentIds]);
+
+  const fetchAppointments = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
+    if (background && savingAppointmentIdsRef.current.size > 0) return;
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const weekStart = startOfWeekMonday(selectedDate);
       const from = addDays(weekStart, -1).toISOString();
       const to = addDays(weekStart, 8).toISOString();
-      const response = await fetch('/api/appointments/list?' + new URLSearchParams({ from, to }).toString());
+      const response = await fetch('/api/appointments/list?' + new URLSearchParams({ from, to }).toString(), { cache: 'no-store' });
       const json = await response.json();
       if (!response.ok || !json?.success) throw new Error(json?.error || 'Impossible de charger le planning.');
-      setAppointments(Array.isArray(json.appointments) ? json.appointments : []);
+      const nextAppointments = Array.isArray(json.appointments) ? json.appointments as RawKadriaAppointment[] : [];
+      setAppointments(nextAppointments);
+      setSelectedEvent((current) => {
+        if (!current?.rawAppointmentId) return current;
+        const updated = nextAppointments.find((appointment) => appointment.id === current.rawAppointmentId);
+        return updated ? normalizeKadriaAppointment(updated) : current;
+      });
       setInsights(json.insights || null);
       setQualificationAvailable(Boolean(json.qualificationAvailable));
       setConfirmationAvailable(Boolean(json.confirmationAvailable));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Impossible de charger le planning.');
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, [selectedDate]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => { void fetchAppointments(); }, 0);
     return () => window.clearTimeout(timeout);
+  }, [fetchAppointments]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void fetchAppointments({ background: true });
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    const interval = window.setInterval(refreshWhenVisible, 45_000);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.clearInterval(interval);
+    };
   }, [fetchAppointments]);
 
   useEffect(() => {

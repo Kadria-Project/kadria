@@ -14,7 +14,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event';
 import { QUALIFICATION_STATUS_LABELS } from '@/src/lib/appointment-qualification';
-import { CONFIRMATION_STATUS_LABELS } from '@/src/lib/appointment-confirmation';
+import { confirmationStatusLabel } from '@/src/lib/appointment-confirmation';
 import type { CalendarView } from './calendar-workspace-types';
 import {
   CALENDAR_HOUR_HEIGHT,
@@ -144,7 +144,7 @@ function TimelineEvent({ event, range, currentTime, placement, displayColumns, h
       >
         <span className="flex items-center gap-1.5 truncate text-[10px] font-semibold"><EventTypeIcon event={event} />{formatTime(event.start)}{conflictLabel ? <span className="ml-auto inline-flex shrink-0 text-amber-700" title={conflictLabel} aria-label={conflictLabel}><AlertTriangle className="size-3.5" aria-hidden="true" /></span> : null}</span>
         <span className="block truncate text-[11px] font-bold leading-4">{event.title}</span>
-        {event.confirmation ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{CONFIRMATION_STATUS_LABELS[event.confirmation.status as keyof typeof CONFIRMATION_STATUS_LABELS]}</span> : null}
+        {event.confirmation ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{confirmationStatusLabel(event.confirmation.status, event.confirmation.source)}</span> : null}
         {qualificationLabel ? <span className="inline-flex rounded-full bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold text-current/75">{qualificationLabel}</span> : null}
         <span className="flex min-w-0 items-center gap-1.5 truncate text-[10px] text-current/70">
           {event.assignedUserName ? <span className="grid size-4 shrink-0 place-items-center rounded-full bg-white/80 text-[8px] font-bold">{getInitials(event.assignedUserName)}</span> : null}
