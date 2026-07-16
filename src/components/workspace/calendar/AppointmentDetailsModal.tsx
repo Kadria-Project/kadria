@@ -1,4 +1,5 @@
 import { CalendarClock, Mail, MapPin, Phone, X } from 'lucide-react'
+import { buildAppointmentBrief } from '@/src/lib/calendar/appointment-brief'
 import { getAppointmentStatusPresentation } from '@/src/lib/calendar/appointment-status-presentation'
 import type { NormalizedCalendarEvent } from '@/src/lib/calendar/normalized-event'
 import { formatTime } from './calendar-workspace-utils'
@@ -16,11 +17,11 @@ type Props = {
 export default function AppointmentDetailsModal({ event, onClose, onPrepare, onManual, onReplan, onEdit, onOpenProject }: Props) {
   const confirmation = event.confirmation?.status || null
   const statusPresentation = getAppointmentStatusPresentation(event.confirmation)
-  const checks = [
-    confirmation === 'pending' ? 'Rendez-vous non confirmé' : null,
-    !(event.address || event.location) ? 'Adresse manquante' : null,
-    !event.clientPhone && !event.clientEmail ? 'Téléphone et email indisponibles' : !event.clientPhone ? 'Téléphone indisponible' : !event.clientEmail ? 'Email indisponible' : null,
-  ].filter(Boolean).slice(0, 3)
+  const preparationLines = confirmation === 'change_requested'
+    ? ['Le client a demandé une modification.', 'Consultez le dossier avant de reprendre contact.']
+    : confirmation === 'cancelled'
+      ? ['Ce rendez-vous est annulé.', 'Aucune préparation n’est nécessaire.']
+      : buildAppointmentBrief(event)
   const main = confirmation === 'change_requested'
     ? { label: 'Replanifier', action: onReplan }
     : confirmation === 'pending'
@@ -58,11 +59,11 @@ export default function AppointmentDetailsModal({ event, onClose, onPrepare, onM
 
       <div className="mt-4 rounded-xl border border-slate-700 p-4">
         <p className="text-sm font-bold">Préparation du rendez-vous</p>
-        {checks.length ? <ul className="mt-2 space-y-1 text-sm text-slate-300">{checks.map((check) => <li key={check}>• {check}</li>)}</ul> : <p className="mt-2 text-sm text-emerald-300">Tout est prêt pour ce rendez-vous.</p>}
+        <div className="mt-2 space-y-1.5 text-sm leading-6 text-slate-300">{preparationLines.map((line) => <p key={line}>{line}</p>)}</div>
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <button type="button" onClick={onEdit} className="text-sm font-semibold text-slate-200">Modifier le rendez-vous</button>
+        <button type="button" onClick={onEdit} className="text-sm font-semibold text-slate-200">Modifier le rendez-vous et l’affectation</button>
         {event.projectId ? <button type="button" onClick={onOpenProject} className="text-sm font-semibold text-emerald-300">Ouvrir le dossier</button> : null}
       </div>
     </div>
