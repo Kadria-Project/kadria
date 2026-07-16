@@ -14,13 +14,9 @@ import AppointmentConfirmationModal from './AppointmentConfirmationModal';
 import AppointmentDetailsModal from './AppointmentDetailsModal';
 import CalendarBriefing from './CalendarBriefing';
 import CalendarSummary from './CalendarSummary';
-import DayActivityTimeline from './DayActivityTimeline';
+import AgendaAttentionPanel from './AgendaAttentionPanel';
 import NextAppointmentPanel from './NextAppointmentPanel';
-import ScheduleAvailabilityPanel from './ScheduleAvailabilityPanel';
-import ScheduleConflictPanel from './ScheduleConflictPanel';
-import ScheduleRecommendations from './ScheduleRecommendations';
 import ScheduleTimeline from './ScheduleTimeline';
-import ScheduleTravelPanel from './ScheduleTravelPanel';
 import TeamScheduleTimeline from './TeamScheduleTimeline';
 import type { CalendarView, PlanningInsights, TeamPlanningMember, TeamPlanningPermissions } from './calendar-workspace-types';
 import { addDays, durationMinutes, eventDate, isSameDay, startOfDay, startOfWeekMonday } from './calendar-workspace-utils';
@@ -60,7 +56,6 @@ export default function CalendarWorkspace() {
   const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [qualificationAvailable, setQualificationAvailable] = useState(false);
-  const [confirmationAvailable, setConfirmationAvailable] = useState(false);
   const [confirmingEvent, setConfirmingEvent] = useState<NormalizedCalendarEvent | null>(null);
   const [confirmationSaving, setConfirmationSaving] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
@@ -77,6 +72,8 @@ export default function CalendarWorkspace() {
   const [locationTouched, setLocationTouched] = useState(false);
   const [form, setForm] = useState<AppointmentCreateForm>({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
   const [currentTime] = useState(() => Date.now());
+  const [confirmationFilter, setConfirmationFilter] = useState('all');
+  const [collaboratorFilter, setCollaboratorFilter] = useState('all');
   const savingAppointmentIdsRef = useRef(savingAppointmentIds);
 
   useEffect(() => {
@@ -105,7 +102,6 @@ export default function CalendarWorkspace() {
       });
       setInsights(json.insights || null);
       setQualificationAvailable(Boolean(json.qualificationAvailable));
-      setConfirmationAvailable(Boolean(json.confirmationAvailable));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Impossible de charger le planning.');
     } finally {
@@ -194,7 +190,13 @@ export default function CalendarWorkspace() {
     void loadGoogleEvents();
   }, [mode]);
 
-  const events = useMemo(() => mode === 'google' ? googleEvents.map(normalizeGoogleEvent) : appointments.map(normalizeKadriaAppointment), [appointments, googleEvents, mode]);
+  const allEvents = useMemo(() => mode === 'google' ? googleEvents.map(normalizeGoogleEvent) : appointments.map(normalizeKadriaAppointment), [appointments, googleEvents, mode]);
+  const events = useMemo(() => allEvents.filter((event) => {
+    if (confirmationFilter !== 'all' && event.confirmation?.status !== confirmationFilter) return false;
+    if (collaboratorFilter === 'unassigned') return event.source !== 'kadria-appointment' || !event.assignedUserId;
+    if (collaboratorFilter === 'me') return event.isAssignedToCurrentUser;
+    return collaboratorFilter === 'all' || event.assignedUserId === collaboratorFilter;
+  }), [allEvents, collaboratorFilter, confirmationFilter]);
   const todayEvents = useMemo(() => events.filter((event) => {
     const date = eventDate(event);
     return date ? isSameDay(date, new Date()) : false;
@@ -205,7 +207,6 @@ export default function CalendarWorkspace() {
     const date = eventDate(event);
     return date && date.getTime() >= currentTime;
   }).sort((left, right) => (eventDate(left)?.getTime() || 0) - (eventDate(right)?.getTime() || 0))[0] || null, [currentTime, events]);
-  const selectedConflict = insights?.conflicts[0] || null;
   const endIsValid = Boolean(form.start && form.end && new Date(form.end).getTime() > new Date(form.start).getTime());
   const teamPlanningAvailable = mode === 'kadria' && Boolean(teamPermissions?.canManageTeamPlanning) && teamMembers.length > 1;
 
@@ -487,18 +488,15 @@ export default function CalendarWorkspace() {
       <CalendarSummary appointmentCount={todayEvents.length} plannedMinutes={plannedMinutes} conflictCount={insights?.summary.conflicts || 0} travelWarningCount={insights?.travelWarnings.length || 0} />
       {error && <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {successMessage && <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>}
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_248px]">
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs"><span className="font-semibold text-slate-700">Filtres</span><select value={confirmationFilter} onChange={(event) => setConfirmationFilter(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-1.5"><option value="all">Tous les statuts</option><option value="pending">À confirmer</option><option value="confirmed">Confirmé</option><option value="change_requested">Changement demandé</option><option value="cancelled">Annulé / refusé</option></select><select value={collaboratorFilter} onChange={(event) => setCollaboratorFilter(event.target.value)} className="rounded-lg border border-slate-200 px-2 py-1.5"><option value="all">Tous les collaborateurs</option><option value="me">Moi</option><option value="unassigned">Non affectés</option>{teamMembers.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}</select>{(confirmationFilter !== 'all' || collaboratorFilter !== 'all') && <button type="button" onClick={() => { setConfirmationFilter('all'); setCollaboratorFilter('all'); }} className="font-semibold text-emerald-700">Réinitialiser</button>}</div>
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-4">
           {teamPlanningAvailable ? <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm"><button type="button" onClick={() => setPlanningMode('personal')} className={['rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors', planningMode === 'personal' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Mon planning</button><button type="button" onClick={() => setPlanningMode('team')} className={['rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors', planningMode === 'team' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-500 hover:bg-slate-50'].join(' ')}>Planning d’équipe</button></div> : null}
-          {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={appointments.map(normalizeKadriaAppointment)} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
-          <DayActivityTimeline events={todayEvents} />
+           {planningMode === 'team' && teamPlanningAvailable ? <TeamScheduleTimeline view={view} selectedDate={selectedDate} events={events.filter((event) => event.source === 'kadria-appointment')} members={teamMembers} selectedMemberIds={selectedTeamMemberIds} onToggleMember={(memberId) => setSelectedTeamMemberIds((current) => current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId])} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onDaySelect={setSelectedDate} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} onMoveEvent={(event, start, assignedUserId) => void handleTeamMoveEvent(event, start, assignedUserId)} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} /> : <ScheduleTimeline view={view} selectedDate={selectedDate} events={events} onPrevious={() => updatePeriod(-1)} onNext={() => updatePeriod(1)} onToday={() => setSelectedDate(startOfDay(new Date()))} onViewChange={setView} onOpenEvent={openEvent} onCreate={openCreate} qualificationAvailable={qualificationAvailable} workStartTime={workHours.start} workEndTime={workHours.end} savingEventIds={savingAppointmentIds} onMoveEvent={(event, start) => void handleMoveEvent(event, start)} onResizeEvent={handleResizeEvent} />}
         </div>
         <aside className="space-y-3">
-          <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} onEdit={() => nextAppointment && openEvent(nextAppointment)} onConfirm={() => { if (nextAppointment && confirmationAvailable) { setConfirmationError(null); setConfirmingEvent(nextAppointment); } }} />
-          <ScheduleAvailabilityPanel minutes={availableMinutes} />
-          <ScheduleConflictPanel conflict={selectedConflict} onOpenConflict={() => selectedConflict && setSelectedEvent(events.find((event) => event.rawAppointmentId === selectedConflict.appointmentId) || null)} />
-          <ScheduleRecommendations insights={insights} onOpenConflict={() => selectedConflict && setSelectedEvent(events.find((event) => event.rawAppointmentId === selectedConflict.appointmentId) || null)} />
-          <ScheduleTravelPanel events={todayEvents} />
+           <AgendaAttentionPanel events={events} conflicts={insights?.summary.conflicts || 0} onOpen={(event) => { setSelectedEvent(event); }} />
+           <NextAppointmentPanel event={nextAppointment} onOpenProject={openProject} onEdit={() => nextAppointment && openEvent(nextAppointment)} />
         </aside>
       </div>
       {loading && <p className="text-sm text-slate-500">Chargement du planning...</p>}
