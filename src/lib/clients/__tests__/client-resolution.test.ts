@@ -10,7 +10,7 @@ const engine = await import('../client-resolution-engine')
 const legacy = await import('../legacy-project-client')
 const { normalizeClientEmail, normalizeClientPhone, prepareClientResolutionInput } = normalization
 const { resolveClientCandidates } = engine
-const { mapLegacyProjectClientIdentity } = legacy
+const { clusterLegacyProjects, mapLegacyProjectClientIdentity } = legacy
 
 const tenantId = 'tenant-a'
 
@@ -164,4 +164,107 @@ test('uses a safe legacy fallback when the optional source is absent', () => {
   assert.ok(mapped)
   assert.equal(mapped.input.acquisitionSource, null)
   assert.equal(mapped.input.createdFrom, 'legacy-project')
+})
+
+function clusterInput(id: string, overrides: Partial<Parameters<typeof mapLegacyProjectClientIdentity>[0]> = {}) {
+  const mapped = mapLegacyProjectClientIdentity(legacyProject({ id, ...overrides }))
+  assert.ok(mapped)
+  return mapped
+}
+
+test('keeps eleven isolated projects as eleven simulated clients', () => {
+  const result = clusterLegacyProjects(Array.from({ length: 11 }, (_, index) => clusterInput(`project-${index}`, {
+    clientEmail: `client-${index}@example.test`, clientPhone: `06123456${String(index).padStart(2, '0')}`,
+  })))
+  assert.equal(result.summary.isolatedProjects, 11)
+  assert.equal(result.summary.clientsCertainToCreate, 11)
+  assert.equal(result.summary.estimatedClientsMax, 11)
+})
+
+test('clusters coherent shared contacts exactly once', () => {
+  const sameClient = [
+    clusterInput('a', { clientEmail: 'claire@example.test' }),
+    clusterInput('b', { clientEmail: 'claire@example.test', clientPhone: '0612345679' }),
+    clusterInput('c', { clientEmail: 'claire@example.test', clientPhone: '0612345680' }),
+  ]
+  const result = clusterLegacyProjects(sameClient)
+  assert.equal(result.summary.certainClusters, 1)
+  assert.equal(result.summary.projectsInCertainClusters, 3)
+  assert.equal(result.summary.clientsCertainToCreate, 1)
+  assert.equal(result.summary.estimatedClientsMin, 1)
+  assert.equal(result.summary.estimatedClientsMax, 1)
+})
+
+test('combines two certain groups and four isolated projects without double counting', () => {
+  const inputs = [
+    clusterInput('a1', { clientEmail: 'a@example.test', clientPhone: '0611111111' }), clusterInput('a2', { clientEmail: 'a@example.test', clientPhone: '0611111112' }), clusterInput('a3', { clientEmail: 'a@example.test', clientPhone: '0611111113' }),
+    clusterInput('b1', { clientEmail: 'b@example.test', clientPhone: '0622222221' }), clusterInput('b2', { clientEmail: 'b@example.test', clientPhone: '0622222222' }), clusterInput('b3', { clientEmail: 'b@example.test', clientPhone: '0622222223' }),
+    ...Array.from({ length: 4 }, (_, index) => clusterInput(`i${index}`, { clientEmail: `isolated-${index}@example.test`, clientPhone: `06222222${String(index).padStart(2, '0')}` })),
+  ]
+  const result = clusterLegacyProjects(inputs)
+  assert.equal(result.summary.certainClusters, 2)
+  assert.equal(result.summary.isolatedProjects, 4)
+  assert.equal(result.summary.clientsCertainToCreate, 6)
+  assert.equal(result.summary.estimatedClientsMax, 6)
+})
+
+test('keeps conflicting shared identifiers in one ambiguous group', () => {
+  const byEmail = clusterLegacyProjects([
+    clusterInput('email-a', { clientEmail: 'shared@example.test' }),
+    clusterInput('email-b', { clientFirstName: 'Marc', clientName: 'Martin', clientEmail: 'shared@example.test' }),
+  ])
+  const byPhone = clusterLegacyProjects([
+    clusterInput('phone-a', { clientPhone: '0611111111' }),
+    clusterInput('phone-b', { clientFirstName: 'Marc', clientName: 'Martin', clientPhone: '0611111111' }),
+  ])
+  assert.equal(byEmail.summary.ambiguousClusters, 1)
+  assert.equal(byPhone.summary.ambiguousClusters, 1)
+  assert.equal(byEmail.summary.estimatedClientsMin, 1)
+  assert.equal(byEmail.summary.estimatedClientsMax, 2)
+})
+
+test('separates linked and insufficient projects from clustering estimates', () => {
+  const result = clusterLegacyProjects([
+    clusterInput('linked', { clientId: 'client-existing' }),
+    clusterInput('insufficient', { clientFirstName: null, clientName: null, clientEmail: null, clientPhone: null }),
+    clusterInput('isolated', { clientEmail: 'isolated@example.test' }),
+  ])
+  assert.equal(result.summary.excludedLinkedProjects, 1)
+  assert.equal(result.summary.insufficientProjects, 1)
+  assert.equal(result.summary.isolatedProjects, 1)
+  assert.equal(result.summary.projectsConsidered, 2)
+  assert.ok(result.summary.estimatedClientsMin <= result.summary.estimatedClientsMax)
+  assert.ok(result.summary.estimatedClientsMax <= result.summary.projectsConsidered)
+})
+
+test('rejects duplicate project ids instead of producing overlapping groups', () => {
+  assert.throws(() => clusterLegacyProjects([clusterInput('duplicate'), clusterInput('duplicate')]), /duplicate project/)
+})
+
+test('does not merge matching contacts across tenants', () => {
+  const result = clusterLegacyProjects([
+    clusterInput('tenant-a-project', { clientEmail: 'shared@example.test' }),
+    clusterInput('tenant-b-project', { tenantId: 'tenant-b', clientEmail: 'shared@example.test' }),
+  ])
+  assert.equal(result.summary.certainClusters, 0)
+  assert.equal(result.summary.isolatedProjects, 2)
+})
+
+test('partitions every considered project into exactly one final category', () => {
+  const result = clusterLegacyProjects([
+    clusterInput('certain-a', { clientEmail: 'certain@example.test' }),
+    clusterInput('certain-b', { clientEmail: 'certain@example.test' }),
+    clusterInput('ambiguous-a', { clientEmail: 'ambiguous@example.test' }),
+    clusterInput('ambiguous-b', { clientFirstName: 'Marc', clientName: 'Martin', clientEmail: 'ambiguous@example.test' }),
+    clusterInput('isolated', { clientEmail: 'isolated@example.test' }),
+    clusterInput('insufficient', { clientFirstName: null, clientName: null, clientEmail: null, clientPhone: null }),
+  ])
+  const ids = [
+    ...result.certainClusters.flatMap((group: { projectIds: string[] }) => group.projectIds),
+    ...result.ambiguousClusters.flatMap((group: { projectIds: string[] }) => group.projectIds),
+    ...result.isolatedProjects,
+    ...result.insufficientProjects,
+  ]
+  assert.equal(new Set(ids).size, ids.length)
+  assert.equal(ids.length, result.summary.projectsConsidered)
 })

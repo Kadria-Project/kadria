@@ -63,7 +63,8 @@ async function main() {
     }}))
     const last = rows[rows.length - 1]; if (!last.createdAt) throw new Error('Project pagination requires created_at.'); cursor = { createdAt: last.createdAt, id: last.id }; console.info('[CLIENTS_DRY_RUN] progress', { scanned: summary.totalProjectsScanned, analyzed: summary.projectsAnalyzed, errors: summary.errors }); if (rows.length < BATCH_SIZE) break
   }
-  Object.assign(summary, { tenantCount: Object.keys(summary.projectsByTenant).length, durationMs: Date.now() - started, estimatedLegacyClusters: stats.active === 0 ? estimateLegacyClusters(clusters) : null })
+  const legacyClustering = stats.active === 0 ? estimateLegacyClusters(clusters) : null
+  Object.assign(summary, { tenantCount: Object.keys(summary.projectsByTenant).length, durationMs: Date.now() - started, legacyClustering, estimatedLegacyClusters: legacyClustering })
   await mkdir(OUTPUT, { recursive: true }); await writeFile(resolve(OUTPUT, 'dry-run-summary.json'), `${JSON.stringify(summary, null, 2)}\n`); await writeFile(resolve(OUTPUT, 'dry-run-ambiguous.jsonl'), ambiguous.join('\n')); await writeFile(resolve(OUTPUT, 'dry-run-summary.md'), `# Clients V2 legacy dry-run\n\n${JSON.stringify(summary, null, 2)}\n`); console.info('[CLIENTS_DRY_RUN] completed', { scanned: summary.totalProjectsScanned, analyzed: summary.projectsAnalyzed, errors: summary.errors })
 }
 main().catch((error) => { console.error('[CLIENTS_DRY_RUN] failed', error instanceof Error ? error.message : String(error)); process.exitCode = 1 })
