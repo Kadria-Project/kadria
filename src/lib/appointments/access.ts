@@ -7,6 +7,22 @@ import type { TeamMember } from '@/src/lib/team/types'
 import type { TenantContext } from '@/src/lib/tenant-context'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 
+export type ResolvedAppointmentProject = {
+  id: string
+  tenant_id: string | null
+  artisan_id: string | null
+  client_name: string | null
+  client_first_name: string | null
+  client_phone: string | null
+  client_email: string | null
+  site_address: string | null
+  city: string | null
+  projectId: string
+  tenantId: string
+  artisanId: string | null
+  clientEmail: string | null
+}
+
 export function canReadPlanning(context: TenantContext | null) {
   return checkPermission(context, 'planning.read_team')
 }
@@ -54,10 +70,10 @@ export async function getAssignableAppointmentMemberMap(tenantId: string) {
 export async function resolveProjectForAppointment(params: {
   projectId: string
   tenantContext: TenantContext
-}) {
+}): Promise<ResolvedAppointmentProject | null> {
   const { data, error } = await supabaseAdmin
     .from(TABLES.projects)
-    .select('id, tenant_id, artisan_id, client_name, client_first_name, client_phone, site_address, city')
+    .select('id, tenant_id, artisan_id, client_name, client_first_name, client_phone, client_email, site_address, city')
     .eq('id', params.projectId)
     .maybeSingle()
 
@@ -78,7 +94,28 @@ export async function resolveProjectForAppointment(params: {
     return null
   }
 
-  return data
+  const asOptionalString = (value: unknown) => {
+    const normalized = typeof value === 'string' ? value.trim() : ''
+    return normalized || null
+  }
+
+  const clientEmail = asOptionalString(record.client_email)
+
+  return {
+    id: asOptionalString(record.id) || params.projectId,
+    tenant_id: projectTenantId,
+    artisan_id: asOptionalString(record.artisan_id),
+    client_name: asOptionalString(record.client_name),
+    client_first_name: asOptionalString(record.client_first_name),
+    client_phone: asOptionalString(record.client_phone),
+    client_email: clientEmail,
+    site_address: asOptionalString(record.site_address),
+    city: asOptionalString(record.city),
+    projectId: asOptionalString(record.id) || params.projectId,
+    tenantId: projectTenantId || params.tenantContext.tenantId,
+    artisanId: asOptionalString(record.artisan_id),
+    clientEmail: clientEmail?.toLowerCase() || null,
+  }
 }
 
 export async function findAppointmentConflict(input: {
