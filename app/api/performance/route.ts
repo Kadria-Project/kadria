@@ -3,7 +3,16 @@ import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { buildPerformanceSnapshot } from '@/src/lib/performance/performanceService'
 import { PERFORMANCE_PERIODS } from '@/src/lib/performance/date-range'
-import type { PerformancePeriodKey } from '@/src/lib/performance/performance-types'
+import {
+  getAtRiskOpportunityValue,
+  getAverageStageDurations,
+  getConversionFunnel,
+  getConversionRateSeries,
+  getLeadSourceDistribution,
+  getPipelineDistribution,
+  getRevenueSeries,
+} from '@/src/lib/performance/performance-analytics'
+import type { PerformanceAnalytics, PerformancePeriodKey } from '@/src/lib/performance/performance-types'
 
 function asRows(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : []
@@ -30,7 +39,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin()
     const projectsResult = await supabase
       .from('Projects')
-      .select('id, status, created_at, updated_at')
+      .select('id, status, created_at, updated_at, source, project_source')
       .eq('tenant_id', context.tenantId)
 
     if (projectsResult.error) {
@@ -44,7 +53,7 @@ export async function GET(request: NextRequest) {
     const quotesResult = projectIds.length
       ? await supabase
         .from('Devis')
-        .select('project_id, total_ttc, total_ht, statut, accepted, accepted_at, created_at, updated_at')
+        .select('project_id, total_ttc, total_ht, statut, accepted, accepted_at, declined, declined_at, decline_reason, quote_sent_at, created_at, updated_at')
         .in('project_id', projectIds)
       : { data: [], error: null }
 
@@ -54,9 +63,21 @@ export async function GET(request: NextRequest) {
     }
 
     const quotes = asRows(quotesResult.data)
-    const snapshot = buildPerformanceSnapshot({ projects, quotes }, period, new Date(), custom)
+    const now = new Date()
+    const snapshot = buildPerformanceSnapshot({ projects, quotes }, period, now, custom)
+    const { current, previous } = snapshot.period
 
-    return NextResponse.json({ success: true, snapshot })
+    const analytics: PerformanceAnalytics = {
+      revenueSeries: getRevenueSeries(quotes, current, previous),
+      leadSources: getLeadSourceDistribution(projects, current),
+      funnel: getConversionFunnel(projects, quotes, current),
+      atRisk: getAtRiskOpportunityValue(projects, quotes, now),
+      conversionRateSeries: getConversionRateSeries(projects, current, previous),
+      stageDurations: getAverageStageDurations(projects, quotes, current),
+      pipeline: getPipelineDistribution(projects, current),
+    }
+
+    return NextResponse.json({ success: true, snapshot, analytics })
   } catch (error) {
     console.error('[PERFORMANCE][LOAD_FAILED]', error)
     return NextResponse.json({ success: false, error: 'Impossible de charger les indicateurs' }, { status: 500 })

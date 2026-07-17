@@ -57,3 +57,118 @@ export type PerformanceSnapshot = {
   period: PerformancePeriod
   kpis: KPIResult[]
 }
+
+/* ------------------------------------------------------------------ */
+/* Lot 2 — analytics core                                             */
+/* ------------------------------------------------------------------ */
+
+/** One bucket of the revenue evolution series. `bucketStart` is ISO. */
+export type RevenueDataPoint = {
+  bucketStart: string
+  label: string
+  revenue: number
+}
+
+export type RevenueSeries = {
+  points: RevenueDataPoint[]
+  /** Granularity actually used to build the buckets. */
+  granularity: 'hour' | 'day' | 'week' | 'month'
+  /** Total revenue for the current period — must equal the Lot 1 KPI value. */
+  total: number
+  previousTotal: number
+}
+
+/** Canonical, human-readable lead source family. */
+export type LeadSourceFamily =
+  | 'Assistant vocal'
+  | 'Assistant web'
+  | 'Site vitrine'
+  | 'Google'
+  | 'WhatsApp'
+  | 'Réseaux sociaux'
+  | 'Recommandation'
+  | 'Saisie manuelle'
+  | 'Autres'
+  | 'Source inconnue'
+
+export type LeadSourceMetric = {
+  source: LeadSourceFamily
+  count: number
+  percent: number
+}
+
+export type LeadSourceDistribution = {
+  total: number
+  sources: LeadSourceMetric[]
+}
+
+export type FunnelStageId = 'received' | 'qualified' | 'quoteSent' | 'quoteAccepted' | 'won'
+
+export type FunnelStage = {
+  id: FunnelStageId
+  label: string
+  count: number
+  /** Conversion rate from the previous stage, 0..1. Null for the first stage. */
+  conversionFromPrevious: number | null
+  /** Financial value associated with this stage, when it can be computed reliably. */
+  value: number | null
+}
+
+export type AtRiskOpportunitySummary = {
+  /** Whether the amount reflects genuinely "lost" value or merely "at risk" value. */
+  nature: 'atRisk'
+  amount: number
+  count: number
+  /** Short, honest explanation of the rule used to build this summary. */
+  ruleDescription: string
+  /** Main leak detected, in plain language, or null if none stands out. */
+  mainLeak: string | null
+}
+
+export type ConversionRateDataPoint = {
+  bucketStart: string
+  label: string
+  rate: number
+  qualifiedCount: number
+  wonCount: number
+}
+
+export type ConversionRateSeries = {
+  points: ConversionRateDataPoint[]
+  average: number
+  previousAverage: number | null
+}
+
+export type StageDurationId = 'createdToQuoteSent' | 'quoteSentToAccepted' | 'createdToWon'
+
+export type StageDurationMetric = {
+  id: StageDurationId
+  label: string
+  available: boolean
+  /** Average duration in minutes. Null when unavailable. */
+  averageMinutes: number | null
+  sampleSize: number
+  /** Reason the metric is unavailable, shown to the user, when applicable. */
+  unavailableReason: string | null
+}
+
+export type PipelineStatusMetric = {
+  status: string
+  count: number
+  percent: number
+}
+
+export type PipelineDistribution = {
+  total: number
+  statuses: PipelineStatusMetric[]
+}
+
+export type PerformanceAnalytics = {
+  revenueSeries: RevenueSeries
+  leadSources: LeadSourceDistribution
+  funnel: FunnelStage[]
+  atRisk: AtRiskOpportunitySummary
+  conversionRateSeries: ConversionRateSeries
+  stageDurations: StageDurationMetric[]
+  pipeline: PipelineDistribution
+}
