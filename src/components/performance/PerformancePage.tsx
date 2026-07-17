@@ -11,7 +11,6 @@ import type {
   PriorityAction,
 } from '@/src/lib/performance/performance-types'
 import { PERFORMANCE_PERIODS } from '@/src/lib/performance/date-range'
-import { PlanProvider } from '@/src/components/FeatureGate'
 import PerformanceLayout from './PerformanceLayout'
 import PerformanceHeader from './PerformanceHeader'
 import PerformanceKPIs from './PerformanceKPIs'
@@ -29,6 +28,7 @@ import TopOpportunitiesTable from './TopOpportunitiesTable'
 import InsightsPanel from './InsightsPanel'
 import PriorityActions from './PriorityActions'
 import MonthlyGoals from './MonthlyGoals'
+import ExecutiveSummary from './ExecutiveSummary'
 
 type FetchState = {
   kpis: KPIResult[] | null
@@ -113,13 +113,13 @@ export default function PerformancePage() {
   }
 
   return (
-    <PlanProvider plan={state.plan}>
     <PerformanceLayout>
       <PerformanceHeader period={period} onPeriodChange={setPeriod} />
       {isEmpty ? (
         <PerformanceEmptyState />
       ) : (
         <>
+          <ExecutiveSummary kpis={state.kpis ?? []} analytics={state.analytics} />
           <PerformanceKPIs kpis={state.kpis} loading={loading} error={state.error} onRetry={retry} />
 
           {/* Ligne principale : CA dominant + sources + tunnel */}
@@ -153,12 +153,11 @@ export default function PerformancePage() {
 
           {/* Ligne 2 (Lot 3) : actions à prioriser + objectifs mensuels */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <PriorityActions actions={state.priorityActions} loading={loading} error={state.error} onRetry={retry} />
+            <PriorityActions actions={state.priorityActions} impactAmount={state.analytics?.atRisk.amount ?? null} loading={loading} error={state.error} onRetry={retry} />
             <MonthlyGoals summary={state.monthlyGoals} loading={loading} error={state.error} onRetry={retry} />
           </div>
         </>
       )}
     </PerformanceLayout>
-    </PlanProvider>
   )
 }

@@ -34,7 +34,7 @@ export default function ChartCard({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}
+      className={`flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${className}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -43,7 +43,7 @@ export default function ChartCard({
         </div>
       </div>
 
-      <div className="mt-4 flex-1">
+      <div className="mt-3 flex-1">
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce graphique est momentanément indisponible.</p>

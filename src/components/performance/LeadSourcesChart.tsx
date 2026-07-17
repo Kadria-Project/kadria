@@ -81,7 +81,7 @@ export default function LeadSourcesChart({
             </div>
           </div>
 
-          <ul className="mt-4 space-y-1.5" aria-label="Détail des sources de dossiers">
+          <ul className="mt-3 space-y-1.5" aria-label="Détail des sources de dossiers">
             {distribution.sources.map((item) => (
               <li key={item.source} className="flex items-center justify-between gap-2 text-xs">
                 <span className="flex min-w-0 items-center gap-2 text-slate-700">
@@ -98,6 +98,8 @@ export default function LeadSourcesChart({
               </li>
             ))}
           </ul>
+
+          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-600">{distribution.sources.length > 1 && distribution.sources[0].count > distribution.sources[1].count ? <>Source dominante : <strong className="font-semibold text-slate-800">{distribution.sources[0].source}</strong></> : 'Aucune source dominante.'}</p>
 
           <button
             type="button"

@@ -27,7 +27,7 @@ function InsightCard({ insight }: { insight: PerformanceInsight }) {
   const style = LEVEL_STYLES[insight.level]
 
   return (
-    <li className={`rounded-xl p-4 ${style.bg}`}>
+    <li className={`rounded-xl p-3 ${style.bg}`}>
       <div className="flex items-start gap-3">
         <span className={`grid size-8 shrink-0 place-items-center rounded-full ${style.icon}`} aria-hidden="true">
           <Icon className="size-4" />
@@ -68,14 +68,14 @@ export default function InsightsPanel({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.05 }}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div>
         <h3 className="text-sm font-bold text-slate-950">Insights et recommandations</h3>
         <p className="mt-0.5 text-xs text-slate-500">Signaux calculés à partir de vos données réelles, sans intelligence artificielle.</p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce bloc est momentanément indisponible.</p>
@@ -98,8 +98,8 @@ export default function InsightsPanel({
         ) : insights.length === 0 ? (
           <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Aucun signal commercial important détecté sur cette période.</p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {insights.map((insight) => (
+          <ul className="flex flex-col gap-2">
+            {insights.slice(0, 3).map((insight) => (
               <InsightCard key={insight.id} insight={insight} />
             ))}
           </ul>

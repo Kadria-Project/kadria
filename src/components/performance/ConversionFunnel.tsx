@@ -29,7 +29,7 @@ export default function ConversionFunnel({
       onRetry={onRetry}
     >
       {stages && stages.length > 0 && (
-        <ol className="space-y-2.5" aria-label="Tunnel de conversion commercial">
+        <ol className="space-y-2" aria-label="Tunnel de conversion commercial">
           {stages.map((stage) => {
             const widthPercent = Math.max((stage.count / maxCount) * 100, stage.count > 0 ? 8 : 0)
             return (
@@ -44,7 +44,7 @@ export default function ConversionFunnel({
                 </div>
                 <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-emerald-600 transition-[width] duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-[width] duration-500"
                     style={{ width: `${widthPercent}%` }}
                   />
                 </div>

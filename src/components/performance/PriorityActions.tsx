@@ -60,11 +60,13 @@ function ActionRow({ action }: { action: PriorityAction }) {
 
 export default function PriorityActions({
   actions,
+  impactAmount,
   loading,
   error,
   onRetry,
 }: {
   actions: PriorityAction[] | null
+  impactAmount?: number | null
   loading: boolean
   error?: string | null
   onRetry?: () => void
@@ -76,15 +78,16 @@ export default function PriorityActions({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
       id="priority-actions"
     >
       <div>
         <h3 className="text-sm font-bold text-slate-950">Actions à prioriser</h3>
         <p className="mt-0.5 text-xs text-slate-500">Catégories d&apos;actions triées par impact commercial.</p>
+        {impactAmount !== null && impactAmount !== undefined && impactAmount > 0 && <p className="mt-2 text-xs text-slate-500">Impact estimé <strong className="ml-1 text-base text-slate-950">{formatKPIValue(impactAmount, 'currency')}</strong></p>}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce bloc est momentanément indisponible.</p>

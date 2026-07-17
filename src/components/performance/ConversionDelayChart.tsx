@@ -30,7 +30,7 @@ export default function ConversionDelayChart({
       onRetry={onRetry}
     >
       {metrics && metrics.length > 0 && (
-        <ul className="space-y-3" aria-label="Délai moyen par étape">
+        <ul className="space-y-2" aria-label="Délai moyen par étape">
           {metrics.map((metric) => (
             <li key={metric.id}>
               <div className="flex items-baseline justify-between gap-2 text-xs">
@@ -44,7 +44,7 @@ export default function ConversionDelayChart({
               {metric.available ? (
                 <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-emerald-600 transition-[width] duration-500"
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-[width] duration-500"
                     style={{ width: `${Math.max(((metric.averageMinutes || 0) / maxMinutes) * 100, 6)}%` }}
                   />
                 </div>

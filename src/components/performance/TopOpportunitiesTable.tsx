@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { motion, useReducedMotion } from 'motion/react'
 import { RefreshCw } from 'lucide-react'
 import { formatKPIValue } from '@/src/lib/performance/performance-format'
-import { FeatureGate } from '@/src/components/FeatureGate'
 import type { PerformanceOpportunity } from '@/src/lib/performance/performance-types'
 import { PERFORMANCE_RULES } from '@/src/lib/performance/performance-actions'
 
@@ -30,7 +29,7 @@ function ValueCell({ value }: { value: PerformanceOpportunity['value'] }) {
 function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpportunity; index: number }) {
   return (
     <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80">
-      <td className="py-3 pl-4 pr-2 align-top">
+      <td className="py-2.5 pl-4 pr-2 align-top">
         <Link
           href={`/dashboard-v2/projet/${opportunity.projectId}`}
           className="font-semibold text-slate-950 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
@@ -38,13 +37,13 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           {opportunity.clientName}
         </Link>
       </td>
-      <td className="max-w-[220px] truncate py-3 px-2 align-top text-sm text-slate-600" title={opportunity.projectTitle}>
+      <td className="max-w-[220px] truncate py-2.5 px-2 align-top text-sm text-slate-600" title={opportunity.projectTitle}>
         {opportunity.projectTitle}
       </td>
-      <td className="py-3 px-2 align-top">
+      <td className="py-2.5 px-2 align-top">
         <ValueCell value={opportunity.value} />
       </td>
-      <td className="py-3 px-2 align-top">
+      <td className="py-2.5 px-2 align-top">
         <span
           className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${scoreTone(opportunity.score)}`}
           aria-label={opportunity.score !== null ? `Score commercial ${opportunity.score} sur 100` : 'Score commercial indisponible'}
@@ -52,21 +51,21 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           {opportunity.score !== null ? `${opportunity.score}/100` : '—'}
         </span>
       </td>
-      <td className="py-3 px-2 align-top">
+      <td className="py-2.5 px-2 align-top">
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
           {opportunity.statusLabel}
         </span>
       </td>
-      <td className="py-3 px-2 align-top text-sm text-slate-700">{opportunity.nextAction.label}</td>
-      <td className="py-3 px-2 align-top text-sm">
+      <td className="py-2.5 px-2 align-top text-sm text-slate-700">{opportunity.nextAction.label}</td>
+      <td className="py-2.5 px-2 align-top text-sm">
         {opportunity.dueLabel ? (
           <span className="font-medium text-amber-700">{opportunity.dueLabel}</span>
         ) : (
           <span className="text-slate-400">—</span>
         )}
       </td>
-      <td className="py-3 pr-4 pl-2 align-top text-sm text-slate-600">{opportunity.responsibleName ?? <span className="text-slate-400">Non assigné</span>}</td>
-      <td className="py-3 pr-4 align-top text-right">
+      <td className="py-2.5 pr-4 pl-2 align-top text-sm text-slate-600">{opportunity.responsibleName ?? <span className="text-slate-400">Non assigné</span>}</td>
+      <td className="py-2.5 pr-4 align-top text-right">
         <Link
           href={opportunity.nextAction.destination}
           className="inline-flex items-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
@@ -111,7 +110,8 @@ function OpportunityCard({ opportunity }: { opportunity: PerformanceOpportunity 
 }
 
 function TopOpportunitiesContent({ opportunities }: { opportunities: PerformanceOpportunity[] }) {
-  const mobilePreview = opportunities.slice(0, PERFORMANCE_RULES.mobileOpportunityLimit)
+  const preview = opportunities.slice(0, 5)
+  const mobilePreview = preview.slice(0, PERFORMANCE_RULES.mobileOpportunityLimit)
 
   return (
     <>
@@ -132,7 +132,7 @@ function TopOpportunitiesContent({ opportunities }: { opportunities: Performance
             </tr>
           </thead>
           <tbody>
-            {opportunities.map((opportunity, index) => (
+            {preview.map((opportunity, index) => (
               <OpportunityRow key={opportunity.projectId} opportunity={opportunity} index={index} />
             ))}
           </tbody>
@@ -149,6 +149,7 @@ function TopOpportunitiesContent({ opportunities }: { opportunities: Performance
           {opportunities.length - mobilePreview.length} autre{opportunities.length - mobilePreview.length > 1 ? 's' : ''} opportunité{opportunities.length - mobilePreview.length > 1 ? 's' : ''} — retrouvez tous les dossiers dans le Suivi.
         </p>
       )}
+      {opportunities.length > preview.length && <Link href="/dashboard-v2/suivi" className="mt-3 inline-flex text-xs font-semibold text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500">Voir toutes les opportunités →</Link>}
     </>
   )
 }
@@ -171,14 +172,14 @@ export default function TopOpportunitiesTable({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div>
         <h3 className="text-sm font-bold text-slate-950">Opportunités à fort potentiel</h3>
         <p className="mt-0.5 text-xs text-slate-500">Classement déterministe combinant score commercial, valeur, urgence et retard de relance.</p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce bloc est momentanément indisponible.</p>
@@ -200,9 +201,7 @@ export default function TopOpportunitiesTable({
         ) : opportunities.length === 0 ? (
           <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Aucune opportunité prioritaire sur cette période.</p>
         ) : (
-          <FeatureGate feature="topAiOpportunities" requiredPlan="performance">
-            <TopOpportunitiesContent opportunities={opportunities} />
-          </FeatureGate>
+          <TopOpportunitiesContent opportunities={opportunities} />
         )}
       </div>
     </motion.div>

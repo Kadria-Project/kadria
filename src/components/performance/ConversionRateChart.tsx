@@ -40,14 +40,14 @@ export default function ConversionRateChart({
       onRetry={onRetry}
     >
       {series && chartData.length > 0 && (
-        <div className="h-52 w-full" role="img" aria-label={`Taux de transformation : ${chartData.map((p) => `${p.label} ${formatRatioAsPercent(p.rate)}`).join(', ')}`}>
+        <div className="h-44 w-full" role="img" aria-label={`Taux de transformation : ${chartData.map((p) => `${p.label} ${formatRatioAsPercent(p.rate)}`).join(', ')}`}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} />
               <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={40} />
               <Tooltip content={<TooltipContent />} />
-              <Line type="monotone" dataKey="ratePercent" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} isAnimationActive animationDuration={500} />
+              <Line type="monotone" dataKey="ratePercent" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} isAnimationActive animationDuration={650} />
             </LineChart>
           </ResponsiveContainer>
         </div>

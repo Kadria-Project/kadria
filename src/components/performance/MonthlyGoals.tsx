@@ -94,14 +94,14 @@ export default function MonthlyGoals({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.05 }}
-      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div>
         <h3 className="text-sm font-bold text-slate-950">Objectifs mensuels</h3>
         <p className="mt-0.5 text-xs text-slate-500">Suivi de votre progression par rapport à vos objectifs commerciaux.</p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce bloc est momentanément indisponible.</p>

@@ -42,7 +42,7 @@ export default function AtRiskOpportunitiesCard({
       initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`rounded-2xl border p-5 shadow-sm ${hasRisk ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200 bg-white'}`}
+      className={`rounded-2xl border p-4 shadow-sm ${hasRisk ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-white'}`}
     >
       <div className="flex items-start gap-3">
         <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${hasRisk ? 'bg-amber-100 text-amber-700' : 'bg-slate-50 text-slate-400'}`}>
@@ -52,7 +52,7 @@ export default function AtRiskOpportunitiesCard({
           <p className="text-sm font-bold text-slate-950">Valeur actuellement à risque</p>
           {hasRisk ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-slate-950">{formatKPIValue(summary.amount, 'currency')}</p>
+              <p className="mt-0.5 text-3xl font-bold tracking-tight text-slate-950">{formatKPIValue(summary.amount, 'currency')}</p>
               <p className="mt-1 text-xs text-slate-600">
                 {summary.count} devis concerné{summary.count > 1 ? 's' : ''}
                 {summary.mainLeak ? ` — ${summary.mainLeak}` : ''}

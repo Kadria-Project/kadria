@@ -77,7 +77,7 @@ export default function PipelineDistributionChart({
             </div>
           </div>
 
-          <ul className="mt-4 space-y-1.5" aria-label="Répartition par statut">
+          <ul className="mt-3 space-y-1.5" aria-label="Répartition par statut">
             {distribution.statuses.map((item, index) => (
               <li key={item.status} className="flex items-center justify-between gap-2 text-xs">
                 <span className="flex min-w-0 items-center gap-2 text-slate-700">

@@ -13,7 +13,7 @@ function currencyAxis(value: number): string {
 function TooltipContent({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload || payload.length === 0) return null
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-md">
+    <div className="rounded-xl border border-emerald-100 bg-white/95 px-3 py-2 text-xs shadow-[0_10px_28px_rgba(15,34,50,0.14)] backdrop-blur">
       <p className="font-semibold text-slate-950">{label}</p>
       <p className="mt-0.5 text-emerald-700">{formatKPIValue(payload[0].value, 'currency')}</p>
     </div>
@@ -47,13 +47,13 @@ export default function RevenueEvolutionChart({
     >
       {series && series.points.length > 0 && (
         <>
-          <div className="h-56 w-full" role="img" aria-label={`Évolution du chiffre d'affaires : ${series.points.map((p) => `${p.label} ${formatKPIValue(p.revenue, 'currency')}`).join(', ')}`}>
+          <div className="h-48 w-full" role="img" aria-label={`Évolution du chiffre d'affaires : ${series.points.map((p) => `${p.label} ${formatKPIValue(p.revenue, 'currency')}`).join(', ')}`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#059669" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#059669" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#059669" stopOpacity={0.34} />
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -67,7 +67,7 @@ export default function RevenueEvolutionChart({
                   strokeWidth={2}
                   fill="url(#revenueFill)"
                   isAnimationActive
-                  animationDuration={500}
+                  animationDuration={650}
                 />
               </AreaChart>
             </ResponsiveContainer>

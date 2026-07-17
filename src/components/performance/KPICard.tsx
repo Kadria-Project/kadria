@@ -117,7 +117,7 @@ export default function KPICard({
       initial={reduceMotion ? undefined : { opacity: 0, y: 6 }}
       animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+      className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
       aria-label={content.ariaLabel}
     >
       <div className="flex items-start justify-between gap-2">
@@ -137,7 +137,9 @@ export default function KPICard({
         <span className="text-[11px] text-slate-400">vs période précédente</span>
       </div>
 
-      <div className="mt-3">
+      <p className="mt-1.5 text-[11px] text-slate-400">{comparison.deltaAbsolute === 0 ? 'Stable sur la période' : `${comparison.deltaAbsolute > 0 ? '+' : '−'}${formatKPIValue(Math.abs(comparison.deltaAbsolute), result.format)} sur la période`}</p>
+
+      <div className="mt-2">
         <Sparkline points={result.sparkline} trend={comparison.trend} />
       </div>
     </motion.div>
