@@ -17,3 +17,5 @@ Les paramètres disponibles sont `q`, `status`, `source`, `active`, `attention`,
 ## Limites V1
 
 Cette passe ne fusionne pas les données legacy, ne crée pas de fiche Client V2 et ne modifie pas le dual write. Le Lot 9 portera la finition visuelle ; le Lot 10 apportera la fiche client détaillée.
+
+La finition UX du Lot 9 est documentée dans `CLIENTS_V2_UI_PREMIUM.md`.

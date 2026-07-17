@@ -1,200 +1,62 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, RefreshCw, Search, SearchX } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Building2, CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, Columns3, Grid2X2, ListFilter, RefreshCw, Search, SearchX, UsersRound, X } from 'lucide-react'
 import { useDebouncedCallback } from 'use-debounce'
 import type { ClientListItem, ClientListResponse } from '@/src/lib/clients/client-list-types'
 import { CLIENT_ATTENTION_LABELS, buildClientListSearchParams, type ClientListUiFilter, type ClientListUiSort } from '@/src/lib/clients/client-list-ui'
 
-type ClientFilter = ClientListUiFilter
-type SortKey = ClientListUiSort
+type ViewMode = 'list' | 'cards'
+type FilterState = { status: string; source: string; hasAppointment: boolean | undefined; includeArchived: boolean }
+const QUICK_FILTERS: Array<{ value: ClientListUiFilter; label: string }> = [{ value: 'all', label: 'Tous' }, { value: 'active', label: 'Actifs' }, { value: 'attention', label: 'À traiter' }, { value: 'recurring', label: 'Récurrents' }, { value: 'legacy', label: 'À rapprocher' }]
+const STATUS_LABELS: Record<string, string> = { prospect: 'Prospect', customer: 'Client actif', follow_up: 'À relancer', lost: 'Perdu', archived: 'Archivé', legacy: 'Contact non lié' }
+const STATUS_TONES: Record<string, string> = { prospect: 'bg-slate-100 text-slate-600', customer: 'bg-emerald-50 text-emerald-700', follow_up: 'bg-amber-50 text-amber-700', lost: 'bg-rose-50 text-rose-700', archived: 'bg-slate-100 text-slate-500', legacy: 'bg-amber-50 text-amber-800' }
 
-const FILTERS: Array<{ value: ClientFilter; label: string }> = [
-  { value: 'all', label: 'Tous' },
-  { value: 'canonical', label: 'Clients liés' },
-  { value: 'legacy', label: 'À rapprocher' },
-  { value: 'attention', label: 'À traiter' },
-  { value: 'active', label: 'Actifs' },
-  { value: 'recurring', label: 'Clients récurrents' },
-]
+function money(value: number) { return value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) }
+function appointmentDate(value: string | null) { if (!value) return 'Aucun rendez-vous'; const date = new Date(value); if (Number.isNaN(date.getTime())) return 'Aucun rendez-vous'; const today = new Date(); const delta = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000); const day = delta === 0 ? "Aujourd’hui" : delta === 1 ? 'Demain' : date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }); return `${day} à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` }
+function interactionDate(value: string | null) { if (!value) return 'Aucune activité récente'; const date = new Date(value); const days = Math.floor((Date.now() - date.getTime()) / 86_400_000); if (days <= 0) return "Aujourd’hui"; if (days === 1) return 'Il y a 1 jour'; if (days < 7) return `Il y a ${days} jours`; return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) }
+function initials(client: ClientListItem) { return client.displayName.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'C' }
+function avatarTone(id: string) { return ['bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 'bg-amber-100 text-amber-700', 'bg-violet-100 text-violet-700'][id.charCodeAt(id.length - 1) % 4] }
+function confirmationTone(status?: string) { const normalized = status?.toLowerCase(); if (normalized === 'confirmed') return 'bg-emerald-50 text-emerald-700'; if (normalized === 'change_requested') return 'bg-orange-50 text-orange-700'; return 'bg-amber-50 text-amber-700' }
+function confirmationLabel(status?: string) { return status === 'confirmed' ? 'Confirmé' : status === 'change_requested' ? 'Modification demandée' : 'À confirmer' }
 
-const STATUS_LABELS: Record<string, string> = {
-  prospect: 'Prospect',
-  customer: 'Client',
-  follow_up: 'À relancer',
-  lost: 'Perdu',
-  archived: 'Archivé',
-  legacy: 'Legacy',
-}
+function Badge({ client }: { client: ClientListItem }) { return <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_TONES[client.status] || STATUS_TONES.prospect}`}>{STATUS_LABELS[client.status] || 'Non classé'}</span> }
+function Attention({ client }: { client: ClientListItem }) { if (!client.needsAttention || !client.attentionReason) return null; return <span title={client.source === 'legacy' ? "Ce contact provient d’un ancien dossier et n’est pas encore rattaché à une fiche client." : undefined} className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700"><CircleAlert className="size-3" />{CLIENT_ATTENTION_LABELS[client.attentionReason] || 'À traiter'}</span> }
+function Avatar({ client }: { client: ClientListItem }) { return <span className={`grid size-10 shrink-0 place-items-center rounded-xl text-xs font-bold ${avatarTone(client.id)}`}>{client.companyName && !client.firstName ? <Building2 className="size-4" /> : initials(client)}</span> }
 
-function formatAmount(value: number) {
-  return value > 0 ? value.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : '—'
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
-}
-
-function ClientBadges({ client }: { client: ClientListItem }) {
-  return (
-    <span className="flex flex-wrap items-center gap-1.5">
-      <span className="rounded-full bg-[var(--bg-hover)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-2)]">
-        {STATUS_LABELS[client.status] || 'Client'}
-      </span>
-      {client.source === 'legacy' && (
-        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-500">Legacy</span>
-      )}
-      {client.needsAttention && client.attentionReason && (
-        <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-500">
-          {CLIENT_ATTENTION_LABELS[client.attentionReason] || 'À traiter'}
-        </span>
-      )}
-    </span>
-  )
-}
-
-function ClientRow({ client, onOpen }: { client: ClientListItem; onOpen: (client: ClientListItem) => void }) {
+function ClientListRow({ client, onOpen }: { client: ClientListItem; onOpen: () => void }) {
   const canOpen = Boolean(client.latestProject)
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(client)}
-      disabled={!canOpen}
-      className="w-full border-b border-[var(--border)]/50 bg-[var(--bg-elevated)] px-4 py-3 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-default disabled:hover:bg-[var(--bg-elevated)] md:px-4"
-    >
-      <span className="hidden grid-cols-12 items-center gap-4 md:grid">
-        <span className="col-span-2 min-w-0">
-          <span className="flex items-center gap-2 font-medium text-[var(--text-1)]">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--border)] text-xs font-bold">
-              {client.displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?'}
-            </span>
-            <span className="min-w-0 truncate">{client.displayName}</span>
-          </span>
-          {client.companyName && client.companyName !== client.displayName && <span className="mt-1 block truncate text-xs text-[var(--text-3)]">{client.companyName}</span>}
-          <span className="mt-1 block truncate text-xs text-[var(--text-3)]">{client.city || 'Ville non renseignée'}</span>
-          <span className="mt-1"><ClientBadges client={client} /></span>
-        </span>
-        <span className="col-span-2 min-w-0 text-[var(--text-2)]">
-          <span className="block truncate">{client.email || 'Email non renseigné'}</span>
-          <span className="block truncate text-xs text-[var(--text-3)]">{client.phone || 'Téléphone non renseigné'}</span>
-        </span>
-        <span className="col-span-2 min-w-0 text-[var(--text-2)]">
-          <span className="block truncate">{client.latestProject?.title || 'Aucun dossier'}</span>
-          <span className="block truncate text-xs text-[var(--text-3)]">{client.latestProject ? `${client.projectCount} dossier(s)` : 'Client sans projet'}</span>
-        </span>
-        <span className="col-span-2 min-w-0 text-[var(--text-2)]">
-          <span className="block truncate">{client.nextAppointment?.title || 'Aucun rendez-vous'}</span>
-          <span className="block text-xs text-[var(--text-3)]">{formatDate(client.nextAppointment?.startTime || null)}</span>
-        </span>
-        <span className="col-span-2 text-[var(--text-2)]">{formatAmount(client.acceptedAmount)}</span>
-        <span className="col-span-1 min-w-0 text-xs text-[var(--text-2)]">{client.lastInteractionLabel || '—'}</span>
-        <ChevronRight className="col-span-1 ml-auto size-4 text-[var(--text-3)]" />
-      </span>
-      <span className="flex items-start gap-3 md:hidden">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--border)] text-xs font-bold text-[var(--text-1)]">
-          {client.displayName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '?'}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2"><span className="font-medium text-[var(--text-1)]">{client.displayName}</span><ClientBadges client={client} /></span>
-          <span className="mt-1 block truncate text-xs text-[var(--text-2)]">{client.email || client.phone || 'Contact non renseigné'}</span>
-          <span className="mt-1 block truncate text-xs text-[var(--text-2)]">{client.latestProject?.title || 'Aucun dossier'} · {client.projectCount} dossier(s)</span>
-          <span className="mt-1 block text-xs text-[var(--text-3)]">{client.nextAppointment ? `Rendez-vous : ${formatDate(client.nextAppointment.startTime)}` : 'Aucun rendez-vous'} · {formatAmount(client.acceptedAmount)}</span>
-        </span>
-        {canOpen && <ChevronRight className="mt-1 size-4 shrink-0 text-[var(--text-3)]" />}
-      </span>
-    </button>
-  )
+  return <div className="grid grid-cols-[minmax(220px,1.6fr)_minmax(140px,1fr)_minmax(130px,.75fr)_minmax(160px,1fr)_minmax(150px,1fr)_minmax(140px,.85fr)_auto] items-center gap-4 border-t border-slate-100 px-5 py-4 transition-colors hover:bg-slate-50">
+    <div className="flex min-w-0 items-center gap-3"><Avatar client={client} /><div className="min-w-0"><p className="truncate font-semibold text-slate-950">{client.displayName}</p>{client.companyName && client.companyName !== client.displayName && <p className="truncate text-xs text-slate-500">{client.companyName}</p>}<p className="truncate text-xs text-slate-500">{client.email || client.phone || 'Coordonnées non renseignées'}</p></div></div>
+    <div className="flex min-w-0 flex-col items-start gap-1"><Badge client={client} /><Attention client={client} /></div>
+    <div><p className="font-semibold text-slate-800">{client.projectCount}</p><p className="text-xs text-slate-500">{client.activeProjectCount} actif{client.activeProjectCount > 1 ? 's' : ''} · {client.wonProjectCount} gagné{client.wonProjectCount > 1 ? 's' : ''}</p></div>
+    <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-800">{client.latestProject?.title || 'Aucun dossier'}</p><p className="truncate text-xs text-slate-500">{client.latestProject ? client.latestProject.status : 'Client sans projet'}</p></div>
+    <div><p className="font-semibold text-slate-900">{money(client.acceptedAmount)}</p><p className="text-xs text-slate-500">{client.quoteCount ? `${client.quoteCount} devis` : 'Aucun devis'}</p></div>
+    <div className="min-w-0">{client.nextAppointment ? <><p className="truncate text-sm font-medium text-slate-800">{appointmentDate(client.nextAppointment.startTime)}</p><span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${confirmationTone(client.nextAppointment.confirmationStatus)}`}>{confirmationLabel(client.nextAppointment.confirmationStatus)}</span></> : <p className="text-sm text-slate-400">Aucun rendez-vous</p>}</div>
+    <button type="button" onClick={onOpen} disabled={!canOpen} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40">Ouvrir</button>
+  </div>
 }
+
+function ClientCard({ client, onOpen }: { client: ClientListItem; onOpen: () => void }) { const canOpen = Boolean(client.latestProject); return <article className="flex min-h-[290px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><Avatar client={client} /><div className="min-w-0"><p className="truncate font-bold text-slate-950">{client.displayName}</p><p className="truncate text-xs text-slate-500">{client.companyName && client.companyName !== client.displayName ? client.companyName : client.city || 'Client'}</p></div></div><Badge client={client} /></div><div className="mt-3"><Attention client={client} /></div><div className="mt-4 space-y-2 text-sm"><p className="truncate text-slate-600">{client.email || client.phone || 'Coordonnées non renseignées'}</p><div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3"><div><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Dossiers</p><p className="mt-1 font-bold text-slate-900">{client.projectCount}</p></div><div><p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Valeur gagnée</p><p className="mt-1 font-bold text-slate-900">{money(client.acceptedAmount)}</p></div></div><p className="truncate"><span className="text-slate-400">Prochain : </span>{client.nextAppointment ? appointmentDate(client.nextAppointment.startTime) : 'Aucun rendez-vous'}</p><p className="truncate"><span className="text-slate-400">Dernière activité : </span>{client.lastInteractionLabel || interactionDate(client.lastInteractionAt)}</p></div><div className="mt-auto border-t border-slate-100 pt-4"><p className="truncate text-xs text-slate-500">{client.latestProject?.title || 'Ce client n’a pas encore de projet associé.'}</p><button type="button" disabled={!canOpen} onClick={onOpen} className="mt-3 w-full rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{canOpen ? 'Ouvrir le dossier' : 'Aucun dossier'}</button></div></article> }
 
 export default function ClientsV2List({ onOpenProject }: { onOpenProject: (projectId: string) => void }) {
-  const [filter, setFilter] = useState<ClientFilter>('all')
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<SortKey>('attention')
-  const [status, setStatus] = useState('')
-  const [hasAppointment, setHasAppointment] = useState<boolean | undefined>()
-  const [includeArchived, setIncludeArchived] = useState(false)
-  const [page, setPage] = useState(1)
-  const [response, setResponse] = useState<ClientListResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [reloadNonce, setReloadNonce] = useState(0)
-  const requestRef = useRef(0)
-
-  const resetResponse = () => {
-    setResponse(null)
-    setError(null)
-  }
-
-  const debouncedSearch = useDebouncedCallback((value: string) => {
-    setSearch(value)
-    setPage(1)
-    resetResponse()
-  }, 350)
-
-  useEffect(() => {
-    const requestId = ++requestRef.current
-    const controller = new AbortController()
-    fetch(`/api/clients?${buildClientListSearchParams(filter, search, page, sort, { status, hasAppointment, includeArchived }).toString()}`, { signal: controller.signal })
-      .then(async (result) => {
-        const data = await result.json() as ({ success: false; error?: string } | ({ success: true } & ClientListResponse))
-        if (!result.ok || !data.success) throw new Error(('error' in data ? data.error : undefined) || 'Impossible de charger les clients.')
-        if (requestId === requestRef.current) setResponse(data)
-      })
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted || requestId !== requestRef.current) return
-        setError(reason instanceof Error ? reason.message : 'Impossible de charger les clients.')
-        setResponse(null)
-      })
-    return () => controller.abort()
-  }, [filter, hasAppointment, includeArchived, page, reloadNonce, search, sort, status])
-
-  const changeFilter = (value: ClientFilter) => {
-    setFilter(value)
-    setPage(1)
-    resetResponse()
-  }
-  const changeStatus = (value: string) => {
-    setStatus(value)
-    setPage(1)
-    resetResponse()
-  }
-  const changeHasAppointment = (value: string) => {
-    setHasAppointment(value === 'all' ? undefined : value === 'yes')
-    setPage(1)
-    resetResponse()
-  }
-  const totalPages = response ? Math.max(1, Math.ceil(response.total / response.pageSize)) : 1
-  const loading = response === null && error === null
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--text-3)]" /><input value={searchInput} onChange={(event) => { const value = event.target.value; setSearchInput(value); debouncedSearch(value) }} placeholder="Nom, e-mail, téléphone, ville..." className="h-11 w-full rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] pl-9 pr-3 text-sm text-[var(--text-1)] outline-none focus:border-green-500" /></label>
-        <select value={filter} onChange={(event) => changeFilter(event.target.value as ClientFilter)} className="h-11 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-1)]">
-          {FILTERS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
-        <select value={status || 'all'} onChange={(event) => changeStatus(event.target.value === 'all' ? '' : event.target.value)} className="h-11 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-1)]">
-          <option value="all">Tous les statuts</option><option value="prospect">Prospects</option><option value="customer">Clients</option><option value="follow_up">À relancer</option><option value="lost">Perdus</option>
-        </select>
-        <select value={hasAppointment === undefined ? 'all' : hasAppointment ? 'yes' : 'no'} onChange={(event) => changeHasAppointment(event.target.value)} className="h-11 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-1)]">
-          <option value="all">Tous les rendez-vous</option><option value="yes">Avec rendez-vous</option><option value="no">Sans rendez-vous</option>
-        </select>
-        <select value={sort} onChange={(event) => { setSort(event.target.value as SortKey); setPage(1); resetResponse() }} className="h-11 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-1)]">
-          <option value="attention">À traiter d’abord</option><option value="lastInteraction">Dernière interaction</option><option value="name">Nom</option><option value="acceptedValue">Valeur acceptée</option><option value="projectCount">Nombre de dossiers</option><option value="nextAppointment">Prochain rendez-vous</option>
-        </select>
-        <label className="inline-flex h-11 items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--text-2)]"><input type="checkbox" checked={includeArchived} onChange={(event) => { setIncludeArchived(event.target.checked); setPage(1); resetResponse() }} />Archivés</label>
-      </div>
-      {response && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Kpi label="Clients" value={response.summary.totalClients} /><Kpi label="Actifs" value={response.summary.activeClients} /><Kpi label="À traiter" value={response.summary.attentionCount} /><Kpi label="Valeur acceptée" value={formatAmount(response.summary.totalAcceptedValue)} /></div>}
-      {loading && <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-[var(--bg-hover)]" />)}</div>}
-      {!loading && error && <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6 text-center"><p className="font-semibold text-[var(--text-1)]">Impossible de charger les clients</p><p className="mt-1 text-sm text-[var(--text-2)]">{error}</p><button type="button" onClick={() => { resetResponse(); setReloadNonce((current) => current + 1) }} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text-1)]"><RefreshCw className="size-4" />Réessayer</button></div>}
-      {!loading && !error && response?.items.length === 0 && <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-10 text-center"><SearchX className="mx-auto mb-3 size-10 text-[var(--text-3)]" /><p className="font-bold text-[var(--text-1)]">{search ? 'Aucun résultat' : 'Aucun client pour le moment'}</p><p className="mt-1 text-sm text-[var(--text-2)]">{search ? `Aucun client ne correspond à « ${search} ». ` : 'Les clients et dossiers apparaîtront ici.'}</p></div>}
-      {!loading && !error && response && response.items.length > 0 && <div><div className="mb-2 text-sm text-[var(--text-2)]">{response.total} client(s) trouvé(s)</div><div className="hidden grid-cols-12 gap-4 rounded-t-xl bg-[var(--bg-elevated)] px-4 py-2.5 text-[11px] uppercase tracking-widest text-[var(--text-3)] md:grid"><span className="col-span-2">Client</span><span className="col-span-2">Contact</span><span className="col-span-2">Dernier dossier</span><span className="col-span-2">Prochain rendez-vous</span><span className="col-span-2">Valeur acceptée</span><span className="col-span-1">Interaction</span><span className="col-span-1" /></div><div className="overflow-hidden rounded-b-xl border-x border-b border-[var(--border)]">{response.items.map((client) => <ClientRow key={client.id} client={client} onOpen={(item) => { if (item.latestProject) onOpenProject(item.latestProject.id) }} />)}</div>{totalPages > 1 && <div className="mt-4 flex items-center justify-between"><button type="button" disabled={response.page <= 1} onClick={() => { resetResponse(); setPage((current) => Math.max(1, current - 1)) }} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm disabled:opacity-40"><ChevronLeft className="size-4" />Précédent</button><span className="text-sm text-[var(--text-2)]">Page {response.page} sur {totalPages}</span><button type="button" disabled={response.page >= totalPages} onClick={() => { resetResponse(); setPage((current) => current + 1) }} className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm disabled:opacity-40">Suivant<ChevronRight className="size-4" /></button></div>}</div>}
-    </div>
-  )
+  const [quickFilter, setQuickFilter] = useState<ClientListUiFilter>('all'); const [filtersOpen, setFiltersOpen] = useState(false); const [filter, setFilter] = useState<FilterState>({ status: '', source: '', hasAppointment: undefined, includeArchived: false }); const [draft, setDraft] = useState(filter); const [searchInput, setSearchInput] = useState(''); const [search, setSearch] = useState(''); const [sort, setSort] = useState<ClientListUiSort>('attention'); const [page, setPage] = useState(1); const [view, setView] = useState<ViewMode>('list'); const [response, setResponse] = useState<ClientListResponse | null>(null); const [error, setError] = useState<string | null>(null); const [reloadNonce, setReloadNonce] = useState(0); const requestRef = useRef(0)
+  const reset = () => { setResponse(null); setError(null) }
+  const searchDebounced = useDebouncedCallback((value: string) => { setSearch(value); setPage(1); reset() }, 350)
+  useEffect(() => { const id = ++requestRef.current; const controller = new AbortController(); const apiFilter = quickFilter === 'legacy' ? 'legacy' : quickFilter; fetch(`/api/clients?${buildClientListSearchParams(apiFilter, search, page, sort, filter).toString()}`, { signal: controller.signal }).then(async (result) => { const data = await result.json() as ({ success: false; error?: string } | ({ success: true } & ClientListResponse)); if (!result.ok || !data.success) throw new Error(('error' in data ? data.error : undefined) || 'Impossible de charger les clients.'); if (id === requestRef.current) setResponse(data) }).catch((reason: unknown) => { if (!controller.signal.aborted && id === requestRef.current) setError(reason instanceof Error ? reason.message : 'Impossible de charger les clients.') }); return () => controller.abort() }, [filter, page, quickFilter, reloadNonce, search, sort])
+  const loading = response === null && error === null; const pages = response ? Math.max(1, Math.ceil(response.total / response.pageSize)) : 1
+  const chooseQuick = (value: ClientListUiFilter) => { setQuickFilter(value); setPage(1); reset() }; const resetAll = () => { setQuickFilter('all'); setFilter({ status: '', source: '', hasAppointment: undefined, includeArchived: false }); setDraft({ status: '', source: '', hasAppointment: undefined, includeArchived: false }); setSearch(''); setSearchInput(''); setPage(1); reset() }
+  return <section className="mx-auto w-full max-w-[1600px] space-y-6 pb-8"><header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6"><div><p className="text-sm font-semibold text-emerald-700">PORTFOLIO CLIENTS</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Clients</h1><p className="mt-1 max-w-2xl text-sm text-slate-500">Suivez vos clients, leur activité et les prochaines actions commerciales.</p></div></header>
+    {response && <div className="grid grid-cols-2 gap-3 lg:grid-cols-5"><Kpi icon={<UsersRound />} label="Total clients" value={response.summary.totalClients} detail={`${response.summary.legacyEntries} contact${response.summary.legacyEntries > 1 ? 's' : ''} non lié${response.summary.legacyEntries > 1 ? 's' : ''}`} /><Kpi icon={<CheckCircle2 />} label="Clients actifs" value={response.summary.activeClients} detail="Avec au moins un dossier actif" /><Kpi icon={<CircleAlert />} label="À traiter" value={response.summary.attentionCount} detail="Une action commerciale à suivre" tone="amber" /><Kpi icon={<UsersRound />} label="Récurrents" value={response.summary.recurringClients} detail="Deux dossiers ou plus" /><Kpi icon={<Building2 />} label="Valeur gagnée" value={money(response.summary.totalAcceptedValue)} detail="Devis acceptés" /></div>}
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"><div className="flex flex-col gap-3 xl:flex-row xl:items-center"><label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><input value={searchInput} onChange={(event) => { setSearchInput(event.target.value); searchDebounced(event.target.value) }} placeholder="Rechercher un client, une entreprise, un téléphone ou un dossier…" className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-50" /></label><div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0">{QUICK_FILTERS.map((item) => <button key={item.value} type="button" onClick={() => chooseQuick(item.value)} className={`h-10 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition ${quickFilter === item.value ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{item.label}</button>)}</div><div className="flex items-center gap-2"><button type="button" onClick={() => { setDraft(filter); setFiltersOpen((value) => !value) }} aria-expanded={filtersOpen} className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"><ListFilter className="size-4" />Filtres</button><select value={sort} onChange={(event) => { setSort(event.target.value as ClientListUiSort); setPage(1); reset() }} aria-label="Trier les clients" className="h-10 max-w-44 rounded-lg border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-700"><option value="attention">Priorité</option><option value="lastInteraction">Dernière activité</option><option value="name">Nom</option><option value="acceptedValue">Valeur gagnée</option><option value="projectCount">Dossiers</option><option value="nextAppointment">Rendez-vous</option></select><div className="inline-flex rounded-lg border border-slate-200 p-1"><button type="button" aria-label="Vue liste" onClick={() => { setView('list'); localStorage.setItem('kadria_clients_view', 'list') }} className={`grid size-8 place-items-center rounded ${view === 'list' ? 'bg-slate-900 text-white' : 'text-slate-500'}`}><Columns3 className="size-4" /></button><button type="button" aria-label="Vue cartes" onClick={() => { setView('cards'); localStorage.setItem('kadria_clients_view', 'cards') }} className={`grid size-8 place-items-center rounded ${view === 'cards' ? 'bg-slate-900 text-white' : 'text-slate-500'}`}><Grid2X2 className="size-4" /></button></div></div></div>
+      {filtersOpen && <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-4"><Select label="Statut" value={draft.status} onChange={(value) => setDraft({ ...draft, status: value })} options={[['', 'Tous les statuts'], ['prospect', 'Prospects'], ['customer', 'Clients actifs'], ['follow_up', 'À relancer'], ['lost', 'Perdus']]} /><Select label="Source" value={draft.source} onChange={(value) => setDraft({ ...draft, source: value })} options={[['', 'Toutes les sources'], ['canonical', 'Clients liés'], ['legacy', 'Contacts non liés']]} /><Select label="Rendez-vous" value={draft.hasAppointment === undefined ? '' : draft.hasAppointment ? 'yes' : 'no'} onChange={(value) => setDraft({ ...draft, hasAppointment: value === '' ? undefined : value === 'yes' })} options={[['', 'Tous les rendez-vous'], ['yes', 'Avec rendez-vous'], ['no', 'Sans rendez-vous']]} /><label className="flex items-end gap-2 pb-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={draft.includeArchived} onChange={(event) => setDraft({ ...draft, includeArchived: event.target.checked })} />Inclure les archivés</label><div className="flex gap-2 sm:col-span-2 lg:col-span-4"><button type="button" onClick={resetAll} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white">Réinitialiser</button><button type="button" onClick={() => { setFilter(draft); setPage(1); reset(); setFiltersOpen(false) }} className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Appliquer</button></div></div>}
+    <div className="mt-3 flex items-center justify-between text-sm text-slate-500"><span>{response ? `${response.total} client${response.total > 1 ? 's' : ''}` : 'Chargement des clients…'}</span>{(quickFilter !== 'all' || search || filter.status || filter.source || filter.hasAppointment !== undefined || filter.includeArchived) && <button type="button" onClick={resetAll} className="inline-flex items-center gap-1 font-semibold text-emerald-700"><X className="size-3.5" />Effacer</button>}</div></div>
+    {loading && <Skeletons cards={view === 'cards'} />}{!loading && error && <ErrorState onRetry={() => { reset(); setReloadNonce((value) => value + 1) }} />}{!loading && !error && response?.items.length === 0 && <EmptyState search={search} quickFilter={quickFilter} onReset={resetAll} />}{!loading && !error && response && response.items.length > 0 && <>{view === 'list' && <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block"><div className="grid grid-cols-[minmax(220px,1.6fr)_minmax(140px,1fr)_minmax(130px,.75fr)_minmax(160px,1fr)_minmax(150px,1fr)_minmax(140px,.85fr)_auto] gap-4 bg-slate-50 px-5 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-slate-500"><span>Client</span><span>Activité</span><span>Dossiers</span><span>Dernier dossier</span><span>Valeur gagnée</span><span>Prochain rendez-vous</span><span /></div>{response.items.map((client) => <ClientListRow key={client.id} client={client} onOpen={() => client.latestProject && onOpenProject(client.latestProject.id)} />)}</div>}{view === 'cards' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{response.items.map((client) => <ClientCard key={client.id} client={client} onOpen={() => client.latestProject && onOpenProject(client.latestProject.id)} />)}</div>}<div className="lg:hidden">{view === 'list' && <div className="space-y-3">{response.items.map((client) => <ClientCard key={client.id} client={client} onOpen={() => client.latestProject && onOpenProject(client.latestProject.id)} />)}</div>}</div><Pagination page={response.page} pages={pages} total={response.total} pageSize={response.pageSize} onChange={(next) => { setPage(next); reset() }} /></>}</section>
 }
 
-function Kpi({ label, value }: { label: string; value: string | number }) {
-  return <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5"><p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-3)]">{label}</p><p className="mt-1 text-base font-bold text-[var(--text-1)]">{value}</p></div>
-}
+function Kpi({ icon, label, value, detail, tone = 'green' }: { icon: ReactNode; label: string; value: string | number; detail: string; tone?: 'green' | 'amber' }) { return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className={`grid size-8 place-items-center rounded-lg ${tone === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>{icon}</div><p className="mt-3 text-[11px] font-bold uppercase tracking-[.12em] text-slate-500">{label}</p><p className="mt-1 text-xl font-bold tracking-tight text-slate-950">{value}</p><p className="mt-1 truncate text-xs text-slate-500">{detail}</p></div> }
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) { return <label className="text-xs font-semibold text-slate-600">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-800">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label> }
+function Skeletons({ cards }: { cards: boolean }) { return <div className={cards ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'overflow-hidden rounded-2xl border border-slate-200 bg-white'}>{Array.from({ length: cards ? 6 : 7 }).map((_, index) => <div key={index} className={cards ? 'h-72 animate-pulse rounded-2xl bg-slate-100' : 'h-[73px] animate-pulse border-b border-slate-100 bg-slate-50'} />)}</div> }
+function ErrorState({ onRetry }: { onRetry: () => void }) { return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center"><p className="font-bold text-slate-950">Impossible de charger les clients</p><p className="mt-1 text-sm text-slate-600">Vérifiez votre connexion puis réessayez.</p><button type="button" onClick={onRetry} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white"><RefreshCw className="size-4" />Réessayer</button></div> }
+function EmptyState({ search, quickFilter, onReset }: { search: string; quickFilter: ClientListUiFilter; onReset: () => void }) { const emptySearch = Boolean(search); const legacy = quickFilter === 'legacy'; return <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><SearchX className="mx-auto size-10 text-slate-300" /><h2 className="mt-4 font-bold text-slate-950">{emptySearch ? 'Aucun client ne correspond à votre recherche' : legacy ? 'Aucun contact à rapprocher' : 'Aucun client pour le moment'}</h2><p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{emptySearch ? 'Essayez un autre nom, une entreprise ou un numéro de téléphone.' : legacy ? 'Tous les contacts affichés sont correctement liés.' : 'Les clients apparaîtront ici dès qu’un premier dossier sera créé.'}</p>{(emptySearch || legacy) && <button type="button" onClick={onReset} className="mt-5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">Réinitialiser</button>}</div> }
+function Pagination({ page, pages, total, pageSize, onChange }: { page: number; pages: number; total: number; pageSize: number; onChange: (page: number) => void }) { if (pages <= 1) return null; const from = (page - 1) * pageSize + 1; const to = Math.min(total, page * pageSize); return <div className="flex items-center justify-between py-2"><span className="text-sm text-slate-500">{from}–{to} sur {total}</span><div className="flex items-center gap-2"><button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-40"><ChevronLeft className="size-4" />Précédent</button><span className="text-sm text-slate-500">Page {page} sur {pages}</span><button type="button" disabled={page >= pages} onClick={() => onChange(page + 1)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-40">Suivant<ChevronRight className="size-4" /></button></div></div> }
