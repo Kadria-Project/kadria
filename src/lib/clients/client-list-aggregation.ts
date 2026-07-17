@@ -55,7 +55,7 @@ function chooseAttention(input: { source: 'canonical' | 'legacy'; possibleDuplic
   if (input.source === 'legacy') return 'legacy_unlinked'
   if (input.appointments.some((item) => normalizedStatus(item.confirmation_status) === 'change_requested')) return 'appointment_change_requested'
   if (input.appointments.some((item) => normalizedStatus(item.confirmation_status) === 'pending')) return 'appointment_awaiting_confirmation'
-  if (input.quotes.some((item) => !isAcceptedQuote(item) && PENDING_QUOTE_STATUSES.has(normalizedStatus(item.statut || item.status)) && (() => { const sent = date(item.sent_at || item.created_at || item.updated_at); return sent ? input.now.getTime() - sent.getTime() > PENDING_QUOTE_MS : false })())) return 'quote_pending_too_long'
+  if (input.quotes.some((item) => !isAcceptedQuote(item) && PENDING_QUOTE_STATUSES.has(normalizedStatus(item.statut || item.status)) && (() => { const sent = date(item.quote_sent_at || item.created_at || item.updated_at); return sent ? input.now.getTime() - sent.getTime() > PENDING_QUOTE_MS : false })())) return 'quote_pending_too_long'
   if (input.projects.some((item) => ['à rappeler', 'a rappeler'].includes(normalizedStatus(item.status)))) return 'project_to_call_back'
   if (input.projects.some((item) => ACTIVE_PROJECT_STATUSES.has(normalizedStatus(item.status)) && (() => { const changed = date(item.updated_at || item.created_at); return changed ? input.now.getTime() - changed.getTime() > STALE_PROJECT_MS : false })())) return 'stale_active_project'
   return null

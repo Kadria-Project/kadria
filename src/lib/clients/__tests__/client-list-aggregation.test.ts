@@ -51,7 +51,7 @@ test('aggregates quote amounts, prioritises client events and supports all filte
   const items = aggregateClientList({
     ...input,
     quotes: [
-      { project_id: 'p1', total_ttc: 1200, statut: 'Envoyé', sent_at: '2026-06-01' },
+      { project_id: 'p1', total_ttc: 1200, statut: 'Envoyé', quote_sent_at: '2026-06-01' },
       { project_id: 'p2', total_ht: 800, accepted_at: '2026-07-11' },
     ],
     projects: [...input.projects, { id: 'l2', client_id: null, client_name: 'Projet seul', city: 'Lyon', status: 'À rappeler', created_at: '2026-07-13' }],
