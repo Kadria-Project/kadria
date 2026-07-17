@@ -55,7 +55,7 @@ function GoalRow({ progress }: { progress: MonthlyGoalProgress }) {
 
 function NotConfiguredState({ destination }: { destination: string | null }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-5 text-center">
+    <div className="rounded-xl bg-slate-50 p-4 text-center">
       <div className="mx-auto grid size-10 place-items-center rounded-full bg-white text-slate-400 shadow-sm">
         <Target className="size-5" aria-hidden="true" />
       </div>

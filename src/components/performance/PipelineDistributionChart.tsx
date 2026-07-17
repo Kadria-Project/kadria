@@ -51,7 +51,7 @@ export default function PipelineDistributionChart({
     >
       {distribution && distribution.total > 0 && (
         <div>
-          <div className="relative mx-auto h-40 w-40">
+          <div className="relative mx-auto h-36 w-36">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

@@ -123,7 +123,7 @@ export default function PerformancePage() {
           <PerformanceKPIs kpis={state.kpis} loading={loading} error={state.error} onRetry={retry} />
 
           {/* Ligne principale : CA dominant + sources + tunnel */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr_1fr]">
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[2fr_1fr_1fr]">
             <RevenueEvolutionChart
               series={state.analytics?.revenueSeries ?? null}
               periodLabel={periodLabel}
@@ -139,20 +139,20 @@ export default function PerformancePage() {
           </div>
 
           {/* Ligne secondaire : taux de transformation + délais + pipeline */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <ConversionRateChart series={state.analytics?.conversionRateSeries ?? null} loading={loading} error={state.error} onRetry={retry} />
+          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <ConversionRateChart series={state.analytics?.conversionRateSeries ?? null} funnel={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
             <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
             <PipelineDistributionChart distribution={state.analytics?.pipeline ?? null} loading={loading} error={state.error} onRetry={retry} />
           </div>
 
           {/* Ligne 1 (Lot 3) : opportunités dominantes + insights latéraux */}
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[2fr_1fr]">
             <TopOpportunitiesTable opportunities={state.opportunities} loading={loading} error={state.error} onRetry={retry} />
             <InsightsPanel insights={state.insights} loading={loading} error={state.error} onRetry={retry} />
           </div>
 
           {/* Ligne 2 (Lot 3) : actions à prioriser + objectifs mensuels */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
             <PriorityActions actions={state.priorityActions} impactAmount={state.analytics?.atRisk.amount ?? null} loading={loading} error={state.error} onRetry={retry} />
             <MonthlyGoals summary={state.monthlyGoals} loading={loading} error={state.error} onRetry={retry} />
           </div>

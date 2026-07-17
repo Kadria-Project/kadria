@@ -2,7 +2,7 @@
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import ChartCard from './ChartCard'
-import { formatKPIValue } from '@/src/lib/performance/performance-format'
+import { formatDeltaPercent, formatKPIValue } from '@/src/lib/performance/performance-format'
 import type { RevenueSeries } from '@/src/lib/performance/performance-types'
 
 function currencyAxis(value: number): string {
@@ -34,6 +34,14 @@ export default function RevenueEvolutionChart({
   onRetry?: () => void
 }) {
   const empty = !loading && !error && (!series || series.points.every((point) => point.revenue === 0))
+  const activePoints = series?.points.filter((point) => point.revenue > 0) ?? []
+  const bestPoint = activePoints.reduce<RevenueSeries['points'][number] | null>((best, point) => (!best || point.revenue > best.revenue ? point : best), null)
+  const variation = series && series.previousTotal > 0
+    ? ((series.total - series.previousTotal) / series.previousTotal) * 100
+    : null
+  const weeklyAverage = series?.granularity === 'week' && activePoints.length > 0
+    ? series.total / activePoints.length
+    : null
 
   return (
     <ChartCard
@@ -44,10 +52,22 @@ export default function RevenueEvolutionChart({
       empty={empty}
       emptyMessage="Aucun chiffre d'affaires gagné sur cette période."
       onRetry={onRetry}
+      footer={series && activePoints.length > 0 ? (
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          {activePoints.length === 1 && <p className="mb-2 text-[11px] text-slate-500">Une seule journée de chiffre d&apos;affaires enregistrée sur cette période.</p>}
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-4">
+            <div><dt className="text-slate-500">CA total</dt><dd className="mt-0.5 font-semibold text-slate-900">{formatKPIValue(series.total, 'currency')}</dd></div>
+            <div><dt className="text-slate-500">Variation</dt><dd className="mt-0.5 font-semibold text-slate-900">{variation === null ? '—' : formatDeltaPercent(variation)}</dd></div>
+            <div><dt className="text-slate-500">Meilleur jour</dt><dd className="mt-0.5 truncate font-semibold text-slate-900">{bestPoint ? `${bestPoint.label} · ${formatKPIValue(bestPoint.revenue, 'currency')}` : '—'}</dd></div>
+            <div><dt className="text-slate-500">Jours actifs</dt><dd className="mt-0.5 font-semibold text-slate-900">{activePoints.length}</dd></div>
+            {weeklyAverage !== null && <div className="col-span-2 sm:col-span-4"><dt className="inline text-slate-500">Moyenne par semaine active</dt><dd className="ml-1 inline font-semibold text-slate-900">{formatKPIValue(weeklyAverage, 'currency')}</dd></div>}
+          </dl>
+        </div>
+      ) : undefined}
     >
       {series && series.points.length > 0 && (
         <>
-          <div className="h-48 w-full" role="img" aria-label={`Évolution du chiffre d'affaires : ${series.points.map((p) => `${p.label} ${formatKPIValue(p.revenue, 'currency')}`).join(', ')}`}>
+          <div className="h-32 w-full" role="img" aria-label={`Évolution du chiffre d'affaires : ${series.points.map((point) => `${point.label} ${formatKPIValue(point.revenue, 'currency')}`).join(', ')}`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
@@ -60,21 +80,11 @@ export default function RevenueEvolutionChart({
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#e2e8f0' }} tickLine={false} />
                 <YAxis tickFormatter={currencyAxis} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={56} />
                 <Tooltip content={<TooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#059669"
-                  strokeWidth={2}
-                  fill="url(#revenueFill)"
-                  isAnimationActive
-                  animationDuration={650}
-                />
+                <Area type="monotone" dataKey="revenue" stroke="#059669" strokeWidth={2} fill="url(#revenueFill)" isAnimationActive animationDuration={650} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <p className="sr-only">
-            Tableau des valeurs : {series.points.map((p) => `${p.label} : ${formatKPIValue(p.revenue, 'currency')}`).join(' ; ')}
-          </p>
+          <p className="sr-only">Tableau des valeurs : {series.points.map((point) => `${point.label} : ${formatKPIValue(point.revenue, 'currency')}`).join(' ; ')}</p>
         </>
       )}
     </ChartCard>

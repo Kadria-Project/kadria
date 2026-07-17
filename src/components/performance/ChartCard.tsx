@@ -43,7 +43,7 @@ export default function ChartCard({
         </div>
       </div>
 
-      <div className="mt-3 flex-1">
+      <div className="mt-3">
         {error ? (
           <div className="flex flex-col items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4" role="alert">
             <p className="text-sm text-slate-700">Ce graphique est momentanément indisponible.</p>
@@ -60,7 +60,7 @@ export default function ChartCard({
           </div>
         ) : loading ? (
           <div aria-hidden="true" className="animate-pulse space-y-2">
-            <div className="h-40 w-full rounded-xl bg-slate-100" />
+            <div className="h-28 w-full rounded-xl bg-slate-100" />
           </div>
         ) : empty ? (
           <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">{emptyMessage}</p>
