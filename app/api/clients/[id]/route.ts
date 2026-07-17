@@ -11,6 +11,7 @@ import {
   buildCommercialSummary,
   deriveClientNextAction,
 } from '@/src/lib/clients/client-detail-aggregation'
+import { CLIENT_ACTION_CONFIG } from '@/src/lib/clients/clients-action-config'
 import { buildClientTimeline } from '@/src/lib/clients/client-timeline'
 import type { ClientAppointment, ClientDetail } from '@/src/lib/clients/client-detail-types'
 import { cleanClientText, normalizeClientEmail, normalizeClientPhone } from '@/src/lib/clients/client-normalization'
@@ -112,7 +113,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const commercialSummary = buildCommercialSummary(summary, identity.createdAt || summary.firstProjectAt)
     const nextActionCore = deriveClientNextAction({ projects, quotes, appointments })
     const nextAction = nextActionCore
-      ? { ...nextActionCore, description: nextActionCore.label === 'À rappeler' ? `${identity.displayName} est marqué à rappeler.` : nextActionCore.description || `Suivi recommandé pour ${identity.displayName}.` }
+      ? {
+          ...nextActionCore,
+          // Rebuild the description with the real client name — the pure
+          // aggregation function has no identity context (it only knows
+          // reason/dueAt), so it always seeds `clientName: ''`. Reusing the
+          // exact same CLIENT_ACTION_CONFIG copy as the Action Center (Lot
+          // 9.5) keeps the wording identical across both surfaces.
+          description: CLIENT_ACTION_CONFIG[nextActionCore.reason].buildDescription({
+            clientName: identity.displayName,
+            dueLabel: nextActionCore.dueAt ? new Date(nextActionCore.dueAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null,
+          }),
+        }
       : null
     const upcoming = clientAppointments.filter((a) => !a.isPast).sort((a, b) => a.startTime.localeCompare(b.startTime))
     const nextAppointment: ClientAppointment | null = upcoming[0] || null

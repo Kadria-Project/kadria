@@ -251,6 +251,79 @@ pas de vérification effective de Michel Bernard / SCI Horizon / Jean Martin /
 Claire Dupont / Élodie Petit / Sophie Leroy / Camille Laurent en conditions
 réelles. Limite documentée honnêtement plutôt que simulée.
 
+## Raffinements UX Lot 10.1
+
+Lot purement visuel/UX sur `ClientDetailWorkspace.tsx` — aucun nouveau calcul,
+aucune nouvelle donnée, aucune migration. Le moteur de données (aggregation,
+timeline, next-action) n'a pas changé de forme ; une seule correction de fond
+a été nécessaire : la description de la carte Prochaine action était générée
+avec `clientName: ''` (bug latent jamais surfacé côté UI avant ce lot) —
+`app/api/clients/[id]/route.ts` reconstruit désormais cette description via
+`CLIENT_ACTION_CONFIG[reason].buildDescription({ clientName: identity.displayName, dueLabel })`
+pour toutes les raisons (pas seulement « À rappeler »), avec le même
+`dueLabel` humain que l'Action Center.
+
+- **Header** : densifié — ville, « Client depuis le … » et dernière
+  interaction relative sur une seule ligne meta ; CTA = actions génériques
+  (Appeler / Écrire si téléphone/email disponibles, Ouvrir le dossier actif
+  sinon). Le header ne duplique plus jamais le CTA contextuel de la carte
+  Prochaine action.
+- **KPI** : rangée compactée (icône discrète + label court + valeur +
+  micro-info), toujours les 6 KPI d'origine ; « Prochain RDV » affiche
+  désormais systématiquement l'heure + le statut de confirmation quand une
+  date est connue, jamais une date seule.
+- **Prochaine action** : badge de priorité (Urgent / Prioritaire / À traiter
+  / À planifier), échéance + dossier sur une ligne, description contextuelle
+  déterministe corrigée (voir ci-dessus). CTA principal unique — reste le
+  seul endroit où l'action *contextuelle* (Confirmer / Relancer / Traiter la
+  demande) est proposée avec ce poids visuel.
+- **Dossiers récents** : chaque carte affiche désormais, quand disponible,
+  le prochain rendez-vous du dossier ou sa dernière activité relative
+  (`nextAppointmentAt` / `lastActivityAt`, déjà calculés côté agrégation mais
+  non exploités avant ce lot) en plus du statut, adresse chantier et montant
+  accepté/nombre de devis.
+- **États vides** : nouveau composant `EmptyState` (icône + titre court +
+  texte secondaire) remplace l'ancien `EmptyRow` texte seul ; les
+  `SectionCard` vides passent en mode compact (`compact` prop, padding
+  réduit) pour ne plus produire de grande carte creuse.
+- **Timeline** : nouveau composant `Timeline` — ligne verticale, icône par
+  type d'événement (dossier / RDV / devis / activité client), regroupement
+  par jour (« Aujourd'hui », « Hier », date absolue au-delà), heure + libellé
+  relatif sur chaque entrée. La couleur (`TIMELINE_TONE`) reste un signal
+  secondaire : l'icône et le titre humain (déjà normalisés par
+  `buildClientTimeline`, non modifié) portent le sens principal (§18).
+- **Vue d'ensemble — ordre** : entre « Devis nécessitant attention » et
+  « Dernières interactions », le bloc ayant le plus de contenu réel passe en
+  premier (`quotesFirst` dans `Overview`), pour ne jamais repousser une
+  timeline non vide sous un bloc devis vide.
+- **Synthèse commerciale** : si valeur devisée et valeur acceptée sont
+  toutes deux nulles, la carte affiche une ligne compacte unique (« Aucune
+  activité commerciale chiffrée pour l'instant ») au lieu de deux lignes à
+  0 €. Ajout d'une ligne « Client depuis » (ancienneté relationnelle) déjà
+  demandée au contrat de données mais non affichée avant ce lot.
+- **Prochain rendez-vous (sidebar)** : ajoute le dossier concerné et un lien
+  « Ouvrir le dossier » explicite ; reste un CTA léger, jamais concurrent du
+  bloc Prochaine action.
+- **Accessibilité** : icônes décoratives passées en `aria-hidden="true"`,
+  `NextActionCard` et le header restent navigables au clavier (boutons/liens
+  natifs uniquement, aucun div cliquable).
+
+### Limites restantes avant Collaborateur
+
+- Recette live non exécutée : toujours aucune session authentifiée / aucun
+  credential Supabase disponible dans ce bac à sable, comme documenté aux
+  lots précédents — donc aucune vérification effective de Michel Bernard /
+  SCI Horizon / Jean Martin / Claire Dupont / Élodie Petit / Sophie Leroy en
+  conditions réelles pour ce lot non plus. Le travail s'appuie sur une
+  lecture rigoureuse du code, `tsc --noEmit`, ESLint et `next build` au vert,
+  et l'extension de la suite de tests purs existante.
+- Comportement avec le panneau Collaborateur ouvert non observé en direct
+  (mêmes raisons) ; la grille (`xl:grid-cols-[minmax(0,1fr)_320px]`, non
+  modifiée par ce lot) était déjà conçue pour retomber en une colonne sous
+  `xl`, ce qui reste la meilleure garantie disponible sans rendu réel.
+- Aucun changement du moteur de scoring/santé client, aucune automatisation
+  — hors périmètre strict du lot.
+
 ## Limites connues (documentées, hors périmètre de ce lot)
 
 - Pas de fiche dédiée pour les contacts legacy (par design, § Legacy).
