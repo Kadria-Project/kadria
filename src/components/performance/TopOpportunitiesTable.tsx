@@ -38,7 +38,8 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
         </Link>
       </td>
       <td className="max-w-[220px] truncate py-2.5 px-2 align-top text-sm text-slate-600" title={opportunity.projectTitle}>
-        {opportunity.projectTitle}
+        <span className="block truncate">{opportunity.projectTitle}</span>
+        <span className="mt-1 inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{opportunity.statusLabel}</span>
       </td>
       <td className="py-2.5 px-2 align-top">
         <ValueCell value={opportunity.value} />
@@ -51,11 +52,6 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           {opportunity.score !== null ? `${opportunity.score}/100` : '—'}
         </span>
       </td>
-      <td className="py-2.5 px-2 align-top">
-        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700">
-          {opportunity.statusLabel}
-        </span>
-      </td>
       <td className="py-2.5 px-2 align-top text-sm text-slate-700">{opportunity.nextAction.label}</td>
       <td className="py-2.5 px-2 align-top text-sm">
         {opportunity.dueLabel ? (
@@ -64,7 +60,6 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           <span className="text-slate-400">—</span>
         )}
       </td>
-      <td className="py-2.5 pr-4 pl-2 align-top text-sm text-slate-600">{opportunity.responsibleName ?? <span className="text-slate-400">Non assigné</span>}</td>
       <td className="py-2.5 pr-4 align-top text-right">
         <Link
           href={opportunity.nextAction.destination}
@@ -116,7 +111,7 @@ function TopOpportunitiesContent({ opportunities }: { opportunities: Performance
   return (
     <>
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse text-left">
+          <table className="w-full min-w-[620px] border-collapse text-left">
           <caption className="sr-only">Opportunités commerciales à fort potentiel sur la période</caption>
           <thead>
             <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -124,10 +119,8 @@ function TopOpportunitiesContent({ opportunities }: { opportunities: Performance
               <th scope="col" className="py-2 px-2">Projet</th>
               <th scope="col" className="py-2 px-2">Valeur</th>
               <th scope="col" className="py-2 px-2">Score</th>
-              <th scope="col" className="py-2 px-2">Statut</th>
               <th scope="col" className="py-2 px-2">Prochaine action</th>
               <th scope="col" className="py-2 px-2">Échéance</th>
-              <th scope="col" className="py-2 pl-2 pr-4">Responsable</th>
               <th scope="col" className="py-2 pr-4 text-right">Action</th>
             </tr>
           </thead>
