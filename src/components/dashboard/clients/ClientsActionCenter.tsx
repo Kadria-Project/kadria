@@ -5,6 +5,7 @@ import { ChevronRight, ShieldCheck } from 'lucide-react'
 import type { ClientActionItem, ClientActionPriority, ClientActionReason, ClientActionsSummary } from '@/src/lib/clients/clients-action-types'
 import { CLIENT_ACTION_CONFIG, CLIENT_ACTION_QUICK_COUNTERS } from '@/src/lib/clients/clients-action-config'
 import { formatDueLabel, formatSinceLabel } from '@/src/lib/clients/clients-action-format'
+import { isAttentionReasonDisabled } from '@/src/lib/clients/clients-action-filter'
 import { CLIENT_ACTION_ICONS } from './clients-action-icons'
 
 const PRIORITY_BAR: Record<ClientActionPriority, string> = {
@@ -72,12 +73,13 @@ function CounterChip({
 }) {
   const config = CLIENT_ACTION_CONFIG[reason]
   const Icon = CLIENT_ACTION_ICONS[config.icon]
-  const disabled = count === 0
+  const disabled = isAttentionReasonDisabled(count)
   return (
     <button
       type="button"
       aria-pressed={active}
       disabled={disabled}
+      aria-disabled={disabled}
       onClick={() => onToggle(reason)}
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 ${
         active

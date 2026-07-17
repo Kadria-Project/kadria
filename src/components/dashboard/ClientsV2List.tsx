@@ -7,6 +7,7 @@ import type { ClientListItem, ClientListResponse } from '@/src/lib/clients/clien
 import { CLIENT_ATTENTION_LABELS, buildClientListSearchParams, type ClientListUiFilter, type ClientListUiSort } from '@/src/lib/clients/client-list-ui'
 import type { ClientActionItem, ClientActionReason } from '@/src/lib/clients/clients-action-types'
 import { CLIENT_ACTION_CONFIG } from '@/src/lib/clients/clients-action-config'
+import { nextAttentionReason } from '@/src/lib/clients/clients-action-filter'
 import { ClientsActionCenter } from '@/src/components/dashboard/clients/ClientsActionCenter'
 import { ClientsActionsPanel } from '@/src/components/dashboard/clients/ClientsActionsPanel'
 import { ClientsCollaboratorContext } from '@/src/components/dashboard/clients/ClientsCollaboratorContext'
@@ -60,7 +61,14 @@ export default function ClientsV2List({ onOpenProject }: { onOpenProject: (proje
   const loading = response === null && error === null; const pages = response ? Math.max(1, Math.ceil(response.total / response.pageSize)) : 1
   const chooseQuick = (value: ClientListUiFilter) => { setQuickFilter(value); setAttentionReasonFilter(null); setPage(1); reset() }
   const resetAll = () => { setQuickFilter('all'); setFilter({ status: '', source: '', hasAppointment: undefined, includeArchived: false }); setDraft({ status: '', source: '', hasAppointment: undefined, includeArchived: false }); setSearch(''); setSearchInput(''); setAttentionReasonFilter(null); setSort('attention'); setOrder('desc'); setPage(1); reset() }
-  const toggleAttentionReason = (reason: ClientActionReason) => { setAttentionReasonFilter((current) => (current === reason ? null : reason)); setPage(1); reset() }
+  // Deliberately does NOT call reset(): nulling `response` here would flip
+  // `loading` to true and blank out both the client list and the Action
+  // Center (counters + rows) into skeletons on every click, which reads as a
+  // full page refresh even though no navigation/reload ever happens. Instead
+  // we keep the previous response mounted — active state updates instantly
+  // via `attentionReasonFilter`, and counts/rows swap in-place once the
+  // filtered fetch resolves.
+  const toggleAttentionReason = (reason: ClientActionReason) => { setAttentionReasonFilter((current) => nextAttentionReason(current, reason)); setPage(1); setError(null) }
   const openAction = (action: ClientActionItem) => {
     if (action.href && action.projectId) { onOpenProject(action.projectId); return }
     toggleAttentionReason(action.reason)
