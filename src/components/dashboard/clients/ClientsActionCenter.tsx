@@ -63,47 +63,30 @@ export function ClientActionRow({ action, onOpen, compact }: { action: ClientAct
 function CounterChip({
   reason,
   count,
-  active,
-  onToggle,
 }: {
   reason: ClientActionReason
   count: number
-  active: boolean
-  onToggle: (reason: ClientActionReason) => void
 }) {
   const config = CLIENT_ACTION_CONFIG[reason]
   const Icon = CLIENT_ACTION_ICONS[config.icon]
-  const disabled = isAttentionReasonDisabled(count)
+  const empty = isAttentionReasonDisabled(count)
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      disabled={disabled}
-      aria-disabled={disabled}
-      onClick={() => onToggle(reason)}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 ${
-        active
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-          : disabled
-            ? 'cursor-default border-slate-100 bg-slate-50 text-slate-400'
-            : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/60'
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+        empty ? 'text-slate-400' : 'text-slate-600'
       }`}
     >
       <Icon className="size-3.5" aria-hidden />
       {config.categoryLabel}
-      <span className={`rounded-full px-1.5 text-[11px] ${active ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-100 text-slate-600'}`}>{count}</span>
-    </button>
+      <span className="rounded-full bg-slate-100 px-1.5 text-[11px] text-slate-600">{count}</span>
+    </span>
   )
 }
 
 export function ClientsActionCounters({
   summary,
-  activeReason,
-  onToggle,
 }: {
   summary: ClientActionsSummary
-  activeReason: ClientActionReason | null
-  onToggle: (reason: ClientActionReason) => void
 }) {
   const counts: Record<ClientActionReason, number> = {
     appointment_change_requested: summary.appointmentChanges,
@@ -116,9 +99,9 @@ export function ClientsActionCounters({
     legacy_unlinked: 0,
   }
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrer par catégorie d’action">
+    <div className="flex items-center gap-2 overflow-x-auto pb-1" aria-label="Synthèse des priorités par catégorie">
       {CLIENT_ACTION_QUICK_COUNTERS.map((reason) => (
-        <CounterChip key={reason} reason={reason} count={counts[reason]} active={activeReason === reason} onToggle={onToggle} />
+        <CounterChip key={reason} reason={reason} count={counts[reason]} />
       ))}
     </div>
   )
@@ -139,8 +122,6 @@ export function ClientsActionCenter({
   summary,
   loading,
   error,
-  activeReason,
-  onToggleReason,
   onOpenAction,
   onOpenPanel,
 }: {
@@ -148,8 +129,6 @@ export function ClientsActionCenter({
   summary: ClientActionsSummary | null
   loading: boolean
   error: boolean
-  activeReason: ClientActionReason | null
-  onToggleReason: (reason: ClientActionReason) => void
   onOpenAction: (action: ClientActionItem) => void
   onOpenPanel: () => void
 }) {
@@ -179,7 +158,7 @@ export function ClientsActionCenter({
 
       {summary && (
         <div className="mt-4">
-          <ClientsActionCounters summary={summary} activeReason={activeReason} onToggle={onToggleReason} />
+          <ClientsActionCounters summary={summary} />
         </div>
       )}
 

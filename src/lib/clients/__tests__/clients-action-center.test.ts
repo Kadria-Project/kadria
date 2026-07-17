@@ -115,3 +115,52 @@ test('summary counters reflect the full derived action set, not a page slice', (
   assert.equal(summary.appointmentChanges, actions.filter((a) => a.reason === 'appointment_change_requested').length)
   assert.equal(summary.quotesWaiting, actions.filter((a) => a.reason === 'quote_pending_too_long').length)
 })
+
+// --- "Priorités du jour" quick counters are purely informational (hotfix Lot
+// 9.5). No React Testing Library in this repo, so these structural checks
+// read the component source directly to guard the regression the hotfix
+// fixes: the counters must never regain click/filter behavior, and the
+// "Toutes les actions" panel must keep its own independent category filter.
+
+const fs = await import('node:fs/promises')
+const path = await import('node:path')
+const actionCenterSource = await fs.readFile(
+  path.default.join(import.meta.dirname, '../../../components/dashboard/clients/ClientsActionCenter.tsx'),
+  'utf8',
+)
+const actionsPanelSource = await fs.readFile(
+  path.default.join(import.meta.dirname, '../../../components/dashboard/clients/ClientsActionsPanel.tsx'),
+  'utf8',
+)
+const clientsV2ListSource = await fs.readFile(
+  path.default.join(import.meta.dirname, '../../../components/dashboard/ClientsV2List.tsx'),
+  'utf8',
+)
+
+test('the quick CounterChip renders as a non-interactive span, not a button', () => {
+  const chip = actionCenterSource.slice(actionCenterSource.indexOf('function CounterChip'), actionCenterSource.indexOf('export function ClientsActionCounters'))
+  assert.ok(chip.includes('<span'), 'CounterChip must render a <span>, not a <button>')
+  assert.ok(!chip.includes('<button'), 'CounterChip must not render a <button>')
+  assert.ok(!chip.includes('onClick'), 'CounterChip must not carry an onClick handler')
+  assert.ok(!chip.includes('aria-pressed'), 'CounterChip must not expose aria-pressed')
+  assert.ok(!chip.includes('tabIndex'), 'CounterChip must not be focusable')
+  assert.ok(!chip.includes('cursor-pointer'), 'CounterChip must not look clickable')
+})
+
+test('ClientsActionCounters/ClientsActionCenter no longer accept an active-reason toggle', () => {
+  assert.ok(!actionCenterSource.includes('activeReason'), 'ClientsActionCenter must not receive/forward activeReason anymore')
+  assert.ok(!actionCenterSource.includes('onToggleReason'), 'ClientsActionCenter must not receive onToggleReason anymore')
+  assert.ok(!actionCenterSource.includes('onToggle:'), 'ClientsActionCounters must not receive an onToggle callback anymore')
+})
+
+test('ClientsV2List no longer wires attentionReasonFilter into the quick counters', () => {
+  const wiring = clientsV2ListSource.slice(clientsV2ListSource.indexOf('<ClientsActionCenter'), clientsV2ListSource.indexOf('<ClientsCollaboratorContext'))
+  assert.ok(!wiring.includes('activeReason'), '<ClientsActionCenter> must not be passed activeReason')
+  assert.ok(!wiring.includes('onToggleReason'), '<ClientsActionCenter> must not be passed onToggleReason')
+})
+
+test('the "Toutes les actions" panel keeps its own independent local category filter', () => {
+  assert.ok(actionsPanelSource.includes("useState<ClientActionReason | 'all'>('all')"), 'panel must own a local category filter state')
+  assert.ok(!actionsPanelSource.includes('activeAttentionReason'), 'panel must not read the Clients list attention-reason filter')
+  assert.ok(!actionsPanelSource.includes('attentionReasonFilter'), 'panel must not read the Clients list attention-reason filter')
+})

@@ -5,9 +5,10 @@ import { register } from 'node:module'
 register('./typescript-resolution.loader.mjs', import.meta.url)
 const { nextAttentionReason, isAttentionReasonDisabled } = await import('../clients-action-filter') as typeof import('../clients-action-filter')
 
-// Mirrors the counter-click mapping from the Action Center (§3 of the hotfix
-// brief): Modifications demandées, À rappeler, Rendez-vous à confirmer,
-// Devis sans réponse, À rapprocher.
+// `nextAttentionReason` is no longer driven by the "Priorités du jour" quick
+// counters (those are purely informational). It is still reached from an
+// action card's CTA fallback (e.g. `possible_duplicate`) and its pure
+// toggle/reset semantics remain covered here.
 
 test('clicking "Modifications demandées" from no filter selects appointment_change_requested', () => {
   assert.equal(nextAttentionReason(null, 'appointment_change_requested'), 'appointment_change_requested')

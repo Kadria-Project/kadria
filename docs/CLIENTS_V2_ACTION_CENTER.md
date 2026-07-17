@@ -18,7 +18,7 @@ src/lib/clients/
   clients-action-format.ts                      → libellés d'échéance humains (FR, relatifs)
 src/components/dashboard/
   ClientsV2List.tsx                              → orchestration page (inchangé dans son contrat externe)
-  clients/ClientsActionCenter.tsx                → bloc "Priorités du jour" + compteurs cliquables
+  clients/ClientsActionCenter.tsx                → bloc "Priorités du jour" + compteurs informatifs
   clients/ClientsActionsPanel.tsx                → panneau latéral "Toutes les actions"
   clients/ClientsCollaboratorContext.tsx         → bloc Collaborateur Kadria dédié à la page Clients
   clients/clients-action-icons.tsx               → mapping icône (config) → composant lucide-react
@@ -70,12 +70,22 @@ la hiérarchie ci-dessus, jamais uniquement une couleur.
 `ClientActionsSummary` (retourné dans `response.actions.summary`) : `total`,
 `callbacks`, `quotesWaiting`, `appointmentsToConfirm`, `appointmentChanges`,
 `contactsToReconcile`, `staleProjects`, `followUps`. Les compteurs de la
-rangée compacte (§7 du brief) affichent 5 catégories cliquables : À rappeler,
-Devis sans réponse, Rendez-vous à confirmer, Modifications demandées, À
-rapprocher — `stale_active_project`, `client_follow_up` et `legacy_unlinked`
-restent filtrables (voir plus bas) mais ne saturent pas la rangée de chips,
-conformément au §20 (« le Centre d'actions ne doit pas être dominé par les
-contacts legacy »).
+rangée compacte affichent 5 catégories : À rappeler, Devis sans réponse,
+Rendez-vous à confirmer, Modifications demandées, À rapprocher —
+`stale_active_project`, `client_follow_up` et `legacy_unlinked` ne saturent
+pas la rangée de chips, conformément au §20 (« le Centre d'actions ne doit
+pas être dominé par les contacts legacy »).
+
+**Hotfix Lot 9.5** : ces compteurs sont **purement informatifs**. Ils ne
+sont plus des boutons — ils ne modifient jamais `attentionReason`, ne
+déclenchent aucun fetch, ne changent pas la pagination, n'exposent aucun
+`aria-pressed`, ne sont pas focusables et n'ont pas de curseur pointeur
+(rendus en `<span>`, jamais en `<button>`, voir `CounterChip` dans
+`ClientsActionCenter.tsx`). Avant ce hotfix ils filtraient la liste Clients
+via `attentionReason` sans que les cartes de priorités ne reflètent
+visuellement l'effet du clic — ce comportement a été retiré. Le filtrage par
+catégorie d'action reste possible, mais uniquement depuis le panneau
+« Toutes les actions » (état local indépendant, voir plus bas).
 
 ## KPI existants rendus interactifs
 
@@ -115,16 +125,25 @@ sans client canonique) et `possible_duplicate` (l'action porte sur le contact,
 pas sur un dossier). Aucun bouton n'est donc rendu sans effet réel : soit il
 ouvre `href` (`/dashboard-v2/projet/[id]`), soit — pour `possible_duplicate` —
 il applique le filtre `attentionReason=possible_duplicate` sur la liste
-(examen du contact, jamais de fusion).
+(examen du contact, jamais de fusion). Cette action reste un comportement de
+**carte d'action** (clic sur son CTA), pas des compteurs de synthèse — voir
+le hotfix Lot 9.5 ci-dessus.
 
 ## Panneau « Toutes les actions »
 
 `ClientsActionsPanel` (sheet latérale droite sur desktop ≥ 640px, plein écran
 sur mobile, réutilise le pattern `motion/react` + overlay déjà utilisé par
 `InviteDrawer`) : liste complète des actions dérivées, filtre par catégorie
-(chips), tri priorité/échéance, clic → ouvre le dossier ou applique le filtre
-de liste puis referme le panneau. Fermeture via Échap, clic sur l'overlay, ou
-bouton dédié ; le scroll de la page est bloqué pendant l'ouverture.
+(chips), tri priorité/échéance, clic sur une carte → ouvre le dossier ou
+applique le filtre de liste puis referme le panneau. Fermeture via Échap,
+clic sur l'overlay, ou bouton dédié ; le scroll de la page est bloqué pendant
+l'ouverture.
+
+Le filtre par catégorie du panneau (`category`, état local `useState`
+interne à `ClientsActionsPanel`) est **indépendant** de
+`attentionReasonFilter`/`activeReason` de `ClientsV2List` : il ne filtre que
+la liste d'actions affichée dans le panneau, jamais la liste Clients
+principale, et ne déclenche aucun fetch vers `/api/clients`.
 
 ## Intégration Collaborateur Kadria
 
@@ -178,8 +197,8 @@ CLIENTS", titre "Clients", sous-titre).
 
 - Aucune action : "Tout est sous contrôle" / "Aucun client ne nécessite
   d'action immédiate.", icône `ShieldCheck`, liste clients toujours visible.
-- Catégorie vide dans les compteurs : chip désactivée (`disabled`, compteur 0,
-  ton neutre), pas de clic incohérent.
+- Catégorie vide dans les compteurs : chip atténuée (compteur 0, ton neutre),
+  jamais interactive de toute façon (compteurs purement informatifs, Lot 9.5).
 - Chargement : skeletons dédiés dans `ClientsActionCenter` (pas de compteur à
   0 pendant le fetch — `summary` reste `null` tant que la réponse n'est pas
   arrivée).
@@ -196,11 +215,14 @@ CLIENTS", titre "Clients", sous-titre).
   qu'une nouvelle page.
 - Compteurs en rangée horizontale scrollable (`overflow-x-auto`) pour éviter
   tout débordement sur tablette/mobile.
-- `aria-pressed` sur tous les filtres actifs (KPI, chips de catégories,
-  chips du panneau), rôle `button`/`dialog` corrects, focus visible partout,
-  priorité jamais encodée uniquement par la couleur (icône + libellé texte
-  systématiques), `useReducedMotion` de `motion/react` respecté (import
-  `motion/react`, jamais `framer-motion`).
+- Compteurs de « Priorités du jour » : `<span>` non interactifs, aucun rôle
+  `button`, aucun `tabIndex`, aucun `aria-pressed` (Lot 9.5). `aria-pressed`
+  reste utilisé sur les filtres réellement interactifs : KPI du portefeuille
+  et chips de catégorie du panneau « Toutes les actions ». Rôle
+  `button`/`dialog` corrects sur ces éléments interactifs, focus visible
+  partout, priorité jamais encodée uniquement par la couleur (icône +
+  libellé texte systématiques), `useReducedMotion` de `motion/react`
+  respecté (import `motion/react`, jamais `framer-motion`).
 
 ## Tests
 
@@ -248,6 +270,17 @@ en tant qu'utilisateur authentifié pour cette mission. La vérification a donc
 Une recette authentifiée sur le tenant réel (`6392ae57-f34b-48ac-92ca-7faf848b5582`,
 voir `docs/CLIENTS_V2_TEST_DATA_RESET.md`) reste à faire en environnement
 disposant des identifiants Supabase, avant mise en production.
+
+**Hotfix Lot 9.5** : même limite d'environnement (pas de credentials
+Supabase en sandbox). Vérification faite par lecture de code
+(`ClientsActionCenter.tsx`, `ClientsV2List.tsx`, `ClientsActionsPanel.tsx`),
+tests structurels dédiés (`clients-action-center.test.ts` : le
+`CounterChip` est un `<span>` sans `onClick`/`aria-pressed`/`tabIndex`, le
+wiring `activeReason`/`onToggleReason` a disparu de `<ClientsActionCenter>`,
+le panneau garde un état `category` local indépendant), `tsc --noEmit`,
+`next build` et un survol Playwright de la page publique (pas de session
+authentifiée disponible, donc pas de vérification de l'écran `/clients` réel
+lui-même — même limite que les Lots 9 et 9.4/9.5 précédents).
 
 ## Limites et préparation du Lot 10
 

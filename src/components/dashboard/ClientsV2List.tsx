@@ -88,8 +88,6 @@ export default function ClientsV2List({ onOpenProject }: { onOpenProject: (proje
       summary={actionsSummary}
       loading={actionsLoading}
       error={actionsError}
-      activeReason={attentionReasonFilter}
-      onToggleReason={toggleAttentionReason}
       onOpenAction={openAction}
       onOpenPanel={() => setPanelOpen(true)}
     />
