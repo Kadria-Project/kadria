@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   CalendarDays,
@@ -16,22 +17,21 @@ import {
   Users,
 } from 'lucide-react';
 import { KadriaLogo } from '@/src/components/KadriaLogo';
+import { dashboardModeFromPathname, dashboardPathForMode } from './WorkspaceNavigationContext';
 
 export type WorkspaceMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'value-report';
 
 interface KadriaSidebarProps {
   compact: boolean;
-  activeMode: WorkspaceMode;
   onToggle: () => void;
-  onSelectMode: (mode: WorkspaceMode) => void;
 }
 
 const primaryItems = [
   { label: 'Accueil', mode: 'value' as const, icon: LayoutDashboard },
+  { label: 'À faire', mode: 'tasks' as const, icon: ClipboardCheck },
   { label: 'Suivi', mode: 'commercial' as const, icon: FolderKanban },
   { label: 'Agenda', mode: 'calendar' as const, icon: CalendarDays },
   { label: 'Clients', mode: 'clients' as const, icon: Users },
-  { label: 'À faire', mode: 'tasks' as const, icon: ClipboardCheck },
   { label: 'Performance', mode: 'value-report' as const, icon: BarChart3 },
 ];
 
@@ -43,7 +43,8 @@ const secondaryItems = [
   { label: 'Aide', href: 'mailto:contact@kadria.fr', icon: HelpCircle },
 ];
 
-export default function KadriaSidebar({ compact, activeMode, onToggle, onSelectMode }: KadriaSidebarProps) {
+export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps) {
+  const pathname = usePathname();
   return (
     <aside
       className={`flex h-screen shrink-0 flex-col border-r border-white/10 bg-[#071521] px-3 py-5 text-slate-200 transition-[width] duration-200 ${
@@ -80,12 +81,11 @@ export default function KadriaSidebar({ compact, activeMode, onToggle, onSelectM
       <nav aria-label="Navigation principale" className="space-y-1">
         {primaryItems.map((item) => {
           const Icon = item.icon;
-          const active = item.mode === activeMode;
+          const active = item.mode === dashboardModeFromPathname(pathname);
           return (
-            <button
+            <Link
               key={item.mode}
-              type="button"
-              onClick={() => onSelectMode(item.mode)}
+              href={dashboardPathForMode(item.mode)}
               title={compact ? item.label : undefined}
               aria-label={item.label}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${
@@ -94,7 +94,7 @@ export default function KadriaSidebar({ compact, activeMode, onToggle, onSelectM
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
               {!compact && <span className="truncate">{item.label}</span>}
-            </button>
+            </Link>
           );
         })}
       </nav>

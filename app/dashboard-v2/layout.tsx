@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import KadriaAssistantGlobalMount from '@/src/components/kadria-assistant/KadriaAssistantGlobalMount'
 import { KadriaPageContextProvider } from '@/src/components/kadria-assistant/KadriaPageContext'
+import KadriaAppShell from '@/src/components/workspace/KadriaAppShell'
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -30,7 +31,7 @@ export default function DashboardLayout({
         }}
       />
       <KadriaPageContextProvider>
-        {children}
+        <KadriaAppShell>{children}</KadriaAppShell>
         <KadriaAssistantGlobalMount />
       </KadriaPageContextProvider>
     </>

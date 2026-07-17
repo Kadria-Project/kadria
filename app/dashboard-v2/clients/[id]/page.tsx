@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/src/lib/auth-utils'
-import KadriaAppShell from '@/src/components/workspace/KadriaAppShell'
 import ClientDetailWorkspace from '@/src/components/dashboard/clients/ClientDetailWorkspace'
 
 // Routing choice: Clients V2 (Lots 8/9/9.5) all live under `/dashboard-v2`
@@ -13,9 +12,5 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   if (!session) redirect('/login')
   const { id } = await params
 
-  return (
-    <KadriaAppShell>
-      <ClientDetailWorkspace clientId={id} />
-    </KadriaAppShell>
-  )
+  return <ClientDetailWorkspace clientId={id} />
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
 export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
 export type WorkspaceSection = 'briefing' | 'decisions' | 'priorities' | 'queue' | 'automations' | 'validations' | 'later' | 'calendar' | 'next-appointment';
@@ -10,6 +11,30 @@ export type WorkspaceNavigation = {
   actionId?: string;
   section?: WorkspaceSection;
 };
+
+const DASHBOARD_MODE_PATHS: Record<DashboardMode, string> = {
+  value: '/dashboard-v2',
+  tasks: '/dashboard-v2/a-faire',
+  commercial: '/dashboard-v2/suivi',
+  calendar: '/dashboard-v2/agenda',
+  clients: '/dashboard-v2/clients',
+  pipeline: '/dashboard-v2/suivi',
+  'value-report': '/dashboard-v2/performance',
+};
+
+export function dashboardModeFromPathname(pathname: string | null): DashboardMode {
+  if (!pathname || pathname === '/dashboard-v2') return 'value';
+  if (pathname.startsWith('/dashboard-v2/a-faire')) return 'tasks';
+  if (pathname.startsWith('/dashboard-v2/suivi')) return 'commercial';
+  if (pathname.startsWith('/dashboard-v2/agenda')) return 'calendar';
+  if (pathname.startsWith('/dashboard-v2/clients')) return 'clients';
+  if (pathname.startsWith('/dashboard-v2/performance')) return 'value-report';
+  return 'value';
+}
+
+export function dashboardPathForMode(mode: DashboardMode) {
+  return DASHBOARD_MODE_PATHS[mode];
+}
 
 type PendingWorkspaceNavigation = WorkspaceNavigation & { id: number };
 type NavigationHandler = (navigation: WorkspaceNavigation) => void;
@@ -33,15 +58,17 @@ function isDashboardMode(value: unknown): value is DashboardMode {
 }
 
 export function WorkspaceNavigationProvider({ children }: { children: ReactNode }) {
-  const [dashboardMode, setDashboardMode] = useState<DashboardMode>('value');
+  const pathname = usePathname();
+  const router = useRouter();
+  const dashboardMode = dashboardModeFromPathname(pathname);
   const [pendingNavigation, setPendingNavigation] = useState<PendingWorkspaceNavigation | null>(null);
   const handlerRef = useRef<NavigationHandler | null>(null);
   const navigationIdRef = useRef(0);
 
   const commitNavigation = useCallback((navigation: WorkspaceNavigation) => {
-    setDashboardMode(navigation.mode);
     setPendingNavigation({ ...navigation, id: ++navigationIdRef.current });
-  }, []);
+    router.push(dashboardPathForMode(navigation.mode));
+  }, [router]);
 
   const navigate = useCallback((navigation: WorkspaceNavigation) => {
     if (handlerRef.current) {

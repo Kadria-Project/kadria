@@ -76,7 +76,6 @@ import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
 import TrackingWorkspace from '@/src/components/workspace/tracking/TrackingWorkspace';
 import TasksWorkspace from '@/src/components/workspace/tasks/TasksWorkspace';
 import { useWorkspaceNavigation, type DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
-import ClientsV2List from '@/src/components/dashboard/ClientsV2List';
 
 export type { DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
 
@@ -129,7 +128,7 @@ const MobileValueReportView = dynamic(() => import('./dashboard/MobileValueRepor
 
 const MobileAgendaView = dynamic(() => import('./dashboard/MobileAgendaView'), { ssr: false });
 const CalendarWorkspace = dynamic(() => import('./workspace/calendar/CalendarWorkspace'), { ssr: false });
-
+const ClientsV2List = dynamic(() => import('./dashboard/ClientsV2List'), { ssr: false });
 const MobileBottomNav = dynamic(
   () => import('./dashboard/MobileDashboardView').then((mod) => mod.MobileBottomNav),
   { ssr: false },
@@ -5109,7 +5108,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {isMobile && <div style={{ height: '76px' }} />}
       </>
       )}
-      {isMobile && dashboardMode !== 'value' && (
+      {false && isMobile && dashboardMode !== 'value' && (
         <MobileBottomNav
           dashboardMode={dashboardMode}
           setDashboardMode={setDashboardMode}

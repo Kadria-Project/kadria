@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import KadriaCollaboratorPanel from './KadriaCollaboratorPanel';
 import KadriaSidebar, { type WorkspaceMode } from './KadriaSidebar';
 import KadriaTopbar from './KadriaTopbar';
+import KadriaMobileNavigation from './KadriaMobileNavigation';
 import WorkspaceCanvas from './WorkspaceCanvas';
 import { WorkspaceNavigationProvider, type DashboardMode, type WorkspaceNavigation, useWorkspaceNavigation } from './WorkspaceNavigationContext';
 
@@ -152,14 +153,14 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
     window.localStorage.setItem(COLLABORATOR_STORAGE_KEY, String(next));
   };
 
-  if (!desktop) return <>{children}</>;
+  if (!desktop) return <div className="min-h-screen bg-[#f6f8f7] pb-16">{children}<KadriaMobileNavigation /></div>;
 
   // Pipeline is an internal view within the commercial Workspace.
   const activeMode: WorkspaceMode = dashboardMode === 'pipeline' ? 'commercial' : dashboardMode;
 
   return (
     <div className="kadria-app-shell flex h-screen min-w-0 overflow-hidden bg-[#f6f8f7]">
-      <KadriaSidebar compact={compactSidebar} activeMode={activeMode} onToggle={updateSidebar} onSelectMode={(mode) => requestNavigation({ mode })} />
+      <KadriaSidebar compact={compactSidebar} onToggle={updateSidebar} />
       <div className="flex min-w-0 flex-1 flex-col">
         <KadriaTopbar activeMode={activeMode} collaboratorOpen={collaboratorOpen} onToggleCollaborator={() => updateCollaborator(!collaboratorOpen)} />
         <div className="flex min-h-0 flex-1 overflow-hidden"><WorkspaceCanvas ref={canvasRef}>{children}</WorkspaceCanvas></div>
