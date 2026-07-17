@@ -116,7 +116,7 @@ export const FEATURE_DEFINITIONS = {
   calendar: {
     label: 'Calendrier et rappels',
     description: 'Calendrier commercial, rappels et rendez-vous.',
-    requiredPlan: 'performance',
+    requiredPlan: 'essentiel',
   },
   quoteGeneration: {
     label: 'Generation de devis',
@@ -203,6 +203,7 @@ export const PLAN_FEATURES = {
     'essentialKpis',
     'voiceAssistant',
     'quoteGeneration',
+    'calendar',
   ],
   performance: [
     'assistantWeb',

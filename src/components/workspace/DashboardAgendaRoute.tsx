@@ -1,7 +1,6 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { FeatureGate } from '@/src/components/FeatureGate';
 
 const CalendarWorkspace = dynamic(() => import('./calendar/CalendarWorkspace'), {
   ssr: false,
@@ -9,5 +8,5 @@ const CalendarWorkspace = dynamic(() => import('./calendar/CalendarWorkspace'), 
 });
 
 export default function DashboardAgendaRoute() {
-  return <FeatureGate feature="calendar" requiredPlan="performance"><CalendarWorkspace /></FeatureGate>;
+  return <CalendarWorkspace />;
 }

@@ -3976,14 +3976,12 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {showCalendarWorkspaceDesktop && (
-        <FeatureGate feature="calendar" requiredPlan="performance">
-          <div className="mb-6">
-            {/* Mode demo : DesktopAgendaView appelle reellement /api/projects et
-                l'OAuth Google Calendar. On utilise DemoCalendarAdapter (etat
-                local DemoModeContext) a la place. */}
-            <DemoCalendarAdapter />
-          </div>
-        </FeatureGate>
+        <div className="mb-6">
+          {/* Mode demo : DesktopAgendaView appelle reellement /api/projects et
+              l'OAuth Google Calendar. On utilise DemoCalendarAdapter (etat
+              local DemoModeContext) a la place. */}
+          <DemoCalendarAdapter />
+        </div>
       )}
 
       {isMobile && showClientsWorkspace && (

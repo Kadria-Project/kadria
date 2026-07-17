@@ -4122,11 +4122,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {showCalendarWorkspaceDesktop && (
-        <FeatureGate feature="calendar" requiredPlan="performance">
-          <div className="mb-6">
-            <CalendarWorkspace />
-          </div>
-        </FeatureGate>
+        <div className="mb-6">
+          <CalendarWorkspace />
+        </div>
       )}
 
       {isMobile && showClientsWorkspace && (
