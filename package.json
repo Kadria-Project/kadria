@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:ux-audit-guard": "node --experimental-strip-types --test src/lib/dev/__tests__/ux-audit-guard.test.ts",
     "test:client-resolution": "node --experimental-strip-types --test src/lib/clients/__tests__/client-resolution.test.ts",
+    "test:clients-v2-list": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/lib/clients/__tests__/client-list-aggregation.test.ts src/lib/clients/__tests__/client-list-ui.test.ts",
     "clients:dry-run": "node --experimental-strip-types --import ./scripts/clients/register-typescript-runtime.mjs scripts/clients/dry-run-project-client-resolution.ts"
   },
   "dependencies": {

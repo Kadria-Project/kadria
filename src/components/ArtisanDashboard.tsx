@@ -76,6 +76,7 @@ import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
 import TrackingWorkspace from '@/src/components/workspace/tracking/TrackingWorkspace';
 import TasksWorkspace from '@/src/components/workspace/tasks/TasksWorkspace';
 import { useWorkspaceNavigation, type DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
+import ClientsV2List from '@/src/components/dashboard/ClientsV2List';
 
 export type { DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
 
@@ -119,8 +120,6 @@ interface MonthlyUsageSummary {
 }
 
 const MobileDashboardView = dynamic(() => import('./dashboard/MobileDashboardView'), { ssr: false });
-
-const MobileDossiersView = dynamic(() => import('./dashboard/MobileDossiersView'), { ssr: false });
 
 const MobileDevisView = dynamic(() => import('./dashboard/MobileDevisView'), { ssr: false });
 
@@ -4132,7 +4131,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {isMobile && showClientsWorkspace && (
-        <MobileDossiersView projects={sortedProjects} router={router} getProjectHref={(projectId) => `/dashboard-v2/projet/${projectId}`} />
+        <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} />
       )}
 
       {isMobile && showCommercialWorkspace && (
@@ -4634,6 +4633,10 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               </div>
             )}
 
+            {showClientsWorkspace ? (
+              <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} />
+            ) : (
+            <>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <div className="relative w-full sm:min-w-[260px] sm:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-3)]" />
@@ -5106,6 +5109,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
               <KanbanBoard projects={displayedProjects} router={router} onStatusChange={handleStatusChange} />
             ) : (
               <ProjectList projects={displayedProjects} router={router} />
+            )}
+            </>
             )}
           </div>
       </div>
