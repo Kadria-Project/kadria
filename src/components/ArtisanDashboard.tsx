@@ -4131,7 +4131,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       )}
 
       {isMobile && showClientsWorkspace && (
-        <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} />
+        <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} onOpenClient={(clientId) => router.push(`/dashboard-v2/clients/${clientId}`)} />
       )}
 
       {isMobile && showCommercialWorkspace && (
@@ -4625,7 +4625,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
           {/* ZONE 4 — Liste projets, pleine largeur */}
           <div id="project-list-section" className="space-y-4 w-full">
             {showClientsWorkspace ? (
-              <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} />
+              <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} onOpenClient={(clientId) => router.push(`/dashboard-v2/clients/${clientId}`)} />
             ) : (
             <>
             <div className="mb-4 flex flex-wrap items-center gap-3">

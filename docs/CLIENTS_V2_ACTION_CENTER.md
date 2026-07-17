@@ -289,7 +289,10 @@ lui-même — même limite que les Lots 9 et 9.4/9.5 précédents).
   (`client-list-aggregation.ts`) : ce lot n'a pas touché à cette logique
   d'agrégation (hors périmètre explicite du brief). Le Lot 10 pourra
   introduire la règle métier qui déclenche ce motif si besoin.
-- La fiche `/clients/[id]`, la fusion effective de contacts, l'envoi
+- La fiche client est désormais livrée par le Lot 10 sous
+  `/dashboard-v2/clients/[id]` (voir `docs/CLIENTS_V2_DETAIL.md`), avec sa
+  propre « prochaine action » qui réutilise `clients-action-config.ts` à
+  l'échelle d'un seul client. La fusion effective de contacts, l'envoi
   automatique de SMS/e-mail et tout scoring IA restent hors périmètre et n'ont
   pas été touchés.
 - L'intégration complète du Centre d'actions dans le panneau `KadriaCollaboratorPanel`

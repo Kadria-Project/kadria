@@ -4,7 +4,11 @@ Le workspace Clients s'appuie exclusivement sur `GET /api/clients`. Le Lot 9 ajo
 
 Les badges de statut et d'attention sont séparés. Les contacts non liés restent visibles avec une explication non technique ; aucune fusion n'est proposée. Les lignes et cartes ouvrent le dernier dossier disponible, tandis qu'un client sans projet reste visible sans lien cassé.
 
-La vue liste est la valeur par défaut desktop. La vue cartes est privilégiée sur mobile et le choix local est mémorisé. Les états de chargement, erreur, vide et recherche sans résultat ont un rendu spécifique. Le Lot 10 ajoutera la fiche Client V2, sans modifier cette source de données.
+La vue liste est la valeur par défaut desktop. La vue cartes est privilégiée sur mobile et le choix local est mémorisé. Les états de chargement, erreur, vide et recherche sans résultat ont un rendu spécifique.
+
+## Lot 10 — Fiche Client V2
+
+Le Lot 10 ajoute la fiche `/dashboard-v2/clients/[id]` (`GET /api/clients/[id]`) sans modifier `GET /api/clients` ni sa source de données. Un client **canonique** ouvre désormais sa fiche (ligne/carte cliquable, CTA « Voir la fiche ») au lieu du dernier dossier ; un contact **legacy** continue d'ouvrir son dernier dossier (`canOpenClient()` dans `ClientsV2List.tsx`). Voir `docs/CLIENTS_V2_DETAIL.md` pour l'architecture complète de la fiche.
 
 ## Lot 9.5 — Centre d'actions CRM
 
