@@ -143,7 +143,7 @@ export function aggregateClientList(input: { clients: Row[]; projects: Row[]; qu
   return [...canonical, ...legacy]
 }
 
-export function filterClientList(items: ClientListItem[], params: { q?: string; source?: string; active?: boolean; attention?: boolean; recurring?: boolean; hasAppointment?: boolean; status?: string }) {
+export function filterClientList(items: ClientListItem[], params: { q?: string; source?: string; active?: boolean; attention?: boolean; recurring?: boolean; hasAppointment?: boolean; status?: string; attentionReason?: string }) {
   const query = normalized(params.q)
   const queryPhone = phone(params.q)
   return items.filter((item) => {
@@ -151,6 +151,7 @@ export function filterClientList(items: ClientListItem[], params: { q?: string; 
     if (params.status && normalized(item.status) !== normalized(params.status)) return false
     if (params.active !== undefined && (item.activeProjectCount > 0) !== params.active) return false
     if (params.attention !== undefined && item.needsAttention !== params.attention) return false
+    if (params.attentionReason && item.attentionReason !== params.attentionReason) return false
     if (params.recurring !== undefined && (item.projectCount >= 2) !== params.recurring) return false
     if (params.hasAppointment !== undefined && Boolean(item.nextAppointment) !== params.hasAppointment) return false
     if (!query) return true

@@ -4,6 +4,8 @@ import type { ClientListResponse } from '@/src/lib/clients/client-list-types'
 import { getSupabaseAdmin } from '@/src/lib/supabase/server'
 import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { serializeClientsListError, throwClientsListStage } from '@/src/lib/clients/client-list-route-utils'
+import { CLIENT_ACTION_REASONS } from '@/src/lib/clients/clients-action-types'
+import { deriveClientActions, summarizeClientActions, topClientActions } from '@/src/lib/clients/clients-action-derive'
 
 function asRows(value: unknown): Record<string, unknown>[] { return Array.isArray(value) ? value as Record<string, unknown>[] : [] }
 function toMap(rows: Record<string, unknown>[]) { const result = new Map<string, Record<string, unknown>[]>(); for (const row of rows) { const id=typeof row.project_id==='string'?row.project_id:''; if(id) result.set(id,[...(result.get(id)||[]),row]) } return result }
@@ -44,9 +46,13 @@ export async function GET(request: NextRequest) {
     const source=params.get('source')
     const sort=params.get('sort')
     const order=params.get('order')
+    const attentionReasonParam=params.get('attentionReason')
+    if(attentionReasonParam && !CLIENT_ACTION_REASONS.includes(attentionReasonParam as typeof CLIENT_ACTION_REASONS[number])) {
+      return NextResponse.json({success:false,error:'Motif d’attention invalide'},{status:400})
+    }
     let filtered
     try {
-      filtered=filterClientList(items,{q:params.get('q')||undefined,source:source==='canonical'||source==='legacy'?source:undefined,status:params.get('status')||undefined,active:booleanParam('active'),attention:booleanParam('attention'),recurring:booleanParam('recurring'),hasAppointment:booleanParam('hasAppointment')})
+      filtered=filterClientList(items,{q:params.get('q')||undefined,source:source==='canonical'||source==='legacy'?source:undefined,status:params.get('status')||undefined,active:booleanParam('active'),attention:booleanParam('attention'),recurring:booleanParam('recurring'),hasAppointment:booleanParam('hasAppointment'),attentionReason:attentionReasonParam||undefined})
     } catch (error) {
       throwClientsListStage('filtering', error)
     }
@@ -56,7 +62,11 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       throwClientsListStage('pagination', error)
     }
-    const response:ClientListResponse={...paginated,summary:{totalClients:filtered.filter(i=>i.source==='canonical').length,activeClients:filtered.filter(i=>i.activeProjectCount>0).length,prospectsToFollowUp:filtered.filter(i=>i.needsAttention).length,recurringClients:filtered.filter(i=>i.projectCount>=2).length,totalAcceptedValue:filtered.reduce((n,i)=>n+i.acceptedAmount,0),legacyEntries:filtered.filter(i=>i.source==='legacy').length,attentionCount:filtered.filter(i=>i.needsAttention).length}}
+    // Action center: always derived from the full tenant-scoped `items` list
+    // (pre-filter, pre-pagination) so it never reflects only the current page
+    // or the currently active list filters.
+    const allActions=deriveClientActions(items)
+    const response:ClientListResponse={...paginated,summary:{totalClients:filtered.filter(i=>i.source==='canonical').length,activeClients:filtered.filter(i=>i.activeProjectCount>0).length,prospectsToFollowUp:filtered.filter(i=>i.needsAttention).length,recurringClients:filtered.filter(i=>i.projectCount>=2).length,totalAcceptedValue:filtered.reduce((n,i)=>n+i.acceptedAmount,0),legacyEntries:filtered.filter(i=>i.source==='legacy').length,attentionCount:filtered.filter(i=>i.needsAttention).length},actions:{items:topClientActions(allActions),summary:summarizeClientActions(allActions)}}
     console.info('[CLIENTS_V2][LIST_LOADED]',{tenantId:context.tenantId,canonicalCount:response.summary.totalClients,legacyCount:response.summary.legacyEntries,total:response.total,batchMaps:[quotesByProjectId.size,appointmentsByProjectId.size,activitiesByProjectId.size,clientEventsByProjectId.size]})
     return NextResponse.json({success:true,...response})
   } catch(error) { console.error('[CLIENTS_V2][LIST_FAILED]', serializeClientsListError(error)); return NextResponse.json({success:false,error:'Impossible de charger les clients'},{status:500}) }

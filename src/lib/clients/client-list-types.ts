@@ -35,4 +35,13 @@ export type ClientListResponse = {
   page: number
   pageSize: number
   summary: { totalClients: number; activeClients: number; prospectsToFollowUp: number; recurringClients: number; totalAcceptedValue: number; legacyEntries: number; attentionCount: number }
+  /**
+   * Tenant-scoped CRM action center payload, derived from the full
+   * (pre-pagination) client list so it never reflects only the current page.
+   * Optional so older clients that don't need it can ignore it safely.
+   */
+  actions?: {
+    items: import('./clients-action-types').ClientActionItem[]
+    summary: import('./clients-action-types').ClientActionsSummary
+  }
 }

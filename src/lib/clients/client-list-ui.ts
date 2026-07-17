@@ -1,6 +1,6 @@
 export type ClientListUiFilter = 'all' | 'canonical' | 'legacy' | 'attention' | 'active' | 'recurring'
 export type ClientListUiSort = 'attention' | 'lastInteraction' | 'name' | 'acceptedValue' | 'projectCount' | 'nextAppointment'
-export type ClientListUiOptions = { status?: string; source?: string; hasAppointment?: boolean; includeArchived?: boolean }
+export type ClientListUiOptions = { status?: string; source?: string; hasAppointment?: boolean; includeArchived?: boolean; attentionReason?: string; order?: 'asc' | 'desc' }
 
 export const CLIENT_ATTENTION_LABELS: Record<string, string> = {
   possible_duplicate: 'À rapprocher',
@@ -24,5 +24,7 @@ export function buildClientListSearchParams(filter: ClientListUiFilter, search: 
   if (options.status) params.set('status', options.status)
   if (options.hasAppointment !== undefined) params.set('hasAppointment', String(options.hasAppointment))
   if (options.includeArchived) params.set('includeArchived', 'true')
+  if (options.attentionReason) params.set('attentionReason', options.attentionReason)
+  if (options.order) params.set('order', options.order)
   return params
 }

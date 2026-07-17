@@ -4624,15 +4624,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
 
           {/* ZONE 4 — Liste projets, pleine largeur */}
           <div id="project-list-section" className="space-y-4 w-full">
-            {showClientsWorkspace && (
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
-                <p className="text-base font-bold text-[var(--text-1)]">Dossiers clients</p>
-                <p className="mt-1 text-sm text-[var(--text-2)]">
-                  Retrouvez vos clients, l&apos;avancement de leurs dossiers et ce qu&apos;il faut faire ensuite.
-                </p>
-              </div>
-            )}
-
             {showClientsWorkspace ? (
               <ClientsV2List onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)} />
             ) : (
