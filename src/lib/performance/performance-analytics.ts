@@ -28,7 +28,8 @@ import type {
 
 type Row = Record<string, unknown>
 
-function normalizeStatus(value: unknown): string {
+/** Shared with performance-actions.ts (Lot 3) \u2014 single normalization rule for statuses. */
+export function normalizeStatus(value: unknown): string {
   return String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -36,41 +37,44 @@ function normalizeStatus(value: unknown): string {
     .trim()
 }
 
-function toDate(value: unknown): Date | null {
+export function toDate(value: unknown): Date | null {
   if (!value) return null
   const date = new Date(String(value))
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-function inRange(value: unknown, range: DateRange): boolean {
+export function inRange(value: unknown, range: DateRange): boolean {
   const date = toDate(value)
   if (!date) return false
   return date >= range.start && date < range.end
 }
 
-const WON_PROJECT_STATUSES = new Set(['gagne', 'won'])
-const QUALIFIED_PROJECT_STATUSES = new Set([
+export const WON_PROJECT_STATUSES = new Set(['gagne', 'won'])
+export const QUALIFIED_PROJECT_STATUSES = new Set([
   'qualifie',
   'en cours',
   'devis envoye',
   'gagne', 'won',
   'perdu', 'lost',
 ])
-const LOST_PROJECT_STATUSES = new Set(['perdu', 'lost'])
+export const LOST_PROJECT_STATUSES = new Set(['perdu', 'lost'])
 
-function isAcceptedQuote(quote: Row): boolean {
+/** Un devis envoy\u00e9 depuis plus longtemps que ce d\u00e9lai, sans d\u00e9cision, est consid\u00e9r\u00e9 "\u00e0 relancer" / "\u00e0 risque". Source unique \u2014 voir getAtRiskOpportunityValue. */
+export const STALE_QUOTE_MS = 5 * 24 * 60 * 60 * 1000
+
+export function isAcceptedQuote(quote: Row): boolean {
   return quote.accepted === true || Boolean(quote.accepted_at) || normalizeStatus(quote.statut ?? quote.status) === 'accepte'
 }
 
-function isDeclinedQuote(quote: Row): boolean {
+export function isDeclinedQuote(quote: Row): boolean {
   return quote.declined === true || Boolean(quote.declined_at) || Boolean(quote.decline_reason) || normalizeStatus(quote.statut ?? quote.status) === 'refuse'
 }
 
-function isSentQuote(quote: Row): boolean {
+export function isSentQuote(quote: Row): boolean {
   return Boolean(quote.quote_sent_at) || normalizeStatus(quote.statut ?? quote.status).startsWith('envoy')
 }
 
-function quoteAmount(quote: Row): number {
+export function quoteAmount(quote: Row): number {
   return Number(quote.total_ttc ?? quote.total_ht ?? 0) || 0
 }
 
@@ -267,7 +271,6 @@ export function getConversionFunnel(projects: Row[], quotes: Row[], range: DateR
  * refusés, pour des dossiers non clôturés. Règle unique, déterministe.
  */
 export function getAtRiskOpportunityValue(projects: Row[], quotes: Row[], now: Date = new Date()): AtRiskOpportunitySummary {
-  const STALE_MS = 5 * 24 * 60 * 60 * 1000
   const projectStatusById = new Map(projects.map((project) => [String(project.id), normalizeStatus(project.status)]))
 
   const atRiskQuotes = quotes.filter((quote) => {
@@ -275,7 +278,7 @@ export function getAtRiskOpportunityValue(projects: Row[], quotes: Row[], now: D
     if (!isSentQuote(quote)) return false
     const sentAt = toDate(quote.quote_sent_at)
     if (!sentAt) return false
-    if (now.getTime() - sentAt.getTime() < STALE_MS) return false
+    if (now.getTime() - sentAt.getTime() < STALE_QUOTE_MS) return false
     const projectStatus = projectStatusById.get(String(quote.project_id ?? ''))
     if (projectStatus && (WON_PROJECT_STATUSES.has(projectStatus) || LOST_PROJECT_STATUSES.has(projectStatus))) return false
     return true

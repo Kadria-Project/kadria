@@ -172,3 +172,120 @@ export type PerformanceAnalytics = {
   stageDurations: StageDurationMetric[]
   pipeline: PipelineDistribution
 }
+
+/* ------------------------------------------------------------------ */
+/* Lot 3 — action layer (opportunities, insights, priority actions,   */
+/* monthly goals)                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Whether the financial value shown is a real quote amount or only an estimated budget declared by the client. */
+export type OpportunityValueNature = 'quoteAmount' | 'estimatedBudget' | 'unknown'
+
+export type OpportunityValue = {
+  amount: number | null
+  nature: OpportunityValueNature
+  /** Human label clarifying the nature of the amount, e.g. "Devis envoyé" vs "Budget estimé (non contractuel)". */
+  label: string
+}
+
+export type RecommendedActionType =
+  | 'followUpQuote'
+  | 'callProspect'
+  | 'sendQuote'
+  | 'scheduleAppointment'
+  | 'completeFile'
+
+export type RecommendedAction = {
+  type: RecommendedActionType
+  label: string
+  /** In-app destination the CTA should navigate to. Always a real route, never a dead link. */
+  destination: string
+}
+
+export type PerformanceOpportunity = {
+  projectId: string
+  clientName: string
+  projectTitle: string
+  value: OpportunityValue
+  /** Score commercial 0-100 réutilisé de src/lib/project-scoring.ts (getProjectCommercialAnalysis), ou null si non calculable. */
+  score: number | null
+  status: string
+  statusLabel: string
+  nextAction: RecommendedAction
+  /** "Aujourd'hui" / "Demain" / "En retard de X jours" / null quand aucune échéance fiable n'est disponible. */
+  dueLabel: string | null
+  overdueDays: number | null
+  responsibleName: string | null
+  /** Score de classement interne (jamais affiché tel quel) combinant score commercial, valeur, urgence, retard. */
+  rankScore: number
+}
+
+export type InsightCategory = 'revenue' | 'conversion' | 'followUp' | 'responseTime' | 'source' | 'risk' | 'performance'
+export type InsightLevel = 'positive' | 'attention' | 'critical' | 'opportunity' | 'information'
+export type InsightIcon = 'trendUp' | 'trendDown' | 'alert' | 'clock' | 'target' | 'info'
+
+export type PerformanceInsight = {
+  id: string
+  category: InsightCategory
+  level: InsightLevel
+  icon: InsightIcon
+  title: string
+  explanation: string
+  /** Chiffre concret étayant l'insight, ex. "4 devis, 12 400 €". */
+  evidence: string
+  ctaLabel: string | null
+  destination: string | null
+  /** Règle métier ayant déclenché l'insight — documentation interne, jamais affichée à l'utilisateur. */
+  rule: string
+}
+
+export type PriorityActionType =
+  | 'followUpQuotes'
+  | 'callNewProspects'
+  | 'prepareQuotes'
+  | 'scheduleAppointments'
+  | 'handleOverdue'
+  | 'completeFiles'
+
+export type PriorityActionPriority = 'high' | 'medium' | 'low'
+export type PriorityActionIcon = 'followUp' | 'call' | 'quote' | 'calendar' | 'alert' | 'checklist'
+
+export type PriorityAction = {
+  type: PriorityActionType
+  icon: PriorityActionIcon
+  label: string
+  count: number
+  detail: string
+  /** Financial value only when reliably known (e.g. sum of real quote amounts). Never a guessed budget. */
+  value: number | null
+  priority: PriorityActionPriority
+  destination: string
+}
+
+export type MonthlyGoalMetric = 'revenue' | 'wonProjects' | 'conversionRate' | 'averageResponseTime' | 'createdProjects'
+
+export type MonthlyGoal = {
+  metric: MonthlyGoalMetric
+  label: string
+  unit: string
+  currentValue: number
+  targetValue: number
+  /** True for metrics where a lower value is better (e.g. average response time). */
+  inverted: boolean
+}
+
+export type MonthlyGoalStatus = 'onTrack' | 'atRisk' | 'behind' | 'achieved'
+
+export type MonthlyGoalProgress = {
+  goal: MonthlyGoal
+  progressPercent: number
+  status: MonthlyGoalStatus
+}
+
+export type MonthlyGoalsSummary = {
+  /** False when no goal configuration exists yet for the tenant — Lot 3 does not create one. */
+  configured: boolean
+  goals: MonthlyGoalProgress[]
+  /** Real settings destination for "Configurer mes objectifs", or null if none exists. */
+  configureDestination: string | null
+}

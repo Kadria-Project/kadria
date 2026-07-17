@@ -1,8 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { KPIResult, PerformanceAnalytics, PerformancePeriodKey } from '@/src/lib/performance/performance-types'
+import type {
+  KPIResult,
+  MonthlyGoalsSummary,
+  PerformanceAnalytics,
+  PerformanceInsight,
+  PerformanceOpportunity,
+  PerformancePeriodKey,
+  PriorityAction,
+} from '@/src/lib/performance/performance-types'
 import { PERFORMANCE_PERIODS } from '@/src/lib/performance/date-range'
+import { PlanProvider } from '@/src/components/FeatureGate'
 import PerformanceLayout from './PerformanceLayout'
 import PerformanceHeader from './PerformanceHeader'
 import PerformanceKPIs from './PerformanceKPIs'
@@ -16,16 +25,34 @@ import AtRiskOpportunitiesCard from './AtRiskOpportunitiesCard'
 import ConversionRateChart from './ConversionRateChart'
 import ConversionDelayChart from './ConversionDelayChart'
 import PipelineDistributionChart from './PipelineDistributionChart'
+import TopOpportunitiesTable from './TopOpportunitiesTable'
+import InsightsPanel from './InsightsPanel'
+import PriorityActions from './PriorityActions'
+import MonthlyGoals from './MonthlyGoals'
 
 type FetchState = {
   kpis: KPIResult[] | null
   analytics: PerformanceAnalytics | null
+  opportunities: PerformanceOpportunity[] | null
+  insights: PerformanceInsight[] | null
+  priorityActions: PriorityAction[] | null
+  monthlyGoals: MonthlyGoalsSummary | null
+  plan: string | null
   error: string | null
 }
 
 export default function PerformancePage() {
   const [period, setPeriod] = useState<PerformancePeriodKey>('30d')
-  const [state, setState] = useState<FetchState>({ kpis: null, analytics: null, error: null })
+  const [state, setState] = useState<FetchState>({
+    kpis: null,
+    analytics: null,
+    opportunities: null,
+    insights: null,
+    priorityActions: null,
+    monthlyGoals: null,
+    plan: null,
+    error: null,
+  })
   const [reloadNonce, setReloadNonce] = useState(0)
 
   useEffect(() => {
@@ -34,11 +61,29 @@ export default function PerformancePage() {
       .then(async (res) => {
         const data = await res.json().catch(() => null)
         if (!res.ok || !data?.success) throw new Error(data?.error || 'Impossible de charger les indicateurs de performance.')
-        setState({ kpis: data.snapshot.kpis as KPIResult[], analytics: (data.analytics as PerformanceAnalytics) ?? null, error: null })
+        setState({
+          kpis: data.snapshot.kpis as KPIResult[],
+          analytics: (data.analytics as PerformanceAnalytics) ?? null,
+          opportunities: (data.opportunities as PerformanceOpportunity[]) ?? [],
+          insights: (data.insights as PerformanceInsight[]) ?? [],
+          priorityActions: (data.priorityActions as PriorityAction[]) ?? [],
+          monthlyGoals: (data.monthlyGoals as MonthlyGoalsSummary) ?? null,
+          plan: (data.plan as string | null) ?? null,
+          error: null,
+        })
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return
-        setState({ kpis: null, analytics: null, error: reason instanceof Error ? reason.message : 'Impossible de charger les indicateurs de performance.' })
+        setState({
+          kpis: null,
+          analytics: null,
+          opportunities: null,
+          insights: null,
+          priorityActions: null,
+          monthlyGoals: null,
+          plan: null,
+          error: reason instanceof Error ? reason.message : 'Impossible de charger les indicateurs de performance.',
+        })
       })
     return () => controller.abort()
   }, [period, reloadNonce])
@@ -68,6 +113,7 @@ export default function PerformancePage() {
   }
 
   return (
+    <PlanProvider plan={state.plan}>
     <PerformanceLayout>
       <PerformanceHeader period={period} onPeriodChange={setPeriod} />
       {isEmpty ? (
@@ -98,8 +144,21 @@ export default function PerformancePage() {
             <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
             <PipelineDistributionChart distribution={state.analytics?.pipeline ?? null} loading={loading} error={state.error} onRetry={retry} />
           </div>
+
+          {/* Ligne 1 (Lot 3) : opportunités dominantes + insights latéraux */}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
+            <TopOpportunitiesTable opportunities={state.opportunities} loading={loading} error={state.error} onRetry={retry} />
+            <InsightsPanel insights={state.insights} loading={loading} error={state.error} onRetry={retry} />
+          </div>
+
+          {/* Ligne 2 (Lot 3) : actions à prioriser + objectifs mensuels */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <PriorityActions actions={state.priorityActions} loading={loading} error={state.error} onRetry={retry} />
+            <MonthlyGoals summary={state.monthlyGoals} loading={loading} error={state.error} onRetry={retry} />
+          </div>
         </>
       )}
     </PerformanceLayout>
+    </PlanProvider>
   )
 }

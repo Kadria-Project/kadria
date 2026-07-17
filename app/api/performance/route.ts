@@ -12,6 +12,14 @@ import {
   getPipelineDistribution,
   getRevenueSeries,
 } from '@/src/lib/performance/performance-analytics'
+import {
+  getMonthlyGoalsSummary,
+  getPerformanceInsights,
+  getPriorityActions,
+  getTopOpportunities,
+} from '@/src/lib/performance/performance-actions'
+import { tableHasColumn } from '@/src/lib/tenant-context'
+import { listProjectResponsiblesByTenant } from '@/src/lib/project-responsibility'
 import type { PerformanceAnalytics, PerformancePeriodKey } from '@/src/lib/performance/performance-types'
 
 function asRows(value: unknown): Record<string, unknown>[] {
@@ -37,9 +45,18 @@ export async function GET(request: NextRequest) {
       : undefined
 
     const supabase = getSupabaseAdmin()
+    const hasResponsibleColumn = await tableHasColumn('Projects', 'responsible_user_id')
+    const projectColumns = [
+      'id', 'status', 'created_at', 'updated_at', 'source', 'project_source',
+      'client_name', 'client_first_name', 'client_phone', 'client_email',
+      'project_title', 'project_type', 'budget', 'desired_timeline', 'maturity',
+      'city', 'completeness_score',
+    ]
+    if (hasResponsibleColumn) projectColumns.push('responsible_user_id')
+
     const projectsResult = await supabase
       .from('Projects')
-      .select('id, status, created_at, updated_at, source, project_source')
+      .select(projectColumns.join(', '))
       .eq('tenant_id', context.tenantId)
 
     if (projectsResult.error) {
@@ -77,7 +94,44 @@ export async function GET(request: NextRequest) {
       pipeline: getPipelineDistribution(projects, current),
     }
 
-    return NextResponse.json({ success: true, snapshot, analytics })
+    // Responsable affecté au dossier (Lot 3) : uniquement si la colonne
+    // existe réellement et le tenant a des collaborateurs actifs. Jamais de
+    // nom inventé — le composant masque simplement le champ si absent.
+    let responsibleNames: Map<string, string> | undefined
+    if (hasResponsibleColumn) {
+      try {
+        const responsibles = await listProjectResponsiblesByTenant(context.tenantId)
+        responsibleNames = new Map(Array.from(responsibles.entries()).map(([id, member]) => [id, member.displayName]))
+      } catch (responsibleError) {
+        console.error('[PERFORMANCE][RESPONSIBLES_READ_FAILED]', responsibleError)
+      }
+    }
+
+    const opportunities = getTopOpportunities(projects, quotes, now, responsibleNames)
+    const insights = getPerformanceInsights({
+      kpis: snapshot.kpis,
+      atRisk: analytics.atRisk,
+      quotes,
+      projects,
+      current,
+      previous,
+      leadSources: analytics.leadSources.sources,
+      leadSourcesTotal: analytics.leadSources.total,
+      now,
+    })
+    const priorityActions = getPriorityActions({ projects, quotes, now })
+    const monthlyGoals = getMonthlyGoalsSummary()
+
+    return NextResponse.json({
+      success: true,
+      snapshot,
+      analytics,
+      opportunities,
+      insights,
+      priorityActions,
+      monthlyGoals,
+      plan: context.tenant?.plan ?? null,
+    })
   } catch (error) {
     console.error('[PERFORMANCE][LOAD_FAILED]', error)
     return NextResponse.json({ success: false, error: 'Impossible de charger les indicateurs' }, { status: 500 })
