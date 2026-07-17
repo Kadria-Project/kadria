@@ -63,11 +63,11 @@ export const LOST_PROJECT_STATUSES = new Set(['perdu', 'lost'])
 export const STALE_QUOTE_MS = 5 * 24 * 60 * 60 * 1000
 
 export function isAcceptedQuote(quote: Row): boolean {
-  return quote.accepted === true || Boolean(quote.accepted_at) || normalizeStatus(quote.statut ?? quote.status) === 'accepte'
+  return quote.accepted === true || normalizeStatus(quote.accepted) === 'true' || Boolean(quote.accepted_at) || normalizeStatus(quote.statut ?? quote.status) === 'accepte'
 }
 
 export function isDeclinedQuote(quote: Row): boolean {
-  return quote.declined === true || Boolean(quote.declined_at) || Boolean(quote.decline_reason) || normalizeStatus(quote.statut ?? quote.status) === 'refuse'
+  return Boolean(quote.declined_at) || Boolean(quote.decline_reason) || normalizeStatus(quote.statut ?? quote.status) === 'refuse'
 }
 
 export function isSentQuote(quote: Row): boolean {
@@ -114,7 +114,10 @@ function bucketLabel(date: Date, granularity: Granularity): string {
 }
 
 function quoteWonDate(quote: Row): unknown {
-  return quote.accepted_at ?? quote.updated_at ?? quote.created_at
+  // `Devis.updated_at` is not part of the historical schema. A missing
+  // acceptance date falls back to creation solely to place legacy accepted
+  // quotes in a chronological bucket.
+  return quote.accepted_at ?? quote.created_at
 }
 
 /**
@@ -152,13 +155,13 @@ export function getRevenueSeries(quotes: Row[], range: DateRange, previousRange:
 /* ------------------------------------------------------------------ */
 
 /**
- * Normalizes the raw `source` / `project_source` value stored on a project
+ * Normalizes the raw `source` value stored on a project
  * into one of the honest families we can actually observe in the data.
  * Values with no recognizable meaning are grouped under "Source inconnue"
  * rather than dropped or invented.
  */
-export function normalizeProjectSource(rawSource: unknown, rawProjectSource?: unknown): LeadSourceFamily {
-  const raw = String(rawSource ?? rawProjectSource ?? '').toLowerCase().trim()
+export function normalizeProjectSource(rawSource: unknown): LeadSourceFamily {
+  const raw = String(rawSource ?? '').toLowerCase().trim()
   if (!raw) return 'Source inconnue'
   if (['vapi', 'voice', 'telephone', 'téléphone', 'phone'].includes(raw)) return 'Assistant vocal'
   if (['chat-widget', 'assistant-web', 'widget'].includes(raw)) return 'Assistant web'
@@ -177,7 +180,7 @@ export function getLeadSourceDistribution(projects: Row[], range: DateRange): Le
   const inPeriod = projects.filter((project) => inRange(project.created_at, range))
   const counts = new Map<LeadSourceFamily, number>()
   for (const project of inPeriod) {
-    const family = normalizeProjectSource(project.source, project.project_source)
+    const family = normalizeProjectSource(project.source)
     counts.set(family, (counts.get(family) || 0) + 1)
   }
   const total = inPeriod.length

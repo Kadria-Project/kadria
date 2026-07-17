@@ -220,7 +220,6 @@ export interface SupabaseProject {
   assignedTo: string
   artisanId: string
   source: string
-  projectSource: string
   createdFrom: string
   completionStatus: string
   completionCompletedAt: string | null
@@ -393,7 +392,6 @@ export function mapSupabaseProject(row: RawRow): SupabaseProject {
     assignedTo: getString(row, 'assigned_to', 'Assigned To'),
     artisanId: getString(row, 'artisan_id', 'Artisan ID'),
     source: getString(row, 'source', 'Source'),
-    projectSource: getString(row, 'project_source', 'Project Source'),
     createdFrom: getString(row, 'created_from', 'Created From'),
     completionStatus: getString(row, 'completion_status', 'Completion Status'),
     completionCompletedAt: getValue<string | null>(row, ['completion_completed_at', 'Completion Completed At'], null),
@@ -588,7 +586,6 @@ export function toSupabaseProjectUpdate(input: Record<string, unknown>) {
     Contacted: 'contacted',
     'Assigned To': 'assigned_to',
     Source: 'source',
-    'Project Source': 'project_source',
     'Created From': 'created_from',
     'Completion Status': 'completion_status',
     'Completion Completed At': 'completion_completed_at',
@@ -617,6 +614,7 @@ export function toSupabaseProjectUpdate(input: Record<string, unknown>) {
   }
 
   for (const [key, value] of Object.entries(input)) {
+    if (key === 'projectSource' || key === 'Project Source') continue
     const targetKey = fieldMap[key] || key
     if (targetKey === 'artisan_id' || key === 'Artisan ID') continue
     row[targetKey] = value

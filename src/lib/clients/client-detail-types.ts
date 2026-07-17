@@ -46,7 +46,7 @@ export type ClientProjectSummary = {
 
 export type ClientQuoteSummary = {
   id: string
-  numero: string | null
+  devisNumber: string | null
   projectId: string
   projectTitle: string
   status: string

@@ -106,13 +106,16 @@ export function buildClientTimeline(input: TimelineInput): ClientTimelineEvent[]
     }
   }
 
-  for (const activity of input.activities) {
+  for (const [activityIndex, activity] of input.activities.entries()) {
     const projectId = text(activity.project_id)
     if (!projectId || !input.projectTitleById.has(projectId)) { input.onOrphan?.('activity_orphan_project'); continue }
     const at = toIso(activity.created_at)
     const title = input.projectTitleById.get(projectId) || 'Dossier'
     const label = activityLabel(activity)
-    push(`activity:${text(activity.id) || `${projectId}-${at}`}`, at, { type: 'activity', title: label.title, description: text(activity.description), projectId, projectTitle: title, href: input.projectHrefById(projectId), tone: label.tone }, 'activity_invalid_date')
+    // Activity is append-only and has no historical primary key. This key is
+    // presentation-only and deterministic from persisted columns plus index.
+    const activityKey = [projectId, at || '', text(activity.action) || '', text(activity.description) || '', String(activityIndex)].join(':')
+    push(`activity:${activityKey}`, at, { type: 'activity', title: label.title, description: text(activity.description), projectId, projectTitle: title, href: input.projectHrefById(projectId), tone: label.tone }, 'activity_invalid_date')
   }
 
   for (const event of input.events) {

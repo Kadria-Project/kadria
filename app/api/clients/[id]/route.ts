@@ -61,9 +61,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const empty = { data: [] as Record<string, unknown>[], error: null }
     const [quotesResult, appointmentsResult, activitiesResult, eventsResult] = projectIds.length
       ? await Promise.all([
-          supabase.from('Devis').select('id, project_id, numero, total_ttc, total_ht, statut, accepted, accepted_at, quote_sent_at, created_at').in('project_id', projectIds),
+          supabase.from('Devis').select('id, project_id, devis_number, total_ttc, total_ht, statut, accepted, accepted_at, quote_sent_at, created_at').in('project_id', projectIds),
           supabase.from('project_appointments').select('id, project_id, title, start_time, status, confirmation_status, assigned_user_id, created_at').eq('tenant_id', tenantId).in('project_id', projectIds),
-          supabase.from('Activity').select('id, project_id, created_at, updated_at, action, description').in('project_id', projectIds),
+          supabase.from('Activity').select('project_id, created_at, action, description').in('project_id', projectIds),
           supabase.from('ProjectClientEvents').select('id, project_id, created_at, event_type').in('project_id', projectIds),
         ])
       : [empty, empty, empty, empty]

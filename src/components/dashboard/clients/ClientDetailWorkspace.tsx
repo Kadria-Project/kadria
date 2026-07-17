@@ -422,7 +422,7 @@ function QuoteRow({ quote, onNavigate }: { quote: ClientQuoteSummary; onNavigate
   return (
     <button type="button" onClick={() => onNavigate(quote.href)} className="flex w-full flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="truncate font-semibold text-slate-900">{quote.numero || 'Devis'} — {quote.projectTitle}</p>
+        <p className="truncate font-semibold text-slate-900">{quote.devisNumber || 'Devis'} — {quote.projectTitle}</p>
         <p className="truncate text-xs text-slate-500">{quote.statusLabel}{quote.sentAt ? ` · envoyé le ${dateLabel(quote.sentAt)}` : ''}</p>
       </div>
       <span className="shrink-0 font-semibold text-slate-900">{money(quote.totalTtc)}</span>

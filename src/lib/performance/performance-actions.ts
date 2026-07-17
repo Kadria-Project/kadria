@@ -465,7 +465,7 @@ export function getPerformanceInsights(params: {
     const bySource = new Map<string, { total: number; won: number }>()
     for (const project of projects) {
       if (!inRange(project.created_at, current)) continue
-      const family = typeof project.source === 'string' ? project.source : (typeof project.project_source === 'string' ? project.project_source : 'inconnue')
+      const family = typeof project.source === 'string' ? project.source : 'inconnue'
       const bucket = bySource.get(family) || { total: 0, won: 0 }
       bucket.total += 1
       if (WON_PROJECT_STATUSES.has(normalizeStatus(project.status))) bucket.won += 1

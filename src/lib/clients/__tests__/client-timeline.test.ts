@@ -11,7 +11,7 @@ const projectHrefById = (id: string) => `/dashboard-v2/projet/${id}`
 test('buildClientTimeline: sorts most recent first', () => {
   const timeline = buildClientTimeline({
     projects: [{ id: 'p1', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-06-01T00:00:00Z', status: 'En cours' }],
-    activities: [{ id: 'a1', project_id: 'p1', created_at: '2026-03-01T00:00:00Z', action: 'note' }],
+    activities: [{ project_id: 'p1', created_at: '2026-03-01T00:00:00Z', action: 'note' }],
     events: [],
     appointments: [],
     quotes: [],
@@ -25,7 +25,7 @@ test('buildClientTimeline: sorts most recent first', () => {
 test('buildClientTimeline: drops rows whose project is not in this client\'s set (orphan) without crashing', () => {
   const timeline = buildClientTimeline({
     projects: [],
-    activities: [{ id: 'a1', project_id: 'orphan-project', created_at: '2026-01-01T00:00:00Z', action: 'note' }],
+    activities: [{ project_id: 'orphan-project', created_at: '2026-01-01T00:00:00Z', action: 'note' }],
     events: [{ id: 'e1', project_id: 'orphan-project', created_at: '2026-01-01T00:00:00Z', event_type: 'message' }],
     appointments: [{ id: 'ap1', project_id: 'orphan-project', created_at: '2026-01-01T00:00:00Z' }],
     quotes: [{ id: 'q1', project_id: 'orphan-project', created_at: '2026-01-01T00:00:00Z' }],
@@ -39,7 +39,7 @@ test('buildClientTimeline: skips rows with an invalid/missing date instead of cr
   let orphanCount = 0
   const timeline = buildClientTimeline({
     projects: [],
-    activities: [{ id: 'a1', project_id: 'p1', created_at: 'not-a-date', action: 'note' }],
+    activities: [{ project_id: 'p1', created_at: 'not-a-date', action: 'note' }],
     events: [],
     appointments: [],
     quotes: [],

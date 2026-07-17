@@ -59,7 +59,7 @@ function inRange(value: unknown, range: DateRange): boolean {
 }
 
 function isAcceptedQuote(quote: Row): boolean {
-  return quote.accepted === true || Boolean(quote.accepted_at) || ACCEPTED_QUOTE_STATUSES.has(normalizeStatus(quote.statut ?? quote.status))
+  return quote.accepted === true || normalizeStatus(quote.accepted) === 'true' || Boolean(quote.accepted_at) || ACCEPTED_QUOTE_STATUSES.has(normalizeStatus(quote.statut ?? quote.status))
 }
 
 function quoteAmount(quote: Row): number {
@@ -67,7 +67,9 @@ function quoteAmount(quote: Row): number {
 }
 
 function quoteWonDate(quote: Row): unknown {
-  return quote.accepted_at ?? quote.updated_at ?? quote.created_at
+  // Devis has no modification timestamp. For an accepted quote without an
+  // acceptance date, creation is only a documented chronology proxy.
+  return quote.accepted_at ?? quote.created_at
 }
 
 /** Chiffre d'affaires = somme des devis gagnés (acceptés) sur la période. */

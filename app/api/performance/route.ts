@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin()
     const hasResponsibleColumn = await tableHasColumn('Projects', 'responsible_user_id')
     const projectColumns = [
-      'id', 'status', 'created_at', 'updated_at', 'source', 'project_source',
+      'id', 'status', 'created_at', 'updated_at', 'source',
       'client_name', 'client_first_name', 'client_phone', 'client_email',
       'project_title', 'project_type', 'budget', 'desired_timeline', 'maturity',
       'city', 'completeness_score',
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const quotesResult = projectIds.length
       ? await supabase
         .from('Devis')
-        .select('project_id, total_ttc, total_ht, statut, accepted, accepted_at, declined, declined_at, decline_reason, quote_sent_at, created_at, updated_at')
+        .select('project_id, total_ttc, total_ht, statut, accepted, accepted_at, declined_at, decline_reason, quote_sent_at, created_at')
         .in('project_id', projectIds)
       : { data: [], error: null }
 

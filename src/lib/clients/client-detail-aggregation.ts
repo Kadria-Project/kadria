@@ -31,7 +31,7 @@ const normalizedStatus = (value: unknown) => (text(value) || '').normalize('NFD'
 
 function projectHref(projectId: string) { return `/dashboard-v2/projet/${projectId}` }
 
-const isAcceptedQuote = (quote: Row) => quote.accepted === true || Boolean(text(quote.accepted_at)) || ACCEPTED_QUOTE_STATUSES.has(normalizedStatus(quote.statut || quote.status))
+const isAcceptedQuote = (quote: Row) => quote.accepted === true || normalizedStatus(quote.accepted) === 'true' || Boolean(text(quote.accepted_at)) || ACCEPTED_QUOTE_STATUSES.has(normalizedStatus(quote.statut || quote.status))
 const isPendingQuote = (quote: Row) => !isAcceptedQuote(quote)
 const quoteAmount = (quote: Row) => num(quote.total_ttc ?? quote.total_ht ?? 0)
 const isCancelledAppointment = (appointment: Row) => normalizedStatus(appointment.status) === 'cancelled' || normalizedStatus(appointment.confirmation_status) === 'cancelled'
@@ -95,7 +95,7 @@ export function buildClientProjects(projects: Row[], quotesByProject: Map<string
         .sort((a, b) => a.getTime() - b.getTime())[0]
       const activities = activitiesByProject.get(id) || []
       const lastActivity = [...activities, ...appointments, ...quotes]
-        .map((row) => toDate((row as Row).updated_at || (row as Row).created_at))
+        .map((row) => toDate((row as Row).created_at))
         .filter((d): d is Date => Boolean(d))
         .sort((a, b) => b.getTime() - a.getTime())[0]
       return {
@@ -125,8 +125,8 @@ export function buildClientQuotes(quotes: Row[], projectTitleById: Map<string, s
     .map((quote) => {
       const projectId = String(quote.project_id)
       return {
-        id: String(quote.id ?? `${projectId}-${text(quote.numero) || text(quote.created_at)}`),
-        numero: text(quote.numero),
+        id: String(quote.id),
+        devisNumber: text(quote.devis_number),
         projectId,
         projectTitle: projectTitleById.get(projectId) || 'Dossier',
         status: normalizedStatus(quote.statut || quote.status) || 'draft',

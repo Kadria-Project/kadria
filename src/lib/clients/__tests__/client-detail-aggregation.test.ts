@@ -55,6 +55,7 @@ test('buildClientQuotes: drops quotes whose project is not in this client\'s pro
   )
   assert.equal(quotes.length, 1)
   assert.equal(quotes[0].id, 'q1')
+  assert.equal(quotes[0].devisNumber, null)
 })
 
 test('buildClientAppointments: classifies past vs future correctly', () => {
