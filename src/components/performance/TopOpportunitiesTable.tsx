@@ -37,10 +37,8 @@ function OpportunityRow({ opportunity, index }: { opportunity: PerformanceOpport
           {opportunity.clientName}
         </Link>
       </td>
-      <td className="max-w-[220px] truncate py-2.5 px-2 align-top text-sm text-slate-600" title={opportunity.projectTitle}>
-        <span className="block truncate">{opportunity.projectTitle}</span>
-        <span className="mt-1 inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{opportunity.statusLabel}</span>
-      </td>
+      <td className="max-w-[320px] py-2.5 px-2 align-top text-sm text-slate-600" title={opportunity.projectTitle}><span className="block truncate">{opportunity.projectTitle}</span></td>
+      <td className="py-2.5 px-2 align-top"><span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{opportunity.statusLabel}</span></td>
       <td className="py-2.5 px-2 align-top">
         <ValueCell value={opportunity.value} />
       </td>
@@ -111,12 +109,13 @@ function TopOpportunitiesContent({ opportunities }: { opportunities: Performance
   return (
     <>
       <div className="hidden md:block overflow-x-auto">
-          <table className="w-full min-w-[620px] border-collapse text-left">
+          <table className="w-full min-w-[760px] border-collapse text-left">
           <caption className="sr-only">Opportunités commerciales à fort potentiel sur la période</caption>
           <thead>
             <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               <th scope="col" className="py-2 pl-4 pr-2">Client</th>
               <th scope="col" className="py-2 px-2">Projet</th>
+              <th scope="col" className="py-2 px-2">Statut</th>
               <th scope="col" className="py-2 px-2">Valeur</th>
               <th scope="col" className="py-2 px-2">Score</th>
               <th scope="col" className="py-2 px-2">Prochaine action</th>

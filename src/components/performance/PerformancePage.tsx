@@ -1,15 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type {
-  KPIResult,
-  MonthlyGoalsSummary,
-  PerformanceAnalytics,
-  PerformanceInsight,
-  PerformanceOpportunity,
-  PerformancePeriodKey,
-  PriorityAction,
-} from '@/src/lib/performance/performance-types'
+import type { KPIResult, MonthlyGoalsSummary, PerformanceAnalytics, PerformanceInsight, PerformanceOpportunity, PerformancePeriodKey, PriorityAction } from '@/src/lib/performance/performance-types'
 import { PERFORMANCE_PERIODS } from '@/src/lib/performance/date-range'
 import PerformanceLayout from './PerformanceLayout'
 import PerformanceHeader from './PerformanceHeader'
@@ -21,11 +13,9 @@ import RevenueEvolutionChart from './RevenueEvolutionChart'
 import LeadSourcesChart from './LeadSourcesChart'
 import ConversionFunnel from './ConversionFunnel'
 import AtRiskOpportunitiesCard from './AtRiskOpportunitiesCard'
-import ConversionRateChart from './ConversionRateChart'
 import ConversionDelayChart from './ConversionDelayChart'
 import PipelineDistributionChart from './PipelineDistributionChart'
 import TopOpportunitiesTable from './TopOpportunitiesTable'
-import InsightsPanel from './InsightsPanel'
 import PriorityActions from './PriorityActions'
 import MonthlyGoals from './MonthlyGoals'
 import ExecutiveSummary from './ExecutiveSummary'
@@ -43,16 +33,7 @@ type FetchState = {
 
 export default function PerformancePage() {
   const [period, setPeriod] = useState<PerformancePeriodKey>('30d')
-  const [state, setState] = useState<FetchState>({
-    kpis: null,
-    analytics: null,
-    opportunities: null,
-    insights: null,
-    priorityActions: null,
-    monthlyGoals: null,
-    plan: null,
-    error: null,
-  })
+  const [state, setState] = useState<FetchState>({ kpis: null, analytics: null, opportunities: null, insights: null, priorityActions: null, monthlyGoals: null, plan: null, error: null })
   const [reloadNonce, setReloadNonce] = useState(0)
 
   useEffect(() => {
@@ -74,84 +55,43 @@ export default function PerformancePage() {
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return
-        setState({
-          kpis: null,
-          analytics: null,
-          opportunities: null,
-          insights: null,
-          priorityActions: null,
-          monthlyGoals: null,
-          plan: null,
-          error: reason instanceof Error ? reason.message : 'Impossible de charger les indicateurs de performance.',
-        })
+        setState({ kpis: null, analytics: null, opportunities: null, insights: null, priorityActions: null, monthlyGoals: null, plan: null, error: reason instanceof Error ? reason.message : 'Impossible de charger les indicateurs de performance.' })
       })
     return () => controller.abort()
   }, [period, reloadNonce])
 
   const retry = () => setReloadNonce((n) => n + 1)
-
   const loading = state.kpis === null && state.error === null
   const isEmpty = !loading && !state.error && state.kpis !== null && state.kpis.every((kpi) => kpi.value === 0)
   const periodLabel = PERFORMANCE_PERIODS.find((item) => item.key === period)?.label ?? ''
 
-  if (loading) {
-    return (
-      <PerformanceLayout>
-        <PerformanceHeader period={period} onPeriodChange={setPeriod} />
-        <PerformanceLoading />
-      </PerformanceLayout>
-    )
-  }
-
-  if (state.error && !state.kpis) {
-    return (
-      <PerformanceLayout>
-        <PerformanceHeader period={period} onPeriodChange={setPeriod} />
-        <PerformanceErrorState message={state.error} onRetry={retry} />
-      </PerformanceLayout>
-    )
-  }
+  if (loading) return <PerformanceLayout><PerformanceHeader period={period} onPeriodChange={setPeriod} /><PerformanceLoading /></PerformanceLayout>
+  if (state.error && !state.kpis) return <PerformanceLayout><PerformanceHeader period={period} onPeriodChange={setPeriod} /><PerformanceErrorState message={state.error} onRetry={retry} /></PerformanceLayout>
 
   return (
     <PerformanceLayout>
       <PerformanceHeader period={period} onPeriodChange={setPeriod} />
-      {isEmpty ? (
-        <PerformanceEmptyState />
-      ) : (
+      {isEmpty ? <PerformanceEmptyState /> : (
         <>
           <ExecutiveSummary kpis={state.kpis ?? []} analytics={state.analytics} />
           <PerformanceKPIs kpis={state.kpis} loading={loading} error={state.error} onRetry={retry} />
 
-          {/* Ligne principale : CA dominant + sources + tunnel */}
-          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[2fr_1fr_1fr]">
-            <RevenueEvolutionChart
-              series={state.analytics?.revenueSeries ?? null}
-              periodLabel={periodLabel}
-              loading={loading}
-              error={state.error}
-              onRetry={retry}
-            />
-            <LeadSourcesChart distribution={state.analytics?.leadSources ?? null} loading={loading} error={state.error} onRetry={retry} />
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,13fr)_minmax(320px,7fr)]">
+            <RevenueEvolutionChart series={state.analytics?.revenueSeries ?? null} periodLabel={periodLabel} loading={loading} error={state.error} onRetry={retry} />
             <div className="flex flex-col gap-4">
               <ConversionFunnel stages={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
               <AtRiskOpportunitiesCard summary={state.analytics?.atRisk ?? null} loading={loading} error={state.error} />
             </div>
           </div>
 
-          {/* Ligne secondaire : taux de transformation + délais + pipeline */}
+          <TopOpportunitiesTable opportunities={state.opportunities} loading={loading} error={state.error} onRetry={retry} />
+
           <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <ConversionRateChart series={state.analytics?.conversionRateSeries ?? null} funnel={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
-            <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
             <PipelineDistributionChart distribution={state.analytics?.pipeline ?? null} loading={loading} error={state.error} onRetry={retry} />
+            <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
+            <LeadSourcesChart distribution={state.analytics?.leadSources ?? null} loading={loading} error={state.error} onRetry={retry} />
           </div>
 
-          {/* Ligne 1 (Lot 3) : opportunités dominantes + insights latéraux */}
-          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[2fr_1fr]">
-            <TopOpportunitiesTable opportunities={state.opportunities} loading={loading} error={state.error} onRetry={retry} />
-            <InsightsPanel insights={state.insights} loading={loading} error={state.error} onRetry={retry} />
-          </div>
-
-          {/* Ligne 2 (Lot 3) : actions à prioriser + objectifs mensuels */}
           <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
             <PriorityActions actions={state.priorityActions} impactAmount={state.analytics?.atRisk.amount ?? null} loading={loading} error={state.error} onRetry={retry} />
             <MonthlyGoals summary={state.monthlyGoals} loading={loading} error={state.error} onRetry={retry} />
