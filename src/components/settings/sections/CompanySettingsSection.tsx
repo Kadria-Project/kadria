@@ -23,6 +23,7 @@ type CompanySettingsSectionProps = {
   uploadError: string | null;
   onUploadLogo: (file: File) => Promise<void>;
   onRemoveLogo: () => void;
+  onSave: (values: CompanySettingsValues) => Promise<void>;
   onSaved: (values: CompanySettingsValues) => void;
 };
 
@@ -77,6 +78,7 @@ export function CompanySettingsSection({
   uploadError,
   onUploadLogo,
   onRemoveLogo,
+  onSave,
   onSaved,
 }: CompanySettingsSectionProps) {
   const [local, setLocal] = useState<CompanySettingsValues>(values);
@@ -108,21 +110,7 @@ export function CompanySettingsSection({
     setSaved(false);
     setError('');
     try {
-      const res = await fetch('/api/artisan/config', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyName: local.companyName,
-          websiteUrl: local.websiteUrl,
-          googleReviewUrl: local.googleReviewUrl,
-          welcomeName: local.welcomeName,
-          logoUrl: local.logoUrl,
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error("Kadria n'a pas pu enregistrer ces modifications.");
-      }
+      await onSave(local);
       onSaved(local);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -141,7 +129,7 @@ export function CompanySettingsSection({
         readOnlyReason="owner_only"
       >
         <div style={sectionCard}>
-          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>Identite de l'entreprise</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: 'var(--accent)' }}>Identite de l&apos;entreprise</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
               <label style={labelStyle}>Nom commercial</label>
@@ -186,11 +174,11 @@ export function CompanySettingsSection({
                 style={inputStyle}
               />
               <p style={{ color: 'var(--text-3)', fontSize: '12px', margin: '5px 0 0' }}>
-                C'est le nom visible par vos clients dans le widget.
+                C&apos;est le nom visible par vos clients dans le widget.
               </p>
             </div>
             <div style={{ maxWidth: isMobile ? '100%' : '420px' }}>
-              <label style={labelStyle}>Logo de l'entreprise</label>
+              <label style={labelStyle}>Logo de l&apos;entreprise</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 {local.logoUrl && (
                   <img

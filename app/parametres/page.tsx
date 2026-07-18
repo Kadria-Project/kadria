@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useSyncExternalStore, Suspense } from 'react'
+import { useState, useEffect, useSyncExternalStore, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { KadriaLogo } from '@/src/components/KadriaLogo'
 import { useTheme } from '@/src/hooks/useTheme'
@@ -16,8 +16,8 @@ import {
   DEFAULT_CONSUMPTION_PER_100KM,
 } from '@/src/config/travel'
 import { normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit'
-import type { TenantRole } from '@/src/lib/team/types'
 import { hasPermission } from '@/src/lib/team/permission-matrix'
+import { useCompanySettingsData } from '@/src/hooks/useCompanySettingsData'
 import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
 import { CompanySettingsSection, type CompanySettingsValues } from '@/src/components/settings/sections/CompanySettingsSection'
 import { BillingSettingsSection } from '@/src/components/settings/sections/BillingSettingsSection'
@@ -352,12 +352,16 @@ function ParametresPageContent() {
   const selectSection = (section: string) => {
     router.replace(`/parametres?section=${section}`, { scroll: false })
   }
+  const companySettings = useCompanySettingsData()
+  const currentRole = companySettings.role
+  const isMobile = companySettings.isMobile
 
   // Deep link depuis l'assistant (ex: /parametres?section=widget) : active
   // l'onglet correspondant au chargement et si le paramètre change. Une
   // section absente ou inconnue laisse le comportement actuel inchangé
   // (onglet par défaut "entreprise").
-  const [loading, setLoading] = useState(true)
+  const [legacyLoading, setLegacyLoading] = useState(true)
+  const loading = companySettings.loading || legacyLoading
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [uploadingTarget, setUploadingTarget] = useState<null | 'company_logo' | 'assistant_avatar' | 'white_label_logo'>(null)
@@ -464,15 +468,14 @@ function ParametresPageContent() {
   // en cours : /api/team et /parametres/equipe appliquent ensuite les vraies
   // permissions. On ne masque donc plus cette entree sur un echec de fetch —
   // seul un 401 explicite (session non authentifiee) la cache.
-  const [teamTabVisible, setTeamTabVisible] = useState(true)
-  const [automationsTabVisible, setAutomationsTabVisible] = useState(false)
+  const teamTabVisible = companySettings.teamTabVisible
+  const automationsTabVisible = hasPermission(currentRole ?? 'viewer', 'automations.read')
   // Role tenant de l'utilisateur courant, expose par `/api/team`
   // (`membership.role`) — c'est le mecanisme deja utilise par
   // `/parametres/equipe` pour connaitre le role courant cote client. Tant
   // que `currentRole` est `null` (chargement), les sections sensibles
   // (`PermissionGate`) restent masquees par defaut plutot que d'afficher un
   // etat non autorise en flash.
-  const [currentRole, setCurrentRole] = useState<TenantRole | null>(null)
   const canUpdateOwnAccount = hasPermission(currentRole ?? 'viewer', 'account.update_self')
   const canUpdateOwnProfile = hasPermission(currentRole ?? 'viewer', 'profile.update_self')
   const canManageOwnVehicle = hasPermission(currentRole ?? 'viewer', 'vehicle.update_self')
@@ -491,21 +494,6 @@ function ParametresPageContent() {
           : activeSection === 'catalogue'
             ? canManageBusinessSettings || canManageBillingSettings
             : false
-  useEffect(() => {
-    fetch('/api/team', { cache: 'no-store' })
-      .then(async (response) => {
-        if (response.status === 401) {
-          setTeamTabVisible(false)
-          return
-        }
-        const data = await response.json().catch(() => null)
-        if (data?.membership?.role) {
-          setCurrentRole(data.membership.role as TenantRole)
-          setAutomationsTabVisible(hasPermission(data.membership.role as TenantRole, 'automations.read'))
-        }
-      })
-      .catch(() => {})
-  }, [])
   useEffect(() => {
     fetch('/api/artisan/business-profile')
       .then((r) => r.json())
@@ -580,23 +568,16 @@ function ParametresPageContent() {
   })()
 
   const [artisanIdDisplay, setArtisanIdDisplay] = useState('VOTRE_ARTISAN_ID')
-  const [isMobile, setIsMobile] = useState(false)
-  useLayoutEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
   useEffect(() => {
+    if (companySettings.loading) return
     Promise.all([
-      fetch('/api/artisan/config').then(r => r.json()).catch(() => null),
       fetch('/api/profile').then(r => r.json()).catch(() => null),
       fetch('/api/profile/vehicle').then(r => r.json()).catch(() => null),
     ])
-      .then(([configData, profileData, vehicleData]) => {
+      .then(([profileData, vehicleData]) => {
         setPersonalVehicleAvailable(vehicleData?.success ? vehicleData.available !== false : true)
-        if (configData?.success && configData.config) {
+        const configData = companySettings.config ? { config: companySettings.config } : null
+        if (configData) {
           const knownValues = new Set(ARTISAN_TRADES.map(t => t.value))
           const rawTrades: string[] = Array.isArray(configData.config.trades) ? configData.config.trades : []
           const customTrade = rawTrades.find((t: string) => !knownValues.has(t)) || ''
@@ -697,8 +678,8 @@ function ParametresPageContent() {
           }
         }
       })
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => setLegacyLoading(false))
+  }, [companySettings.config, companySettings.loading])
 
   const configurationItems = buildConfigurationKadriaItems({
     companyName: config.companyName,
@@ -1083,7 +1064,7 @@ function ParametresPageContent() {
 
   const uploadBrandingImage = async (
     file: File,
-    target: 'company_logo' | 'assistant_avatar' | 'white_label_logo'
+    target: 'assistant_avatar' | 'white_label_logo'
   ): Promise<string | null> => {
     setUploadingTarget(target)
     setUploadError(null)
@@ -1107,11 +1088,6 @@ function ParametresPageContent() {
     } finally {
       setUploadingTarget(null)
     }
-  }
-
-  const handleCompanyLogoFile = async (file: File) => {
-    const url = await uploadBrandingImage(file, 'company_logo')
-    if (url) setConfig(c => ({ ...c, logoUrl: url }))
   }
 
   const handleAssistantAvatarFile = async (file: File) => {
@@ -1497,20 +1473,18 @@ function ParametresPageContent() {
             <div>
               <CompanySettingsSection
                 role={currentRole}
-                loading={loading}
+                loading={companySettings.loading}
                 isMobile={isMobile}
-                uploading={uploadingTarget === 'company_logo'}
-                uploadError={uploadingTarget === 'company_logo' ? uploadError : null}
-                values={{
-                  companyName: config.companyName,
-                  websiteUrl: config.websiteUrl,
-                  googleReviewUrl: config.googleReviewUrl,
-                  welcomeName: config.welcomeName,
-                  logoUrl: config.logoUrl,
+                uploading={companySettings.uploading}
+                uploadError={companySettings.uploadError}
+                values={companySettings.values}
+                onUploadLogo={companySettings.uploadLogo}
+                onRemoveLogo={companySettings.removeLogo}
+                onSave={companySettings.save}
+                onSaved={(values: CompanySettingsValues) => {
+                  companySettings.onSaved(values)
+                  setConfig(c => ({ ...c, ...values }))
                 }}
-                onUploadLogo={handleCompanyLogoFile}
-                onRemoveLogo={() => setConfig(c => ({ ...c, logoUrl: '' }))}
-                onSaved={(values: CompanySettingsValues) => setConfig(c => ({ ...c, ...values }))}
               />
 
               <div style={sectionCard}>
