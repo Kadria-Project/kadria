@@ -1,0 +1,12 @@
+'use client'
+
+import { useState } from 'react'
+import type { ProfessionalProfile } from '@/src/lib/profile/types'
+import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
+import { Card, fieldClassName, SaveButton } from './CompanyFormPrimitives'
+
+export function PrimaryContactCard({ values, canUpdate, onSave }: { values: ProfessionalProfile; canUpdate: boolean; onSave: (values: ProfessionalProfile) => Promise<void> }) {
+  const [local, setLocal] = useState(values), [saving, setSaving] = useState(false), [saved, setSaved] = useState(false), [error, setError] = useState('')
+  const save = async () => { setSaving(true); setError(''); try { await onSave(local); setSaved(true); window.setTimeout(() => setSaved(false), 3000) } catch (cause) { setError(cause instanceof Error ? cause.message : 'Enregistrement impossible.') } finally { setSaving(false) } }
+  return <Card title="Contact principal" description="Vos coordonnées personnelles de contact. Elles ne modifient ni votre mot de passe ni vos sessions.">{!canUpdate && <ReadOnlyNotice reason="read_only" />}<fieldset disabled={!canUpdate} className="grid gap-4 md:grid-cols-2"><label className="text-sm font-medium text-slate-700">Prénom<input className={fieldClassName} value={local.firstName} onChange={(event) => setLocal({ ...local, firstName: event.target.value })} /></label><label className="text-sm font-medium text-slate-700">Nom<input className={fieldClassName} value={local.lastName} onChange={(event) => setLocal({ ...local, lastName: event.target.value })} /></label><label className="text-sm font-medium text-slate-700">E-mail<input type="email" className={fieldClassName} value={local.email} onChange={(event) => setLocal({ ...local, email: event.target.value })} /></label><label className="text-sm font-medium text-slate-700">Téléphone<input type="tel" className={fieldClassName} value={local.professionalPhone} onChange={(event) => setLocal({ ...local, professionalPhone: event.target.value })} /></label><label className="text-sm font-medium text-slate-700 md:col-span-2">Fonction<input className={fieldClassName} value={local.jobTitle} onChange={(event) => setLocal({ ...local, jobTitle: event.target.value })} /></label></fieldset>{canUpdate && <div className="mt-5 border-t border-slate-100 pt-4"><SaveButton saving={saving} saved={saved} onClick={save} />{error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}</div>}</Card>
+}
