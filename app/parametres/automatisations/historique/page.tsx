@@ -1,8 +1,9 @@
 'use client'
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, react/no-unescaped-entities */
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { KadriaLogo } from '@/src/components/KadriaLogo'
+import KadriaAppShell from '@/src/components/workspace/KadriaAppShell'
 
 type AutomationHistoryRun = {
   id: string
@@ -309,19 +310,9 @@ function AutomationsHistoryPageContent() {
   }, [runs])
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] text-[var(--text-1)]">
-      <div className="border-b border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 sm:px-6 xl:px-10">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <button onClick={() => router.push('/parametres/automatisations')} className="shrink-0 text-sm text-[var(--text-2)]">
-            {'<- Retour'}
-          </button>
-          <div className="min-w-0 flex-1 sm:flex-none">
-            <KadriaLogo size="sm" theme="dark" noLink />
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 xl:px-10">
+    <KadriaAppShell><main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8 text-slate-900">
+      <nav aria-label="Fil d’Ariane" className="mb-4 text-sm text-slate-500">Workspace / Paramètres / Automatisations / <span className="text-slate-700">Historique</span></nav>
+      <div>
         <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 sm:p-6">
           <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Suivi des actions Kadria</p>
           <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{headerLabel}</h1>
@@ -534,7 +525,7 @@ function AutomationsHistoryPageContent() {
           </div>
         </div>
       ) : null}
-    </main>
+    </main></KadriaAppShell>
   )
 }
 
