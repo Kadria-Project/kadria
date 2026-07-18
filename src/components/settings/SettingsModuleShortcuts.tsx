@@ -58,7 +58,7 @@ export function SettingsModuleShortcuts({
         <p style={descriptionStyle}>Accédez aux réglages spécialisés de votre espace Kadria.</p>
       </div>
 
-      <div style={gridStyle}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" style={gridStyle}>
         {modules.map((module) => (
           <Link
             key={module.href}
@@ -84,7 +84,7 @@ const sectionStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: '16px',
   boxShadow: '0 12px 28px rgba(15,23,42,0.05)',
-  marginBottom: '32px',
+  marginBottom: '20px',
   padding: '16px 18px',
 }
 
@@ -101,9 +101,6 @@ const descriptionStyle: React.CSSProperties = {
 }
 
 const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gap: '12px',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
   marginTop: '16px',
 }
 
@@ -115,7 +112,7 @@ const cardStyle: React.CSSProperties = {
   color: 'inherit',
   display: 'flex',
   gap: '12px',
-  minHeight: '148px',
+  minHeight: '136px',
   padding: '14px',
   textDecoration: 'none',
 }

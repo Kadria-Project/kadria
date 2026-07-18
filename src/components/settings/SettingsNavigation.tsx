@@ -40,6 +40,7 @@ export function SettingsNavigation({ role, items, activeId, onSelect }: Settings
           type="button"
           onClick={() => onSelect(item)}
           aria-current={activeId === item.id ? 'page' : undefined}
+          className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
           style={{
             display: 'flex',
             alignItems: 'center',

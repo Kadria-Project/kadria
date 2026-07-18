@@ -1403,6 +1403,7 @@ function ParametresPageContent() {
       }}>
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <button
+            type="button"
             onClick={() => router.push('/dashboard-v2')}
             className="shrink-0"
             style={{
@@ -1428,6 +1429,7 @@ function ParametresPageContent() {
             </span>
           )}
           <button
+            type="button"
             onClick={save}
             disabled={saving || !canSaveActiveSection}
             className="shrink-0"
@@ -3078,6 +3080,7 @@ function ParametresPageContent() {
                   ].map(opt => (
                     <button
                       key={opt.value}
+                      type="button"
                       onClick={() => setTheme(opt.value as 'dark' | 'light')}
                       style={{
                         flex: 1,
