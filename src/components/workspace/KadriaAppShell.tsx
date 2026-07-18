@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import KadriaCollaboratorPanel from './KadriaCollaboratorPanel';
 import KadriaSidebar, { type WorkspaceMode } from './KadriaSidebar';
 import KadriaTopbar from './KadriaTopbar';
 import KadriaMobileNavigation from './KadriaMobileNavigation';
 import WorkspaceCanvas from './WorkspaceCanvas';
 import { WorkspaceNavigationProvider, type DashboardMode, type WorkspaceNavigation, useWorkspaceNavigation } from './WorkspaceNavigationContext';
+import { shouldRestoreDashboardNavigation } from './workspace-route-guards';
 
 const SIDEBAR_STORAGE_KEY = 'kadria-workspace-sidebar-compact';
 const COLLABORATOR_STORAGE_KEY = 'kadria-workspace-collaborator-open';
@@ -26,10 +28,12 @@ export default function KadriaAppShell({ children }: { children: ReactNode }) {
 }
 
 function KadriaAppShellLayout({ children }: { children: ReactNode }) {
-  const [desktop, setDesktop] = useState(false);
+  const [desktop, setDesktop] = useState<boolean | null>(null);
   const [compactSidebar, setCompactSidebar] = useState(false);
   const [collaboratorOpen, setCollaboratorOpen] = useState(false);
   const { dashboardMode, pendingNavigation, commitNavigation, consumeNavigation, registerNavigationHandler, takeRememberedNavigation } = useWorkspaceNavigation();
+  const pathname = usePathname();
+  const initialPathnameRef = useRef(pathname);
   const canvasRef = useRef<HTMLElement>(null);
   const dashboardModeRef = useRef<DashboardMode>('value');
   const scrollMemoryRef = useRef<ScrollMemory>({ mode: 'value', scrollPositions: {} });
@@ -81,7 +85,7 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
   useEffect(() => registerNavigationHandler(requestNavigation), [registerNavigationHandler, requestNavigation]);
 
   useEffect(() => {
-    if (!desktop) return;
+    if (!shouldRestoreDashboardNavigation(desktop, initialPathnameRef.current)) return;
     try {
       const saved = JSON.parse(window.sessionStorage.getItem(SCROLL_STORAGE_KEY) || 'null') as ScrollMemory | null;
       if (saved && isDashboardMode(saved.mode)) scrollMemoryRef.current = { mode: saved.mode, scrollPositions: saved.scrollPositions || {} };
@@ -152,6 +156,10 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
     setCollaboratorOpen(next);
     window.localStorage.setItem(COLLABORATOR_STORAGE_KEY, String(next));
   };
+
+  if (desktop === null) {
+    return <div aria-busy="true" className="min-h-screen bg-[#f6f8f7]" />;
+  }
 
   if (!desktop) return <div className="min-h-screen bg-[#f6f8f7] pb-16">{children}<KadriaMobileNavigation /></div>;
 

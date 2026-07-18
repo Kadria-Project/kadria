@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import test from 'node:test'
+import { shouldRestoreDashboardNavigation } from '../workspace-route-guards'
+
+test('never treats migrated workspace routes as dashboard restoration candidates', () => {
+  for (const pathname of [
+    '/parametres/entreprise',
+    '/parametres/activite',
+    '/parametres/assistants',
+    '/parametres/automatisations',
+    '/parametres/automatisations/historique',
+    '/parametres/connexions',
+    '/parametres/notifications',
+    '/parametres/acces',
+    '/parametres/abonnement',
+    '/parametres/equipe',
+    '/ressources',
+  ]) {
+    assert.equal(shouldRestoreDashboardNavigation(true, pathname), false, pathname)
+  }
+})
+
+test('never restores dashboard navigation while settings and resources routes are mounted', () => {
+  assert.equal(shouldRestoreDashboardNavigation(true, '/parametres/entreprise'), false)
+  assert.equal(shouldRestoreDashboardNavigation(true, '/ressources'), false)
+  assert.equal(shouldRestoreDashboardNavigation(true, '/dashboard-v2/suivi'), true)
+})
+
+test('never restores dashboard navigation before the viewport state is resolved', () => {
+  assert.equal(shouldRestoreDashboardNavigation(null, '/dashboard-v2'), false)
+  assert.equal(shouldRestoreDashboardNavigation(false, '/dashboard-v2'), false)
+})
+
+test('/parametres redirects on the server before a legacy page can render', async () => {
+  const directory = path.dirname(fileURLToPath(import.meta.url))
+  const source = await readFile(path.resolve(directory, '../../../../app/parametres/page.tsx'), 'utf8')
+
+  assert.match(source, /redirect\('\/parametres\/entreprise'\)/)
+  assert.doesNotMatch(source, /useEffect/)
+})
