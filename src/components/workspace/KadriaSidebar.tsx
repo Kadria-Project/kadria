@@ -43,6 +43,17 @@ const secondaryItems = [
   { label: 'Aide', href: 'mailto:contact@kadria.fr', icon: HelpCircle },
 ];
 
+const settingsItems = [
+  { label: 'Mon entreprise', href: '/parametres/entreprise' },
+  { label: 'Activité', href: '/parametres/activite' },
+  { label: 'Assistants', href: '/parametres/assistants' },
+  { label: 'Automatisations', href: '/parametres/automatisations' },
+  { label: 'Connexions', href: '/parametres/connexions' },
+  { label: 'Notifications', href: '/parametres/notifications' },
+  { label: 'Accès et sécurité', href: '/parametres/acces' },
+  { label: 'Abonnement', href: '/parametres/abonnement' },
+];
+
 export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps) {
   const pathname = usePathname();
   return (
@@ -104,17 +115,22 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
         <nav aria-label="Navigation secondaire" className="space-y-1">
           {secondaryItems.map((item) => {
             const Icon = item.icon;
+            const active = pathname === item.href || (item.href === '/parametres' && pathname.startsWith('/parametres'));
             return (
-              <Link
-                key={item.label}
-                href={item.href}
-                title={compact ? item.label : undefined}
-                aria-label={item.label}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''}`}
-              >
-                <Icon className="h-[17px] w-[17px] shrink-0" />
-                {!compact && <span className="truncate">{item.label}</span>}
-              </Link>
+              <div key={item.label}>
+                <Link href={item.href} title={compact ? item.label : undefined} aria-label={item.label} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''} ${active ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400'}`}>
+                  <Icon className="h-[17px] w-[17px] shrink-0" />
+                  {!compact && <span className="truncate">{item.label}</span>}
+                </Link>
+                {!compact && item.href === '/parametres' && pathname.startsWith('/parametres') && (
+                  <div className="ml-6 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+                    {settingsItems.map((settingsItem) => {
+                      const settingsActive = pathname === settingsItem.href;
+                      return <Link key={settingsItem.href} href={settingsItem.href} className={`block rounded-lg px-2 py-1.5 text-xs transition-colors ${settingsActive ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400 hover:text-white'}`}>{settingsItem.label}</Link>;
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
