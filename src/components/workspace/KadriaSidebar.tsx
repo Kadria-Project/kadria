@@ -36,11 +36,11 @@ const primaryItems = [
 ];
 
 const secondaryItems = [
-  { label: 'Devis et documents', href: '/dashboard-v2', icon: FileText },
-  { label: 'Catalogue', href: '/parametres', icon: Package },
+  { label: 'Devis et documents', href: '/dashboard-v2/suivi', icon: FileText },
+  { label: 'Catalogue', href: '/parametres/activite', icon: Package },
   { label: 'Équipe', href: '/parametres/equipe', icon: Users },
-  { label: 'Paramètres', href: '/parametres', icon: Settings },
-  { label: 'Aide', href: 'mailto:contact@kadria.fr', icon: HelpCircle },
+  { label: 'Paramètres', href: '/parametres/entreprise', icon: Settings },
+  { label: 'Aide', href: '/ressources', icon: HelpCircle },
 ];
 
 const settingsItems = [
@@ -115,14 +115,16 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
         <nav aria-label="Navigation secondaire" className="space-y-1">
           {secondaryItems.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href || (item.href === '/parametres' && pathname.startsWith('/parametres'));
+            const active = item.label === 'Paramètres'
+              ? pathname.startsWith('/parametres')
+              : pathname === item.href;
             return (
               <div key={item.label}>
                 <Link href={item.href} title={compact ? item.label : undefined} aria-label={item.label} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''} ${active ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400'}`}>
                   <Icon className="h-[17px] w-[17px] shrink-0" />
                   {!compact && <span className="truncate">{item.label}</span>}
                 </Link>
-                {!compact && item.href === '/parametres' && pathname.startsWith('/parametres') && (
+                {!compact && item.label === 'Paramètres' && pathname.startsWith('/parametres') && (
                   <div className="ml-6 mt-1 space-y-0.5 border-l border-white/10 pl-3">
                     {settingsItems.map((settingsItem) => {
                       const settingsActive = pathname === settingsItem.href;
