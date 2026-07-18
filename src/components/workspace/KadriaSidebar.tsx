@@ -8,11 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  FileText,
   FolderKanban,
   HelpCircle,
   LayoutDashboard,
-  Package,
   Settings,
   Users,
 } from 'lucide-react';
@@ -36,8 +34,6 @@ const primaryItems = [
 ];
 
 const secondaryItems = [
-  { label: 'Devis et documents', href: '/dashboard-v2/suivi', icon: FileText },
-  { label: 'Catalogue', href: '/parametres/activite', icon: Package },
   { label: 'Équipe', href: '/parametres/equipe', icon: Users },
   { label: 'Paramètres', href: '/parametres/entreprise', icon: Settings },
   { label: 'Aide', href: '/ressources', icon: HelpCircle },
