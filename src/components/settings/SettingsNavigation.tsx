@@ -33,7 +33,7 @@ export function SettingsNavigation({ role, items, activeId, onSelect }: Settings
   });
 
   return (
-    <nav aria-label="Navigation des paramètres" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+    <nav aria-label="Navigation des paramètres" className="flex min-w-max gap-2">
       {visibleItems.map((item) => (
         <button
           key={item.id}
@@ -44,15 +44,16 @@ export function SettingsNavigation({ role, items, activeId, onSelect }: Settings
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            padding: '9px 12px',
-            borderRadius: '8px',
-            border: 'none',
-            background: activeId === item.id ? 'var(--bg-hover)' : 'transparent',
-            color: activeId === item.id ? 'var(--text-1)' : 'var(--text-3)',
+            padding: '10px 13px',
+            borderRadius: '10px',
+            border: activeId === item.id ? '1px solid rgba(34,197,94,0.35)' : '1px solid var(--border)',
+            background: activeId === item.id ? 'rgba(34,197,94,0.12)' : 'var(--bg)',
+            color: activeId === item.id ? 'var(--accent)' : 'var(--text-2)',
             fontWeight: activeId === item.id ? 700 : 500,
-            fontSize: '14px',
+            fontSize: '13px',
             textAlign: 'left',
             cursor: 'pointer',
+            whiteSpace: 'nowrap',
           }}
         >
           <span aria-hidden="true">{item.icon}</span>
