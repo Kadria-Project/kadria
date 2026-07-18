@@ -21,8 +21,9 @@ import { hasPermission } from '@/src/lib/team/permission-matrix'
 import { ReadOnlyNotice } from '@/src/components/settings/ReadOnlyNotice'
 import { CompanySettingsSection, type CompanySettingsValues } from '@/src/components/settings/sections/CompanySettingsSection'
 import { BillingSettingsSection } from '@/src/components/settings/sections/BillingSettingsSection'
-import { SettingsNavigation, type SettingsNavItem } from '@/src/components/settings/SettingsNavigation'
+import { SettingsNavigation } from '@/src/components/settings/SettingsNavigation'
 import { SettingsConfigurationOverview, type SettingsConfigurationItem } from '@/src/components/settings/SettingsConfigurationOverview'
+import { SettingsModuleShortcuts } from '@/src/components/settings/SettingsModuleShortcuts'
 import { WebAssistantSettingsSection, type WebAssistantSettingsValues, type WidgetColorMode } from '@/src/components/settings/WebAssistantSettingsSection'
 import {
   EMPTY_USER_VEHICLE_PROFILE,
@@ -43,22 +44,8 @@ function describeSettingsError(status: number, fallback: string): string {
   return fallback
 }
 
-const SECTIONS: Array<{ id: string; label: string; icon: string; href?: string }> = [
+const SETTINGS_TABS = [
   { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
-  { id: 'widget', label: 'Mon widget', icon: '🎨' },
-  { id: 'contact', label: 'Coordonnées', icon: '📍' },
-  { id: 'legal', label: 'Infos légales', icon: '📋' },
-  { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
-  { id: 'catalogue', label: 'Catalogue & devis', icon: '📒' },
-  { id: 'apparence', label: 'Apparence', icon: '🌓' },
-  { id: 'offre', label: 'Mon offre', icon: '💳' },
-  { id: 'equipe', label: 'Mon équipe', icon: '👥', href: '/parametres/equipe' },
-  { id: 'automatisations', label: 'Actions automatiques', icon: '⚙️', href: '/parametres/automatisations' },
-]
-
-const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: string }> = [
-  { id: 'entreprise', label: 'Mon entreprise', icon: '🏢' },
-  { id: 'profil-metier', label: 'Mon activité', icon: '🛠️', href: '/parametres/profil-metier' },
   { id: 'contact', label: 'Coordonnées', icon: '📍' },
   { id: 'legal', label: 'Infos légales', icon: '📋' },
   { id: 'vehicule', label: 'Déplacements', icon: '🚗' },
@@ -66,40 +53,8 @@ const SETTINGS_TABS: Array<{ id: string; label: string; icon: string; href?: str
   { id: 'widget', label: 'Mon widget', icon: '🎨' },
   { id: 'apparence', label: 'Apparence', icon: '🌘' },
   { id: 'offre', label: 'Mon offre', icon: '💳' },
-  { id: 'equipe', label: 'Mon équipe', icon: '👥', href: '/parametres/equipe' },
-  { id: 'automatisations', label: 'Actions automatiques', icon: '⚙️', href: '/parametres/automatisations' },
 ]
-
-// Groupes visuels du menu latéral des paramètres
-const SETTINGS_GROUPS: Array<{ label: string; items: Array<{ id: string; label: string; icon: string; href?: string }> }> = [
-  {
-    label: 'Mon entreprise',
-    items: [
-      SECTIONS[0]!,
-      { id: 'profil-metier', label: 'Mon activité', icon: '🛠️', href: '/parametres/profil-metier' },
-      SECTIONS[2]!,
-      SECTIONS[3]!,
-    ],
-  },
-  {
-    label: 'Mon activité',
-    items: [
-      SECTIONS[4]!,
-      SECTIONS[5]!,
-      SECTIONS[1]!,
-    ],
-  },
-  {
-    label: 'Mon compte',
-    items: [
-      SECTIONS[6]!,
-      SECTIONS[7]!,
-      SECTIONS[8]!,
-      SECTIONS[9]!,
-    ],
-  },
-]
-const SETTINGS_NAVIGATION_LABEL = SETTINGS_GROUPS.map((group) => group.label).join(', ')
+const SETTINGS_NAVIGATION_LABEL = SETTINGS_TABS.map((section) => section.label).join(', ')
 
 // Mappe la valeur `?section=` (utilisée par les liens de navigation de
 // l'assistant) vers l'identifiant d'onglet interne réel de cette page.
@@ -1516,19 +1471,9 @@ function ParametresPageContent() {
         }}>
           <SettingsNavigation
             role={currentRole}
-            items={SETTINGS_TABS.filter((section) => {
-              if (section.id === 'equipe') return teamTabVisible
-              if (section.id === 'automatisations') return automationsTabVisible
-              return true
-            }) as SettingsNavItem[]}
+            items={SETTINGS_TABS}
             activeId={activeSection}
-            onSelect={(section) => {
-              if (section.href) {
-                router.push(section.href)
-                return
-              }
-              selectSection(section.id)
-            }}
+            onSelect={(section) => selectSection(section.id)}
           />
         </div>
 
@@ -1539,6 +1484,10 @@ function ParametresPageContent() {
             isMobile={isMobile}
             onExpandedChange={updateConfigurationCardPreference}
             onAction={handleConfigurationAction}
+          />
+          <SettingsModuleShortcuts
+            showTeam={teamTabVisible}
+            showAutomations={automationsTabVisible}
           />
 
           {/* Section Entreprise */}
