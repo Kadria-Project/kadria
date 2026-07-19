@@ -41,10 +41,10 @@ const collaboratorContexts: Record<WorkspaceMode, CollaboratorContext> = {
     ],
   },
   tasks: {
-    summary: 'Votre journée est prête. Je vous ai déjà classé les prochaines actions dans l’ordre optimal.',
+    summary: 'Je peux vous aider à préparer, valider ou automatiser les actions qui apparaissent ici.',
     quickActions: [
-      { label: 'Prépare les actions du jour', mode: 'tasks', focusSection: 'queue' },
-      { label: 'Puis-je automatiser certaines tâches ?', mode: 'tasks', focusSection: 'automations' },
+      { label: 'Préparer une action', mode: 'tasks', focusSection: 'queue' },
+      { label: 'Comprendre ce qui peut être automatisé', mode: 'tasks', focusSection: 'queue' },
       { label: 'Quelle action aura le plus d’impact ?', mode: 'tasks', focusSection: 'queue' },
     ],
   },
@@ -83,7 +83,7 @@ export default function KadriaCollaboratorPanel({ open, activeMode, onClose }: K
           <div>
             <div className="flex items-center gap-2 text-emerald-700"><Sparkles className="h-4 w-4" /><span className="text-xs font-semibold uppercase tracking-[0.12em]">Votre collaborateur</span></div>
             <h2 className="mt-2 text-lg font-semibold text-slate-950">Kadria Collaborateur</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">Bonjour Antonin. Tout est sous contrôle.</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">Je vous aide à décider et à agir sur les points en attente.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer le Collaborateur Kadria" className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"><X className="h-4 w-4" /></button>
         </div>
