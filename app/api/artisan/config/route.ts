@@ -122,9 +122,9 @@ export async function GET() {
       success: true,
       config: config && {
         ...config,
-        firstName: user?.firstName || '',
-        lastName: user?.lastName || '',
-        email: user?.email || '',
+        firstName: session.firstName || user?.firstName || '',
+        lastName: session.lastName || user?.lastName || '',
+        email: session.email || user?.email || '',
         plan: session.plan,
       },
     })
