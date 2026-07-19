@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { normalizeGoogleEvent, normalizeKadriaAppointment, type NormalizedCalendarEvent, type RawGoogleEvent, type RawKadriaAppointment } from '@/src/lib/calendar/normalized-event';
 import { isEventType } from '@/src/lib/calendar/event-types';
@@ -44,6 +44,8 @@ function appointmentMutationFeedback(response: AppointmentMutationResponse, fall
 
 export default function CalendarWorkspace() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedAppointmentId = searchParams.get('appointmentId');
   const [mode, setMode] = useState<CalendarMode>('kadria');
   const [planningMode, setPlanningMode] = useState<PlanningMode>('personal');
   const [view, setView] = useState<CalendarView>('semaine');
@@ -215,6 +217,14 @@ export default function CalendarWorkspace() {
   }, [mode]);
 
   const allEvents = useMemo(() => mode === 'google' ? googleEvents.map(normalizeGoogleEvent) : appointments.map(normalizeKadriaAppointment), [appointments, googleEvents, mode]);
+
+  useEffect(() => {
+    if (!requestedAppointmentId) return;
+    const requestedEvent = allEvents.find((event) => event.rawAppointmentId === requestedAppointmentId);
+    if (!requestedEvent) return;
+    const frame = window.requestAnimationFrame(() => setSelectedEvent(requestedEvent));
+    return () => window.cancelAnimationFrame(frame);
+  }, [allEvents, requestedAppointmentId]);
   const events = useMemo(() => allEvents.filter((event) => {
     if (confirmationFilter !== 'all' && event.confirmation?.status !== confirmationFilter) return false;
     if (collaboratorFilter === 'unassigned') return event.source !== 'kadria-appointment' || !event.assignedUserId;

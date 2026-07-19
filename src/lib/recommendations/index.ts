@@ -385,14 +385,15 @@ function projectRoute(projectId: string, focus?: string, extraParams?: Record<st
 }
 
 function planningRoute(extraParams?: Record<string, string | number | boolean | null>) {
-  const params = new URLSearchParams({ mode: 'calendar' })
+  const params = new URLSearchParams()
   if (extraParams) {
     for (const [key, value] of Object.entries(extraParams)) {
       if (value === null || value === undefined || value === false) continue
       params.set(key, String(value))
     }
   }
-  return `/dashboard-v2?${params.toString()}`
+  const query = params.toString()
+  return query ? `/dashboard-v2/agenda?${query}` : '/dashboard-v2/agenda'
 }
 
 export function buildOperationsCenter(input: BuildOperationsCenterInput): OperationsCenterResult {
