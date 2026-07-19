@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { formatAmount } from './tracking-utils';
 import type { PipelineStageId, TrackingProject, TrackingStage } from './tracking-types';
-import { MomentumBadge, TemperatureBadge } from './CommercialStatusBadges';
 
 type Props = {
   stages: TrackingStage[];
@@ -52,11 +51,7 @@ function PipelineOpportunityCard({ item, onOpen }: { item: TrackingProject; onOp
         </span>
         {item.amount !== null && <span className="shrink-0 text-xs font-bold text-slate-700">{formatAmount(item.amount)}</span>}
       </div>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        <TemperatureBadge temperature={item.temperature} />
-        <MomentumBadge momentum={item.momentum} />
-      </div>
-      <p className="mt-2 truncate text-[11px] text-slate-500">{item.nextDecision}</p>
+      <p className="mt-3 truncate text-[11px] text-slate-500">Étape actuelle : {item.stageLabel}</p>
     </button>
   );
 }

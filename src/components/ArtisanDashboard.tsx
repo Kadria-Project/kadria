@@ -3512,9 +3512,9 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       {showCommercialWorkspace && !loading && !isMobile && (
         <TrackingWorkspace
           projects={allProjects}
-          priorityProjects={topOpportunities}
           operationsCenter={operationsCenter}
-          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+          loadState={operationsCenterLoadState}
+          onOpenProject={(projectId, target) => router.push(target || `/dashboard-v2/projet/${projectId}`)}
         />
       )}
       {showTasksOverview && !loading && !isMobile && (
