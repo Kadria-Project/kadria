@@ -1811,6 +1811,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
   const [setupCardDismissed, setSetupCardDismissed] = useState(false);
   const [progressCenterExpanded, setProgressCenterExpanded] = useState(false);
   const [operationsCenter, setOperationsCenter] = useState<OperationsCenterResult | null>(null);
+  const [operationsCenterLoadState, setOperationsCenterLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const formattedToday = useMemo(() => {
     const raw = format(new Date(), 'EEEE d MMMM yyyy', { locale: fr });
@@ -1837,19 +1838,37 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     }
   }, [progressCenterExpanded]);
 
+  const refreshOperationsCenter = useCallback(async () => {
+    setOperationsCenterLoadState('loading');
+    try {
+      const response = await fetch('/api/operations-center');
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.operationsCenter) throw new Error('Operations Center indisponible');
+      setOperationsCenter(data.operationsCenter);
+      setOperationsCenterLoadState('ready');
+    } catch {
+      setOperationsCenter(null);
+      setOperationsCenterLoadState('error');
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/operations-center')
-      .then((res) => res.json())
-      .then((data) => {
+    void (async () => {
+      setOperationsCenterLoadState('loading');
+      try {
+        const response = await fetch('/api/operations-center');
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.operationsCenter) throw new Error('Operations Center indisponible');
         if (cancelled) return;
-        if (data.success && data.operationsCenter) {
-          setOperationsCenter(data.operationsCenter);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setOperationsCenter(null);
-      });
+        setOperationsCenter(data.operationsCenter);
+        setOperationsCenterLoadState('ready');
+      } catch {
+        if (cancelled) return;
+        setOperationsCenter(null);
+        setOperationsCenterLoadState('error');
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -3502,8 +3521,8 @@ function Dashboard({ plan }: { plan: PlanKey }) {
         <TasksWorkspace
           firstName={artisanFirstName}
           operationsCenter={operationsCenter}
-          todayEvents={todayEvents}
-          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
+          loadState={operationsCenterLoadState}
+          onRefresh={refreshOperationsCenter}
         />
       )}
       {showValueOverview && !loading && isMobile && (

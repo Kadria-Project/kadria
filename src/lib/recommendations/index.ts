@@ -147,6 +147,7 @@ export interface OperationsWorkbenchItem {
   canExecuteDirectly: boolean
   source: 'recommendation' | 'automation_run'
   sourceType: string | null
+  automationMode?: 'manual' | 'approval_required' | 'automatic' | null
 }
 
 export interface OperationsWorkbenchSummary {
@@ -159,6 +160,10 @@ export interface OperationsWorkbenchSummary {
 
 export interface OperationsCenterResult {
   generatedAt: string
+  dataQuality?: {
+    isComplete: boolean
+    unavailableSources: string[]
+  }
   recommendations: RecommendationItem[]
   todayFocus: RecommendationItem[]
   opportunities: RecommendationItem[]

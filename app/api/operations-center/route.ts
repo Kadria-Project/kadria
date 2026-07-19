@@ -290,6 +290,7 @@ function recommendationToWorkbenchItem(item: RecommendationItem, category: Opera
     canExecuteDirectly: item.actionType === 'execute_automation_run',
     source: 'recommendation',
     sourceType: item.type,
+    automationMode: item.automationMode || null,
   }
 }
 
@@ -334,6 +335,39 @@ function runToWorkbenchItem(
     canExecuteDirectly: run.canRetry,
     source: 'automation_run',
     sourceType: run.automationType,
+    automationMode: null,
+  }
+}
+
+function withWorkbenchProjectContext(
+  workbench: ReturnType<typeof buildWorkbench>,
+  projects: ReturnType<typeof mapSupabaseProject>[],
+  appointments: RecommendationAppointmentInput[],
+) {
+  const projectsById = new Map(projects.map((project) => [project.id, project]))
+  const projectIdByAppointmentId = new Map(
+    appointments
+      .filter((appointment) => appointment.projectId)
+      .map((appointment) => [appointment.id, appointment.projectId!] as const),
+  )
+  const enrich = (item: OperationsWorkbenchItem) => {
+    const projectId = item.projectId || (item.appointmentId ? projectIdByAppointmentId.get(item.appointmentId) || null : null)
+    const project = projectId ? projectsById.get(projectId) : null
+    if (!project) return item
+    return {
+      ...item,
+      projectId,
+      clientName: project.clientName || null,
+      projectTitle: project.projectTitle || null,
+    }
+  }
+
+  return {
+    ...workbench,
+    todayActions: workbench.todayActions.map(enrich),
+    waitingForApproval: workbench.waitingForApproval.map(enrich),
+    recentlyCompleted: workbench.recentlyCompleted.map(enrich),
+    needsAttention: workbench.needsAttention.map(enrich),
   }
 }
 
@@ -406,6 +440,7 @@ export async function GET() {
   let stage = 'session'
   try {
     const now = new Date()
+    const unavailableSources: string[] = []
     const session = await getSession()
     if (!session?.artisanId) {
       return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
@@ -450,10 +485,10 @@ export async function GET() {
     stage = 'parallel_queries'
     const [projectsRes, artisanConfig, businessProfile, serviceProfiles, calendarResult, members, activityRes] = await Promise.all([
       projectsQuery,
-      getArtisanConfig(session.artisanId).catch(() => null),
-      getBusinessProfile(session.artisanId).catch(() => ({ row: null, tableMissing: true as const })),
-      listServiceProfiles(session.artisanId).catch(() => ({ rows: [], tableMissing: true as const })),
-      getCalendarIntegration(session.artisanId).catch(() => ({ row: null, tableMissing: true as const })),
+      getArtisanConfig(session.artisanId).catch(() => { unavailableSources.push('configuration artisan'); return null }),
+      getBusinessProfile(session.artisanId).catch(() => { unavailableSources.push('profil entreprise'); return { row: null, tableMissing: true as const } }),
+      listServiceProfiles(session.artisanId).catch(() => { unavailableSources.push('catalogue de services'); return { rows: [], tableMissing: true as const } }),
+      getCalendarIntegration(session.artisanId).catch(() => { unavailableSources.push('connexion agenda'); return { row: null, tableMissing: true as const } }),
       tenantContext?.tenantId ? listTeamMembers(tenantContext.tenantId).catch(() => []) : Promise.resolve([]),
       supabaseAdmin
         .from(TABLES.activity)
@@ -534,6 +569,7 @@ export async function GET() {
       })
 
     stage = 'activities_normalize'
+    if (activityRes.error) unavailableSources.push('historique des actions')
     const activities = ((activityRes.data || []) as unknown[]).filter(isActivityRow)
     const reviewRequestedProjectIds = new Set(
       activities
@@ -562,7 +598,10 @@ export async function GET() {
 
     if (tenantContext?.tenantId && canReadAutomations) {
       stage = 'automation_metadata'
-      const metadata = await buildAutomationMetadataForTenant(tenantContext.tenantId).catch(() => ({ automations: [], runs: [] }))
+      const metadata = await buildAutomationMetadataForTenant(tenantContext.tenantId).catch(() => {
+        unavailableSources.push('automatisations')
+        return { automations: [], runs: [] }
+      })
       const automationHistory = await listAutomationRunsForCurrentTenant(
         {
           page: 1,
@@ -570,7 +609,10 @@ export async function GET() {
           status: ['prepared', 'failed', 'succeeded'],
         },
         tenantContext,
-      ).catch(() => ({ runs: [] as Awaited<ReturnType<typeof listAutomationRunsForCurrentTenant>>['runs'] }))
+      ).catch(() => {
+        unavailableSources.push('historique des automatisations')
+        return { runs: [] as Awaited<ReturnType<typeof listAutomationRunsForCurrentTenant>>['runs'] }
+      })
       stage = 'merge_automation_metadata'
       const recommendations = withAutomationMetadata(operationsCenter.recommendations, metadata.automations, metadata.runs)
       const todayFocus = withAutomationMetadata(operationsCenter.todayFocus, metadata.automations, metadata.runs)
@@ -614,6 +656,14 @@ export async function GET() {
     }
 
     stage = 'response'
+    operationsCenter = {
+      ...operationsCenter,
+      workbench: withWorkbenchProjectContext(operationsCenter.workbench, visibleProjects, appointments),
+      dataQuality: {
+        isComplete: unavailableSources.length === 0,
+        unavailableSources: Array.from(new Set(unavailableSources)),
+      },
+    }
     return NextResponse.json({
       success: true,
       operationsCenter,

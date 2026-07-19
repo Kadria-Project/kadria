@@ -1,130 +1,145 @@
-import { useMemo } from 'react';
-import { Activity, BadgeCheck, Bot, Calendar, CircleAlert, CircleCheck, Clock3, FileText, Phone, Send, Sparkles, Zap } from 'lucide-react';
-import type { OperationsCenterResult, OperationsWorkbenchItem } from '@/src/lib/recommendations';
-import { useWorkspaceNavigation } from '../WorkspaceNavigationContext';
+'use client'
+
+import { useMemo, useState } from 'react'
+import { AlertTriangle, Bot, CheckCircle2, CircleAlert, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import type { OperationsCenterResult } from '@/src/lib/recommendations'
+import { useWorkspaceNavigation } from '../WorkspaceNavigationContext'
+import {
+  deriveWorkCalmState,
+  deriveWorkSituations,
+  prioritizeWorkSituations,
+  type OperationsLoadState,
+  type WorkSituation,
+  type WorkSituationAction,
+} from './work-situations'
 
 type Props = {
-  firstName: string | null;
-  operationsCenter: OperationsCenterResult | null;
-  todayEvents: unknown[];
-  onOpenProject: (projectId: string) => void;
-};
-type Autonomy = 'Manuel' | 'Préparé' | 'Validation' | 'Automatique';
-
-const autonomyStyles: Record<Autonomy, string> = {
-  Manuel: 'bg-slate-100 text-slate-600',
-  Préparé: 'bg-blue-50 text-blue-700',
-  Validation: 'bg-orange-50 text-orange-700',
-  Automatique: 'bg-emerald-50 text-emerald-700',
-};
-
-function unique(items: OperationsWorkbenchItem[]) {
-  return Array.from(new Map(items.map((item) => [item.id, item])).values());
+  firstName: string | null
+  operationsCenter: OperationsCenterResult | null
+  loadState: OperationsLoadState
+  onRefresh: () => Promise<void>
 }
 
-function formatMinutes(value: number) {
-  if (value < 60) return `${value} min`;
-  const hours = Math.floor(value / 60);
-  const minutes = value % 60;
-  return minutes ? `${hours} h ${minutes}` : `${hours} h`;
+const kindLabels = {
+  execute: 'À exécuter',
+  validate: 'À valider',
+  automate: 'À automatiser',
+  recover: 'À récupérer',
+  observe: 'À observer',
+} as const
+
+function kindIcon(kind: WorkSituation['kind']) {
+  if (kind === 'recover') return <CircleAlert className="size-5" aria-hidden="true" />
+  if (kind === 'validate') return <ShieldCheck className="size-5" aria-hidden="true" />
+  if (kind === 'automate') return <Bot className="size-5" aria-hidden="true" />
+  return <Sparkles className="size-5" aria-hidden="true" />
 }
 
-function contextLabel(item: OperationsWorkbenchItem) {
-  const context = [item.clientName, item.projectTitle || item.entityLabel].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
-  return context.join(' · ') || 'Dossier à préciser';
+function contextLabel(situation: WorkSituation) {
+  const context = [situation.projectContext?.clientName, situation.projectContext?.projectTitle]
+    .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index)
+  return context.length ? context.join(' · ') : 'Je ne peux pas identifier précisément le dossier concerné.'
 }
 
-function isConcreteAction(item: OperationsWorkbenchItem) {
-  return !/disponible aujourd/i.test(item.title) || Boolean(item.projectId || item.primaryActionType || item.primaryActionRoute);
+function freshnessLabel(generatedAt: string | undefined) {
+  if (!generatedAt) return null
+  const date = new Date(generatedAt)
+  if (Number.isNaN(date.getTime())) return null
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000))
+  if (minutes < 1) return 'Vérifié à l’instant'
+  if (minutes < 60) return `Vérifié il y a ${minutes} min`
+  return `Vérifié à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-function autonomy(item: OperationsWorkbenchItem): Autonomy {
-  if (item.category === 'approval') return 'Validation';
-  if (item.source === 'automation_run') return item.category === 'completed' ? 'Automatique' : 'Préparé';
-  return 'Manuel';
-}
-
-function actionIcon(item: OperationsWorkbenchItem) {
-  if (item.appointmentId) return <Calendar className="size-5" aria-hidden="true" />;
-  if (item.quoteId) return <FileText className="size-5" aria-hidden="true" />;
-  if (/relance|email|message/i.test(item.title)) return <Send className="size-5" aria-hidden="true" />;
-  if (/appel/i.test(item.title)) return <Phone className="size-5" aria-hidden="true" />;
-  return <Sparkles className="size-5" aria-hidden="true" />;
-}
-
-function estimate(item: OperationsWorkbenchItem) {
-  return item.category === 'approval' ? '2 min' : item.priority === 'critical' ? '8 min' : item.priority === 'high' ? '5 min' : '3 min';
-}
-
-function QueueCard({ item, onOpen, onRemember }: { item: OperationsWorkbenchItem; onOpen: (id: string) => void; onRemember: (item: OperationsWorkbenchItem) => void }) {
-  const mode = autonomy(item);
+function SituationCard({ situation, onAction, busy }: { situation: WorkSituation; onAction: (action: WorkSituationAction) => void; busy: boolean }) {
+  const tone = situation.kind === 'recover'
+    ? 'border-amber-200 bg-amber-50/40'
+    : situation.kind === 'validate'
+      ? 'border-blue-200 bg-blue-50/40'
+      : 'border-emerald-200 bg-emerald-50/35'
 
   return (
-    <article id={`workspace-action-${item.id}`} className="group rounded-2xl border border-[#EAEAEA] bg-white p-4 shadow-[0_2px_8px_rgba(15,34,50,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_22px_rgba(15,34,50,0.08)]">
+    <article id={`workspace-action-${situation.id}`} className={`rounded-2xl border p-5 shadow-[0_2px_8px_rgba(15,34,50,0.04)] ${tone}`}>
       <div className="flex items-start gap-3">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">{actionIcon(item)}</span>
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">{kindIcon(situation.kind)}</span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="font-semibold text-[#0b2232]">{item.title}</h3>
-              <p className="mt-0.5 truncate text-sm text-slate-600">{contextLabel(item)}</p>
-            </div>
-            <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${autonomyStyles[mode]}`}>● {mode}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600">{kindLabels[situation.kind]}</p>
+            <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">Confiance {situation.confidence === 'high' ? 'élevée' : situation.confidence === 'medium' ? 'moyenne' : 'limitée'}</span>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1"><Clock3 className="size-3.5" aria-hidden="true" />{estimate(item)}</span>
-            <span className={item.priority === 'critical' || item.priority === 'high' ? 'font-semibold text-orange-700' : 'font-semibold text-slate-600'}>{item.priority === 'critical' || item.priority === 'high' ? 'Impact fort' : 'Impact à décider'}</span>
+          <p className="mt-2 text-sm font-medium text-slate-600">{contextLabel(situation)}</p>
+          <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
+            <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Observation</p><p className="mt-1 font-medium text-[#0b2232]">{situation.observedFacts.join(' ')}</p></section>
+            <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Compréhension</p><p className="mt-1">{situation.understanding}</p></section>
+            <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Pourquoi maintenant</p><p className="mt-1">{situation.importance}</p></section>
+            {situation.consequence && <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Conséquence</p><p className="mt-1">{situation.consequence}</p></section>}
+            {situation.recommendation && <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Recommandation</p><p className="mt-1 font-medium text-[#0b2232]">{situation.recommendation}</p></section>}
+            {situation.canBeAutomated && situation.automationExplanation && <p className="rounded-xl border border-emerald-100 bg-white/80 px-3 py-2 text-xs text-emerald-900"><Bot className="mr-1 inline size-3.5" aria-hidden="true" />{situation.automationExplanation}</p>}
           </div>
-          <p className="mt-3 text-xs leading-5 text-slate-500"><span className="font-semibold text-slate-700">Pourquoi :</span> {item.reason}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {situation.primaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.primaryAction!)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70">{busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{situation.primaryAction.label}</button>}
+            {situation.secondaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.secondaryAction!)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70">{situation.secondaryAction.label}</button>}
+          </div>
         </div>
-      </div>
-      <div className="mt-4 flex justify-end">
-        {item.projectId ? <button type="button" onClick={() => { onRemember(item); onOpen(item.projectId!); }} className="rounded-lg px-2 py-1.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">Voir</button> : <span className="px-2 py-1.5 text-sm font-semibold text-slate-400">À décider</span>}
       </div>
     </article>
-  );
+  )
 }
 
-function MiniStat({ icon: Icon, label, value, tone = 'emerald' }: { icon: typeof Zap; label: string; value: number | string; tone?: 'blue' | 'emerald' | 'orange' | 'slate' }) {
-  const tones = { emerald: 'bg-emerald-50 text-emerald-700', blue: 'bg-blue-50 text-blue-700', orange: 'bg-orange-50 text-orange-700', slate: 'bg-slate-100 text-slate-600' };
-  return <div className="flex items-center gap-3 rounded-2xl border border-[#EAEAEA] bg-white px-4 py-3"><span className={`inline-flex size-9 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="size-4" aria-hidden="true" /></span><div><p className="text-lg font-semibold text-[#0b2232]">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div></div>;
-}
+export default function TasksWorkspace({ firstName, operationsCenter, loadState, onRefresh }: Props) {
+  const router = useRouter()
+  const { rememberNavigation } = useWorkspaceNavigation()
+  const [busyAction, setBusyAction] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const allSituations = useMemo(() => deriveWorkSituations(operationsCenter), [operationsCenter])
+  const situations = useMemo(() => prioritizeWorkSituations(allSituations), [allSituations])
+  const state = deriveWorkCalmState(loadState, operationsCenter, allSituations)
+  const freshness = freshnessLabel(operationsCenter?.generatedAt)
 
-export default function TasksWorkspace({ firstName, operationsCenter, todayEvents, onOpenProject }: Props) {
-  const { rememberNavigation } = useWorkspaceNavigation();
-  const workbench = operationsCenter?.workbench;
-  const queue = useMemo(() => unique([...(workbench?.waitingForApproval || []), ...(workbench?.todayActions || []), ...(workbench?.needsAttention || [])]).filter(isConcreteAction).slice(0, 7), [workbench]);
-  const later = useMemo(() => (workbench?.todayActions || []).filter((item) => !queue.some((entry) => entry.id === item.id)).slice(0, 4), [queue, workbench]);
-  const activity = useMemo(() => [...(workbench?.recentlyCompleted || []), ...(workbench?.needsAttention || [])].slice(0, 5), [workbench]);
-  const automatedItems = (workbench?.recentlyCompleted || []).filter((item) => item.source === 'automation_run');
-  const urgent = queue.filter((item) => item.priority === 'critical' || item.priority === 'high').length;
-  const awaiting = workbench?.waitingForApproval.slice(0, 4) || [];
-  const eventsCount = Array.isArray(todayEvents) ? todayEvents.length : 0;
-  const estimatedMinutes = queue.reduce((total, item) => total + (item.priority === 'critical' ? 8 : item.priority === 'high' ? 5 : 3), 0);
+  const handleAction = async (situation: WorkSituation, action: WorkSituationAction) => {
+    if (!action.target) return
+    setActionError(null)
+    rememberNavigation({ mode: 'tasks', actionId: situation.id, section: 'queue' })
+
+    if (!action.target.startsWith('/api/')) {
+      router.push(action.target)
+      return
+    }
+
+    setBusyAction(situation.id)
+    try {
+      const response = await fetch(action.target, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || payload?.success === false) throw new Error(payload?.error || 'Kadria n’a pas pu terminer cette action.')
+      await onRefresh()
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Kadria n’a pas pu terminer cette action.')
+    } finally {
+      setBusyAction(null)
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-6 pb-6">
+    <div className="mx-auto max-w-[920px] space-y-6 pb-6">
       <section className="rounded-2xl border border-[#EAEAEA] bg-white px-6 py-5">
-        <div className="flex items-end justify-between gap-6">
-          <div><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">À faire</p><h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2><p className="mt-1 text-base font-medium text-slate-700">Votre journée est prête.</p><p className="mt-1 text-sm text-slate-500">Kadria peut vous faire gagner environ {formatMinutes(Math.max(estimatedMinutes, 15))} aujourd’hui.</p></div>
-          <div className="hidden grid-cols-4 gap-3 xl:grid"><MiniStat icon={CircleCheck} label="Actions" value={queue.length} /><MiniStat icon={CircleAlert} label="Urgentes" value={urgent} tone="orange" /><MiniStat icon={Bot} label="Automatisées" value={automatedItems.length} tone="blue" /><MiniStat icon={Clock3} label="Temps estimé" value={formatMinutes(estimatedMinutes)} tone="slate" /></div>
-        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">À faire</p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2>
+        <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-slate-700">{state.message}</p>
+        {freshness && state.kind !== 'loading' && <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="size-3.5" aria-hidden="true" />{freshness}</p>}
       </section>
 
-      <section id="workspace-section-queue">
-        <div className="mb-3 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">À faire maintenant</p><p className="mt-1 text-sm text-slate-500">Le meilleur ordre pour faire avancer votre journée.</p></div><span className="text-xs font-semibold text-slate-500">{queue.length} action{queue.length > 1 ? 's' : ''}</span></div>
-        {queue.length ? <div className="grid gap-3 lg:grid-cols-2">{queue.map((item) => <QueueCard key={item.id} item={item} onOpen={onOpenProject} onRemember={(action) => rememberNavigation({ mode: 'tasks', actionId: action.id, section: 'queue' })} />)}</div> : <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4 text-sm text-emerald-950">Aucune action urgente.</div>}
-      </section>
+      {state.kind === 'loading' && <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 text-sm text-slate-600"><LoaderCircle className="mr-2 inline size-4 animate-spin" aria-hidden="true" />Analyse en cours.</section>}
 
-      <section><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Mes actions en attente</p><div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4"><MiniStat icon={Phone} label="Appels" value={queue.filter((item) => /appel/i.test(item.title)).length} tone="slate" /><MiniStat icon={Send} label="Emails" value={queue.filter((item) => /email|relance|message/i.test(item.title)).length} tone="blue" /><MiniStat icon={FileText} label="Devis" value={queue.filter((item) => Boolean(item.quoteId)).length} tone="orange" /><MiniStat icon={Calendar} label="Rendez-vous" value={eventsCount} tone="emerald" /></div></section>
+      {state.kind === 'insufficient' && <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-5 text-sm leading-6 text-amber-950"><AlertTriangle className="mr-2 inline size-4" aria-hidden="true" />Les sources nécessaires ne sont pas toutes disponibles. Réessayez dans un instant avant de prendre une décision sur cette base.<button type="button" onClick={() => void onRefresh()} className="ml-3 inline-flex items-center gap-1 font-semibold underline underline-offset-4"><RefreshCw className="size-3.5" aria-hidden="true" />Vérifier à nouveau</button></section>}
 
-      <section id="workspace-section-automations"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Dernières actions automatisées</p><div className="mt-3 grid gap-3 lg:grid-cols-4">{automatedItems.slice(0, 4).map((item) => <article key={item.id} className="rounded-2xl border border-[#EAEAEA] bg-white p-4"><p className="flex items-center gap-2 text-sm font-semibold text-[#0b2232]"><CircleCheck className="size-4 text-emerald-600" aria-hidden="true" />{item.title}</p><p className="mt-2 text-xs text-slate-500">{item.dateLabel || item.statusLabel || 'Action réalisée'}</p></article>)}</div></section>
+      {state.kind === 'active' && <section id="workspace-section-queue" aria-label="Situations à traiter maintenant">
+        <div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">À décider maintenant</p><p className="mt-1 text-sm text-slate-500">Kadria a retenu uniquement les situations qui demandent une action, une validation ou une reprise immédiate.</p></div>
+        <div className="space-y-4">{situations.map((situation) => <SituationCard key={situation.id} situation={situation} busy={busyAction === situation.id} onAction={(action) => void handleAction(situation, action)} />)}</div>
+        {actionError && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</p>}
+      </section>}
 
-      {awaiting.length > 0 && <section id="workspace-section-validations"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Validations</p><div className="mt-3 divide-y rounded-2xl border border-[#EAEAEA] bg-white px-4">{awaiting.map((item) => <div key={item.id} className="flex items-center justify-between gap-4 py-3"><div><p className="text-sm font-semibold text-[#0b2232]">{item.title}</p><p className="mt-1 text-xs text-slate-500">{item.reason}</p></div>{item.projectId && <button type="button" onClick={() => onOpenProject(item.projectId!)} className="shrink-0 rounded-lg border border-emerald-200 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">Voir</button>}</div>)}</div></section>}
-
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]"><details id="workspace-section-later" className="rounded-2xl border border-[#EAEAEA] bg-white p-4"><summary className="cursor-pointer list-none text-sm font-semibold text-[#0b2232]">Plus tard <span className="ml-2 text-xs font-normal text-slate-500">{later.length} action{later.length > 1 ? 's' : ''}</span></summary><div className="mt-3 space-y-2">{later.length ? later.map((item) => <p key={item.id} className="text-sm text-slate-600">{item.title}</p>) : <p className="text-sm text-slate-500">Rien d’autre à planifier.</p>}</div></details><section className="rounded-2xl border border-[#EAEAEA] bg-white p-4"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-600"><Activity className="size-4 text-emerald-600" aria-hidden="true" />Activité du jour</p><div className="mt-3 space-y-3">{activity.length ? activity.map((item, index) => <div key={item.id} className="flex gap-3"><span className="w-10 text-xs font-semibold text-slate-500">{item.dateLabel || `0${8 + index}:00`}</span><div className="border-l border-emerald-200 pl-3"><p className="text-sm font-semibold text-slate-800">{item.title}</p><p className="mt-0.5 text-xs text-slate-500">{item.description}</p></div></div>) : <p className="text-sm text-slate-500">Aucune activité importante pour le moment.</p>}</div></section></section>
-
-      <section className="grid gap-3 md:grid-cols-4"><MiniStat icon={Clock3} label="Temps gagné" value={formatMinutes(automatedItems.length * 3)} /><MiniStat icon={CircleCheck} label="Terminées" value={(workbench?.recentlyCompleted || []).length} tone="emerald" /><MiniStat icon={Zap} label="Automatisations" value={automatedItems.length} tone="blue" /><MiniStat icon={BadgeCheck} label="Décisions prises" value={awaiting.length} tone="orange" /></section>
+      {state.kind === 'calm' && <section className="rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-8 text-center"><CheckCircle2 className="mx-auto size-7 text-emerald-700" aria-hidden="true" /><p className="mt-3 font-semibold text-emerald-950">Situation maîtrisée</p><p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-emerald-900">Les prochaines actions restent dans leurs workspaces respectifs tant qu’aucune décision n’est requise.</p></section>}
     </div>
-  );
+  )
 }
