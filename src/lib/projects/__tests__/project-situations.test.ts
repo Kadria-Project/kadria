@@ -22,6 +22,11 @@ test('devis récent envoyé : la situation rassure sans demander de relance', ()
   assert.equal(situations.action.recommendation, undefined)
 })
 
+test('CTA générique : reprend le libellé métier de la recommandation', () => {
+  const situations = deriveProjectSituations({ ...base, lifecycle: { recommendedAction: { title: 'Préparer le devis', ctaLabel: 'Voir le résumé', meta: 'Le dossier peut être chiffré.' } } })
+  assert.equal(situations.action.primaryAction?.label, 'Préparer le devis')
+})
+
 test('qualification incomplète : les manques sont explicites sans champ vide décoratif', () => {
   const situations = deriveProjectSituations({ ...base, project: { trade: 'Électricité' }, lifecycle: { recommendedAction: { key: 'complete_project', title: 'Compléter le dossier', ctaLabel: 'Compléter', meta: 'Des informations sont nécessaires.', nextAction: { confidence: 'low' } } } })
   assert.ok(situations.qualification.missingInformation?.includes('un moyen de joindre le client'))

@@ -91,8 +91,9 @@ function actionTarget(key?: string): string {
   return 'qualification'
 }
 
-function actionLabel(target: string, fallback: string): string {
+function actionLabel(target: string, fallback: string, title?: string): string {
   if (!/^(voir|afficher|consulter)/i.test(fallback.trim())) return fallback
+  if (title && !/^(voir|afficher|consulter|situation maîtrisée)/i.test(title.trim())) return title
   if (target === 'quote') return 'Préparer le devis'
   if (target === 'deposit') return 'Demander l’acompte'
   if (target === 'planning') return 'Planifier la visite'
@@ -135,7 +136,7 @@ function deriveActionSituation(input: ProjectSituationInput): ProjectSituation {
     importance: nextAction?.description || (isReassuring ? 'Aucune décision ne mérite votre attention aujourd’hui.' : 'Cette situation mérite une décision avant de poursuivre le dossier.'),
     possibleConsequence: latestDevis?.accepted && !hasDeposit(project) ? 'Le chantier ne devrait pas être bloqué définitivement avant de sécuriser son règlement.' : undefined,
     recommendation,
-    primaryAction: recommendation ? { label: actionLabel(actionTarget(action.key), action.ctaLabel!), target: actionTarget(action.key) } : undefined,
+    primaryAction: recommendation ? { label: actionLabel(actionTarget(action.key), action.ctaLabel!, action.title), target: actionTarget(action.key) } : undefined,
     secondaryAction: latestDevis ? { label: 'Voir le devis', target: 'quote' } : undefined,
     reassurance: isReassuring ? 'Aucune action n’est nécessaire pour le moment. Kadria continue de surveiller ce dossier.' : undefined,
     missingInformation: getMissing(project),
