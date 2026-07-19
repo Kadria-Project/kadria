@@ -183,8 +183,12 @@ function derivePlanningSituation(input: ProjectSituationInput): ProjectSituation
       missingInformation: canPlan ? [] : getMissing(project),
     }
   }
+  const appointmentResponsible = responsibleName || appointment.assignedUserName
   return {
-    observedFacts: [`Le prochain engagement est prévu le ${input.formatDateTime(appointment.start)}${appointment.location ? `, ${appointment.location}` : ''}.`, `${responsibleName || appointment.assignedUserName || 'Le responsable'} est associé à ce rendez-vous.`],
+    observedFacts: [
+      `Le prochain engagement est prévu le ${input.formatDateTime(appointment.start)}${appointment.location ? `, ${appointment.location}` : ''}.`,
+      appointmentResponsible ? `${appointmentResponsible} est associé à ce rendez-vous.` : 'Le responsable de ce rendez-vous n’est pas encore défini.',
+    ],
     understanding: 'Le dossier a un prochain engagement concret ; la suite dépendra de ce qui sera confirmé pendant ce rendez-vous.',
     importance: 'Les informations utiles doivent être disponibles avant le rendez-vous pour éviter de déplacer une décision importante.',
     possibleConsequence: 'Après le rendez-vous, la qualification ou la préparation du devis pourra être mise à jour.',
