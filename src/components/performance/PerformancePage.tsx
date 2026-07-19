@@ -11,7 +11,7 @@ import PerformanceErrorState from './PerformanceErrorState'
 import RevenueEvolutionChart from './RevenueEvolutionChart'
 import LeadSourcesChart from './LeadSourcesChart'
 import ConversionFunnel from './ConversionFunnel'
-import AtRiskOpportunitiesCard from './AtRiskOpportunitiesCard'
+import CommercialExposureCard from './CommercialExposureCard'
 import ConversionDelayChart from './ConversionDelayChart'
 import PerformanceEvidence from './PerformanceEvidence'
 import { derivePerformanceConclusion } from '@/src/lib/performance/performance-insights'
@@ -81,7 +81,7 @@ export default function PerformancePage() {
             <RevenueEvolutionChart series={state.analytics?.revenueSeries ?? null} periodLabel={periodLabel} loading={loading} error={state.error} onRetry={retry} />
             <div className="flex flex-col gap-4">
               <ConversionFunnel stages={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
-              <AtRiskOpportunitiesCard summary={state.analytics?.atRisk ?? null} loading={loading} error={state.error} />
+              <CommercialExposureCard summary={state.analytics?.atRisk ?? null} loading={loading} />
             </div>
           </div>
 
