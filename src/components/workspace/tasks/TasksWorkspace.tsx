@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Bot, CheckCircle2, CircleAlert, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Bot, CheckCircle2, CircleAlert, Clock3, Eye, Lightbulb, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { OperationsCenterResult } from '@/src/lib/recommendations'
 import {
@@ -53,30 +53,30 @@ function freshnessLabel(generatedAt: string | undefined) {
 
 function SituationCard({ situation, onAction, busy }: { situation: WorkSituation; onAction: (action: WorkSituationAction) => void; busy: boolean }) {
   const tone = situation.kind === 'recover'
-    ? 'border-amber-200 bg-amber-50/40'
+    ? 'before:bg-amber-400 bg-[linear-gradient(110deg,#fffdfa,#ffffff)]'
     : situation.kind === 'validate'
-      ? 'border-blue-200 bg-blue-50/40'
-      : 'border-emerald-200 bg-emerald-50/35'
+      ? 'before:bg-blue-400 bg-[linear-gradient(110deg,#fbfdff,#ffffff)]'
+      : 'before:bg-emerald-400 bg-[linear-gradient(110deg,#fafffd,#ffffff)]'
 
   return (
-    <article id={`workspace-action-${situation.id}`} className={`rounded-2xl border px-5 py-4 shadow-[0_2px_8px_rgba(15,34,50,0.04)] ${tone}`}>
+    <article id={`workspace-action-${situation.id}`} className={`group relative overflow-hidden rounded-[20px] border border-slate-200/80 px-5 py-4 shadow-[0_3px_12px_rgba(15,34,50,0.035)] transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_10px_24px_rgba(15,34,50,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] ${tone}`}>
       <div className="flex items-start gap-3">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">{kindIcon(situation.kind)}</span>
+        <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">{kindIcon(situation.kind)}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{kindLabels[situation.kind]}</p>
-            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-500">Confiance {situation.confidence === 'high' ? 'élevée' : situation.confidence === 'medium' ? 'moyenne' : 'limitée'}</span>
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">{kindLabels[situation.kind]}</p>
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Confiance {situation.confidence === 'high' ? 'élevée' : situation.confidence === 'medium' ? 'moyenne' : 'limitée'}</span>
           </div>
-          <p className="mt-1 text-sm font-semibold text-slate-700">{contextLabel(situation)}</p>
-          <div className="mt-2 space-y-1.5 text-sm leading-5 text-slate-700">
-            <p className="font-semibold text-[#0b2232]">{situation.observedFacts.join(' ')}</p>
-            <p><span className="font-medium text-slate-900">Ce que cela signifie :</span> {situation.understanding}</p>
-            {situation.recommendation && <p className="font-semibold text-emerald-950">{situation.recommendation}</p>}
+          <p className="mt-1 text-[15px] font-semibold tracking-[-0.015em] text-[#0b2232]">{contextLabel(situation)}</p>
+          <div className="mt-3 space-y-2 text-[13px] leading-5 text-slate-600">
+            <p className="flex gap-2"><Eye className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden /><span className="font-medium text-[#0b2232]">{situation.observedFacts.join(' ')}</span></p>
+            <p className="flex gap-2"><Lightbulb className="mt-0.5 size-3.5 shrink-0 text-amber-500" aria-hidden /><span><span className="font-semibold text-slate-800">Ce que cela signifie :</span> {situation.understanding}</span></p>
+            {situation.recommendation && <p className="flex gap-2 font-semibold text-emerald-950"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-600" aria-hidden />{situation.recommendation}</p>}
             {situation.canBeAutomated && situation.automationExplanation && <p className="rounded-xl border border-emerald-100 bg-white/80 px-3 py-2 text-xs text-emerald-900"><Bot className="mr-1 inline size-3.5" aria-hidden="true" />{situation.automationExplanation}</p>}
           </div>
           {(situation.importance || situation.consequence) && <details className="mt-2 text-xs leading-5 text-slate-600"><summary className="cursor-pointer font-medium text-slate-500">Voir pourquoi cela compte</summary><div className="mt-1.5 space-y-1.5"><p><span className="font-semibold text-slate-700">Pourquoi cela compte :</span> {situation.importance}</p>{situation.consequence && <p><span className="font-semibold text-slate-700">Ce qui peut arriver :</span> {situation.consequence}</p>}</div></details>}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {situation.primaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.primaryAction!)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70">{busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{situation.primaryAction.label}</button>}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {situation.primaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.primaryAction!)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_5px_12px_rgba(5,150,105,0.16)] transition-all duration-200 hover:bg-emerald-700 hover:shadow-[0_8px_16px_rgba(5,150,105,0.2)] disabled:cursor-wait disabled:opacity-70">{busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{situation.primaryAction.label}<ArrowRight className="size-4" aria-hidden /></button>}
             {situation.secondaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.secondaryAction!)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70">{situation.secondaryAction.label}</button>}
           </div>
         </div>
@@ -117,11 +117,12 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
 
   return (
     <div className="mx-auto max-w-[920px] space-y-6 pb-6">
-      <section className="rounded-2xl border border-[#EAEAEA] bg-white px-6 py-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">À faire</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2>
+      <section className="relative overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(112deg,#ffffff_0%,#fbfefd_58%,#eefbf6_100%)] px-6 py-6">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-[46%] [background:radial-gradient(circle_at_70%_22%,rgba(110,231,183,.28),transparent_42%),radial-gradient(circle_at_50%_110%,rgba(186,230,253,.24),transparent_45%)]" />
+        <div className="relative"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700">À faire</p>
+        <h2 className="mt-1 text-[26px] font-semibold tracking-[-0.035em] text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2>
         <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-slate-700">{state.message}</p>
-        {freshness && state.kind !== 'loading' && <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="size-3.5" aria-hidden="true" />{freshness}</p>}
+        {freshness && state.kind !== 'loading' && <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-slate-500"><CheckCircle2 className="size-3.5 text-emerald-600" aria-hidden="true" />{freshness}</p>}</div>
       </section>
 
       {state.kind === 'loading' && <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 text-sm text-slate-600"><LoaderCircle className="mr-2 inline size-4 animate-spin" aria-hidden="true" />Analyse en cours.</section>}
