@@ -98,6 +98,10 @@ function actionTarget(key?: string, title?: string): string {
   return 'qualification'
 }
 
+function hasKnownActionKey(key?: string): boolean {
+  return ['follow_up_quote', 'request_deposit', 'follow_up_deposit', 'schedule_sales_appointment', 'schedule_worksite', 'prepare_quote', 'send_quote', 'reply_client', 'complete_project'].includes(key || '')
+}
+
 function actionLabel(target: string, fallback: string, title?: string): string {
   if (!/^(voir|afficher|consulter)/i.test(fallback.trim())) return fallback
   if (title && !/^(voir|afficher|consulter|situation maîtrisée)/i.test(title.trim())) return title
@@ -124,7 +128,7 @@ function deriveActionSituation(input: ProjectSituationInput): ProjectSituation {
   const action = lifecycle.recommendedAction || {}
   const nextAction = action.nextAction
   const target = actionTarget(action.key, action.title)
-  const requiresQualification = !action.key && target === 'qualification'
+  const requiresQualification = target === 'qualification' && !hasKnownActionKey(action.key)
   const facts: string[] = []
   if (latestDevis?.accepted) facts.push(`Le devis${typeof latestDevis.amount === 'number' ? ` de ${input.formatAmount(latestDevis.amount)}` : ''} a été accepté${latestDevis.accepted_at ? ` le ${input.formatDate(latestDevis.accepted_at)}` : ''}.`)
   else if (latestDevis?.declined) facts.push(`Le devis a été refusé${latestDevis.decline_reason ? ` : ${latestDevis.decline_reason}` : '.'}`)

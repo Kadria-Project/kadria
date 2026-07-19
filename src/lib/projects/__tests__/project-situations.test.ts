@@ -27,8 +27,8 @@ test('CTA générique : reprend le libellé métier de la recommandation', () =>
   assert.equal(situations.action.primaryAction?.label, 'Préparer le devis')
 })
 
-test('action historique sans clé : reste cohérente avec son libellé métier', () => {
-  const situations = deriveProjectSituations({ ...base, lifecycle: { recommendedAction: { title: 'Qualifier la demande', ctaLabel: 'Voir le résumé', meta: 'Le dossier est prêt à être chiffré.' } } })
+test('action historique non reconnue : reste cohérente avec son libellé métier', () => {
+  const situations = deriveProjectSituations({ ...base, lifecycle: { recommendedAction: { key: 'legacy_action', title: 'Qualifier la demande', ctaLabel: 'Voir le résumé', meta: 'Le dossier est prêt à être chiffré.' } } })
   assert.equal(situations.action.primaryAction?.label, 'Qualifier la demande')
   assert.equal(situations.action.primaryAction?.target, 'qualification')
   assert.match(situations.action.understanding, /qualifié/)
