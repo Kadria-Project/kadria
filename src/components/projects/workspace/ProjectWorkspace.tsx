@@ -13,7 +13,7 @@ export function ProjectWorkspace(props: ProjectWorkspaceProps) {
       <ProjectHeader {...props} />
       <ProjectActionCenter {...props} />
       <ProjectProgressTimeline lifecycle={props.lifecycle} latestDevis={props.latestDevis} appointment={props.appointment} />
-      <div className="grid grid-cols-[minmax(0,1fr)_340px] gap-5 pt-5 xl:gap-6">
+      <div className="grid grid-cols-1 gap-5 pt-5 2xl:grid-cols-[minmax(0,1fr)_340px] 2xl:gap-6">
         <ProjectWorkspaceTabs {...props} />
         <ProjectContextSidebar {...props} />
       </div>
