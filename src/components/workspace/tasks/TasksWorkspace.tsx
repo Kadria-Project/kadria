@@ -94,7 +94,7 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
   const [actionError, setActionError] = useState<string | null>(null)
   const allSituations = useMemo(() => deriveWorkSituations(operationsCenter), [operationsCenter])
   const situations = useMemo(() => prioritizeWorkSituations(allSituations), [allSituations])
-  const state = deriveWorkCalmState(loadState, operationsCenter, allSituations)
+  const state = deriveWorkCalmState(loadState, operationsCenter, situations)
   const freshness = freshnessLabel(operationsCenter?.generatedAt)
 
   const handleAction = async (situation: WorkSituation, action: WorkSituationAction) => {

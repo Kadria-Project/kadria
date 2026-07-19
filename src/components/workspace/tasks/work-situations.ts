@@ -70,6 +70,8 @@ const consequenceBySource: Record<string, string> = {
 }
 
 const explicitActionLabels: Record<string, string> = {
+  set_callback: 'Définir le rappel',
+  prepare_quote: 'Préparer le devis',
   follow_up_quote: 'Préparer la relance',
   risk_followup: 'Préparer la relance',
   schedule_intervention: 'Planifier l’intervention',
@@ -90,7 +92,7 @@ function actionFor(item: OperationsWorkbenchItem, secondary = false): WorkSituat
   const route = secondary ? item.secondaryActionRoute : item.primaryActionRoute
   const actionType = secondary ? item.secondaryActionType : item.primaryActionType
   const originalLabel = secondary ? item.secondaryActionLabel : item.primaryActionLabel
-  if (!route) return undefined
+  if (!route || (secondary && actionType !== 'ignore_automation_run')) return undefined
 
   const label = secondary && actionType === 'ignore_automation_run'
     ? 'Refuser'

@@ -42,6 +42,13 @@ test('does not produce a calm state while loading or after an error', () => {
   assert.equal(deriveWorkCalmState('ready', center([]), []).kind, 'calm')
 })
 
+test('keeps the opening sentence aligned with the three visible situations', () => {
+  const situations = prioritizeWorkSituations(deriveWorkSituations(center([
+    item({ id: 'one', score: 90 }), item({ id: 'two', score: 80 }), item({ id: 'three', score: 70 }), item({ id: 'four', score: 60 }),
+  ])))
+  assert.match(deriveWorkCalmState('ready', center([]), situations).message, /^3 actions/)
+})
+
 test('represents a failed automation as a recoverable situation', () => {
   const [situation] = deriveWorkSituations(center([item({ id: 'failed', category: 'attention', source: 'automation_run', sourceType: 'appointment_confirmation', canExecuteDirectly: true, primaryActionRoute: '/api/automations/runs/run-1/retry', primaryActionType: null })]))
   assert.equal(situation.kind, 'recover')
