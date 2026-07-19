@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
-import { shouldRestoreDashboardNavigation } from '../workspace-route-guards'
+import { shouldRestoreDashboardNavigation } from '../workspace-route-guards.ts'
 
 test('never treats migrated workspace routes as dashboard restoration candidates', () => {
   for (const pathname of [
@@ -25,10 +25,16 @@ test('never treats migrated workspace routes as dashboard restoration candidates
   }
 })
 
-test('never restores dashboard navigation while settings and resources routes are mounted', () => {
+test('restores dashboard navigation only at the legacy dashboard entry point', () => {
+  assert.equal(shouldRestoreDashboardNavigation(true, '/dashboard-v2'), true)
   assert.equal(shouldRestoreDashboardNavigation(true, '/parametres/entreprise'), false)
   assert.equal(shouldRestoreDashboardNavigation(true, '/ressources'), false)
-  assert.equal(shouldRestoreDashboardNavigation(true, '/dashboard-v2/suivi'), true)
+  assert.equal(shouldRestoreDashboardNavigation(true, '/dashboard-v2/suivi'), false)
+  assert.equal(shouldRestoreDashboardNavigation(true, '/dashboard-v2/agenda'), false)
+})
+
+test('keeps Agenda on its dedicated route with a valid desktop session', () => {
+  assert.equal(shouldRestoreDashboardNavigation(true, '/dashboard-v2/agenda'), false)
 })
 
 test('never restores dashboard navigation before the viewport state is resolved', () => {

@@ -1,6 +1,5 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-// @ts-expect-error Node exécute directement ce fichier TypeScript avec --experimental-strip-types.
 import { deriveProjectSituations, type ProjectSituationInput } from '../project-situations.ts'
 
 const formatAmount = (amount?: number | null) => `${amount || 0} €`
