@@ -3,6 +3,7 @@ export type BriefItem = {
   priority: 'critical' | 'high' | 'normal' | 'low'
   score: number
   primaryActionRoute: string | null
+  canExecuteDirectly?: boolean
   sourceType: string | null
 }
 
@@ -55,4 +56,26 @@ export function understandingFor(sourceType: string | null, fallback: string) {
   }
 
   return understandings[sourceType || ''] || fallback
+}
+
+export function workspaceDestinationFor(item: BriefItem) {
+  if (item.canExecuteDirectly || item.primaryActionRoute?.startsWith('/api/')) return '/dashboard-v2/a-faire'
+
+  if (new Set([
+    'schedule_intervention',
+    'appointment_change_requested',
+    'appointment_confirmation',
+    'appointment_address',
+    'assign_collaborator',
+    'appointment_qualification',
+    'planning_conflict',
+    'travel_warning',
+    'member_overloaded',
+  ]).has(item.sourceType || '')) return '/dashboard-v2/agenda'
+
+  if (new Set(['set_callback', 'prepare_quote', 'follow_up_quote', 'risk_followup', 'inactive_project']).has(item.sourceType || '')) return '/dashboard-v2/suivi'
+
+  if (new Set(['request_review', 'assign_responsible', 'complete_information']).has(item.sourceType || '')) return '/dashboard-v2/clients'
+
+  return item.primaryActionRoute
 }

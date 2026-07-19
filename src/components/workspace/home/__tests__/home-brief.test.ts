@@ -4,7 +4,7 @@ import test from 'node:test'
 
 register('../../__tests__/typescript-resolution.loader.mjs', import.meta.url)
 
-const { briefSituationSentence, selectBriefSituations, understandingFor } = (await import('../home-brief')) as typeof import('../home-brief')
+const { briefSituationSentence, selectBriefSituations, understandingFor, workspaceDestinationFor } = (await import('../home-brief')) as typeof import('../home-brief')
 
 test('keeps only the three highest-impact actionable situations', () => {
   const situations = selectBriefSituations([
@@ -25,4 +25,10 @@ test('states calm only when the analysis found no actionable situation', () => {
 
 test('keeps uncertainty explicit for an inactive dossier', () => {
   assert.match(understandingFor('inactive_project', 'fallback'), /peut indiquer/)
+})
+
+test('opens the workspace responsible for each situation', () => {
+  assert.equal(workspaceDestinationFor({ id: 'agenda', priority: 'critical', score: 92, primaryActionRoute: '/dashboard-v2/projet/p1', sourceType: 'appointment_change_requested' }), '/dashboard-v2/agenda')
+  assert.equal(workspaceDestinationFor({ id: 'suivi', priority: 'high', score: 84, primaryActionRoute: '/dashboard-v2/projet/p2', sourceType: 'follow_up_quote' }), '/dashboard-v2/suivi')
+  assert.equal(workspaceDestinationFor({ id: 'todo', priority: 'high', score: 84, primaryActionRoute: '/api/automations/runs/1/execute', canExecuteDirectly: true, sourceType: 'automation' }), '/dashboard-v2/a-faire')
 })

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import type { Project } from '@/src/components/ArtisanDashboard';
 import type { OperationsCenterResult, OperationsWorkbenchItem } from '@/src/lib/recommendations';
 import { ArrowRight, CheckCircle2, Eye } from 'lucide-react';
-import { briefSituationSentence, selectBriefSituations, understandingFor } from './home-brief';
+import { briefSituationSentence, selectBriefSituations, understandingFor, workspaceDestinationFor } from './home-brief';
 
 type Props = {
   firstName: string | null;
@@ -56,8 +56,7 @@ function significantActivity(projects: Project[], situationProjectIds: Set<strin
 function SituationCard({ item, primary }: { item: OperationsWorkbenchItem; primary?: boolean }) {
   const router = useRouter();
   const actionLabel = item.primaryActionLabel || 'Préparer la suite';
-  const actionRoute = item.primaryActionRoute;
-  const destination = item.canExecuteDirectly || actionRoute?.startsWith('/api/') ? '/dashboard-v2/a-faire' : actionRoute;
+  const destination = workspaceDestinationFor(item);
 
   if (!destination) return null;
 
