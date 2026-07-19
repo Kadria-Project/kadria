@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import type { ProjectSituations } from '@/src/lib/projects/project-situations';
+
 export type ProjectWorkspaceTab = 'activity' | 'commercial' | 'qualification' | 'planning' | 'documents';
 
 export type ProjectWorkspaceProps = {
@@ -13,6 +17,7 @@ export type ProjectWorkspaceProps = {
   appointment: any;
   responsibleName?: string | null;
   cleanedAiSummary?: string;
+  situations: ProjectSituations;
   activityItems: any[];
   activityUnavailable: boolean;
   updating: boolean;

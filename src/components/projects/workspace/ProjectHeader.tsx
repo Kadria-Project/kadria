@@ -3,14 +3,13 @@
 import { ArrowLeft, CalendarDays, ChevronDown, Mail, MoreHorizontal, Phone } from 'lucide-react';
 import type { ProjectWorkspaceProps } from './ProjectWorkspace.types';
 
-export function ProjectHeader({ project, projectTitle, clientLabel, lifecycle, onBack, onCall, onWrite, onPlanAppointment, onEditProject, onExportPdf, onArchive, latestDevis, formatAmount }: Pick<ProjectWorkspaceProps, 'project' | 'projectTitle' | 'clientLabel' | 'lifecycle' | 'onBack' | 'onCall' | 'onWrite' | 'onPlanAppointment' | 'onEditProject' | 'onExportPdf' | 'onArchive' | 'latestDevis' | 'formatAmount'>) {
+export function ProjectHeader({ project, projectTitle, clientLabel, onBack, onCall, onWrite, onPlanAppointment, onEditProject, onExportPdf, onArchive, latestDevis, formatAmount }: Pick<ProjectWorkspaceProps, 'project' | 'projectTitle' | 'clientLabel' | 'onBack' | 'onCall' | 'onWrite' | 'onPlanAppointment' | 'onEditProject' | 'onExportPdf' | 'onArchive' | 'latestDevis' | 'formatAmount'>) {
   const meta = [project.trade || project.projectType, [project.city, project.postalCode].filter(Boolean).join(' ')].filter(Boolean);
-  const status = lifecycle.displayStatus || project.status || 'Nouveau';
   return (
     <header className="flex min-h-[76px] items-center gap-4 border-b border-slate-200 py-3">
       <button type="button" onClick={onBack} aria-label="Retour aux dossiers" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"><ArrowLeft size={19} /></button>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-3"><h1 className="truncate text-[23px] font-semibold tracking-[-0.03em] text-slate-950">{projectTitle}</h1><span className="hidden shrink-0 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 xl:inline-flex">{status}</span></div>
+        <div className="flex min-w-0 items-center gap-3"><h1 className="truncate text-[23px] font-semibold tracking-[-0.03em] text-slate-950">{projectTitle}</h1></div>
         <p className="mt-1 truncate text-sm text-slate-500"><span className="font-medium text-slate-700">{clientLabel}</span>{meta.length > 0 && <><span className="mx-2 text-slate-300">•</span>{meta.join('  •  ')}</>}</p>
       </div>
       <div className="hidden shrink-0 items-center gap-4 min-[1400px]:flex"><span className="rounded-l border-l border-slate-200 pl-4 text-right"><strong className="block text-base font-semibold tabular-nums text-slate-950">{latestDevis ? formatAmount(latestDevis.amount) : '—'}</strong><span className="text-[11px] text-slate-500">{latestDevis ? 'Montant du devis' : 'Aucun devis'}</span></span></div>

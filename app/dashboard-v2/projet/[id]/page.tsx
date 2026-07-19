@@ -43,6 +43,7 @@ import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
 import { computeRecommendedDeposit, formatEuro, normalizeDepositStatus, normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit';
 import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWorkspace';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
+import { deriveProjectSituations } from '@/src/lib/projects/project-situations';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -2342,6 +2343,17 @@ function ProjectDetail() {
     lifecycleStage: lifecycle.stage,
     recommendedAction: lifecycle.recommendedAction.title,
   };
+  const situations = deriveProjectSituations({
+    project,
+    latestDevis,
+    appointment,
+    responsibleName: project.responsibleName || project.assignedUserName || null,
+    lifecycle,
+    activityItems,
+    formatDate: formatMediumDate,
+    formatDateTime,
+    formatAmount: (amount) => typeof amount === 'number' ? formatEuro(amount) : 'Montant non renseigné',
+  });
   // Acompte : etape commerciale intermediaire, affichee uniquement quand les
   // acomptes sont actives pour l'artisan (sinon on ne l'insere pas du tout
   // dans le stepper, cf. brief — comportement historique inchange sinon).
@@ -3633,6 +3645,7 @@ function ProjectDetail() {
         appointment={appointment}
         responsibleName={project.responsibleName || project.assignedUserName || null}
         cleanedAiSummary={cleanedAiSummary}
+        situations={situations}
         activityItems={activityItems}
         activityUnavailable={activityUnavailable}
         updating={updating}

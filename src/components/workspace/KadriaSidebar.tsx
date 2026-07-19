@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
-  UserRound,
   Users,
 } from 'lucide-react';
 import { KadriaLogo } from '@/src/components/KadriaLogo';
@@ -156,22 +155,13 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
       </div>
 
       <div className="mt-auto border-t border-white/10 pt-4">
-        <Link
-          href="/parametres"
-          title={compact ? 'Mon compte' : undefined}
-          aria-label="Mon compte"
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''}`}
-        >
-          <UserRound className="h-[17px] w-[17px] shrink-0" />
-          {!compact && <span className="truncate">Mon compte</span>}
-        </Link>
         <button
           type="button"
           onClick={() => void logout()}
           disabled={logoutPending}
           title={compact ? 'Déconnexion' : undefined}
           aria-label="Déconnexion"
-          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-400 transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 disabled:cursor-wait disabled:opacity-60 ${compact ? 'justify-center px-0' : ''}`}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-rose-300/85 transition-colors hover:bg-rose-400/10 hover:text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-300 disabled:cursor-wait disabled:opacity-60 ${compact ? 'justify-center px-0' : ''}`}
         >
           <LogOut className="h-[17px] w-[17px] shrink-0" />
           {!compact && <span className="truncate">{logoutPending ? 'Déconnexion…' : 'Déconnexion'}</span>}
