@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { AlertTriangle, Bot, CheckCircle2, CircleAlert, Clock3, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { OperationsCenterResult } from '@/src/lib/recommendations'
-import { useWorkspaceNavigation } from '../WorkspaceNavigationContext'
 import {
   deriveWorkCalmState,
   deriveWorkSituations,
@@ -89,7 +88,6 @@ function SituationCard({ situation, onAction, busy }: { situation: WorkSituation
 
 export default function TasksWorkspace({ firstName, operationsCenter, loadState, onRefresh }: Props) {
   const router = useRouter()
-  const { rememberNavigation } = useWorkspaceNavigation()
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const allSituations = useMemo(() => deriveWorkSituations(operationsCenter), [operationsCenter])
@@ -100,8 +98,6 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
   const handleAction = async (situation: WorkSituation, action: WorkSituationAction) => {
     if (!action.target) return
     setActionError(null)
-    rememberNavigation({ mode: 'tasks', actionId: situation.id, section: 'queue' })
-
     if (!action.target.startsWith('/api/')) {
       router.push(action.target)
       return
