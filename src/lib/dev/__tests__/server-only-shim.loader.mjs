@@ -6,6 +6,12 @@
 // to an empty module here is safe and does not affect production behaviour
 // (this loader is never registered outside of the test run).
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier === '../ux-audit-guard') {
+    return {
+      url: new URL('../ux-audit-guard.ts', context.parentURL).href,
+      shortCircuit: true,
+    }
+  }
   if (specifier === 'server-only') {
     return {
       url: 'data:text/javascript,export default undefined;',
