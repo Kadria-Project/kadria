@@ -79,16 +79,18 @@ export default function PerformancePage() {
 
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,13fr)_minmax(320px,7fr)]">
             <RevenueEvolutionChart series={state.analytics?.revenueSeries ?? null} periodLabel={periodLabel} loading={loading} error={state.error} onRetry={retry} />
-            <div className="flex flex-col gap-4">
-              <ConversionFunnel stages={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
-              <CommercialExposureCard summary={state.analytics?.atRisk ?? null} loading={loading} />
-            </div>
+            <ConversionFunnel stages={state.analytics?.funnel ?? null} loading={loading} error={state.error} onRetry={retry} />
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
-            <LeadSourcesChart distribution={state.analytics?.leadSources ?? null} loading={loading} error={state.error} onRetry={retry} />
-          </div>
+          <CommercialExposureCard summary={state.analytics?.atRisk ?? null} loading={loading} />
+
+          <section className="border-t border-slate-200 pt-5" aria-labelledby="performance-exploration-title">
+            <div className="mb-3"><p className="text-[11px] font-bold uppercase tracking-[.13em] text-slate-500">Pour approfondir</p><h2 id="performance-exploration-title" className="mt-1 text-base font-bold text-slate-950">Les repères utiles à la progression</h2><p className="mt-1 text-sm text-slate-600">Des informations de méthode, sans concurrencer la conclusion principale.</p></div>
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+              <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
+              <LeadSourcesChart distribution={state.analytics?.leadSources ?? null} loading={loading} error={state.error} onRetry={retry} />
+            </div>
+          </section>
         </>
       )}
     </PerformanceLayout>
