@@ -82,7 +82,14 @@ function hasDeposit(project: ProjectSituationInput['project']): boolean {
   return hasText(project.depositStatus) || typeof project.depositAmount === 'number' || hasText(project.depositPaidAt)
 }
 
-function actionTarget(key?: string): string {
+function actionTarget(key?: string, title?: string): string {
+  if (!key && title) {
+    const normalizedTitle = title.toLocaleLowerCase('fr-FR')
+    if (normalizedTitle.includes('devis')) return 'quote'
+    if (normalizedTitle.includes('acompte')) return 'deposit'
+    if (normalizedTitle.includes('visite') || normalizedTitle.includes('rendez-vous')) return 'planning'
+    if (normalizedTitle.includes('qualif')) return 'qualification'
+  }
   if (key === 'follow_up_quote') return 'follow_up_quote'
   if (key === 'request_deposit' || key === 'follow_up_deposit') return 'deposit'
   if (key === 'schedule_sales_appointment' || key === 'schedule_worksite') return 'planning'
@@ -116,6 +123,8 @@ function deriveActionSituation(input: ProjectSituationInput): ProjectSituation {
   const { project, latestDevis, appointment, lifecycle } = input
   const action = lifecycle.recommendedAction || {}
   const nextAction = action.nextAction
+  const target = actionTarget(action.key, action.title)
+  const requiresQualification = !action.key && target === 'qualification'
   const facts: string[] = []
   if (latestDevis?.accepted) facts.push(`Le devis${typeof latestDevis.amount === 'number' ? ` de ${input.formatAmount(latestDevis.amount)}` : ''} a été accepté${latestDevis.accepted_at ? ` le ${input.formatDate(latestDevis.accepted_at)}` : ''}.`)
   else if (latestDevis?.declined) facts.push(`Le devis a été refusé${latestDevis.decline_reason ? ` : ${latestDevis.decline_reason}` : '.'}`)
@@ -127,16 +136,16 @@ function deriveActionSituation(input: ProjectSituationInput): ProjectSituation {
 
   const isReassuring = action.key === 'monitor' || nextAction?.urgency === 'none'
   const recommendation = !isReassuring && action.title && action.ctaLabel
-    ? { label: action.title, reason: nextAction?.description || action.meta || 'Cette action est la prochaine étape utile du dossier.', confidence: nextAction?.confidence }
+    ? { label: action.title, reason: requiresQualification ? 'Cette étape permet de confirmer les éléments nécessaires avant de préparer la suite.' : nextAction?.description || action.meta || 'Cette action est la prochaine étape utile du dossier.', confidence: nextAction?.confidence }
     : undefined
 
   return {
     observedFacts: facts.length ? facts.slice(0, 2) : ['Aucun changement nécessitant une intervention n’est identifié dans les informations disponibles.'],
-    understanding: action.meta || nextAction?.description || 'Les informations disponibles ne permettent pas de tirer une conclusion plus précise.',
-    importance: nextAction?.description || (isReassuring ? 'Aucune décision ne mérite votre attention aujourd’hui.' : 'Cette situation mérite une décision avant de poursuivre le dossier.'),
+    understanding: requiresQualification ? 'Le dossier doit encore être qualifié avant de préparer la prochaine décision.' : action.meta || nextAction?.description || 'Les informations disponibles ne permettent pas de tirer une conclusion plus précise.',
+    importance: requiresQualification ? 'Qualifier la demande évite de préparer la suite en supposant ce qui manque.' : nextAction?.description || (isReassuring ? 'Aucune décision ne mérite votre attention aujourd’hui.' : 'Cette situation mérite une décision avant de poursuivre le dossier.'),
     possibleConsequence: latestDevis?.accepted && !hasDeposit(project) ? 'Le chantier ne devrait pas être bloqué définitivement avant de sécuriser son règlement.' : undefined,
     recommendation,
-    primaryAction: recommendation ? { label: actionLabel(actionTarget(action.key), action.ctaLabel!, action.title), target: actionTarget(action.key) } : undefined,
+    primaryAction: recommendation ? { label: actionLabel(target, action.ctaLabel!, action.title), target } : undefined,
     secondaryAction: latestDevis ? { label: 'Voir le devis', target: 'quote' } : undefined,
     reassurance: isReassuring ? 'Aucune action n’est nécessaire pour le moment. Kadria continue de surveiller ce dossier.' : undefined,
     missingInformation: getMissing(project),
