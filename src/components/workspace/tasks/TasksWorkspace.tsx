@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, Bot, CheckCircle2, CircleAlert, Clock3, Eye, Lightbulb, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Bot, CheckCircle2, CircleAlert, Eye, Lightbulb, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { OperationsCenterResult } from '@/src/lib/recommendations'
 import {
