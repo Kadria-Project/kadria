@@ -3,6 +3,10 @@ export type ProjectSituation = {
   understanding: string
   importance?: string
   possibleConsequence?: string
+  preparation?: string[]
+  risks?: string[]
+  expectedOutcome?: string
+  confidence?: 'high' | 'medium' | 'low'
   recommendation?: {
     label: string
     reason: string
@@ -87,6 +91,16 @@ function actionTarget(key?: string): string {
   return 'qualification'
 }
 
+function actionLabel(target: string, fallback: string): string {
+  if (!/^(voir|afficher|consulter)/i.test(fallback.trim())) return fallback
+  if (target === 'quote') return 'Préparer le devis'
+  if (target === 'deposit') return 'Demander l’acompte'
+  if (target === 'planning') return 'Planifier la visite'
+  if (target === 'qualification') return 'Compléter la qualification'
+  if (target === 'documents') return 'Demander une photo'
+  return 'Préparer la prochaine étape'
+}
+
 function getMissing(project: ProjectSituationInput['project']): string[] {
   const missing: string[] = []
   if (!hasText(project.clientPhone) && !hasText(project.clientEmail)) missing.push('un moyen de joindre le client')
@@ -118,10 +132,10 @@ function deriveActionSituation(input: ProjectSituationInput): ProjectSituation {
   return {
     observedFacts: facts.length ? facts.slice(0, 2) : ['Aucun changement nécessitant une intervention n’est identifié dans les informations disponibles.'],
     understanding: action.meta || nextAction?.description || 'Les informations disponibles ne permettent pas de tirer une conclusion plus précise.',
-    importance: nextAction?.description,
+    importance: nextAction?.description || (isReassuring ? 'Aucune décision ne mérite votre attention aujourd’hui.' : 'Cette situation mérite une décision avant de poursuivre le dossier.'),
     possibleConsequence: latestDevis?.accepted && !hasDeposit(project) ? 'Le chantier ne devrait pas être bloqué définitivement avant de sécuriser son règlement.' : undefined,
     recommendation,
-    primaryAction: recommendation ? { label: action.ctaLabel!, target: actionTarget(action.key) } : undefined,
+    primaryAction: recommendation ? { label: actionLabel(actionTarget(action.key), action.ctaLabel!), target: actionTarget(action.key) } : undefined,
     secondaryAction: latestDevis ? { label: 'Voir le devis', target: 'quote' } : undefined,
     reassurance: isReassuring ? 'Aucune action n’est nécessaire pour le moment. Kadria continue de surveiller ce dossier.' : undefined,
     missingInformation: getMissing(project),
@@ -151,6 +165,7 @@ function deriveCommercialSituation(input: ProjectSituationInput): ProjectSituati
     recommendation,
     primaryAction: recommendation ? { label: lifecycle.recommendedAction!.ctaLabel!, target: actionTarget(lifecycle.recommendedAction?.key) } : undefined,
     reassurance: lifecycle.recommendedAction?.key === 'monitor' ? 'Il est encore trop tôt pour agir ; la situation reste sous surveillance.' : undefined,
+    confidence: lifecycle.recommendedAction?.nextAction?.confidence,
   }
 }
 
@@ -161,8 +176,8 @@ function deriveQualificationSituation(input: ProjectSituationInput): ProjectSitu
   const ready = missing.filter((item) => item !== 'le budget' && item !== 'le délai souhaité').length === 0
   return {
     observedFacts: confirmed.length ? [`Informations confirmées : ${confirmed.join(', ')}.`] : ['Les éléments essentiels du projet sont encore peu renseignés.'],
-    understanding: ready ? 'Le dossier est suffisamment compris pour poursuivre sans risque immédiat.' : 'Le dossier ne peut pas encore être interprété avec assez de fiabilité pour engager la suite.',
-    importance: missing.length ? `Ces informations permettront de ${lifecycle.recommendedAction?.key === 'prepare_quote' ? 'préparer un devis avec moins de réserves' : 'faire avancer le dossier sans supposer ce qui manque'}.` : undefined,
+    understanding: ready ? 'Le dossier est prêt pour préparer la prochaine étape sans risque immédiat.' : 'Le dossier n’est pas encore prêt pour engager la suite avec assez de fiabilité.',
+    importance: missing.length ? `Sans ces éléments, il faudrait ${lifecycle.recommendedAction?.key === 'prepare_quote' ? 'préparer le devis avec des réserves' : 'faire avancer le dossier en supposant ce qui manque'}.` : 'Les éléments essentiels sont réunis pour avancer sereinement.',
     recommendation: missing.length && lifecycle.recommendedAction?.ctaLabel ? { label: lifecycle.recommendedAction.title || 'Compléter le dossier', reason: `Il manque encore ${missing.join(', ')}.`, confidence: lifecycle.recommendedAction.nextAction?.confidence } : undefined,
     primaryAction: missing.length && lifecycle.recommendedAction?.ctaLabel ? { label: lifecycle.recommendedAction.ctaLabel, target: 'qualification' } : undefined,
     reassurance: ready ? 'Aucune information bloquante n’est identifiée dans les éléments disponibles.' : undefined,
@@ -181,6 +196,9 @@ function derivePlanningSituation(input: ProjectSituationInput): ProjectSituation
       primaryAction: canPlan && lifecycle.recommendedAction?.ctaLabel ? { label: 'Planifier', target: 'planning' } : undefined,
       reassurance: !canPlan ? 'Kadria reste silencieux sur la planification tant que les coordonnées ou le lieu ne sont pas confirmés.' : undefined,
       missingInformation: canPlan ? [] : getMissing(project),
+      preparation: canPlan ? ['Préparer les points à confirmer pendant l’échange.'] : undefined,
+      risks: canPlan ? undefined : ['Un rendez-vous sans coordonnées ou lieu confirmé risque de devoir être déplacé.'],
+      expectedOutcome: canPlan ? 'À l’issue de l’échange, les éléments utiles à la suite du dossier pourront être confirmés.' : undefined,
     }
   }
   const appointmentResponsible = responsibleName || appointment.assignedUserName
@@ -192,6 +210,9 @@ function derivePlanningSituation(input: ProjectSituationInput): ProjectSituation
     understanding: 'Le dossier a un prochain engagement concret ; la suite dépendra de ce qui sera confirmé pendant ce rendez-vous.',
     importance: 'Les informations utiles doivent être disponibles avant le rendez-vous pour éviter de déplacer une décision importante.',
     possibleConsequence: 'Après le rendez-vous, la qualification ou la préparation du devis pourra être mise à jour.',
+    preparation: ['Relire le besoin déjà renseigné.', 'Préparer les points qui restent à confirmer.'],
+    risks: appointmentResponsible ? undefined : ['Le responsable du rendez-vous reste à définir.'],
+    expectedOutcome: 'À l’issue du rendez-vous, Kadria pourra confirmer la qualification ou préparer la prochaine décision.',
     reassurance: 'Aucun autre engagement n’est proposé tant que celui-ci reste le prochain élément déterminant.',
   }
 }
@@ -206,6 +227,8 @@ function deriveDocumentsSituation(input: ProjectSituationInput): ProjectSituatio
     recommendation: needsPhotos ? { label: 'Demander une photo', reason: 'Le dossier manque de preuve visuelle pour préciser la situation.', confidence: input.lifecycle.recommendedAction?.nextAction?.confidence } : undefined,
     primaryAction: needsPhotos ? { label: 'Demander une photo', target: 'documents' } : undefined,
     reassurance: !needsPhotos ? 'Aucun document supplémentaire n’est demandé sans raison identifiée.' : undefined,
+    preparation: photos.length ? ['Ces documents peuvent confirmer ce qui est visible sur le chantier.'] : needsPhotos ? ['Une photo du point concerné permettrait de réduire l’incertitude.'] : undefined,
+    expectedOutcome: photos.length ? 'Les éléments visibles pourront être pris en compte avec les autres informations du dossier.' : undefined,
   }
 }
 
