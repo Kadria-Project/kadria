@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     const onboardingDone = !!config?.onboardingCompleted
 
     const redirectPath =
-      typeof magic.redirectTo === 'string' && magic.redirectTo.startsWith('/')
+      typeof magic.redirectTo === 'string' && magic.redirectTo.startsWith('/') && !magic.redirectTo.startsWith('//')
         ? magic.redirectTo
         : onboardingDone
           ? '/dashboard-v2'

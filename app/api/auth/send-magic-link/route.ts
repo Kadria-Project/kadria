@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/src/lib/supabase/server'
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json()
+    const { email, callbackUrl } = await request.json()
     const normalizedEmail = String(email || '').trim().toLowerCase()
 
     if (!normalizedEmail) {
@@ -37,6 +37,9 @@ export async function POST(request: Request) {
       email: normalizedEmail,
       companyName: artisan.companyName,
       firstName: artisan.firstName,
+      redirectTo: typeof callbackUrl === 'string' && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')
+        ? callbackUrl
+        : null,
     })
 
     const { error: updateError } = await supabaseAdmin
