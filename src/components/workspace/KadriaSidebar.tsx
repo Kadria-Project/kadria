@@ -105,7 +105,7 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
         </button>
       )}
 
-      <nav aria-label="Navigation principale" className="space-y-1">
+      <nav aria-label="Navigation principale" className="w-full space-y-1">
         {primaryItems.map((item) => {
           const Icon = item.icon;
           const active = item.mode === dashboardModeFromPathname(pathname);
@@ -128,15 +128,15 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
 
       <div className="mt-7 border-t border-white/10 pt-5">
         {!compact && <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Votre espace</p>}
-        <nav aria-label="Navigation secondaire" className="space-y-1">
+        <nav aria-label="Navigation secondaire" className="w-full space-y-1">
           {secondaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.label === 'Paramètres'
               ? pathname.startsWith('/parametres')
               : pathname === item.href;
             return (
-              <div key={item.label}>
-                <Link href={item.href} title={compact ? item.label : undefined} aria-label={item.label} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''} ${active ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400'}`}>
+              <div key={item.label} className="w-full">
+                <Link href={item.href} title={compact ? item.label : undefined} aria-label={item.label} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''} ${active ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400'}`}>
                   <Icon className="h-[17px] w-[17px] shrink-0" />
                   {!compact && <span className="truncate">{item.label}</span>}
                 </Link>
@@ -144,7 +144,7 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
                   <div className="ml-6 mt-1 space-y-0.5 border-l border-white/10 pl-3">
                     {settingsItems.map((settingsItem) => {
                       const settingsActive = pathname === settingsItem.href;
-                      return <Link key={settingsItem.href} href={settingsItem.href} className={`block rounded-lg px-2 py-1.5 text-xs transition-colors ${settingsActive ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400 hover:text-white'}`}>{settingsItem.label}</Link>;
+                      return <Link key={settingsItem.href} href={settingsItem.href} className={`block w-full rounded-lg px-2 py-1.5 text-xs transition-colors ${settingsActive ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400 hover:text-white'}`}>{settingsItem.label}</Link>;
                     })}
                   </div>
                 )}
