@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,7 +12,9 @@ import {
   FolderKanban,
   HelpCircle,
   LayoutDashboard,
+  LogOut,
   Settings,
+  UserRound,
   Users,
 } from 'lucide-react';
 import { KadriaLogo } from '@/src/components/KadriaLogo';
@@ -52,6 +55,24 @@ const settingsItems = [
 
 export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps) {
   const pathname = usePathname();
+  const [logoutPending, setLogoutPending] = useState(false);
+
+  const logout = async () => {
+    if (logoutPending) return;
+    setLogoutPending(true);
+
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' });
+      const data = await response.json();
+      if (!data?.success) return;
+      window.sessionStorage.removeItem('kadria-workspace-scroll');
+      window.sessionStorage.removeItem('kadria-workspace-return-context');
+      window.location.assign(data.redirectUrl || '/login');
+    } finally {
+      setLogoutPending(false);
+    }
+  };
+
   return (
     <aside
       className={`flex h-screen shrink-0 flex-col border-r border-white/10 bg-[#071521] px-3 py-5 text-slate-200 transition-[width] duration-200 ${
@@ -132,6 +153,29 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
             );
           })}
         </nav>
+      </div>
+
+      <div className="mt-auto border-t border-white/10 pt-4">
+        <Link
+          href="/parametres"
+          title={compact ? 'Mon compte' : undefined}
+          aria-label="Mon compte"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${compact ? 'justify-center px-0' : ''}`}
+        >
+          <UserRound className="h-[17px] w-[17px] shrink-0" />
+          {!compact && <span className="truncate">Mon compte</span>}
+        </Link>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          disabled={logoutPending}
+          title={compact ? 'Déconnexion' : undefined}
+          aria-label="Déconnexion"
+          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-400 transition-colors hover:bg-white/7 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 disabled:cursor-wait disabled:opacity-60 ${compact ? 'justify-center px-0' : ''}`}
+        >
+          <LogOut className="h-[17px] w-[17px] shrink-0" />
+          {!compact && <span className="truncate">{logoutPending ? 'Déconnexion…' : 'Déconnexion'}</span>}
+        </button>
       </div>
     </aside>
   );
