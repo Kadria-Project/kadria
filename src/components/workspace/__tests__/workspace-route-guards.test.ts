@@ -7,6 +7,8 @@ import { shouldRestoreDashboardNavigation } from '../workspace-route-guards'
 
 test('never treats migrated workspace routes as dashboard restoration candidates', () => {
   for (const pathname of [
+    '/dashboard-v2/projet/20000000-0000-4000-8000-000000000001',
+    '/dashboard-v2/clients/20000000-0000-4000-8000-000000000001',
     '/parametres/entreprise',
     '/parametres/activite',
     '/parametres/assistants',
