@@ -5,7 +5,6 @@ import type { KPIResult, MonthlyGoalsSummary, PerformanceAnalytics, PerformanceI
 import { PERFORMANCE_PERIODS } from '@/src/lib/performance/date-range'
 import PerformanceLayout from './PerformanceLayout'
 import PerformanceHeader from './PerformanceHeader'
-import PerformanceKPIs from './PerformanceKPIs'
 import PerformanceLoading from './PerformanceLoading'
 import PerformanceEmptyState from './PerformanceEmptyState'
 import PerformanceErrorState from './PerformanceErrorState'
@@ -14,11 +13,8 @@ import LeadSourcesChart from './LeadSourcesChart'
 import ConversionFunnel from './ConversionFunnel'
 import AtRiskOpportunitiesCard from './AtRiskOpportunitiesCard'
 import ConversionDelayChart from './ConversionDelayChart'
-import PipelineDistributionChart from './PipelineDistributionChart'
-import TopOpportunitiesTable from './TopOpportunitiesTable'
-import PriorityActions from './PriorityActions'
-import MonthlyGoals from './MonthlyGoals'
-import ExecutiveSummary from './ExecutiveSummary'
+import PerformanceEvidence from './PerformanceEvidence'
+import { derivePerformanceConclusion } from '@/src/lib/performance/performance-insights'
 
 type FetchState = {
   kpis: KPIResult[] | null
@@ -61,20 +57,25 @@ export default function PerformancePage() {
   }, [period, reloadNonce])
 
   const retry = () => setReloadNonce((n) => n + 1)
+  const handlePeriodChange = (nextPeriod: PerformancePeriodKey) => {
+    if (nextPeriod === period) return
+    setState({ kpis: null, analytics: null, opportunities: null, insights: null, priorityActions: null, monthlyGoals: null, plan: null, error: null })
+    setPeriod(nextPeriod)
+  }
   const loading = state.kpis === null && state.error === null
   const isEmpty = !loading && !state.error && state.kpis !== null && state.kpis.every((kpi) => kpi.value === 0)
   const periodLabel = PERFORMANCE_PERIODS.find((item) => item.key === period)?.label ?? ''
+  const conclusion = derivePerformanceConclusion(state.kpis ?? [], state.analytics, periodLabel)
 
-  if (loading) return <PerformanceLayout><PerformanceHeader period={period} onPeriodChange={setPeriod} /><PerformanceLoading /></PerformanceLayout>
-  if (state.error && !state.kpis) return <PerformanceLayout><PerformanceHeader period={period} onPeriodChange={setPeriod} /><PerformanceErrorState message={state.error} onRetry={retry} /></PerformanceLayout>
+  if (loading) return <PerformanceLayout><PerformanceHeader period={period} onPeriodChange={handlePeriodChange} /><PerformanceLoading /></PerformanceLayout>
+  if (state.error && !state.kpis) return <PerformanceLayout><PerformanceHeader period={period} onPeriodChange={handlePeriodChange} /><PerformanceErrorState message={state.error} onRetry={retry} /></PerformanceLayout>
 
   return (
     <PerformanceLayout>
-      <PerformanceHeader period={period} onPeriodChange={setPeriod} />
+      <PerformanceHeader period={period} onPeriodChange={handlePeriodChange} />
       {isEmpty ? <PerformanceEmptyState /> : (
         <>
-          <ExecutiveSummary kpis={state.kpis ?? []} analytics={state.analytics} />
-          <PerformanceKPIs kpis={state.kpis} loading={loading} error={state.error} onRetry={retry} />
+          <PerformanceEvidence situation={conclusion} kpis={state.kpis ?? []} />
 
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,13fr)_minmax(320px,7fr)]">
             <RevenueEvolutionChart series={state.analytics?.revenueSeries ?? null} periodLabel={periodLabel} loading={loading} error={state.error} onRetry={retry} />
@@ -84,17 +85,9 @@ export default function PerformancePage() {
             </div>
           </div>
 
-          <TopOpportunitiesTable opportunities={state.opportunities} loading={loading} error={state.error} onRetry={retry} />
-
           <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <PipelineDistributionChart distribution={state.analytics?.pipeline ?? null} loading={loading} error={state.error} onRetry={retry} />
             <ConversionDelayChart metrics={state.analytics?.stageDurations ?? null} loading={loading} error={state.error} onRetry={retry} />
             <LeadSourcesChart distribution={state.analytics?.leadSources ?? null} loading={loading} error={state.error} onRetry={retry} />
-          </div>
-
-          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-            <PriorityActions actions={state.priorityActions} impactAmount={state.analytics?.atRisk.amount ?? null} loading={loading} error={state.error} onRetry={retry} />
-            <MonthlyGoals summary={state.monthlyGoals} loading={loading} error={state.error} onRetry={retry} />
           </div>
         </>
       )}

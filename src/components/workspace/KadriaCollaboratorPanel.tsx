@@ -58,7 +58,14 @@ const collaboratorContexts: Record<WorkspaceMode, CollaboratorContext> = {
     ],
   },
   clients: { summary: 'Vos clients resteront accessibles ici dès que cet espace sera prêt.', quickActions: [] },
-  'value-report': { summary: 'Votre performance restera accessible ici dès que cet espace sera prêt.', quickActions: [] },
+  'value-report': {
+    summary: 'Je peux expliquer ce qui est réellement observé, ce qui reste à confirmer et la différence entre montant accepté et encaissé.',
+    quickActions: [
+      { label: 'Expliquer cette évolution', mode: 'value-report', focusSection: 'briefing' },
+      { label: 'Pourquoi cette conclusion reste prudente', mode: 'value-report', focusSection: 'briefing' },
+      { label: 'Voir les devis sans décision', mode: 'commercial', focusSection: 'priorities' },
+    ],
+  },
 };
 
 export default function KadriaCollaboratorPanel({ open, activeMode, onClose }: KadriaCollaboratorPanelProps) {

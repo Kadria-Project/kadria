@@ -29,6 +29,8 @@ export default function ConversionFunnel({
       onRetry={onRetry}
     >
       {stages && stages.length > 0 && (
+        <>
+        <p className="mb-3 text-xs leading-5 text-slate-500">Le tunnel décrit les dossiers créés sur cette période. Il aide à localiser une attente, sans conclure à une baisse durable lorsque l’échantillon est faible.</p>
         <ol className="space-y-2" aria-label="Tunnel de conversion commercial">
           {stages.map((stage) => {
             const widthPercent = Math.max((stage.count / maxCount) * 100, stage.count > 0 ? 8 : 0)
@@ -52,6 +54,7 @@ export default function ConversionFunnel({
             )
           })}
         </ol>
+        </>
       )}
     </ChartCard>
   )

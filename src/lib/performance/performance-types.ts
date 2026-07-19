@@ -53,6 +53,20 @@ export type KPIResult = {
   sparkline: number[]
 }
 
+export type PerformanceEvidenceLevel = 'strong' | 'moderate' | 'weak' | 'insufficient'
+
+/** A constitutionally safe conclusion: facts, caveat and action never share one ambiguous KPI. */
+export type PerformanceSituation = {
+  id: string
+  kind: 'production' | 'conversion' | 'commercial_exposure' | 'insufficient_evidence' | 'stable'
+  observedFacts: string[]
+  interpretation: string
+  evidence: { level: PerformanceEvidenceLevel; sampleSize?: number; comparablePeriod: boolean; caveats: string[] }
+  conclusion: string
+  recommendation?: string
+  primaryAction?: { label: string; target: string }
+}
+
 export type PerformanceSnapshot = {
   period: PerformancePeriod
   kpis: KPIResult[]

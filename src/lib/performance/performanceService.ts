@@ -29,13 +29,6 @@ export { getDateRange } from './date-range'
 type Row = Record<string, unknown>
 
 const WON_PROJECT_STATUSES = new Set(['gagné', 'gagne', 'won'])
-const QUALIFIED_PROJECT_STATUSES = new Set([
-  'qualifié', 'qualifie',
-  'en cours',
-  'devis envoyé', 'devis envoye',
-  'gagné', 'gagne', 'won',
-  'perdu', 'lost',
-])
 const ACCEPTED_QUOTE_STATUSES = new Set(['accepté', 'accepte', 'accepted'])
 
 function normalizeStatus(value: unknown): string {
@@ -84,19 +77,18 @@ export function getWonProjectsCount(projects: Row[], range: DateRange): number {
   return projects.filter((project) => WON_PROJECT_STATUSES.has(normalizeStatus(project.status)) && inRange(project.updated_at ?? project.created_at, range)).length
 }
 
-/** Panier moyen = chiffre d'affaires / nombre de dossiers gagnés. */
-export function getAverageBasket(quotes: Row[], projects: Row[], range: DateRange): number {
-  const wonCount = getWonProjectsCount(projects, range)
-  if (wonCount <= 0) return 0
-  return getRevenue(quotes, range) / wonCount
+/** Panier moyen = montant TTC des devis acceptés / nombre de devis acceptés. */
+export function getAverageBasket(quotes: Row[], _projects: Row[], range: DateRange): number {
+  const acceptedQuotes = quotes.filter((quote) => isAcceptedQuote(quote) && inRange(quoteWonDate(quote), range))
+  if (acceptedQuotes.length === 0) return 0
+  return acceptedQuotes.reduce((total, quote) => total + quoteAmount(quote), 0) / acceptedQuotes.length
 }
 
-/** Taux de transformation = dossiers gagnés / dossiers qualifiés (0..1). */
-export function getConversionRate(projects: Row[], range: DateRange): number {
-  const qualified = projects.filter((project) => QUALIFIED_PROJECT_STATUSES.has(normalizeStatus(project.status)) && inRange(project.created_at, range)).length
-  if (qualified <= 0) return 0
-  const won = getWonProjectsCount(projects, range)
-  return won / qualified
+/** Taux de transformation = devis acceptés / devis envoyés de la même période (0..1). */
+export function getConversionRate(quotes: Row[], range: DateRange): number {
+  const sentQuotes = quotes.filter((quote) => inRange(quote.quote_sent_at, range))
+  if (sentQuotes.length === 0) return 0
+  return sentQuotes.filter(isAcceptedQuote).length / sentQuotes.length
 }
 
 /** Dossiers créés = nombre de nouveaux dossiers (Projects) créés sur la période. */
@@ -152,8 +144,8 @@ export function buildPerformanceSnapshot(
   const createdProjects = getCreatedProjects(data.projects, current)
   const createdProjectsPrev = getCreatedProjects(data.projects, previous)
 
-  const conversionRate = getConversionRate(data.projects, current)
-  const conversionRatePrev = getConversionRate(data.projects, previous)
+  const conversionRate = getConversionRate(data.quotes, current)
+  const conversionRatePrev = getConversionRate(data.quotes, previous)
 
   const averageBasket = getAverageBasket(data.quotes, data.projects, current)
   const averageBasketPrev = getAverageBasket(data.quotes, data.projects, previous)
