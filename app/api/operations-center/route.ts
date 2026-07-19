@@ -264,6 +264,7 @@ function recommendationToWorkbenchItem(item: RecommendationItem, category: Opera
   return {
     id: item.id,
     category,
+    score: item.score,
     title: item.title,
     description: item.description,
     reason: item.reason,
@@ -300,6 +301,7 @@ function runToWorkbenchItem(
   return {
     id: `run-${run.id}`,
     category,
+    score: category === 'attention' ? 84 : 48,
     title: run.automationTitle,
     description: run.entityLabel,
     reason: run.errorLabel || run.triggerReason,

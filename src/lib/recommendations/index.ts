@@ -121,6 +121,7 @@ export type OperationsWorkbenchCategory = 'today' | 'approval' | 'completed' | '
 export interface OperationsWorkbenchItem {
   id: string
   category: OperationsWorkbenchCategory
+  score: number
   title: string
   description: string
   reason: string

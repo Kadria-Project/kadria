@@ -74,6 +74,7 @@ function recommendationToWorkbenchItem(
   return {
     id: item.id,
     category,
+    score: item.score,
     title: item.title,
     description: item.description,
     reason: item.reason,
