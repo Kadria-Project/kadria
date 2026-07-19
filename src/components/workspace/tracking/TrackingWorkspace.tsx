@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowRight, ChevronDown, CircleAlert, Eye, Lightbulb, ShieldCheck, Sparkles, Target, TriangleAlert } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleAlert, Eye, Lightbulb, ShieldCheck, Sparkles, Target, TriangleAlert, WalletCards } from 'lucide-react';
 import type { Project } from '@/src/components/ArtisanDashboard';
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
 import LivingPipeline from './LivingPipeline';
@@ -77,9 +77,11 @@ export default function TrackingWorkspace({ projects, operationsCenter, loadStat
         <div className="pointer-events-none absolute inset-y-0 right-0 w-[45%] opacity-80 [background:radial-gradient(circle_at_80%_20%,rgba(110,231,183,.32),transparent_42%),radial-gradient(circle_at_50%_110%,rgba(186,230,253,.26),transparent_45%)]" />
         <div className="relative"><p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700"><Sparkles className="size-3.5" aria-hidden />Suivi commercial</p>
         <h2 className="mt-2 max-w-3xl text-[25px] font-semibold tracking-[-0.035em] text-[#0b2232]">{state.message}</h2>
+        {state.kind === 'active' && <p className="mt-2 text-sm leading-6 text-slate-500">Des décisions ciblées pour faire avancer ce qui compte vraiment.</p>}
         {state.kind === 'loading' && <p className="mt-2 text-sm leading-6 text-slate-600">Aucune conclusion n’est affichée tant que la vérification n’est pas terminée.</p>}
         {state.kind === 'calm' && <p className="mt-2 flex items-center gap-2 text-sm leading-6 text-emerald-950"><ShieldCheck className="size-4 shrink-0 text-emerald-700" aria-hidden />Je continue de surveiller les devis et les dossiers actifs à partir des données vérifiées.</p>}
         {state.kind === 'insufficient' && <p className="mt-2 flex items-center gap-2 text-sm leading-6 text-amber-950"><TriangleAlert className="size-4 shrink-0 text-amber-700" aria-hidden />Aucune situation calme n’est déduite tant que la collecte reste limitée.</p>}</div>
+        {state.kind === 'active' && <div className="relative mt-5 flex flex-wrap gap-x-6 gap-y-3 text-xs text-slate-500"><HeroSignal icon={ShieldCheck} label="Données à jour" value="Vérification active" /><HeroSignal icon={Eye} label="Surveillance continue" value="Devis et dossiers suivis" /><HeroSignal icon={Target} label="Périmètre" value={`${activeProjects.length} dossier${activeProjects.length > 1 ? 's' : ''} actif${activeProjects.length > 1 ? 's' : ''}`} /></div>}
       </section>
 
       {state.kind === 'active' && <section id="workspace-section-priorities">
@@ -89,7 +91,7 @@ export default function TrackingWorkspace({ projects, operationsCenter, loadStat
 
       <section className="rounded-[22px] border border-slate-200/80 bg-white/80 p-4 transition-colors hover:border-emerald-100">
         <button type="button" onClick={() => setPortfolioOpen((open) => !open)} aria-expanded={portfolioOpen} aria-controls="commercial-portfolio" className="flex w-full items-center justify-between gap-3 text-left">
-          <span><span className="block text-sm font-semibold text-[#0b2232]">Explorer le portefeuille commercial</span><span className="mt-1 block text-xs text-slate-500">Consultez les étapes et les dossiers sans concurrencer les décisions ci-dessus.</span></span>
+          <span className="flex items-center gap-3"><span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"><WalletCards className="size-5" aria-hidden /></span><span><span className="block text-sm font-semibold text-[#0b2232]">Explorer le portefeuille commercial</span><span className="mt-1 block text-xs text-slate-500">Consultez les étapes et les dossiers sans concurrencer les décisions ci-dessus.</span></span></span>
           <ChevronDown className={`size-5 shrink-0 text-slate-500 transition-transform ${portfolioOpen ? 'rotate-180' : ''}`} aria-hidden />
         </button>
         {portfolioOpen && <div id="commercial-portfolio" className="mt-4"><LivingPipeline stages={TRACKING_STAGES} projects={activeProjects} onOpenProject={(projectId) => onOpenProject(projectId)} /></div>}
@@ -98,4 +100,8 @@ export default function TrackingWorkspace({ projects, operationsCenter, loadStat
       {state.kind === 'calm' && <section className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600"><p className="flex items-center gap-2 font-medium text-[#0b2232]"><Eye className="size-4 text-emerald-700" aria-hidden />Ce que Kadria continue de surveiller</p><p className="mt-1">Les réponses aux devis, les rappels planifiés et les dossiers dont l’activité ralentit.</p></section>}
     </div>
   );
+}
+
+function HeroSignal({ icon: Icon, label, value }: { icon: typeof Eye; label: string; value: string }) {
+  return <span className="flex items-center gap-2.5"><span className="inline-flex size-8 items-center justify-center rounded-xl bg-white/70 text-emerald-700 ring-1 ring-emerald-100/80"><Icon className="size-4" aria-hidden /></span><span><span className="block text-[10px] font-semibold text-slate-700">{label}</span><span className="block text-[11px] text-slate-400">{value}</span></span></span>;
 }
