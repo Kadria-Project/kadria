@@ -41,11 +41,11 @@ const collaboratorContexts: Record<WorkspaceMode, CollaboratorContext> = {
     ],
   },
   tasks: {
-    summary: 'Je peux vous aider à préparer, valider ou automatiser les actions qui apparaissent ici.',
+    summary: 'Pendant que vous avancez, je peux préparer la suite, expliquer une priorité ou automatiser ce qui se répète.',
     quickActions: [
-      { label: 'Préparer une action', mode: 'tasks', focusSection: 'queue' },
-      { label: 'Comprendre ce qui peut être automatisé', mode: 'tasks', focusSection: 'queue' },
-      { label: 'Quelle action aura le plus d’impact ?', mode: 'tasks', focusSection: 'queue' },
+      { label: 'Préparer la prochaine étape', mode: 'tasks', focusSection: 'queue' },
+      { label: 'Expliquer cette priorité', mode: 'tasks', focusSection: 'queue' },
+      { label: 'Identifier ce qui peut être automatisé', mode: 'tasks', focusSection: 'queue' },
     ],
   },
   calendar: {

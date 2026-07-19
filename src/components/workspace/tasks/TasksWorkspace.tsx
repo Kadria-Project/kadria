@@ -59,24 +59,23 @@ function SituationCard({ situation, onAction, busy }: { situation: WorkSituation
       : 'border-emerald-200 bg-emerald-50/35'
 
   return (
-    <article id={`workspace-action-${situation.id}`} className={`rounded-2xl border p-5 shadow-[0_2px_8px_rgba(15,34,50,0.04)] ${tone}`}>
+    <article id={`workspace-action-${situation.id}`} className={`rounded-2xl border px-5 py-4 shadow-[0_2px_8px_rgba(15,34,50,0.04)] ${tone}`}>
       <div className="flex items-start gap-3">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">{kindIcon(situation.kind)}</span>
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm">{kindIcon(situation.kind)}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600">{kindLabels[situation.kind]}</p>
-            <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">Confiance {situation.confidence === 'high' ? 'élevée' : situation.confidence === 'medium' ? 'moyenne' : 'limitée'}</span>
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{kindLabels[situation.kind]}</p>
+            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-500">Confiance {situation.confidence === 'high' ? 'élevée' : situation.confidence === 'medium' ? 'moyenne' : 'limitée'}</span>
           </div>
-          <p className="mt-2 text-sm font-medium text-slate-600">{contextLabel(situation)}</p>
-          <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-            <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Observation</p><p className="mt-1 font-medium text-[#0b2232]">{situation.observedFacts.join(' ')}</p></section>
-            <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Compréhension</p><p className="mt-1">{situation.understanding}</p></section>
-            <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Pourquoi maintenant</p><p className="mt-1">{situation.importance}</p></section>
-            {situation.consequence && <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Conséquence</p><p className="mt-1">{situation.consequence}</p></section>}
-            {situation.recommendation && <section><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Recommandation</p><p className="mt-1 font-medium text-[#0b2232]">{situation.recommendation}</p></section>}
+          <p className="mt-1 text-sm font-semibold text-slate-700">{contextLabel(situation)}</p>
+          <div className="mt-2 space-y-1.5 text-sm leading-5 text-slate-700">
+            <p className="font-semibold text-[#0b2232]">{situation.observedFacts.join(' ')}</p>
+            <p><span className="font-medium text-slate-900">Ce que cela signifie :</span> {situation.understanding}</p>
+            {situation.recommendation && <p className="font-semibold text-emerald-950">{situation.recommendation}</p>}
             {situation.canBeAutomated && situation.automationExplanation && <p className="rounded-xl border border-emerald-100 bg-white/80 px-3 py-2 text-xs text-emerald-900"><Bot className="mr-1 inline size-3.5" aria-hidden="true" />{situation.automationExplanation}</p>}
           </div>
-          <div className="mt-5 flex flex-wrap gap-2">
+          {(situation.importance || situation.consequence) && <details className="mt-2 text-xs leading-5 text-slate-600"><summary className="cursor-pointer font-medium text-slate-500">Voir pourquoi cela compte</summary><div className="mt-1.5 space-y-1.5"><p><span className="font-semibold text-slate-700">Pourquoi cela compte :</span> {situation.importance}</p>{situation.consequence && <p><span className="font-semibold text-slate-700">Ce qui peut arriver :</span> {situation.consequence}</p>}</div></details>}
+          <div className="mt-3 flex flex-wrap gap-2">
             {situation.primaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.primaryAction!)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-70">{busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{situation.primaryAction.label}</button>}
             {situation.secondaryAction && <button type="button" disabled={busy} onClick={() => onAction(situation.secondaryAction!)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-70">{situation.secondaryAction.label}</button>}
           </div>
@@ -130,8 +129,9 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
       {state.kind === 'insufficient' && <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-5 text-sm leading-6 text-amber-950"><AlertTriangle className="mr-2 inline size-4" aria-hidden="true" />Les sources nécessaires ne sont pas toutes disponibles. Réessayez dans un instant avant de prendre une décision sur cette base.<button type="button" onClick={() => void onRefresh()} className="ml-3 inline-flex items-center gap-1 font-semibold underline underline-offset-4"><RefreshCw className="size-3.5" aria-hidden="true" />Vérifier à nouveau</button></section>}
 
       {state.kind === 'active' && <section id="workspace-section-queue" aria-label="Situations à traiter maintenant">
-        <div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">À décider maintenant</p><p className="mt-1 text-sm text-slate-500">Kadria a retenu uniquement les situations qui demandent une action, une validation ou une reprise immédiate.</p></div>
-        <div className="space-y-4">{situations.map((situation) => <SituationCard key={situation.id} situation={situation} busy={busyAction === situation.id} onAction={(action) => void handleAction(situation, action)} />)}</div>
+        <div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">À décider maintenant</p><p className="mt-1 text-sm text-slate-500">Voici uniquement ce qui demande votre intervention maintenant.</p></div>
+        <div className="space-y-3">{situations.map((situation) => <SituationCard key={situation.id} situation={situation} busy={busyAction === situation.id} onAction={(action) => void handleAction(situation, action)} />)}</div>
+        <p className="mt-3 text-sm text-slate-500">Pendant que vous avancez, je continue de surveiller le reste de ce cockpit.</p>
         {actionError && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</p>}
       </section>}
 
