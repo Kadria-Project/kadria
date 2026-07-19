@@ -3479,7 +3479,7 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       ) : (
       <>
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
-      {showValueOverview && !loading && !isMobile && (
+      {showValueOverview && !isMobile && (
         <HomeWorkspace
           firstName={artisanFirstName || null}
           todayLabel={todayLabel}
