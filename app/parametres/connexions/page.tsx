@@ -1,3 +1,3 @@
 'use client'
-import KadriaAppShell from '@/src/components/workspace/KadriaAppShell'; import { IntegrationSettingsView } from '@/src/components/settings/integrations/IntegrationSettingsView'
-export default function ConnectionsPage() { return <KadriaAppShell><main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8"><nav aria-label="Fil d’Ariane" className="mb-4 text-sm text-slate-500">Workspace / Paramètres / <span className="text-slate-700">Connexions</span></nav><header className="mb-6"><h1 className="text-2xl font-semibold tracking-tight text-slate-900">Connexions</h1><p className="mt-2 text-sm text-slate-600">Gérez les services externes connectés à votre espace Kadria.</p></header><IntegrationSettingsView /></main></KadriaAppShell> }
+import SettingsSection from '@/src/components/settings/SettingsSection'; import { IntegrationSettingsView } from '@/src/components/settings/integrations/IntegrationSettingsView'
+export default function ConnectionsPage() { return <SettingsSection title="Connexions" description="Gérez les services externes connectés à votre espace Kadria."><IntegrationSettingsView /></SettingsSection> }

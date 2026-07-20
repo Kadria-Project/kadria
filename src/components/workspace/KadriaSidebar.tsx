@@ -41,17 +41,6 @@ const secondaryItems = [
   { label: 'Aide', href: '/ressources', icon: HelpCircle },
 ];
 
-const settingsItems = [
-  { label: 'Mon entreprise', href: '/parametres/entreprise' },
-  { label: 'Activité', href: '/parametres/activite' },
-  { label: 'Assistants', href: '/parametres/assistants' },
-  { label: 'Automatisations', href: '/parametres/automatisations' },
-  { label: 'Connexions', href: '/parametres/connexions' },
-  { label: 'Notifications', href: '/parametres/notifications' },
-  { label: 'Accès et sécurité', href: '/parametres/acces' },
-  { label: 'Abonnement', href: '/parametres/abonnement' },
-];
-
 export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps) {
   const pathname = usePathname();
   const [logoutPending, setLogoutPending] = useState(false);
@@ -140,14 +129,6 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
                   <Icon className="h-[17px] w-[17px] shrink-0" />
                   {!compact && <span className="truncate">{item.label}</span>}
                 </Link>
-                {!compact && item.label === 'Paramètres' && pathname.startsWith('/parametres') && (
-                  <div className="ml-6 mt-1 space-y-0.5 border-l border-white/10 pl-3">
-                    {settingsItems.map((settingsItem) => {
-                      const settingsActive = pathname === settingsItem.href;
-                      return <Link key={settingsItem.href} href={settingsItem.href} className={`block w-full rounded-lg px-2 py-1.5 text-xs transition-colors ${settingsActive ? 'bg-emerald-400/15 text-emerald-300' : 'text-slate-400 hover:text-white'}`}>{settingsItem.label}</Link>;
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}
