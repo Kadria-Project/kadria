@@ -4,24 +4,28 @@ import Link from 'next/link';
 import { Bot, ChevronDown, Plus, Search } from 'lucide-react';
 import NotificationBell from '@/src/components/notifications/NotificationBell';
 import WorkspaceHeader from './layout/WorkspaceHeader';
-import type { WorkspaceMode } from './KadriaSidebar';
+import { useShellContext } from './shell/ShellContextProvider';
 
 interface KadriaTopbarProps {
-  activeMode: WorkspaceMode;
   collaboratorOpen: boolean;
   onToggleCollaborator: () => void;
 }
 
-export default function KadriaTopbar({ activeMode, collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
-  const workspace = activeMode === 'commercial'
+export default function KadriaTopbar({ collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
+  const { shellContext } = useShellContext();
+  const workspace = shellContext.pageType === 'project'
+    ? { eyebrow: 'Workspace / Projet', title: shellContext.entity?.label || 'Fiche projet' }
+    : shellContext.pageType === 'settings'
+      ? { eyebrow: 'Workspace / Paramètres', title: 'Paramètres' }
+      : shellContext.pageType === 'tracking'
     ? { eyebrow: 'Workspace / Suivi', title: 'Suivi commercial' }
-    : activeMode === 'tasks'
+    : shellContext.pageType === 'tasks'
       ? { eyebrow: 'Workspace / À faire', title: 'À faire' }
-      : activeMode === 'calendar'
+      : shellContext.pageType === 'calendar'
         ? { eyebrow: 'Workspace / Agenda', title: 'Agenda' }
-        : activeMode === 'clients'
+        : shellContext.pageType === 'clients'
           ? { eyebrow: 'Workspace / Clients', title: 'Clients' }
-          : activeMode === 'value-report'
+          : shellContext.pageType === 'performance'
             ? { eyebrow: 'Workspace / Performance', title: 'Performance' }
             : { eyebrow: 'Workspace / Accueil', title: 'Accueil' };
   return (

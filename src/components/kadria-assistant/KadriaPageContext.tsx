@@ -1,11 +1,12 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import {
-  inferAssistantPageType,
+  toKadriaAssistantPageContext,
   type AssistantPageContext,
 } from '@/src/lib/kadria-assistant/page-context'
+import { getShellContextFromPathname } from '@/src/components/workspace/shell/shell-context'
 
 interface KadriaPageContextValue {
   pageContext: AssistantPageContext
@@ -15,23 +16,17 @@ interface KadriaPageContextValue {
 const KadriaPageContextContext = createContext<KadriaPageContextValue | null>(null)
 
 function buildDefaultPageContext(pathname?: string | null): AssistantPageContext {
-  const pageType = inferAssistantPageType(pathname)
-  if (pageType === 'project_detail' && pathname) {
-    const projectId = pathname.split('/').filter(Boolean)[2]
-    return {
-      pageType,
-      projectId: projectId || undefined,
-    }
-  }
-  return { pageType }
+  return toKadriaAssistantPageContext(getShellContextFromPathname(pathname))
 }
 
 export function KadriaPageContextProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const [pageContext, setPageContext] = useState<AssistantPageContext>(() => buildDefaultPageContext(pathname))
+  const basePageContext = useMemo(() => buildDefaultPageContext(pathname), [pathname])
+  const [enrichment, setEnrichment] = useState<{ pathname: string | null; value: AssistantPageContext } | null>(null)
+  const pageContext = enrichment?.pathname === pathname ? enrichment.value : basePageContext
 
-  useEffect(() => {
-    setPageContext(buildDefaultPageContext(pathname))
+  const setPageContext = useCallback((next: AssistantPageContext) => {
+    setEnrichment({ pathname, value: next })
   }, [pathname])
 
   const value = useMemo<KadriaPageContextValue>(
@@ -39,7 +34,7 @@ export function KadriaPageContextProvider({ children }: { children: ReactNode })
       pageContext,
       setPageContext,
     }),
-    [pageContext],
+    [pageContext, setPageContext],
   )
 
   return (

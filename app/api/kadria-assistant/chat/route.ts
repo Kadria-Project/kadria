@@ -40,7 +40,7 @@ interface DeterministicAssistantReply {
   navigationActions?: NavigationAction[]
 }
 
-interface ContextualAssistantReply extends DeterministicAssistantReply {}
+type ContextualAssistantReply = DeterministicAssistantReply
 
 function buildProjectHref(projectId: string) {
   return `/dashboard-v2/projet/${encodeURIComponent(projectId)}`
@@ -171,6 +171,8 @@ function buildPageContextSummary(pageContext: AssistantPageContext | null, curre
   if (!pageContext) return null
 
   const lines = [`Type de page : ${pageContext.pageType}`]
+  if (pageContext.route) lines.push(`Route normalisee : ${pageContext.route}`)
+  if (pageContext.section) lines.push(`Section active : ${pageContext.section}`)
   if (pageContext.projectId) lines.push(`ProjectId transmis par le front : ${pageContext.projectId}`)
   if (pageContext.projectTitle) lines.push(`Titre visible : ${pageContext.projectTitle}`)
   if (pageContext.clientName) lines.push(`Client visible : ${pageContext.clientName}`)

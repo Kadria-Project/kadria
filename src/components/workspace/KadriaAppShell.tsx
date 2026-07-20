@@ -11,6 +11,7 @@ import DevelopmentWebVitals from './DevelopmentWebVitals';
 import WorkspaceCanvas from './WorkspaceCanvas';
 import { WorkspaceNavigationProvider, type DashboardMode, type WorkspaceNavigation, useWorkspaceNavigation } from './WorkspaceNavigationContext';
 import { shouldRestoreDashboardNavigation } from './workspace-route-guards';
+import { ShellContextProvider } from './shell/ShellContextProvider';
 
 const SIDEBAR_STORAGE_KEY = 'kadria-workspace-sidebar-compact';
 const COLLABORATOR_STORAGE_KEY = 'kadria-workspace-collaborator-open';
@@ -26,7 +27,7 @@ function isDashboardMode(value: unknown): value is DashboardMode {
 }
 
 export default function KadriaAppShell({ children }: { children: ReactNode }) {
-  return <WorkspaceNavigationProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout></WorkspaceNavigationProvider>;
+  return <WorkspaceNavigationProvider><ShellContextProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout></ShellContextProvider></WorkspaceNavigationProvider>;
 }
 
 function KadriaAppShellLayout({ children }: { children: ReactNode }) {
@@ -172,7 +173,7 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
     <div className="kadria-app-shell flex h-screen min-w-0 overflow-hidden bg-[#f6f8f7]">
       <KadriaSidebar compact={compactSidebar} onToggle={updateSidebar} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <KadriaTopbar activeMode={activeMode} collaboratorOpen={collaboratorOpen} onToggleCollaborator={() => updateCollaborator(!collaboratorOpen)} />
+        <KadriaTopbar collaboratorOpen={collaboratorOpen} onToggleCollaborator={() => updateCollaborator(!collaboratorOpen)} />
         <div className="flex min-h-0 flex-1 overflow-hidden"><WorkspaceCanvas ref={canvasRef}>{children}</WorkspaceCanvas></div>
       </div>
       <KadriaCollaboratorPanel open={collaboratorOpen} activeMode={activeMode} onClose={() => updateCollaborator(false)} />

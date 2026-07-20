@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { KadriaLogo } from '@/src/components/KadriaLogo';
 import { dashboardModeFromPathname, dashboardPathForMode } from './WorkspaceNavigationContext';
+import { useShellContext } from './shell/ShellContextProvider';
 
 export type WorkspaceMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'value-report';
 
@@ -43,6 +44,7 @@ const secondaryItems = [
 
 export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps) {
   const pathname = usePathname();
+  const { shellContext } = useShellContext();
   const [logoutPending, setLogoutPending] = useState(false);
 
   const logout = async () => {
@@ -97,7 +99,8 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
       <nav aria-label="Navigation principale" className="w-full space-y-1">
         {primaryItems.map((item) => {
           const Icon = item.icon;
-          const active = item.mode === dashboardModeFromPathname(pathname);
+          const active = item.mode === dashboardModeFromPathname(pathname)
+            && ['dashboard', 'tasks', 'tracking', 'calendar', 'clients', 'performance'].includes(shellContext.pageType);
           return (
             <Link
               key={item.mode}
@@ -121,7 +124,7 @@ export default function KadriaSidebar({ compact, onToggle }: KadriaSidebarProps)
           {secondaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.label === 'Paramètres'
-              ? pathname.startsWith('/parametres')
+            ? shellContext.pageType === 'settings'
               : pathname === item.href;
             return (
               <div key={item.label} className="w-full">

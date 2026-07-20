@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { getShellContextFromPathname } from './shell/shell-context';
 
 export type DashboardMode = 'value' | 'commercial' | 'calendar' | 'clients' | 'tasks' | 'pipeline' | 'value-report';
 export type WorkspaceSection = 'briefing' | 'decisions' | 'priorities' | 'queue' | 'automations' | 'validations' | 'later' | 'calendar' | 'next-appointment';
@@ -23,12 +24,12 @@ const DASHBOARD_MODE_PATHS: Record<DashboardMode, string> = {
 };
 
 export function dashboardModeFromPathname(pathname: string | null): DashboardMode {
-  if (!pathname || pathname === '/dashboard-v2') return 'value';
-  if (pathname.startsWith('/dashboard-v2/a-faire')) return 'tasks';
-  if (pathname.startsWith('/dashboard-v2/suivi')) return 'commercial';
-  if (pathname.startsWith('/dashboard-v2/agenda')) return 'calendar';
-  if (pathname.startsWith('/dashboard-v2/clients')) return 'clients';
-  if (pathname.startsWith('/dashboard-v2/performance')) return 'value-report';
+  const pageType = getShellContextFromPathname(pathname).pageType;
+  if (pageType === 'tasks') return 'tasks';
+  if (pageType === 'tracking') return 'commercial';
+  if (pageType === 'calendar') return 'calendar';
+  if (pageType === 'clients') return 'clients';
+  if (pageType === 'performance') return 'value-report';
   return 'value';
 }
 
