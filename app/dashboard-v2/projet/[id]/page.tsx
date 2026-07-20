@@ -45,7 +45,7 @@ import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWor
 import ProjectWorkspaceRoute from './ProjectWorkspaceRoute';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
 import { deriveProjectSituations } from '@/src/lib/projects/project-situations';
-import { assignProjectOwnerCommand, followUpProjectQuoteCommand, scheduleProjectAppointmentCommand, updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
+import { archiveProjectCommand, assignProjectOwnerCommand, followUpProjectQuoteCommand, scheduleProjectAppointmentCommand, updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
 import { PROJECT_WORKSPACE_REFRESH_EVENT } from '@/src/lib/projects/project-workspace-contract';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -1784,11 +1784,12 @@ function ProjectDetail() {
     try {
       setUpdating(true);
 
-      const data = await updateProject(id, { leadStatus: 'archived' });
+      const data = await archiveProjectCommand(id);
 
-      if (data.success) {
-        setProject(data.project);
+      if (data.ok) {
+        setProject((current: any) => current ? { ...current, leadStatus: 'archived' } : current);
         await loadActivities();
+        window.dispatchEvent(new Event(PROJECT_WORKSPACE_REFRESH_EVENT));
       }
     } catch (error) {
       console.error('ARCHIVE_PROJECT_ERROR', error);

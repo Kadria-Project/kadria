@@ -36,6 +36,10 @@ export function updateProjectContactCommand(projectId: string, input: ProjectCon
   )
 }
 
+export function archiveProjectCommand(projectId: string) {
+  return sendProjectCommand<{ archived: true }>(`/api/projects/${encodeURIComponent(projectId)}/commands/archive`, {})
+}
+
 export async function assignProjectOwnerCommand(projectId: string, input: AssignProjectOwnerCommandInput): Promise<ProjectCommandResult<{ assignedUserId: string | null; assignedUserLabel?: string }>> {
   const result = await sendProjectCommand<{ responsibleUserId?: string | null; responsibleUser?: { displayName?: string | null } }>(`/api/projects/${encodeURIComponent(projectId)}/responsible`, { responsibleUserId: input.memberId })
   if (!result.ok) return { ok: false, ...(result.error ? { error: result.error } : {}) }
