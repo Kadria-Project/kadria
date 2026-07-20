@@ -43,6 +43,7 @@ async function dependencyGraph(entry: string, visited = new Set<string>()): Prom
 test('a-faire remains independent from ArtisanDashboard', async () => {
   const graph = await dependencyGraph(tasksPage)
   const artisanDashboard = normalize(join(root, 'src/components/ArtisanDashboard.tsx'))
+  assert.equal(existsSync(artisanDashboard), false)
   assert.equal(graph.has(artisanDashboard), false)
 })
 

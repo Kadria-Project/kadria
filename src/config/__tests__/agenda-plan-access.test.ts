@@ -19,14 +19,11 @@ test('Agenda is available to every active commercial plan', () => {
 test('Agenda entry points no longer wrap the planning in a commercial plan gate', async () => {
   const files = [
     'src/components/workspace/DashboardAgendaRoute.tsx',
-    'src/components/ArtisanDashboard.tsx',
   ]
 
   for (const file of files) {
     const source = await readFile(path.join(workspaceRoot, file), 'utf8')
-    const start = file.endsWith('DashboardAgendaRoute.tsx') ? 0 : source.indexOf('showCalendarWorkspaceDesktop')
-    const calendarSection = source.slice(start, start + 800)
-    assert.equal(calendarSection.includes('FeatureGate feature="calendar"'), false, `${file} must not lock Agenda`)
+    assert.equal(source.includes('FeatureGate feature="calendar"'), false, `${file} must not lock Agenda`)
   }
 })
 

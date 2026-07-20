@@ -28,11 +28,20 @@ async function dependencyGraph(entry: string, visited = new Set<string>()): Prom
 
 test('home remains independent from ArtisanDashboard', async () => {
   const graph = await dependencyGraph(homePage)
-  assert.equal(graph.has(normalize(join(root, 'src/components/ArtisanDashboard.tsx'))), false)
+  const legacyDashboard = normalize(join(root, 'src/components/ArtisanDashboard.tsx'))
+  assert.equal(existsSync(legacyDashboard), false)
+  assert.equal(graph.has(legacyDashboard), false)
 })
 
 test('home requests only its dedicated brief contract', async () => {
   const routeSource = await readFile(join(root, 'app/dashboard-v2/HomeWorkspaceRoute.tsx'), 'utf8')
   assert.match(routeSource, /fetch\('\/api\/home-brief/)
   assert.doesNotMatch(routeSource, /operations-center|\/api\/(projects|events|usage\/monthly)/)
+})
+
+test('normalizes legacy calendar query parameters to Agenda', async () => {
+  const pageSource = await readFile(homePage, 'utf8')
+  assert.match(pageSource, /query\.mode === 'calendar'/)
+  assert.match(pageSource, /query\.agenda/)
+  assert.match(pageSource, /agenda: '\/dashboard-v2\/agenda'/)
 })

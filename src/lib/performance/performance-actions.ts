@@ -12,7 +12,7 @@
  * réutilisable est `getProjectCommercialAnalysis()` dans
  * src/lib/project-scoring.ts — déjà utilisée sur la fiche projet
  * ("Analyse Kadria") et dans les "Dossiers à traiter en priorité" du
- * dashboard existant (src/components/ArtisanDashboard.tsx). Elle est
+ * ancien dashboard monolithique. Elle est
  * additive (points par signal : téléphone, email, ville, type de projet,
  * description, budget, délai, photos, maturité, correspondance métier,
  * déplacement) et NE correspond PAS à la pondération

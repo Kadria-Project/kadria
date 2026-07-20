@@ -15,12 +15,12 @@ const legacyViewPaths: Record<string, string> = {
   performance: '/dashboard-v2/performance',
 };
 
-export default async function DashboardV2Page({ searchParams }: { searchParams: Promise<{ view?: string; tab?: string }> }) {
+export default async function DashboardV2Page({ searchParams }: { searchParams: Promise<{ view?: string; tab?: string; mode?: string; agenda?: string }> }) {
   const session = await getSession();
   if (!session) redirect('/login');
 
   const query = await searchParams;
-  const legacyView = query.view || query.tab;
+  const legacyView = query.view || query.tab || (query.mode === 'calendar' ? 'calendar' : null) || (query.agenda ? 'agenda' : null);
   const target = legacyView ? legacyViewPaths[legacyView] : null;
   if (target) redirect(target);
 
