@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { ProjectSituations } from '@/src/lib/projects/project-situations';
+import type { ReactNode } from 'react';
 
 export type ProjectWorkspaceTab = 'activity' | 'commercial' | 'qualification' | 'planning' | 'documents';
 
 export type ProjectWorkspaceProps = {
+  decisionSlot?: ReactNode;
   project: any;
   projectTitle: string;
   clientLabel: string;

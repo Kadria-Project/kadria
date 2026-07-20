@@ -42,6 +42,7 @@ import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
 import { computeRecommendedDeposit, formatEuro, normalizeDepositStatus, normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit';
 import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWorkspace';
+import ProjectWorkspaceRoute from './ProjectWorkspaceRoute';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
 import { deriveProjectSituations } from '@/src/lib/projects/project-situations';
 
@@ -3633,6 +3634,7 @@ function ProjectDetail() {
     <div className="dashboard-shell min-h-screen overflow-x-hidden bg-[#f6f8f7] text-slate-950">
       <KadriaPageContextSync value={assistantPageContext} />
       <ProjectWorkspace
+        decisionSlot={<ProjectWorkspaceRoute />}
         project={project}
         projectTitle={projectTitle}
         clientLabel={clientLabel}

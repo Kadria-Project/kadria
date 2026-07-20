@@ -1,0 +1,23 @@
+'use client'
+
+import { CircleAlert, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
+import type { ProjectWorkspaceBrief } from '@/src/lib/projects/project-workspace-contract'
+
+type Props = { brief: ProjectWorkspaceBrief | null; loadState: 'loading' | 'ready' | 'error'; onRefresh: () => Promise<void>; onNavigate: (destination: string) => void }
+const evidence = { strong: 'Élevé', moderate: 'Modéré', weak: 'Limité' } as const
+
+export default function ProjectDecisionWorkspace({ brief, loadState, onRefresh, onNavigate }: Props) {
+  if (loadState === 'loading' || (!brief && loadState !== 'error')) return <section aria-busy="true" className="rounded-xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"><div className="h-5 w-36 animate-pulse rounded bg-slate-200" /><div className="mt-4 h-16 animate-pulse rounded bg-slate-100" /></section>
+  if (!brief) return <section className="rounded-xl border border-amber-200 bg-amber-50 p-5"><CircleAlert className="size-5 text-amber-700" /><h2 className="mt-3 text-base font-semibold text-slate-950">La lecture du dossier est momentanément indisponible.</h2><p className="mt-1 text-sm leading-6 text-slate-700">Les informations du dossier ne sont pas modifiées.</p><button type="button" onClick={() => void onRefresh()} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950"><RefreshCw className="size-4" />Réessayer</button></section>
+  const insufficient = brief.dataQuality.level === 'insufficient'
+  const { decision } = brief
+  return <section aria-label="Lecture décisionnelle du dossier" className={`rounded-xl border p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${insufficient ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Dossier maintenant</p><h2 className="mt-1 text-lg font-semibold text-slate-950">Ce que Kadria comprend</h2></div><span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700">Niveau de preuve : {evidence[decision.evidenceLevel]}</span></div>
+    <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-800">{decision.understanding}</p>
+    {decision.uncertainty && <p className="mt-3 flex gap-2 text-sm leading-6 text-amber-900"><TriangleAlert className="mt-0.5 size-4 shrink-0" />Information manquante : {decision.uncertainty}</p>}
+    {brief.dataQuality.reservations.length > 0 && <p className="mt-3 text-xs leading-5 text-amber-900">{brief.dataQuality.reservations.join(' ')}</p>}
+    <div className="mt-5 border-t border-slate-100 pt-5"><h3 className="text-sm font-semibold text-slate-950">Pourquoi</h3><ul className="mt-2 space-y-2 text-sm leading-6 text-slate-700">{decision.observedFacts.map((fact) => <li key={`${fact.label}-${fact.occurredAt || ''}`}>{fact.label}</li>)}</ul></div>
+    {decision.recommendation && <div className="mt-5 border-t border-slate-100 pt-5"><h3 className="text-sm font-semibold text-slate-950">Ce que Kadria recommande</h3><p className="mt-2 text-sm leading-6 text-slate-800">{decision.recommendation}</p>{decision.why && <p className="mt-2 text-sm leading-6 text-slate-600">{decision.why}</p>}{decision.primaryAction?.destination && <button type="button" onClick={() => onNavigate(decision.primaryAction!.destination!)} className="mt-4 inline-flex min-h-10 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 focus-visible:outline-offset-2">{decision.primaryAction.label}</button>}</div>}
+    {insufficient && !decision.recommendation && <p className="mt-5 flex gap-2 text-sm leading-6 text-amber-950"><ShieldCheck className="mt-0.5 size-4 shrink-0" />Aucune recommandation forte n’est affichée tant que les informations restent insuffisantes.</p>}
+  </section>
+}
