@@ -37,7 +37,8 @@ test('workspace capabilities expose execution state without PII and refresh only
   assert.match(route, /<ProjectEditDialog/)
   assert.match(route, /if \(sections\.client\.status === 'ready'\) await loadSection\('client'\)/)
   assert.match(route, /if \(sections\.history\.status === 'ready'\) await loadSection\('history'\)/)
-  assert.doesNotMatch(route, /loadSection\('documents'\).*onSaved|loadSection\('commercial'\).*onSaved|loadSection\('engagement'\).*onSaved/)
+  assert.doesNotMatch(route, /loadSection\('documents'\).*onSaved|loadSection\('engagement'\).*onSaved/)
+  assert.match(route, /<ProjectPipelineDialog[\s\S]*loadSection\('commercial'\)/)
   assert.doesNotMatch(route, /ProjectWorkspaceLegacyAdapter/)
 })
 
@@ -56,7 +57,6 @@ test('action routes use narrow reads and do not return a complete project', asyn
 
 test('the project page mounts the compact route directly', async () => {
   const page = await readFile(join(root, 'app/dashboard-v2/projet/[id]/page.tsx'), 'utf8')
-  const entrypoint = page.slice(page.indexOf('export default function ProjectDetailPage'), page.indexOf('function ProjectDetail()'))
-  assert.match(entrypoint, /<ProjectWorkspaceRoute \/>/)
-  assert.doesNotMatch(entrypoint, /ProjectWorkspaceLegacyAdapter/)
+  assert.match(page, /<ProjectWorkspaceRoute \/>/)
+  assert.doesNotMatch(page, /ProjectWorkspaceLegacyAdapter|function ProjectDetail\(/)
 })
