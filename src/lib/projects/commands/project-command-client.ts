@@ -2,6 +2,7 @@ import type {
   AssignProjectOwnerCommandInput,
   ProjectCommandResult,
   ProjectContactCommandInput,
+  FollowUpProjectQuoteCommandInput,
   ScheduleProjectAppointmentCommandInput,
   ProjectStatusCommandInput,
 } from './project-command-contract'
@@ -47,6 +48,17 @@ export async function scheduleProjectAppointmentCommand(projectId: string, input
     const result = await response.json().catch(() => null) as { success?: boolean; appointment?: { id: string; start: string; end: string; location: string | null; status: string; assignedUserId: string | null }; error?: string } | null
     if (!result?.success || !result.appointment) return { ok: false, error: { code: 'APPOINTMENT_UNAVAILABLE', message: result?.error === 'slot_unavailable' ? 'Creneau indisponible entre-temps.' : 'Impossible de planifier le rendez-vous.' } }
     return { ok: true, data: result.appointment, refresh: ['brief', 'engagement', 'facts'] }
+  } catch {
+    return { ok: false, error: { code: 'NETWORK_ERROR', message: 'Connexion indisponible. Reessayez.' } }
+  }
+}
+
+export async function followUpProjectQuoteCommand(input: FollowUpProjectQuoteCommandInput): Promise<ProjectCommandResult<{ quoteId: string; sentAt?: string }>> {
+  try {
+    const response = await fetch(`/api/devis/${encodeURIComponent(input.quoteId)}/follow-up`, { method: 'POST' })
+    const result = await response.json().catch(() => null) as { success?: boolean; error?: string; sent_at?: string } | null
+    if (!result?.success) return { ok: false, error: { code: response.status === 403 ? 'FORBIDDEN' : 'QUOTE_FOLLOW_UP_FAILED', message: result?.error || 'Impossible de relancer le devis.' } }
+    return { ok: true, data: { quoteId: input.quoteId, ...(result.sent_at ? { sentAt: result.sent_at } : {}) }, refresh: ['brief', 'commercial', 'facts', 'engagement'] }
   } catch {
     return { ok: false, error: { code: 'NETWORK_ERROR', message: 'Connexion indisponible. Reessayez.' } }
   }

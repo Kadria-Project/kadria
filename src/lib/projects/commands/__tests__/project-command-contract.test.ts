@@ -7,6 +7,7 @@ register('../../../../components/workspace/__tests__/typescript-resolution.loade
 const {
   parseProjectContactCommandInput,
   parseAssignProjectOwnerCommandInput,
+  parseFollowUpProjectQuoteCommandInput,
   parseScheduleProjectAppointmentCommandInput,
   parseProjectStatusCommandInput,
   projectCommandError,
@@ -44,4 +45,9 @@ test('appointment command rejects incoherent dates and forged authorization fiel
   assert.deepEqual(parseScheduleProjectAppointmentCommandInput({ start: '2026-07-21T09:00:00.000Z', end: '2026-07-21T10:00:00.000Z' }), { start: '2026-07-21T09:00:00.000Z', end: '2026-07-21T10:00:00.000Z' })
   assert.throws(() => parseScheduleProjectAppointmentCommandInput({ start: '2026-07-21T10:00:00.000Z', end: '2026-07-21T09:00:00.000Z' }))
   assert.throws(() => parseScheduleProjectAppointmentCommandInput({ start: '2026-07-21T09:00:00.000Z', end: '2026-07-21T10:00:00.000Z', tenantId: 'forged' }))
+})
+
+test('quote follow-up command only accepts its quote identifier', () => {
+  assert.deepEqual(parseFollowUpProjectQuoteCommandInput({ quoteId: 'quote-1' }), { quoteId: 'quote-1' })
+  assert.throws(() => parseFollowUpProjectQuoteCommandInput({ quoteId: 'quote-1', clientEmail: 'forged@example.test' }))
 })

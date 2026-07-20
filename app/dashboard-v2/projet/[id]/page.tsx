@@ -45,7 +45,7 @@ import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWor
 import ProjectWorkspaceRoute from './ProjectWorkspaceRoute';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
 import { deriveProjectSituations } from '@/src/lib/projects/project-situations';
-import { assignProjectOwnerCommand, scheduleProjectAppointmentCommand, updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
+import { assignProjectOwnerCommand, followUpProjectQuoteCommand, scheduleProjectAppointmentCommand, updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
 import { PROJECT_WORKSPACE_REFRESH_EVENT } from '@/src/lib/projects/project-workspace-contract';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -1523,24 +1523,12 @@ function ProjectDetail() {
 
     setFollowingUpDevisId(devis.id);
     try {
-      const response = await fetch(`/api/devis/${devis.id}/follow-up`, { method: 'POST' });
-      const text = await response.text();
-      let data: { success?: boolean; error?: string; message?: string; sent_at?: string } = {};
-
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { success: false, error: text || 'Reponse serveur invalide' };
-      }
-
-      if (response.status === 403) {
+      const data = await followUpProjectQuoteCommand({ quoteId: devis.id });
+      if (!data.ok && data.error?.code === 'FORBIDDEN') {
         openUpgradeModal('quoteGeneration');
         return;
       }
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Impossible de relancer le devis');
-      }
+      if (!data.ok) throw new Error(data.error?.message || 'Impossible de relancer le devis');
 
       await loadActivities();
       setFollowUpConfirmError('');
@@ -1550,12 +1538,13 @@ function ProjectDetail() {
           item.id === devis.id
             ? {
                 ...item,
-                last_follow_up_at: data.sent_at,
+                last_follow_up_at: data.data?.sentAt,
                 follow_up_count: (item.follow_up_count || 0) + 1,
               }
             : item
         )
       );
+      window.dispatchEvent(new Event(PROJECT_WORKSPACE_REFRESH_EVENT));
       setFollowUpToast({ type: 'success', message: data.message || 'Relance envoyée. Le client a reçu un email lui rappelant ce devis en attente.' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Impossible de relancer le devis';

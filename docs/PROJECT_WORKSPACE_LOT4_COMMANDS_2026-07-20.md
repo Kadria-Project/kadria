@@ -52,12 +52,18 @@ La fiche ne modifie ni les règles de disponibilité, ni les conflits, ni Google
 
 Le contrôleur legacy reste volontairement propriétaire des commandes non migrées. Son premier doublon de modal coordonnées conserve encore son ancien reload : il est documenté, non masqué, et sera traité uniquement avec l’extraction complète de cette modal. Les rendez-vous, relances, devis, documents, portail, acompte et avis ne sont pas migrés à moitié.
 
+## Sous-lot 4C : devis et relance commerciale
+
+L’inventaire de la fiche Projet confirme qu’elle ne crée, n’envoie, ne génère ni ne modifie directement de devis : ces parcours restent dans l’éditeur de devis. Sa seule mutation commerciale est la relance e-mail d’un devis existant. Elle passe maintenant par `followUpProjectQuoteCommand`, qui ne reçoit que l’identifiant du devis et normalise la réponse en `quoteId`, date d’envoi et fragments `brief`, `commercial`, `facts`, `engagement`.
+
+L’endpoint existant reste le propriétaire de l’autorisation, de la vérification artisan/devis/projet, de la résolution serveur du destinataire, du texte de relance, de Resend et de l’activité `DEVIS_FOLLOW_UP_SENT`. Aucun e-mail, token, URL PDF, statut forcé ou règle commerciale ne transite dans la commande client. La fiche conserve seulement la confirmation, le chargement, l’erreur et la mise à jour locale minimale de la liste.
+
 ## Validations du sous-lot
 
 Le 20 juillet 2026 :
 
-- tests Projet, contrat de commande et garde : **15/15 réussis** ;
+- tests Projet, contrat de commande et garde : **16/16 réussis** ;
 - lint ciblé : **0 erreur** ; 13 avertissements préexistants du contrôleur legacy, sans nouvel avertissement de ce sous-lot ;
 - `npx tsc --noEmit` : **réussi** ;
 - `git diff --check` : **réussi** ;
-- `npm run build` : **réussi en 69 s** (compilation Turbopack 26,9 s, TypeScript 31,8 s, génération statique 2,3 s).
+- `npm run build` : **réussi en 71,8 s** (compilation Turbopack 30,2 s, TypeScript 31,7 s, génération statique 1,904 s).

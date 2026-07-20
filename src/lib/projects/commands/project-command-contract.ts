@@ -35,6 +35,8 @@ export type ScheduleProjectAppointmentCommandInput = {
   assignedUserId?: string
 }
 
+export type FollowUpProjectQuoteCommandInput = { quoteId: string }
+
 const contactKeys = new Set([
   'clientFirstName', 'clientName', 'clientPhone', 'clientEmail', 'siteAddress',
   'city', 'postalCode', 'latitude', 'longitude',
@@ -105,6 +107,13 @@ export function parseScheduleProjectAppointmentCommandInput(value: unknown): Sch
   if (Number.isNaN(new Date(start).getTime()) || Number.isNaN(new Date(end).getTime()) || new Date(end) <= new Date(start)) throw new Error('La fin du rendez-vous doit etre apres son debut.')
   if (value.assignedUserId !== undefined && (typeof value.assignedUserId !== 'string' || !value.assignedUserId.trim())) throw new Error('Le collaborateur est invalide.')
   return { start, end, ...(typeof value.assignedUserId === 'string' ? { assignedUserId: value.assignedUserId.trim() } : {}) }
+}
+
+export function parseFollowUpProjectQuoteCommandInput(value: unknown): FollowUpProjectQuoteCommandInput {
+  if (!isRecord(value) || Object.keys(value).some((key) => key !== 'quoteId')) throw new Error('Payload de relance invalide.')
+  const quoteId = boundedString(value.quoteId, 'Le devis', 100)
+  if (!quoteId) throw new Error('Le devis est requis.')
+  return { quoteId }
 }
 
 export function projectCommandError(code: string, message: string, requestId?: string): ProjectCommandResult {
