@@ -3,6 +3,8 @@ export type ProjectWorkspaceDataQuality = {
   reservations: string[]
 }
 
+export const PROJECT_WORKSPACE_REFRESH_EVENT = 'project-workspace:refresh'
+
 export type ProjectWorkspaceBrief = {
   generatedAt: string
   dataQuality: ProjectWorkspaceDataQuality

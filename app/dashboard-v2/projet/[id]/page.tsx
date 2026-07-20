@@ -45,6 +45,8 @@ import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWor
 import ProjectWorkspaceRoute from './ProjectWorkspaceRoute';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
 import { deriveProjectSituations } from '@/src/lib/projects/project-situations';
+import { updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
+import { PROJECT_WORKSPACE_REFRESH_EVENT } from '@/src/lib/projects/project-workspace-contract';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'Nouveau':      { bg: 'rgba(63,63,70,0.4)',   text: 'var(--text-2)', border: 'var(--border)' },
@@ -1721,11 +1723,14 @@ function ProjectDetail() {
     try {
       setUpdating(true);
 
-      const data = await updateProject(id, { status, contacted: true });
+      const data = await updateProjectStatusCommand(id, { status });
 
-      if (data.success) {
-        setProject(data.project);
+      if (data.ok && data.data) {
+        setProject((current: any) => current ? { ...current, status: data.data.status, contacted: true } : current);
         await loadActivities();
+        window.dispatchEvent(new Event(PROJECT_WORKSPACE_REFRESH_EVENT));
+      } else {
+        throw new Error(data.error?.message || 'Impossible de mettre Ã  jour le statut.');
       }
     } catch (error) {
       console.error('UPDATE_STATUS_ERROR', error);
@@ -1869,6 +1874,22 @@ function ProjectDetail() {
     setAppointmentAssignedUserId('');
     setShowAppointmentModal(true);
     fetchAppointmentSlots();
+  }
+
+  async function saveProjectContact() {
+    if (!project?.id) return;
+    setSavingContact(true);
+    try {
+      const result = await updateProjectContactCommand(project.id, contactForm);
+      if (!result.ok) throw new Error(result.error?.message || 'Impossible de sauvegarder les informations.');
+      setProject((current: any) => current ? { ...current, ...contactForm } : current);
+      setEditingContact(false);
+      window.dispatchEvent(new Event(PROJECT_WORKSPACE_REFRESH_EVENT));
+    } catch (error) {
+      setFollowUpToast({ type: 'error', message: error instanceof Error ? error.message : 'Impossible de sauvegarder les informations.' });
+    } finally {
+      setSavingContact(false);
+    }
   }
 
   function handleAppointmentDateChange(date: string) {
@@ -6935,49 +6956,7 @@ function ProjectDetail() {
                 Annuler
               </button>
               <button
-                onClick={async () => {
-                  setSavingContact(true);
-                  try {
-                    const res = await fetch(`/api/projects/${project.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        fields: {
-                          'Client First Name': contactForm.clientFirstName,
-                          'Client Name': contactForm.clientName,
-                          'Client Phone': contactForm.clientPhone,
-                          'Client Email': contactForm.clientEmail,
-                          'Site Address': contactForm.siteAddress,
-                          City: contactForm.city,
-                          'Postal Code': contactForm.postalCode,
-                          ...(contactForm.latitude !== null ? { Latitude: contactForm.latitude } : {}),
-                          ...(contactForm.longitude !== null ? { Longitude: contactForm.longitude } : {}),
-                        },
-                      }),
-                    });
-                    const data = await res.json();
-                    if (!data.success) {
-                      throw new Error(data.error || 'Erreur lors de la sauvegarde');
-                    }
-                    Object.assign(project, {
-                      clientFirstName: contactForm.clientFirstName,
-                      clientName: contactForm.clientName,
-                      clientPhone: contactForm.clientPhone,
-                      clientEmail: contactForm.clientEmail,
-                      siteAddress: contactForm.siteAddress,
-                      city: contactForm.city,
-                      postalCode: contactForm.postalCode,
-                      latitude: contactForm.latitude,
-                      longitude: contactForm.longitude,
-                    });
-                    setEditingContact(false);
-                    window.location.reload();
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
-                  } finally {
-                    setSavingContact(false);
-                  }
-                }}
+                onClick={saveProjectContact}
                 disabled={savingContact}
                 className="flex-1 bg-green-500 text-black font-bold rounded-lg px-4 py-2 disabled:opacity-50"
               >
