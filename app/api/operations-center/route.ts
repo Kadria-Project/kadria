@@ -436,7 +436,7 @@ function buildWorkbench(input: {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   let stage = 'session'
   try {
     const now = new Date()
@@ -447,7 +447,7 @@ export async function GET() {
     }
 
     stage = 'tenant_context'
-    const tenantContext = await getCurrentTenantContext()
+    const tenantContext = await getCurrentTenantContext({ session })
     stage = 'schema_capabilities'
     const supportsTenantId = await tableHasColumn(TABLES.projects, 'tenant_id')
     const supportsAppointmentQualification = await tableHasColumn('project_appointments', 'qualification_status')
@@ -664,6 +664,16 @@ export async function GET() {
         unavailableSources: Array.from(new Set(unavailableSources)),
       },
     }
+    const tasksWorkspace = {
+      generatedAt: operationsCenter.generatedAt,
+      dataQuality: operationsCenter.dataQuality,
+      workbench: operationsCenter.workbench,
+    }
+
+    if (new URL(request.url).searchParams.get('scope') === 'tasks') {
+      return NextResponse.json({ success: true, tasksWorkspace })
+    }
+
     return NextResponse.json({
       success: true,
       operationsCenter,

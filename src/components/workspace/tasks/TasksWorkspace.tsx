@@ -3,19 +3,19 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, Bot, CheckCircle2, CircleAlert, Eye, Lightbulb, LoaderCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import type { OperationsCenterResult } from '@/src/lib/recommendations'
 import {
   deriveWorkCalmState,
   deriveWorkSituations,
   prioritizeWorkSituations,
   type OperationsLoadState,
+  type TasksWorkspaceData,
   type WorkSituation,
   type WorkSituationAction,
 } from './work-situations'
 
 type Props = {
   firstName: string | null
-  operationsCenter: OperationsCenterResult | null
+  operationsCenter: TasksWorkspaceData | null
   loadState: OperationsLoadState
   onRefresh: () => Promise<void>
 }
@@ -132,7 +132,7 @@ export default function TasksWorkspace({ firstName, operationsCenter, loadState,
       {state.kind === 'active' && <section id="workspace-section-queue" aria-label="Situations à traiter maintenant">
         <div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">À décider maintenant</p><p className="mt-1 text-sm text-slate-500">Voici uniquement ce qui demande votre intervention maintenant.</p></div>
         <div className="space-y-3">{situations.map((situation) => <SituationCard key={situation.id} situation={situation} busy={busyAction === situation.id} onAction={(action) => void handleAction(situation, action)} />)}</div>
-        <p className="mt-3 text-sm text-slate-500">Pendant que vous avancez, je continue de surveiller le reste de ce cockpit.</p>
+        <p className="mt-3 text-sm text-slate-500">Pendant que vous avancez, je continue de surveiller le reste de votre activité.</p>
         {actionError && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</p>}
       </section>}
 

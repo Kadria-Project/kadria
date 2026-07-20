@@ -411,8 +411,9 @@ function pickActiveMembership(params: {
 
 export async function getCurrentTenantContext(options?: {
   preferredTenantId?: string | null
+  session?: AuthPayload | null
 }): Promise<TenantContext | null> {
-  const session = await getSession()
+  const session = options?.session ?? await getSession()
   if (!session) {
     console.warn('[TENANT][SESSION_MISSING] Missing authenticated session')
     return null

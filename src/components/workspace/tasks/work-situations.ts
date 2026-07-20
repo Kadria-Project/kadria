@@ -1,5 +1,7 @@
 import type { OperationsCenterResult, OperationsWorkbenchItem } from '@/src/lib/recommendations'
 
+export type TasksWorkspaceData = Pick<OperationsCenterResult, 'generatedAt' | 'dataQuality' | 'workbench'>
+
 export type WorkSituationKind = 'execute' | 'validate' | 'automate' | 'recover' | 'observe'
 export type WorkSituationConfidence = 'high' | 'medium' | 'low'
 
@@ -134,7 +136,7 @@ function contextFor(item: OperationsWorkbenchItem): WorkSituation['projectContex
   return { projectId: item.projectId || undefined, projectTitle, clientName }
 }
 
-export function deriveWorkSituations(operationsCenter: OperationsCenterResult | null): WorkSituation[] {
+export function deriveWorkSituations(operationsCenter: TasksWorkspaceData | null): WorkSituation[] {
   const workbench = operationsCenter?.workbench
   if (!workbench) return []
 
@@ -181,7 +183,7 @@ export function prioritizeWorkSituations(situations: WorkSituation[], limit = 3)
     .slice(0, limit)
 }
 
-export function deriveWorkCalmState(loadState: OperationsLoadState, operationsCenter: OperationsCenterResult | null, situations: WorkSituation[]): WorkCalmState {
+export function deriveWorkCalmState(loadState: OperationsLoadState, operationsCenter: TasksWorkspaceData | null, situations: WorkSituation[]): WorkCalmState {
   if (loadState === 'loading') return { kind: 'loading', message: 'Je termine de vérifier les actions, validations et automatisations en attente.' }
   if (loadState === 'error' || !operationsCenter?.workbench || operationsCenter.dataQuality?.isComplete === false) {
     const sources = operationsCenter?.dataQuality?.unavailableSources || []
