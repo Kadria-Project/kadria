@@ -21,6 +21,7 @@ import {
 import { tableHasColumn } from '@/src/lib/tenant-context'
 import { listProjectResponsiblesByTenant } from '@/src/lib/project-responsibility'
 import type { PerformanceAnalytics, PerformancePeriodKey } from '@/src/lib/performance/performance-types'
+import { createRequestTimer } from '@/src/lib/performance/request-timing'
 
 function asRows(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : []
@@ -31,8 +32,9 @@ function isPeriodKey(value: string | null): value is PerformancePeriodKey {
 }
 
 export async function GET(request: NextRequest) {
+  const timer = createRequestTimer('/api/performance')
   try {
-    const context = await getCurrentTenantContext()
+    const context = await timer.measure('authTenant', () => getCurrentTenantContext())
     if (!context) return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
 
     const params = request.nextUrl.searchParams
@@ -45,7 +47,7 @@ export async function GET(request: NextRequest) {
       : undefined
 
     const supabase = getSupabaseAdmin()
-    const hasResponsibleColumn = await tableHasColumn('Projects', 'responsible_user_id')
+    const hasResponsibleColumn = await timer.measure('schema', () => tableHasColumn('Projects', 'responsible_user_id'))
     const projectColumns = [
       'id', 'status', 'created_at', 'updated_at', 'source',
       'client_name', 'client_first_name', 'client_phone', 'client_email',
@@ -54,10 +56,10 @@ export async function GET(request: NextRequest) {
     ]
     if (hasResponsibleColumn) projectColumns.push('responsible_user_id')
 
-    const projectsResult = await supabase
+    const projectsResult = await timer.measure('projectsDb', async () => await supabase
       .from('Projects')
       .select(projectColumns.join(', '))
-      .eq('tenant_id', context.tenantId)
+      .eq('tenant_id', context.tenantId))
 
     if (projectsResult.error) {
       console.error('[PERFORMANCE][PROJECTS_READ_FAILED]', projectsResult.error)
@@ -68,10 +70,10 @@ export async function GET(request: NextRequest) {
     const projectIds = projects.map((project) => String(project.id)).filter(Boolean)
 
     const quotesResult = projectIds.length
-      ? await supabase
+      ? await timer.measure('quotesDb', async () => await supabase
         .from('Devis')
         .select('project_id, total_ttc, total_ht, statut, accepted, accepted_at, declined_at, decline_reason, quote_sent_at, created_at')
-        .in('project_id', projectIds)
+        .in('project_id', projectIds))
       : { data: [], error: null }
 
     if (quotesResult.error) {
@@ -81,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     const quotes = asRows(quotesResult.data)
     const now = new Date()
-    const snapshot = buildPerformanceSnapshot({ projects, quotes }, period, now, custom)
+    const snapshot = await timer.measure('compute', async () => buildPerformanceSnapshot({ projects, quotes }, period, now, custom))
     const { current, previous } = snapshot.period
 
     const analytics: PerformanceAnalytics = {
@@ -122,7 +124,7 @@ export async function GET(request: NextRequest) {
     const priorityActions = getPriorityActions({ projects, quotes, now })
     const monthlyGoals = getMonthlyGoalsSummary()
 
-    return NextResponse.json({
+    const payload = {
       success: true,
       snapshot,
       analytics,
@@ -131,7 +133,9 @@ export async function GET(request: NextRequest) {
       priorityActions,
       monthlyGoals,
       plan: context.tenant?.plan ?? null,
-    })
+    }
+    timer.log(payload, { projects: projects.length, quotes: quotes.length })
+    return NextResponse.json(payload)
   } catch (error) {
     console.error('[PERFORMANCE][LOAD_FAILED]', error)
     return NextResponse.json({ success: false, error: 'Impossible de charger les indicateurs' }, { status: 500 })

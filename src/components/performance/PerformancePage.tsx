@@ -15,6 +15,7 @@ import CommercialExposureCard from './CommercialExposureCard'
 import ConversionDelayChart from './ConversionDelayChart'
 import PerformanceEvidence from './PerformanceEvidence'
 import { derivePerformanceConclusion } from '@/src/lib/performance/performance-insights'
+import { fetchJsonWithTiming } from '@/src/lib/performance/client-timing'
 
 type FetchState = {
   kpis: KPIResult[] | null
@@ -34,9 +35,8 @@ export default function PerformancePage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(`/api/performance?period=${period}`, { signal: controller.signal })
-      .then(async (res) => {
-        const data = await res.json().catch(() => null)
+    fetchJsonWithTiming<{ success?: boolean; error?: string; snapshot: { kpis: KPIResult[] }; analytics?: PerformanceAnalytics; opportunities?: PerformanceOpportunity[]; insights?: PerformanceInsight[]; priorityActions?: PriorityAction[]; monthlyGoals?: MonthlyGoalsSummary; plan?: string | null }>('performance', `/api/performance?period=${period}`, { signal: controller.signal })
+      .then(({ response: res, payload: data }) => {
         if (!res.ok || !data?.success) throw new Error(data?.error || 'Impossible de charger les indicateurs de performance.')
         setState({
           kpis: data.snapshot.kpis as KPIResult[],

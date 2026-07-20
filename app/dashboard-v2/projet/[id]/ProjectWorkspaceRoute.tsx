@@ -18,6 +18,7 @@ import { AppointmentEditDialog } from '@/src/components/projects/workspace/dialo
 import { AppointmentCancelDialog } from '@/src/components/projects/workspace/dialogs/AppointmentCancelDialog'
 import { AppointmentAssignDialog } from '@/src/components/projects/workspace/dialogs/AppointmentAssignDialog'
 import { ProjectPipelineDialog } from '@/src/components/projects/workspace/dialogs/ProjectPipelineDialog'
+import { fetchJsonWithTiming } from '@/src/lib/performance/client-timing'
 
 type BriefResponse = { success: boolean; brief?: ProjectWorkspaceBrief; error?: string }
 type SectionResponse<K extends ProjectWorkspaceSectionKey> = { success: boolean; data?: ProjectWorkspaceSectionData[K]; error?: string }
@@ -44,8 +45,7 @@ export default function ProjectWorkspaceRoute() {
     if (!id) return
     setBriefState('loading')
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(id)}/workspace`, { cache: 'no-store', signal })
-      const payload = await response.json().catch(() => null) as BriefResponse | null
+      const { response, payload } = await fetchJsonWithTiming<BriefResponse>('project-workspace', `/api/projects/${encodeURIComponent(id)}/workspace`, { cache: 'no-store', signal })
       if (!response.ok || !payload?.success || !payload.brief) throw new Error(payload?.error || 'Lecture indisponible')
       setBrief(payload.brief)
       setBriefState('ready')
@@ -56,8 +56,7 @@ export default function ProjectWorkspaceRoute() {
     if (!id) return
     setSections((current) => ({ ...current, [key]: { status: 'loading' } }))
     try {
-      const response = await fetch(`/api/projects/${encodeURIComponent(id)}/workspace/${key}`, { cache: 'no-store' })
-      const payload = await response.json().catch(() => null) as SectionResponse<K> | null
+      const { response, payload } = await fetchJsonWithTiming<SectionResponse<K>>(`project-section:${key}`, `/api/projects/${encodeURIComponent(id)}/workspace/${key}`, { cache: 'no-store' })
       if (response.status === 403) { setSections((current) => ({ ...current, [key]: { status: 'unavailable', message: 'Accès non autorisé.' } })); return }
       if (!response.ok || !payload?.success || !payload.data) throw new Error(payload?.error || 'Lecture indisponible')
       const isEmpty = key === 'client' ? !Object.values(payload.data as ProjectWorkspaceSectionData['client']).some(Boolean) : key === 'documents' ? (payload.data as ProjectWorkspaceSectionData['documents']).items.length === 0 : key === 'commercial' ? (payload.data as ProjectWorkspaceSectionData['commercial']).quotes.length === 0 : key === 'history' ? (payload.data as ProjectWorkspaceSectionData['history']).events.length === 0 : key === 'engagement' ? (payload.data as ProjectWorkspaceSectionData['engagement']).appointments.length === 0 : false
