@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
-import ArtisanDashboard from '@/src/components/ArtisanDashboard';
 import { getSession } from '@/src/lib/auth-utils';
-import { normalizePlan } from '@/src/lib/plans';
+import TrackingWorkspaceRoute from './TrackingWorkspaceRoute';
+
+export const dynamic = 'force-dynamic';
 
 export default async function TrackingPage() {
   const session = await getSession();
   if (!session) redirect('/login');
-  return <ArtisanDashboard plan={normalizePlan(session.plan)} />;
+  return <TrackingWorkspaceRoute />;
 }
