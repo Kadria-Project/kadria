@@ -7,7 +7,7 @@ import KadriaSidebar, { type WorkspaceMode } from './KadriaSidebar';
 import KadriaTopbar from './KadriaTopbar';
 import KadriaMobileNavigation from './KadriaMobileNavigation';
 import NavigationPerformanceProbe from './NavigationPerformanceProbe';
-import DevelopmentWebVitals from './DevelopmentWebVitals';
+import DevelopmentWebVitals, { webVitalsEnabled } from './DevelopmentWebVitals';
 import WorkspaceCanvas from './WorkspaceCanvas';
 import { WorkspaceNavigationProvider, type DashboardMode, type WorkspaceNavigation, useWorkspaceNavigation } from './WorkspaceNavigationContext';
 import { shouldRestoreDashboardNavigation } from './workspace-route-guards';
@@ -26,7 +26,7 @@ function isDashboardMode(value: unknown): value is DashboardMode {
 }
 
 export default function KadriaAppShell({ children }: { children: ReactNode }) {
-  return <WorkspaceNavigationProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout></WorkspaceNavigationProvider>;
+  return <WorkspaceNavigationProvider>{webVitalsEnabled() && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout></WorkspaceNavigationProvider>;
 }
 
 function KadriaAppShellLayout({ children }: { children: ReactNode }) {
