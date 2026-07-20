@@ -71,6 +71,7 @@ export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLab
       review: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       sms: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       pdf: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      editProject: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
     },
     navigation: { onBack, activeTab, onTabChange },
   };

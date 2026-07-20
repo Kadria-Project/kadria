@@ -12,6 +12,7 @@ import { ReviewActionAdapter } from '@/src/components/projects/workspace/actions
 import { SmsActionAdapter } from '@/src/components/projects/workspace/actions/SmsActionAdapter'
 import { PdfActionAdapter } from '@/src/components/projects/workspace/actions/PdfActionAdapter'
 import type { WorkspaceActionCapability, WorkspaceActionResult } from '@/src/components/projects/workspace/actions/workspace-action'
+import { ProjectEditDialog } from '@/src/components/projects/workspace/dialogs/ProjectEditDialog'
 
 type BriefResponse = { success: boolean; brief?: ProjectWorkspaceBrief; error?: string }
 type SectionResponse<K extends ProjectWorkspaceSectionKey> = { success: boolean; data?: ProjectWorkspaceSectionData[K]; error?: string }
@@ -27,6 +28,7 @@ export default function ProjectWorkspaceRoute() {
   const [activeTab, setActiveTab] = useState<ProjectWorkspaceTab>('activity')
   const [sections, setSections] = useState<ProjectWorkspaceSections>(initialSections)
   const [actionStates, setActionStates] = useState<Record<string, WorkspaceActionCapability['state']>>({ portal: 'available', payment: 'available', review: 'available', sms: 'available', pdf: 'available' })
+  const [editInstance, setEditInstance] = useState(0)
 
   const loadBrief = useCallback(async (signal?: AbortSignal) => {
     if (!id) return
@@ -75,9 +77,10 @@ export default function ProjectWorkspaceRoute() {
     review: { state: actionStates.review, execute: () => executeAction('review', new ReviewActionAdapter(id), 'history') },
     sms: { state: actionStates.sms, execute: () => executeAction('sms', new SmsActionAdapter(id), 'history') },
     pdf: { state: actionStates.pdf, execute: () => executeAction('pdf', new PdfActionAdapter(id)) },
+    editProject: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => { setEditInstance((value) => value + 1); return { success: true } } },
   }), [actionStates, executeAction, id, openTab])
 
   if (briefState === 'error') return <section className="rounded-xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-amber-900">La lecture du dossier est momentanément indisponible.</p><button type="button" onClick={() => void loadBrief()} className="mt-3 text-sm font-semibold text-emerald-800">Réessayer</button></section>
   if (briefState === 'loading' || !brief) return <section aria-busy="true" className="rounded-xl border border-slate-200 bg-white p-5"><div className="h-5 w-36 animate-pulse rounded bg-slate-200" /><div className="mt-4 h-16 animate-pulse rounded bg-slate-100" /></section>
-  return <ProjectWorkspace brief={brief} sections={sections} capabilities={capabilities} navigation={{ onBack: () => router.push('/dashboard-v2'), activeTab, onTabChange: openTab }} />
+  return <><ProjectWorkspace brief={brief} sections={sections} capabilities={capabilities} navigation={{ onBack: () => router.push('/dashboard-v2'), activeTab, onTabChange: openTab }} />{editInstance > 0 && <ProjectEditDialog key={editInstance} projectId={id} onClose={() => setEditInstance(0)} onSaved={async () => { await loadBrief(); if (sections.client.status === 'ready') await loadSection('client'); if (sections.history.status === 'ready') await loadSection('history') }} />}</>
 }

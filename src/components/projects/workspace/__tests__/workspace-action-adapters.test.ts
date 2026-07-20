@@ -27,11 +27,18 @@ test('workspace capabilities expose execution state without PII and refresh only
   assert.match(types, /review: WorkspaceActionCapability/)
   assert.match(types, /sms: WorkspaceActionCapability/)
   assert.match(types, /pdf: WorkspaceActionCapability/)
+  assert.match(types, /editProject: WorkspaceActionCapability/)
   assert.doesNotMatch(types, /clientEmail|clientPhone|siteAddress/)
   assert.match(route, /PaymentActionAdapter\(id\), 'commercial'/)
   assert.match(route, /ReviewActionAdapter\(id\), 'history'/)
   assert.match(route, /SmsActionAdapter\(id\), 'history'/)
   assert.doesNotMatch(route, /loadBrief\(\).*executeAction/)
+  assert.match(route, /setEditInstance/)
+  assert.match(route, /<ProjectEditDialog/)
+  assert.match(route, /if \(sections\.client\.status === 'ready'\) await loadSection\('client'\)/)
+  assert.match(route, /if \(sections\.history\.status === 'ready'\) await loadSection\('history'\)/)
+  assert.doesNotMatch(route, /loadSection\('documents'\).*onSaved|loadSection\('commercial'\).*onSaved|loadSection\('engagement'\).*onSaved/)
+  assert.doesNotMatch(route, /ProjectWorkspaceLegacyAdapter/)
 })
 
 test('action routes use narrow reads and do not return a complete project', async () => {

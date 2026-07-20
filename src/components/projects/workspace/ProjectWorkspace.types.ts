@@ -32,6 +32,7 @@ export type ProjectWorkspaceCapabilities = {
   review: WorkspaceActionCapability;
   sms: WorkspaceActionCapability;
   pdf: WorkspaceActionCapability;
+  editProject: WorkspaceActionCapability;
 };
 
 export type ProjectWorkspaceNavigation = {

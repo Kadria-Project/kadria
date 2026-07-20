@@ -13,6 +13,7 @@
     "test:clients-action-center": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/lib/clients/__tests__/clients-action-center.test.ts src/lib/clients/__tests__/clients-action-filter.test.ts",
     "test:client-detail": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/lib/clients/__tests__/client-detail-aggregation.test.ts src/lib/clients/__tests__/client-timeline.test.ts",
     "test:performance-actions": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/lib/performance/__tests__/performance-actions.test.ts",
+    "test:project-edit": "vitest run src/components/projects/workspace/__tests__/project-edit.vitest.tsx src/components/projects/workspace/__tests__/project-edit-adapter.vitest.ts src/lib/projects/__tests__/project-workspace-edit-route.vitest.ts",
     "clients:dry-run": "node --experimental-strip-types --import ./scripts/clients/register-typescript-runtime.mjs scripts/clients/dry-run-project-client-resolution.ts"
   },
   "dependencies": {
@@ -48,6 +49,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -55,7 +59,9 @@
     "@types/three": "^0.184.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
