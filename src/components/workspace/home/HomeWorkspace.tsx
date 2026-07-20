@@ -1,125 +1,48 @@
-'use client';
+'use client'
 
-import type { Route } from 'next';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import type { Project } from '@/src/components/ArtisanDashboard';
-import type { OperationsCenterResult, OperationsWorkbenchItem } from '@/src/lib/recommendations';
-import { ArrowRight, CheckCircle2, Eye } from 'lucide-react';
-import { briefSituationSentence, selectBriefSituations, understandingFor, workspaceDestinationFor } from './home-brief';
+import Link from 'next/link'
+import { AlertTriangle, ArrowRight, CheckCircle2, CircleAlert, RefreshCw, Sparkles } from 'lucide-react'
+import type { HomeBrief, HomeBriefItem } from './home-contract'
 
 type Props = {
-  firstName: string | null;
-  todayLabel: string;
-  projects: Project[];
-  todayEvents: unknown[];
-  operationsCenter: OperationsCenterResult | null;
-  onOpenProject: (projectId: string) => void;
-  onOpenAgenda: () => void;
-};
-
-function isToday(value: unknown) {
-  if (typeof value !== 'string') return false;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+  firstName: string | null
+  brief: HomeBrief | null
+  loadState: 'loading' | 'ready' | 'error'
+  onRefresh: () => Promise<void>
 }
 
-function isSince(value: unknown, since: string | null) {
-  if (typeof value !== 'string' || !since) return false;
-  const date = new Date(value);
-  const reference = new Date(since);
-  return !Number.isNaN(date.getTime()) && !Number.isNaN(reference.getTime()) && date.getTime() >= reference.getTime() && date.getTime() <= Date.now();
+const proofStyles = {
+  high: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  medium: 'border-amber-200 bg-amber-50 text-amber-800',
+  low: 'border-slate-200 bg-slate-50 text-slate-700',
+} as const
+
+function BriefCard({ item, primary = false }: { item: HomeBriefItem; primary?: boolean }) {
+  return <article className={`rounded-2xl border p-5 shadow-sm ${primary ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 bg-white'}`}>
+    <div className="flex items-start justify-between gap-3">
+      <div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Fait observé</p><h3 className="mt-1 text-base font-semibold text-[#0b2232]">{item.observation}</h3></div>
+      <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${proofStyles[item.proofLevel]}`}>{item.proofLabel}</span>
+    </div>
+    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Pourquoi c’est important</p><p className="mt-1 text-sm leading-6 text-slate-700">{item.whyItMatters}</p></div>
+      <div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Conséquence possible</p><p className="mt-1 text-sm leading-6 text-slate-700">{item.consequence}</p></div>
+    </div>
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4"><p className="text-sm font-medium text-[#0b2232]">Je vous recommande : {item.recommendation}</p><Link href={item.action.href} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 focus-visible:outline-offset-2">{item.action.label}<ArrowRight className="size-4" aria-hidden="true" /></Link></div>
+  </article>
 }
 
-function clientLabel(project: Project) {
-  return [project.clientFirstName, project.clientName].filter(Boolean).join(' ') || project.projectType || 'Dossier';
+function FocusCard({ label, item, icon: Icon }: { label: string; item: HomeBriefItem; icon: typeof Sparkles }) {
+  return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2 text-slate-600"><Icon className="size-4 text-emerald-700" aria-hidden="true" /><p className="text-[11px] font-bold uppercase tracking-[0.14em]">{label}</p></div><h3 className="mt-3 text-lg font-semibold text-[#0b2232]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-700">{item.whyItMatters}</p><p className="mt-3 text-sm font-medium text-slate-900">{item.recommendation}</p><Link href={item.action.href} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600">{item.action.label}<ArrowRight className="size-4" aria-hidden="true" /></Link></section>
 }
 
-function getTodayEvents(events: unknown[]) {
-  return events.flatMap((event) => {
-    if (!event || typeof event !== 'object') return [];
-    const value = event as Record<string, unknown>;
-    const date = typeof value.date === 'string' ? value.date : typeof value.start === 'string' ? value.start : null;
-    if (!date || !isToday(date)) return [];
-    return [event];
-  });
-}
+export default function HomeWorkspace({ firstName, brief, loadState, onRefresh }: Props) {
+  if (loadState === 'loading' || !brief && loadState !== 'error') return <div className="mx-auto max-w-[960px] space-y-5 pb-4" aria-busy="true"><div className="h-40 animate-pulse rounded-2xl bg-slate-200" /><div className="h-64 animate-pulse rounded-2xl bg-slate-200" /></div>
+  if (!brief) return <div className="mx-auto max-w-[760px] rounded-2xl border border-slate-200 bg-white p-6"><CircleAlert className="size-5 text-amber-600" aria-hidden="true" /><h2 className="mt-3 text-xl font-semibold text-[#0b2232]">Le brief est momentanément indisponible.</h2><p className="mt-2 text-sm leading-6 text-slate-600">Vos données n’ont pas été modifiées. Réessayez pour actualiser la lecture de votre journée.</p><button type="button" onClick={() => void onRefresh()} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950"><RefreshCw className="size-4" />Réessayer</button></div>
 
-function significantActivity(projects: Project[], situationProjectIds: Set<string>, lastVisitAt: string | null) {
-  return projects
-    .filter((project) => isSince(project.acceptedAt, lastVisitAt) && !situationProjectIds.has(project.id))
-    .slice(0, 2);
-}
-
-function SituationCard({ item, primary }: { item: OperationsWorkbenchItem; primary?: boolean }) {
-  const router = useRouter();
-  const actionLabel = item.primaryActionLabel || 'Préparer la suite';
-  const destination = workspaceDestinationFor(item);
-
-  if (!destination) return null;
-
-  return (
-    <article className={`rounded-2xl border p-5 ${primary ? 'border-emerald-200 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}>
-      <div className="flex items-start gap-3">
-        <span className={`mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full ${primary ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}><Eye className="size-4" aria-hidden="true" /></span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Situation</p>
-          <h3 className="mt-1 text-base font-semibold text-[#0b2232]">{item.description}</h3>
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Compréhension</p>
-          <p className="mt-1 text-sm leading-6 text-slate-700">{understandingFor(item.sourceType, item.title)}</p>
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Pourquoi cela compte</p>
-          <p className="mt-1 text-sm leading-6 text-slate-700">{item.reason}</p>
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Je vous recommande</p>
-          <p className="mt-1 text-sm font-medium text-[#0b2232]">{actionLabel}.</p>
-          <button type="button" onClick={() => router.push(destination as Route)} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-bold text-emerald-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2">
-            {actionLabel}<ArrowRight className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-export default function HomeWorkspace({ firstName, todayLabel, projects, todayEvents: rawEvents, operationsCenter, onOpenProject, onOpenAgenda }: Props) {
-  const [lastVisitAt] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      return window.localStorage.getItem('kadria-home-last-visit');
-    } catch {
-      return null;
-    }
-  });
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('kadria-home-last-visit', new Date().toISOString());
-    } catch {}
-  }, []);
-  const todayEvents = getTodayEvents(rawEvents);
-  const situations = selectBriefSituations<OperationsWorkbenchItem>(operationsCenter
-    ? [...operationsCenter.workbench.waitingForApproval, ...operationsCenter.workbench.todayActions, ...operationsCenter.workbench.needsAttention]
-    : []);
-  const activity = significantActivity(projects, new Set(situations.map((item) => item.projectId).filter((id): id is string => Boolean(id))), lastVisitAt);
-
-  if (!operationsCenter) {
-    return <div className="mx-auto max-w-[920px] pb-4"><section className="rounded-2xl border border-slate-200 bg-white px-6 py-6"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{todayLabel}</p><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2><p className="mt-2 text-sm leading-6 text-slate-600">Je termine de vérifier vos dossiers et votre journée.</p></section></div>;
-  }
-
-  const calm = situations.length === 0;
-
-  return <div className="mx-auto max-w-[920px] space-y-5 pb-4">
-    <section id="workspace-section-briefing" className="rounded-2xl border border-slate-200 bg-white px-6 py-5">
-      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{todayLabel}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h2>
-      <p className="mt-2 max-w-2xl text-base leading-7 text-slate-700">{briefSituationSentence(situations.length)}</p>
-      {calm && <p className="mt-2 text-sm leading-6 text-slate-500">Je continue simplement de surveiller votre activité.</p>}
-    </section>
-
-    {situations.length > 0 && <section id="workspace-section-decisions"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Les situations à traiter</p><div className="mt-3 space-y-3">{situations.map((item, index) => <SituationCard key={item.id} item={item} primary={index === 0} />)}</div></section>}
-
-    {calm && <section className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4"><div className="flex gap-3"><CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" aria-hidden="true" /><div><p className="font-semibold text-emerald-950">Votre journée est sous contrôle.</p><p className="mt-1 text-sm leading-6 text-emerald-900/80">Aucun dossier ne nécessite de décision immédiate.</p></div></div></section>}
-
-    {(activity.length > 0 || (calm && todayEvents.length > 0)) && <section className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">{activity.length > 0 ? 'Depuis votre dernière visite' : 'Aujourd’hui'}</p>{activity.length > 0 && <div className="mt-3 space-y-3">{activity.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project.id)} className="flex w-full items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3 text-left transition-colors hover:bg-slate-100"><span><span className="block text-sm font-semibold text-slate-800">Bonne nouvelle : devis accepté</span><span className="mt-0.5 block text-xs text-slate-500">{clientLabel(project)}. Le chantier peut désormais être préparé.</span></span><ArrowRight className="size-4 shrink-0 text-emerald-700" aria-hidden="true" /></button>)}</div>}{calm && todayEvents.length > 0 && <button type="button" onClick={onOpenAgenda} className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500">{todayEvents.length} rendez-vous prévu{todayEvents.length > 1 ? 's' : ''} aujourd’hui <ArrowRight className="size-4" aria-hidden="true" /></button>}</section>}
-  </div>;
+  return <div className="mx-auto max-w-[960px] space-y-6 pb-4">
+    <section className="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Votre brief du jour</p><h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#0b2232]">Bonjour{firstName ? ` ${firstName}` : ''}.</h1><p className="mt-3 max-w-3xl text-base leading-7 text-slate-700">{brief.situation}</p></section>
+    {brief.attention.length > 0 ? <section><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Ce qui mérite votre attention</p><div className="mt-3 space-y-3">{brief.attention.map((item, index) => <BriefCard key={item.id} item={item} primary={index === 0} />)}</div></section> : <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-5"><div className="flex gap-3"><CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" aria-hidden="true" /><div><h2 className="font-semibold text-emerald-950">Votre journée est sous contrôle.</h2><p className="mt-1 text-sm leading-6 text-emerald-900/80">Aucune décision immédiate n’est identifiée à partir des données disponibles.</p></div></div></section>}
+    {(brief.opportunity || brief.risk) && <section className="grid gap-4 md:grid-cols-2">{brief.opportunity && <FocusCard label="Meilleure opportunité" item={brief.opportunity} icon={Sparkles} />}{brief.risk && <FocusCard label="Risque principal" item={brief.risk} icon={AlertTriangle} />}</section>}
+    <section className="rounded-2xl border border-slate-200 bg-white px-5 py-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Ce qui peut attendre</p><p className="mt-2 text-sm leading-6 text-slate-700">{brief.canWait}</p></section>
+  </div>
 }

@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
-import ArtisanDashboard from '@/src/components/ArtisanDashboard';
 import { getSession } from '@/src/lib/auth-utils';
-import { normalizePlan } from '@/src/lib/plans';
+import HomeWorkspaceRoute from './HomeWorkspaceRoute';
+
+export const dynamic = 'force-dynamic';
 
 const legacyViewPaths: Record<string, string> = {
   agenda: '/dashboard-v2/agenda',
@@ -23,5 +24,5 @@ export default async function DashboardV2Page({ searchParams }: { searchParams: 
   const target = legacyView ? legacyViewPaths[legacyView] : null;
   if (target) redirect(target);
 
-  return <ArtisanDashboard plan={normalizePlan(session.plan)} />;
+  return <HomeWorkspaceRoute firstName={session.firstName || null} />;
 }

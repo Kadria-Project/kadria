@@ -72,7 +72,6 @@ import { getProjectLifecycle, PROJECT_STATUS_OPTIONS } from '@/src/lib/project-l
 import { computeProgressRecommendations, type ProgressRecommendations } from '@/src/lib/progression-engine';
 import OperationsCenterSection, { OperationsWorkbenchSections } from '@/src/components/dashboard/OperationsCenterSection';
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
-import HomeWorkspace from '@/src/components/workspace/home/HomeWorkspace';
 import TrackingWorkspace from '@/src/components/workspace/tracking/TrackingWorkspace';
 import TasksWorkspace from '@/src/components/workspace/tasks/TasksWorkspace';
 import { useWorkspaceNavigation, type DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
@@ -3492,17 +3491,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
       ) : (
       <>
       {/* Vue "Valeur générée par Kadria" — vue par défaut */}
-      {showValueOverview && !isMobile && (
-        <HomeWorkspace
-          firstName={artisanFirstName || null}
-          todayLabel={todayLabel}
-          projects={allProjects}
-          todayEvents={todayEvents}
-          operationsCenter={operationsCenter}
-          onOpenProject={(projectId) => router.push(`/dashboard-v2/projet/${projectId}`)}
-          onOpenAgenda={() => setDashboardMode('calendar')}
-        />
-      )}
       {showCommercialWorkspace && !loading && !isMobile && (
         <TrackingWorkspace
           projects={allProjects}
