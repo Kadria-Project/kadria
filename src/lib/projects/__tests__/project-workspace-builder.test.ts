@@ -17,7 +17,7 @@ const input = (overrides: Record<string, unknown> = {}) => ({
 
 test('produces a compact decision for a sent quote without overclaiming the client intent', () => {
   const brief = buildProjectWorkspaceBrief(input())
-  assert.deepEqual(Object.keys(brief).sort(), ['capabilities', 'commercialSummary', 'dataQuality', 'decision', 'generatedAt', 'project', 'qualification'])
+  assert.deepEqual(Object.keys(brief).sort(), ['capabilities', 'commercialSummary', 'dataQuality', 'decision', 'evidence', 'generatedAt', 'nextEngagement', 'project', 'qualification', 'recentFacts'])
   assert.equal(brief.decision.evidenceLevel, 'moderate')
   assert.match(brief.decision.understanding, /pourrait attendre/)
   assert.match(brief.decision.uncertainty || '', /ne permet pas de conclure/)
@@ -25,6 +25,15 @@ test('produces a compact decision for a sent quote without overclaiming the clie
   assert.equal('quotes' in brief, false)
   assert.equal('activities' in brief, false)
   assert.equal('clientEmail' in brief.project, false)
+})
+
+test('keeps engagements, facts and evidence compact and cautious', () => {
+  const brief = buildProjectWorkspaceBrief(input({ project: { id: 'project-1', projectType: 'Rénovation', city: 'Rouen', completenessScore: 90, photosCount: 2 }, nextAppointment: { startsAt: '2026-07-25T10:00:00Z' }, activity: [{ id: 'a1', action: 'DEVIS_CREATED', occurredAt: '2026-07-19T10:00:00Z' }, { id: 'a2', action: 'TECHNICAL_LOG', occurredAt: '2026-07-18T10:00:00Z' }] }))
+  assert.equal(brief.nextEngagement.kind, 'appointment')
+  assert.equal(brief.nextEngagement.preparation.length <= 5, true)
+  assert.equal(brief.recentFacts.length, 1)
+  assert.equal(brief.evidence.photosCount, 2)
+  assert.match(brief.evidence.reservations.join(' '), /documents administratifs/)
 })
 
 test('exposes understanding labels without raw qualification values or PII', () => {

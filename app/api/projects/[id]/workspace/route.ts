@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { id } = await params
     const access = await authorizeProjectAccess({
       projectId: id,
-      select: 'id, status, client_name, client_first_name, project_type, trade, city, budget, desired_timeline, completeness_score, callback_date',
+      select: 'id, status, client_name, client_first_name, project_type, trade, city, budget, desired_timeline, completeness_score, callback_date, photos',
       allowAppointmentAccess: true,
     })
     if (!access) return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
@@ -50,17 +50,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         return data as Row | null
       }),
       optionalSource('Les faits d’activité récents', async () => {
-        const { data, error } = await supabaseAdmin.from(TABLES.activity).select('action, description, created_at').eq('project_id', access.projectId).order('created_at', { ascending: false }).limit(3)
+        const { data, error } = await supabaseAdmin.from(TABLES.activity).select('id, action, created_at').eq('project_id', access.projectId).order('created_at', { ascending: false }).limit(5)
         if (error) throw error
         return (data || []) as Row[]
       }),
     ])
     stage = 'build'
     const quote = quoteSource.value
-    const activity = (activitySource.value || []).map((row) => ({ label: value(row, 'description') || value(row, 'action') || 'Un fait d’activité a été enregistré.', occurredAt: value(row, 'created_at') || undefined, source: 'Activité' }))
+    const activity = (activitySource.value || []).map((row) => ({ id: value(row, 'id') || undefined, action: value(row, 'action') || undefined, occurredAt: value(row, 'created_at') || undefined, source: 'Activité' }))
     const reservations = [quoteSource.reservation, appointmentSource.reservation, activitySource.reservation].filter((item): item is string => Boolean(item))
     const brief = buildProjectWorkspaceBrief({
-      project: { id: access.projectId, status: value(access.project, 'status'), clientName: value(access.project, 'client_name'), clientFirstName: value(access.project, 'client_first_name'), projectType: value(access.project, 'project_type'), trade: value(access.project, 'trade'), city: value(access.project, 'city'), budget: value(access.project, 'budget'), desiredTimeline: value(access.project, 'desired_timeline'), completenessScore: Number(access.project.completeness_score), callbackDate: value(access.project, 'callback_date') },
+      project: { id: access.projectId, status: value(access.project, 'status'), clientName: value(access.project, 'client_name'), clientFirstName: value(access.project, 'client_first_name'), projectType: value(access.project, 'project_type'), trade: value(access.project, 'trade'), city: value(access.project, 'city'), budget: value(access.project, 'budget'), desiredTimeline: value(access.project, 'desired_timeline'), completenessScore: Number(access.project.completeness_score), callbackDate: value(access.project, 'callback_date'), photosCount: Array.isArray(access.project.photos) ? access.project.photos.length : 0 },
       latestQuote: quote ? { id: value(quote, 'id') || '', status: value(quote, 'statut'), sent: truthy(quote, 'sent'), accepted: truthy(quote, 'accepted'), sentAt: value(quote, 'quote_sent_at'), acceptedAt: value(quote, 'accepted_at'), createdAt: value(quote, 'created_at') } : null,
       nextAppointment: appointmentSource.value ? { startsAt: value(appointmentSource.value, 'start_time') } : null,
       activity,

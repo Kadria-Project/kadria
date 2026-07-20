@@ -2,10 +2,10 @@ import { validateProjectWorkspaceBrief, type ProjectWorkspaceBrief } from './pro
 
 export type ProjectWorkspaceBuilderInput = {
   now?: Date
-  project: { id: string; status?: string | null; clientName?: string | null; clientFirstName?: string | null; projectType?: string | null; trade?: string | null; city?: string | null; budget?: string | null; desiredTimeline?: string | null; completenessScore?: number | null; callbackDate?: string | null }
+  project: { id: string; status?: string | null; clientName?: string | null; clientFirstName?: string | null; projectType?: string | null; trade?: string | null; city?: string | null; budget?: string | null; desiredTimeline?: string | null; completenessScore?: number | null; callbackDate?: string | null; photosCount?: number | null }
   latestQuote?: { id: string; status?: string | null; sent?: boolean | null; accepted?: boolean | null; declined?: boolean | null; sentAt?: string | null; acceptedAt?: string | null; createdAt?: string | null } | null
   nextAppointment?: { startsAt?: string | null } | null
-  activity?: Array<{ label: string; occurredAt?: string; source?: string }>
+  activity?: Array<{ id?: string; action?: string; occurredAt?: string; source?: string }>
   capabilities: ProjectWorkspaceBrief['capabilities']
   reservations?: string[]
 }
@@ -54,6 +54,15 @@ export function buildProjectWorkspaceBrief(input: ProjectWorkspaceBuilderInput):
       : quote.sent || text(quote.status).toLowerCase().startsWith('envoy') || quote.sentAt
         ? { state: 'Devis envoyé', observedFacts: ['Le dernier devis est enregistré comme envoyé.', 'Aucune acceptation n’est enregistrée.'], understanding: 'Le dossier attend une décision client.', evidenceLevel: daysSince(quote.sentAt || quote.createdAt, now) !== null && daysSince(quote.sentAt || quote.createdAt, now)! >= 7 ? 'moderate' : 'weak', uncertainty: 'Une absence de réponse ou une ouverture ne prouve ni refus ni intention.', recommendation: daysSince(quote.sentAt || quote.createdAt, now)! >= 7 ? 'Préparer une relance adaptée.' : undefined, why: daysSince(quote.sentAt || quote.createdAt, now)! >= 7 ? 'Le délai observé justifie de vérifier la suite, sans interpréter le silence du client.' : undefined }
         : { state: 'Devis en préparation', observedFacts: ['Un devis est enregistré sans envoi confirmé.'], understanding: 'Aucune décision client ne peut encore être déduite.', evidenceLevel: 'strong' }
+  const relevantActions = new Set(['DEVIS_CREATED', 'DEVIS_FOLLOW_UP_SENT', 'STATUS_UPDATED', 'APPOINTMENT_CREATED', 'APPOINTMENT_BOOKED', 'APPOINTMENT_UPDATED', 'APPOINTMENT_RESCHEDULED'])
+  const recentFacts = (input.activity || []).filter((item) => relevantActions.has(text(item.action))).map((item, index) => ({ id: item.id || `${item.action}-${item.occurredAt || index}`, label: item.action?.startsWith('DEVIS') ? 'Un fait lié au devis a été enregistré.' : item.action?.startsWith('APPOINTMENT') ? 'Un rendez-vous a été enregistré ou modifié.' : 'Le statut du dossier a été mis à jour.', occurredAt: item.occurredAt || now.toISOString(), category: item.action?.startsWith('DEVIS') ? 'devis' : item.action?.startsWith('APPOINTMENT') ? 'engagement' : 'dossier', source: item.source })).slice(0, 5)
+  const sentDays = quote ? daysSince(quote.sentAt || quote.createdAt, now) : null
+  const nextEngagement: ProjectWorkspaceBrief['nextEngagement'] = input.nextAppointment?.startsAt
+    ? { kind: 'appointment', startsAt: input.nextAppointment.startsAt, label: 'Un prochain rendez-vous est prévu.', objective: 'Confirmer les éléments utiles avant la prochaine décision.', preparation: ['Relire les éléments confirmés.', 'Préparer les points de qualification restants.'], evidenceLevel: 'strong', uncertainty: 'L’objectif détaillé du rendez-vous n’est pas renseigné.', destination: `/dashboard-v2/projet/${project.id}?focus=planning` }
+    : quote && sentDays !== null && sentDays >= 7 ? { kind: 'quote_follow_up', label: 'Une relance du devis peut être préparée.', preparation: ['Relire les éléments confirmés.', 'Préparer une question de suivi adaptée.'], evidenceLevel: 'moderate', uncertainty: 'Le silence du client ne permet pas d’expliquer la situation.', destination: `/dashboard-v2/projet/${project.id}?focus=quote_followup` }
+    : { kind: 'none', label: 'Aucun prochain engagement clairement identifié.', preparation: [], evidenceLevel: 'weak', uncertainty: 'Aucune étape prévue n’est enregistrée dans les sources consultées.' }
+  const photosCount = Math.max(0, Number(project.photosCount) || 0)
+  const evidence: ProjectWorkspaceBrief['evidence'] = { photosCount, documentsCount: 0, quoteAvailable: Boolean(quote), recentEvidence: [...(quote ? [{ id: quote.id, kind: 'quote' as const, label: 'Le dernier devis est disponible.', occurredAt: quote.sentAt || quote.createdAt || undefined }] : []), ...(photosCount ? [{ id: 'project-photos', kind: 'photo' as const, label: `${photosCount} photo${photosCount > 1 ? 's sont disponibles.' : ' est disponible.'}` }] : [])], reservations: ['Les documents administratifs ne sont pas interrogés dans ce premier aperçu.'] }
 
   let decision: ProjectWorkspaceBrief['decision']
   if (!project.id || (!text(project.projectType) && !text(project.trade) && !clientLabelFor(project))) {
@@ -105,7 +114,7 @@ export function buildProjectWorkspaceBrief(input: ProjectWorkspaceBuilderInput):
       primaryAction: { id: 'view_appointment', label: 'Voir le prochain engagement', destination: `/dashboard-v2/projet/${project.id}?focus=planning` },
     }
   } else {
-    const facts = input.activity?.slice(0, 3) || []
+    const facts = (input.activity || []).slice(0, 3).map((item) => ({ label: item.action?.startsWith('DEVIS') ? 'Un fait lié au devis a été enregistré.' : item.action?.startsWith('APPOINTMENT') ? 'Un rendez-vous a été enregistré ou modifié.' : 'Un fait significatif a été enregistré.', occurredAt: item.occurredAt, source: item.source }))
     decision = {
       observedFacts: facts.length ? facts : [{ label: 'Aucun fait déterminant récent n’est disponible pour ce dossier.', source: 'Dossier' }],
       understanding: normalizedStatus === 'À rappeler' || text(project.callbackDate) ? 'Le dossier attend une reprise de contact ou sa confirmation.' : 'Les informations disponibles ne permettent pas de recommander une action forte.',
@@ -116,5 +125,5 @@ export function buildProjectWorkspaceBrief(input: ProjectWorkspaceBuilderInput):
   }
 
   if (base.dataQuality.level !== 'insufficient' && reservations.length) base.dataQuality.level = 'partial'
-  return validateProjectWorkspaceBrief({ ...base, decision, qualification, commercialSummary })
+  return validateProjectWorkspaceBrief({ ...base, decision, qualification, commercialSummary, nextEngagement, recentFacts, evidence })
 }
