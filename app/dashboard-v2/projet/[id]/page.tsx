@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { createProjectDepositCheckout, getProject, updateProject, updateProjectResponsible, getProjectActivity, sendProjectCompletionSms } from '@/src/lib/api';
+import { createProjectDepositCheckout, getProject, updateProject, getProjectActivity, sendProjectCompletionSms } from '@/src/lib/api';
 import AuthGuard from '@/src/components/AuthGuard';
 import ProjectResponsibleCard, { type ProjectResponsibleOption } from '@/src/components/projects/ProjectResponsibleCard';
 import { Button } from '@/src/components/ui/button';
@@ -45,7 +45,7 @@ import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWor
 import ProjectWorkspaceRoute from './ProjectWorkspaceRoute';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
 import { deriveProjectSituations } from '@/src/lib/projects/project-situations';
-import { updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
+import { assignProjectOwnerCommand, scheduleProjectAppointmentCommand, updateProjectContactCommand, updateProjectStatusCommand } from '@/src/lib/projects/commands/project-command-client';
 import { PROJECT_WORKSPACE_REFRESH_EVENT } from '@/src/lib/projects/project-workspace-contract';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -1337,11 +1337,14 @@ function ProjectDetail() {
     const previousResponsibleUser = project.responsibleUser || null;
     setResponsibleSaving(true);
     try {
-      const data = await updateProjectResponsible(project.id, nextResponsibleUserId);
+      const data = await assignProjectOwnerCommand(project.id, { memberId: nextResponsibleUserId });
+      if (!data.ok) throw new Error(data.error?.message || 'Impossible de mettre a jour le responsable du dossier.');
+      const responsibleUser = data.data?.assignedUserLabel ? { displayName: data.data.assignedUserLabel } : null;
+      data.responsibleUser = responsibleUser;
       setProject((current: any) => current ? {
         ...current,
-        responsibleUserId: data.responsibleUserId ?? null,
-        responsibleUser: data.responsibleUser ?? null,
+        responsibleUserId: data.data?.assignedUserId ?? null,
+        responsibleUser,
       } : current);
       setResponsibleToast({
         type: 'success',
@@ -1942,19 +1945,13 @@ function ProjectDetail() {
     if (!range) return;
     setAppointmentError(null);
     try {
-      const res = await fetch('/api/appointments/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: project.id,
-          start: range.start,
-          end: range.end,
-          assignedUserId: appointmentCanAssign ? (appointmentAssignedUserId || undefined) : undefined,
-        }),
+      const data = await scheduleProjectAppointmentCommand(project.id, {
+        start: range.start,
+        end: range.end,
+        ...(appointmentCanAssign && appointmentAssignedUserId ? { assignedUserId: appointmentAssignedUserId } : {}),
       });
-      const data = await res.json();
-      if (!data.success) {
-        if (data.error === 'slot_unavailable') {
+      if (!data.ok || !data.data) {
+        if (data.error?.message === 'Creneau indisponible entre-temps.') {
           setAppointmentError('Créneau indisponible entre-temps.');
           setBookingSlot(null);
           await refreshAppointmentSlots();
@@ -1963,9 +1960,10 @@ function ProjectDetail() {
         }
         return;
       }
-      setAppointment(data.appointment);
+      setAppointment(data.data);
       setShowAppointmentModal(false);
       setBookingSlot(null);
+      window.dispatchEvent(new Event(PROJECT_WORKSPACE_REFRESH_EVENT));
     } catch {
       setAppointmentError("Google Agenda n'a pas pu être mis à jour. Réessayez.");
     }

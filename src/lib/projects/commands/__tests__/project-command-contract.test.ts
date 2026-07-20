@@ -6,6 +6,8 @@ register('../../../../components/workspace/__tests__/typescript-resolution.loade
 
 const {
   parseProjectContactCommandInput,
+  parseAssignProjectOwnerCommandInput,
+  parseScheduleProjectAppointmentCommandInput,
   parseProjectStatusCommandInput,
   projectCommandError,
 } = (await import('../project-command-contract')) as typeof import('../project-command-contract')
@@ -31,4 +33,15 @@ test('project command errors are minimal and do not carry mutation data', () => 
     ok: false,
     error: { code: 'FORBIDDEN', message: 'AccÃ¨s refusÃ©.', requestId: 'abc12345' },
   })
+})
+
+test('responsible command accepts only the selected member identifier', () => {
+  assert.deepEqual(parseAssignProjectOwnerCommandInput({ memberId: null }), { memberId: null })
+  assert.throws(() => parseAssignProjectOwnerCommandInput({ memberId: '', tenantId: 'forged' }))
+})
+
+test('appointment command rejects incoherent dates and forged authorization fields', () => {
+  assert.deepEqual(parseScheduleProjectAppointmentCommandInput({ start: '2026-07-21T09:00:00.000Z', end: '2026-07-21T10:00:00.000Z' }), { start: '2026-07-21T09:00:00.000Z', end: '2026-07-21T10:00:00.000Z' })
+  assert.throws(() => parseScheduleProjectAppointmentCommandInput({ start: '2026-07-21T10:00:00.000Z', end: '2026-07-21T09:00:00.000Z' }))
+  assert.throws(() => parseScheduleProjectAppointmentCommandInput({ start: '2026-07-21T09:00:00.000Z', end: '2026-07-21T10:00:00.000Z', tenantId: 'forged' }))
 })

@@ -27,6 +27,14 @@ export type ProjectContactCommandInput = {
   longitude?: number | null
 }
 
+export type AssignProjectOwnerCommandInput = { memberId: string | null }
+
+export type ScheduleProjectAppointmentCommandInput = {
+  start: string
+  end: string
+  assignedUserId?: string
+}
+
 const contactKeys = new Set([
   'clientFirstName', 'clientName', 'clientPhone', 'clientEmail', 'siteAddress',
   'city', 'postalCode', 'latitude', 'longitude',
@@ -82,6 +90,21 @@ export function parseProjectContactCommandInput(value: unknown): ProjectContactC
     ...(latitude !== undefined ? { latitude } : {}),
     ...(longitude !== undefined ? { longitude } : {}),
   }
+}
+
+export function parseAssignProjectOwnerCommandInput(value: unknown): AssignProjectOwnerCommandInput {
+  if (!isRecord(value) || Object.keys(value).some((key) => key !== 'memberId')) throw new Error('Payload de responsable invalide.')
+  if (value.memberId !== null && (typeof value.memberId !== 'string' || !value.memberId.trim())) throw new Error('Le responsable est invalide.')
+  return { memberId: typeof value.memberId === 'string' ? value.memberId.trim() : null }
+}
+
+export function parseScheduleProjectAppointmentCommandInput(value: unknown): ScheduleProjectAppointmentCommandInput {
+  if (!isRecord(value) || Object.keys(value).some((key) => !['start', 'end', 'assignedUserId'].includes(key))) throw new Error('Payload de rendez-vous invalide.')
+  const start = boundedString(value.start, 'Le debut', 64)
+  const end = boundedString(value.end, 'La fin', 64)
+  if (Number.isNaN(new Date(start).getTime()) || Number.isNaN(new Date(end).getTime()) || new Date(end) <= new Date(start)) throw new Error('La fin du rendez-vous doit etre apres son debut.')
+  if (value.assignedUserId !== undefined && (typeof value.assignedUserId !== 'string' || !value.assignedUserId.trim())) throw new Error('Le collaborateur est invalide.')
+  return { start, end, ...(typeof value.assignedUserId === 'string' ? { assignedUserId: value.assignedUserId.trim() } : {}) }
 }
 
 export function projectCommandError(code: string, message: string, requestId?: string): ProjectCommandResult {
