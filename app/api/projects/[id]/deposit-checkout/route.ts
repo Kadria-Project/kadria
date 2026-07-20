@@ -39,7 +39,7 @@ export async function POST(
       projectId: id,
       requiredPermission: 'projects.update',
       allowAppointmentAccess: true,
-      select: '*',
+      select: 'id, status, devis_amount, project_number, trade',
     })
 
     if (!authResult) {

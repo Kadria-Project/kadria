@@ -6,6 +6,12 @@ import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWor
 import type { ProjectWorkspaceSections, ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types'
 import type { ProjectWorkspaceSectionData, ProjectWorkspaceSectionKey } from '@/src/lib/projects/project-workspace-section-contract'
 import { PROJECT_WORKSPACE_REFRESH_EVENT, type ProjectWorkspaceBrief } from '@/src/lib/projects/project-workspace-contract'
+import { PortalActionAdapter } from '@/src/components/projects/workspace/actions/PortalActionAdapter'
+import { PaymentActionAdapter } from '@/src/components/projects/workspace/actions/PaymentActionAdapter'
+import { ReviewActionAdapter } from '@/src/components/projects/workspace/actions/ReviewActionAdapter'
+import { SmsActionAdapter } from '@/src/components/projects/workspace/actions/SmsActionAdapter'
+import { PdfActionAdapter } from '@/src/components/projects/workspace/actions/PdfActionAdapter'
+import type { WorkspaceActionCapability, WorkspaceActionResult } from '@/src/components/projects/workspace/actions/workspace-action'
 
 type BriefResponse = { success: boolean; brief?: ProjectWorkspaceBrief; error?: string }
 type SectionResponse<K extends ProjectWorkspaceSectionKey> = { success: boolean; data?: ProjectWorkspaceSectionData[K]; error?: string }
@@ -20,6 +26,7 @@ export default function ProjectWorkspaceRoute() {
   const [briefState, setBriefState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [activeTab, setActiveTab] = useState<ProjectWorkspaceTab>('activity')
   const [sections, setSections] = useState<ProjectWorkspaceSections>(initialSections)
+  const [actionStates, setActionStates] = useState<Record<string, WorkspaceActionCapability['state']>>({ portal: 'available', payment: 'available', review: 'available', sms: 'available', pdf: 'available' })
 
   const loadBrief = useCallback(async (signal?: AbortSignal) => {
     if (!id) return
@@ -49,13 +56,26 @@ export default function ProjectWorkspaceRoute() {
   const openTab = useCallback((tab: ProjectWorkspaceTab) => { setActiveTab(tab); void loadSection(sectionForTab[tab]) }, [loadSection])
   useEffect(() => { const controller = new AbortController(); void loadBrief(controller.signal); return () => controller.abort() }, [loadBrief])
   useEffect(() => { const refreshBrief = () => { void loadBrief() }; window.addEventListener(PROJECT_WORKSPACE_REFRESH_EVENT, refreshBrief); return () => window.removeEventListener(PROJECT_WORKSPACE_REFRESH_EVENT, refreshBrief) }, [loadBrief])
+  const executeAction = useCallback(async (key: 'portal' | 'payment' | 'review' | 'sms' | 'pdf', adapter: { execute: () => Promise<WorkspaceActionResult> }, refresh?: ProjectWorkspaceSectionKey) => {
+    setActionStates((current) => ({ ...current, [key]: 'loading' }))
+    const result = await adapter.execute().catch(() => ({ success: false, error: 'Erreur serveur.' } as WorkspaceActionResult))
+    if (!result.success) { setActionStates((current) => ({ ...current, [key]: result.status === 403 ? 'forbidden' : 'error' })); return result }
+    setActionStates((current) => ({ ...current, [key]: 'available' }))
+    if (refresh) await loadSection(refresh)
+    return result
+  }, [loadSection])
   const capabilities = useMemo(() => ({
     openClientContact: { available: true, state: 'ready' as const, action: () => openTab('qualification') },
     openDocuments: { available: true, state: 'ready' as const, action: () => openTab('documents') },
     openCommercial: { available: true, state: 'ready' as const, action: () => openTab('commercial') },
     openHistory: { available: true, state: 'ready' as const, action: () => openTab('activity') },
     openEngagement: { available: true, state: 'ready' as const, action: () => openTab('planning') },
-  }), [openTab])
+    portal: { state: actionStates.portal, execute: () => executeAction('portal', new PortalActionAdapter(id)) },
+    payment: { state: actionStates.payment, execute: () => executeAction('payment', new PaymentActionAdapter(id), 'commercial') },
+    review: { state: actionStates.review, execute: () => executeAction('review', new ReviewActionAdapter(id), 'history') },
+    sms: { state: actionStates.sms, execute: () => executeAction('sms', new SmsActionAdapter(id), 'history') },
+    pdf: { state: actionStates.pdf, execute: () => executeAction('pdf', new PdfActionAdapter(id)) },
+  }), [actionStates, executeAction, id, openTab])
 
   if (briefState === 'error') return <section className="rounded-xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-amber-900">La lecture du dossier est momentanément indisponible.</p><button type="button" onClick={() => void loadBrief()} className="mt-3 text-sm font-semibold text-emerald-800">Réessayer</button></section>
   if (briefState === 'loading' || !brief) return <section aria-busy="true" className="rounded-xl border border-slate-200 bg-white p-5"><div className="h-5 w-36 animate-pulse rounded bg-slate-200" /><div className="mt-4 h-16 animate-pulse rounded bg-slate-100" /></section>

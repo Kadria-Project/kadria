@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireFeatureAccess } from '@/src/lib/auth-utils'
 import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
-import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { PermissionError } from '@/src/lib/team/access'
 
 export async function GET(
@@ -20,7 +19,7 @@ export async function GET(
     result = await authorizeProjectAccess({
       projectId: id,
       allowAppointmentAccess: true,
-      select: '*',
+      select: 'id, client_name, client_first_name, client_phone, client_email, site_address, city, trade, project_type, budget, desired_timeline, maturity, devis_amount, completeness_score, created_at, ai_summary, source, status',
     })
   } catch (error) {
     const permissionError = error as PermissionError
@@ -36,9 +35,9 @@ export async function GET(
     return NextResponse.json({ success: false, error: 'Projet introuvable' }, { status: 404 })
   }
 
-  const project = mapSupabaseProject(result.project)
+  const project = result.project as Record<string, unknown>
 
-  const score = project.completenessScore || 0
+  const score = Number(project.completeness_score) || 0
   let verdictLabel = 'À qualifier'
   let verdictColor = '#71717a'
   if (score >= 80) {
@@ -52,12 +51,12 @@ export async function GET(
     verdictColor = '#f87171'
   }
 
-  const createdDate = project.createdAt ? new Date(project.createdAt) : new Date()
+  const createdDate = typeof project.created_at === 'string' ? new Date(project.created_at) : new Date()
   const formattedDate = createdDate.toLocaleDateString('fr-FR', {
     day: '2-digit', month: 'long', year: 'numeric',
   })
 
-  const clientName = `${project.clientFirstName || ''} ${project.clientName || ''}`.trim() || 'Client'
+  const clientName = `${String(project.client_first_name || '')} ${String(project.client_name || '')}`.trim() || 'Client'
 
   const html = `
 <!DOCTYPE html>
@@ -192,15 +191,15 @@ export async function GET(
   <div class="grid">
     <div class="field">
       <div class="field-label">Téléphone</div>
-      <div class="field-value">${project.clientPhone || '—'}</div>
+      <div class="field-value">${project.client_phone || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Email</div>
-      <div class="field-value">${project.clientEmail || '—'}</div>
+      <div class="field-value">${project.client_email || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Adresse du chantier</div>
-      <div class="field-value">${project.siteAddress || '—'}</div>
+      <div class="field-value">${project.site_address || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Ville</div>
@@ -212,7 +211,7 @@ export async function GET(
   <div class="grid">
     <div class="field">
       <div class="field-label">Type de projet</div>
-      <div class="field-value">${project.projectType || '—'}</div>
+      <div class="field-value">${project.project_type || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Budget</div>
@@ -220,7 +219,7 @@ export async function GET(
     </div>
     <div class="field">
       <div class="field-label">Délai souhaité</div>
-      <div class="field-value">${project.desiredTimeline || '—'}</div>
+      <div class="field-value">${project.desired_timeline || '—'}</div>
     </div>
     <div class="field">
       <div class="field-label">Maturité</div>
@@ -228,7 +227,7 @@ export async function GET(
     </div>
     <div class="field">
       <div class="field-label">Montant du devis</div>
-      <div class="field-value">${project.devisAmount ? project.devisAmount + ' €' : '—'}</div>
+      <div class="field-value">${project.devis_amount ? project.devis_amount + ' €' : '—'}</div>
     </div>
   </div>
 
@@ -239,7 +238,7 @@ export async function GET(
       <span class="verdict-badge">${verdictLabel}</span>
     </div>
   </div>
-  ${project.aiSummary ? `<div class="quote">${project.aiSummary}</div>` : ''}
+  ${project.ai_summary ? `<div class="quote">${project.ai_summary}</div>` : ''}
   <div class="indicators">
     <div class="indicator">
       <div>Budget</div>
@@ -247,15 +246,15 @@ export async function GET(
     </div>
     <div class="indicator">
       <div>Délai</div>
-      <div style="font-weight:700;margin-top:4px;">${project.desiredTimeline ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${project.desired_timeline ? '✓' : '—'}</div>
     </div>
     <div class="indicator">
       <div>Contact</div>
-      <div style="font-weight:700;margin-top:4px;">${(project.clientPhone || project.clientEmail) ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${(project.client_phone || project.client_email) ? '✓' : '—'}</div>
     </div>
     <div class="indicator">
       <div>Adresse</div>
-      <div style="font-weight:700;margin-top:4px;">${project.siteAddress ? '✓' : '—'}</div>
+      <div style="font-weight:700;margin-top:4px;">${project.site_address ? '✓' : '—'}</div>
     </div>
   </div>
 

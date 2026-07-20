@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { TABLES } from '@/src/lib/airtable'
 import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
-import { mapSupabaseProject } from '@/src/lib/supabase/mapping'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { sendOvhSms } from '@/src/lib/sms/ovh-sms'
 import { getBaseUrl } from '@/src/lib/base-url'
@@ -35,7 +34,7 @@ export async function POST(
       projectId: id,
       requiredPermission: 'projects.update',
       allowAppointmentAccess: true,
-      select: '*',
+      select: 'id, client_phone',
     })
 
     if (!authResult) {
@@ -90,7 +89,7 @@ export async function POST(
       .from(TABLES.projects)
       .update(updatePayload)
       .eq('id', authResult.projectId)
-      .select('*')
+      .select('id, sms_status, sms_sent_at')
       .single()
 
     if (updateError) {
@@ -109,7 +108,8 @@ export async function POST(
       success: smsResult.success,
       error: smsResult.success ? null : (smsResult.error || 'Erreur inconnue'),
       message: smsResult.success ? 'SMS de complément envoyé.' : "Échec de l'envoi du SMS de complément.",
-      project: mapSupabaseProject(updatedProject),
+      smsStatus: updatedProject.sms_status,
+      sentAt: updatedProject.sms_sent_at,
     }, { status: smsResult.success ? 200 : 502 })
   } catch (error) {
     const permissionError = error as PermissionError

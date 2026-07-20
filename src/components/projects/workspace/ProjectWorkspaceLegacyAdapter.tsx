@@ -15,8 +15,6 @@ type LegacyProjectWorkspaceAdapterProps = {
   onViewDevis?: () => void;
   onCommercial?: () => void;
   onPlanAppointment?: () => void;
-  onExportPdf?: () => void;
-  onOpenClientPortal?: () => void;
   activeTab: ProjectWorkspaceTab;
   onTabChange: (tab: ProjectWorkspaceTab) => void;
   decisionSlot?: ReactNode;
@@ -43,8 +41,12 @@ type LegacyProjectWorkspaceAdapterProps = {
   onMarkLost?: () => void;
 };
 
-/** Temporary boundary for the un-migrated desktop controller. It never passes its legacy payload to the compact workspace. */
-export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLabel, latestDevis, onBack, onCall, onWrite, onViewDevis, onCommercial, onPlanAppointment, onExportPdf, onOpenClientPortal, activeTab, onTabChange, decisionSlot }: LegacyProjectWorkspaceAdapterProps) {
+/**
+ * Compatibility boundary kept for old callers only. The compact route no longer mounts it.
+ * Remaining migration work: legacy desktop-only editing dialogs, appointment creation and
+ * commercial pipeline mutations; none of these are read or executed by the compact workspace.
+ */
+export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLabel, latestDevis, onBack, onCall, onWrite, onViewDevis, onCommercial, onPlanAppointment, activeTab, onTabChange, decisionSlot }: LegacyProjectWorkspaceAdapterProps) {
   if (decisionSlot) return <>{decisionSlot}</>;
   const props: ProjectWorkspaceProps = {
     brief: {
@@ -64,8 +66,11 @@ export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLab
       openCommercial: onCommercial || onViewDevis ? { available: true, state: 'ready', action: onCommercial || onViewDevis } : undefined,
       openHistory: { available: false, state: 'unavailable' },
       openEngagement: onPlanAppointment ? { available: true, state: 'ready', action: onPlanAppointment } : undefined,
-      openClientPortal: onOpenClientPortal ? { available: true, state: 'ready', action: onOpenClientPortal } : undefined,
-      managePdf: onExportPdf ? { available: true, state: 'ready', action: onExportPdf } : undefined,
+      portal: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      payment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      review: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      sms: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      pdf: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
     },
     navigation: { onBack, activeTab, onTabChange },
   };

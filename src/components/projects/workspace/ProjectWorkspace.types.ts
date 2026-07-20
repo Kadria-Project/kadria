@@ -1,5 +1,6 @@
 import type { ProjectWorkspaceBrief as WorkspaceBriefDto } from '@/src/lib/projects/project-workspace-contract';
 import type { ProjectWorkspaceSectionData, ProjectWorkspaceSectionKey } from '@/src/lib/projects/project-workspace-section-contract';
+import type { WorkspaceActionCapability } from './actions/workspace-action';
 
 export type ProjectWorkspaceTab = 'activity' | 'commercial' | 'qualification' | 'planning' | 'documents';
 export type ProjectWorkspaceBrief = WorkspaceBriefDto;
@@ -26,11 +27,11 @@ export type ProjectWorkspaceCapabilities = {
   openCommercial?: ProjectWorkspaceCapability;
   openHistory?: ProjectWorkspaceCapability;
   openEngagement?: ProjectWorkspaceCapability;
-  openClientPortal?: ProjectWorkspaceCapability;
-  managePayment?: ProjectWorkspaceCapability;
-  manageReview?: ProjectWorkspaceCapability;
-  sendSms?: ProjectWorkspaceCapability;
-  managePdf?: ProjectWorkspaceCapability;
+  portal: WorkspaceActionCapability;
+  payment: WorkspaceActionCapability;
+  review: WorkspaceActionCapability;
+  sms: WorkspaceActionCapability;
+  pdf: WorkspaceActionCapability;
 };
 
 export type ProjectWorkspaceNavigation = {

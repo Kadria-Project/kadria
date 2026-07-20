@@ -808,7 +808,7 @@ function getFollowUpRecommendedMoment(primarySlot?: string, secondarySlot?: stri
 export default function ProjectDetailPage() {
   return (
     <AuthGuard>
-      <ProjectDetail />
+      <ProjectWorkspaceRoute />
     </AuthGuard>
   );
 }
