@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { useRouter } from 'next/navigation';
 import { Search, SearchX, FolderOpen } from 'lucide-react';
-import { formatCurrency, type Project } from '@/src/components/ArtisanDashboard';
+import { formatCurrency, type Project } from '@/src/lib/dashboard/project-presentation';
 
 type Router = ReturnType<typeof useRouter>;
 

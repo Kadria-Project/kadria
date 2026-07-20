@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import type { useRouter } from 'next/navigation';
 import { Search, SearchX, Send, Bell, FolderOpen, FileX } from 'lucide-react';
 import { isQuoteExpired } from '@/src/lib/quote-followup';
-import { formatCurrency, type Project } from '@/src/components/ArtisanDashboard';
+import { formatCurrency, type Project } from '@/src/lib/dashboard/project-presentation';
 
 type Router = ReturnType<typeof useRouter>;
 

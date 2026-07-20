@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { formatCurrency, normalizeValueSource, type Project } from '@/src/components/ArtisanDashboard';
+import { formatCurrency, type Project } from '@/src/lib/dashboard/project-presentation';
+import { normalizeValueSource } from '@/src/lib/dashboard/value-source';
 
 const cardBase: React.CSSProperties = {
   background: 'var(--bg-elevated)',

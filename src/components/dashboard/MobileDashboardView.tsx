@@ -32,14 +32,9 @@ import {
   type Task,
 } from '@/src/lib/commercial-actions';
 import { normalizeDepositStatus } from '@/src/lib/deposit';
-import {
-  opportunityScore,
-  formatCurrency,
-  calcDelta,
-  type Project,
-  type FilterState,
-  type DashboardMode,
-} from '@/src/components/ArtisanDashboard';
+import { calcDelta, formatCurrency, opportunityScore, type Project } from '@/src/lib/dashboard/project-presentation';
+import type { DashboardFilterState } from './dashboard-filter-types';
+import type { DashboardMode } from '@/src/components/workspace/WorkspaceNavigationContext';
 import type { ProgressRecommendations } from '@/src/lib/progression-engine';
 import type { OperationsCenterResult } from '@/src/lib/recommendations';
 import OperationsCenterSection from '@/src/components/dashboard/OperationsCenterSection';
@@ -80,7 +75,7 @@ export interface MobileDashboardViewProps {
   dashboardMode?: DashboardMode;
   setDashboardMode: (mode: DashboardMode) => void;
   setProgressCenterExpanded?: (value: boolean) => void;
-  setFilters: (filters: FilterState | ((prev: FilterState) => FilterState)) => void;
+  setFilters: (filters: DashboardFilterState | ((prev: DashboardFilterState) => DashboardFilterState)) => void;
   applyQuickFilter: (value: QuickFilter) => void;
   goToCommercialFilter: (value: 'calls' | 'quotes' | 'followups') => void;
   resetFilters: () => void;

@@ -4,7 +4,17 @@ import { useMemo, useState } from 'react';
 import type { useRouter } from 'next/navigation';
 import { Search, SearchX, PhoneCall, FolderOpen, Send, Bell } from 'lucide-react';
 import { getProjectRiskStatus } from '@/src/lib/commercial-actions';
-import { formatCurrency, BADGE_STYLES, type Project } from '@/src/components/ArtisanDashboard';
+import { formatCurrency, type Project } from '@/src/lib/dashboard/project-presentation';
+
+const BADGE_STYLES: Record<string, { bg: string; color: string }> = {
+  Nouveau: { bg: 'var(--badge-new-bg)', color: 'var(--badge-new-text)' },
+  'À rappeler': { bg: 'var(--badge-callback-bg)', color: 'var(--badge-callback-text)' },
+  Qualifié: { bg: 'var(--badge-qualified-bg)', color: 'var(--badge-qualified-text)' },
+  'Devis envoyé': { bg: 'var(--badge-quote-bg)', color: 'var(--badge-quote-text)' },
+  'En cours': { bg: 'var(--badge-progress-bg)', color: 'var(--badge-progress-text)' },
+  Gagné: { bg: 'var(--badge-won-bg)', color: 'var(--badge-won-text)' },
+  Perdu: { bg: 'var(--badge-lost-bg)', color: 'var(--badge-lost-text)' },
+}
 
 type Router = ReturnType<typeof useRouter>;
 
