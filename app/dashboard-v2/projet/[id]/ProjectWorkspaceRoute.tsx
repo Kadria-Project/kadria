@@ -13,6 +13,10 @@ import { SmsActionAdapter } from '@/src/components/projects/workspace/actions/Sm
 import { PdfActionAdapter } from '@/src/components/projects/workspace/actions/PdfActionAdapter'
 import type { WorkspaceActionCapability, WorkspaceActionResult } from '@/src/components/projects/workspace/actions/workspace-action'
 import { ProjectEditDialog } from '@/src/components/projects/workspace/dialogs/ProjectEditDialog'
+import { AppointmentCreateDialog } from '@/src/components/projects/workspace/dialogs/AppointmentCreateDialog'
+import { AppointmentEditDialog } from '@/src/components/projects/workspace/dialogs/AppointmentEditDialog'
+import { AppointmentCancelDialog } from '@/src/components/projects/workspace/dialogs/AppointmentCancelDialog'
+import { AppointmentAssignDialog } from '@/src/components/projects/workspace/dialogs/AppointmentAssignDialog'
 
 type BriefResponse = { success: boolean; brief?: ProjectWorkspaceBrief; error?: string }
 type SectionResponse<K extends ProjectWorkspaceSectionKey> = { success: boolean; data?: ProjectWorkspaceSectionData[K]; error?: string }
@@ -29,6 +33,10 @@ export default function ProjectWorkspaceRoute() {
   const [sections, setSections] = useState<ProjectWorkspaceSections>(initialSections)
   const [actionStates, setActionStates] = useState<Record<string, WorkspaceActionCapability['state']>>({ portal: 'available', payment: 'available', review: 'available', sms: 'available', pdf: 'available' })
   const [editInstance, setEditInstance] = useState(0)
+  const [appointmentInstance, setAppointmentInstance] = useState(0)
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null)
+  const [assigningAppointmentId, setAssigningAppointmentId] = useState<string | null>(null)
 
   const loadBrief = useCallback(async (signal?: AbortSignal) => {
     if (!id) return
@@ -78,9 +86,16 @@ export default function ProjectWorkspaceRoute() {
     sms: { state: actionStates.sms, execute: () => executeAction('sms', new SmsActionAdapter(id), 'history') },
     pdf: { state: actionStates.pdf, execute: () => executeAction('pdf', new PdfActionAdapter(id)) },
     editProject: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => { setEditInstance((value) => value + 1); return { success: true } } },
-  }), [actionStates, executeAction, id, openTab])
+    createAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => { setAppointmentInstance((value) => value + 1); return { success: true } } },
+    editAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => ({ success: true }) },
+    cancelAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => ({ success: true }) },
+    assignAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => ({ success: true }) },
+    openAgenda: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => { router.push('/dashboard-v2/agenda'); return { success: true } } },
+  }), [actionStates, executeAction, id, openTab, router])
 
   if (briefState === 'error') return <section className="rounded-xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-amber-900">La lecture du dossier est momentanément indisponible.</p><button type="button" onClick={() => void loadBrief()} className="mt-3 text-sm font-semibold text-emerald-800">Réessayer</button></section>
   if (briefState === 'loading' || !brief) return <section aria-busy="true" className="rounded-xl border border-slate-200 bg-white p-5"><div className="h-5 w-36 animate-pulse rounded bg-slate-200" /><div className="mt-4 h-16 animate-pulse rounded bg-slate-100" /></section>
-  return <><ProjectWorkspace brief={brief} sections={sections} capabilities={capabilities} navigation={{ onBack: () => router.push('/dashboard-v2'), activeTab, onTabChange: openTab }} />{editInstance > 0 && <ProjectEditDialog key={editInstance} projectId={id} onClose={() => setEditInstance(0)} onSaved={async () => { await loadBrief(); if (sections.client.status === 'ready') await loadSection('client'); if (sections.history.status === 'ready') await loadSection('history') }} />}</>
+  const refreshAppointments = async () => { await loadSection('engagement'); await loadBrief(); if (sections.history.status === 'ready') await loadSection('history') }
+  const selectedAppointment = sections.engagement.status === 'ready' ? sections.engagement.data.appointments.find((appointment) => appointment.id === (cancellingAppointmentId || assigningAppointmentId)) || null : null
+  return <><ProjectWorkspace brief={brief} sections={sections} capabilities={capabilities} navigation={{ onBack: () => router.push('/dashboard-v2'), activeTab, onTabChange: openTab }} onEditAppointment={setEditingAppointmentId} onCancelAppointment={setCancellingAppointmentId} onAssignAppointment={setAssigningAppointmentId} />{editInstance > 0 && <ProjectEditDialog key={editInstance} projectId={id} onClose={() => setEditInstance(0)} onSaved={async () => { await loadBrief(); if (sections.client.status === 'ready') await loadSection('client'); if (sections.history.status === 'ready') await loadSection('history') }} />}{appointmentInstance > 0 && <AppointmentCreateDialog key={appointmentInstance} projectId={id} onClose={() => setAppointmentInstance(0)} onSaved={refreshAppointments} />}{editingAppointmentId && <AppointmentEditDialog projectId={id} appointmentId={editingAppointmentId} onClose={() => setEditingAppointmentId(null)} onSaved={refreshAppointments} />}{cancellingAppointmentId && <AppointmentCancelDialog projectId={id} appointmentId={cancellingAppointmentId} label={selectedAppointment?.label || 'ce rendez-vous'} onClose={() => setCancellingAppointmentId(null)} onSaved={refreshAppointments} />}{assigningAppointmentId && <AppointmentAssignDialog projectId={id} appointmentId={assigningAppointmentId} assignedUserId={selectedAppointment?.assigneeId || null} onClose={() => setAssigningAppointmentId(null)} onSaved={refreshAppointments} />}</>
 }

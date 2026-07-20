@@ -1,0 +1,6 @@
+import { NextResponse } from 'next/server'
+import { canAssignAppointments, listAssignableAppointmentMembers } from '@/src/lib/appointments/access'
+import { authorizeProjectAccess } from '@/src/lib/project-responsibility'
+import { PermissionError } from '@/src/lib/team/access'
+export const dynamic = 'force-dynamic'
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) { try { const { id } = await params; const access = await authorizeProjectAccess({ projectId: id, select: 'id', allowAppointmentAccess: true }); if (!access) return NextResponse.json({ success: false, error: 'Projet introuvable.' }, { status: 404 }); if (!access.tenantContext || !canAssignAppointments(access.tenantContext)) return NextResponse.json({ success: false, error: 'Accès refusé.' }, { status: 403 }); const options = (await listAssignableAppointmentMembers(access.tenantContext.tenantId)).map((member) => ({ id: member.userId, label: [member.firstName, member.lastName].filter(Boolean).join(' ').trim() || member.email })); return NextResponse.json({ success: true, options }); } catch (error) { return error instanceof PermissionError ? NextResponse.json({ success: false, error: error.message }, { status: error.status }) : NextResponse.json({ success: false, error: 'Responsables indisponibles.' }, { status: 500 }) } }

@@ -34,6 +34,34 @@ async function syncGoogleAppointment(artisanId: string, googleEventId: string, m
   return response.ok
 }
 
+function matchesWorkspaceProject(value: unknown, projectId: string | null) {
+  return !projectId || String(value || '') === projectId
+}
+
+const workspacePatchFields = new Set(['title', 'start', 'end', 'location', 'description', 'projectId', 'requestId'])
+
+export function validateWorkspaceAppointmentPatch(body: Record<string, unknown>) {
+  if (typeof body.projectId !== 'string' || !body.projectId.trim()) return
+  const unknown = Object.keys(body).find((key) => !workspacePatchFields.has(key))
+  if (unknown) throw new Error('Champ non autorisé.')
+}
+
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getSession()
+    if (!session) return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+    const tenantContext = await getCurrentTenantContext()
+    if (!tenantContext) return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
+    const { id } = await context.params
+    const projectId = request.nextUrl.searchParams.get('projectId')
+    const { data, error } = await supabaseAdmin.from('project_appointments').select('id, tenant_id, project_id, assigned_user_id, title, start_time, end_time, status, location, description').eq('id', id).maybeSingle()
+    if (error) { console.error('[APPOINTMENTS GET] Erreur lecture rendez-vous:', error.message); return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 }) }
+    if (!data || data.tenant_id !== tenantContext.tenantId || !matchesWorkspaceProject(data.project_id, projectId)) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
+    if (!canEditAppointment(tenantContext, data.assigned_user_id ? String(data.assigned_user_id) : null)) return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
+    return NextResponse.json({ success: true, appointment: { id: String(data.id), title: String(data.title || ''), start: String(data.start_time || ''), end: String(data.end_time || ''), status: String(data.status || ''), assignedUserId: data.assigned_user_id ? String(data.assigned_user_id) : null, location: String(data.location || ''), description: String(data.description || '') } })
+  } catch (error) { console.error('[APPOINTMENTS GET]', error instanceof Error ? error.message : String(error)); return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 }) }
+}
+
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession()
@@ -51,6 +79,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!body) {
       return NextResponse.json({ success: false, error: 'Corps de requête invalide' }, { status: 400 })
     }
+    try { validateWorkspaceAppointmentPatch(body as Record<string, unknown>) } catch (error) { return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Corps de requête invalide' }, { status: 400 }) }
 
     const requestId = normalizeAppointmentMutationRequestId((body as AppointmentMutationRequest).requestId)
     const confirmationAvailable = await tableHasColumn('project_appointments', 'confirmation_status')
@@ -68,6 +97,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!existing || existing.tenant_id !== tenantContext.tenantId) {
       return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     }
+    if (!matchesWorkspaceProject(existing.project_id, typeof body.projectId === 'string' ? body.projectId : null)) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     if (!canEditAppointment(tenantContext, existing.assigned_user_id ? String(existing.assigned_user_id) : null)) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }
@@ -93,11 +123,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ success: false, error: "Type d'événement invalide" }, { status: 400 })
     }
 
-    const nextProjectId = body.projectId === undefined
-      ? (existing.project_id ? String(existing.project_id) : null)
-      : body.projectId
-        ? String(body.projectId)
-        : null
+    const nextProjectId = existing.project_id ? String(existing.project_id) : null
 
     const project = nextProjectId
       ? await resolveProjectForAppointment({
@@ -199,7 +225,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       ...(body.description !== undefined ? { description: body.description ? String(body.description) : null } : {}),
       ...(body.status !== undefined ? { status: String(body.status || '') } : {}),
       ...(body.eventType !== undefined ? { event_type: body.eventType } : {}),
-      ...(body.projectId !== undefined ? { project_id: nextProjectId } : {}),
       ...(shouldUpdateAssignee ? { assigned_user_id: nextAssignedUserId, is_unassigned: false } : {}),
       ...(reconfirmationRequired ? {
         confirmation_status: 'pending',
@@ -351,7 +376,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession()
     if (!session) {
@@ -377,6 +402,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     if (!existing || existing.tenant_id !== tenantContext.tenantId) {
       return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     }
+    if (!matchesWorkspaceProject(existing.project_id, request.nextUrl.searchParams.get('projectId'))) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     if (!canDeleteAppointment(tenantContext, existing.assigned_user_id ? String(existing.assigned_user_id) : null)) {
       return NextResponse.json({ success: false, error: 'Accès refusé' }, { status: 403 })
     }

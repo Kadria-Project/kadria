@@ -14,7 +14,6 @@ type LegacyProjectWorkspaceAdapterProps = {
   onWrite?: () => void;
   onViewDevis?: () => void;
   onCommercial?: () => void;
-  onPlanAppointment?: () => void;
   activeTab: ProjectWorkspaceTab;
   onTabChange: (tab: ProjectWorkspaceTab) => void;
   decisionSlot?: ReactNode;
@@ -46,7 +45,7 @@ type LegacyProjectWorkspaceAdapterProps = {
  * Remaining migration work: legacy desktop-only editing dialogs, appointment creation and
  * commercial pipeline mutations; none of these are read or executed by the compact workspace.
  */
-export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLabel, latestDevis, onBack, onCall, onWrite, onViewDevis, onCommercial, onPlanAppointment, activeTab, onTabChange, decisionSlot }: LegacyProjectWorkspaceAdapterProps) {
+export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLabel, latestDevis, onBack, onCall, onWrite, onViewDevis, onCommercial, activeTab, onTabChange, decisionSlot }: LegacyProjectWorkspaceAdapterProps) {
   if (decisionSlot) return <>{decisionSlot}</>;
   const props: ProjectWorkspaceProps = {
     brief: {
@@ -57,7 +56,7 @@ export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLab
       commercialSummary: { state: latestDevis ? 'Devis disponible' : 'Aucun devis pertinent', observedFacts: [], understanding: 'Les détails commerciaux restent accessibles depuis leur espace dédié.', evidenceLevel: 'weak' },
       nextEngagement: { kind: 'none', label: 'Aucun engagement compact chargé', preparation: [], evidenceLevel: 'weak' },
       recentFacts: [], evidence: { photosCount: 0, documentsCount: 0, quoteAvailable: Boolean(latestDevis), recentEvidence: [], reservations: [] },
-      capabilities: { canEditProject: false, canManageQuote: Boolean(onViewDevis), canPlanAppointment: Boolean(onPlanAppointment) },
+      capabilities: { canEditProject: false, canManageQuote: Boolean(onViewDevis), canPlanAppointment: false },
     },
     sections: { client: { status: 'not_loaded' }, documents: { status: 'not_loaded' }, commercial: { status: 'not_loaded' }, history: { status: 'not_loaded' }, engagement: { status: 'not_loaded' } },
     capabilities: {
@@ -65,13 +64,18 @@ export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLab
       openDocuments: { available: false, state: 'unavailable' },
       openCommercial: onCommercial || onViewDevis ? { available: true, state: 'ready', action: onCommercial || onViewDevis } : undefined,
       openHistory: { available: false, state: 'unavailable' },
-      openEngagement: onPlanAppointment ? { available: true, state: 'ready', action: onPlanAppointment } : undefined,
+      openEngagement: { available: false, state: 'unavailable' },
       portal: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       payment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       review: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       sms: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       pdf: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       editProject: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      createAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      editAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      cancelAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      assignAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      openAgenda: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
     },
     navigation: { onBack, activeTab, onTabChange },
   };

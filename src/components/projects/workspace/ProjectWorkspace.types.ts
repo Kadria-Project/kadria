@@ -33,6 +33,11 @@ export type ProjectWorkspaceCapabilities = {
   sms: WorkspaceActionCapability;
   pdf: WorkspaceActionCapability;
   editProject: WorkspaceActionCapability;
+  createAppointment: WorkspaceActionCapability;
+  editAppointment: WorkspaceActionCapability;
+  cancelAppointment: WorkspaceActionCapability;
+  assignAppointment: WorkspaceActionCapability;
+  openAgenda: WorkspaceActionCapability;
 };
 
 export type ProjectWorkspaceNavigation = {

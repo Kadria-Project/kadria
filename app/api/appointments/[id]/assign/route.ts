@@ -42,6 +42,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!existing || existing.tenant_id !== tenantContext.tenantId) {
       return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
     }
+    if (typeof body.projectId === 'string' && String(existing.project_id || '') !== body.projectId) return NextResponse.json({ success: false, error: 'Rendez-vous introuvable' }, { status: 404 })
 
     const assignableMembers = await listAssignableAppointmentMembers(tenantContext.tenantId)
     const nextAssignedUserId = assignedUserId || tenantContext.userId

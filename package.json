@@ -14,6 +14,7 @@
     "test:client-detail": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/lib/clients/__tests__/client-detail-aggregation.test.ts src/lib/clients/__tests__/client-timeline.test.ts",
     "test:performance-actions": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/lib/performance/__tests__/performance-actions.test.ts",
     "test:project-edit": "vitest run src/components/projects/workspace/__tests__/project-edit.vitest.tsx src/components/projects/workspace/__tests__/project-edit-adapter.vitest.ts src/lib/projects/__tests__/project-workspace-edit-route.vitest.ts",
+    "test:project-appointments": "vitest run src/components/projects/workspace/__tests__/appointment-create.vitest.tsx src/components/projects/workspace/__tests__/appointment-adapter.vitest.ts src/components/projects/workspace/__tests__/appointment-workflows.vitest.tsx app/api/appointments/[id]/route.vitest.ts",
     "clients:dry-run": "node --experimental-strip-types --import ./scripts/clients/register-typescript-runtime.mjs scripts/clients/dry-run-project-client-resolution.ts"
   },
   "dependencies": {
