@@ -6,10 +6,12 @@ import test from 'node:test'
 const root = resolve(process.cwd())
 const route = join(root, 'app/dashboard-v2/projet/[id]/ProjectWorkspaceRoute.tsx')
 
-test('ProjectWorkspaceRoute requests only the compact workspace endpoint', async () => {
+test('ProjectWorkspaceRoute loads only the compact brief initially and owns independent section endpoints', async () => {
   const source = await readFile(route, 'utf8')
   assert.match(source, /\/api\/projects\/\$\{encodeURIComponent\(id\)\}\/workspace/)
-  assert.doesNotMatch(source, /\/api\/(projects\/(?!\$\{encodeURIComponent\(id\)\}\/workspace)|devis|appointments|events|performance|operations-center)/)
+  assert.match(source, /workspace\/\$\{key\}/)
+  assert.match(source, /const initialSections/)
+  assert.doesNotMatch(source, /Promise\.all\([\s\S]*client[\s\S]*documents[\s\S]*commercial[\s\S]*history[\s\S]*engagement/)
 })
 
 test('ProjectWorkspaceRoute has no server or legacy dependency', async () => {

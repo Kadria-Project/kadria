@@ -2,6 +2,7 @@
 
 import { ProjectWorkspace } from './ProjectWorkspace';
 import type { ProjectWorkspaceProps, ProjectWorkspaceTab } from './ProjectWorkspace.types';
+import type { ReactNode } from 'react';
 
 type LegacyProjectWorkspaceAdapterProps = {
   project: { id: string; projectType?: string | null; trade?: string | null; city?: string | null };
@@ -18,7 +19,7 @@ type LegacyProjectWorkspaceAdapterProps = {
   onOpenClientPortal?: () => void;
   activeTab: ProjectWorkspaceTab;
   onTabChange: (tab: ProjectWorkspaceTab) => void;
-  decisionSlot?: unknown;
+  decisionSlot?: ReactNode;
   lifecycle?: unknown;
   currentStyle?: unknown;
   recommendedAction?: unknown;
@@ -43,7 +44,8 @@ type LegacyProjectWorkspaceAdapterProps = {
 };
 
 /** Temporary boundary for the un-migrated desktop controller. It never passes its legacy payload to the compact workspace. */
-export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLabel, latestDevis, onBack, onCall, onWrite, onViewDevis, onCommercial, onPlanAppointment, onExportPdf, onOpenClientPortal, activeTab, onTabChange }: LegacyProjectWorkspaceAdapterProps) {
+export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLabel, latestDevis, onBack, onCall, onWrite, onViewDevis, onCommercial, onPlanAppointment, onExportPdf, onOpenClientPortal, activeTab, onTabChange, decisionSlot }: LegacyProjectWorkspaceAdapterProps) {
+  if (decisionSlot) return <>{decisionSlot}</>;
   const props: ProjectWorkspaceProps = {
     brief: {
       generatedAt: new Date().toISOString(), dataQuality: { level: 'partial', reservations: ['Le contrôleur desktop historique reste temporairement en place.'] },

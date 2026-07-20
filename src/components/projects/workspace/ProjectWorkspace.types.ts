@@ -1,9 +1,10 @@
 import type { ProjectWorkspaceBrief as WorkspaceBriefDto } from '@/src/lib/projects/project-workspace-contract';
+import type { ProjectWorkspaceSectionData, ProjectWorkspaceSectionKey } from '@/src/lib/projects/project-workspace-section-contract';
 
 export type ProjectWorkspaceTab = 'activity' | 'commercial' | 'qualification' | 'planning' | 'documents';
 export type ProjectWorkspaceBrief = WorkspaceBriefDto;
 
-export type ProjectWorkspaceSection<T = never> =
+export type ProjectWorkspaceSection<T = unknown> =
   | { status: 'not_loaded' }
   | { status: 'loading' }
   | { status: 'ready'; data: T }
@@ -11,13 +12,7 @@ export type ProjectWorkspaceSection<T = never> =
   | { status: 'error'; message?: string }
   | { status: 'unavailable'; message?: string };
 
-export type ProjectWorkspaceSections = {
-  client: ProjectWorkspaceSection;
-  documents: ProjectWorkspaceSection;
-  commercial: ProjectWorkspaceSection;
-  history: ProjectWorkspaceSection;
-  engagement: ProjectWorkspaceSection;
-};
+export type ProjectWorkspaceSections = { [K in ProjectWorkspaceSectionKey]: ProjectWorkspaceSection<ProjectWorkspaceSectionData[K]> };
 
 export type ProjectWorkspaceCapability = {
   available: boolean;
