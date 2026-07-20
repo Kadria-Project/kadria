@@ -28,7 +28,6 @@ export default function robots(): MetadataRoute.Robots {
           '/dashboard-v2',
           '/admin',
           '/parametres',
-          '/demo-dashboard',
           '/client',
           '/login',
           '/register',

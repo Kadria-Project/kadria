@@ -110,12 +110,7 @@ export interface MobileDashboardViewProps {
     completenessScore?: number;
     source?: string;
   }) => Promise<{ success: boolean; projectId?: string; recordId?: string; error?: string; project?: { id?: string } }> | { success: boolean; projectId?: string; recordId?: string; error?: string; project?: { id?: string } };
-  /**
-   * Override du bouton de notifications (bulle mobile). Par défaut, on
-   * réutilise le vrai NotificationBell branché sur l'API (`/api/notifications`).
-   * La démo injecte ici sa propre bulle branchée sur DemoModeContext, pour
-   * ne jamais déclencher d'appel réseau réel depuis un contexte non connecté.
-   */
+  /** Override optionnel du bouton de notifications mobile. */
   notificationBellSlot?: React.ReactNode;
 }
 

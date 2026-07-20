@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Coins,
-  Eye,
   LayoutDashboard,
   Mail,
   Menu,
@@ -23,7 +22,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Vue d'ensemble", href: '/admin', icon: LayoutDashboard },
   { label: 'Artisans', href: '/admin/clients', icon: Users },
   { label: 'Coûts & marge', href: '/admin/marges', icon: Coins },
-  { label: "Acces demo", href: '/admin/demo-access', icon: Eye },
   { label: 'Emails', href: '/admin/emails', icon: Mail },
 ];
 

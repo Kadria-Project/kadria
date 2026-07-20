@@ -3,61 +3,16 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ChatWidgetInline from '@/src/components/chat/ChatWidgetInline'
-import { getSiteVitrineDemoContext } from '@/src/lib/site-vitrine/demo-context'
 
 function ProjetContent() {
   const searchParams = useSearchParams()
   const artisanId = searchParams.get('artisan_id') ?? searchParams.get('artisanId') ?? ''
-  const demoMode = searchParams.get('demoMode') === 'true'
-
-  // Précontextualisation « site vitrine » — mode démo uniquement.
-  // Les paramètres source/site/need posés par les sites vitrines de
-  // démonstration personnalisent l'accueil de l'assistant (nom du site
-  // d'origine, besoin annoncé, couleur de marque). Tout paramètre inconnu
-  // est ignoré ; hors demoMode, rien ne change.
-  const vitrineContext = demoMode
-    ? getSiteVitrineDemoContext({
-        source: searchParams.get('source'),
-        site: searchParams.get('site'),
-        need: searchParams.get('need'),
-      })
-    : null
 
   return (
-    <main
-      className="min-h-dvh w-full overflow-x-hidden"
-      style={{
-        background: `
-          radial-gradient(circle at top left, rgba(34,197,94,0.12), transparent 28%),
-          radial-gradient(circle at 85% 20%, rgba(16,185,129,0.10), transparent 24%),
-          linear-gradient(180deg, #050505 0%, #09090b 48%, #050505 100%)
-        `,
-      }}
-    >
+    <main className="min-h-dvh w-full overflow-x-hidden bg-[#050505]">
       <div className="mx-auto flex min-h-dvh w-full max-w-[1120px] items-center px-4 py-6 sm:px-6 lg:px-8">
-        <div
-          className="w-full overflow-hidden rounded-[16px]"
-          style={{
-            background: '#09090b',
-            border: '1px solid #27272a',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.28)',
-            height: 'min(760px, calc(100dvh - 48px))',
-          }}
-        >
-          <ChatWidgetInline
-            artisanId={artisanId}
-            inline
-            fitParentHeight
-            demoMode={demoMode}
-            {...(vitrineContext
-              ? {
-                  artisanName: vitrineContext.siteName,
-                  welcomeNameOverride: vitrineContext.siteName,
-                  welcomeMessageOverride: vitrineContext.welcomeMessage,
-                  primaryColor: vitrineContext.brandColor,
-                }
-              : {})}
-          />
+        <div className="h-[min(760px,calc(100dvh-48px))] w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+          <ChatWidgetInline artisanId={artisanId} inline fitParentHeight />
         </div>
       </div>
     </main>
@@ -66,24 +21,7 @@ function ProjetContent() {
 
 export default function ProjetPage() {
   return (
-    <Suspense
-      fallback={
-        <div
-          style={{
-            background: '#09090b',
-            minHeight: '100dvh',
-            width: '100vw',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#a1a1aa',
-            fontFamily: 'system-ui, sans-serif',
-          }}
-        >
-          Chargement...
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="grid min-h-dvh place-items-center bg-zinc-950 text-zinc-400">Chargement...</div>}>
       <ProjetContent />
     </Suspense>
   )

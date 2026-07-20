@@ -184,15 +184,6 @@ export async function POST(request: Request) {
   try {
     const input = await request.json();
 
-    const isDemoMode = input.demoMode === true || request.headers.get('X-Demo-Mode') === 'true';
-    if (isDemoMode) {
-      return NextResponse.json({
-        success: true,
-        recordId: `demo_${Math.random().toString(36).slice(2, 10)}`,
-        demo: true,
-      });
-    }
-
     // Si une session artisan authentifiee existe (creation depuis le dashboard,
     // ex. "Nouveau dossier" mobile), l'artisan_id vient TOUJOURS de la session
     // et ne peut jamais etre force par le front-end — evite qu'un artisan cree

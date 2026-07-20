@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
-import { DEMO_ACCESS_COOKIE, verifyDemoAccessSessionToken } from '@/src/lib/demo-access'
 
 function getAuthSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
-
-  if (!secret) {
-    throw new Error('Missing AUTH_SECRET or NEXTAUTH_SECRET')
-  }
-
+  if (!secret) throw new Error('Missing AUTH_SECRET or NEXTAUTH_SECRET')
   return new TextEncoder().encode(secret)
 }
 
@@ -20,11 +15,9 @@ function canAccessPlatformFromToken(payload: { role?: unknown; statut?: unknown;
   const role = normalizeAccessValue(payload.role)
   const statut = normalizeAccessValue(payload.statut)
   const billingStatus = normalizeAccessValue(payload.billing_status ?? payload.billingStatus)
-
   if (role === 'admin') return true
   if (billingStatus === 'active' || billingStatus === 'trialing') return true
-  if (statut === 'actif' && !billingStatus) return true
-  return false
+  return statut === 'actif' && !billingStatus
 }
 
 type AccessTokenPayload = {
@@ -34,160 +27,34 @@ type AccessTokenPayload = {
   billingStatus?: unknown
 }
 
-type DemoAccessRow = {
-  id?: string
-  status?: string | null
-  expires_at?: string | null
-  revoked_at?: string | null
-  access_token_hash?: string | null
-}
-
-function maskTokenForLog(value: string | null | undefined) {
-  const normalized = String(value || '').trim()
-  if (!normalized) return 'empty'
-  if (normalized.length <= 8) return `${normalized.slice(0, 2)}…${normalized.slice(-2)}`
-  return `${normalized.slice(0, 6)}…${normalized.slice(-4)}`
-}
-
-function redirectToDemoAccess(request: NextRequest, reason: string) {
-  const url = new URL('/demo/acces', request.url)
-  url.searchParams.set('reason', reason)
-  const response = NextResponse.redirect(url)
-  response.cookies.delete(DEMO_ACCESS_COOKIE)
-  return response
-}
-
-function parseIsoDate(value?: string | null) {
-  if (!value) return null
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-async function fetchDemoAccessRow(requestId: string): Promise<DemoAccessRow | null> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
-
-  if (!supabaseUrl || !supabaseSecretKey || !requestId) {
-    return null
-  }
-
-  const params = new URLSearchParams({
-    select: 'id,status,expires_at,revoked_at,access_token_hash',
-  })
-  params.append('id', `eq.${requestId}`)
-
-  const response = await fetch(`${supabaseUrl}/rest/v1/demo_access_requests?${params.toString()}`, {
-    headers: {
-      apikey: supabaseSecretKey,
-      Authorization: `Bearer ${supabaseSecretKey}`,
-    },
-    cache: 'no-store',
-  })
-
-  if (!response.ok) {
-    console.error('[DEMO ACCESS MIDDLEWARE] fetchDemoAccessRow failed', {
-      requestId: maskTokenForLog(requestId),
-      status: response.status,
-    })
-    return null
-  }
-
-  const rows = (await response.json().catch(() => [])) as DemoAccessRow[]
-  return rows[0] || null
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/devis/')) {
-    return NextResponse.next()
+  if (
+    pathname === '/dashboard-demo' ||
+    pathname.startsWith('/demo-dashboard') ||
+    pathname === '/demo/acces' ||
+    pathname === '/demo-parametres' ||
+    pathname.startsWith('/demo-parametres') ||
+    pathname.startsWith('/site-demo')
+  ) {
+    return NextResponse.redirect(new URL('/demander-une-demo', request.url))
   }
 
-  if (pathname.startsWith('/api/devis/public/')) {
-    return NextResponse.next()
-  }
-
-  if (pathname.startsWith('/demo-dashboard') || pathname.startsWith('/demo-parametres')) {
-    // Local UX/UI audit escape hatch — fail-closed by construction.
-    // Requires ALL of: non-production runtime, and an explicit server-only
-    // env flag. This flag is never exposed to the browser (no NEXT_PUBLIC_
-    // prefix), so it cannot be set from client code, and it defaults to
-    // disabled, so a missing/misconfigured env keeps production protections
-    // exactly as they were before this change.
-    const isLocalUxAuditEnabled =
-      process.env.NODE_ENV !== 'production' &&
-      process.env.KADRIA_LOCAL_UX_AUDIT === 'true'
-
-    if (isLocalUxAuditEnabled) {
-      return NextResponse.next()
-    }
-
-    const token = request.cookies.get(DEMO_ACCESS_COOKIE)?.value
-
-    if (!token) {
-      return redirectToDemoAccess(request, 'demo_access_required')
-    }
-
-    const session = await verifyDemoAccessSessionToken(token)
-    if (!session?.requestId || !session.tokenHash) {
-      return redirectToDemoAccess(request, 'demo_access_required')
-    }
-
-    const row = await fetchDemoAccessRow(session.requestId)
-    if (!row?.id) {
-      console.warn('[DEMO ACCESS MIDDLEWARE] Signed demo session accepted without DB recheck', {
-        requestId: maskTokenForLog(session.requestId),
-      })
-      return NextResponse.next()
-    }
-
-    if (row.access_token_hash !== session.tokenHash) {
-      console.warn('[DEMO ACCESS MIDDLEWARE] Token hash mismatch', {
-        requestId: maskTokenForLog(session.requestId),
-      })
-      return redirectToDemoAccess(request, 'demo_access_invalid')
-    }
-
-    if (row.revoked_at || row.status === 'revoked') {
-      console.warn('[DEMO ACCESS MIDDLEWARE] Revoked demo access', {
-        requestId: maskTokenForLog(session.requestId),
-      })
-      return redirectToDemoAccess(request, 'demo_access_revoked')
-    }
-
-    const expiresAt = parseIsoDate(row.expires_at)
-    if (!expiresAt || expiresAt.getTime() <= Date.now() || row.status === 'expired') {
-      console.warn('[DEMO ACCESS MIDDLEWARE] Expired demo access', {
-        requestId: maskTokenForLog(session.requestId),
-      })
-      return redirectToDemoAccess(request, 'demo_access_expired')
-    }
-
-    if (row.status !== 'approved') {
-      console.warn('[DEMO ACCESS MIDDLEWARE] Unexpected demo access status', {
-        requestId: maskTokenForLog(session.requestId),
-        status: row.status || 'empty',
-      })
-      return redirectToDemoAccess(request, 'demo_access_required')
-    }
-
+  if (pathname.startsWith('/devis/') || pathname.startsWith('/api/devis/public/')) {
     return NextResponse.next()
   }
 
   if (pathname.startsWith('/admin')) {
     const token = request.cookies.get('kadria-auth')?.value
-
     if (!token) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
       return NextResponse.redirect(loginUrl)
     }
-
     try {
       const { payload } = await jwtVerify(token, getAuthSecret())
-      if (payload.role !== 'Admin') {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
+      if (payload.role !== 'Admin') return NextResponse.redirect(new URL('/login', request.url))
       return NextResponse.next()
     } catch {
       const loginUrl = new URL('/login', request.url)
@@ -200,13 +67,11 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/dashboard-v2') || pathname === '/onboarding') {
     const token = request.cookies.get('kadria-auth')?.value
-
     if (!token) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
       return NextResponse.redirect(loginUrl)
     }
-
     try {
       const { payload } = await jwtVerify(token, getAuthSecret())
       if (!canAccessPlatformFromToken(payload as AccessTokenPayload)) {
@@ -234,7 +99,7 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL('/dashboard-v2', request.url))
         }
       } catch {
-        // Token invalide, laisse passer
+        // Invalid tokens are handled by the login route.
       }
     }
   }
@@ -250,9 +115,13 @@ export const config = {
     '/login',
     '/admin',
     '/admin/:path*',
+    '/dashboard-demo',
+    '/demo/acces',
     '/demo-dashboard',
     '/demo-dashboard/:path*',
     '/demo-parametres',
     '/demo-parametres/:path*',
+    '/site-demo',
+    '/site-demo/:path*',
   ],
 }

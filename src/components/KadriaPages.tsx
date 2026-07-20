@@ -408,33 +408,6 @@ const LANDING_REASSURANCE_ITEMS = [
   },
 ] as const;
 
-const demoProjects = [
-  {
-    client: 'Marie Leroy',
-    project: 'Renovation salle de bain',
-    city: 'Lyon 3e',
-    budget: '8 000 - 12 000 €',
-    score: 92,
-    status: 'Nouveau',
-  },
-  {
-    client: 'Thomas Garnier',
-    project: 'Terrasse bois composite',
-    city: 'Bordeaux',
-    budget: '~ 8 000 €',
-    score: 88,
-    status: 'Qualifie',
-  },
-  {
-    client: 'Jean-Pierre Moreau',
-    project: 'Refection toiture',
-    city: 'Nantes',
-    budget: '15 000 - 20 000 €',
-    score: 95,
-    status: 'Urgent',
-  },
-];
-
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
@@ -723,52 +696,6 @@ function SecondaryLink({ href, children }: { href: string; children: React.React
     <Link href={href} className="inline-flex items-center justify-center rounded-lg border border-white/10 px-5 py-3 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-white/[0.03]">
       {children}
     </Link>
-  );
-}
-
-function LeadCard() {
-  return (
-    <div className="card-premium w-full max-w-[660px] overflow-hidden">
-      <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-        <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          <span className="h-2 w-2 rounded-full bg-primary" />
-          Dossier projet recu
-        </div>
-        <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          Score 92%
-        </span>
-      </div>
-
-      <div className="space-y-5 p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-sm font-bold text-primary">
-              ML
-            </div>
-            <div>
-              <p className="font-semibold">Marie Leroy</p>
-              <p className="text-sm text-muted-foreground">06 12 34 56 78 · marie.leroy@email.fr</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Nouveau</span>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <InfoTile icon={FileText} label="Projet" value="Renovation SDB" />
-          <InfoTile icon={MapPin} label="Ville" value="Lyon 3e" />
-          <InfoTile icon={Euro} label="Budget" value="8 000 - 12 000 €" />
-          <InfoTile icon={Clock} label="Delai" value="Sept. 2026" />
-        </div>
-
-        <div className="rounded-xl border border-white/7 bg-white/[0.02] p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Resume IA</p>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Renovation complete d une salle de bain de 7m2. Budget confortable, delai realiste.
-            Plomberie a verifier, dossier pret a chiffrer.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -4197,33 +4124,6 @@ export function PricingRoutePage() {
   );
 }
 
-export function DemoRoutePage() {
-  return (
-    <PageShell>
-      <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-32">
-        <RouteSectionTitle
-          eyebrow="Demo"
-          title="Voyez comment une demande devient un dossier chantier pret a traiter."
-          text="Voici une simulation du parcours de qualification, de la premiere demande au dossier commercial."
-        />
-        <div className="mt-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="card-premium space-y-4 p-6">
-            <ChatBubble role="Prospect">Bonjour, je voudrais refaire entierement ma salle de bain.</ChatBubble>
-            <ChatBubble role="Kadria">Bien sur. Quelle est la surface, votre budget et votre delai ideal ?</ChatBubble>
-            <ChatBubble role="Prospect">7 m2, entre 8 000 et 12 000 €, idealement en septembre.</ChatBubble>
-            <ChatBubble role="Kadria">Parfait, je cree votre dossier avec l adresse et les coordonnees.</ChatBubble>
-          </div>
-          <LeadCard />
-        </div>
-        <div className="mt-10 text-center">
-          <PrimaryLink href="/demo/acces">Demander un acces demo</PrimaryLink>
-        </div>
-      </main>
-      <ChatWidget artisanId="Artisan_demo" />
-    </PageShell>
-  );
-}
-
 function ChatBubble({ role, children }: { role: string; children: React.ReactNode }) {
   const isKadria = role === 'Kadria';
   return (
@@ -4231,50 +4131,6 @@ function ChatBubble({ role, children }: { role: string; children: React.ReactNod
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{role}</p>
       <p className="mt-2 text-sm leading-6">{children}</p>
     </div>
-  );
-}
-
-export function DemoDashboardRoutePage() {
-  return (
-    <PageShell>
-      <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-32">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Dashboard demo</p>
-            <h1 className="mt-4 text-4xl font-bold tracking-tight">Dossiers qualifies</h1>
-            <p className="mt-4 text-muted-foreground">Exemple de pipeline commercial genere par Kadria.</p>
-          </div>
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <div className="rounded-lg border border-white/10 bg-white/[0.03] py-3 pl-10 pr-4 text-sm text-muted-foreground">
-              Rechercher un dossier...
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <MetricCard icon={FileText} label="Dossiers" value="3" />
-          <MetricCard icon={Target} label="Score moyen" value="92 %" />
-          <MetricCard icon={TrendingUp} label="CA potentiel" value="40k €" />
-        </div>
-
-        <div className="mt-8 space-y-3">
-          {demoProjects.map((project) => (
-            <div key={project.client} className="card-premium grid gap-4 p-5 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-center">
-              <div>
-                <p className="font-semibold">{project.client}</p>
-                <p className="text-sm text-muted-foreground">{project.project}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">{project.city}</p>
-              <p className="text-sm font-semibold">{project.budget}</p>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                {project.score} %
-              </span>
-            </div>
-          ))}
-        </div>
-      </main>
-    </PageShell>
   );
 }
 

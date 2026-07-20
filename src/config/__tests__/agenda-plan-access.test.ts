@@ -20,7 +20,6 @@ test('Agenda entry points no longer wrap the planning in a commercial plan gate'
   const files = [
     'src/components/workspace/DashboardAgendaRoute.tsx',
     'src/components/ArtisanDashboard.tsx',
-    'src/components/DemoArtisanDashboard.tsx',
   ]
 
   for (const file of files) {

@@ -1554,12 +1554,6 @@ function Dashboard({ plan }: { plan: PlanKey }) {
     }
   };
 
-  const user = {
-    email: 'demo@kadria.local',
-    name: 'Artisan Demo',
-    role: 'User',
-  };
-
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [responsibleOptions, setResponsibleOptions] = useState<ProjectResponsibleOption[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);

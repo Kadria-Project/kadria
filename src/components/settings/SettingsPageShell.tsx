@@ -17,7 +17,6 @@ export type SettingsShellGroup = {
 export type SettingsSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 type SettingsPageShellProps = {
-  mode: 'production' | 'demo';
   activeSection: string;
   groups: SettingsShellGroup[];
   onSectionChange: (id: string) => void;
@@ -33,7 +32,6 @@ export function SettingsPageShell({
   activeSection,
   children,
   groups,
-  mode,
   onBack,
   onSave,
   onSectionChange,
@@ -93,23 +91,6 @@ export function SettingsPageShell({
             <span style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: '14px' }}>
               - {title}
             </span>
-            {mode === 'demo' && (
-              <span
-                style={{
-                  background: 'rgba(34,197,94,0.12)',
-                  color: 'var(--accent)',
-                  border: '1px solid rgba(34,197,94,0.18)',
-                  borderRadius: '999px',
-                  padding: '2px 8px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Demo
-              </span>
-            )}
           </div>
         </div>
         <button
