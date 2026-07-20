@@ -2,7 +2,7 @@ import { validateProjectWorkspaceBrief, type ProjectWorkspaceBrief } from './pro
 
 export type ProjectWorkspaceBuilderInput = {
   now?: Date
-  project: { id: string; status?: string | null; clientName?: string | null; clientFirstName?: string | null; projectType?: string | null; trade?: string | null; city?: string | null; completenessScore?: number | null; callbackDate?: string | null }
+  project: { id: string; status?: string | null; clientName?: string | null; clientFirstName?: string | null; projectType?: string | null; trade?: string | null; city?: string | null; budget?: string | null; desiredTimeline?: string | null; completenessScore?: number | null; callbackDate?: string | null }
   latestQuote?: { id: string; status?: string | null; sent?: boolean | null; accepted?: boolean | null; declined?: boolean | null; sentAt?: string | null; acceptedAt?: string | null; createdAt?: string | null } | null
   nextAppointment?: { startsAt?: string | null } | null
   activity?: Array<{ label: string; occurredAt?: string; source?: string }>
@@ -39,6 +39,21 @@ export function buildProjectWorkspaceBrief(input: ProjectWorkspaceBuilderInput):
     project: { id: project.id, title: titleFor(project), stage: normalizedStatus, clientLabel: clientLabelFor(project), trade: text(project.trade) || null, city: text(project.city) || null },
     capabilities: input.capabilities,
   }
+  const confirmed = [text(project.projectType) || text(project.trade) ? 'Le besoin principal' : null, text(project.city) ? 'La zone du chantier' : null, text(project.budget) ? 'Le budget indicatif' : null, text(project.desiredTimeline) ? 'Le délai souhaité' : null].filter((item): item is string => Boolean(item))
+  const missing = [text(project.projectType) || text(project.trade) ? null : 'Le besoin principal', text(project.city) ? null : 'La zone du chantier', text(project.budget) ? null : 'Le budget indicatif', text(project.desiredTimeline) ? null : 'Le délai souhaité'].filter((item): item is string => Boolean(item))
+  const qualification: ProjectWorkspaceBrief['qualification'] = {
+    confirmed, missing,
+    consequence: missing.length ? 'Ces informations peuvent modifier la préparation du dossier ; elles doivent être confirmées avant une décision engageante.' : 'Les éléments utiles à la compréhension initiale sont réunis.',
+    evidenceLevel: missing.length ? (confirmed.length ? 'moderate' : 'weak') : 'strong',
+    ...(missing.length && input.capabilities.canEditProject ? { action: { label: 'Compléter le dossier', destination: `/dashboard-v2/projet/${project.id}?focus=qualification` } } : {}),
+  }
+  const commercialSummary: ProjectWorkspaceBrief['commercialSummary'] = !quote
+    ? { state: 'Aucun devis pertinent', observedFacts: ['Aucun devis n’est enregistré dans les informations consultées.'], understanding: 'La décision commerciale ne peut pas encore être suivie.', evidenceLevel: 'weak', uncertainty: 'L’absence de devis ne confirme pas que le dossier est prêt à être chiffré.' }
+    : quote.accepted || quote.acceptedAt
+      ? { state: 'Devis accepté', observedFacts: ['Le dernier devis est enregistré comme accepté.'], understanding: 'La décision commerciale est confirmée.', evidenceLevel: 'strong', recommendation: 'Préparer la suite du dossier.', why: 'L’acceptation est un fait enregistré.' }
+      : quote.sent || text(quote.status).toLowerCase().startsWith('envoy') || quote.sentAt
+        ? { state: 'Devis envoyé', observedFacts: ['Le dernier devis est enregistré comme envoyé.', 'Aucune acceptation n’est enregistrée.'], understanding: 'Le dossier attend une décision client.', evidenceLevel: daysSince(quote.sentAt || quote.createdAt, now) !== null && daysSince(quote.sentAt || quote.createdAt, now)! >= 7 ? 'moderate' : 'weak', uncertainty: 'Une absence de réponse ou une ouverture ne prouve ni refus ni intention.', recommendation: daysSince(quote.sentAt || quote.createdAt, now)! >= 7 ? 'Préparer une relance adaptée.' : undefined, why: daysSince(quote.sentAt || quote.createdAt, now)! >= 7 ? 'Le délai observé justifie de vérifier la suite, sans interpréter le silence du client.' : undefined }
+        : { state: 'Devis en préparation', observedFacts: ['Un devis est enregistré sans envoi confirmé.'], understanding: 'Aucune décision client ne peut encore être déduite.', evidenceLevel: 'strong' }
 
   let decision: ProjectWorkspaceBrief['decision']
   if (!project.id || (!text(project.projectType) && !text(project.trade) && !clientLabelFor(project))) {
@@ -101,5 +116,5 @@ export function buildProjectWorkspaceBrief(input: ProjectWorkspaceBuilderInput):
   }
 
   if (base.dataQuality.level !== 'insufficient' && reservations.length) base.dataQuality.level = 'partial'
-  return validateProjectWorkspaceBrief({ ...base, decision })
+  return validateProjectWorkspaceBrief({ ...base, decision, qualification, commercialSummary })
 }

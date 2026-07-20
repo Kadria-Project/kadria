@@ -17,7 +17,7 @@ const input = (overrides: Record<string, unknown> = {}) => ({
 
 test('produces a compact decision for a sent quote without overclaiming the client intent', () => {
   const brief = buildProjectWorkspaceBrief(input())
-  assert.deepEqual(Object.keys(brief).sort(), ['capabilities', 'dataQuality', 'decision', 'generatedAt', 'project'])
+  assert.deepEqual(Object.keys(brief).sort(), ['capabilities', 'commercialSummary', 'dataQuality', 'decision', 'generatedAt', 'project', 'qualification'])
   assert.equal(brief.decision.evidenceLevel, 'moderate')
   assert.match(brief.decision.understanding, /pourrait attendre/)
   assert.match(brief.decision.uncertainty || '', /ne permet pas de conclure/)
@@ -25,6 +25,17 @@ test('produces a compact decision for a sent quote without overclaiming the clie
   assert.equal('quotes' in brief, false)
   assert.equal('activities' in brief, false)
   assert.equal('clientEmail' in brief.project, false)
+})
+
+test('exposes understanding labels without raw qualification values or PII', () => {
+  const complete = buildProjectWorkspaceBrief(input({ project: { id: 'project-1', projectType: 'Rénovation', city: 'Rouen', budget: '9000 €', desiredTimeline: 'Septembre', completenessScore: 90 } }))
+  assert.equal(complete.qualification.evidenceLevel, 'strong')
+  assert.equal(complete.qualification.missing.length, 0)
+  assert.equal('budget' in complete.qualification, false)
+  const partial = buildProjectWorkspaceBrief(input({ project: { id: 'project-1', projectType: 'Rénovation', completenessScore: 40 } }))
+  assert.ok(partial.qualification.missing.length)
+  assert.ok(partial.qualification.action)
+  assert.equal(buildProjectWorkspaceBrief(input({ latestQuote: null })).commercialSummary.state, 'Aucun devis pertinent')
 })
 
 test('marks optional-source gaps as partial and a sparse dossier as insufficient', () => {

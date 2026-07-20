@@ -23,6 +23,8 @@ export type ProjectWorkspaceBrief = {
     why?: string
     primaryAction?: { id: string; label: string; destination?: string }
   }
+  qualification: { confirmed: string[]; missing: string[]; consequence: string; evidenceLevel: 'strong' | 'moderate' | 'weak'; action?: { label: string; destination: string } }
+  commercialSummary: { state: string; observedFacts: string[]; understanding: string; evidenceLevel: 'strong' | 'moderate' | 'weak'; uncertainty?: string; recommendation?: string; why?: string }
   capabilities: {
     canEditProject: boolean
     canManageQuote: boolean
@@ -30,7 +32,7 @@ export type ProjectWorkspaceBrief = {
   }
 }
 
-const rootKeys = ['generatedAt', 'dataQuality', 'project', 'decision', 'capabilities']
+const rootKeys = ['generatedAt', 'dataQuality', 'project', 'decision', 'qualification', 'commercialSummary', 'capabilities']
 const forbiddenKeys = new Set(['clientEmail', 'clientPhone', 'siteAddress', 'address', 'internalNotes', 'messages', 'documents', 'photos', 'quotes', 'appointments', 'activities', 'team', 'config', 'profiles', 'score', 'supabase'])
 
 function exactKeys(value: Record<string, unknown>, allowed: readonly string[], label: string) {
@@ -56,12 +58,16 @@ export function validateProjectWorkspaceBrief(value: ProjectWorkspaceBrief): Pro
   exactKeys(value.dataQuality, ['level', 'reservations'], 'dataQuality')
   exactKeys(value.project, ['id', 'title', 'stage', 'clientLabel', 'trade', 'city'], 'project')
   exactKeys(value.decision, ['observedFacts', 'understanding', 'evidenceLevel', 'uncertainty', 'recommendation', 'why', 'primaryAction'], 'decision')
+  exactKeys(value.qualification, ['confirmed', 'missing', 'consequence', 'evidenceLevel', 'action'], 'qualification')
+  exactKeys(value.commercialSummary, ['state', 'observedFacts', 'understanding', 'evidenceLevel', 'uncertainty', 'recommendation', 'why'], 'commercialSummary')
   exactKeys(value.capabilities, ['canEditProject', 'canManageQuote', 'canPlanAppointment'], 'capabilities')
   for (const fact of value.decision.observedFacts) exactKeys(fact, ['label', 'occurredAt', 'source'], 'observedFact')
   if (value.decision.primaryAction) exactKeys(value.decision.primaryAction, ['id', 'label', 'destination'], 'primaryAction')
+  if (value.qualification.action) exactKeys(value.qualification.action, ['label', 'destination'], 'qualificationAction')
   if (!['complete', 'partial', 'insufficient'].includes(value.dataQuality.level)) throw new Error('Invalid dataQuality level')
   if (!['strong', 'moderate', 'weak'].includes(value.decision.evidenceLevel)) throw new Error('Invalid evidence level')
   if (value.decision.observedFacts.length > 5) throw new Error('Too many observed facts')
+  if (value.commercialSummary.observedFacts.length > 3) throw new Error('Too many commercial facts')
   assertNoForbiddenKeys(value)
   return value
 }

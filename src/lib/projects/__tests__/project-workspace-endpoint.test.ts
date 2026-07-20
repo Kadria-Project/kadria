@@ -13,7 +13,7 @@ test('workspace endpoint keeps explicit auth, missing-project and server-error r
 
 test('workspace endpoint selects only the sources needed for the decision and validates through the builder', async () => {
   const source = await readFile(new URL('../../../../app/api/projects/[id]/workspace/route.ts', import.meta.url), 'utf8')
-  assert.match(source, /select: 'id, status, client_name, client_first_name, project_type, trade, city, completeness_score, callback_date'/)
+  assert.match(source, /select: 'id, status, client_name, client_first_name, project_type, trade, city, budget, desired_timeline, completeness_score, callback_date'/)
   assert.doesNotMatch(source, /select: '\*'/)
   assert.match(source, /buildProjectWorkspaceBrief/)
   assert.doesNotMatch(source, /client_email|client_phone|site_address|internal_notes/)
