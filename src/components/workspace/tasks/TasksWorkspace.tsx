@@ -51,6 +51,19 @@ function freshnessLabel(generatedAt: string | undefined) {
   return `Vérifié à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
 }
 
+function proofLabel(confidence: WorkSituation['confidence']) {
+  if (confidence === 'high') return 'Élevé'
+  if (confidence === 'medium') return 'À confirmer'
+  return 'Limité'
+}
+
+function uncertaintyLabel(confidence: WorkSituation['confidence']) {
+  if (confidence === 'high') return null
+  return confidence === 'medium'
+    ? 'La situation est établie, mais son niveau de priorité mérite une vérification dans le dossier.'
+    : 'Les signaux sont partiels : vérifiez le dossier avant de prendre une décision importante.'
+}
+
 function SituationCard({ situation, onAction, busy }: { situation: WorkSituation; onAction: (action: WorkSituationAction) => void; busy: boolean }) {
   const tone = situation.kind === 'recover'
     ? 'before:bg-amber-400 bg-[linear-gradient(110deg,#fffdfa,#ffffff)]'
@@ -65,12 +78,13 @@ function SituationCard({ situation, onAction, busy }: { situation: WorkSituation
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">{kindLabels[situation.kind]}</p>
-            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Confiance {situation.confidence === 'high' ? 'élevée' : situation.confidence === 'medium' ? 'moyenne' : 'limitée'}</span>
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Niveau de preuve : {proofLabel(situation.confidence)}</span>
           </div>
           <p className="mt-1 text-[15px] font-semibold tracking-[-0.015em] text-[#0b2232]">{contextLabel(situation)}</p>
           <div className="mt-3 space-y-2 text-[13px] leading-5 text-slate-600">
             <p className="flex gap-2"><Eye className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden /><span className="font-medium text-[#0b2232]">{situation.observedFacts.join(' ')}</span></p>
             <p className="flex gap-2"><Lightbulb className="mt-0.5 size-3.5 shrink-0 text-amber-500" aria-hidden /><span><span className="font-semibold text-slate-800">Ce que cela signifie :</span> {situation.understanding}</span></p>
+            {uncertaintyLabel(situation.confidence) && <p className="flex gap-2 text-slate-500"><CircleAlert className="mt-0.5 size-3.5 shrink-0 text-slate-400" aria-hidden /><span><span className="font-semibold text-slate-700">Réserve :</span> {uncertaintyLabel(situation.confidence)}</span></p>}
             {situation.recommendation && <p className="flex gap-2 font-semibold text-emerald-950"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-600" aria-hidden />{situation.recommendation}</p>}
             {situation.canBeAutomated && situation.automationExplanation && <p className="rounded-xl border border-emerald-100 bg-white/80 px-3 py-2 text-xs text-emerald-900"><Bot className="mr-1 inline size-3.5" aria-hidden="true" />{situation.automationExplanation}</p>}
           </div>
