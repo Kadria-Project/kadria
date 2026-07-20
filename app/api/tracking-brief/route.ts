@@ -6,7 +6,8 @@ import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { checkPermission } from '@/src/lib/team/access'
 import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context'
 import { getAssignedAppointmentProjectIds, projectResponsibilityColumnExists } from '@/src/lib/project-responsibility'
-import { availableProjectColumns, logBriefError, type BriefErrorStage } from '@/src/lib/briefs/brief-error'
+import { logBriefError, type BriefErrorStage } from '@/src/lib/briefs/brief-error'
+import { queryProjectsWithOptionalColumns } from '@/src/lib/briefs/optional-project-columns'
 
 export const dynamic = 'force-dynamic'
 const requiredColumns = ['id', 'status', 'client_name', 'client_first_name', 'project_type', 'trade', 'budget', 'completeness_score', 'created_at', 'updated_at', 'callback_date']
@@ -29,19 +30,28 @@ export async function GET() {
     const [supportsTenantId, supportsResponsibleUser] = await Promise.all([tableHasColumn(TABLES.projects, 'tenant_id'), projectResponsibilityColumnExists()])
     const canReadAll = checkPermission(tenant, 'projects.read_all')
     const canReadAssigned = checkPermission(tenant, 'projects.read_assigned')
-    const capabilities = await availableProjectColumns(requiredColumns, optionalColumns, tableHasColumn, TABLES.projects)
-    const selectedColumns = [...capabilities.columns, ...(supportsResponsibleUser ? ['responsible_user_id'] : [])].join(', ')
     stage = 'projects_query'
-    let query = supabaseAdmin.from(TABLES.projects).select(selectedColumns).order('updated_at', { ascending: false }).limit(120)
-    query = supportsTenantId && tenant?.tenantId ? query.eq('tenant_id', tenant.tenantId) : query.eq('artisan_id', session.artisanId)
-    const result = await query
+    const result = await queryProjectsWithOptionalColumns({
+      requiredColumns,
+      optionalColumns,
+      hasColumn: tableHasColumn,
+      table: TABLES.projects,
+      execute: (columns) => {
+        const selectedColumns = [...columns, ...(supportsResponsibleUser ? ['responsible_user_id'] : [])].join(', ')
+        let query = supabaseAdmin.from(TABLES.projects).select(selectedColumns).order('updated_at', { ascending: false }).limit(120)
+        query = supportsTenantId && tenant?.tenantId ? query.eq('tenant_id', tenant.tenantId) : query.eq('artisan_id', session.artisanId)
+        return Promise.resolve(query)
+      },
+    })
+    if (result.retried && !result.error) console.warn(`[TRACKING_BRIEF] requestId=${requestId} stage=projects_query_retry diagnostic=OPTIONAL_COLUMN_REMOVED code=42703 column=${result.removedColumn}`)
     if (result.error) throw result.error
     stage = 'normalize'
-    let projects = ((result.data || []) as unknown as Row[]).map(mapProject)
-    let reservations: string[] = capabilities.missing.length ? ['Certaines dates ou montants facultatifs ne sont pas disponibles pour le suivi.'] : []
+    const rawProjects = (result.data || []) as Row[]
+    let projects = rawProjects.map(mapProject)
+    let reservations: string[] = result.missing.length ? ['Certaines informations commerciales ne sont pas disponibles ; les prioritÃ©s affichÃ©es peuvent Ãªtre incomplÃ¨tes.'] : []
     let insufficient = false
     if (tenant?.tenantId && (!canReadAll || !supportsResponsibleUser)) {
-      if (!canReadAssigned || !supportsResponsibleUser) { projects = []; reservations = ['Vos permissions ne permettent pas de vérifier les dossiers commerciaux disponibles.']; insufficient = true } else { const assigned = await getAssignedAppointmentProjectIds(tenant.tenantId, tenant.userId); projects = projects.filter((project) => { const row = (result.data || []).find((candidate) => String((candidate as unknown as Row).id || '') === project.id) as unknown as Row | undefined; return string(row || {}, 'responsible_user_id') === tenant.userId || assigned.has(project.id) }); reservations = ['Le suivi est limité aux dossiers qui vous sont affectés.'] }
+      if (!canReadAssigned || !supportsResponsibleUser) { projects = []; reservations = ['Vos permissions ne permettent pas de vérifier les dossiers commerciaux disponibles.']; insufficient = true } else { const assigned = await getAssignedAppointmentProjectIds(tenant.tenantId, tenant.userId); projects = projects.filter((project) => { const row = rawProjects.find((candidate) => String(candidate.id || '') === project.id); return string(row || {}, 'responsible_user_id') === tenant.userId || assigned.has(project.id) }); reservations = ['Le suivi est limité aux dossiers qui vous sont affectés.'] }
     }
     stage = 'build'
     const brief = buildTrackingBrief(projects, { reservations, insufficient })

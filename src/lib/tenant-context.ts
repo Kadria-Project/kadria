@@ -94,13 +94,6 @@ function isMissingRelationError(error: unknown): boolean {
   return code === '42P01' || /relation .* does not exist/i.test(message) || /could not find the table/i.test(message)
 }
 
-function isMissingColumnError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
-  const message = String((error as { message?: unknown }).message || '')
-  const code = String((error as { code?: unknown }).code || '')
-  return code === '42703' || /column .* does not exist/i.test(message)
-}
-
 function mapTenant(row: RawRow): Tenant {
   return {
     id: toText(row.id),
@@ -154,13 +147,18 @@ export async function tableHasColumn(tableName: string, columnName: string): Pro
     return columnExistsCache.get(cacheKey) || false
   }
 
-  const { error } = await getSupabaseAdmin()
+  const probe = await getSupabaseAdmin()
     .from(tableName)
     .select(columnName, { count: 'exact', head: true })
 
-  const exists = !error || (!isMissingColumnError(error) && !isMissingRelationError(error))
+  // Optional reads must fail closed: only a completed PostgREST probe proves a column exists.
+  const exists = columnProbeConfirmsExistence(probe)
   columnExistsCache.set(cacheKey, exists)
   return exists
+}
+
+export function columnProbeConfirmsExistence(probe: { error: unknown } | null | undefined): boolean {
+  return Boolean(probe && probe.error === null)
 }
 
 export async function getTenantByLegacyArtisanId(artisanId: string): Promise<Tenant | null> {

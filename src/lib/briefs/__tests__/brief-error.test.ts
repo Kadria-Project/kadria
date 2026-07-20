@@ -43,6 +43,7 @@ test('integrates requestId without exposing diagnostics in endpoint responses', 
     const source = await readFile(new URL(`../../../../app/api/${route}/route.ts`, import.meta.url), 'utf8')
     assert.match(source, /crypto\.randomUUID\(\)\.slice\(0, 8\)/)
     assert.match(source, /logBriefError\(/)
+    assert.match(source, /queryProjectsWithOptionalColumns/)
     assert.match(source, /requestId \}/)
     assert.doesNotMatch(source, /serializeBriefError|String\(error\)/)
   }

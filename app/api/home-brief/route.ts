@@ -7,7 +7,8 @@ import { supabaseAdmin } from '@/src/lib/supabase/server'
 import { checkPermission } from '@/src/lib/team/access'
 import { getCurrentTenantContext, tableHasColumn } from '@/src/lib/tenant-context'
 import { getAssignedAppointmentProjectIds, projectResponsibilityColumnExists } from '@/src/lib/project-responsibility'
-import { availableProjectColumns, logBriefError, type BriefErrorStage } from '@/src/lib/briefs/brief-error'
+import { logBriefError, type BriefErrorStage } from '@/src/lib/briefs/brief-error'
+import { queryProjectsWithOptionalColumns } from '@/src/lib/briefs/optional-project-columns'
 
 type ProjectRow = Record<string, unknown>
 type AppointmentRow = { id: string; project_id: string | null; start_time: string | null; end_time: string | null; title: string | null; location: string | null; assigned_user_id: string | null; qualification_status?: string | null; qualification_outcome?: string | null; confirmation_status?: string | null }
@@ -41,21 +42,30 @@ export async function GET() {
     ])
     const canReadAll = checkPermission(tenant, 'projects.read_all')
     const canReadAssigned = checkPermission(tenant, 'projects.read_assigned')
-    const projectCapabilities = await availableProjectColumns(requiredProjectColumns, optionalProjectColumns, tableHasColumn, TABLES.projects)
-    const selectedProjectColumns = [...projectCapabilities.columns, ...(supportsResponsibleUser ? ['responsible_user_id'] : [])].join(', ')
     stage = 'projects_query'
-    let projectsQuery = supabaseAdmin.from(TABLES.projects).select(selectedProjectColumns).order('updated_at', { ascending: false }).limit(80)
-    projectsQuery = supportsTenantId && tenant?.tenantId ? projectsQuery.eq('tenant_id', tenant.tenantId) : projectsQuery.eq('artisan_id', session.artisanId)
+    const projectsResult = await queryProjectsWithOptionalColumns({
+      requiredColumns: requiredProjectColumns,
+      optionalColumns: optionalProjectColumns,
+      hasColumn: tableHasColumn,
+      table: TABLES.projects,
+      execute: (columns) => {
+        const selectedProjectColumns = [...columns, ...(supportsResponsibleUser ? ['responsible_user_id'] : [])].join(', ')
+        let projectsQuery = supabaseAdmin.from(TABLES.projects).select(selectedProjectColumns).order('updated_at', { ascending: false }).limit(80)
+        projectsQuery = supportsTenantId && tenant?.tenantId ? projectsQuery.eq('tenant_id', tenant.tenantId) : projectsQuery.eq('artisan_id', session.artisanId)
+        return Promise.resolve(projectsQuery)
+      },
+    })
+    if (projectsResult.retried && !projectsResult.error) console.warn(`[HOME_BRIEF] requestId=${requestId} stage=projects_query_retry diagnostic=OPTIONAL_COLUMN_REMOVED code=42703 column=${projectsResult.removedColumn}`)
+    if (projectsResult.error) throw projectsResult.error
     const appointmentColumns = ['id, project_id, start_time, end_time, title, location, assigned_user_id', supportsQualification ? 'qualification_status, qualification_outcome' : null, supportsConfirmation ? 'confirmation_status' : null].filter(Boolean).join(', ')
     let appointmentsQuery = supabaseAdmin.from('project_appointments').select(appointmentColumns).order('start_time', { ascending: true }).limit(80)
     appointmentsQuery = tenant?.tenantId ? appointmentsQuery.eq('tenant_id', tenant.tenantId) : appointmentsQuery.eq('artisan_id', session.artisanId)
     if (tenant?.tenantId && !checkPermission(tenant, 'planning.manage_team') && !checkPermission(tenant, 'appointments.manage_team')) appointmentsQuery = appointmentsQuery.eq('assigned_user_id', tenant.userId)
     stage = 'data_load'
-    const [projectsResult, appointmentsResult, activityResult] = await Promise.all([
-      projectsQuery, appointmentsQuery,
+    const [appointmentsResult, activityResult] = await Promise.all([
+      appointmentsQuery,
       supabaseAdmin.from(TABLES.activity).select('project_id, action').in('action', ['GOOGLE_REVIEW_REQUEST_SENT']).order('created_at', { ascending: false }).limit(160),
     ])
-    if (projectsResult.error) throw projectsResult.error
     if (appointmentsResult.error) throw appointmentsResult.error
     const rawProjects = (projectsResult.data || []) as unknown as ProjectRow[]
     stage = 'normalize'

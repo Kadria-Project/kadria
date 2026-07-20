@@ -16,6 +16,16 @@ Les deux endpoints sélectionnaient directement des colonnes projet optionnelles
 - Suivi signale une qualité `partial` quand ces sources optionnelles sont indisponibles ;
 - aucune donnée client, token, cookie ou contenu de projet n’est journalisé.
 
+## Correctif final : colonnes optionnelles
+
+La cause racine est confirmée par les logs de production du 20 juillet : les deux endpoints ont reçu `42703` pour `Projects.quote_sent_at`. Le probe `tableHasColumn` produisait un faux positif, car une erreur de vérification autre qu’une absence de colonne était interprétée comme une existence.
+
+La règle est maintenant *fail closed* : une colonne n’est retenue que si le probe PostgREST se termine explicitement avec `error: null`. Une colonne absente, une permission insuffisante, une réponse ambiguë ou toute erreur de vérification produisent `false`, sans bloquer un champ optionnel.
+
+Les requêtes `Projects` d’Accueil et Suivi appliquent ensuite un seul retry ciblé. Si le premier `select` retourne `42703` et que le nom extrait est dans la liste blanche (`quote_sent_at`, `accepted_at`, `last_follow_up_at`, `devis_amount`, `completion_completed_at`), cette seule colonne est retirée et la requête est rejouée une fois. Une erreur sur une colonne obligatoire, un code différent ou l’échec du retry reste une 500 structurée.
+
+Suivi retourne alors `dataQuality.level = "partial"` avec une réserve générique, sans nom de colonne technique. Accueil continue sans les signaux secondaires qui dépendent de la colonne absente. Un retry réussi écrit seulement une ligne serveur compacte `OPTIONAL_COLUMN_REMOVED`; aucun détail technique n’est ajouté au payload utilisateur.
+
 ## Diagnostics et format Vercel
 
 Ancien format inutilisable : `[HOME_BRIEF] Unable to build home brief { error: '[object Object]' }`.
@@ -32,13 +42,13 @@ Seuls scope, requestId, étape, diagnostic, type, code, message, details et hint
 
 Les tests couvrent le sérialiseur Supabase, l’exclusion des colonnes optionnelles absentes, les contrats Home/Suivi, les états vides et partiels, les preuves, les erreurs 401/500 et les gardes `ArtisanDashboard`.
 
-`npx tsc --noEmit`, lint ciblé, `git diff --check` et `npm run build` réussissent. Build observé : compilation 42 s, TypeScript 63 s, génération statique 2,9 s.
+Les tests ajoutés couvrent le probe en erreur ou ambigu, le retry `42703` sur `quote_sent_at`, son succès, son unique échec, l’absence de retry pour une colonne obligatoire et l’exclusion de la colonne au second `select`. La validation finale est verte : 32 tests Home/Suivi/helpers/logger/gardes, lint ciblé, `npx tsc --noEmit` et `git diff --check`. Le build du 20 juillet réussit en 84,2 s (compilation 24,3 s, TypeScript 44 s, génération statique 1,8 s).
 
 ## Runtime et décision
 
 La reproduction authentifiée n’est pas possible localement sans session et tenant de production ; elle n’est donc pas déclarée validée. La tentative de prévisualisation du 20 juillet avec Vercel CLI 56.3.2 a été bloquée avant déploiement par `The specified token is not valid. Use vercel login to generate a new token.`
 
-Décision de livraison : ce commit pousse le hotfix sur `origin/main` afin de restaurer l’observabilité en production. La validation runtime finale doit être effectuée immédiatement après le déploiement, avec une session et un tenant représentatif. Les nouveaux logs permettront de confirmer la cause racine étayée ou d’orienter son correctif si une autre erreur persiste. Aucun rollback n’est exécuté : le correctif est ciblé et préserve les architectures autonomes.
+Décision de livraison : ce commit pousse le hotfix sur `origin/main` afin de restaurer les deux briefs. La validation runtime finale doit être effectuée immédiatement après le déploiement, avec une session et un tenant représentatif : `200` pour les deux endpoints, Accueil et Suivi affichés, et aucun nouveau `42703` non traité. Aucun rollback n’est exécuté : le correctif est ciblé et préserve les architectures autonomes.
 
 ## Risques résiduels
 
