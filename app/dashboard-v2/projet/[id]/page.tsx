@@ -41,7 +41,7 @@ import { getProjectLifecycle } from '@/src/lib/project-lifecycle';
 import { getProjectHeadline } from '@/src/lib/project-detail/project-headline';
 import { getVerdictDisplay } from '@/src/lib/project-detail/project-verdict';
 import { computeRecommendedDeposit, formatEuro, normalizeDepositStatus, normalizeStripeConnectStatus, type DepositType, type StripeConnectStatus } from '@/src/lib/deposit';
-import { ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWorkspace';
+import { ProjectWorkspaceLegacyAdapter as ProjectWorkspace } from '@/src/components/projects/workspace/ProjectWorkspaceLegacyAdapter';
 import ProjectWorkspaceRoute from './ProjectWorkspaceRoute';
 import type { ProjectWorkspaceTab } from '@/src/components/projects/workspace/ProjectWorkspace.types';
 import { deriveProjectSituations } from '@/src/lib/projects/project-situations';

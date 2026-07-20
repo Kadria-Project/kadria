@@ -1,45 +1,52 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import type { ProjectSituations } from '@/src/lib/projects/project-situations';
-import type { ReactNode } from 'react';
+import type { ProjectWorkspaceBrief as WorkspaceBriefDto } from '@/src/lib/projects/project-workspace-contract';
 
 export type ProjectWorkspaceTab = 'activity' | 'commercial' | 'qualification' | 'planning' | 'documents';
+export type ProjectWorkspaceBrief = WorkspaceBriefDto;
 
-export type ProjectWorkspaceProps = {
-  decisionSlot?: ReactNode;
-  project: any;
-  projectTitle: string;
-  clientLabel: string;
-  lifecycle: any;
-  currentStyle: { bg: string; text: string; border: string };
-  recommendedAction: { title: string; meta?: string; ctaLabel: string; onClick?: () => void };
-  nextAction: any;
-  latestDevis: any;
-  decision: any;
-  appointment: any;
-  responsibleName?: string | null;
-  cleanedAiSummary?: string;
-  situations: ProjectSituations;
-  activityItems: any[];
-  activityUnavailable: boolean;
-  updating: boolean;
-  onBack: () => void;
-  onCall: () => void;
-  onWrite: () => void;
-  onViewDevis: () => void;
-  onCommercial: () => void;
-  onCreateQuote: () => void;
-  onFollowUpQuote: () => void;
-  onPlanAppointment: () => void;
-  onEditProject: () => void;
-  onExportPdf: () => void;
-  onArchive: () => void;
-  onOpenClientPortal?: () => void;
-  formatDate: (value?: string | null, fallback?: string) => string;
-  formatDateTime: (value?: string | null, fallback?: string) => string;
-  formatAmount: (value?: number | null) => string;
+export type ProjectWorkspaceSection<T = never> =
+  | { status: 'not_loaded' }
+  | { status: 'loading' }
+  | { status: 'ready'; data: T }
+  | { status: 'empty'; message?: string }
+  | { status: 'error'; message?: string }
+  | { status: 'unavailable'; message?: string };
+
+export type ProjectWorkspaceSections = {
+  client: ProjectWorkspaceSection;
+  documents: ProjectWorkspaceSection;
+  commercial: ProjectWorkspaceSection;
+  history: ProjectWorkspaceSection;
+  engagement: ProjectWorkspaceSection;
+};
+
+export type ProjectWorkspaceCapability = {
+  available: boolean;
+  state: 'ready' | 'loading' | 'unavailable' | 'error';
+  action?: () => void;
+};
+
+export type ProjectWorkspaceCapabilities = {
+  openClientContact?: ProjectWorkspaceCapability;
+  openDocuments?: ProjectWorkspaceCapability;
+  openCommercial?: ProjectWorkspaceCapability;
+  openHistory?: ProjectWorkspaceCapability;
+  openEngagement?: ProjectWorkspaceCapability;
+  openClientPortal?: ProjectWorkspaceCapability;
+  managePayment?: ProjectWorkspaceCapability;
+  manageReview?: ProjectWorkspaceCapability;
+  sendSms?: ProjectWorkspaceCapability;
+  managePdf?: ProjectWorkspaceCapability;
+};
+
+export type ProjectWorkspaceNavigation = {
+  onBack?: () => void;
   activeTab: ProjectWorkspaceTab;
   onTabChange: (tab: ProjectWorkspaceTab) => void;
-  onMarkWon?: () => void;
-  onMarkLost?: () => void;
+};
+
+export type ProjectWorkspaceProps = {
+  brief: ProjectWorkspaceBrief;
+  sections: ProjectWorkspaceSections;
+  capabilities: ProjectWorkspaceCapabilities;
+  navigation: ProjectWorkspaceNavigation;
 };
