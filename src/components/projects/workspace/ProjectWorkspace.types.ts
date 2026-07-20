@@ -37,6 +37,7 @@ export type ProjectWorkspaceCapabilities = {
   editAppointment: WorkspaceActionCapability;
   cancelAppointment: WorkspaceActionCapability;
   assignAppointment: WorkspaceActionCapability;
+  managePipeline: WorkspaceActionCapability;
   openAgenda: WorkspaceActionCapability;
 };
 

@@ -75,6 +75,7 @@ export function ProjectWorkspaceLegacyAdapter({ project, projectTitle, clientLab
       editAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       cancelAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       assignAppointment: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
+      managePipeline: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
       openAgenda: { state: 'unavailable', execute: async () => ({ success: false, error: 'Utilisez le workspace compact.' }) },
     },
     navigation: { onBack, activeTab, onTabChange },

@@ -17,6 +17,7 @@ import { AppointmentCreateDialog } from '@/src/components/projects/workspace/dia
 import { AppointmentEditDialog } from '@/src/components/projects/workspace/dialogs/AppointmentEditDialog'
 import { AppointmentCancelDialog } from '@/src/components/projects/workspace/dialogs/AppointmentCancelDialog'
 import { AppointmentAssignDialog } from '@/src/components/projects/workspace/dialogs/AppointmentAssignDialog'
+import { ProjectPipelineDialog } from '@/src/components/projects/workspace/dialogs/ProjectPipelineDialog'
 
 type BriefResponse = { success: boolean; brief?: ProjectWorkspaceBrief; error?: string }
 type SectionResponse<K extends ProjectWorkspaceSectionKey> = { success: boolean; data?: ProjectWorkspaceSectionData[K]; error?: string }
@@ -37,6 +38,7 @@ export default function ProjectWorkspaceRoute() {
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
   const [cancellingAppointmentId, setCancellingAppointmentId] = useState<string | null>(null)
   const [assigningAppointmentId, setAssigningAppointmentId] = useState<string | null>(null)
+  const [pipelineInstance, setPipelineInstance] = useState(0)
 
   const loadBrief = useCallback(async (signal?: AbortSignal) => {
     if (!id) return
@@ -90,6 +92,7 @@ export default function ProjectWorkspaceRoute() {
     editAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => ({ success: true }) },
     cancelAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => ({ success: true }) },
     assignAppointment: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => ({ success: true }) },
+    managePipeline: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => { setPipelineInstance((value) => value + 1); return { success: true } } },
     openAgenda: { state: 'available' as const, execute: async (): Promise<WorkspaceActionResult> => { router.push('/dashboard-v2/agenda'); return { success: true } } },
   }), [actionStates, executeAction, id, openTab, router])
 
@@ -97,5 +100,5 @@ export default function ProjectWorkspaceRoute() {
   if (briefState === 'loading' || !brief) return <section aria-busy="true" className="rounded-xl border border-slate-200 bg-white p-5"><div className="h-5 w-36 animate-pulse rounded bg-slate-200" /><div className="mt-4 h-16 animate-pulse rounded bg-slate-100" /></section>
   const refreshAppointments = async (refreshBrief = true) => { await loadSection('engagement'); if (refreshBrief) await loadBrief(); if (sections.history.status === 'ready') await loadSection('history') }
   const selectedAppointment = sections.engagement.status === 'ready' ? sections.engagement.data.appointments.find((appointment) => appointment.id === (cancellingAppointmentId || assigningAppointmentId)) || null : null
-  return <><ProjectWorkspace brief={brief} sections={sections} capabilities={capabilities} navigation={{ onBack: () => router.push('/dashboard-v2'), activeTab, onTabChange: openTab }} onEditAppointment={setEditingAppointmentId} onCancelAppointment={setCancellingAppointmentId} onAssignAppointment={setAssigningAppointmentId} />{editInstance > 0 && <ProjectEditDialog key={editInstance} projectId={id} onClose={() => setEditInstance(0)} onSaved={async () => { await loadBrief(); if (sections.client.status === 'ready') await loadSection('client'); if (sections.history.status === 'ready') await loadSection('history') }} />}{appointmentInstance > 0 && <AppointmentCreateDialog key={appointmentInstance} projectId={id} onClose={() => setAppointmentInstance(0)} onSaved={refreshAppointments} />}{editingAppointmentId && <AppointmentEditDialog projectId={id} appointmentId={editingAppointmentId} onClose={() => setEditingAppointmentId(null)} onSaved={refreshAppointments} />}{cancellingAppointmentId && <AppointmentCancelDialog projectId={id} appointmentId={cancellingAppointmentId} label={selectedAppointment?.label || 'ce rendez-vous'} onClose={() => setCancellingAppointmentId(null)} onSaved={refreshAppointments} />}{assigningAppointmentId && <AppointmentAssignDialog projectId={id} appointmentId={assigningAppointmentId} assignedUserId={selectedAppointment?.assigneeId || null} onClose={() => setAssigningAppointmentId(null)} onSaved={() => refreshAppointments(false)} />}</>
+  return <><ProjectWorkspace brief={brief} sections={sections} capabilities={capabilities} navigation={{ onBack: () => router.push('/dashboard-v2'), activeTab, onTabChange: openTab }} onEditAppointment={setEditingAppointmentId} onCancelAppointment={setCancellingAppointmentId} onAssignAppointment={setAssigningAppointmentId} />{editInstance > 0 && <ProjectEditDialog key={editInstance} projectId={id} onClose={() => setEditInstance(0)} onSaved={async () => { await loadBrief(); if (sections.client.status === 'ready') await loadSection('client'); if (sections.history.status === 'ready') await loadSection('history') }} />}{appointmentInstance > 0 && <AppointmentCreateDialog key={appointmentInstance} projectId={id} onClose={() => setAppointmentInstance(0)} onSaved={refreshAppointments} />}{pipelineInstance > 0 && <ProjectPipelineDialog key={pipelineInstance} projectId={id} onClose={() => setPipelineInstance(0)} onSaved={async () => { await loadBrief(); await loadSection('commercial'); if (sections.history.status === 'ready') await loadSection('history') }} />}{editingAppointmentId && <AppointmentEditDialog projectId={id} appointmentId={editingAppointmentId} onClose={() => setEditingAppointmentId(null)} onSaved={refreshAppointments} />}{cancellingAppointmentId && <AppointmentCancelDialog projectId={id} appointmentId={cancellingAppointmentId} label={selectedAppointment?.label || 'ce rendez-vous'} onClose={() => setCancellingAppointmentId(null)} onSaved={refreshAppointments} />}{assigningAppointmentId && <AppointmentAssignDialog projectId={id} appointmentId={assigningAppointmentId} assignedUserId={selectedAppointment?.assigneeId || null} onClose={() => setAssigningAppointmentId(null)} onSaved={() => refreshAppointments(false)} />}</>
 }
