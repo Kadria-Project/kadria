@@ -1,19 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { AddressSuggestion } from '@/src/lib/address/types';
 
 export interface AddressSelection {
   address: string;
   city: string;
   postalCode: string;
-  latitude: number | null;
-  longitude: number | null;
-}
-
-interface AddressSuggestion {
-  label: string;
-  city: string;
-  postcode: string;
   latitude: number | null;
   longitude: number | null;
 }
@@ -25,23 +18,16 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   style?: React.CSSProperties;
   inputId?: string;
+  inputClassName?: string;
 }
 
 async function fetchAddressSuggestions(query: string): Promise<AddressSuggestion[]> {
-  const res = await fetch(
-    `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
-  );
+  const res = await fetch(`/api/address/search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(5000) });
   if (!res.ok) {
-    throw new Error('API Adresse indisponible');
+    throw new Error('Recherche d’adresse indisponible');
   }
   const data = await res.json();
-  return (data.features || []).map((f: { properties: { label: string; city: string; postcode: string }; geometry: { coordinates: [number, number] } }) => ({
-    label: f.properties.label,
-    city: f.properties.city,
-    postcode: f.properties.postcode,
-    longitude: f.geometry?.coordinates?.[0] ?? null,
-    latitude: f.geometry?.coordinates?.[1] ?? null,
-  }));
+  return data?.success && Array.isArray(data.suggestions) ? data.suggestions : [];
 }
 
 const defaultInputStyle: React.CSSProperties = {
@@ -62,6 +48,7 @@ export default function AddressAutocomplete({
   placeholder,
   style,
   inputId,
+  inputClassName,
 }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -74,8 +61,6 @@ export default function AddressAutocomplete({
     if (timerRef.current) clearTimeout(timerRef.current);
 
     if (value.trim().length < 3) {
-      setSuggestions([]);
-      setLoading(false);
       return;
     }
 
@@ -104,10 +89,10 @@ export default function AddressAutocomplete({
     setSuggestions([]);
     onSelect?.({
       address: s.label,
-      city: s.city,
-      postalCode: s.postcode,
-      latitude: s.latitude,
-      longitude: s.longitude,
+      city: s.city || '',
+      postalCode: s.postcode || '',
+      latitude: s.latitude ?? null,
+      longitude: s.longitude ?? null,
     });
   }
 
@@ -124,6 +109,7 @@ export default function AddressAutocomplete({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder}
         autoComplete="off"
+        className={inputClassName}
         style={{ ...defaultInputStyle, ...style }}
       />
 
@@ -187,7 +173,7 @@ export default function AddressAutocomplete({
               >
                 <div style={{ fontWeight: 600 }}>{s.label}</div>
                 <div style={{ color: '#a1a1aa', fontSize: '12px', marginTop: '2px' }}>
-                  {s.postcode} {s.city}
+                  {s.postcode || ''} {s.city || ''}
                 </div>
               </button>
             ))}
