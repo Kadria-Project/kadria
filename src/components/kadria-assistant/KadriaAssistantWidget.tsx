@@ -8,6 +8,13 @@ import { getCollaboratorSuggestions, type CollaboratorSuggestion } from '@/src/l
 import type { AssistantIntent } from '@/src/lib/kadria-assistant/assistant-intents';
 import type { AssistantResponse, AssistantResponseDetail, AssistantSuggestion } from '@/src/lib/kadria-assistant/assistant-response';
 import type { AssistantUiAction } from '@/src/lib/kadria-assistant/assistant-action-contract';
+import {
+  belongsToCollaboratorContext,
+  canApplyCollaboratorResult,
+  createCollaboratorContextSnapshot,
+  getCollaboratorContextKey,
+  type CollaboratorContextSnapshot,
+} from '@/src/lib/kadria-assistant/collaborator-context';
 import { useShellContext } from '@/src/components/workspace/shell/ShellContextProvider';
 import { SHELL_OVERLAY_LAYERS } from '@/src/components/workspace/shell/shell-context';
 
@@ -52,6 +59,8 @@ interface TodayActionCard {
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  context?: CollaboratorContextSnapshot;
+  source?: 'chat' | 'today-actions';
   navigationActions?: NavigationAction[];
   assistantTitle?: string;
   assistantDetails?: AssistantResponseDetail[];
@@ -168,6 +177,7 @@ const SESSION_STORAGE_KEY = 'kadria-assistant-session';
 const MAX_PERSISTED_MESSAGES = 20;
 
 interface PersistedSession {
+  version?: 2;
   messages: ChatMessage[];
   usage: AssistantUsage | null;
 }
@@ -194,7 +204,7 @@ function savePersistedSession(session: PersistedSession) {
     const trimmedMessages = session.messages.slice(-MAX_PERSISTED_MESSAGES);
     window.sessionStorage.setItem(
       SESSION_STORAGE_KEY,
-      JSON.stringify({ messages: trimmedMessages, usage: session.usage })
+      JSON.stringify({ version: 2, messages: trimmedMessages, usage: session.usage })
     );
   } catch {
     // Storage failure (quota, private mode, etc.) must never crash the app.
@@ -208,6 +218,7 @@ function savePersistedSession(session: PersistedSession) {
 export default function KadriaAssistantWidget() {
   const { shellContext, collaboratorOpen: open, collaboratorOptions, closeCollaborator, openQuickCreate, openGlobalSearch } = useShellContext();
   const pageContext = useMemo(() => toKadriaAssistantPageContext(shellContext), [shellContext]);
+  const contextKey = useMemo(() => getCollaboratorContextKey(shellContext), [shellContext]);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [integratedDesktop, setIntegratedDesktop] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadPersistedSession()?.messages || []);
@@ -221,15 +232,23 @@ export default function KadriaAssistantWidget() {
   const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeContextKeyRef = useRef(contextKey);
+  const requestAbortRef = useRef<AbortController | null>(null);
   const contextualSuggestions = useMemo(() => getCollaboratorSuggestions(shellContext), [shellContext]);
   const visibleSuggestions = contextualSuggestions.slice(0, 4);
   const contextTitle = shellContext.entity?.label || ({ dashboard: 'Accueil', calendar: 'Agenda', performance: 'Performance', settings: 'Paramètres', tasks: 'À faire', tracking: 'Suivi', clients: 'Clients', project: 'Projet', resources: 'Ressources', unknown: 'Kadria' } as const)[shellContext.pageType];
+
+  const activeMessages = useMemo(
+    () => messages.map((message, index) => ({ message, index })).filter(({ message }) => belongsToCollaboratorContext(message, contextKey)),
+    [contextKey, messages],
+  );
+  const hasArchivedMessages = messages.some((message) => !belongsToCollaboratorContext(message, contextKey));
 
   function isTodayActionsPrompt(value: string) {
     return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour|voir ce que je dois faire aujourd’hui|voir ce que je dois faire aujourd'hui/i.test(value.trim());
   }
 
-  async function loadTodayActions() {
+  async function loadTodayActions(requestContextKey = contextKey) {
     setTodayActionsLoading(true);
     setTodayActionsError(null);
 
@@ -237,6 +256,7 @@ export default function KadriaAssistantWidget() {
       const res = await fetch('/api/kadria-assistant/today-actions');
       const data = await res.json();
 
+      if (activeContextKeyRef.current !== requestContextKey) return [];
       if (!res.ok || !data?.success) {
         setTodayActions([]);
         setTodayActionsError(data?.error || 'Je n’ai pas pu récupérer vos priorités pour le moment.');
@@ -247,32 +267,39 @@ export default function KadriaAssistantWidget() {
       setTodayActions(actions);
       return actions as TodayActionCard[];
     } catch {
+      if (activeContextKeyRef.current !== requestContextKey) return [];
       setTodayActions([]);
       setTodayActionsError('Je n’ai pas pu récupérer vos priorités pour le moment.');
       return [];
     } finally {
-      setTodayActionsLoading(false);
+      if (activeContextKeyRef.current === requestContextKey) setTodayActionsLoading(false);
     }
   }
 
   async function appendTodayActionsMessage(userLabel: string) {
     const trimmed = userLabel.trim();
     if (!trimmed || loading || quotaReached) return;
+    const messageContext = createCollaboratorContextSnapshot(shellContext);
 
-    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
+    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed, context: messageContext, source: 'today-actions' }];
     setMessages(nextMessages);
     setInput('');
     setError(null);
 
-    const actions = await loadTodayActions();
+    const actions = await loadTodayActions(messageContext.contextKey);
+    if (activeContextKeyRef.current !== messageContext.contextKey) return;
     const assistantMessage: ChatMessage = actions.length > 0
       ? {
           role: 'assistant',
           content: 'Voici ce qui mérite votre attention aujourd’hui. Je vous conseille de commencer par là :',
-          todayActions: actions,
+           context: messageContext,
+           source: 'today-actions',
+           todayActions: actions,
         }
       : {
           role: 'assistant',
+          context: messageContext,
+          source: 'today-actions',
           content: "Rien d'urgent pour le moment.",
         };
 
@@ -282,22 +309,28 @@ export default function KadriaAssistantWidget() {
   async function appendQuoteFollowupMessage(userLabel: string) {
     const trimmed = userLabel.trim();
     if (!trimmed || loading || quotaReached) return;
+    const messageContext = createCollaboratorContextSnapshot(shellContext);
 
-    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
+    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed, context: messageContext, source: 'today-actions' }];
     setMessages(nextMessages);
     setInput('');
     setError(null);
 
-    const actions = await loadTodayActions();
+    const actions = await loadTodayActions(messageContext.contextKey);
+    if (activeContextKeyRef.current !== messageContext.contextKey) return;
     const followups = actions.filter((action) => action.type === 'quote_followup');
     const assistantMessage: ChatMessage = followups.length > 0
       ? {
           role: 'assistant',
           content: `J’ai trouvé ${followups.length} devis à relancer. Je peux vous ouvrir les bons dossiers, et chaque relance vous demandera votre accord avant l’envoi.`,
-          todayActions: followups,
-        }
-      : {
+           context: messageContext,
+           source: 'today-actions',
+           todayActions: followups,
+         }
+       : {
           role: 'assistant',
+          context: messageContext,
+          source: 'today-actions',
           content: 'Aucun devis à relancer pour le moment.',
         };
 
@@ -312,6 +345,19 @@ export default function KadriaAssistantWidget() {
     if (messages.length === 0 && !usage) return;
     savePersistedSession({ messages, usage });
   }, [messages, usage]);
+
+  useEffect(() => {
+    if (activeContextKeyRef.current === contextKey) return;
+    activeContextKeyRef.current = contextKey;
+    requestAbortRef.current?.abort();
+    requestAbortRef.current = null;
+    setLoading(false);
+    setError(null);
+    setInput('');
+    setTodayActions([]);
+    setTodayActionsError(null);
+    setTodayActionsLoading(false);
+  }, [contextKey]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -331,7 +377,9 @@ export default function KadriaAssistantWidget() {
     if (!open) return;
     const timer = window.setTimeout(() => { void loadTodayActions(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [open]);
+    // The request must run only when the panel or canonical context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextKey, open]);
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1280px)');
@@ -369,6 +417,9 @@ export default function KadriaAssistantWidget() {
   async function sendMessage(content: string, intent?: AssistantIntent) {
     const trimmed = content.trim();
     if (!trimmed || loading || quotaReached) return;
+    const messageContext = createCollaboratorContextSnapshot(shellContext);
+    const requestContextKey = messageContext.contextKey;
+    const requestPageContext = pageContext;
 
     if (isTodayActionsPrompt(trimmed)) {
       await appendTodayActionsMessage(trimmed);
@@ -380,19 +431,25 @@ export default function KadriaAssistantWidget() {
       return;
     }
 
-    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
-    setMessages(nextMessages);
+    const nextMessages: ChatMessage[] = [...activeMessages.map(({ message }) => message), { role: 'user', content: trimmed, context: messageContext, source: 'chat' }];
+    setMessages((prev) => [...prev, nextMessages[nextMessages.length - 1]]);
     setInput('');
     setError(null);
     setLoading(true);
+    const requestAbort = new AbortController();
+    requestAbortRef.current?.abort();
+    requestAbortRef.current = requestAbort;
 
     try {
       const res = await fetch('/api/kadria-assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(intent ? { kind: 'intent', intent, context: pageContext, messages: nextMessages } : { messages: nextMessages, pageContext }),
+        body: JSON.stringify(intent ? { kind: 'intent', intent, context: requestPageContext, messages: nextMessages } : { messages: nextMessages, pageContext: requestPageContext }),
+        signal: requestAbort.signal,
       });
       const data = await res.json();
+
+      if (!canApplyCollaboratorResult(requestContextKey, activeContextKeyRef.current, requestAbort.signal.aborted)) return;
 
       if (data?.usage) {
         setUsage(data.usage);
@@ -438,6 +495,8 @@ export default function KadriaAssistantWidget() {
         ...prev,
         {
           role: 'assistant',
+          context: messageContext,
+          source: 'chat',
           content: data.answer,
           navigationActions,
           assistantTitle,
@@ -450,9 +509,13 @@ export default function KadriaAssistantWidget() {
         },
       ]);
     } catch {
+      if (!canApplyCollaboratorResult(requestContextKey, activeContextKeyRef.current, requestAbort.signal.aborted)) return;
       setError('La connexion semble interrompue. Réessayez dans un instant.');
     } finally {
-      setLoading(false);
+      if (activeContextKeyRef.current === requestContextKey && requestAbortRef.current === requestAbort) {
+        requestAbortRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -761,7 +824,13 @@ export default function KadriaAssistantWidget() {
 
           <main ref={scrollRef} className="min-h-0 w-full max-w-full flex-1 space-y-5 overflow-y-auto overflow-x-hidden overscroll-contain bg-slate-50 px-5 py-5">
             <section className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-xs font-medium text-slate-500">Contexte</p><p className="mt-1 text-sm font-semibold text-slate-900">{contextTitle}</p><p className="mt-1 text-xs text-slate-500">Actions adaptées à votre page actuelle.</p></section>
-            {messages.length === 0 && (
+            {hasArchivedMessages && activeMessages.length === 0 && (
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Nouvelle analyse pour {contextTitle}.
+              </p>
+            )}
+
+            {activeMessages.length === 0 && (
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
                   <h3 className="text-base font-semibold text-slate-900">
@@ -818,7 +887,7 @@ export default function KadriaAssistantWidget() {
               </div>
             )}
 
-            {messages.map((m, i) => (
+            {activeMessages.map(({ message: m, index: i }) => (
               <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
                   className={`max-w-[92%] rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
@@ -899,7 +968,7 @@ export default function KadriaAssistantWidget() {
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <form onSubmit={handleSubmit} className="flex w-full max-w-full flex-col gap-2 sm:flex-row sm:items-center">
-              {messages.length > 0 && <button type="button" onClick={clearConversation} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2"><Trash2 className="size-3.5" />Effacer la conversation</button>}
+              {activeMessages.length > 0 && <button type="button" onClick={clearConversation} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 focus-visible:outline-offset-2"><Trash2 className="size-3.5" />Effacer la conversation</button>}
               <input ref={inputRef}
                 type="text"
                 value={input}
