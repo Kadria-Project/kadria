@@ -60,6 +60,7 @@ export default function CalendarWorkspace() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const createSubmissionRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [qualificationAvailable, setQualificationAvailable] = useState(false);
@@ -401,10 +402,12 @@ export default function CalendarWorkspace() {
     }));
   };
   const handleCreate = async () => {
+    if (creating || createSubmissionRef.current) return;
     if (!form.title.trim() || !form.start || !form.end || !endIsValid) {
       setCreateError('V\u00e9rifiez le motif, le d\u00e9but et la fin du rendez-vous.');
       return;
     }
+    createSubmissionRef.current = true;
     setCreating(true);
     setCreateError(null);
     try {
@@ -415,12 +418,16 @@ export default function CalendarWorkspace() {
       });
       const json = await response.json();
       if (!response.ok || !json?.success) throw new Error(json?.error || "Impossible d'ajouter le rendez-vous.");
-      setCreateOpen(false);
+      const successMessage = selectedProject ? 'Rendez-vous créé avec succès et rattaché au dossier.' : 'Rendez-vous créé avec succès.';
+      setForm({ title: '', start: '', end: '', location: '', description: '', projectId: null, assignedUserId: '', eventType: 'appointment' });
+      setSelectedProject(null);
+      closeCreate();
+      setSuccessMessage(successMessage);
       await fetchAppointments();
-      setSuccessMessage(selectedProject ? 'Rendez-vous ajout\u00e9 au planning et rattach\u00e9 au dossier ' + (selectedProject.clientName || selectedProject.projectTitle || 's\u00e9lectionn\u00e9') + '.' : 'Rendez-vous ajout\u00e9 au planning.');
     } catch (createError) {
       setCreateError(createError instanceof Error ? createError.message : "Impossible d'ajouter le rendez-vous.");
     } finally {
+      createSubmissionRef.current = false;
       setCreating(false);
     }
   };

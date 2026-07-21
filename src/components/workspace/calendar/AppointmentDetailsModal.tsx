@@ -62,9 +62,9 @@ export default function AppointmentDetailsModal({ event, onClose, onPrepare, onM
         <div className="mt-2 space-y-1.5 text-sm leading-6 text-slate-300">{preparationLines.map((line) => <p key={line}>{line}</p>)}</div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row [&>button:first-child]:min-h-11 [&>button:first-child]:rounded-lg [&>button:first-child]:border [&>button:first-child]:border-slate-600 [&>button:first-child]:px-4 [&>button:first-child]:py-2 [&>button:first-child]:text-left [&>button:first-child]:transition-colors [&>button:first-child]:hover:bg-slate-800 [&>button:first-child]:focus-visible:outline [&>button:first-child]:focus-visible:outline-2 [&>button:first-child]:focus-visible:outline-emerald-400">
         <button type="button" onClick={onEdit} className="text-sm font-semibold text-slate-200">Modifier le rendez-vous et l’affectation</button>
-        {event.projectId ? <button type="button" onClick={onOpenProject} className="text-sm font-semibold text-emerald-300">Ouvrir le dossier</button> : null}
+        {event.projectId ? <button type="button" onClick={onOpenProject} className="min-h-11 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">Ouvrir le dossier</button> : null}
       </div>
     </div>
   </div>
