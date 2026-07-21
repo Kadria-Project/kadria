@@ -18,6 +18,7 @@ import { getPerformanceDataForAssistant } from '@/src/lib/kadria-assistant/perfo
 import { buildPerformanceAssistantResponse } from '@/src/lib/kadria-assistant/performance-insights'
 import { buildProjectAssistantResponse } from '@/src/lib/kadria-assistant/project-insights'
 import type { PerformancePeriodKey } from '@/src/lib/performance/performance-types'
+import type { AssistantResponse } from '@/src/lib/kadria-assistant/assistant-response'
 import {
   formatProjectSummaryForAssistant,
   getProjectSummaryForAssistant,
@@ -561,6 +562,11 @@ export async function POST(request: NextRequest) {
         ? { kind: 'message' as const, message: typeof body?.message === 'string' ? body.message.slice(0, MAX_MESSAGE_LENGTH) : lastUserMessage, context: pageContext }
         : null
     const resolution = requestIntent ? resolveAssistantIntent(requestIntent) : null
+    if (resolution?.kind === 'navigation') {
+      const assistantResponse: AssistantResponse = { title: 'Navigation', summary: resolution.label, actions: [{ kind: 'navigate', label: resolution.label, href: resolution.href }], evidence: { level: 'solid' } }
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: 'navigation', page: pageContext?.pageType || 'unknown', capability: 'navigation', durationMs: Date.now() - startedAt, resultCount: 0, responseMode: 'deterministic', success: true })
+      return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null, navigationActions: [{ label: resolution.label, href: resolution.href }] })
+    }
     if (resolution?.kind === 'capability' && isProjectIntent(resolution.intent) && currentProjectSummary) {
       const assistantResponse = buildProjectAssistantResponse(resolution.intent, currentProjectSummary)
       console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'project-summary', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
@@ -691,9 +697,15 @@ export async function POST(request: NextRequest) {
 
     const navigationActions = buildNavigationActions(lastUserMessage, context)
 
+    const assistantResponse: AssistantResponse = {
+      summary: answer,
+      evidence: { level: 'limited', note: 'Réponse conversationnelle : vérifiez les informations importantes.' },
+      ...(navigationActions ? { actions: navigationActions.map((action) => ({ kind: 'navigate' as const, ...action })) } : {}),
+    }
     return NextResponse.json({
       success: true,
       answer,
+      assistantResponse,
       usage,
       ...(navigationActions ? { navigationActions } : {}),
       ...(proposedAction ? { proposedAction } : {}),

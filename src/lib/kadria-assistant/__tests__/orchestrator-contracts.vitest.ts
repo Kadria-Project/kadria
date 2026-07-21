@@ -37,4 +37,10 @@ describe('Kadria orchestrator contracts', () => {
       kind: 'capability', intent: 'tracking.blocked_projects',
     })
   })
+
+  it('routes explicit navigation without falling back to conversation', () => {
+    expect(resolveAssistantIntent({ kind: 'message', message: 'Ouvre l’agenda', context: { pageType: 'dashboard_home', route: '/dashboard-v2' } })).toMatchObject({
+      kind: 'navigation', href: '/dashboard-v2/agenda',
+    })
+  })
 })
