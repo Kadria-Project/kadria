@@ -36,4 +36,9 @@ describe('intervention arbitration', () => {
     expect(result?.isActive).toBe(false)
     expect(result?.reappearanceReason).toContain('aggravé')
   })
+
+  it('keeps non-snooze arbitrages active until a new business fact appears', () => {
+    const result = readActiveInterventionArbitration([at('not_relevant', '2026-07-01T09:00:00.000Z')], interventionId, {}, new Date('2026-07-02T09:00:00.000Z'))
+    expect(result).toMatchObject({ arbitrationType: 'not_relevant', isActive: true, supersededByNewEvidence: false })
+  })
 })

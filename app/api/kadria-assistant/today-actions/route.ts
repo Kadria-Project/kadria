@@ -470,7 +470,32 @@ export async function GET() {
       }))
     }
 
-    const uniqueActions = actions.filter(
+    const actionsWithArbitration = actions
+      .map((action) => {
+        const arbitration = action.arbitration || readActiveInterventionArbitration(arbitrationActivities, action.interventionId)
+        if (!arbitration) return action
+        if (arbitration.isActive && (arbitration.arbitrationType === 'snoozed' || arbitration.arbitrationType === 'not_relevant' || arbitration.arbitrationType === 'declined')) return null
+        if (arbitration.isActive && arbitration.arbitrationType === 'already_handled') {
+          return {
+            ...action,
+            arbitration,
+            priority: 'low' as const,
+            status: 'observed' as const,
+            lifecycle: 'inconclusive' as const,
+            title: 'Action à confirmer',
+            description: 'Vous avez indiqué que ce sujet était déjà traité. Kadria attend une preuve métier avant de le considérer comme exécuté.',
+          }
+        }
+        if (arbitration.isActive && arbitration.arbitrationType === 'priority_disputed') {
+          return { ...action, arbitration, priority: 'low' as const }
+        }
+        return arbitration.reappearanceReason
+          ? { ...action, arbitration, reason: arbitration.reappearanceReason }
+          : { ...action, arbitration }
+      })
+      .filter((action): action is TodayAction => !!action)
+
+    const uniqueActions = actionsWithArbitration.filter(
       (action, index, array) => array.findIndex((candidate) => candidate.id === action.id) === index
     )
 
