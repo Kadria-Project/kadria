@@ -54,7 +54,7 @@ export default function KadriaTopbar() {
                 aria-pressed={collaboratorOpen}
                 aria-label={collaboratorOpen ? 'Fermer le Collaborateur Kadria' : 'Ouvrir le Collaborateur Kadria'}
                 title={collaboratorOpen ? 'Fermer le Collaborateur Kadria' : 'Ouvrir le Collaborateur Kadria'}
-                className={`hidden h-10 w-10 place-items-center rounded-xl border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2 xl:grid ${
+                className={`hidden h-10 w-10 place-items-center rounded-xl border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500 focus-visible:outline-offset-2 lg:grid ${
                   collaboratorOpen ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >

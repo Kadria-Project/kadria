@@ -44,4 +44,14 @@ describe('collaborator structure', () => {
     expect(widget).toContain('flex-col gap-2 sm:flex-row sm:items-center')
     expect(widget).toContain('aria-label="Suggestions"')
   })
+
+  it('keeps an explicit Collaborateur trigger when the desktop shell starts before the integrated pane', () => {
+    const shell = readFileSync(path.join(root, 'src/components/workspace/KadriaAppShell.tsx'), 'utf8')
+    const topbar = readFileSync(path.join(root, 'src/components/workspace/KadriaTopbar.tsx'), 'utf8')
+    const widget = readFileSync(path.join(root, 'src/components/kadria-assistant/KadriaAssistantWidget.tsx'), 'utf8')
+
+    expect(shell).toContain("window.matchMedia('(min-width: 1024px)')")
+    expect(topbar).toContain('lg:grid')
+    expect(widget).toContain("window.matchMedia('(min-width: 1280px)')")
+  })
 })
