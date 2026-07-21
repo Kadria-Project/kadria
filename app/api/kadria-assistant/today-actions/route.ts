@@ -12,6 +12,7 @@ import { prioritizeInterventions, type CollaboratorInterventionLevel } from '@/s
 import { describeQuoteRecommendation, type RecommendationLifecycle } from '@/src/lib/kadria-assistant/recommendation-lifecycle'
 import { createInterventionId, interventionIdFromViewedDescription } from '@/src/lib/kadria-assistant/intervention-identity'
 import { buildQuoteInterventionMemory, type InterventionContinuity, type InterventionMemory } from '@/src/lib/kadria-assistant/intervention-memory'
+import { ARBITRATION_ACTIVITY_TYPES, readActiveInterventionArbitration, type ActiveInterventionArbitration } from '@/src/lib/kadria-assistant/intervention-arbitration'
 
 type TodayActionPriority = 'high' | 'medium' | 'low'
 type TodayActionType =
@@ -31,6 +32,7 @@ interface TodayAction {
   priorityReason?: string
   isPrimary?: boolean
   interventionId: string
+  arbitration?: ActiveInterventionArbitration
   viewedAt?: string
   memory?: InterventionMemory
   continuity?: InterventionContinuity
@@ -141,6 +143,7 @@ export async function GET() {
           'GOOGLE_REVIEW_REQUEST_FAILED',
           'GOOGLE_REVIEW_REQUEST_SENT',
           'KADRIA_INTERVENTION_VIEWED',
+          ...ARBITRATION_ACTIVITY_TYPES,
         ])
         .order('created_at', { ascending: false })
         .limit(200)
@@ -159,8 +162,9 @@ export async function GET() {
     const reviewSentProjectIds = new Set(
       activities
         .filter((activity) => activity.action === 'GOOGLE_REVIEW_REQUEST_SENT' && hasText(activity.project_id))
-        .map((activity) => String(activity.project_id))
+      .map((activity) => String(activity.project_id))
     )
+    const arbitrationActivities = activities.filter((activity) => ARBITRATION_ACTIVITY_TYPES.includes(activity.action || ''))
 
     const progress = computeSetupProgress({
       businessProfile: businessProfileResult.row
@@ -286,29 +290,46 @@ export async function GET() {
         return weightA - weightB
       })
       .filter(({ devis }, index, candidates) => candidates.findIndex((candidate) => candidate.devis.projectId === devis.projectId) === index)
-      .slice(0, 3)
 
     quoteRecommendations.forEach(({ devis, state, recommendation }) => {
       const project = projectById.get(devis.projectId)
       if (!recommendation) return
+      const interventionId = createInterventionId('quote_followup', devis.projectId)
+      const outcomeObservedAt = devis.acceptedAt || devis.declinedAt || undefined
+      const arbitration = readActiveInterventionArbitration(arbitrationActivities, interventionId, {
+        observedAt: outcomeObservedAt || devis.lastFollowUpAt || devis.quoteSentAt,
+        hasSignificantEscalation: state.stage === 'j10_final',
+      })
+      const suppressForArbitration = arbitration?.isActive && (
+        arbitration.arbitrationType === 'snoozed'
+        || arbitration.arbitrationType === 'not_relevant'
+        || arbitration.arbitrationType === 'declined'
+      )
+      if (suppressForArbitration) return
       const needsContactDetails = recommendation.lifecycle === 'inconclusive' && !hasText(devis.clientEmail) && state.canFollowUp
       const isInformational = recommendation.lifecycle === 'executed' || recommendation.lifecycle === 'observing' || recommendation.lifecycle === 'inconclusive'
+      const isPriorityDisputed = arbitration?.isActive && arbitration.arbitrationType === 'priority_disputed' && state.stage !== 'j10_final'
+      const isAlreadyHandledWithoutEvidence = arbitration?.isActive && arbitration.arbitrationType === 'already_handled' && !devis.lastFollowUpAt && !outcomeObservedAt
       actions.push(withIntervention({
         id: `quote-followup-${recommendation.lifecycle}-${devis.id}`,
         type: 'quote_followup',
-        priority: isInformational ? 'low' : state.stage === 'j10_final' ? 'high' : 'medium',
-        status: needsContactDetails ? 'blocked' : isInformational ? 'observed' : 'ready',
-        lifecycle: viewedAtByIntervention.has(createInterventionId('quote_followup', devis.projectId)) && recommendation.lifecycle === 'proposed' ? 'viewed' : recommendation.lifecycle,
+        priority: isPriorityDisputed || isInformational ? 'low' : state.stage === 'j10_final' ? 'high' : 'medium',
+        status: needsContactDetails ? 'blocked' : isInformational || isAlreadyHandledWithoutEvidence ? 'observed' : 'ready',
+        lifecycle: isAlreadyHandledWithoutEvidence ? 'inconclusive' : viewedAtByIntervention.has(interventionId) && recommendation.lifecycle === 'proposed' ? 'viewed' : recommendation.lifecycle,
         expectedObservation: recommendation.expectedObservation,
         executionEvidence: recommendation.executionEvidence,
-        title: needsContactDetails
+        title: isAlreadyHandledWithoutEvidence
+          ? 'Action à confirmer'
+          : needsContactDetails
           ? "Compléter l'e-mail client"
           : recommendation.lifecycle === 'follow_up_required'
             ? 'Réévaluer le devis'
             : isInformational
               ? 'Relance enregistrée'
               : 'Relancer un devis',
-        description: needsContactDetails
+        description: isAlreadyHandledWithoutEvidence
+          ? 'Vous avez indiqué que ce sujet était déjà traité. Kadria attend une preuve métier avant de le considérer comme exécuté.'
+          : needsContactDetails
           ? "Complétez l'e-mail client dans le dossier avant de pouvoir envoyer une relance."
           : recommendation.lifecycle === 'follow_up_required'
             ? 'La période d’observation est terminée : ouvrez le dossier pour décider de la suite, sans répéter mécaniquement la relance.'
@@ -334,9 +355,10 @@ export async function GET() {
       if (lastAction) {
         const resolvedAt = recommendation.lifecycle === 'resolved' ? (devis.acceptedAt || devis.declinedAt || undefined) : undefined
         const outcome = devis.acceptedAt || devis.accepted ? 'accepted' : devis.declinedAt ? 'declined' : undefined
-        const built = buildQuoteInterventionMemory({ interventionId: lastAction.interventionId, projectId: devis.projectId, lifecycle: lastAction.lifecycle, loop: recommendation, quoteSentAt: devis.quoteSentAt, viewedAt: lastAction.viewedAt, lastFollowUpAt: devis.lastFollowUpAt, followUpCount: devis.followUpCount, resolvedAt, outcome })
+        const built = buildQuoteInterventionMemory({ interventionId: lastAction.interventionId, projectId: devis.projectId, lifecycle: lastAction.lifecycle, loop: recommendation, quoteSentAt: devis.quoteSentAt, viewedAt: lastAction.viewedAt, lastFollowUpAt: devis.lastFollowUpAt, followUpCount: devis.followUpCount, resolvedAt, outcome, arbitration })
         lastAction.memory = built.memory
         lastAction.continuity = built.continuity
+        if (arbitration) lastAction.arbitration = arbitration
       }
     })
 

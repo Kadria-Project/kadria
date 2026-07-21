@@ -1,4 +1,5 @@
 import type { RecommendationLifecycle, RecommendationLoop } from './recommendation-lifecycle'
+import type { ActiveInterventionArbitration } from './intervention-arbitration'
 
 export interface InterventionMemory {
   interventionId: string
@@ -32,6 +33,7 @@ type QuoteMemoryInput = {
   followUpCount?: number | null
   resolvedAt?: string | null
   outcome?: 'accepted' | 'declined' | 'closed'
+  arbitration?: ActiveInterventionArbitration
 }
 
 export function buildQuoteInterventionMemory(input: QuoteMemoryInput): { memory: InterventionMemory; continuity?: InterventionContinuity } {
@@ -49,6 +51,8 @@ export function buildQuoteInterventionMemory(input: QuoteMemoryInput): { memory:
     recommendationRevisionReason: resolvedAt ? 'outcome_recorded' : isRepeated ? 'repeated_follow_up' : executedAt ? 'follow_up_recorded' : input.viewedAt ? 'viewed' : undefined,
   }
   if (resolvedAt) return { memory, continuity: { label: 'Ce qui a changé', summary: 'Une décision est enregistrée : cette recommandation n’est plus active.' } }
+  if (input.arbitration?.isActive && input.arbitration.arbitrationType === 'already_handled') return { memory, continuity: { label: 'Kadria attend encore', summary: 'Vous avez indiqué que le sujet était déjà traité. Aucune preuve d’exécution n’est encore visible.' } }
+  if (input.arbitration?.reappearanceReason) return { memory, continuity: { label: 'Recommandation réévaluée', summary: input.arbitration.reappearanceReason } }
   if (isRepeated) return { memory, continuity: { label: 'Recommandation réévaluée', summary: 'Aucun retour n’a été observé après trois relances. Kadria recommande de réévaluer l’opportunité plutôt que de relancer à nouveau.' } }
   if (executedAt) return { memory, continuity: { label: 'Depuis la dernière fois', summary: 'Une relance a été enregistrée. Kadria attend maintenant une réponse ou une décision.' } }
   if (input.viewedAt) return { memory, continuity: { label: 'Kadria attend encore', summary: 'Aucun changement depuis la dernière consultation.' } }

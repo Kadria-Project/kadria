@@ -88,6 +88,9 @@ interface AssistantUsage {
   limit: number;
 }
 
+type InterventionArbitrationType = 'snoozed' | 'not_relevant' | 'already_handled' | 'declined' | 'priority_disputed';
+type SnoozeOption = 'tomorrow' | 'three_days' | 'next_week';
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getQuickStarts(pageContext: AssistantPageContext) {
   if (pageContext.pageType === 'project_detail') {
@@ -240,6 +243,8 @@ export default function KadriaAssistantWidget() {
   const [todayActions, setTodayActions] = useState<TodayActionCard[]>([]);
   const [todayActionsLoading, setTodayActionsLoading] = useState(false);
   const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
+  const [arbitratingId, setArbitratingId] = useState<string | null>(null);
+  const [arbitrationMenuId, setArbitrationMenuId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const activeContextKeyRef = useRef(contextKey);
@@ -753,6 +758,24 @@ export default function KadriaAssistantWidget() {
     window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
   }
 
+  async function arbitrate(action: TodayActionCard, arbitrationType: InterventionArbitrationType, snoozeOption?: SnoozeOption) {
+    if (!action.projectId || arbitratingId) return;
+    setArbitratingId(action.id);
+    setTodayActionsError(null);
+    try {
+      const response = await fetch('/api/kadria-assistant/interventions/arbitration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interventionId: action.interventionId, recommendationType: action.type, projectId: action.projectId, arbitrationType, ...(snoozeOption ? { snoozeOption } : {}) }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success !== true) { setTodayActionsError(payload?.error || 'Votre choix n’a pas été enregistré.'); return; }
+      const refreshedActions = await loadTodayActions();
+      setMessages((current) => current.map((message) => !message.todayActions ? message : { ...message, todayActions: refreshedActions }));
+      setArbitrationMenuId(null);
+    } catch {
+      setTodayActionsError('Votre choix n’a pas été enregistré.');
+    } finally {
+      setArbitratingId(null);
+    }
+  }
+
   function renderTodayActionCards(items: TodayActionCard[]) {
     return (
       <div className="mt-2 flex flex-col gap-2.5">
@@ -813,6 +836,16 @@ export default function KadriaAssistantWidget() {
               >
                 {action.primaryActionLabel}
               </a>
+              {action.projectId && <details className="relative" open={arbitrationMenuId === action.id} onToggle={(event) => setArbitrationMenuId(event.currentTarget.open ? action.id : null)}>
+                <summary className="cursor-pointer rounded-full border border-[rgba(255,255,255,0.14)] px-3 py-1.5 text-xs font-semibold text-[#cbd5e1]">{arbitratingId === action.id ? 'Enregistrement…' : 'Plus'}</summary>
+                <div className="absolute right-0 z-20 mt-1 w-52 rounded-lg border border-slate-700 bg-[#171a20] p-1 shadow-lg">
+                  <details className="rounded px-2 py-1.5 text-xs text-[#f8fafc]"><summary className="cursor-pointer">Plus tard</summary><div className="mt-1 flex flex-col"><button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'snoozed', 'tomorrow')} className="rounded px-2 py-1.5 text-left hover:bg-white/5 disabled:opacity-50">Demain</button><button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'snoozed', 'three_days')} className="rounded px-2 py-1.5 text-left hover:bg-white/5 disabled:opacity-50">Dans 3 jours</button><button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'snoozed', 'next_week')} className="rounded px-2 py-1.5 text-left hover:bg-white/5 disabled:opacity-50">La semaine prochaine</button></div></details>
+                  <button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'already_handled')} className="block w-full rounded px-2 py-1.5 text-left text-xs text-[#f8fafc] hover:bg-white/5 disabled:opacity-50">Déjà traité</button>
+                  <button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'not_relevant')} className="block w-full rounded px-2 py-1.5 text-left text-xs text-[#f8fafc] hover:bg-white/5 disabled:opacity-50">Pas pertinent</button>
+                  <button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'declined')} className="block w-full rounded px-2 py-1.5 text-left text-xs text-[#f8fafc] hover:bg-white/5 disabled:opacity-50">Ne pas agir</button>
+                  <button type="button" disabled={!!arbitratingId} onClick={() => arbitrate(action, 'priority_disputed')} className="block w-full rounded px-2 py-1.5 text-left text-xs text-[#f8fafc] hover:bg-white/5 disabled:opacity-50">Priorité incorrecte</button>
+                </div>
+              </details>}
               {action.secondaryActionLabel && action.secondaryActionHref && (
                 <a
                   href={action.secondaryActionHref}
