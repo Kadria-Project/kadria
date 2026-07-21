@@ -251,6 +251,19 @@ export default function KadriaAssistantWidget() {
   );
   const hasArchivedMessages = messages.some((message) => !belongsToCollaboratorContext(message, contextKey));
 
+  // Le premier rendu peut être produit côté serveur, où sessionStorage est
+  // indisponible. Recharge alors la conversation côté client pour que l'état
+  // "consulté" survive à une navigation réelle.
+  useEffect(() => {
+    const persisted = loadPersistedSession();
+    if (!persisted) return;
+    const timer = window.setTimeout(() => {
+      setMessages((current) => current.length > 0 ? current : persisted.messages);
+      setUsage((current) => current || persisted.usage);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   function isTodayActionsPrompt(value: string) {
     return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour|voir ce que je dois faire aujourd’hui|voir ce que je dois faire aujourd'hui/i.test(value.trim());
   }
