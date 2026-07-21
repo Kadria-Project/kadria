@@ -19,6 +19,7 @@ import { buildPerformanceAssistantResponse } from '@/src/lib/kadria-assistant/pe
 import { buildProjectAssistantResponse } from '@/src/lib/kadria-assistant/project-insights'
 import type { PerformancePeriodKey } from '@/src/lib/performance/performance-types'
 import type { AssistantResponse } from '@/src/lib/kadria-assistant/assistant-response'
+import { withServerSuggestions } from '@/src/lib/kadria-assistant/server-suggestions'
 import {
   formatProjectSummaryForAssistant,
   getProjectSummaryForAssistant,
@@ -568,8 +569,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null, navigationActions: [{ label: resolution.label, href: resolution.href }] })
     }
     if (resolution?.kind === 'capability' && isProjectIntent(resolution.intent) && currentProjectSummary) {
-      const assistantResponse = buildProjectAssistantResponse(resolution.intent, currentProjectSummary)
-      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'project-summary', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
+      const assistantResponse = withServerSuggestions(buildProjectAssistantResponse(resolution.intent, currentProjectSummary))
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'project-summary', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, suggestionCount: assistantResponse.suggestions?.length || 0, suggestionPriorities: assistantResponse.suggestions?.map((suggestion) => suggestion.priority) || [], responseMode: 'deterministic', success: true })
       return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null, navigationActions: assistantResponse.actions?.filter((action) => action.kind === 'navigate').map((action) => ({ label: action.label, href: action.href })) })
     }
     if (resolution?.kind === 'capability' && isTrackingIntent(resolution.intent)) {
@@ -577,8 +578,8 @@ export async function POST(request: NextRequest) {
       if (tracking.kind === 'forbidden') {
         return NextResponse.json({ success: false, error: 'Vous n’avez pas accès à ces dossiers.' }, { status: 403 })
       }
-      const assistantResponse = buildTrackingInsightResponse(resolution.intent, tracking.brief)
-      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'tracking-insights', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
+      const assistantResponse = withServerSuggestions(buildTrackingInsightResponse(resolution.intent, tracking.brief))
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'tracking-insights', durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, suggestionCount: assistantResponse.suggestions?.length || 0, suggestionPriorities: assistantResponse.suggestions?.map((suggestion) => suggestion.priority) || [], responseMode: 'deterministic', success: true })
       return NextResponse.json({
         success: true,
         answer: assistantResponse.summary,
@@ -593,8 +594,8 @@ export async function POST(request: NextRequest) {
       if (performance.kind === 'forbidden') {
         return NextResponse.json({ success: false, error: 'Vous n’avez pas accès aux performances de cette entreprise.' }, { status: 403 })
       }
-      const assistantResponse = buildPerformanceAssistantResponse(resolution.intent, performance.data)
-      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'performance-insights', period, durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, responseMode: 'deterministic', success: true })
+      const assistantResponse = withServerSuggestions(buildPerformanceAssistantResponse(resolution.intent, performance.data))
+      console.info('[KADRIA-ORCHESTRATOR]', { intent: resolution.intent, capability: 'performance-insights', period, durationMs: Date.now() - startedAt, resultCount: assistantResponse.details?.length || 0, suggestionCount: assistantResponse.suggestions?.length || 0, suggestionPriorities: assistantResponse.suggestions?.map((suggestion) => suggestion.priority) || [], responseMode: 'deterministic', success: true })
       return NextResponse.json({ success: true, answer: assistantResponse.summary, assistantResponse, usage: null, navigationActions: assistantResponse.actions?.filter((action) => action.kind === 'navigate').map((action) => ({ label: action.label, href: action.href })) })
     }
     const contextualReply = await buildContextualReadOnlyReply({

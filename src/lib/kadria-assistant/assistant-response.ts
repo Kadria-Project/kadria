@@ -12,12 +12,21 @@ export interface AssistantResponseDetail {
   severity?: AssistantDetailSeverity
 }
 
+export interface AssistantSuggestion {
+  id: string
+  label: string
+  action: AssistantUiAction
+  priority: 'primary' | 'secondary' | 'low'
+  reason?: string
+}
+
 export interface AssistantResponse {
   intent?: AssistantIntent
   title?: string
   summary: string
   details?: AssistantResponseDetail[]
   actions?: AssistantUiAction[]
+  suggestions?: AssistantSuggestion[]
   evidence?: { level: AssistantEvidenceLevel; note?: string }
   followUp?: string
 }

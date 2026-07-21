@@ -6,7 +6,8 @@ import type { AssistantPageContext } from '@/src/lib/kadria-assistant/page-conte
 import { toKadriaAssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
 import { getCollaboratorSuggestions, type CollaboratorSuggestion } from '@/src/lib/kadria-assistant/collaborator-suggestions';
 import type { AssistantIntent } from '@/src/lib/kadria-assistant/assistant-intents';
-import type { AssistantResponseDetail } from '@/src/lib/kadria-assistant/assistant-response';
+import type { AssistantResponseDetail, AssistantSuggestion } from '@/src/lib/kadria-assistant/assistant-response';
+import type { AssistantUiAction } from '@/src/lib/kadria-assistant/assistant-action-contract';
 import { useShellContext } from '@/src/components/workspace/shell/ShellContextProvider';
 import { SHELL_OVERLAY_LAYERS } from '@/src/components/workspace/shell/shell-context';
 
@@ -53,6 +54,7 @@ interface ChatMessage {
   content: string;
   navigationActions?: NavigationAction[];
   assistantDetails?: AssistantResponseDetail[];
+  assistantSuggestions?: AssistantSuggestion[];
   todayActions?: TodayActionCard[];
   proposedAction?: ProposedAction;
   proposedActionState?: ProposedActionState;
@@ -64,6 +66,7 @@ interface AssistantUsage {
   limit: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getQuickStarts(pageContext: AssistantPageContext) {
   if (pageContext.pageType === 'project_detail') {
     return [
@@ -208,7 +211,6 @@ export default function KadriaAssistantWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
   const [usage, setUsage] = useState<AssistantUsage | null>(() => loadPersistedSession()?.usage || null);
   const [quotaReached, setQuotaReached] = useState(false);
   const [todayActions, setTodayActions] = useState<TodayActionCard[]>([]);
@@ -216,7 +218,6 @@ export default function KadriaAssistantWidget() {
   const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const quickStarts = getQuickStarts(pageContext);
   const contextualSuggestions = useMemo(() => getCollaboratorSuggestions(shellContext), [shellContext]);
   const visibleSuggestions = contextualSuggestions.slice(0, 4);
   const contextTitle = shellContext.entity?.label || ({ dashboard: 'Accueil', calendar: 'Agenda', performance: 'Performance', settings: 'Paramètres', tasks: 'À faire', tracking: 'Suivi', clients: 'Clients', project: 'Projet', resources: 'Ressources', unknown: 'Kadria' } as const)[shellContext.pageType];
@@ -420,6 +421,9 @@ export default function KadriaAssistantWidget() {
             (detail: unknown): detail is AssistantResponseDetail => Boolean(detail) && typeof (detail as AssistantResponseDetail).id === 'string' && typeof (detail as AssistantResponseDetail).label === 'string'
           ).slice(0, 5)
         : undefined;
+      const assistantSuggestions: AssistantSuggestion[] | undefined = Array.isArray(data?.assistantResponse?.suggestions)
+        ? data.assistantResponse.suggestions as AssistantSuggestion[]
+        : undefined;
 
       setMessages((prev) => [
         ...prev,
@@ -428,6 +432,7 @@ export default function KadriaAssistantWidget() {
           content: data.answer,
           navigationActions,
           assistantDetails,
+          assistantSuggestions,
           proposedAction,
           proposedActionState: proposedAction ? 'pending' : undefined,
         },
@@ -446,6 +451,13 @@ export default function KadriaAssistantWidget() {
     if (suggestion.kind === 'quick-create') { closeCollaborator(); openQuickCreate(); return; }
     closeCollaborator();
     window.location.assign(suggestion.href);
+  }
+
+  function runAssistantAction(action: AssistantUiAction) {
+    if (action.kind === 'intent') { void sendMessage(action.label, action.intent); return; }
+    if (action.kind === 'navigate') { handleNavigationClick(); window.location.assign(action.href); return; }
+    if (action.kind === 'quick-create') { closeCollaborator(); openQuickCreate(); return; }
+    if (action.kind === 'search') { closeCollaborator(); openGlobalSearch(); return; }
   }
 
   async function applyProposedAction(messageIndex: number) {
@@ -794,35 +806,6 @@ export default function KadriaAssistantWidget() {
               </div>
             )}
 
-            {messages.length > 0 && (
-              <div className="pb-1">
-                <button
-                  type="button"
-                  onClick={() => setSuggestionsCollapsed((v) => !v)}
-                  className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3 py-1 text-[11px] text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
-                >
-                  Idées de questions {suggestionsCollapsed ? '▾' : '▴'}
-                </button>
-                {!suggestionsCollapsed && (
-                  <div className="mt-2 grid grid-cols-1 gap-2">
-                    {quickStarts.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => sendMessage(q)}
-                        className="group flex w-full items-center justify-between gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-2.5 text-left text-xs leading-snug text-[#f8fafc] transition-colors hover:border-[#22c55e]/30 hover:bg-[#22c55e]/10 active:bg-[#22c55e]/15"
-                      >
-                        <span>{q}</span>
-                        <span aria-hidden className="shrink-0 text-[#9ca3af] transition-colors group-hover:text-[#22c55e]">
-                          →
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {messages.map((m, i) => (
               <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
@@ -856,6 +839,11 @@ export default function KadriaAssistantWidget() {
                         {action.label} →
                       </a>
                     ))}
+                  </div>
+                )}
+                {m.role === 'assistant' && m.assistantSuggestions && m.assistantSuggestions.length > 0 && (
+                  <div className="mt-2 flex max-w-[85%] flex-wrap gap-1.5">
+                    {m.assistantSuggestions.map((suggestion) => <button key={suggestion.id} type="button" onClick={() => runAssistantAction(suggestion.action)} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600">{suggestion.label}</button>)}
                   </div>
                 )}
                 {m.role === 'assistant' && renderProposedActionCard(m, i)}
