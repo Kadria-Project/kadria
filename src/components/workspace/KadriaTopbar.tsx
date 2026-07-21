@@ -6,13 +6,8 @@ import NotificationBell from '@/src/components/notifications/NotificationBell';
 import WorkspaceHeader from './layout/WorkspaceHeader';
 import { useShellContext } from './shell/ShellContextProvider';
 
-interface KadriaTopbarProps {
-  collaboratorOpen: boolean;
-  onToggleCollaborator: () => void;
-}
-
-export default function KadriaTopbar({ collaboratorOpen, onToggleCollaborator }: KadriaTopbarProps) {
-  const { shellContext, openGlobalSearch, openQuickCreate } = useShellContext();
+export default function KadriaTopbar() {
+  const { shellContext, openGlobalSearch, openQuickCreate, collaboratorOpen, toggleCollaborator } = useShellContext();
   const workspace = shellContext.pageType === 'project'
     ? { eyebrow: 'Workspace / Projet', title: shellContext.entity?.label || 'Fiche projet' }
     : shellContext.pageType === 'settings'
@@ -55,7 +50,7 @@ export default function KadriaTopbar({ collaboratorOpen, onToggleCollaborator }:
               </Link>
               <button
                 type="button"
-                onClick={onToggleCollaborator}
+                onClick={toggleCollaborator}
                 aria-pressed={collaboratorOpen}
                 aria-label={collaboratorOpen ? 'Fermer le Collaborateur Kadria' : 'Ouvrir le Collaborateur Kadria'}
                 title={collaboratorOpen ? 'Fermer le Collaborateur Kadria' : 'Ouvrir le Collaborateur Kadria'}

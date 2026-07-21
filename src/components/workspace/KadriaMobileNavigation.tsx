@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, CalendarDays, ClipboardCheck, FolderKanban, LayoutDashboard, Plus, Search, Users } from 'lucide-react';
+import { BarChart3, Bot, CalendarDays, ClipboardCheck, FolderKanban, LayoutDashboard, Plus, Search, Users } from 'lucide-react';
 import { dashboardModeFromPathname, dashboardPathForMode, type DashboardMode } from './WorkspaceNavigationContext';
 import { useShellContext } from './shell/ShellContextProvider';
 
@@ -17,11 +17,11 @@ const items: Array<{ label: string; mode: DashboardMode; icon: typeof LayoutDash
 
 export default function KadriaMobileNavigation() {
   const pathname = usePathname();
-  const { shellContext, openGlobalSearch, openQuickCreate } = useShellContext();
+  const { shellContext, openGlobalSearch, openQuickCreate, collaboratorOpen, toggleCollaborator } = useShellContext();
   const activeMode = dashboardModeFromPathname(pathname);
 
   return (
-    <nav aria-label="Navigation principale" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-8 border-t border-slate-200 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),0px)] shadow-[0_-4px_18px_rgba(15,34,50,0.08)] backdrop-blur lg:hidden">
+    <nav aria-label="Navigation principale" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-9 border-t border-slate-200 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),0px)] shadow-[0_-4px_18px_rgba(15,34,50,0.08)] backdrop-blur lg:hidden">
       {items.map((item) => {
         const Icon = item.icon;
         const active = activeMode === item.mode
@@ -38,6 +38,7 @@ export default function KadriaMobileNavigation() {
         <span>Rechercher</span>
       </button>
       <button type="button" onClick={openQuickCreate} aria-label="Créer" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-semibold text-emerald-700"><Plus className="size-4" aria-hidden="true" /><span>Créer</span></button>
+      <button type="button" onClick={toggleCollaborator} aria-pressed={collaboratorOpen} aria-label={collaboratorOpen ? 'Fermer Kadria' : 'Ouvrir Kadria'} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lg text-[10px] font-semibold text-emerald-700"><Bot className="size-4" aria-hidden="true" /><span>Kadria</span></button>
     </nav>
   );
 }

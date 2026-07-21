@@ -10,6 +10,7 @@ import {
 } from './shell-context'
 
 type ScopedEnrichment = { scope: string; value: ShellContextEnrichment } | null
+export type CollaboratorOpenOptions = { prompt?: string; mode?: 'actions' | 'conversation' }
 
 type ShellContextProviderValue = {
   shellContext: ShellContextValue
@@ -20,6 +21,11 @@ type ShellContextProviderValue = {
   quickCreateOpen: boolean
   openQuickCreate: () => void
   closeQuickCreate: () => void
+  collaboratorOpen: boolean
+  collaboratorOptions: CollaboratorOpenOptions | null
+  openCollaborator: (options?: CollaboratorOpenOptions) => void
+  closeCollaborator: () => void
+  toggleCollaborator: () => void
 }
 
 const ShellContext = createContext<ShellContextProviderValue | null>(null)
@@ -35,6 +41,8 @@ export function ShellContextProvider({ children }: { children: ReactNode }) {
   const [enrichment, setEnrichment] = useState<ScopedEnrichment>(null)
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
+  const [collaboratorOpen, setCollaboratorOpen] = useState(false)
+  const [collaboratorOptions, setCollaboratorOptions] = useState<CollaboratorOpenOptions | null>(null)
 
   const setShellContextEnrichment = useCallback((value: ShellContextEnrichment | null) => {
     setEnrichment(value ? { scope, value } : null)
@@ -45,8 +53,8 @@ export function ShellContextProvider({ children }: { children: ReactNode }) {
     [baseContext, enrichment, scope],
   )
   const value = useMemo(
-    () => ({ shellContext, setShellContextEnrichment, globalSearchOpen, openGlobalSearch: () => { setQuickCreateOpen(false); setGlobalSearchOpen(true) }, closeGlobalSearch: () => setGlobalSearchOpen(false), quickCreateOpen, openQuickCreate: () => { setGlobalSearchOpen(false); setQuickCreateOpen(true) }, closeQuickCreate: () => setQuickCreateOpen(false) }),
-    [shellContext, setShellContextEnrichment, globalSearchOpen, quickCreateOpen],
+    () => ({ shellContext, setShellContextEnrichment, globalSearchOpen, openGlobalSearch: () => { setCollaboratorOpen(false); setQuickCreateOpen(false); setGlobalSearchOpen(true) }, closeGlobalSearch: () => setGlobalSearchOpen(false), quickCreateOpen, openQuickCreate: () => { setCollaboratorOpen(false); setGlobalSearchOpen(false); setQuickCreateOpen(true) }, closeQuickCreate: () => setQuickCreateOpen(false), collaboratorOpen, collaboratorOptions, openCollaborator: (options: CollaboratorOpenOptions = {}) => { setGlobalSearchOpen(false); setQuickCreateOpen(false); setCollaboratorOptions(options); setCollaboratorOpen(true) }, closeCollaborator: () => { setCollaboratorOpen(false); setCollaboratorOptions(null) }, toggleCollaborator: () => { setGlobalSearchOpen(false); setQuickCreateOpen(false); setCollaboratorOptions(null); setCollaboratorOpen((open) => !open) } }),
+    [shellContext, setShellContextEnrichment, globalSearchOpen, quickCreateOpen, collaboratorOpen, collaboratorOptions],
   )
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>

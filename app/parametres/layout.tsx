@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import KadriaAssistantGlobalMount from '@/src/components/kadria-assistant/KadriaAssistantGlobalMount'
-import { KadriaPageContextProvider } from '@/src/components/kadria-assistant/KadriaPageContext'
 import SettingsWorkspaceLayout from '@/src/components/settings/SettingsWorkspaceLayout'
 import KadriaAppShell from '@/src/components/workspace/KadriaAppShell'
 
@@ -31,10 +29,7 @@ export default function ParametresLayout({
           `,
         }}
       />
-      <KadriaPageContextProvider>
-        <KadriaAppShell><SettingsWorkspaceLayout>{children}</SettingsWorkspaceLayout></KadriaAppShell>
-        <KadriaAssistantGlobalMount />
-      </KadriaPageContextProvider>
+      <KadriaAppShell><SettingsWorkspaceLayout>{children}</SettingsWorkspaceLayout></KadriaAppShell>
     </>
   )
 }

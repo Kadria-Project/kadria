@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
-import { useKadriaPageContext } from '@/src/components/kadria-assistant/KadriaPageContext';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
+import { toKadriaAssistantPageContext } from '@/src/lib/kadria-assistant/page-context';
+import { getCollaboratorSuggestions, type CollaboratorSuggestion } from '@/src/lib/kadria-assistant/collaborator-suggestions';
+import { useShellContext } from '@/src/components/workspace/shell/ShellContextProvider';
+import { SHELL_OVERLAY_LAYERS } from '@/src/components/workspace/shell/shell-context';
 
 interface NavigationAction {
   label: string;
@@ -148,10 +150,6 @@ function renderMessageContent(content: string) {
   return <div className="space-y-1">{blocks}</div>;
 }
 
-function isGoogleReviewPrompt(value: string) {
-  return /google review|avis google|demande d'avis|lien google review/i.test(value.trim());
-}
-
 function isQuoteFollowupPrompt(value: string) {
   return /relance|relancer/i.test(value.trim()) && /devis/i.test(value.trim());
 }
@@ -208,21 +206,23 @@ const QUICK_STARTS = [
 // produit : ce composant ne fait qu'afficher la conversation et appeler
 // l'API serveur dédiée /api/kadria-assistant/chat.
 export default function KadriaAssistantWidget() {
-  const { pageContext } = useKadriaPageContext();
-  const [open, setOpen] = useState(false);
+  const { shellContext, collaboratorOpen: open, collaboratorOptions, closeCollaborator, openQuickCreate, openGlobalSearch } = useShellContext();
+  const pageContext = useMemo(() => toKadriaAssistantPageContext(shellContext), [shellContext]);
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadPersistedSession()?.messages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
-  const [usage, setUsage] = useState<AssistantUsage | null>(null);
+  const [usage, setUsage] = useState<AssistantUsage | null>(() => loadPersistedSession()?.usage || null);
   const [quotaReached, setQuotaReached] = useState(false);
   const [todayActions, setTodayActions] = useState<TodayActionCard[]>([]);
   const [todayActionsLoading, setTodayActionsLoading] = useState(false);
   const [todayActionsError, setTodayActionsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const quickStarts = getQuickStarts(pageContext);
+  const contextualSuggestions = useMemo(() => getCollaboratorSuggestions(shellContext), [shellContext]);
 
   function isTodayActionsPrompt(value: string) {
     return /actions du jour|que dois-je faire aujourd'hui|que faire aujourd'hui|priorites du jour|voir ce que je dois faire aujourd’hui|voir ce que je dois faire aujourd'hui/i.test(value.trim());
@@ -306,15 +306,6 @@ export default function KadriaAssistantWidget() {
   // Charge la conversation persistée (sessionStorage) au montage, pour
   // permettre de la retrouver après une navigation déclenchée par une
   // navigationAction. Aucune donnée n'est stockée côté serveur.
-  useEffect(() => {
-    const persisted = loadPersistedSession();
-    if (persisted) {
-      if (persisted.messages.length > 0) setMessages(persisted.messages);
-      if (persisted.usage) setUsage(persisted.usage);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Sauvegarde la conversation à chaque changement pertinent.
   useEffect(() => {
     if (messages.length === 0 && !usage) return;
@@ -333,13 +324,27 @@ export default function KadriaAssistantWidget() {
       const raf = requestAnimationFrame(() => setDrawerVisible(true));
       return () => cancelAnimationFrame(raf);
     }
-    setDrawerVisible(false);
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    void loadTodayActions();
+    const timer = window.setTimeout(() => { void loadTodayActions(); }, 0);
+    return () => window.clearTimeout(timer);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !collaboratorOptions?.prompt) return;
+    void sendMessage(collaboratorOptions.prompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, collaboratorOptions?.prompt]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') closeCollaborator() };
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+    window.addEventListener('keydown', onKeyDown);
+    return () => { window.cancelAnimationFrame(frame); window.removeEventListener('keydown', onKeyDown) };
+  }, [closeCollaborator, open]);
 
   // Bloque le scroll de la page derrière le drawer pendant qu'il est ouvert,
   // et restaure la valeur précédente à la fermeture/démontage.
@@ -421,6 +426,14 @@ export default function KadriaAssistantWidget() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function runSuggestion(suggestion: CollaboratorSuggestion) {
+    if (suggestion.kind === 'prompt') { void sendMessage(suggestion.prompt); return; }
+    if (suggestion.kind === 'search') { closeCollaborator(); openGlobalSearch(); return; }
+    if (suggestion.kind === 'quick-create') { closeCollaborator(); openQuickCreate(); return; }
+    closeCollaborator();
+    window.location.assign(suggestion.href);
   }
 
   async function applyProposedAction(messageIndex: number) {
@@ -559,7 +572,7 @@ export default function KadriaAssistantWidget() {
   // Réduit le drawer sans effacer la conversation : elle reste en mémoire
   // (state) et en sessionStorage, et la bulle redevient visible.
   function minimize() {
-    setOpen(false);
+    closeCollaborator();
   }
 
   // Au clic sur une navigationAction : la conversation est déjà persistée
@@ -569,7 +582,7 @@ export default function KadriaAssistantWidget() {
   // visible après navigation, et la conversation est restaurée au retour.
   function handleNavigationClick() {
     savePersistedSession({ messages, usage });
-    setOpen(false);
+    closeCollaborator();
   }
 
   function renderTodayActionCards(items: TodayActionCard[]) {
@@ -631,10 +644,11 @@ export default function KadriaAssistantWidget() {
     );
   }
 
-  return (
-    <>
+  if (!open) return null;
+  return (<>
       {/* Bulle flottante bottom-right, identique mobile/desktop (Intercom/Crisp-style).
           Positionnée au-dessus de la bottom nav et du bouton "+" sur mobile. */}
+      {/*
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -648,15 +662,14 @@ export default function KadriaAssistantWidget() {
           className="pointer-events-none absolute inset-0 rounded-full bg-[#22c55e] opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-20"
         />
         <MessageCircle className="relative h-6 w-6 text-[#22c55e] sm:h-6 sm:w-6" strokeWidth={2} />
-      </button>
+      </button> */}
 
-      {open && (
-        <div className="fixed inset-0 z-[9999]">
+        <div className="fixed inset-0" style={{ zIndex: SHELL_OVERLAY_LAYERS.dialog }}>
           {/* Fond opaque plein écran sur mobile (pas de scrim transparent comme fond principal). */}
           <div className="absolute inset-0 bg-[#050505] sm:hidden" />
           <div
             className={`absolute inset-0 hidden bg-black/60 transition-opacity duration-200 sm:block ${drawerVisible ? 'opacity-100' : 'opacity-0'}`}
-            onClick={() => setOpen(false)}
+            onClick={closeCollaborator}
             aria-hidden="true"
           />
           <section
@@ -688,7 +701,7 @@ export default function KadriaAssistantWidget() {
               </button>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closeCollaborator}
                 aria-label="Fermer l'Assistant Kadria"
                 className="rounded-md p-1.5 text-[#9ca3af] transition-colors hover:bg-white/5 hover:text-[#f8fafc]"
               >
@@ -738,14 +751,14 @@ export default function KadriaAssistantWidget() {
                   {!todayActionsLoading && !todayActionsError && todayActions.length > 0 && renderTodayActionCards(todayActions.slice(0, 3))}
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {quickStarts.map((q) => (
+                  {contextualSuggestions.map((suggestion) => (
                     <button
-                      key={q}
+                      key={suggestion.id}
                       type="button"
-                      onClick={() => sendMessage(q)}
+                      onClick={() => runSuggestion(suggestion)}
                       className="group flex w-full items-center justify-between gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#17181b] px-3.5 py-3 text-left text-xs leading-snug text-[#f8fafc] transition-colors hover:border-[#22c55e]/30 hover:bg-[#22c55e]/10 active:bg-[#22c55e]/15"
                     >
-                      <span>{q}</span>
+                      <span>{suggestion.label}</span>
                       <span aria-hidden className="shrink-0 text-[#9ca3af] transition-colors group-hover:text-[#22c55e]">
                         →
                       </span>
@@ -848,7 +861,7 @@ export default function KadriaAssistantWidget() {
             style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
           >
             <form onSubmit={handleSubmit} className="flex w-full max-w-full items-center gap-2">
-              <input
+              <input ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -872,7 +885,5 @@ export default function KadriaAssistantWidget() {
           </footer>
           </section>
         </div>
-      )}
-    </>
-  );
+  </>);
 }

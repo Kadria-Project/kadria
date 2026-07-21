@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import KadriaCollaboratorPanel from './KadriaCollaboratorPanel';
-import KadriaSidebar, { type WorkspaceMode } from './KadriaSidebar';
+import KadriaSidebar from './KadriaSidebar';
 import KadriaTopbar from './KadriaTopbar';
 import KadriaMobileNavigation from './KadriaMobileNavigation';
 import NavigationPerformanceProbe from './NavigationPerformanceProbe';
@@ -14,9 +13,9 @@ import WorkspaceCanvas from './WorkspaceCanvas';
 import { WorkspaceNavigationProvider, type DashboardMode, type WorkspaceNavigation, useWorkspaceNavigation } from './WorkspaceNavigationContext';
 import { shouldRestoreDashboardNavigation } from './workspace-route-guards';
 import { ShellContextProvider } from './shell/ShellContextProvider';
+import KadriaAssistantWidget from '@/src/components/kadria-assistant/KadriaAssistantWidget';
 
 const SIDEBAR_STORAGE_KEY = 'kadria-workspace-sidebar-compact';
-const COLLABORATOR_STORAGE_KEY = 'kadria-workspace-collaborator-open';
 const SCROLL_STORAGE_KEY = 'kadria-workspace-scroll';
 
 type ScrollMemory = {
@@ -29,13 +28,12 @@ function isDashboardMode(value: unknown): value is DashboardMode {
 }
 
 export default function KadriaAppShell({ children }: { children: ReactNode }) {
-  return <WorkspaceNavigationProvider><ShellContextProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout><GlobalSearchDialog /><QuickCreate /></ShellContextProvider></WorkspaceNavigationProvider>;
+  return <WorkspaceNavigationProvider><ShellContextProvider>{process.env.NODE_ENV === 'development' && <DevelopmentWebVitals />}<NavigationPerformanceProbe /><KadriaAppShellLayout>{children}</KadriaAppShellLayout><GlobalSearchDialog /><QuickCreate /><KadriaAssistantWidget /></ShellContextProvider></WorkspaceNavigationProvider>;
 }
 
 function KadriaAppShellLayout({ children }: { children: ReactNode }) {
   const [desktop, setDesktop] = useState<boolean | null>(null);
   const [compactSidebar, setCompactSidebar] = useState(false);
-  const [collaboratorOpen, setCollaboratorOpen] = useState(false);
   const { dashboardMode, pendingNavigation, commitNavigation, consumeNavigation, registerNavigationHandler, takeRememberedNavigation } = useWorkspaceNavigation();
   const pathname = usePathname();
   const initialPathnameRef = useRef(pathname);
@@ -67,10 +65,7 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
       setDesktop(media.matches);
       try {
         setCompactSidebar(window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true');
-        setCollaboratorOpen(media.matches && window.localStorage.getItem(COLLABORATOR_STORAGE_KEY) !== 'false');
-      } catch {
-        setCollaboratorOpen(media.matches);
-      }
+      } catch {}
     });
     const updateDesktop = () => {
       cancelAnimationFrame(frame);
@@ -157,28 +152,19 @@ function KadriaAppShellLayout({ children }: { children: ReactNode }) {
     });
   };
 
-  const updateCollaborator = (next: boolean) => {
-    setCollaboratorOpen(next);
-    window.localStorage.setItem(COLLABORATOR_STORAGE_KEY, String(next));
-  };
-
   if (desktop === null) {
     return <div aria-busy="true" className="min-h-screen bg-[#f6f8f7]" />;
   }
 
   if (!desktop) return <div className="min-h-screen bg-[#f6f8f7] pb-16">{children}<KadriaMobileNavigation /></div>;
 
-  // Pipeline is an internal view within the commercial Workspace.
-  const activeMode: WorkspaceMode = dashboardMode === 'pipeline' ? 'commercial' : dashboardMode;
-
   return (
     <div className="kadria-app-shell flex h-screen min-w-0 overflow-hidden bg-[#f6f8f7]">
       <KadriaSidebar compact={compactSidebar} onToggle={updateSidebar} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <KadriaTopbar collaboratorOpen={collaboratorOpen} onToggleCollaborator={() => updateCollaborator(!collaboratorOpen)} />
+        <KadriaTopbar />
         <div className="flex min-h-0 flex-1 overflow-hidden"><WorkspaceCanvas ref={canvasRef}>{children}</WorkspaceCanvas></div>
       </div>
-      <KadriaCollaboratorPanel open={collaboratorOpen} activeMode={activeMode} onClose={() => updateCollaborator(false)} />
       <style jsx global>{`
         .kadria-app-shell .kadria-workspace-canvas .dashboard-shell { min-height: 0 !important; background: transparent !important; }
         .kadria-app-shell .kadria-workspace-canvas .dashboard-shell > aside { display: none !important; }
