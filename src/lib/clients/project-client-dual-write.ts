@@ -14,6 +14,8 @@ export type ProjectClientDualWriteInput = {
   requestId: string
   source: string
   projectPayload: Record<string, unknown>
+  /** An explicit selection from the tenant-scoped client picker. */
+  existingClientId?: string | null
   client: Omit<ClientResolutionInput, 'tenantId' | 'createdFrom'> & { createdFrom?: string }
 }
 
@@ -50,7 +52,7 @@ function decisionFromResolution(result: ClientResolutionResult): { mode: ClientM
 export async function createProjectWithCanonicalClient(input: ProjectClientDualWriteInput): Promise<ProjectClientDualWriteResult> {
   let resolution: ClientResolutionResult | null = null
   let warning: string | null = null
-  try {
+  if (!input.existingClientId) try {
     resolution = await resolveOrCreateClient({
       ...input.client,
       tenantId: input.tenantId,
@@ -61,8 +63,10 @@ export async function createProjectWithCanonicalClient(input: ProjectClientDualW
     console.error('[CLIENT_DUAL_WRITE][RESOLVER_FALLBACK]', { tenantId: input.tenantId, requestId: input.requestId, message: error instanceof Error ? error.message : String(error) })
   }
 
-  const decision = resolution ? decisionFromResolution(resolution) : { mode: 'no_client' as const, existingClientId: null, clientPayload: null }
-  const outcome: ResolverOutcome = resolution?.outcome || 'resolver_error'
+  const decision = input.existingClientId
+    ? { mode: 'existing_client' as const, existingClientId: input.existingClientId, clientPayload: null }
+    : resolution ? decisionFromResolution(resolution) : { mode: 'no_client' as const, existingClientId: null, clientPayload: null }
+  const outcome: ResolverOutcome = input.existingClientId ? 'exact_match' : resolution?.outcome || 'resolver_error'
   const payloadHash = buildProjectCreationPayloadHash({
     source: input.source,
     project: projectPayloadForIdempotency(input.projectPayload),

@@ -73,10 +73,10 @@ function cleanPathname(pathname?: string | null) {
 
 export function getShellCapabilities(pageType: ShellPageType): ShellCapabilities {
   if (pageType === 'dashboard' || pageType === 'calendar') {
-    return { ...NO_CREATION, createAppointment: true }
+    return { ...NO_CREATION, createAppointment: true, createProject: true }
   }
   if (pageType === 'project') {
-    return { ...NO_CREATION, createAppointment: true, createQuote: true }
+    return { ...NO_CREATION, createAppointment: true, createQuote: true, createProject: true }
   }
   if (pageType === 'resources' || pageType === 'unknown') {
     return { ...NO_CREATION, search: false, collaborator: false }

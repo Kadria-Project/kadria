@@ -6,6 +6,21 @@ import { getCurrentTenantContext } from '@/src/lib/tenant-context'
 import { serializeClientsListError, throwClientsListStage } from '@/src/lib/clients/client-list-route-utils'
 import { CLIENT_ACTION_REASONS } from '@/src/lib/clients/clients-action-types'
 import { deriveClientActions, summarizeClientActions, topClientActions } from '@/src/lib/clients/clients-action-derive'
+import { z } from 'zod'
+import { resolveOrCreateClient } from '@/src/lib/clients/client-resolution'
+
+const clientCreateSchema = z.object({
+  firstName: z.string().trim().max(120).optional().default(''),
+  lastName: z.string().trim().min(1).max(120),
+  email: z.string().trim().max(254).optional().default(''),
+  phone: z.string().trim().max(40).optional().default(''),
+  addressLine1: z.string().trim().max(255).optional().default(''),
+  postalCode: z.string().trim().max(20).optional().default(''),
+  city: z.string().trim().max(120).optional().default(''),
+  source: z.string().trim().max(80).optional().default('manual'),
+}).superRefine((value, context) => {
+  if (!value.email && !value.phone) context.addIssue({ code: 'custom', path: ['phone'], message: 'Un téléphone ou un e-mail est requis.' })
+})
 
 function asRows(value: unknown): Record<string, unknown>[] { return Array.isArray(value) ? value as Record<string, unknown>[] : [] }
 function toMap(rows: Record<string, unknown>[]) { const result = new Map<string, Record<string, unknown>[]>(); for (const row of rows) { const id=typeof row.project_id==='string'?row.project_id:''; if(id) result.set(id,[...(result.get(id)||[]),row]) } return result }
@@ -70,4 +85,29 @@ export async function GET(request: NextRequest) {
     console.info('[CLIENTS_V2][LIST_LOADED]',{tenantId:context.tenantId,canonicalCount:response.summary.totalClients,legacyCount:response.summary.legacyEntries,total:response.total,batchMaps:[quotesByProjectId.size,appointmentsByProjectId.size,activitiesByProjectId.size,clientEventsByProjectId.size]})
     return NextResponse.json({success:true,...response})
   } catch(error) { console.error('[CLIENTS_V2][LIST_FAILED]', serializeClientsListError(error)); return NextResponse.json({success:false,error:'Impossible de charger les clients'},{status:500}) }
+}
+
+export async function POST(request: NextRequest) {
+  const context = await getCurrentTenantContext()
+  if (!context) return NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 })
+  const parsed = clientCreateSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ success: false, error: 'Informations client invalides.', issues: parsed.error.flatten().fieldErrors }, { status: 400 })
+  try {
+    const input = parsed.data
+    const result = await resolveOrCreateClient({ tenantId: context.tenantId, ...input, acquisitionSource: input.source, createdFrom: 'client_api' })
+    if (result.outcome === 'exact_match') return NextResponse.json({ success: true, clientId: result.client.clientId, reused: true })
+    if (result.outcome !== 'no_match') return NextResponse.json({ success: false, error: 'Client à vérifier avant création.' }, { status: 409 })
+    const client = result.proposedClient
+    const { data, error } = await getSupabaseAdmin().from('clients').insert({
+      tenant_id: context.tenantId, first_name: client.firstName, last_name: client.lastName, company_name: client.companyName,
+      email: client.email, normalized_email: client.normalizedEmail, phone: client.phone, normalized_phone: client.normalizedPhone,
+      address_line1: client.addressLine1, postal_code: client.postalCode, city: client.city, country_code: client.countryCode || 'FR',
+      status: client.status, acquisition_source: client.acquisitionSource, created_from: client.createdFrom,
+    }).select('id').single()
+    if (error || !data?.id) throw error || new Error('Client id missing')
+    return NextResponse.json({ success: true, clientId: data.id, reused: false }, { status: 201 })
+  } catch (error) {
+    console.error('[CLIENTS_V2][CREATE_FAILED]', { tenantId: context.tenantId, message: error instanceof Error ? error.message : String(error) })
+    return NextResponse.json({ success: false, error: 'Impossible de créer le client.' }, { status: 500 })
+  }
 }

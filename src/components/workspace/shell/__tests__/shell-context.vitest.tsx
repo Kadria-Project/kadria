@@ -54,8 +54,8 @@ describe('shell route context', () => {
 
 describe('shell capabilities', () => {
   it('only exposes creation flows proven by the current page context', () => {
-    expect(getShellCapabilities('project')).toMatchObject({ createAppointment: true, createQuote: true, createProject: false, createClient: false })
-    expect(getShellCapabilities('dashboard')).toMatchObject({ createAppointment: true, createQuote: false })
+    expect(getShellCapabilities('project')).toMatchObject({ createAppointment: true, createQuote: true, createProject: true, createClient: false })
+    expect(getShellCapabilities('dashboard')).toMatchObject({ createAppointment: true, createQuote: false, createProject: true })
     expect(getShellCapabilities('settings')).toMatchObject({ createAppointment: false, createQuote: false, createProject: false, createClient: false })
     expect(getShellCapabilities('unknown')).toEqual({ search: false, collaborator: false, createAppointment: false, createQuote: false, createProject: false, createClient: false })
   })
